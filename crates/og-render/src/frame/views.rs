@@ -7,8 +7,10 @@
 //! A view draws the opaque meshes (static and skinned, every material:
 //! hooks, full shaders and physical ones through the standard pipelines, as
 //! the water's planar reflection does), the terrain and the sky, lit by the
-//! frame's lights (its own light clusters) and shadowed by the frame's
-//! shadow maps, into an HDR colour and depth of its size. A resolve pass
+//! lights its own frustum reaches (its own selection and light clusters,
+//! also lights the main camera never sees: a turntable, a portrait) and
+//! shadowed by the frame's shadow maps (a light only a view sees is
+//! unshadowed), into an HDR colour and depth of its size. A resolve pass
 //! then writes the target: [`crate::TargetFormat::Rgba8`] exposed and tone
 //! mapped with the camera's exposure and the frame's tone curve,
 //! [`crate::TargetFormat::Rgba16Float`] as linear radiance, the depth

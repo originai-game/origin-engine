@@ -44,7 +44,7 @@ impl Views {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         samples: u32,
-        kept: &[usize],
+        (kept, skip_rects): (&[usize], bool),
         scene: &crate::RenderScene,
         plans: &[ViewPlan],
         uniform: &crate::frame::FrameUniform,
@@ -74,9 +74,11 @@ impl Views {
                 std::mem::size_of::<crate::fx::FxUniform>() as u64,
             );
             let frustum = crate::Frustum::from_view_proj(p.frame.view_proj);
-            slot.clusters.build_kept(
+            // The view's own lights, those its frustum reaches (a
+            // turntable or portrait the main camera never sees has its own).
+            slot.clusters.skip_rects = skip_rects;
+            slot.clusters.build(
                 &scene.lighting.lights,
-                kept,
                 &crate::clusters::ClusterView {
                     camera: &p.frame,
                     frustum: &frustum,
@@ -87,7 +89,15 @@ impl Views {
                     height: p.size.1,
                 },
             );
-            crate::clusters::write_tables(queue, &slot.light_tables, lights, &slot.clusters);
+            let records = crate::frame::view_records(
+                scene,
+                kept,
+                lights,
+                &slot.clusters.kept,
+                p.position,
+                skip_rects,
+            );
+            crate::clusters::write_tables(queue, &slot.light_tables, &records, &slot.clusters);
             let vp = p.frame.view_proj.to_cols_array_2d();
             let mut u = *uniform;
             u.view_proj = vp;
@@ -100,6 +110,7 @@ impl Views {
             u.view_forward = p.frame.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = p.frame.axes();
             u.cluster = slot.clusters.params;
+            u.params[2] = records.len() as f32;
             // The main camera's screen-space reflections lie elsewhere.
             u.ssr = [0.0; 4];
             // Its own level-of-detail tint (meshlet.wgsl).

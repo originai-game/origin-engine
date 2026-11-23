@@ -46,7 +46,7 @@ impl Renderer {
             &self.device,
             &self.queue,
             self.samples,
-            &self.lights.clusters.kept,
+            (&self.lights.clusters.kept, self.lights.clusters.skip_rects),
             scene,
             view_plans,
             uniform,

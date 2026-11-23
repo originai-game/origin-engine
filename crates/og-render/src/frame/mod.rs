@@ -384,6 +384,42 @@ pub(crate) struct LocalShadowBudget {
     pub shadow_size: u32,
 }
 
+/// A secondary view's light records, for `view_kept` (its own selection,
+/// scene indices): a light the main view kept takes the main record
+/// (`main_kept`, `main_records`), with its shadow, cookie and far reach; a
+/// light only the view sees is unshadowed and without its cookie, as the
+/// frame's shadow and cookie layers are the main view's.
+pub(crate) fn view_records(
+    scene: &crate::RenderScene,
+    main_kept: &[usize],
+    main_records: &[LightGpu],
+    view_kept: &[usize],
+    eye: Vec3,
+    skip_rects: bool,
+) -> Vec<LightGpu> {
+    let lights = &scene.lighting.lights;
+    let far = crate::static_far::far_lights(scene, skip_rects);
+    let unshadowed = LocalShadowBudget {
+        max_shadowed: 0,
+        rect_shadows: false,
+        point: PointShadows::Cube,
+        shadow_size: 1,
+    };
+    view_kept
+        .iter()
+        .map(|&i| match main_kept.iter().position(|&m| m == i) {
+            Some(k) if k < main_records.len() => main_records[k],
+            _ => {
+                let mut record = local_lights(lights, &[i], eye, unshadowed).0[0];
+                if far.binary_search(&i).is_ok() {
+                    record.source[1] = scene.lighting.static_reach;
+                }
+                record
+            }
+        })
+        .collect()
+}
+
 /// The records of the lights drawn (`kept`: scene indices, from the cluster
 /// build) and their shadow views. Of the kept lights with `cast_shadows`,
 /// the `max_shadowed` most important at `eye` (radiance at the camera, as

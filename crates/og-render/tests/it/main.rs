@@ -40,6 +40,8 @@ mod ui_paint;
 mod ui_shape;
 #[path = "../ui_text.rs"]
 mod ui_text;
+#[path = "../view_lights.rs"]
+mod view_lights;
 #[path = "../volumetric.rs"]
 mod volumetric;
 #[path = "../wgsl_rules.rs"]
