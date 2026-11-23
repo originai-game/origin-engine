@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "A screen enters and leaves with its motion however it is shown: the elements built with a subtree that goes on screen (a <Show> branch's wrapper, a new mount) enter from their starting: records, not only its top, and an unmounted or removed subtree with no exit: of its own stays drawn while the elements under it play their exit: records. Before, a screen inside a new mount appeared and vanished in one frame."
+    }
+  ]
+}

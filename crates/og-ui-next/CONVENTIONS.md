@@ -183,6 +183,13 @@ machines do (ported as logic).
   (focus the keys moved: Tab, Enter or Space, an action or a screen
   reader; a press's focus shows no ring), `focus-within:` and `disabled:`.
   Records resolve once per class entry and the states it reads.
+- **Presence**: an element first drawn after the first build enters from
+  its `starting:` record, and so does every element under it built with it
+  (CSS's `@starting-style`: a screen in a `<Show>` branch or a new mount
+  enters whole). A removed element leaves to its `exit:` record, drawn and
+  unhit until it settles; one with none of its own stays drawn while the
+  elements under it leave to theirs (an unmounted screen plays its exit).
+  Put back meanwhile, they turn back. The probe lists neither.
 - **Events**: `press` and `tap` on a release within the retention (`value`
   is `"2"` on the second press of a double press: 0.5 s, 4 px);
   `pointerdown`, `pointermove`, `pointerup` and `wheel` (x and y carry the

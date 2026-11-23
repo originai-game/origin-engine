@@ -84,6 +84,8 @@ export async function fixtureFrames(filter?: (p: Page) => boolean) {
     const game = og.game({
       start(world) {
         og.ui.previewViewport(world, { width: host.width, height: host.height, dpr: 1, coarsePointer: host.coarse } as never);
+        // The layout at rest: a fixture's entering rows (a feed sliding in) land at once.
+        og.ui.configure(world, { reducedMotion: true });
       },
     });
     const created = createEngine(game as unknown as GameToken, { root: dir });

@@ -427,6 +427,28 @@ impl Tree {
         }
     }
 
+    /// `top` went on screen: the elements under it not drawn yet, built
+    /// before it was put there, enter with it from their `starting:`
+    /// records, as CSS's `@starting-style` applies to every element first
+    /// drawn (a screen inside the `<Show>` branch or the mount that brings
+    /// it).
+    fn enter_subtree(&mut self, top: u32) {
+        for i in 0..self.entering.len() {
+            let d = self.entering[i];
+            if d == top || self.els[d as usize].entering != Some(false) {
+                continue;
+            }
+            if !self.is_under(d, top) {
+                continue;
+            }
+            self.els[d as usize].entering = Some(true);
+            let el = &self.els[d as usize];
+            if let Some(from) = self.classes.presence(el.class, 0) {
+                self.motion.enter(el.node, &el.record, Some(from));
+            }
+        }
+    }
+
     /// The element op node `id` is.
     fn op(&self, id: u32) -> Result<u32, String> {
         match self.by_js.get(id as usize) {
@@ -494,15 +516,52 @@ impl Tree {
         self.free(e);
     }
 
-    /// Whether `e` or an element it is in is on its way out.
+    /// Whether `e` or an element it is in is on its way out: exiting, or
+    /// removed and held while what is under it exits.
     fn leaving_in(&self, mut e: u32) -> bool {
         while e != NONE {
-            if self.motion.exiting(self.els[e as usize].node) {
+            if self.motion.exiting(self.els[e as usize].node)
+                || self.leaving.iter().any(|l| l.0 == e)
+            {
                 return true;
             }
             e = self.els[e as usize].parent;
         }
         false
+    }
+
+    /// `top` was removed with no `exit:` record of its own: the elements
+    /// under it with one leave to it (a screen inside the `<Show>` branch
+    /// or the mount that goes), as a removed element with one does. True
+    /// when any animates out: hold `top` drawn, not hit, until they settle.
+    fn exit_under(&mut self, top: u32) -> bool {
+        let mut any = false;
+        for d in 0..self.els.len() as u32 {
+            let el = &self.els[d as usize];
+            if el.dead || el.js == NONE || !self.is_under(d, top) {
+                continue;
+            }
+            let to = self.classes.presence(el.class, 1);
+            any |= to.is_some() && self.motion.exit(el.node, &el.record, to);
+        }
+        any
+    }
+
+    /// Whether an element under `top` is on its way out.
+    fn exiting_under(&self, top: u32) -> bool {
+        (0..self.els.len() as u32).any(|d| {
+            let el = &self.els[d as usize];
+            !el.dead && self.motion.exiting(el.node) && self.is_under(d, top)
+        })
+    }
+
+    /// Whether element `d` is below `top` (not `top` itself).
+    fn is_under(&self, d: u32, top: u32) -> bool {
+        let mut a = self.els[d as usize].parent;
+        while a != NONE && a != top {
+            a = self.els[a as usize].parent;
+        }
+        a == top && d != top
     }
 
     /// The ids of `e` and what is under it go back to the renderer.
@@ -575,14 +634,26 @@ impl Tree {
         }
         gone.clear();
         self.gone = gone;
-        // What the renderer released inside an exit that ended.
+        // What the renderer released inside an exit that ended, and a
+        // removed element held while what is under it exited.
         let mut k = 0;
         while k < self.leaving.len() {
             let (e, release) = self.leaving[k];
-            if release && !self.motion.exiting(self.els[e as usize].node) && !self.leaving_in(e) {
+            let node = self.els[e as usize].node;
+            let held = self.motion.exiting(node)
+                || self.exiting_under(e)
+                || self.leaving_in(self.els[e as usize].parent);
+            if held {
+                k += 1;
+            } else if release {
                 self.free(e);
             } else {
-                k += 1;
+                self.leaving.swap_remove(k);
+                self.arena.detach(node);
+                let el = &mut self.els[e as usize];
+                (el.parent, el.arena_parent) = (NONE, NONE);
+                self.ordered = false;
+                self.paint = true;
             }
         }
     }
@@ -990,8 +1061,20 @@ impl Tree {
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (p, p);
                     self.data_dirty = true;
+                    let held = self.leaving.iter().any(|l| l.0 == child)
+                        && !self.motion.exiting(self.els[child as usize].node);
                     self.leaving.retain(|l| l.0 != child);
+                    let el = &self.els[child as usize];
                     self.sem.exiting(el.node, false);
+                    if held {
+                        // Put back while what is under it exits: they turn back.
+                        for d in 0..self.els.len() as u32 {
+                            let el = &self.els[d as usize];
+                            if !el.dead && self.motion.exiting(el.node) && self.is_under(d, child) {
+                                self.motion.enter(el.node, &el.record, None);
+                            }
+                        }
+                    }
                     self.ordered = false;
                     self.paint = true;
                     self.reapply(child);
@@ -1013,6 +1096,9 @@ impl Tree {
                     }
                     let el = &self.els[child as usize];
                     self.motion.enter(el.node, &el.record, from);
+                    if shown {
+                        self.enter_subtree(child);
+                    }
                 }
                 // remove
                 9 => {
@@ -1022,8 +1108,8 @@ impl Tree {
                     // With an `exit:` record it stays drawn, not hit,
                     // until its exit settles.
                     let to = self.classes.presence(el.class, 1);
-                    if self.motion.exit(el.node, &el.record, to) {
-                        self.sem.exiting(el.node, true);
+                    if self.motion.exit(el.node, &el.record, to) || self.exit_under(child) {
+                        self.sem.exiting(self.els[child as usize].node, true);
                         self.leaving.push((child, false));
                         self.paint = true;
                         continue;
@@ -1205,12 +1291,13 @@ impl Tree {
 
     /// Every live op node, for the probe: its op id, its op parent's (0 at
     /// a mount's top), its arena node, its box on screen (x, y, width,
-    /// height) as last painted, whether it shows, and its text.
+    /// height) as last painted, whether it shows, and its text. What is on
+    /// its way out (an exit playing) is gone already, as for a reader.
     pub fn dump_ops(&self) -> Vec<OpNode<'_>> {
         self.els
             .iter()
             .enumerate()
-            .filter(|(_, el)| !el.dead && el.js != NONE)
+            .filter(|&(e, el)| !el.dead && el.js != NONE && !self.leaving_in(e as u32))
             .filter_map(|(e, el)| {
                 let &(x, y, shown, _) = self.abs.get(e)?;
                 let b = self.arena.box_of(el.node);
@@ -2400,6 +2487,72 @@ mod tests {
         t.set_time(1.8, false);
         let (_, painted) = present(&mut t);
         assert!(!painted);
+    }
+
+    /// A subtree built off screen and then put on it (a screen in the
+    /// `<Show>` branch or the mount that brings it) enters whole: a node
+    /// under a new wrapper fades in from its `starting:` record too, as
+    /// CSS's `@starting-style` applies to every element first drawn. Taken
+    /// off again by its wrapper, which has no `exit:`, it fades out to its
+    /// own `exit:` record before the wrapper goes.
+    #[test]
+    fn a_node_under_a_wrapper_enters_and_leaves_with_it() {
+        let mut t = fading();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("row");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.set_time(1.0, false);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // The wrapper 2 gets its child 3 before it goes on screen.
+        let mut b = Batch::default();
+        b.op(1).u32(2).u8(0);
+        b.op(4).u32(2).str("row");
+        b.op(1).u32(3).u8(0);
+        b.op(4).u32(3).str("fade");
+        b.op(8).u32(2).u32(3).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.05, false);
+        frame(&mut t);
+        // The child paints over its wrapper: the last solid quad at x 0.
+        let a = t
+            .drawn
+            .quads
+            .iter()
+            .rev()
+            .find(|q| q.kind == PaintKind::Solid as u32 && q.rect[0] == 0.0)
+            .map(|q| q.color[3])
+            .unwrap();
+        assert!((a - 0.25).abs() < 0.01, "a quarter in after 0.05 s: {a}");
+        t.set_time(1.5, false);
+        frame(&mut t);
+        // The wrapper, with no `exit:` of its own, is removed: the node
+        // under it fades out to its `exit:` record and both stay drawn
+        // until it settles, then go.
+        let mut b = Batch::default();
+        b.op(9).u32(0).u32(1);
+        b.op(10).u32(1); // and released, as an unmount does
+        t.apply(&b.bytes()).unwrap();
+        t.set_time(1.6, false);
+        frame(&mut t);
+        let child = |t: &Tree| {
+            t.drawn
+                .quads
+                .iter()
+                .rev()
+                .find(|q| {
+                    q.kind == PaintKind::Solid as u32 && q.rect[0] == 0.0 && q.rect[2] == 50.0
+                })
+                .map(|q| q.color[3])
+        };
+        let a = child(&t).unwrap();
+        assert!((a - 0.5).abs() < 0.01, "half out after 0.1 s: {a}");
+        t.set_time(1.8, false);
+        frame(&mut t);
+        assert_eq!(child(&t), None, "out once its exit settled");
+        assert!(t.leaving.is_empty());
     }
 
     /// A node classed before it is first drawn, while detached or after

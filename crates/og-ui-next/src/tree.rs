@@ -1367,7 +1367,9 @@ impl Tree {
                 ink: own_ink,
                 text_shadow,
                 text_stroke,
-                out: from.out || self.motion.exiting(el.node),
+                out: from.out
+                    || self.motion.exiting(el.node)
+                    || self.leaving.iter().any(|l| l.0 == e as u32),
                 touch: r.touch.unwrap_or(from.touch),
                 fill: r.fill.unwrap_or(from.fill),
             };

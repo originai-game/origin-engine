@@ -166,16 +166,26 @@ function withArt(world: World, props: unknown, art: Record<string, string[]>): u
 }
 
 let shown: (() => void) | null = null;
+let stage = false;
 function page(world: World, n: number): void {
   shown?.();
+  // The stage's ground is mounted once, under every page, as a game's scene
+  // stays while its screens change: a page leaving plays its exit over it.
+  if (!stage) {
+    stage = true;
+    mount(world, () => (
+      <View class="absolute inset-0">
+        <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
+        <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
+      </View>
+    ), {}, { layer: "hud" });
+  }
   const [m, name, fixture, place, art] = PAGES[n] ?? PAGES[0]!;
   const [Component, fixtures] = MODULES[m]!;
   // The marker names the page, so the gallery lists the fixture that threw.
   try {
     shown = mount(world, () => (
       <View class="absolute inset-0">
-        <View class="absolute inset-x-0 top-0 h-1/2 bg-[#9fb4c8]" />
-        <View class="absolute inset-x-0 bottom-0 h-1/2 bg-[#141a22]" />
         {/* A fixture that points at an element by its name (a tutorial step's target) gets one to point at: the game's button it would light; a fixture named \`…Missing\` gets none (a target not on screen). */}
         {(() => { const target = ({ ...fixtures.default, ...fixtures[fixture] } as { target?: unknown }).target; return typeof target === "string" && target !== "" && !fixture.endsWith("Missing") ? <View name={target} class="absolute left-1/4 top-1/5 size-24 rounded-full border-2 border-rim-strong bg-raised shadow-float" /> : null; })()}
         <View class={place === "screen" ? "absolute inset-0 p-6 grid grid-cols-1 grid-rows-1" : place === "panel" ? \`absolute inset-6 p-4 border border-rim rounded-panel bg-glass text-fg \${packClass("Panel", "frame")}\` : "absolute inset-0 p-6"}>{Component(withArt(world, { ...fixtures.default, ...fixtures[fixture] }, art))}</View>
