@@ -128,6 +128,56 @@ pub(crate) fn scan_with(
     // their reserved ids (`@canvas/paper.png`, every file of
     // `@styles/pixel/`), once each, read from the cook itself.
     let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
+    let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
+    // A game's theme recipe (`styles/<name>/theme.json`) cooks as the
+    // pack.json it compiles to, with its drawn art, in its place.
+    let recipes: Vec<(String, PathBuf)> = files
+        .iter()
+        .filter(|(rel, _)| crate::cook::ui_themes::is_recipe(rel))
+        .cloned()
+        .collect();
+    files.retain(|(rel, _)| !crate::cook::ui_themes::is_recipe(rel));
+    for (rel, path) in recipes {
+        let dir = rel.trim_end_matches(crate::cook::ui_themes::RECIPE);
+        let pack = format!("{dir}pack.json");
+        if files.iter().any(|(r, _)| *r == pack) {
+            early_errors.push((
+                rel.clone(),
+                "theme",
+                format!("{dir} has a theme.json and a pack.json: a style is one or the other (a theme's own pack entries go in its `pack` key)"),
+            ));
+            continue;
+        }
+        let made = read_file(&path)
+            .map_err(|e| e.to_string())
+            .and_then(|b| String::from_utf8(b).map_err(|_| "not UTF-8".to_owned()))
+            .and_then(|text| {
+                crate::cook::ui_themes::files(
+                    &text,
+                    &rel,
+                    &crate::cook::ui_themes::cache_dir(assets_dir),
+                )
+            });
+        match made {
+            Ok(made) => {
+                for (file, bytes) in made {
+                    builtins.insert(format!("{dir}{file}"), intern(bytes));
+                }
+            }
+            Err(e) => early_errors.push((rel.clone(), "theme", e)),
+        }
+    }
+    // The packs the recipes made name built-in assets as a game's pack does.
+    let made: Vec<(String, &'static [u8])> = builtins
+        .iter()
+        .filter(|(id, _)| crate::cook::ui_packs::is_pack(id))
+        .map(|(id, b)| (id.clone(), *b))
+        .collect();
+    for (id, bytes) in made {
+        for (f, b) in look::pack_files(&id, &String::from_utf8_lossy(bytes)) {
+            builtins.insert(f.to_string(), b);
+        }
+    }
     for (rel, path) in &files {
         if ext(rel) == "ogt"
             && let Ok(text) =
@@ -151,7 +201,6 @@ pub(crate) fn scan_with(
             }
         }
     }
-    let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
     // The engine string tables and emitters the bundle holds (its
     // components'), read from the files the bundler resolved; each cooks

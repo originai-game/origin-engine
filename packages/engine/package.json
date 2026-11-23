@@ -69,6 +69,7 @@
     "vendor",
     "knowledge",
     "styles",
+    "themes",
     "fonts",
     "extensions",
     "!extensions/*/preview",

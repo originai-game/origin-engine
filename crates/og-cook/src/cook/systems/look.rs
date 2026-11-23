@@ -77,6 +77,11 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
     if own(&mine) {
         return Ok(mine);
     }
+    // An engine theme (`templates/themes/<name>/theme.json`) before a
+    // built-in style of the same name.
+    if crate::cook::ui_themes::builtin_recipe(name).is_some() {
+        return Ok(format!("@themes/{name}"));
+    }
     let builtin = format!("@styles/{name}");
     if style_slugs().contains(&name) {
         return Ok(builtin);
@@ -169,7 +174,14 @@ pub(crate) fn builtin_files(
         && ui != "default"
         && let Ok(id) = resolve_style(ui, &|id| root.join(id).is_dir())
     {
-        let files = style_files(&id);
+        let files = match id.strip_prefix("@themes/") {
+            Some(theme) => crate::cook::ui_themes::builtin_files(
+                theme,
+                &crate::cook::ui_themes::cache_dir(root),
+            )
+            .unwrap_or_default(),
+            None => style_files(&id),
+        };
         for (source, bytes) in &files {
             if !crate::cook::ui_packs::is_pack(source) {
                 continue;

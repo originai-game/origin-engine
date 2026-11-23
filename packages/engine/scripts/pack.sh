@@ -122,6 +122,12 @@ for pack in "$here"/../../templates/styles/*/; do
     (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/shared/LICENSES.md" ] || { echo "pack: shared style assets were not copied into styles/" >&2; exit 1; }
+# The theme recipes and their dimension values (templates/themes) ship in
+# themes/, beside styles/: og's cook compiles a game's theme.json against
+# them (og-cook's ui_themes.rs). The copy is ignored by Git.
+rm -rf "$here/themes"
+cp -R "$here/../../templates/themes" "$here/themes"
+[ -d "$here/themes/dimensions/material" ] || { echo "pack: theme dimensions were not copied into themes/" >&2; exit 1; }
 # The font packs (templates/fonts: one directory per script, its faces,
 # import settings, manifest and licence) ship as files in fonts/, which
 # og font add and og create --lang install from; the copy is ignored by Git.

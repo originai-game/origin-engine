@@ -62,10 +62,16 @@ export function pages(): Page[] {
   return out;
 }
 
-/** The packs a checkout holds: `default` and each templates/styles directory with a pack.json. */
+/** The engine's themes: each templates/themes directory with a theme.json (a look's `ui` finds one before a style). */
+export function themes(): string[] {
+  const dir = join(repo, "templates", "themes");
+  return readdirSync(dir).filter((d) => existsSync(join(dir, d, "theme.json"))).sort();
+}
+
+/** The packs a checkout holds: `default`, each engine theme and each templates/styles directory with a pack.json. */
 export function packs(): string[] {
   const dir = join(repo, "templates", "styles");
-  return ["default", ...readdirSync(dir).filter((d) => existsSync(join(dir, d, "pack.json"))).sort()];
+  return ["default", ...new Set([...themes(), ...readdirSync(dir).filter((d) => existsSync(join(dir, d, "pack.json"))).sort()])];
 }
 
 /** Every key the built-in components' string tables hold. */
@@ -113,7 +119,7 @@ seed 1
 const LOOK = (pack: string) => `type look
 version 1
 ---
-# Names @styles/${pack} so the cook bundles it; the gallery switches packs itself.
+# Names the pack or theme so the cook bundles it; the gallery switches packs itself.
 name "gallery ${pack}"
 ui "${pack}"
 `;
@@ -148,6 +154,8 @@ import { Text, View, mount, packClass, type UiChild } from "@origingame/engine/u
 ${[...new Set(list.map((p) => p.module))].map((m, i) => `import { ${list.find((p) => p.module === m)!.component} as C${i}, fixtures as F${i} } from "${m.startsWith("sheets/") ? `./${m}` : `@origingame/engine/${m}`}";`).join("\n")}
 
 type Any = (props: any) => UiChild;
+/** The engine themes the cook compiled (a look names each), loaded as \`@themes/<name>\`. */
+const THEMES: string[] = ${JSON.stringify(themes())};
 const MODULES: [Any, Record<string, object>][] = [${[...new Set(list.map((p) => p.module))].map((_, i) => `[C${i}, F${i}]`).join(", ")}];
 const PAGES: [number, string, string, "screen" | "panel" | "scene", Record<string, string[]>][] = ${JSON.stringify(list.map((p) => [[...new Set(list.map((q) => q.module))].indexOf(p.module), p.name, p.fixture, p.place, ART[`${p.name} · ${p.fixture}`] ?? {}]))};
 
@@ -202,8 +210,9 @@ function page(world: World, n: number): void {
 
 function pack(world: World, name: string): void {
   if (name === "default") return void og.ui.configure(world, { style: null });
-  const style = og.load.style(world, \`@styles/\${name}\`);
-  if (!style.ok) throw new Error(\`@styles/\${name}: \${style.reason}\`);
+  const id = THEMES.includes(name) ? \`@themes/\${name}\` : \`@styles/\${name}\`;
+  const style = og.load.style(world, id);
+  if (!style.ok) throw new Error(\`\${id}: \${style.reason}\`);
   og.ui.configure(world, { style: style.value });
 }
 

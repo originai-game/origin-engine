@@ -49,6 +49,7 @@ mod test_dir;
 pub mod ui_art;
 mod ui_packs;
 pub mod ui_screens;
+pub mod ui_themes;
 pub mod vector;
 
 use execute::{read_sibling, run};

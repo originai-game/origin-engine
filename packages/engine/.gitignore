@@ -5,6 +5,8 @@ node_modules/
 knowledge/
 # Copied from templates/styles at pack (scripts/pack.sh).
 /styles/
+# Copied from templates/themes at pack (scripts/pack.sh).
+/themes/
 /fonts/
 # Copied from templates/ui-kit for on-demand review sheets.
 ui-sheet/
