@@ -27,7 +27,7 @@ export interface CarouselProps {
  */
 export function Carousel(props: CarouselProps) {
   return (
-    <View class={`nine-panel-cut bg-plate-hi text-fg w-90 max-w-full items-center p-3 gap-2 ${packClass("Panel", "frame")}`} role="region" label={props.label || t("component.carousel.name")}>
+    <View class={`nine-panel-cut bg-layer-1 text-fg w-90 max-w-full items-center p-3 gap-2 ${packClass("Panel", "frame")}`} role="region" label={props.label || t("component.carousel.name")}>
       <View class="flex-row items-center w-full overflow-x-auto gap-3">
         <Show when={!props.pages.length}>
           <Text class={`text-caption text-fg-muted p-3 m-0 shrink`} role="status">

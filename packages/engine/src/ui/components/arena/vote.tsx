@@ -48,7 +48,7 @@ export interface ArenaVoteProps {
  * Approximations: the chosen tile's wash is flat and keeps no rim (a cut
  * takes one fill), and the scroll fade at the list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 nine-panel-cut bg-layer-1 compact:p-2 ${packClass("Panel", "frame")}`;
 
 /**
  * A map or mode vote: the options, the local vote, the time left and, once

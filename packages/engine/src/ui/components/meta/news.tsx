@@ -45,7 +45,7 @@ export function News(props: NewsProps) {
                       <For each={(props.entries ?? [])}>
                         {(entry) => (
                         <View class={`${packClass("List", "item")}`}>
-                          <View class={`nine-plate-cut transition duration-317 items-start py-3 px-4 gap-2 data-selected:border-accent data-down:opacity-45`} data-unread={entry().unread} data-pinned={entry().pinned}>
+                          <View class={`nine-plate-cut bg-layer-2 transition duration-317 items-start py-3 px-4 gap-2 data-selected:border-accent data-down:opacity-45`} data-unread={entry().unread} data-pinned={entry().pinned}>
                             <View class="flex-row flex-wrap items-center w-full gap-2">
                               <Text class={`font-bold text-caption text-info tracking-label uppercase bg-well py-0 px-1 rounded-capsule shrink`}>
                                 {entry().kind}
@@ -78,7 +78,7 @@ export function News(props: NewsProps) {
                             </Show>
                             <Show when={entry().id === props.selected}>
                               <Show when={entry().image}>
-                                <Image class={`w-full max-h-60 aspect-2/1 object-cover nine-plate-cut`} src={entry().image} />
+                                <Image class={`w-full max-h-60 aspect-2/1 object-cover nine-plate-cut bg-layer-2`} src={entry().image} />
                               </Show>
                               <Show when={entry().body}>
                                 <Text class={`text-fg-muted m-0`}>

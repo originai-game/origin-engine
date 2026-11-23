@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "ProgressBar",
+      "summary": "ProgressBar takes a `class`, merged after its own, so a caller can set its track's fill (`class=\"bg-layer-3\"`)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Built-in components",
+      "summary": "Every framed surface in the built-in components now shows its frame: frames that had no fill get a layer, and a frame nested in another takes the next layer up instead of matching its parent."
+    }
+  ]
+}

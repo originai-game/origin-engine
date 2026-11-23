@@ -22,7 +22,7 @@ export interface CalendarProps {
  */
 export function Calendar(props: CalendarProps) {
   return (
-    <View class={`nine-panel-cut bg-plate-hi text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
+    <View class={`nine-panel-cut bg-layer-1 text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center py-1 px-4 gap-1`}>
         <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft min-w-11 min-h-11 p-0 rounded-control ${packClass("Button", "plate")}`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
           <Icon class="size-4" name="chevronLeft" />

@@ -42,7 +42,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class={`group/card transition duration-317 gap-y-2 p-0 data-selected:border-accent data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
-              <View class={`aspect-16/9 nine-plate-cut overflow-hidden`}>
+              <View class={`aspect-16/9 nine-plate-cut bg-layer-2 overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="saveThumb" src={c().thumb} />
                 }>

@@ -2,6 +2,8 @@ import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine
 import "./progress-bar.en.ogt";
 
 export interface ProgressBarProps {
+  /** Classes merged after its own: a bar inside another surface takes the next layer (`bg-layer-3`). */
+  class?: string | undefined;
   /** Done, 0 to 1. */
   value: number;
   /** A paler fill ahead of value (downloaded ahead of installed), 0 to 1. */
@@ -31,7 +33,7 @@ export function ProgressBar(props: ProgressBarProps) {
   const percent = () => `${formatNumber(Math.min(Math.max(props.value, 0), 1) * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`group/progress flex-col w-full min-w-0 gap-y-1 nine-plate-cut bg-glass py-1 px-2 ${packClass("Plate", "frame")}`}
+      class={`group/progress flex-col w-full min-w-0 gap-y-1 nine-plate-cut bg-glass py-1 px-2 ${packClass("Plate", "frame")} ${props.class ?? ""}`}
       role="progressbar"
       label={(props.label ?? "") !== "" ? props.label : t("component.progress-bar.name")}
       valueMin={0}

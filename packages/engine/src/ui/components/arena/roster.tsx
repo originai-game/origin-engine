@@ -59,12 +59,12 @@ export interface ArenaRosterProps {
  * (a cut takes one fill), a locked or taken portrait's greying filter
  * is an opacity, and the scroll fade at the grid's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi data-compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-layer-1 data-compact:p-2 ${packClass("Panel", "frame")}`;
 const MARK = "flex-row items-center gap-x-0.5 py-0 px-1 whitespace-nowrap text-xs leading-normal font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key rounded-control data-ready:bg-none data-ready:bg-success data-ready:text-success-fg";
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
 const ACCENT_TAG = `flex-none max-w-full self-center py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-center text-fg nine-chip-cut bg-raised-pressed`;
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
-const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:border-l-3 data-selected:border-hud-accent data-disabled:text-fg-muted data-disabled:bg-glass-hi";
+const CELL = "flex-col gap-y-0.5 pb-2 nine-panel-cut bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:inset-shadow-bar data-disabled:text-fg-muted data-disabled:bg-glass-hi";
 
 /**
  * A character select: the roster as a grid of tiles, the local player's
@@ -134,7 +134,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
           </View>
         </Scroll>
         <Show when={(props.selected ?? "") != "" && chosen()}>
-          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-glass group-data-compact/roster:gap-y-1 group-data-compact/roster:py-1 px-2" role="status">
+          <View class="flex-none flex-row flex-wrap items-center gap-x-1 gap-y-0.5 py-2 px-3 nine-plate-cut bg-layer-2 group-data-compact/roster:gap-y-1 group-data-compact/roster:py-1 px-2" role="status">
             <Text class={`${ACCENT_TAG} bg-hud-accent text-hud-accent-fg shadow-none`}>{t("arena.roster.chosen")}</Text>
             <Text class="min-w-0 text-3xl leading-tight font-bold uppercase text-fg group-data-compact/roster:text-xl">{chosen()?.name}</Text>
             <Text class="shrink min-w-0 max-w-full text-xs leading-snug font-semibold tracking-label uppercase text-fg-muted">{chosen()?.roleLabel}</Text>

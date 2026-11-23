@@ -41,7 +41,7 @@ export interface DataGridProps {
  */
 export function DataGrid(props: DataGridProps) {
   return (
-    <View class={`nine-panel-cut bg-plate-hi text-fg w-full p-0 gap-0 ${packClass("Panel", "frame")}`} role="grid" label={props.label} busy={props.loading}>
+    <View class={`nine-panel-cut bg-layer-1 text-fg w-full p-0 gap-0 ${packClass("Panel", "frame")}`} role="grid" label={props.label} busy={props.loading}>
       <View class={`min-h-8 border-b border-rim-soft grid gap-x-3 w-full py-2 px-3 compact:flex compact:gap-x-3 compact:flex-wrap compact:gap-y-0.5 compact:items-baseline`} role="row" style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
         <For each={props.columns} key={(c) => c.id}>
           {(c, i) => (

@@ -57,7 +57,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
             <View class="w-full pt-0 pb-4 px-0 m-0 gap-1" label={props.title !== '' ? props.title : t("idle.purchases.name")}>
               <For each={props.upgrades}>
                 {(u) => (
-                <View class={`group/row relative flex-row items-center nine-plate-cut text-fg transition duration-317 py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
+                <View class={`group/row relative flex-row items-center nine-plate-cut bg-layer-2 text-fg transition duration-317 py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
                   <View class="absolute start-0 inset-y-1.5 w-0.75 bg-hud-accent" />
                   <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
                     <Icon class="size-16/25" name={u().locked ? 'lock' : u().icon} />
@@ -79,17 +79,17 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                   </View>
                   <View class="items-end max-w-1/2 gap-1 compact:flex-row compact:grow compact:shrink-0 compact:basis-full compact:items-center compact:max-w-full compact:justify-end">
                     <Show when={u().maxed}>
-                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-layer-2 text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.maxed")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && u().locked}>
-                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-layer-2 text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 ${packClass("Chip", "frame")}`}>
                         {t("idle.purchases.locked")}
                       </Text>
                     </Show>
                     <Show when={!u().maxed && !u().locked && !u().affordable}>
-                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:text-danger-fg ${packClass("Chip", "frame")}`} data-tag-short={true}>
+                      <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-layer-2 text-fg-muted transition duration-317 whitespace-nowrap tracking-label uppercase py-0 px-1 data-tag-short:bg-none data-tag-short:bg-danger data-tag-short:text-danger-fg ${packClass("Chip", "frame")}`} data-tag-short={true}>
                         {t("idle.purchases.short")}
                       </Text>
                     </Show>

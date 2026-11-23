@@ -64,7 +64,7 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
   const followed = (id: string) => !props.freeCamera && props.selected == id;
   return (
     <View
-      class={`flex-col gap-y-2 w-full max-h-full p-3 nine-panel-cut bg-plate-hi text-fg ${packClass("Panel", "frame")}`}
+      class={`flex-col gap-y-2 w-full max-h-full p-3 nine-panel-cut bg-layer-1 text-fg ${packClass("Panel", "frame")}`}
       label={heading()}
       busy={props.loading}
     >

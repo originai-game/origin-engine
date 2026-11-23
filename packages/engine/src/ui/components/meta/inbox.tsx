@@ -56,7 +56,7 @@ export function Inbox(props: InboxProps) {
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`flex-row items-center justify-center gap-1 group/row nine-plate-cut text-fg transition duration-317 w-full text-start py-2 px-3 data-selected:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`flex-row items-center justify-center gap-1 group/row nine-plate-cut bg-layer-2 text-fg transition duration-317 w-full text-start py-2 px-3 data-selected:bg-layer-4 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}

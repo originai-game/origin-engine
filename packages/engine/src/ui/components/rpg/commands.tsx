@@ -17,7 +17,7 @@ export interface RpgCommandsProps {
 export function RpgCommands(props: RpgCommandsProps) {
   return (
     <View
-      class={`flex-col w-full text-fg nine-panel-cut bg-plate-hi p-2 gap-y-2 ${packClass("Panel", "frame")}`}
+      class={`flex-col w-full text-fg nine-panel-cut bg-layer-1 p-2 gap-y-2 ${packClass("Panel", "frame")}`}
       label={t("rpg.commands.name")}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 inset-shadow-underline inset-shadow-rim-soft`}>

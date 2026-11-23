@@ -84,7 +84,7 @@ export function RacingResults(props: RacingResultsProps) {
                 <For each={rows()} key={(r) => r.id}>
                   {(r, i) => (
                     <View
-                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-glass nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-hud-accent-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
+                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-layer-2 nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-hud-accent-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
                       role="listitem"
                       label={r().name}
                       current={r().player}

@@ -13,7 +13,7 @@ const socket =
 /** One good's row: its rarity on the leading edge, lit by the hover ground and the pack's selected row when chosen. */
 const goodRow =
   (selected: boolean) =>
-  `group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent transition duration-317 hover:bg-surface-hover focus-visible:border-hud-accent ${selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45`;
+  `group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-layer-2 inset-shadow-bar inset-shadow-transparent transition duration-317 hover:bg-surface-hover focus-visible:inset-shadow-hud-accent ${selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} group-data-tier-uncommon/row:inset-shadow-uncommon group-data-tier-rare/row:inset-shadow-rare group-data-tier-epic/row:inset-shadow-epic group-data-tier-legendary/row:inset-shadow-legendary group-data-tier-mythic/row:inset-shadow-mythic disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45`;
 
 export interface RpgTradeProps {
   /** The merchant or trade title; empty uses Trade. */

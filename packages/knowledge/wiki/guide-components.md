@@ -1300,6 +1300,7 @@ A bar fills the width its container gives it: a caption over it at the start and
 
 | Prop | Type | What |
 |---|---|---|
+| `class?` | `string \| undefined` | Classes merged after its own: a bar inside another surface takes the next layer (`bg-layer-3`). |
 | `value` | `number` | Done, 0 to 1. |
 | `buffer?` | `number` | A paler fill ahead of value (downloaded ahead of installed), 0 to 1. |
 | `label?` | `string` | A caption over it at the start; empty is none. |

@@ -61,9 +61,9 @@ export interface ArenaDraftProps {
  * stretch is dropped, and the scroll fade at the teams' foot is dropped,
  * and a long word wraps without breaking.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-layer-1 compact:p-2 ${packClass("Panel", "frame")}`;
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
-const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-fg whitespace-nowrap nine-chip-cut`;
+const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-fg whitespace-nowrap nine-chip-cut bg-layer-2`;
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
 const KEYCAP = "shrink-0 pointer-coarse:hidden text-xl leading-none";
 const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;

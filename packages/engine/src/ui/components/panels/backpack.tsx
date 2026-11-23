@@ -90,7 +90,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   <Show when={c().id === props.tab}><View class={`absolute inset-x-1 bottom-0 h-0.75 bg-hud-accent shadow-glow pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-xs font-bold py-0 px-1 nine-chip-cut ${c().id === props.tab ? "bg-hud-accent text-hud-accent-fg shadow-none" : `text-fg-muted ${packClass("Chip", "frame")}`}`}>
+                    <Text class={`text-xs font-bold py-0 px-1 nine-chip-cut bg-layer-2 ${c().id === props.tab ? "bg-hud-accent text-hud-accent-fg shadow-none" : `text-fg-muted ${packClass("Chip", "frame")}`}`}>
                       {formatNumber(c().count)}
                     </Text>
                   </Show>

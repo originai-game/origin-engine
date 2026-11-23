@@ -106,7 +106,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
         </View>
         <For each={props.lead}>
           {(s) => (
-            <View class="flex-row flex-wrap items-end nine-plate-cut bg-glass py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
+            <View class="flex-row flex-wrap items-end nine-plate-cut bg-layer-2 py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
               <View class="grow gap-0.5">
                 <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle">{s().label}</Text>
                 <View class="flex-row items-center flex-wrap gap-1">

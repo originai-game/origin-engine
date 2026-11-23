@@ -59,7 +59,7 @@ export interface ArenaLobbyProps {
  * octagon edge is rounded, the scroll fade at the list's foot is
  * dropped, and a long word wraps without breaking.
  */
-const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-plate-hi compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-layer-1 compact:p-2 ${packClass("Panel", "frame")}`;
 const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
 const KEYCAP = "shrink-0 pointer-coarse:hidden text-xl leading-none";
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */

@@ -94,7 +94,7 @@ export function PauseScreen(props: PauseScreenProps) {
         <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg m-0 compact:text-display-lg`}>
           {t("screen.pause.title")}
         </Text>
-        <View class={`gap-y-0.5 self-start w-95 max-w-full mt-4 bg-plate-hi nine-panel-cut py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
+        <View class={`gap-y-0.5 self-start w-95 max-w-full mt-4 bg-layer-1 nine-panel-cut py-3 px-4 short:hidden compact:self-stretch compact:w-auto compact:mt-3 compact:py-2 compact:px-3 ${packClass("Panel", "frame")}`}>
           <Show when={props.objective !== ""}>
             <Text class="text-2xs font-bold tracking-kicker uppercase text-fg-muted m-0">
               {t("screen.pause.objectiveLabel")}

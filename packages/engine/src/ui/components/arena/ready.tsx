@@ -40,7 +40,7 @@ export interface ArenaReadyProps {
  * local readiness is faked. Approximations: the scroll fade at the
  * list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-plate-hi ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 nine-panel-cut bg-layer-1 ${packClass("Panel", "frame")}`;
 const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
 
 /**

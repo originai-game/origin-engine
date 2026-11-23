@@ -204,7 +204,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               onPress={(e) => props.onPreview?.(e, s().id)}
                               onAction={{ details: (e) => props.onPreview?.(e, s().id) }}
                               data-pressed={s().id === props.previewing}
-                              class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-glass nine-plate-cut hover:bg-plate-hi data-pressed:bg-hud-accent text-fg data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-glass ${packClass("Button", "plate")}`}
+                              class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-layer-3 nine-plate-cut hover:bg-layer-4 data-pressed:bg-hud-accent text-fg data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-layer-3 ${packClass("Button", "plate")}`}
                             >
                               <Text class={`shrink-0 pointer-coarse:hidden text-title leading-none`} glyph="details" />
                               <Show when={s().id === props.previewing}>
