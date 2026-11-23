@@ -198,7 +198,10 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // moving foreground in the footprint must not disable visibility
   // rejection for the camera-reprojected background it just uncovered.
   if (!smaa && !own_motion && was_occluded(here - motion, reprojected.z)) {
-    return fresh(in);
+    // Seed with the surface whose visibility was tested. The first-frame
+    // bilinear upscale would mix neighbouring surfaces into this sample's
+    // new history, which later frames retain as if it belonged here.
+    return cur4;
   }
   if (upscale && any(motion_at != at)) {
     motion = camera_reprojection(motion_at, size).xy;

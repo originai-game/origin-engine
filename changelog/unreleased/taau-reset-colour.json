@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "RenderOptions.upscaler",
+      "summary": "TAAU reseeds newly uncovered surfaces with the current sample whose visibility was tested. Bilinear reconstruction could mix another surface into that seed and leave its colour in later history. First-frame reconstruction, history filters, blend weights and mode defaults are unchanged."
+    }
+  ]
+}

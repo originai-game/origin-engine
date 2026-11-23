@@ -191,13 +191,28 @@ mod web {
             RenderDesc, RenderScene, Tonemap, Upscaler, shapes,
         };
         let mut checked = 0;
-        for (name, scale, moving, prepass, uncover_pixels) in [
-            ("stationary half", 0.5, false, false, 0),
-            ("moving full", 1.0, true, false, 0),
-            ("moving half", 0.5, true, false, 0),
-            ("moving half with prepass", 0.5, true, true, 0),
-            ("uncovered half with prepass", 0.5, false, true, 16),
-            ("uncovered edge half with prepass", 0.5, false, true, 14),
+        for (name, scale, moving, prepass, uncover_pixels, corners) in [
+            ("stationary half", 0.5, false, false, 0, false),
+            ("moving full", 1.0, true, false, 0, false),
+            ("moving half", 0.5, true, false, 0, false),
+            ("moving half with prepass", 0.5, true, true, 0, false),
+            ("uncovered half with prepass", 0.5, false, true, 16, false),
+            (
+                "uncovered edge half with prepass",
+                0.5,
+                false,
+                true,
+                14,
+                false,
+            ),
+            (
+                "uncovered corner half with prepass",
+                0.5,
+                false,
+                true,
+                14,
+                true,
+            ),
         ] {
             let uncover = uncover_pixels > 0;
             let mut scene = RenderScene::new();
@@ -220,7 +235,7 @@ mod web {
             // bars do not take ambient lighting or its occlusion.
             scene.look.post.ao = prepass.then(AmbientOcclusion::default);
             scene.atmosphere.fog = None;
-            let mesh = scene.add_mesh(shapes::plane_xy(0.1875, 4.0));
+            let mesh = scene.add_mesh(shapes::plane_xy(0.1875, if corners { 0.1875 } else { 4.0 }));
             let red = scene.add_material(Material {
                 base_color: [0.0, 0.0, 0.0, 1.0],
                 emissive: [1.0, 0.0, 0.0],
@@ -233,14 +248,14 @@ mod web {
             };
             for &x in &centers {
                 scene.add_instance(mesh, red, Default::default());
-                scene
-                    .objects
-                    .instances
-                    .last_mut()
-                    .unwrap()
-                    .transform
-                    .w_axis
-                    .x = (x as f32 - 128.0) * 0.09375;
+                let instance = scene.objects.instances.last_mut().unwrap();
+                instance.transform.w_axis.x = (x as f32 - 128.0) * 0.09375;
+                if corners {
+                    // A two-pixel square covers y=64..66. At its corner
+                    // the bilinear footprint can be mostly white even
+                    // though the current sample and output pixel are red.
+                    instance.transform.w_axis.y = -0.09375;
+                }
             }
             if uncover {
                 // The grey occluder covers x=64..128 at z=1. Moving it
@@ -342,6 +357,15 @@ mod web {
                 return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
             }
             if uncover {
+                if corners {
+                    let pixel = &image.pixels[(64 * 256 + 74) * 4..][..4];
+                    if !(pixel[0] > 188 && pixel[1] < 188 && pixel[2] < 188) {
+                        return Err(err(format!(
+                            "TAAU {name}: uncovered foreground mixed with another surface at (74,64): {pixel:?}"
+                        )));
+                    }
+                    checked += 1;
+                }
                 // A fourteen-pixel shift is not a multiple of the bar
                 // spacing: borrowing the cover's motion lands a white
                 // gap on a red bar in the old frame, exposing the error.
