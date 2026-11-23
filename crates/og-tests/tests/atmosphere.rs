@@ -310,7 +310,11 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
 /// - once the wind has carried the clouds 1200 m, an eye 1200 m downwind
 ///   sees what the eye at the origin saw before: they stand over the
 ///   world, where they followed the eye before (the same sky over every
-///   place), and they go with the wind, where they went against it.
+///   place), and they go with the wind, where they went against it;
+/// - the high layer's own place wraps at sixteen tiles, a period of the
+///   scales it is read at: a tick across that wrap moves the sky as a tick
+///   anywhere does (by the volume's offsets, the layer's patches and
+///   fibres changed where those wrapped).
 #[test]
 #[ignore = "requires GPU"]
 fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
@@ -350,6 +354,10 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
     let wrap = (f64::from(scale) * 4.0 / 12.0 * 60.0) as u64;
     let steady = apart(&draw(1000, 0.0), &draw(1001, 0.0));
     let across = apart(&draw(wrap - 1, 0.0), &draw(wrap, 0.0));
+    // The high layer's wind is twice the layer's and its wrap four times
+    // as far; its place falls as the clock runs, so it wraps after the
+    // tick that reaches the period.
+    let high = apart(&draw(2 * wrap, 0.0), &draw(2 * wrap + 1, 0.0));
     let later = apart(&draw(1000, 0.0), &draw(1000 + 100 * 60, 0.0));
     println!("one tick apart: {steady:.3}; across the wrap: {across:.3}; 100 s apart: {later:.3}");
     assert!(
@@ -359,6 +367,13 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
     assert!(
         across < 2.0 * steady + 0.2,
         "the clouds change shape where the wind's offset wraps ({across:.3} against {steady:.3} a tick)"
+    );
+    println!("across the high layer's wrap: {high:.3}");
+    // (A thin layer over little of the sky: wrapped at the volume's four
+    // tiles its patches changed and this was 0.277, against 0.049 a tick.)
+    assert!(
+        high < 2.0 * steady + 0.05,
+        "the high layer changes where its place wraps ({high:.3} against {steady:.3} a tick)"
     );
     // 100 s of a 12 m/s wind is 1200 m (the high layer's wind is twice
     // that, so without it).
@@ -515,6 +530,11 @@ fn the_clouds_shade_the_ground_under_them() {
         let c = scene.atmosphere.clouds.as_mut().expect("clouds");
         c.wind = Vec3::new(12.0, 0.0, 5.0);
         c.layer = 0.0;
+        // (A broken sky, so the sun's slanted ray from a place on the
+        // ground passes between the clouds at some places: at half cover
+        // a ray 50 degrees off the zenith through 1.8 km of layer met a
+        // cloud from all but one or two of the sixteen.)
+        c.coverage = 0.35;
         c.shadows = shadows;
         scene.atmosphere.adaptation = Default::default();
         scene.objects.instances.clear();
@@ -573,8 +593,17 @@ fn the_clouds_shade_the_ground_under_them() {
         };
         middle(&capture(&scene))
     };
+    // (A line of places across the whole of the clouds' field, one period
+    // of it (36 km) along x, so it crosses regions of heavy cover and of
+    // light: the cover varies from region to region, and a line a few
+    // kilometres long could stand under one bank. The places stand clear of
+    // the clouds' edges: the sun's disc crosses the clouds as a pencil some
+    // metres wide, and at a ragged edge it comes and goes within 50 m; the
+    // shadow map's texel is 70 m, read smoothly over its neighbours, and its
+    // shade rises evenly over 400 m there. A place on such an edge had the
+    // sun hidden by a rag and the ground at nine tenths.)
     let places: Vec<Vec3> = (0..16)
-        .map(|i| Vec3::new(i as f32 * 1700.0 - 9000.0, 0.0, i as f32 * 900.0 - 3000.0))
+        .map(|i| Vec3::new(i as f32 * 2250.0 - 8200.0, 0.0, i as f32 * 1300.0 - 3000.0))
         .collect();
     let mut rows = Vec::new();
     for p in &places {
@@ -821,11 +850,15 @@ fn far_night_clouds_take_the_moonlit_air() {
 }
 
 /// Under a physical sky at night the clouds are lit by the moon, as by
-/// day by the sun: looking towards a high moon (23:24) and a rising one
-/// (18:33) over the night sea, the cumulus stand brighter than the
-/// night sky they hide (1.20 and 1.23 times its light). They were lit by
-/// the set sun alone, so only the sky's ambient reached them and they
-/// stood darker than it (0.83 and 0.87).
+/// day by the sun, looking towards it over the night sea. Under a high
+/// moon (23:24) the cumulus stand brighter than the night sky they hide
+/// (2.83 times its light). Towards a rising one (18:33, 7° up) they stand
+/// between the eye and their light, as clouds towards a low sun do: their
+/// bodies darker than the moonlit sky behind them (0.65 of it in the
+/// mean) and their rims facing the moon brighter (a twentieth of their
+/// pixels).
+/// Lit by the set sun alone, only the sky's ambient reached them and no
+/// pixel of them stood over the sky.
 #[test]
 #[ignore = "requires GPU"]
 fn the_moon_lights_the_clouds_at_night() {
@@ -889,26 +922,34 @@ fn the_moon_lights_the_clouds_at_night() {
         };
         let (clear, clouded) = (frame(None), frame(Some(0.34)));
         // The sky's pixels the clouds change, over the horizon.
-        let (mut sky, mut cloud, mut n) = (0.0, 0.0, 0u32);
+        let (mut sky, mut cloud, mut n, mut over) = (0.0, 0.0, 0u32, 0u32);
         for y in 0..clear.height / 2 {
             for x in 0..clear.width {
                 let a = luma_f32(px_f32(&clear, x, y).map(linear));
                 let b = luma_f32(px_f32(&clouded, x, y).map(linear));
                 if (a - b).abs() > 0.1 * a.max(b) {
                     (sky, cloud, n) = (sky + a, cloud + b, n + 1);
+                    over += u32::from(b > a);
                 }
             }
         }
         let ratio = cloud / sky.max(1e-6);
-        println!("{hours} h: the clouds {ratio:.3} of the sky they hide ({n} pixels)");
+        let rims = over as f32 / n.max(1) as f32;
+        println!(
+            "{hours} h: the clouds {ratio:.3} of the sky they hide, {rims:.3} of them over it ({n} pixels)"
+        );
         assert!(
             n * 400 > clear.width * clear.height / 2,
             "{hours} h: only {n} pixels of cloud"
         );
-        ratios.push((hours, ratio));
+        ratios.push((hours, ratio, rims));
     }
     assert!(
-        ratios.iter().all(|&(_, r)| r > 1.0),
-        "the moonlit clouds over the night sky they hide (hours, ratio): {ratios:?}"
+        ratios[0].1 > 1.0,
+        "the clouds under a high moon over the night sky they hide (hours, ratio, rims): {ratios:?}"
+    );
+    assert!(
+        ratios[1].2 > 0.02,
+        "the rims of the clouds towards a rising moon over the sky they hide (hours, ratio, rims): {ratios:?}"
     );
 }

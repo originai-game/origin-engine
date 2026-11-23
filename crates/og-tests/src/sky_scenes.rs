@@ -163,7 +163,7 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
 
 /// `scene` under `clouds`, the light dimmed by their cover as the runtime
 /// does, the camera tilted up to the sky.
-fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
+pub(crate) fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     clouds.light_scene(&mut scene);
     scene.atmosphere.clouds = Some(clouds);
     scene = metered(scene);

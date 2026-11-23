@@ -1488,6 +1488,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.frames = g.frames.max(8);
             Ok(())
         },
+        // The cloudscapes, shot for review (cloud_scenes).
+        "cloudscape-noon"
+        | "cloudscape-sunset"
+        | "cloudscape-overcast"
+        | "cloudscape-aloft"
+        | "cloudscape-stratocumulus"
+        | "cloudscape-stratus"
+        | "cloudscape-cumulonimbus" => {
+            |g, name| {
+                g.scene = crate::cloud_scenes::cloudscape_scene(name);
+                g.desc.antialias = Antialias::Tier;
+                g.frames = 8;
+                Ok(())
+            }
+        }
         // R5: the sea under the physical sky, and a stream's flow map.
         "water-ocean" | "water-ocean-gale" | "water-ocean-sunset" | "water-flow-map"
         | "water-ocean-night" | "water-shore" | "water-shallows" | "water-river" => |g, name| {

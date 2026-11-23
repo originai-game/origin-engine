@@ -74,6 +74,19 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::vox_scenes::keyframes_scene()?;
             Ok(())
         },
+        // The cloudscapes over an authored sky, shot for review (cloud_scenes).
+        #[cfg(not(target_arch = "wasm32"))]
+        "cloudscape-above" | "cloudscape-authored" | "cloudscape-authored-bright" => |g, name| {
+            let (height, pitch, intensity) = match name {
+                "cloudscape-above" => (600.0, -15.0, 1.0),
+                "cloudscape-authored" => (2.0, 15.0, 1.0),
+                _ => (2.0, 15.0, 2.0),
+            };
+            g.scene = crate::cloud_scenes::authored_scene(height, pitch, intensity)?;
+            g.desc.antialias = og_render::Antialias::Taa;
+            g.frames = 8;
+            Ok(())
+        },
         #[cfg(not(target_arch = "wasm32"))]
         "lod-levels" => |g, _| {
             g.scene = crate::depth_render_scenes::lod_scene()?.0;

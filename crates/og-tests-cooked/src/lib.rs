@@ -11,6 +11,7 @@
 //! [`scenes`] and [`gfx`] are og-tests' registry and harness with this
 //! crate's scenes added; `og-gfx` (src/bin) renders every scene of both.
 
+pub mod cloud_scenes;
 pub mod depth_render_scenes;
 pub mod gfx;
 pub mod gltf_scenes;

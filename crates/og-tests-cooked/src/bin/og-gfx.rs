@@ -26,6 +26,10 @@
 //! `OG_GFX_QUALITY=low|medium|high` draws the scene at a graphics preset
 //! (`RenderQuality::preset`, what `og.render.applyQuality` writes); unset,
 //! the scene's own quality (the default, medium's).
+//! `OG_GFX_SIZE=1920x1080` draws the scene at that size (a timing at
+//! another resolution; the references are the scene's own size).
+//! `OG_GFX_AA=off|taa` draws the scene with that antialiasing instead of
+//! its own.
 //! `OG_GFX_CULLING=cpu` culls on the CPU, as a device without indirect
 //! draws does (`RenderDesc::without_downlevel`); `gpu` (the default) on the
 //! GPU where the device can.
@@ -344,6 +348,21 @@ fn run(
         }
         Err(_) => {}
         Ok(other) => return Err(format!("OG_GFX_QUALITY={other}: low, medium or high")),
+    }
+    if let Ok(size) = std::env::var("OG_GFX_SIZE") {
+        let parsed = size
+            .split_once('x')
+            .and_then(|(w, h)| Some((w.parse().ok()?, h.parse().ok()?)));
+        let Some((w, h)) = parsed else {
+            return Err(format!("OG_GFX_SIZE={size}: WIDTHxHEIGHT"));
+        };
+        (built.desc.width, built.desc.height) = (w, h);
+    }
+    match std::env::var("OG_GFX_AA").as_deref() {
+        Ok("off") => built.desc.antialias = Antialias::Off,
+        Ok("taa") => built.desc.antialias = Antialias::Taa,
+        Err(_) => {}
+        Ok(other) => return Err(format!("OG_GFX_AA={other}: off or taa")),
     }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
