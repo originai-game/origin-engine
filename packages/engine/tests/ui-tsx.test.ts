@@ -805,9 +805,8 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
         const shown = (text: string) => els.some((e) => (e as El & { text: string }).text === text && e.y >= 0 && e.y < height);
         const tabs = els.filter((e) => e.role === "tab").map((e) => e.name);
         const panel = els.find((e) => e.parent === root.id && e.height > 0)!;
-        const diamond = els.find((e) => e.width > 8 && e.width < 16 && Math.abs(e.height - e.width) < 0.01 && !e.role && els.find((p) => p.id === e.parent)?.height === 1);
-        const rule = diamond && els.find((p) => p.id === diamond.parent)!;
-        return { name, box: [root.x, root.y, root.width, root.height], panel: [panel.y, panel.height], rule: rule && [rule.width, Math.round(diamond!.x + diamond!.width / 2 - rule.x - rule.width / 2)], shown, tabs };
+        const rule = els.find((e) => e.height === 1 && e.width > 0 && !e.role);
+        return { name, box: [root.x, root.y, root.width, root.height], panel: [panel.y, panel.height], rule: rule && [rule.width, els.filter((e) => e.parent === rule.id).length], shown, tabs };
       } finally {
         renderers.delete(id);
         engine.destroy();
@@ -817,9 +816,9 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     // Results never clips its grade, stats or rewards: all on a phone, and on a short column the page scrolls from its top.
     const results = rootOf("results");
     expect(["A", "Score", "Kills", "screen.results.rewards"].map((t) => [t, results.shown(t)])).toEqual([["A", true], ["Score", true], ["Kills", true], ["screen.results.rewards", true]]);
-    // The verdict's rule is a line with its diamond at the middle, not a lone diamond.
+    // The verdict's rule is a bare line under the title: no ornament on it to stray from the grade's stars.
+    expect(results.rule).toEqual([expect.any(Number), 0]);
     expect(results.rule![0]).toBeGreaterThan(200);
-    expect(Math.abs(results.rule![1]!)).toBeLessThanOrEqual(1);
     // On a phone the panel hugs its page and buttons, centred: no empty block under the stats.
     const phone = rootOf("results", undefined, 844, {}, true);
     const [top, h] = phone.panel as [number, number];

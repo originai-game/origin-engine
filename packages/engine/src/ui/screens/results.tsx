@@ -61,9 +61,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
               <Text class={`font-display text-display-lg compact:text-display-md font-bold leading-flat tracking-xs uppercase text-gold-hi m-0 short:text-8xl data-outcome-lost:text-danger`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
                 {props.title}
               </Text>
-              <View class="h-px w-full max-w-140 bg-linear-to-r from-transparent via-fg-muted to-transparent">
-                <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-hud-accent shadow-glow size-2.25" />
-              </View>
+              <View class="h-px w-full max-w-140 bg-linear-to-r from-transparent via-fg-muted to-transparent" />
               <Show when={props.level !== undefined}>
                 <View class="items-center max-w-160 gap-3">
                   <Text class="text-center leading-13.5 bg-linear-to-b from-epic to-glass-lo text-fg text-title font-bold tabular-nums size-13.5 compact:leading-10 compact:text-base compact:size-10">
