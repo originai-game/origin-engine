@@ -208,9 +208,18 @@ def run(kind):
     # CPU discovery and execution must not open an adapter in an unrelated binary.
     if kind == 'cpu':
         env['OG_RENDERER'] = 'none'
+    else:
+        # A software rasterizer is no GPU (docs/ci.md §Lanes): its tests are
+        # reported unchecked, never drawn on the CPU. OG_RENDERER=software
+        # asks for it explicitly.
+        env.setdefault('OG_RENDERER', 'hardware')
     command = ['cargo', 'nextest', 'run', '--cargo-metadata', str(LOGS / 'cargo.json'),
                '--binaries-metadata', str(LOGS / 'binaries.json'), '--profile', kind,
                '--test-threads', os.environ['OG_GATE_THREADS'], '-E', ' | '.join(groups)]
+    if kind == 'gpu':
+        # Without a hardware adapter every GPU test is skipped: nothing to run
+        # is the unchecked report below, not nextest's failure.
+        command.append('--no-tests=warn')
     junit = Path(os.environ['OG_TARGET_DIR']) / 'nextest' / kind / 'junit.xml'
     junit.unlink(missing_ok=True)
     rc = subprocess.call(command, env=env)

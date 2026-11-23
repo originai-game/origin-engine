@@ -311,6 +311,15 @@ another crate's `.rs` file without naming its path that way, must be added
 to `RUNS` in `scripts/gate/inputs.py`. An unchecked GPU run never creates
 a passing record.
 
+`rust-gpu` runs its tests with `OG_RENDERER=hardware` unless the
+environment sets the switch. A machine whose only adapter is a software
+rasterizer (lavapipe or llvmpipe in an orb, SwiftShader) has no GPU for it:
+each GPU test is skipped with that reason, nothing is drawn on the CPU, and
+the step reports itself unchecked, never passed and never failed. Drawn on
+lavapipe the suite proved nothing (AGENTS.md: lavapipe is neither a
+standard nor a check) and starved the lanes beside it, bun-test above all.
+`OG_RENDERER=software` draws on a software adapter for whoever asks for it.
+
 The profiles are as AGENTS.md §Building and testing names them;
 `OG_WASM_PROFILE` selects the wasm one. Every web build ships
 wasm-bindgen's output directly, and every wasm size check uses

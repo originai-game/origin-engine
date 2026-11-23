@@ -1,6 +1,9 @@
 //! Adapter-aware libtest registration. A GPU test uses `#[ignore = "requires GPU"]`;
 //! the runner enables it only after wgpu finds the requested adapter. The
 //! descriptor stays ignored without one, including discovery by nextest.
+//! With `OG_RENDERER=hardware` (the gate's rust-gpu default) a software
+//! rasterizer is no adapter: its tests are skipped with the reason, never
+//! drawn on the CPU; `OG_RENDERER=software` or no switch keeps it.
 extern crate test;
 
 use crate::gpu_wgpu as wgpu;
@@ -59,7 +62,7 @@ pub fn run(tests: &[&TestDescAndFn]) {
         .collect();
     let refs: Vec<_> = owned.iter().collect();
     if let Some(reason) = reason {
-        let unexpected = if disabled() { "" } else { "unexpected " };
+        let unexpected = if deliberate() { "" } else { "unexpected " };
         let skipped = refs
             .iter()
             .copied()
@@ -105,7 +108,7 @@ pub fn run(tests: &[&TestDescAndFn]) {
                 skipped += 1;
             }
         }
-        let unexpected = if disabled() { "" } else { "unexpected " };
+        let unexpected = if deliberate() { "" } else { "unexpected " };
         eprintln!(
             "WARNING {unexpected}missing GPU: {reason}; {skipped} GPU tests skipped, never passed"
         );
@@ -128,8 +131,29 @@ pub fn run(tests: &[&TestDescAndFn]) {
     }
 }
 
+fn switch_is(value: &str) -> bool {
+    std::env::var("OG_RENDERER").is_ok_and(|v| v.trim().eq_ignore_ascii_case(value))
+}
+
 fn disabled() -> bool {
-    std::env::var("OG_RENDERER").is_ok_and(|v| v.trim().eq_ignore_ascii_case("none"))
+    switch_is("none")
+}
+
+/// The switch itself took the adapter away (`none`, or `hardware` on a
+/// machine with only a software rasterizer): an expected skip.
+fn deliberate() -> bool {
+    disabled() || switch_is("hardware")
+}
+
+/// og-render's `is_software_adapter` (this harness is also built into
+/// og-render itself and into crates without it): a CPU device, or Mesa's
+/// lavapipe or llvmpipe, or SwiftShader by name.
+fn software(info: &wgpu::AdapterInfo) -> bool {
+    let name = info.name.to_ascii_lowercase();
+    info.device_type == wgpu::DeviceType::Cpu
+        || ["llvmpipe", "lavapipe", "swiftshader"]
+            .iter()
+            .any(|s| name.contains(s))
 }
 
 fn adapter_error() -> Option<String> {
@@ -145,12 +169,17 @@ fn adapter_error() -> Option<String> {
         backends,
         ..wgpu::InstanceDescriptor::new_without_display_handle()
     });
-    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+    match pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::HighPerformance,
         force_fallback_adapter: false,
         compatible_surface: None,
         ..Default::default()
-    }))
-    .err()
-    .map(|e| format!("no GPU adapter: {backends:?}: {e}"))
+    })) {
+        Err(e) => Some(format!("no GPU adapter: {backends:?}: {e}")),
+        Ok(adapter) if switch_is("hardware") && software(&adapter.get_info()) => Some(format!(
+            "no GPU adapter: OG_RENDERER=hardware refuses the software adapter '{}' (OG_RENDERER=software draws on it)",
+            adapter.get_info().name
+        )),
+        Ok(_) => None,
+    }
 }
