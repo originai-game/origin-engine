@@ -1032,7 +1032,8 @@ test("no built-in component or pack restates its spacing or size under an intera
 
 // BossBar's ghost is the health just lost: it must read against the fill.
 // It was gold behind a legendary fill, the same yellow in the scifi pack,
-// so a loss never showed (Star Focus's HUD review).
+// so a loss never showed; and it rested at width 0, so on a loss it grew
+// from nothing under the fill after its delay (Star Focus's HUD review).
 test("BossBar's ghost is a light colour of its own, not the fill's", () => {
   const src = readFileSync(fileURLToPath(new URL("../src/ui/components/hud/boss-bar.tsx", import.meta.url)), "utf8");
   const colours = (cls: string) => [...cls.matchAll(/(?<![\w-])(?:bg|from|via|to)-([a-z-]+)/g)].map((m) => m[1]).filter((c) => !["linear-to-r", "linear-to-b", "none", "transparent"].includes(c!));
@@ -1040,4 +1041,6 @@ test("BossBar's ghost is a light colour of its own, not the fill's", () => {
   const fill = src.match(/class=\{`([^`]*from-legendary[^`]*)`\}/)![1]!;
   expect(colours(ghost)).toEqual(["fg"]);
   expect(colours(fill).filter((c) => colours(ghost).includes(c))).toEqual([]);
+  // It rests at the fill's width (not 0), so on a loss it lags the fill rather than growing from nothing under it.
+  expect(src).toMatch(/Math\.max\(props\.ghost \?\? 0, props\.value \?\? 0\)/);
 });

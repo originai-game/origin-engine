@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "BossBar",
-      "summary": "The ghost behind a boss's health (the health just lost, draining after the fill) is a light colour of its own: it was gold behind a legendary fill, the same yellow in the scifi pack, so a loss never showed."
+      "summary": "The ghost behind a boss's health (the health just lost, draining after the fill) is a light colour of its own: it was gold behind a legendary fill, the same yellow in the scifi pack, so a loss never showed; and it rests at the fill and lags it on a loss (it rested at width 0 and grew from nothing under the fill, after its delay). Without `ghost`, the bar shows each loss by itself."
     }
   ]
 }

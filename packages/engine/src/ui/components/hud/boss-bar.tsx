@@ -28,7 +28,7 @@ export interface BossBarProps {
   value?: number;
   /** Full health; a nonpositive capacity shows no health instead of dividing by zero. */
   max?: number;
-  /** Health before the latest loss: a light ghost behind the fill, the health just lost, that drains after it (at or under value: none). */
+  /** Health before the latest loss, held as long as the game wants it shown: a light ghost behind the fill, the health just lost. Absent, the ghost rests at the fill and lags it on each loss by itself. */
   ghost?: number;
   /** Keyed phases in the fight's order; the game owns phase progression. A diamond on the bar marks each boundary between phases (the first phase is the bar's right end), dimmed once health has passed it. */
   phases?: ReadonlyArray<BossBarPhase>;
@@ -61,9 +61,11 @@ export interface BossBarProps {
 export function BossBar(props: BossBarProps) {
   const max = () => props.max ?? 1;
   const share = () => (max() <= 0 || (props.value ?? 0) <= 0 ? 0 : (props.value ?? 0) >= max() ? 1 : (props.value ?? 0) / max());
+  // The ghost rests at the fill and lags it on a loss (its width eases after a delay), so the health just lost shows; a game's ghost holds it longer.
   const ghost = () => {
-    const g = props.ghost ?? 0;
-    return max() <= 0 || g <= (props.value ?? 0) ? 0 : g >= max() ? 1 : g / max();
+    if (max() <= 0) return 0;
+    const g = Math.max(props.ghost ?? 0, props.value ?? 0);
+    return g <= 0 ? 0 : g >= max() ? 1 : g / max();
   };
   const shown = () => Math.min(Math.max(props.value ?? 0, 0), Math.max(max(), 0));
   const critical = () => !(props.loading ?? false) && !(props.defeated ?? false) && max() > 0 && (props.value ?? 0) / max() <= 0.25;
