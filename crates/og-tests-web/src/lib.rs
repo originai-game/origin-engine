@@ -60,6 +60,127 @@ mod web {
         serde_json::Value::from(all).to_string()
     }
 
+    /// Every visible scattered cube must reach the rendered image, not
+    /// just the cull's counters. A browser scan once counted correctly but
+    /// wrote copies at corrupt offsets, leaving holes in the drawn grass.
+    #[wasm_bindgen]
+    pub async fn og_gfx_check_scatter() -> Result<u32, JsValue> {
+        use og_render::{
+            Antialias, Background, Camera, Exposure, Material, Projection, RenderDesc, RenderScene,
+            Terrain, TerrainData, TerrainScatter, Tonemap, shapes,
+        };
+        let mut scene = RenderScene::new();
+        let data = TerrainData::flat([32.0; 2].into(), 33, 33);
+        let ground = scene.add_terrain(data.clone());
+        scene.world.terrains.push(Terrain {
+            cast_shadows: false,
+            ..Terrain::new(ground)
+        });
+        let cube = scene.add_mesh(shapes::cuboid([1.0; 3].into()));
+        let red = scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: [8.0, 0.0, 0.0],
+            ..Default::default()
+        });
+        let scatter = TerrainScatter {
+            density: 0.3,
+            distance: 100.0,
+            fade: 0.0,
+            scale: [0.75; 2],
+            seed: 5,
+            gpu: false,
+            ..Default::default()
+        };
+        scene.world.scatters.push(og_render::ScatterDraw {
+            id: 0,
+            terrain: 0,
+            mesh: cube,
+            material: red,
+            scatter,
+            cast_shadows: false,
+            impostor: None,
+            impostor_distance: 0.0,
+            with: None,
+            lods: [None; 2],
+            lod_materials: [None; 2],
+        });
+        scene.frame.camera = Camera {
+            position: [0.0, 60.0, 0.0].into(),
+            target: [0.0; 3].into(),
+            up: [0.0, 0.0, -1.0].into(),
+            projection: Projection::Orthographic { height: 40.0 },
+            exposure: Exposure::linear(1.0),
+            ..Default::default()
+        };
+        scene.lighting.environment.background = Background::Color([0.0; 3].into());
+        scene.lighting.light.cast_shadows = false;
+        scene.look.post.tonemap = Tonemap::None;
+        scene.atmosphere.fog = None;
+        let expected =
+            scene.world.terrains[0].scatter(&data, &scatter, scene.frame.camera.position);
+        let mut renderer = Renderer::new(&RenderDesc {
+            width: 256,
+            height: 256,
+            backend: Backend::WebGpu,
+            antialias: Antialias::Off,
+            ..scenes::base_desc()
+        })
+        .await
+        .map_err(err)?;
+        renderer
+            .device()
+            .on_uncaptured_error(std::sync::Arc::new(|e: og_render::wgpu::Error| {
+                web_sys::console::error_1(&e.to_string().into())
+            }));
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .map_err(err)?;
+        tick().await?;
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .map_err(err)?;
+        // Background pipelines are released after the second frame.
+        // Wait for compilation, not for an image assertion to pass.
+        for _ in 0..10_000 {
+            let pipelines = og_render::pipeline_stats();
+            if pipelines.requested == pipelines.settled {
+                break;
+            }
+            tick().await?;
+        }
+        let pipelines = og_render::pipeline_stats();
+        if pipelines.requested != pipelines.settled {
+            return Err(err("scatter pipelines did not finish compiling"));
+        }
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .map_err(err)?;
+        let mut request = renderer.begin_capture().map_err(err)?;
+        for _ in 0..10_000 {
+            if let Some(image) = request.try_finish(&renderer).map_err(err)? {
+                let missing = expected
+                    .iter()
+                    .filter(|(_, transform)| {
+                        let p = transform.w_axis;
+                        let x = (128.0 + p.x * 256.0 / 40.0).floor() as usize;
+                        let y = (128.0 + p.z * 256.0 / 40.0).floor() as usize;
+                        let pixel = &image.pixels[(y * 256 + x) * 4..][..4];
+                        pixel[0] < 200 || u16::from(pixel[0]) < 2 * u16::from(pixel[1])
+                    })
+                    .count();
+                if missing != 0 || expected.len() < 128 {
+                    return Err(err(format!(
+                        "scatter lost {missing} of {} visible copies",
+                        expected.len()
+                    )));
+                }
+                return Ok(expected.len() as u32);
+            }
+            tick().await?;
+        }
+        Err(err("scatter capture did not land in 10000 polls"))
+    }
+
     /// Whether the scenes opened from now on cull on the CPU
     /// (as a device without indirect draws) rather than on the GPU.
     #[wasm_bindgen]

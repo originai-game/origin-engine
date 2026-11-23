@@ -11,7 +11,7 @@
 // Every frame is also compared with its recording-tier reference, reported and kept
 // in the JSON whether or not it is the frame the run is judged against.
 //
-//   bun tests/web/reference-gfx.ts [--build-only | --prebuilt] [--record] [--scene a,b] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
+//   bun tests/web/reference-gfx.ts [--build-only | --prebuilt] [--record] [--scene a,b | --check-scatter] [--time <frames>] [--cpu-culling] [--cull-dump] [--bisect <spec;spec>] [--perf-out <dir>] [--out <dir>] [--chrome <path> | --firefox [<path>] | --safari]
 //
 // First, every WGSL module the renderer compiles (og_gfx_shader_sources)
 // goes through the browser's own compiler; one it refuses fails the run.
@@ -103,6 +103,7 @@ const COSTS = [
 ];
 const cpuCulling = args.includes("--cpu-culling");
 const cullDump = args.includes("--cull-dump");
+const checkScatter = args.includes("--check-scatter");
 const perfOut = opt("--perf-out");
 
 function run(cmd: string[]): string {
@@ -195,7 +196,7 @@ try {
   // Every WGSL module the renderer compiles, through the browser's compiler (Tint): naga, which the
   // gate validates them with natively, misses part of WGSL's uniformity rules, and a module the
   // browser refuses invalidates every frame that uses it. Not with --scene: a run of chosen scenes.
-  if (!opt("--scene")) {
+  if (!opt("--scene") && !checkScatter) {
     const refused = await tab.eval<Array<{ label: string; messages: string[] }>>(`(async () => {
       // Match the player's adapter options; a cold NVIDIA GPU process can also answer null initially.
       const deadline = performance.now() + 30_000;
@@ -227,6 +228,15 @@ try {
       for (const r of refused) console.error(`FAIL shader ${r.label} (${tier}): ${r.messages.slice(0, 3).join("; ")}`);
     } else console.log(`ok   every renderer shader module compiles in the browser (${tier})`);
   }
+  // A correct indirect count does not prove the copies reached the draw:
+  // the browser's scatter scan once left holes in its compacted list.
+  // --check-scatter runs this contract alone, without reference frames.
+  if (!opt("--scene") || checkScatter) {
+    const check = await bounded(tab.eval<{ copies?: number; error?: string }>(`globalThis.__gfx.og_gfx_check_scatter().then(copies => ({ copies }), e => ({ error: String(e) }))`), "scatter coverage");
+    result["scatter"] = check;
+    if (check.error) throw new Error(check.error);
+    console.log(`ok   scatter draws all ${check.copies} visible copies (${tier})`);
+  }
   const all = await tab.eval<string[]>("__gfx.og_gfx_scenes()");
   const only = opt("--scene")?.split(",");
   const timed = Number(opt("--time") ?? 0);
@@ -234,8 +244,8 @@ try {
     const { root, name } = referencesOf(scene);
     return existsSync(join(root, RECORDING, `${name}.png`));
   });
-  const scenes = only ?? (timed > 0 ? [...retained, ...PERF.filter((p) => !retained.includes(p))] : retained);
-  if (scenes.length === 0) throw new Error("no retained GPU reference scenes");
+  const scenes = checkScatter ? [] : only ?? (timed > 0 ? [...retained, ...PERF.filter((p) => !retained.includes(p))] : retained);
+  if (scenes.length === 0 && !checkScatter) throw new Error("no retained GPU reference scenes");
   for (const s of scenes) if (!all.includes(s) && !PERF.includes(s) && !CITY.includes(s) && !CROWDS.includes(s) && !COSTS.includes(s)) throw new Error(`no scene ${s} (og-tests knows ${all.join(", ")})`);
   // --bisect "a;b;...": each cut-down (og-tests-web og_gfx_bisect) of each
   // scene drawn with GPU culling and with CPU culling in the same browser,

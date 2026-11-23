@@ -169,7 +169,10 @@ fn cull(@builtin(local_invocation_index) lane: u32, @builtin(workgroup_id) chunk
   workgroupBarrier();
   // An inclusive scan over the lanes (Hillis and Steele).
   for (var step = 1u; step < CULL_LANES; step <<= 1u) {
-    var add: array<vec4<u32>, 2>;
+    // Explicitly reset every iteration: Chrome retained an implicit
+    // initializer's previous addend when lane < step, corrupting offsets
+    // in the list even though the last lane's total stayed correct.
+    var add = array<vec4<u32>, 2>(vec4<u32>(0u), vec4<u32>(0u));
     if (lane >= step) { add = lane_counts[lane - step]; }
     workgroupBarrier();
     lane_counts[lane][0] += add[0];
