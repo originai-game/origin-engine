@@ -102,11 +102,13 @@ export interface HostProps {
     /**
      * The pack event this node sounds when it first paints, once: the sound
      * its pack slot has for it (the slot `packClass` names in its class),
-     * else the pack's own, and none when the pack has neither. These are
-     * the events no input fires; a control's hover, press, select, confirm,
-     * cancel and back sound by themselves.
+     * else the pack's own, and none when the pack has neither; an event the
+     * pack has no clip for sounds the nearest it has (toggle and tab:
+     * select, purchase: confirm, levelup: reward, countdown: press). These
+     * are the events no input fires; a control's hover, press, select,
+     * confirm, cancel and back sound by themselves.
      */
-    sound?: "open" | "close" | "error" | "reward" | undefined;
+    sound?: "open" | "close" | "error" | "reward" | "toggle" | "tab" | "levelup" | "purchase" | "countdown" | undefined;
     /** crates/og-ui-next/CONVENTIONS.md §Accessibility. */
     role?: string | undefined;
     label?: string | undefined;

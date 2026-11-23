@@ -574,8 +574,9 @@ impl Tree {
     }
 
     /// `e` plays `event`: its slot's sound (with its variant, then
-    /// without), else the pack's generic one; `confirm` and `back` fall
-    /// back to `press`. Nothing when the pack has none.
+    /// without), else the pack's generic one; an event no scope has falls
+    /// back along [`crate::pack::sound_fallback`] (`purchase` to
+    /// `confirm`, then `press`). Nothing when the pack has none.
     pub(super) fn sound(&mut self, e: u32, event: &str) {
         let table = &self.input.sounds;
         if table.is_empty() {
@@ -587,10 +588,7 @@ impl Tree {
             .map(|x| x.0)
             .filter(|b| b.contains('.'));
         let scopes = [Some(slot).filter(|s| !s.is_empty()), bare, Some("")];
-        let fallback = matches!(event, "confirm" | "back").then_some("press");
-        let cue = [Some(event), fallback]
-            .into_iter()
-            .flatten()
+        let cue = std::iter::successors(Some(event), |ev| crate::pack::sound_fallback(ev))
             .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)));
         if let Some(play) = cue.and_then(|c| c.pick(&mut self.input.sound_rng, None)) {
             self.input.plays.push(play);

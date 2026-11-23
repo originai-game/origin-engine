@@ -68,9 +68,35 @@ pub const SEEDS: [&str; 9] = [
 ];
 
 /// The interaction events a pack gives sounds for.
-pub const SOUND_EVENTS: [&str; 10] = [
-    "press", "hover", "select", "confirm", "cancel", "back", "open", "close", "error", "reward",
+pub const SOUND_EVENTS: [&str; 15] = [
+    "press",
+    "hover",
+    "select",
+    "confirm",
+    "cancel",
+    "back",
+    "open",
+    "close",
+    "error",
+    "reward",
+    "toggle",
+    "tab",
+    "levelup",
+    "purchase",
+    "countdown",
 ];
+
+/// The event an event's sound falls back to when no scope has a clip for
+/// it: the nearest one a pack without its own clips already has.
+pub fn sound_fallback(event: &str) -> Option<&'static str> {
+    Some(match event {
+        "confirm" | "back" | "countdown" => "press",
+        "toggle" | "tab" => "select",
+        "purchase" => "confirm",
+        "levelup" => "reward",
+        _ => return None,
+    })
+}
 
 /// A sound an event plays: one of `clips` at random, at a volume and
 /// pitch drawn from their ranges.

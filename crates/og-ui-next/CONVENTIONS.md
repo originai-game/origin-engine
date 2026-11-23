@@ -612,15 +612,19 @@ is an error naming where it is, never ignored):
   `icon-shadow`), so a pack restyles it through its colours; a pack's own
   set replaces a few hero icons by name.
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
-  `back`, `open`, `close`, `error`, `reward`) for the whole pack, or under a
+  `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`,
+  `purchase`, `countdown`) for the whole pack, or under a
   `Component.slot[.variant]` key for one slot: `{ clips, volume?, pitch? }`,
   a number or a `[low, high]` range. A node's slot is the `@Component.slot[.variant]`
   token `packClass` puts in its class: a control plays `hover` as a mouse
   comes over it, `press` when clicked, `confirm` when that action presses
   it, and `confirm`/`back` when its `onAction` takes them. The sound is the
   slot's with its variant, then the bare slot's, then the pack-wide one;
-  `confirm` and `back` fall back to `press`. The events no input fires
-  (`open`, `close`, `error`, `reward`) sound from a node's `sound` prop,
+  an event none of them has falls back to the nearest one: `confirm`,
+  `back` and `countdown` to `press`, `toggle` and `tab` to `select`,
+  `purchase` to `confirm`, `levelup` to `reward`. The events no input
+  fires (`open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`,
+  `purchase`, `countdown`) sound from a node's `sound` prop,
   when the node first paints: a keyed row sounds once per key. One clip
   at random, at a volume and pitch from their ranges, from a seeded
   stream (a replay plays the same).

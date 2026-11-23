@@ -4888,6 +4888,30 @@ mod tests {
         frame(&mut t);
         at(&mut t, 25.0, 5.0, false, false);
         assert_eq!(heard(&mut t), [0u64; 0], "once");
+        // A newer event a pack has no clip for sounds the nearest one it
+        // has, through more than one step (purchase, confirm, press).
+        let mut table = SoundTable::new();
+        table.insert(
+            String::new(),
+            [("press", 10), ("select", 20), ("reward", 30), ("tab", 40)]
+                .map(|(e, h)| (e.to_string(), cue(h)))
+                .into(),
+        );
+        let mut t = stated();
+        t.set_sounds(std::rc::Rc::new(table));
+        let events = ["purchase", "toggle", "levelup", "countdown", "tab"];
+        let names: Vec<String> = events.iter().map(|_| "b".to_string()).collect();
+        buttons(
+            &mut t,
+            &names.iter().map(String::as_str).collect::<Vec<_>>(),
+        );
+        let mut b = Batch::default();
+        for (i, ev) in events.iter().enumerate() {
+            b.op(6).u32(i as u32 + 1).str("sound").str(ev);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(heard(&mut t), [10, 20, 30, 10, 40]);
     }
 
     /// The arrows move among a focus group's members first: at its edge
