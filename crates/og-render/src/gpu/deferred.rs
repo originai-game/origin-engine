@@ -194,7 +194,7 @@ impl Drop for Skipping {
 }
 
 /// Whether a use now waits for its pipeline.
-fn waits() -> bool {
+pub(crate) fn waits() -> bool {
     frame(|f| f.waits)
 }
 

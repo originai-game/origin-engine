@@ -22,8 +22,10 @@
 //! compiles in the background ([`Priority::Background`]) once a second
 //! frame is submitted (a renderer that draws one frame never compiles it,
 //! and its drop waits for none); from then on the full one draws. A feature that turns on
-//! before the full variant is ready never stalls a frame: the variant
-//! already made draws, without that feature, until the full one is ready.
+//! before the full variant is ready never stalls a display frame: the
+//! variant already made draws, without that feature, until the full one is
+//! ready. Scripted frames wait for a variant containing every requested
+//! feature, as they wait for every other pipeline they draw with.
 //! Diagnostic views wait for the full variant too: a beauty-only variant
 //! must never silently replace the requested diagnostic or omit its inputs.
 //! A capture (`Renderer::render_capture`) draws with the full variants,
@@ -476,19 +478,19 @@ impl<C: Cell> Variants<C> {
     /// What a frame with `features` draws with: the full variant once it
     /// is ready; else the variant for the features (a variant with more
     /// than the frame uses draws what it draws), by the frame's policy. A
-    /// feature it lacks is not drawn until the full one is ready (that
-    /// frame does not wait for it). With diagnostics or every feature (a
-    /// capture's, `Renderer::capturing`) it is the full variant, so what
-    /// it draws never depends on what has compiled. With the far field it
-    /// is the far variant once ready, and asked for where the full one
-    /// would be; until then the frame draws without the field.
+    /// display frame draws without a feature it lacks until the full one
+    /// is ready; a frame that waits never omits it. With diagnostics or
+    /// every feature (a capture's, `Renderer::capturing`) it is the full
+    /// variant, so what it draws never depends on what has compiled. With
+    /// the far field it is the far variant once ready, and asked for where
+    /// the full one would be; until then only display frames omit it.
     pub(crate) fn get(&self, features: Features) -> Option<&C::Value> {
         if self.wants_far(features) {
             let far = self.far();
             if let Some(v) = far.poll() {
                 return Some(v);
             }
-            if self.wanted(features & Features::ALL) == Features::ALL {
+            if crate::deferred::waits() || self.wanted(features & Features::ALL) == Features::ALL {
                 return far.get();
             }
             far.start_at(Priority::Frame);
@@ -503,11 +505,14 @@ impl<C: Cell> Variants<C> {
         }
         match self.lean.get() {
             Some((have, lean)) if have.contains(wanted) => lean.get(),
-            // A feature turned on: the full variant is asked for ahead,
-            // and the variant draws without it until that one is ready.
+            // A feature turned on: only display frames may draw without it.
             Some((_, lean)) => {
                 self.full.start_at(Priority::Frame);
-                lean.get()
+                if crate::deferred::waits() {
+                    self.full.get()
+                } else {
+                    lean.get()
+                }
             }
             None => {
                 self.start(features);
@@ -529,14 +534,17 @@ impl<C: Cell> Variants<C> {
             if self.far.get().is_some_and(|c| c.poll().is_some()) {
                 return true;
             }
-            if self.wanted(features & Features::ALL) == Features::ALL {
+            if crate::deferred::waits() || self.wanted(features & Features::ALL) == Features::ALL {
                 return false;
             }
         }
         let features = features & Features::ALL;
         self.full.poll().is_some()
             || (self.wanted(features) != Features::ALL
-                && self.lean.get().is_some_and(|(_, c)| c.poll().is_some()))
+                && self.lean.get().is_some_and(|(have, c)| {
+                    (!crate::deferred::waits() || have.contains(self.wanted(features)))
+                        && c.poll().is_some()
+                }))
     }
 
     /// The full variant (what [`Renderer::warm`](crate::Renderer::warm)
@@ -645,7 +653,8 @@ mod tests {
     }
 
     /// The first frame's variant draws; the full one replaces it once made,
-    /// and a feature turned on before then does not wait for it.
+    /// and a display frame with a feature turned on before then does not
+    /// wait for it.
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn the_full_variant_takes_over_without_a_wait() {
@@ -664,7 +673,10 @@ mod tests {
         assert_eq!(*v.wait(Features::NONE), Features::NONE);
         crate::deferred::release_background();
         // A light turns on: the lean variant still draws, at once.
-        assert_eq!(*v.wait(Features::LOCAL_LIGHTS), Features::NONE);
+        {
+            let _display = crate::deferred::FramePolicy::open(false);
+            assert_eq!(*v.wait(Features::LOCAL_LIGHTS), Features::NONE);
+        }
         go.send(()).unwrap();
         let t0 = std::time::Instant::now();
         while v.full().poll().is_none() {
@@ -679,7 +691,7 @@ mod tests {
 
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
-    fn diagnostics_never_draw_the_incomplete_beauty_variant() {
+    fn waited_frames_never_draw_an_incomplete_variant() {
         // Keep compilation pending deterministically; get supplies the
         // requested pipeline, without a worker racing the assertion.
         struct Pending(Features);
@@ -693,9 +705,17 @@ mod tests {
                 Some(&self.0)
             }
         }
-        let v = Variants::new(Features::ALL, Pending);
+        let v = Variants::new(Features::ALL | Features::STATIC_FAR, Pending);
         assert_eq!(*v.wait(Features::NONE), Features::NONE);
-        assert_eq!(*v.wait(Features::LOCAL_LIGHTS), Features::NONE);
+        {
+            let _display = crate::deferred::FramePolicy::open(false);
+            assert_eq!(*v.wait(Features::WEATHER), Features::NONE);
+        }
+        assert_eq!(*v.wait(Features::WEATHER), Features::ALL);
         assert_eq!(*v.wait(Features::DEBUG), Features::ALL);
+        assert_eq!(
+            *v.wait(Features::STATIC_FAR),
+            Features::ALL | Features::STATIC_FAR
+        );
     }
 }
