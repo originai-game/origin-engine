@@ -80,6 +80,14 @@ pub enum Pattern {
     /// Concave edges and hollows, the same way: dirt, soot, shadowed
     /// seams.
     Cavities,
+    /// Where the surface faces `axis`: 1 facing it, 0 facing away (shaped
+    /// by `threshold`): frost and dust on tops, dark undersides, a value
+    /// step per face of a faceted part.
+    Facing,
+    /// Along `axis` across every part painted with the material, 0 at its
+    /// lowest point and 1 at its highest (shaped by `threshold`): a dark
+    /// foot and a pale crown, soot rising up a tower.
+    Gradient,
 }
 
 impl Pattern {
@@ -96,13 +104,14 @@ impl Pattern {
             "veins" => Pattern::Veins,
             "edges" => Pattern::Edges,
             "cavities" => Pattern::Cavities,
+            "facing" => Pattern::Facing,
+            "gradient" => Pattern::Gradient,
             _ => return None,
         })
     }
 
     /// The names [`Pattern::parse`] takes.
-    pub const NAMES: &str =
-        "noise, ridged, craters, strata, stripes, panels, rivets, veins, edges or cavities";
+    pub const NAMES: &str = "noise, ridged, craters, strata, stripes, panels, rivets, veins, edges, cavities, facing or gradient";
 }
 
 /// One layer of a [`Surface`]. Lengths are metres.
@@ -121,11 +130,12 @@ pub struct Layer {
     pub cell: f64,
     /// Rivets: from the panel edge (0 is the rivet's width).
     pub inset: f64,
-    /// Strata and stripes run across this direction (model axes, Z up).
+    /// Strata and stripes run across this direction, facing and gradient
+    /// along it (model axes, Z up).
     pub axis: DVec3,
     /// Noise, ridged and veins: octaves; 0 is four, at most eight.
     pub octaves: u32,
-    /// Noise and ridged: the value (0..1) above which the mask is 1, with
+    /// Noise, ridged, facing and gradient: the value (0..1) above which the mask is 1, with
     /// `softness` either side; `None` is the value itself.
     pub threshold: Option<f64>,
     /// The blend either side of `threshold`; 0 is 0.05.
@@ -206,7 +216,10 @@ impl Surface {
         }
         for (i, l) in self.layers.iter().enumerate() {
             let at = |w: &str| format!("layer {i} ({:?}): {w}", l.pattern);
-            let needs_scale = !matches!(l.pattern, Pattern::Edges | Pattern::Cavities);
+            let needs_scale = !matches!(
+                l.pattern,
+                Pattern::Edges | Pattern::Cavities | Pattern::Facing | Pattern::Gradient
+            );
             if needs_scale && !pos(l.scale) {
                 return Err(at("scale must be positive (metres)"));
             }
@@ -251,6 +264,9 @@ impl Surface {
             }
             if !(l.glow.is_finite() && l.glow >= 0.0) || !l.relief.is_finite() {
                 return Err(at("glow 0 or positive, relief finite"));
+            }
+            if l.breakup > 0.0 && !(pos(l.width) || pos(l.scale)) {
+                return Err(at("breakup needs a width or a scale (its noise's size)"));
             }
             if l.octaves > crate::edit::MAX_OCTAVES {
                 return Err(at("octaves at most 8"));
@@ -434,6 +450,35 @@ pub fn paint_scene(scene: &Scene, d: &Paint, codec: &Codec) -> Result<Option<Pai
             });
         }
     }
+    // A gradient runs across every part painted with its material.
+    let names: Vec<&str> = taken
+        .iter()
+        .map(|&k| {
+            let p = &scene.parts[k];
+            if p.material.name.is_empty() {
+                p.name.as_str()
+            } else {
+                p.material.name.as_str()
+            }
+        })
+        .collect();
+    for j in 0..looks.len() {
+        for li in 0..looks[j].layers.len() {
+            let l = &looks[j].layers[li];
+            if l.pattern != Pattern::Gradient {
+                continue;
+            }
+            let axis = l.axis / l.axis.length();
+            let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+            for t in tris.iter().filter(|t| names[t.look as usize] == names[j]) {
+                for v in t.at {
+                    lo = lo.min(v.dot(axis));
+                    hi = hi.max(v.dot(axis));
+                }
+            }
+            looks[j].spans[li] = (lo, hi);
+        }
+    }
     let (owner, at) = rasterize(&uv, size);
 
     // Paint: each texel depends on itself only.
@@ -593,6 +638,8 @@ struct Look {
     metalness: f64,
     emissive: [f64; 3],
     layers: Vec<Layer>,
+    /// Per layer, a gradient's lowest and highest point along its axis.
+    spans: Vec<(f64, f64)>,
     seed: u32,
     normal_scale: f64,
 }
@@ -620,6 +667,15 @@ fn smooth(e0: f64, e1: f64, x: f64) -> f64 {
 fn frac(x: f64) -> f64 {
     x - x.floor()
 }
+
+/// The `noise` pattern's stretch about 0.5: fbm's 5th and 95th
+/// percentiles (about 0.3 and 0.7) land near 0.05 and 0.95.
+const NOISE_STRETCH: f64 = 2.25;
+
+/// A crease sharper than 40° (this, the cosine between the faces'
+/// normals) is an edge for wear and dirt even within one surface: a hex
+/// column's corners.
+const CREASE_COS: f64 = 0.766_044_443_118_978;
 
 /// Fractal (or ridged) noise in 0..1 at `p` (lattice units).
 fn fbm(p: DVec3, octaves: u32, seed: u32, ridged: bool) -> f64 {
@@ -676,6 +732,7 @@ impl Look {
                 s.normal_scale
             },
             seed: s.seed,
+            spans: vec![(0.0, 0.0); s.layers.len()],
             layers: s.layers,
         }
     }
@@ -714,7 +771,7 @@ impl Look {
                 .seed
                 .wrapping_add(l.seed)
                 .wrapping_add((li as u32).wrapping_mul(0x85eb_ca6b));
-            let (mask, tone, lift) = l.mask(p, n, bend, edges, texel, seed);
+            let (mask, tone, lift) = l.mask(p, n, bend, edges, texel, seed, self.spans[li]);
             if l.jitter > 0.0 {
                 let k = 1.0 + l.jitter * (tone * 2.0 - 1.0);
                 t.color = t.color.map(|v| v * k);
@@ -759,6 +816,7 @@ impl Look {
 impl Layer {
     /// The mask (0..1), the tone (0..1) and, for craters, the height's own
     /// shape (−1..0.6) at `p`.
+    #[allow(clippy::too_many_arguments)]
     fn mask(
         &self,
         p: DVec3,
@@ -767,6 +825,7 @@ impl Layer {
         edges: &Edges,
         texel: f64,
         seed: u32,
+        span: (f64, f64),
     ) -> (f64, f64, Option<f64>) {
         // Half a texel's blend on every hard line, so lines are smooth.
         let aa = texel * 0.5;
@@ -785,12 +844,28 @@ impl Layer {
         let axis = self.axis / self.axis.length();
         let (mask, tone, lift) = match self.pattern {
             Pattern::Noise | Pattern::Ridged => {
-                let v = fbm(
-                    p / self.scale,
-                    self.octaves,
-                    seed,
-                    self.pattern == Pattern::Ridged,
-                );
+                let ridged = self.pattern == Pattern::Ridged;
+                let v = fbm(p / self.scale, self.octaves, seed, ridged);
+                // Fbm sits between 0.3 and 0.7 nine times in ten: stretched
+                // so mottling and jitter span the whole 0..1.
+                let v = if ridged {
+                    v
+                } else {
+                    ((v - 0.5) * NOISE_STRETCH + 0.5).clamp(0.0, 1.0)
+                };
+                (shape(v), v, None)
+            }
+            Pattern::Facing => {
+                let v = (n.dot(axis) + 1.0) * 0.5;
+                (shape(v), v, None)
+            }
+            Pattern::Gradient => {
+                let (lo, hi) = span;
+                let v = if hi > lo {
+                    ((p.dot(axis) - lo) / (hi - lo)).clamp(0.0, 1.0)
+                } else {
+                    0.5
+                };
                 (shape(v), v, None)
             }
             Pattern::Craters => {
@@ -875,8 +950,10 @@ impl Layer {
         let mask = if self.breakup > 0.0 {
             let size = if self.width > 0.0 {
                 self.width * 4.0
-            } else {
+            } else if self.scale > 0.0 {
                 self.scale
+            } else {
+                1.0
             };
             let b = smooth(0.35, 0.65, fbm(p / size, 3, seed ^ 0x5bd1_e995, false));
             mask * (1.0 - self.breakup + self.breakup * b)
@@ -982,7 +1059,11 @@ impl Edges {
         for ((a, b), faces) in by_edge {
             let [f, g] = faces[..] else { continue };
             if s.surfaces[f] == s.surfaces[g] {
-                continue;
+                let (nf, ng) = (normal(f), normal(g));
+                let l = nf.length() * ng.length();
+                if l == 0.0 || nf.dot(ng) / l > CREASE_COS {
+                    continue;
+                }
             }
             let (pa, pb) = (s.positions[a as usize], s.positions[b as usize]);
             // Convex when the other face's far corner is behind this one.
@@ -1095,8 +1176,8 @@ mod tests {
             scale: 0.5,
             ..Default::default()
         };
-        let a = noise.mask(p, DVec3::Z, 0.0, &edges, 0.004, 1).0;
-        let b = noise.mask(p, DVec3::Z, 0.0, &edges, 0.004, 2).0;
+        let a = noise.mask(p, DVec3::Z, 0.0, &edges, 0.004, 1, (0.0, 0.0)).0;
+        let b = noise.mask(p, DVec3::Z, 0.0, &edges, 0.004, 2, (0.0, 0.0)).0;
         assert!((0.0..=1.0).contains(&a) && a != b, "{a} {b}");
         let panels = Layer {
             pattern: Pattern::Panels,
@@ -1105,11 +1186,114 @@ mod tests {
             ..Default::default()
         };
         let seam = panels
-            .mask(DVec3::new(0.4, 0.2, 0.0), DVec3::Z, 0.0, &edges, 0.004, 0)
+            .mask(
+                DVec3::new(0.4, 0.2, 0.0),
+                DVec3::Z,
+                0.0,
+                &edges,
+                0.004,
+                0,
+                (0.0, 0.0),
+            )
             .0;
         let middle = panels
-            .mask(DVec3::new(0.2, 0.2, 0.0), DVec3::Z, 0.0, &edges, 0.004, 0)
+            .mask(
+                DVec3::new(0.2, 0.2, 0.0),
+                DVec3::Z,
+                0.0,
+                &edges,
+                0.004,
+                0,
+                (0.0, 0.0),
+            )
             .0;
         assert!(seam > 0.99 && middle < 0.01, "{seam} {middle}");
+    }
+
+    /// Noise mottling spans the whole 0..1 (fbm alone sits between 0.3
+    /// and 0.7 nine times in ten, so a noise layer painted one flat tone).
+    #[test]
+    fn noise_spans_its_range() {
+        let edges = Edges::new(0.0);
+        let noise = Layer {
+            scale: 0.5,
+            ..Default::default()
+        };
+        let mut v: Vec<f64> = (0..4000)
+            .map(|i| {
+                let f = i as f64;
+                let p = DVec3::new(f * 0.137, f * 0.071 + 3.3, f * 0.029 - 1.7);
+                noise.mask(p, DVec3::Z, 0.0, &edges, 0.004, 7, (0.0, 0.0)).0
+            })
+            .collect();
+        v.sort_by(f64::total_cmp);
+        let (p5, p95) = (v[200], v[3800]);
+        assert!(p5 < 0.15 && p95 > 0.85, "p5 {p5} p95 {p95}");
+    }
+
+    /// Facing is 1 where the surface faces the axis and 0 where it faces
+    /// away; a gradient runs 0..1 between its span's ends.
+    #[test]
+    fn facing_and_gradient_follow_the_axis() {
+        let edges = Edges::new(0.0);
+        let facing = Layer {
+            pattern: Pattern::Facing,
+            ..Default::default()
+        };
+        let at = |l: &Layer, p: DVec3, n: DVec3, span| l.mask(p, n, 0.0, &edges, 0.004, 0, span).0;
+        assert_eq!(at(&facing, DVec3::ZERO, DVec3::Z, (0.0, 0.0)), 1.0);
+        assert_eq!(at(&facing, DVec3::ZERO, -DVec3::Z, (0.0, 0.0)), 0.0);
+        assert!((at(&facing, DVec3::ZERO, DVec3::X, (0.0, 0.0)) - 0.5).abs() < 1e-9);
+        let gradient = Layer {
+            pattern: Pattern::Gradient,
+            ..Default::default()
+        };
+        let span = (-2.0, 6.0);
+        assert_eq!(
+            at(&gradient, DVec3::new(5.0, 1.0, -2.0), DVec3::X, span),
+            0.0
+        );
+        assert_eq!(
+            at(&gradient, DVec3::new(0.0, 0.0, 6.0), DVec3::X, span),
+            1.0
+        );
+        assert!((at(&gradient, DVec3::new(0.0, 0.0, 0.0), DVec3::X, span) - 0.25).abs() < 1e-9);
+        assert!(
+            Surface {
+                layers: vec![facing],
+                ..Default::default()
+            }
+            .check()
+            .is_ok()
+        );
+    }
+
+    /// A hex column's corners are creases within one surface: wear finds
+    /// them (it found only edges between surfaces, so a faceted part had
+    /// no worn corners), and a smooth 32-sided column has none.
+    #[test]
+    fn creases_within_a_surface_are_edges() {
+        let column = |segments| {
+            crate::generators::solids::cylinder(&crate::generators::solids::CylinderDesc {
+                radius: 1000.0,
+                height: 4000.0,
+                segments,
+                ..Default::default()
+            })
+            .unwrap()
+        };
+        let mut hex = Edges::new(0.2);
+        hex.add(&column(6));
+        // Half way up a corner of the hexagon (radius 1 m), 5 cm inside.
+        let corner = DVec3::new(0.95, 0.0, 2.0);
+        assert!(
+            hex.nearest(corner, true) < 0.06,
+            "{}",
+            hex.nearest(corner, true)
+        );
+        let mut round = Edges::new(0.2);
+        round.add(&column(32));
+        let side = DVec3::new(0.0, 0.99, 2.0);
+        assert!(round.nearest(side, true).is_infinite());
     }
 }

@@ -131,11 +131,19 @@ same program cooks the same texels everywhere.
   ] } }
 ```
 
-Patterns: `noise` and `ridged` (mottling; with `threshold` and
-`softness`, patches), `craters`, `strata` (bands across `axis`), `stripes`,
-`panels` (seams, each panel its own tone), `rivets`, `veins` (thin
-branching lines), `edges` (convex edges and bends: wear) and `cavities`
-(concave ones: dirt). Each layer's mask, times `amount` and broken up by
+Patterns: `noise` and `ridged` (mottling over the whole 0..1; with
+`threshold` and `softness`, patches), `craters`, `strata` (bands across
+`axis`), `stripes`, `panels` (seams, each panel its own tone), `rivets`,
+`veins` (thin branching lines), `edges` (convex edges, creases sharper than
+40° and bends: wear) and `cavities` (concave ones: dirt), `facing` (where
+the surface faces `axis`: frost on tops, dark undersides, a value step per
+facet) and `gradient` (along `axis` across every part with the material,
+0 at its lowest point and 1 at its highest: a dark foot, a pale crown).
+
+Value structure comes first. A prop seen at 30–40 pixels a metre needs
+large light and dark masses before small detail: a `gradient` and a
+`facing` layer and wide `strata` or `noise` patches at a third of the
+prop's size, then `edges` and `cavities`, then the fine patterns. Each layer's mask, times `amount` and broken up by
 `breakup`, mixes in its `color`, `roughness`, `metalness` and `emissive`
 (times `glow`), varies the brightness by `jitter`, and raises the height
 by `relief` for the normal map. A part with a surface is unwrapped anew;
