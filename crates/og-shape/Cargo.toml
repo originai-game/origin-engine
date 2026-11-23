@@ -17,7 +17,11 @@ sha2 = "0.11"
 spade = "2.15.1"
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "opentype-layout", "glyph-names"] }
 i_overlay = { version = "9.1.0", default-features = false }
-serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+# float_roundtrip: a program's numbers parse correctly rounded in every
+# build. Without it the kernel's parse depended on whether another crate in
+# the build (og-net, og-runtime) turned it on, so a golden moved by an ulp
+# between a `-p` build and a workspace build.
+serde_json = { version = "1.0.154", default-features = false, features = ["std", "float_roundtrip"] }
 
 [dev-dependencies]
 # The integration tests read and write files (a test edge, not a layer edge).
