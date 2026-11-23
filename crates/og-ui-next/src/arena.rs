@@ -188,7 +188,8 @@ impl Arena {
             space: crate::record::Spacing::default(),
             text: None,
             memo: std::cell::Cell::new(NO_MEMO),
-            slot: SlotId(0),
+            // Not laid out yet: an empty box until a reconcile reaches it.
+            slot: DETACHED,
         });
         if parent != NONE {
             self.nodes[parent as usize].children.push(id);
@@ -591,6 +592,15 @@ fn sync(store: &mut LayoutStore, nodes: &mut [Node], i: Id) -> (SlotId, bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A node not laid out yet (made, or classed while its screen is
+    /// built) reads an empty box, not another node's or past the store.
+    #[test]
+    fn a_new_node_reads_an_empty_box_until_it_is_laid_out() {
+        let mut a = Arena::new();
+        let n = a.element(0, CompactStyle::default());
+        assert_eq!(a.box_of(n), BoxLayout::default());
+    }
 
     /// A subtree taken out keeps its arena nodes, but the store compacts
     /// their slots away: its boxes read empty, and a style set on it
