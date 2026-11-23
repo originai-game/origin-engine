@@ -68,7 +68,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Button>
       </View>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi border border-rim py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-title font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>

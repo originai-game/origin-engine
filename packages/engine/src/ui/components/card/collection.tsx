@@ -42,7 +42,7 @@ export interface CardCollectionProps {
  */
 export function CardCollection(props: CardCollectionProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
+    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
       <Show when={props.title}>
         <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
           <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0 shrink`}>

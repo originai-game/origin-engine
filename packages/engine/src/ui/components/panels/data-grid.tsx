@@ -57,7 +57,7 @@ export function DataGrid(props: DataGridProps) {
                   <View class="w-full h-60 overflow-y-auto">
                     <For each={props.rows} key={(r) => r.id}>
                       {(r) => (
-                      <View class={`group/row relative nine-plate-cut border border-rim w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-surface-hover ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
+                      <View class={`group/row relative nine-plate-cut w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-surface-hover ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
                         <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                         <For each={r().cells} key={(c) => c.id}>
                           {(c, i) => (

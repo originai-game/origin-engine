@@ -59,7 +59,7 @@ export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
         </Show>
         <For each={(props.lines ?? [])} key={(entry) => entry.id}>
           {(entry) => (
-          <View class={`group/row relative nine-plate-cut border border-rim text-fg transition duration-317 py-2 px-3 gap-2 ${packClass("Row", "frame")} hover:bg-surface-hover data-playing:bg-surface-hover disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} data-playing={entry().id === props.playing}>
+          <View class={`group/row relative nine-plate-cut text-fg transition duration-317 py-2 px-3 gap-2 ${packClass("Row", "frame")} hover:bg-surface-hover data-playing:bg-surface-hover disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} data-playing={entry().id === props.playing}>
             <View class="absolute left-0 inset-y-0 w-0.75 bg-gold hidden group-data-playing/row:block" />
             <Text class={`font-bold text-caption text-gold tracking-label uppercase m-0 data-narration:text-fg-muted data-narration:normal-case`} data-narration={!entry().speaker}>
               {entry().speaker || t("rpg.talk.narration")}

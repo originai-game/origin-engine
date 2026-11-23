@@ -28,7 +28,7 @@ export interface IdlePurchasesProps {
  */
 export function IdlePurchases(props: IdlePurchasesProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
+    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
@@ -57,8 +57,9 @@ export function IdlePurchases(props: IdlePurchasesProps) {
             <View class="w-full pt-0 pb-4 px-0 m-0 gap-1" label={props.title !== '' ? props.title : t("idle.purchases.name")}>
               <For each={props.upgrades}>
                 {(u) => (
-                <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim-soft border-l-3 border-hud-accent py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
-                  <View class={`justify-center items-center bg-tile border-2 border-border-strong nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
+                <View class={`group/row relative flex-row items-center nine-plate-cut text-fg transition duration-317 py-1 px-2 gap-3 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-wrap ${packClass("Row", "frame")}`} label={u().name} data-maxed={u().maxed} data-not-affordable={!(u().affordable)} data-locked={u().locked}>
+                  <View class="absolute start-0 inset-y-1.5 w-0.75 bg-hud-accent" />
+                  <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-12 group-data-locked/row:opacity-45 compact:size-10 ${packClass("Slot", "frame")}`}>
                     <Icon class="size-16/25" name={u().locked ? 'lock' : u().icon} />
                   </View>
                   <View class="grow shrink basis-0 gap-0.5 compact:grow compact:shrink compact:basis-0 group-data-locked/row:opacity-45">

@@ -49,7 +49,7 @@ export interface ShopConfirmProps {
  */
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 border compact:nine-panel-cut disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
+    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 compact:nine-panel-cut disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
         <Text class={`font-display text-xs font-semibold leading-tight tracking-kicker uppercase text-fg-subtle m-0`}>
@@ -61,7 +61,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
       </View>
       <Scroll class="shrink w-full gap-3">
         <View class="flex-row items-center w-full gap-3">
-          <View class={`justify-center items-center bg-tile border-2 border-border-strong nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
+          <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
             <Icon class="size-37/50" name={props.icon} />
           </View>
           <Show when={props.detail}>

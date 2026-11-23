@@ -88,7 +88,7 @@ export function RpgLoot(props: RpgLootProps) {
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut border-l-3 border-transparent hover:bg-surface-hover focus-within:border-hud-accent transition duration-317 ${packClass("Row", "frame")} group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("List", "item")}`}
+                class={`group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut hover:bg-surface-hover transition duration-317 ${packClass("Row", "frame")} ${packClass("List", "item")}`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}
@@ -97,6 +97,8 @@ export function RpgLoot(props: RpgLootProps) {
                 data-tier-legendary={(item().rarity || "common") === "legendary"}
                 data-tier-mythic={(item().rarity || "common") === "mythic"}
               >
+                {/* The rarity's leading edge, inside the frame, which is the row's edge. */}
+                <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-focus-within/row:block group-focus-within/row:bg-hud-accent group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-45 compact:row-span-2`}>
                   <Show when={(item().rarity || "common") !== "common"}>
                     <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />

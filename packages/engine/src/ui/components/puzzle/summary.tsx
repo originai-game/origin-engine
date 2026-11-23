@@ -42,7 +42,7 @@ export interface PuzzleSummaryProps {
  */
 export function PuzzleSummary(props: PuzzleSummaryProps) {
   return (
-    <View class={`pt-6 pb-4 border-rim-soft nine-panel-cut bg-plate-hi border border-rim transition duration-317 w-full max-w-115.5 px-6 gap-3 border compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45 ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
+    <View class={`pt-6 pb-4 nine-panel-cut bg-plate-hi transition duration-317 w-full max-w-115.5 px-6 gap-3 compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-45 ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
       <View class={`group/band items-center p-0 gap-0.5`} data-result-lose={(props.result) === 'lose'}>
         <Text class={`font-display text-display-sm font-bold leading-tight tracking-sm uppercase text-gold-hi text-center m-0 group-data-result-lose/band:text-danger`}>
           {props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}

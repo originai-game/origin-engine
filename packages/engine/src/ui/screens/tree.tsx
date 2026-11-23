@@ -21,7 +21,7 @@ export interface TreeProps {
  */
 export function Tree(props: TreeProps) {
   return (
-    <Scroll class={`w-full bg-plate-hi border border-rim nine-panel-cut text-fg py-1 ${packClass("Panel", "frame")}`} role="tree" label={props.label}>
+    <Scroll class={`w-full bg-plate-hi nine-panel-cut text-fg py-1 ${packClass("Panel", "frame")}`} role="tree" label={props.label}>
       <For each={props.rows ?? []}>
         {(r) => (
           <View class={`group/row relative flex-row items-start gap-0.5 py-0.5 pr-3 w-full text-fg-muted hover:bg-surface-hover data-selected:text-fg data-selected:bg-surface-hover data-selected:inset-shadow-bar data-selected:inset-shadow-hud-accent`} role="treeitem" level={r().depth + 1} selected={r().selected} expanded={r().open ?? undefined} data-selected={r().selected} data-leaf={r().open == null} style={{ paddingLeft: `calc(${r().depth * 1.143}rem + 0.571rem)` }}>

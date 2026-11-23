@@ -1625,6 +1625,71 @@ mod tests {
         );
     }
 
+    /// No engine component draws its own border, ring or outline on an
+    /// element a nine-sliced frame draws (`nine-*`): the frame is the
+    /// element's edge, as CSS `border-image` is, so a rectangle round it
+    /// is a second edge that misses the art's shape (a cut or rounded
+    /// corner). Its room for content is the frame's own inset.
+    #[test]
+    fn no_engine_component_edges_a_framed_element_twice() {
+        use og_ui_next::classes::Env;
+        use og_ui_next::pack::{Layer, Pack};
+        let ui = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+        let pack = Pack::new(&[Layer::default_pack()]);
+        let mut classes = class_resolver(&pack).unwrap();
+        let env = Env {
+            window: [390.0, 844.0],
+            dark: true,
+            rtl: false,
+            touch: true,
+            states: 0,
+        };
+        let mut files = Vec::new();
+        crate::lockstep_lint::sources(&ui, &mut files);
+        files.retain(|f| f.extension().is_some_and(|e| e == "tsx"));
+        let mut twice = Vec::new();
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap();
+            for u in nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &text, |s| {
+                let r = classes.record(s, &env).skin;
+                if r.image.slice == [0.0; 4] {
+                    return Vec::new();
+                }
+                let mut edges = Vec::new();
+                if r.border.iter().any(|&w| w > 0.0) {
+                    edges.push("border");
+                }
+                let ring = r.shadows[..r.shadow_count as usize]
+                    .iter()
+                    .any(|sh| !sh.inset && sh.blur == 0.0 && sh.spread > 0.0);
+                if ring {
+                    edges.push("ring");
+                }
+                if r.outline.width > 0.0 {
+                    edges.push("outline");
+                }
+                if edges.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![edges.join(" ")]
+                }
+            }) {
+                let file = path
+                    .strip_prefix(&ui)
+                    .unwrap_or(&path)
+                    .display()
+                    .to_string();
+                twice.push(format!("{file}:{}: {}", u.line, u.class));
+            }
+        }
+        assert!(
+            twice.is_empty(),
+            "a nine-* frame with its own edge as well ({}):\n{}",
+            twice.len(),
+            twice.join("\n")
+        );
+    }
+
     fn at(file: &str, line: u32, col: u32, code: u32, message: &str) -> Diagnostic {
         Diagnostic {
             file: Some(file.into()),

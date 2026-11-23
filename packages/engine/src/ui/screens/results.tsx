@@ -120,7 +120,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
               <View class={`grid grid-cols-fit-48.5 gap-3 compact:grid-cols-1 compact:gap-1 short:grid-cols-1 short:gap-1 ${packClass("List", "cascade")}`}>
                 <For each={props.stats}>
                   {(s) => (
-                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 border border-rim justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
+                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
                     <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0 shrink`}>
                         {s().name}

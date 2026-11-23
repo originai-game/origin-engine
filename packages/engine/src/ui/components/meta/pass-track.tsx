@@ -49,7 +49,7 @@ export interface PassTrackProps {
  */
 export function PassTrack(props: PassTrackProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.pass.title")} busy={(props.loading ?? false)}>
+    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.pass.title")} busy={(props.loading ?? false)}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-40 gap-0.5 compact:basis-full">
@@ -105,7 +105,7 @@ export function PassTrack(props: PassTrackProps) {
                         <For each={(props.rewards ?? [])}>
                           {(r) => (
                           <Show when={r().premium}>
-                            <View class={`group/reward grow basis-31 min-w-31 items-center text-center bg-tile border border-rim nine-plate-cut p-1 gap-1 data-premium:bg-tile`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' && (props.premiumUnlocked ?? false) ? t("meta.available") : t("meta.locked") })} data-premium={true} data-not-ready={!(r().state === 'available' && (props.premiumUnlocked ?? false))} data-ready={r().state === 'available' && (props.premiumUnlocked ?? false)} data-state-claimed={(r().state) === 'claimed'}>
+                            <View class={`group/reward grow basis-31 min-w-31 items-center text-center bg-tile nine-plate-cut p-1 gap-1 data-premium:bg-tile`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' && (props.premiumUnlocked ?? false) ? t("meta.available") : t("meta.locked") })} data-premium={true} data-not-ready={!(r().state === 'available' && (props.premiumUnlocked ?? false))} data-ready={r().state === 'available' && (props.premiumUnlocked ?? false)} data-state-claimed={(r().state) === 'claimed'}>
                               <Text class={`self-start text-xs font-bold tracking-kicker uppercase text-fg-subtle whitespace-nowrap`}>
                                 {t("meta.pass.tier", { tier: r().tier })}
                               </Text>
@@ -151,7 +151,7 @@ export function PassTrack(props: PassTrackProps) {
                         <For each={(props.rewards ?? [])}>
                           {(r) => (
                           <Show when={!r().premium}>
-                            <View class={`group/reward grow basis-31 min-w-31 items-center text-center bg-tile border border-rim nine-plate-cut p-1 gap-1 data-premium:bg-tile`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' ? t("meta.available") : t("meta.locked") })} data-premium={false} data-not-ready={!(r().state === 'available')} data-ready={r().state === 'available'} data-state-claimed={(r().state) === 'claimed'}>
+                            <View class={`group/reward grow basis-31 min-w-31 items-center text-center bg-tile nine-plate-cut p-1 gap-1 data-premium:bg-tile`} label={t("meta.pass.reward", { tier: r().tier, name: r().name, state: r().state === 'claimed' ? t("meta.claimed") : r().state === 'available' ? t("meta.available") : t("meta.locked") })} data-premium={false} data-not-ready={!(r().state === 'available')} data-ready={r().state === 'available'} data-state-claimed={(r().state) === 'claimed'}>
                               <Text class={`self-start text-xs font-bold tracking-kicker uppercase text-fg-subtle whitespace-nowrap`}>
                                 {t("meta.pass.tier", { tier: r().tier })}
                               </Text>

@@ -32,7 +32,7 @@ export interface IdleOfflineProps {
  */
 export function IdleOffline(props: IdleOfflineProps) {
   return (
-    <View class={`border-rim nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.offline.name")}>
+    <View class={`nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.offline.name")}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
         <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
@@ -59,7 +59,7 @@ export function IdleOffline(props: IdleOfflineProps) {
           <View class="flex-row flex-wrap items-center w-full p-0 m-0 gap-1" label={t("idle.offline.earned")}>
             <For each={props.earned}>
               {(e) => (
-              <View class={`w-full grow shrink basis-0 items-center min-w-27.25 max-w-48 bg-tile border border-rim-soft nine-plate-cut p-1 m-0 gap-0 compact:min-w-22.5`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
+              <View class={`w-full grow shrink basis-0 items-center min-w-27.25 max-w-48 bg-tile nine-plate-cut p-1 m-0 gap-0 compact:min-w-22.5`} label={t("idle.offline.row", { name: e().name, amount: e().amount })}>
                 <View class={`grow shrink basis-0 justify-center items-center gap-2 size-12`}>
                   <Icon class="size-full" name={e().icon} />
                 </View>

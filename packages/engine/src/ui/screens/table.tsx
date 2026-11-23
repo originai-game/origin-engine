@@ -16,7 +16,7 @@ export interface TableProps {
  */
 export function Table(props: TableProps) {
   return (
-    <View class={`nine-panel-cut bg-plate-hi border border-rim text-fg w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
+    <View class={`nine-panel-cut bg-plate-hi text-fg w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
       <View class={`min-h-12 border-b border-material-edge grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
         <For each={props.columns}>
           {(c, i) => (

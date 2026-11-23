@@ -35,7 +35,7 @@ export function DailyQuests(props: DailyQuestsProps) {
           {props.title !== '' ? props.title : t("general.quests.name")}
         </Text>
         <Show when={props.refresh}>
-          <View class={`flex-row items-center tracking-xs text-fg-muted max-w-full bg-glass border border-rim nine-plate-cut py-0.5 px-2 gap-1 shrink`} role="timer" label={props.refresh}>
+          <View class={`flex-row items-center tracking-xs text-fg-muted max-w-full bg-glass nine-plate-cut py-0.5 px-2 gap-1 shrink`} role="timer" label={props.refresh}>
             <Icon class="size-4" name="clock" />
             <Text class="text-end text-fg shrink">{props.refresh}</Text>
           </View>
@@ -52,7 +52,7 @@ export function DailyQuests(props: DailyQuestsProps) {
               <View class={`w-full pt-0 pb-1 px-0 m-0 gap-1 ${packClass("List", "cascade")}`} label={props.title !== '' ? props.title : t("general.quests.name")}>
                 <For each={props.quests}>
                   {(q) => (
-                  <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 border border-rim w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-state-done:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("List", "item")}`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                  <View class={`group/row flex-row items-center nine-plate-cut text-fg transition duration-317 w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-transparent data-state-done:bg-transparent data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("List", "item")}`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                     <View class={`group/well relative nine-socket gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-66`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                       <View class="absolute inset-0 nine-socket-rim bg-rim group-data-state-done/well:bg-gold group-data-state-claimed/well:bg-sheen" />
                       <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:text-gold">
@@ -71,7 +71,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                       </View>
                     </View>
                     <View class="flex-row items-center max-w-9/20 gap-1 compact:max-w-full compact:w-full compact:justify-between">
-                      <View class={`text-fg min-w-22.5 max-w-full min-h-16 items-center justify-center bg-glass border border-rim nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                      <View class={`text-fg min-w-22.5 max-w-full min-h-16 items-center justify-center bg-glass nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                         <Icon class="size-6" name={q().rewardIcon} />
                         <Text class="text-center text-xl font-bold tabular-nums">{q().reward}</Text>
                       </View>

@@ -53,7 +53,7 @@ export function Friends(props: FriendsProps) {
             <View class="w-full p-0 m-0 gap-0.5">
               <For each={props.requests}>
                 {(r) => (
-                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 border border-gold w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={r().name}>
+                <View class={`flex-row flex-wrap items-center nine-plate-cut text-fg transition duration-317 w-full py-1 px-2 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={r().name}>
                   <View class={`flex-row items-center inset-ring-1 inset-ring-gold justify-center text-gold gap-0 size-12 rounded-capsule`}>
                     <Icon class="size-6 shrink" name={r().avatar} />
                   </View>

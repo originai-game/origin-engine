@@ -116,7 +116,7 @@ export function RpgConversation(props: RpgConversationProps) {
           <For each={props.replies} key={(r) => r.id}>
             {(r) => (
             <View class="w-full">
-              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut border border-rim text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
+              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut text-fg transition duration-317 w-full min-h-9 pointer-coarse:min-h-11 py-1 px-3 ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover disabled:text-fg-subtle data-used:text-fg-subtle data-down:opacity-45`} role="option" selected={r().id === props.selected} onPress={(e) => props.onReply?.(e, r().id)} data-used={r().used} data-selected={r().id === props.selected}>
                 <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                 <View class="flex-row items-center w-full gap-3">
                   <Text class={`tabular-nums min-w-6 text-center font-bold py-0 px-0.5 nine-chip-cut ${r().id === props.selected ? "bg-gold text-gold-fg shadow-none" : `text-gold bg-well group-data-used/row:text-fg-subtle ${packClass("Chip", "frame")}`}`}>

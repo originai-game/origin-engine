@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Built-in components",
+      "summary": "71 framed elements in the built-in components drop the border classes the frame now replaces; the loot, crafting and idle purchase rows keep their leading rarity or accent edge."
+    }
+  ]
+}

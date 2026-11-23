@@ -64,7 +64,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <View class="gap-y-2" focus-group="stop">
             <For each={props.slots}>
               {(s) => (
-              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 border border-rim-soft items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
+              <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-317 items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>
                 <Art class={`w-37.5 aspect-89/50 h-auto object-cover compact:w-24 group-data-empty-slot/slot:hidden`} kind="saveThumb" src={s().thumb} />
                 <View class="grow shrink basis-0 gap-y-0.5 pr-12 group-data-empty-slot/slot:pr-0 compact:pr-0">
                   <Show when={s().empty} fallback={
@@ -98,7 +98,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
             </For>
           </View>
         </Scroll>
-        <Scroll class={`gap-y-2 bg-plate-hi border border-rim nine-panel-cut p-4 narrow:bg-none narrow:bg-transparent narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none ${packClass("Panel", "frame")}`} data-blank={props.selected === ""}>
+        <Scroll class={`gap-y-2 bg-plate-hi nine-panel-cut p-4 narrow:bg-none narrow:bg-transparent narrow:p-0 data-blank:bg-none data-blank:bg-transparent data-blank:shadow-none ${packClass("Panel", "frame")}`} data-blank={props.selected === ""}>
           <For each={props.slots}>
             {(s) => (
             <Show when={s().id === props.selected}>

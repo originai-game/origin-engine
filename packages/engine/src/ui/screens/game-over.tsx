@@ -82,7 +82,7 @@ export function GameOverScreen(props: GameOverScreenProps) {
               </Show>
             </View>
         }>
-          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi border border-rim nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
+          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
             <Text class="justify-self-center text-center leading-22 text-display-md font-bold tabular-nums text-fg inset-ring-6 inset-ring-gold m-0 size-22 rounded-full short:leading-16 short:size-16">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>

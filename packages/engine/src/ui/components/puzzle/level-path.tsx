@@ -43,7 +43,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class="mb-4 gap-0" label={c().label}>
-              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi border border-rim nine-plate-cut px-3 gap-1 text-fg ${packClass("Plate", "frame")}`}>
+              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi nine-plate-cut px-3 gap-1 text-fg ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
                   <Text class={`grow shrink basis-0 font-display text-3xl font-bold leading-tight tracking-tight text-start whitespace-nowrap m-0 overflow-hidden compact:text-xl`}>
                     {c().label}
