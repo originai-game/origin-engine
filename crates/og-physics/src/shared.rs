@@ -133,6 +133,9 @@ pub(crate) struct Shared {
     /// ([`PhysicsSystem::set_forces`]; derived from the world's
     /// components, not world state here).
     pub forces: og_env::force::Forces,
+    /// Where the steps run on the lanes ([`PhysicsSystem::set_lanes`];
+    /// not world state).
+    pub lanes: crate::PhysicsLanes,
 }
 
 /// At most this many mesh-derived shapes are cached (a scale animated every

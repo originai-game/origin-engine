@@ -48,6 +48,15 @@ pub(crate) struct StepOut {
 }
 
 pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result<()> {
+    // The world's own lanes setting, for the whole tick: its gather, step
+    // and write-back, and whatever reaches the pool from them.
+    let lanes = lock(shared).lanes;
+    og_lanes::with_enabled(lanes.on, || {
+        crate::lanes::with_grains(lanes.grains, || run_here(ctx, ids, shared))
+    })
+}
+
+fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result<()> {
     let settings = *ctx.resource::<Physics>()?;
     // Slow motion steps by the scaled tick; a hit stop (scaled dt 0) holds
     // the simulation as it is and carries the touching pairs over, so no

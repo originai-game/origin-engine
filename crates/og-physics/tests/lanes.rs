@@ -11,49 +11,47 @@
 //! query reaching rayon's global pool or another thread (the calling thread
 //! is left in no pool); a panic in a query lost or attributed to a lane.
 //!
-//! The lanes switch, the grains and an injected fault are the process's:
-//! the tests here take turns (`ONE`).
+//! Each world carries its own lanes setting (`PhysicsSystem::set_lanes`),
+//! so these tests run beside any other without sharing a switch.
 
 use crate::support;
 
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::World;
 use og_physics::*;
-use std::sync::Mutex;
 use support::{at, beyond, floor, spawn_static};
 
-static ONE: Mutex<()> = Mutex::new(());
-
-fn one() -> std::sync::MutexGuard<'static, ()> {
-    ONE.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-fn physics_calls() -> og_lanes::SiteCount {
-    og_lanes::report().sites[og_lanes::Site::Physics as usize]
-}
+type Build = (World, PhysicsSystem, Box<dyn Fn(&mut World, u64)>);
 
 /// `build`'s world stepped `ticks` with every pass split (`Grains::always`,
-/// on the pool when this process has one), with lanes switched off, and
-/// with the measured grains: one hash and one snapshot. Returns the
-/// physics site's parallel calls of the split run.
-fn same_everywhere(ticks: u32, build: impl Fn() -> (World, Box<dyn Fn(&mut World, u64)>)) -> u64 {
-    let run = || {
-        let (mut w, drive) = build();
+/// on the pool when this process has one), with its lanes off, and with
+/// the measured grains: one hash and one snapshot. Returns the parallel
+/// calls this thread started in the split run (the step decides here
+/// whether it goes to the pool).
+fn same_everywhere(ticks: u32, build: impl Fn() -> Build) -> u64 {
+    let run = |lanes: PhysicsLanes| {
+        let (mut w, physics, drive) = build();
+        physics.set_lanes(lanes);
+        let before = og_lanes::calls_here();
         for tick in 0..ticks as u64 {
             drive(&mut w, tick);
             w.step().unwrap();
         }
-        (w.world_hash(), w.snapshot())
+        (
+            (w.world_hash(), w.snapshot()),
+            og_lanes::calls_here() - before,
+        )
     };
-    set_grains(Some(Grains::always()));
-    let before = physics_calls();
-    let split = run();
-    let calls = physics_calls().calls - before.calls;
-    set_grains(None);
-    og_lanes::set_enabled(false);
-    let off = run();
-    og_lanes::set_enabled(true);
-    let measured = run();
+    let (split, calls) = run(PhysicsLanes {
+        grains: Some(Grains::always()),
+        ..PhysicsLanes::default()
+    });
+    let (off, off_calls) = run(PhysicsLanes {
+        on: false,
+        grains: None,
+    });
+    let (measured, _) = run(PhysicsLanes::default());
+    assert_eq!(off_calls, 0, "a world with its lanes off split");
     assert_eq!(split.0, off.0, "split and off diverged");
     assert_eq!(split.1, off.1);
     assert_eq!(measured.0, off.0, "measured grains and off diverged");
@@ -70,9 +68,8 @@ fn same_everywhere(ticks: u32, build: impl Fn() -> (World, Box<dyn Fn(&mut World
 /// split by ranges under the measured grains too.
 #[test]
 fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
-    let _one = one();
     let calls = same_everywhere(120, || {
-        let (mut w, _physics) = beyond::new_world(3, PROFILE_3D);
+        let (mut w, physics) = beyond::new_world(3, PROFILE_3D);
         floor(&mut w);
         spawn_static(
             &mut w,
@@ -115,11 +112,11 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
             ))
             .unwrap();
         }
-        (w, Box::new(|_: &mut World, _: u64| {}))
+        (w, physics, Box::new(|_: &mut World, _: u64| {}))
     });
     println!("{calls} parallel calls at the physics site");
     let calls = same_everywhere(120, || {
-        let (mut w, _physics) = beyond::new_world(4, PROFILE_2D);
+        let (mut w, physics) = beyond::new_world(4, PROFILE_2D);
         floor(&mut w);
         for i in 0..6 {
             w.spawn((
@@ -139,7 +136,7 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
             w.spawn((at(-6.0 + i as f32, 6.0, 0.0), Rope::default()))
                 .unwrap();
         }
-        (w, Box::new(|_: &mut World, _: u64| {}))
+        (w, physics, Box::new(|_: &mut World, _: u64| {}))
     });
     println!("{calls} parallel calls at the physics site (2D)");
 }
@@ -150,7 +147,6 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
 /// same world either way.
 #[test]
 fn many_ragdolls_split_and_off_the_lanes_end_in_the_same_world() {
-    let _one = one();
     for profile in [PROFILE_3D, PROFILE_2D] {
         same_everywhere(160, || {
             let (mut w, physics) = beyond::new_world(6, profile);
@@ -175,6 +171,7 @@ fn many_ragdolls_split_and_off_the_lanes_end_in_the_same_world() {
                 physics.set_ragdoll_rig(e, rig.clone()).unwrap();
                 ragdolls.push((e, x, z));
             }
+            let handle = physics.clone();
             let drive = move |w: &mut World, tick: u64| {
                 for (k, &(e, x, z)) in ragdolls.iter().enumerate() {
                     let mut r = w.get::<Ragdoll>(e).unwrap();
@@ -207,7 +204,7 @@ fn many_ragdolls_split_and_off_the_lanes_end_in_the_same_world() {
                     physics.set_ragdoll_rig(ragdolls[3].0, longer).unwrap();
                 }
             };
-            (w, Box::new(drive))
+            (w, handle, Box::new(drive))
         });
     }
 }

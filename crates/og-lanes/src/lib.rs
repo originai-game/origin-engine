@@ -26,8 +26,10 @@
 //! same library's work outside those calls (a physics query) runs through
 //! [`serial`], on the calling thread in that one-thread pool.
 //!
-//! The probe's `lanes:<on|off>` switches them at run time ([`set_enabled`])
-//! and `dump_lanes` reports what the engine got ([`report`]), with the
+//! A caller keeps its own work off them with [`with_enabled`], a scope on
+//! the calling thread (an engine's `lanes:off` from the probe, a world's
+//! og-physics setting); there is no switch for the process, so callers on
+//! other threads keep theirs. `dump_lanes` reports what the engine got ([`report`]), with the
 //! parallel calls counted per [`Site`].
 //!
 //! Panics: a host's panic hook hands every Rust panic to [`record_panic`],
@@ -47,7 +49,6 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 
-static SWITCH: AtomicBool = AtomicBool::new(true);
 static CALLS: [AtomicU64; Site::COUNT] = [const { AtomicU64::new(0) }; Site::COUNT];
 static ITEMS: [AtomicU64; Site::COUNT] = [const { AtomicU64::new(0) }; Site::COUNT];
 
@@ -162,6 +163,13 @@ thread_local! {
     static IN_LANE: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     /// The parallel calls this thread started ([`calls_here`]).
     static HERE: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+    /// How many [`with_enabled`]`(false, ..)` scopes this thread is inside.
+    static OFF: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Whether the calling thread is outside every [`with_enabled`]`(false, ..)`.
+fn switched_on() -> bool {
+    OFF.try_with(|d| d.get() == 0).unwrap_or(true)
 }
 
 /// A Rust panic the engine recorded ([`record_panic`]): what it said, where,
@@ -390,10 +398,27 @@ mod guard {
     }
 }
 
-/// Switches lanes on or off at run time (the probe's `lanes:<on|off>`).
-/// Results never change; only the threads that compute them do.
-pub fn set_enabled(on: bool) {
-    SWITCH.store(on, Ordering::Relaxed);
+/// Runs `f` with lanes switched off on the calling thread when `on` is
+/// false: every helper call `f` makes runs serially there, and [`threads`]
+/// and [`report`] read as switched off. `on` true leaves them as the caller
+/// has them (an enclosing scope that switched them off still holds). The
+/// scope is the calling thread's alone, so whoever runs on other threads
+/// meanwhile (another engine, another test) keeps its own; a helper call
+/// that splits runs on the pool only outside such a scope. Results never
+/// change; only the threads that compute them do.
+pub fn with_enabled<R>(on: bool, f: impl FnOnce() -> R) -> R {
+    if on {
+        return f();
+    }
+    struct Leave;
+    impl Drop for Leave {
+        fn drop(&mut self) {
+            let _ = OFF.try_with(|d| d.set(d.get().saturating_sub(1)));
+        }
+    }
+    let _ = OFF.try_with(|d| d.set(d.get() + 1));
+    let _leave = Leave;
+    f()
 }
 
 // ── the trace: each job's thread, start and length ─────────────────────────
@@ -482,10 +507,11 @@ pub fn take_trace() -> Trace {
     }
 }
 
-/// What the engine got (the probe's `dump_lanes`).
+/// What the engine got (the probe's `dump_lanes`), as the calling thread
+/// has lanes ([`with_enabled`]).
 pub fn report() -> Report {
     let (threads, pool, why) = imp::pool();
-    let switched = SWITCH.load(Ordering::Relaxed);
+    let switched = switched_on();
     let on = threads > 1 && switched && why.is_empty();
     let sites = Site::ALL.map(|s| SiteCount {
         calls: CALLS[s as usize].load(Ordering::Relaxed),
@@ -523,7 +549,7 @@ enum Least {
 
 /// Whether a call of `len` items splits: lanes on, and at least `from`.
 fn parallel(site: Site, len: usize, from: Least) -> bool {
-    if !SWITCH.load(Ordering::Relaxed) {
+    if !switched_on() {
         return false;
     }
     let (threads, _, why) = imp::pool();
@@ -779,11 +805,11 @@ pub fn serial<R: Send>(site: Site, f: impl FnOnce() -> R + Send) -> R {
 }
 
 /// The pool's threads lanes would use now: 1 when lanes are off, switched
-/// off or there is no pool (what [`report`] says, without its counters).
+/// off on the calling thread ([`with_enabled`]) or there is no pool (what [`report`] says, without its counters).
 /// A caller that sizes its grain by the thread count (og-physics's body
 /// grain) reads it before calling [`install`].
 pub fn threads() -> u32 {
-    if !SWITCH.load(Ordering::Relaxed) {
+    if !switched_on() {
         return 1;
     }
     match imp::pool() {
@@ -1269,7 +1295,7 @@ mod tests {
     /// and none of another thread's.
     #[test]
     fn calls_here_counts_this_threads_parallel_calls() {
-        // The switch is the process's: no other test flips it meanwhile.
+        // An injected fault is the process's: no other test arms one meanwhile.
         let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
         std::thread::spawn(|| {
             let items: Vec<u32> = (0..4096).collect();
@@ -1383,17 +1409,35 @@ mod tests {
         assert!(take_trace().jobs.is_empty());
     }
 
-    /// `threads` is the pool's when lanes are on and 1 when switched off.
+    /// `threads` is the pool's when lanes are on and 1 inside a scope that
+    /// switched them off, and that scope is the calling thread's alone: a
+    /// thread running meanwhile still has the pool, and splits.
     #[test]
-    fn threads_follows_the_switch() {
-        // The switch is the process's: no other test reads it meanwhile.
+    fn a_scope_switches_lanes_off_for_its_thread_only() {
+        // An injected fault is the process's: no other test arms one meanwhile.
         let _one = HOOK.lock().unwrap_or_else(|e| e.into_inner());
         let r = report();
-        assert_eq!(threads(), if r.on { r.threads } else { 1 });
-        set_enabled(false);
-        assert_eq!(threads(), 1);
-        set_enabled(true);
-        assert_eq!(threads(), if r.on { r.threads } else { 1 });
+        let all = if r.on { r.threads } else { 1 };
+        assert_eq!(threads(), all);
+        let items: Vec<u32> = (0..4096).collect();
+        with_enabled(false, || {
+            assert_eq!(threads(), 1);
+            assert!(!report().on);
+            with_enabled(true, || assert_eq!(threads(), 1, "the outer scope holds"));
+            let before = calls_here();
+            let _ = map(Site::Anim, &items, 512, |&i| i);
+            assert_eq!(calls_here(), before, "nothing splits in the scope");
+            let theirs = std::thread::spawn(|| {
+                let items: Vec<u32> = (0..4096).collect();
+                let before = calls_here();
+                let _ = map(Site::Anim, &items, 512, |&i| i);
+                (threads(), calls_here() - before)
+            })
+            .join()
+            .unwrap();
+            assert_eq!(theirs, (all, u64::from(all > 1)), "another thread's lanes");
+        });
+        assert_eq!(threads(), all, "back on after the scope");
     }
 
     /// The lanes wasm's path onto the pool, on a native pool: a caller that

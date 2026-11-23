@@ -808,12 +808,13 @@ mod tests {
                 );
             }
             for on in [true, false] {
-                og_lanes::set_enabled(on);
                 let mut inside = marks.clone();
                 let calls = og_lanes::calls_here();
-                frustum.test_spheres(&mut inside, &spheres);
+                let pool = og_lanes::with_enabled(on, || {
+                    frustum.test_spheres(&mut inside, &spheres);
+                    og_lanes::threads() > 1
+                });
                 let split = og_lanes::calls_here() - calls;
-                let pool = on && og_lanes::threads() > 1;
                 assert_eq!(
                     split,
                     u64::from(pool && n >= from),
@@ -824,7 +825,6 @@ mod tests {
                     "{n} bounds, lanes {on}: another culled set"
                 );
             }
-            og_lanes::set_enabled(true);
         }
     }
 }

@@ -50,7 +50,7 @@ functions.
 | `PhysicsSystem` | `set_mesh(handle, MeshDesc)`, `remove_mesh(handle)`, `query(&World) -> PhysicsQuery`, `stats() -> PhysicsStats`; `apply_force`, `apply_impulse` (each at a world point or the centre of mass), `apply_torque`, `apply_torque_impulse`: queued, applied by the next step in the order given (a force as its impulse over the step, gone after it; a hit stop drops forces and keeps impulses), saved in the state block until then |
 | `PhysicsStats`, `PhaseStats`, `Phase` | what the last step cost: its tick, bodies, threads, whether it ran on the lanes pool, the whole system's ms and each phase's ms and whether it split (`og.physics.stats` in TypeScript; below) |
 | `set_clock(fn() -> f64)` | the wall clock the stats are timed with (`Instant` natively; the web host gives each Worker's `performance.now`) |
-| `Grains`, `grains`, `set_grains`, `pool_bodies` | where the step's work runs on the lanes (below) |
+| `Grains`, `grains`, `pool_bodies`, `PhysicsLanes` (`PhysicsSystem::set_lanes`) | where the step's work runs on the lanes, a setting of each world (below) |
 | `PhysicsQuery` | `raycast(&RaycastDesc)`, `raycast_all(&RaycastAllDesc)` (every hit, nearest first, ties by entity, at most `MAX_RAYCAST_HITS`), `project_point(&ProjectPointDesc) -> Option<PointProjection>`, `shape_cast(&ShapeCastDesc)`, `overlap(&OverlapDesc)` over the colliders as the world holds them when it was built; `QueryFilter { mask, include_sensors, exclude }`; hits name the collider's `entity` and its `body` |
 | `raycast`, `shape_cast`, `overlap` | the same, on a view built for one call |
 | `world_pose(e, local, parent_of, transform_of)` | an entity's world position and rotation down the `og.Parent` chain (`og.Parent` is registered here by schema, like `og.Transform`) |
@@ -172,6 +172,13 @@ pays for waking the pool. The pool is rayon natively and
 wasm-bindgen-rayon's Workers in the lanes wasm (rapier is built with
 `parallel` there too, `cfg(target_feature = "atomics")`); the
 single-threaded wasm builds rapier without it.
+
+Lanes off is each world's own setting, not the process's:
+`PhysicsSystem::set_lanes(PhysicsLanes { on, grains })` keeps that world's
+step on the stepping thread (`og_lanes::with_enabled(false, ..)` around its
+tick) or forces its grains (`Grains::always` in the tests and the cost
+examples), and worlds stepped side by side on other threads keep theirs.
+An engine's probe `lanes:off` scopes its own ticks the same way.
 
 og-physics splits its own work besides (`src/lanes.rs`, `Grains`):
 

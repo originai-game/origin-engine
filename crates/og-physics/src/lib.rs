@@ -90,7 +90,7 @@ mod dim2;
 mod dim3;
 
 pub use garment::{GarmentPoints, GarmentPose, GarmentRig};
-pub use lanes::{Grains, grains, pool_bodies, set_grains};
+pub use lanes::{Grains, PhysicsLanes, grains, pool_bodies};
 pub use outline::outline;
 pub use schema::*;
 pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
@@ -426,6 +426,13 @@ impl PhysicsSystem {
     /// meshes) need not copy every one into physics up front.
     pub fn set_mesh_source(&self, source: Option<MeshSource>) {
         lock(&self.shared).mesh_source = source;
+    }
+
+    /// Where this world's physics runs on the lanes from the next step:
+    /// on the pool or kept on the stepping thread, and with which grains
+    /// ([`PhysicsLanes`]). The world's, not the process's; never world state.
+    pub fn set_lanes(&self, lanes: PhysicsLanes) {
+        lock(&self.shared).lanes = lanes;
     }
 
     /// Registers (or replaces) the height field `handle` that

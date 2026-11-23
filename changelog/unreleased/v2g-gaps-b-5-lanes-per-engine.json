@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "probe lanes:<on|off>",
+      "summary": "The probe's `lanes:off` now keeps only that engine's ticks, frames and captures off the lanes pool, and its `dump_lanes` reports that engine's setting. Before, it switched lanes off for every engine in the process, so two engines in one host (a test beside a game) changed each other's threads. Results are the same either way; only where the work runs changes."
+    }
+  ]
+}

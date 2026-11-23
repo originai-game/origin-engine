@@ -239,6 +239,10 @@ pub(crate) struct Engine {
     pub id: u32,
     pub(super) world: UnsafeCell<World>,
     pub stepping: Cell<bool>,
+    /// The probe's `lanes:<on|off>` for this engine: off, its ticks and
+    /// frames run their parallel systems on its own thread
+    /// (og_lanes::with_enabled); other engines in the process keep theirs.
+    pub lanes: Cell<bool>,
     /// The time scale a system call last carried, as its `time` reads it.
     pub time_read: super::feel::TimeRead,
     pub state: RefCell<State>,

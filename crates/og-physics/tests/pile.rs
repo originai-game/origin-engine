@@ -98,33 +98,34 @@ fn the_pile_is_deterministic_and_a_restore_at_tick_1800_ends_in_the_same_world()
 
 /// Lanes change who steps a world, never the world: a pen of the pile's
 /// bodies large enough to go to the lanes pool (`pool_bodies` for this
-/// process's thread count) stepped there and stepped with lanes switched
-/// off ends in the same world after 300 ticks, and the first run did go to
-/// the pool when this process has one. The switch is the process's; the
-/// tests running meanwhile get the same results on whichever threads it
-/// leaves them.
+/// process's thread count) stepped there and stepped with that world's
+/// lanes off ends in the same world after 300 ticks, and the first run did
+/// go to the pool when this process has one. The setting is each world's,
+/// so tests running meanwhile keep their own.
 #[test]
 fn a_pen_on_the_lanes_and_off_them_ends_in_the_same_world() {
     let lanes = og_lanes::report();
     let bodies = pool_bodies(lanes.threads.max(2));
-    let calls = || og_lanes::report().sites[og_lanes::Site::Physics as usize];
-    let before = calls();
+    let before = og_lanes::calls_here();
     let (mut a, _pa) = pile::pen(bodies, 5);
     pile::run(&mut a, 300);
-    let after = calls();
-    og_lanes::set_enabled(false);
-    let (mut b, _pb) = pile::pen(bodies, 5);
+    let on = og_lanes::calls_here() - before;
+    let (mut b, pb) = pile::pen(bodies, 5);
+    pb.set_lanes(PhysicsLanes {
+        on: false,
+        grains: None,
+    });
+    let before = og_lanes::calls_here();
     pile::run(&mut b, 300);
-    og_lanes::set_enabled(true);
+    assert_eq!(
+        og_lanes::calls_here(),
+        before,
+        "a world with its lanes off split"
+    );
     assert_eq!(a.world_hash(), b.world_hash(), "lanes on and off diverged");
     assert_eq!(a.snapshot(), b.snapshot());
     if lanes.on {
-        // Every step went to the pool with its bodies (and the contact
-        // readout split once the pile had enough pairs).
-        assert!(
-            after.calls - before.calls >= 300,
-            "{after:?} after {before:?}"
-        );
-        assert!(after.items - before.items >= 300 * bodies as u64);
+        // Every step went to the pool with its bodies.
+        assert!(on >= 300, "{on} parallel calls");
     }
 }

@@ -14,7 +14,7 @@
 //!
 //! Arguments, when given, are the pen sizes (default 16 64 128 256 512
 //! 1000 2000); `--forced` puts every step on the pool
-//! (`og_physics::set_grains(Some(og_physics::Grains::always()))`), to find where the pool pays.
+//! (`PhysicsLanes { grains: Some(Grains::always()), .. }` on each scene's world), to find where the pool pays.
 //! `--bodies N`, `--pairs N` and `--rows N` set those grains (the others measured),
 //! to find where splitting the sync and the readout by ranges pays.
 //! `--phases` prints, for each scene, the mean of each phase of the step
@@ -24,16 +24,24 @@
 mod support;
 
 use og_ecs::World;
-use og_physics::{Phase, PhysicsSystem};
+use og_physics::{Grains, Phase, PhysicsLanes, PhysicsSystem};
+use std::sync::OnceLock;
 use std::time::Instant;
 use support::pile;
 
 const WARM: u32 = 240;
 const TIMED: u32 = 600;
 
+/// The grains the arguments force on every scene's world (`None`: measured).
+static GRAINS: OnceLock<Option<Grains>> = OnceLock::new();
+
 /// Milliseconds per tick over `TIMED` ticks after `WARM`, the hash, and
 /// each phase's mean ms and whether it split on any tick.
 fn time((mut w, physics): (World, PhysicsSystem)) -> (f64, u64, Vec<(f64, bool)>) {
+    physics.set_lanes(PhysicsLanes {
+        grains: GRAINS.get().copied().flatten(),
+        ..PhysicsLanes::default()
+    });
     for _ in 0..WARM {
         w.step().unwrap();
     }
@@ -65,9 +73,7 @@ fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let forced = args.iter().any(|a| a == "--forced");
     let show_phases = args.iter().any(|a| a == "--phases");
-    if forced {
-        og_physics::set_grains(Some(og_physics::Grains::always()));
-    }
+    let mut grains = forced.then(Grains::always);
     let value = |name: &str| {
         args.iter()
             .position(|a| a == name)
@@ -76,18 +82,15 @@ fn main() {
     let (bodies, pairs, rows) = (value("--bodies"), value("--pairs"), value("--rows"));
     if bodies.is_some() || pairs.is_some() || rows.is_some() {
         let threads = og_lanes::threads();
-        let measured = og_physics::Grains::measured(threads);
-        og_physics::set_grains(Some(og_physics::Grains {
+        let measured = Grains::measured(threads);
+        grains = Some(Grains {
             bodies: bodies.unwrap_or(measured.bodies),
             pairs: pairs.unwrap_or(measured.pairs),
             rows: rows.unwrap_or(measured.rows),
-            ..if forced {
-                og_physics::Grains::always()
-            } else {
-                measured
-            }
-        }));
+            ..if forced { Grains::always() } else { measured }
+        });
     }
+    GRAINS.set(grains).unwrap();
     let sizes: Vec<usize> = args
         .iter()
         .enumerate()

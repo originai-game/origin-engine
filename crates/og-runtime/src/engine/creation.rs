@@ -121,6 +121,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         id: engine_id,
         world: UnsafeCell::new(a.world),
         stepping: Cell::new(false),
+        lanes: Cell::new(true),
         time_read: Default::default(),
         state: RefCell::new(state),
         assertions: probe.assertions(),

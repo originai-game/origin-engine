@@ -44,6 +44,10 @@ fn step_ms(eng: &Engine, t0: f64) -> f64 {
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
 pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
+    og_lanes::with_enabled(eng.lanes.get(), || advance_here(eng, steps))
+}
+
+fn advance_here(eng: &Engine, steps: u64) -> Result<u64, String> {
     if eng.stepping.get() {
         return Err("advance was called from inside a system".into());
     }
@@ -107,6 +111,12 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
         Ok(e) => e,
         Err(e) => return refused(e),
     };
+    og_lanes::with_enabled(eng.lanes.get(), || {
+        frame_here(id, &eng, elapsed_ms, interval_ms)
+    })
+}
+
+fn frame_here(id: u32, eng: &Engine, elapsed_ms: f64, interval_ms: Option<f64>) -> Value {
     if eng.stepping.get() {
         return refused("frame was called from inside a system");
     }
@@ -133,8 +143,8 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     let t0 = rprobe::now_ms();
     // The host's pump at each boundary, as an advance has it: host answers
     // and the TSX UI's ops since the last boundary.
-    let pump = || pump_platform(&eng);
-    if let Err(e) = pump().and_then(|()| tick_boundary(&eng)) {
+    let pump = || pump_platform(eng);
+    if let Err(e) = pump().and_then(|()| tick_boundary(eng)) {
         return refused(e);
     }
     // A scene a timeline's scene track places as the next tick starts
@@ -142,9 +152,9 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     // prepared (asked after the boundary, which starts its groups' reads):
     // the world before the cut stays on screen, and the frames drawn
     // meanwhile make its pipelines.
-    let scene_waits = crate::bind::timeline::waiting(&eng);
+    let scene_waits = crate::bind::timeline::waiting(eng);
     // No tick before GameDesc.start has run, and no time owed for the wait.
-    if start_waiting(&eng) || scene_waits {
+    if start_waiting(eng) || scene_waits {
         eng.state.borrow_mut().accumulator_ms = before;
         due = 0;
     }
@@ -159,7 +169,7 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     let stepped = (|| -> Result<og_core::Result<u32>, String> {
         let mut taken = 0;
         loop {
-            let n = match rprobe::with_probe(&eng, false, |p, w| p.frame(w, u32::from(due > 0)))? {
+            let n = match rprobe::with_probe(eng, false, |p, w| p.frame(w, u32::from(due > 0)))? {
                 Ok(n) => n,
                 Err(e) => return Ok(Err(e)),
             };
@@ -169,13 +179,13 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
             }
             super::modules::end_of_ticks();
             pump()?;
-            tick_boundary(&eng)?;
+            tick_boundary(eng)?;
         }
     })();
     crate::bind::net::frame_clock(id, None);
     let frame_t0 = t0;
     super::modules::end_of_ticks();
-    super::stream::sound_chunks(&eng);
+    super::stream::sound_chunks(eng);
     let stepped = stepped.and_then(|r| pump().map(|()| r));
     let ticks = match stepped {
         Ok(Ok(n)) => n,
@@ -189,12 +199,12 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
         Err(e) => return refused(e),
     };
     if ticks > 0 {
-        eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
+        eng.state.borrow_mut().step_ms = step_ms(eng, t0) / f64::from(ticks);
     }
     // The inspector's panel, built between the ticks and the frame: its
     // edits land between ticks (development builds).
     #[cfg(not(feature = "publish"))]
-    crate::author::inspector::frame(&eng);
+    crate::author::inspector::frame(eng);
     // Drawn between the last two ticks by the accumulator's fraction
     // (RenderSettings.interpolate), or at the tick on a tick boundary.
     let after = eng.state.borrow().accumulator_ms;
@@ -203,7 +213,7 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     let rendered = match if capture_only {
         Ok(false)
     } else {
-        render(&eng, alpha, interval_ms, t0)
+        render(eng, alpha, interval_ms, t0)
     } {
         Ok(r) => r,
         Err(e) => return refused(e),
@@ -260,7 +270,7 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
     // the frames where it changed: the first of its `url()` images that
     // loads (`{width, height, rgba: <base64>, hotspot: [x, y]}`), or null.
-    let shape = crate::host::ui_cursor::shape(&eng);
+    let shape = crate::host::ui_cursor::shape(eng);
     if let Some(b) = eng.render.borrow_mut().backend.as_mut() {
         b.cursor(&shape);
     }
@@ -278,7 +288,7 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
             })
         })
     };
-    let a11y = a11y_changed(&eng);
+    let a11y = a11y_changed(eng);
     let pointer_lock = eng
         .world()
         .ok()
@@ -327,13 +337,13 @@ pub(crate) fn frame_value(id: u32, elapsed_ms: f64, interval_ms: Option<f64>) ->
     // frame, at the player's strength (og.ui.setHaptics), each a list of
     // [startMs, ms, low, high] pulses: the web shell rumbles the pad and
     // vibrates the phone; a native host rumbles its pad.
-    let haptics = haptics_played(&eng);
+    let haptics = haptics_played(eng);
     if !haptics.is_empty() {
         answer["haptics"] = json!(haptics);
     }
     // `rumble`: what og.input.rumble asked for since the last frame, each
     // [pad, low, high, ms] (pad -1: every connected pad): output only.
-    let rumble = super::api::rumble_played(&eng);
+    let rumble = super::api::rumble_played(eng);
     if !rumble.is_empty() {
         answer["rumble"] = json!(rumble);
     }

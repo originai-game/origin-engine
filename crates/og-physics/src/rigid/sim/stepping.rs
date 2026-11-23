@@ -284,11 +284,17 @@ pub(crate) fn step(
     // The bodies this tick steps, or last tick's when ragdolls and vehicles
     // added their own.
     let bodies = scene.bodies.len().max(sim.world.bodies.len());
+    // The world's forced grains go with the step onto the pool's thread.
+    let forced = crate::lanes::forced();
     og_lanes::install_from(
         og_lanes::Site::Physics,
         bodies,
         crate::pool_bodies(og_lanes::threads()),
-        |split| step_here(settings, dt, tick, scene, shared, sim, split),
+        |split| {
+            crate::lanes::with_grains(forced, || {
+                step_here(settings, dt, tick, scene, shared, sim, split)
+            })
+        },
     )
 }
 

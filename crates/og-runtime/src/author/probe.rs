@@ -206,12 +206,24 @@ fn shoot(
     height: u32,
 ) -> Option<Frame> {
     let eng = engine(id).ok()?;
+    og_lanes::with_enabled(eng.lanes.get(), || {
+        shoot_here(&eng, world, view, width, height)
+    })
+}
+
+fn shoot_here(
+    eng: &crate::engine::Engine,
+    world: &World,
+    view: Option<&og_probe::Viewpoint>,
+    width: u32,
+    height: u32,
+) -> Option<Frame> {
     let lost = eng.render.borrow_mut().backend.as_mut()?.recover();
     if !matches!(lost, Ok(false)) {
         return None;
     }
-    crate::world::assets::retranscode(&eng);
-    if !crate::present::barrier::settle(&eng) {
+    crate::world::assets::retranscode(eng);
+    if !crate::present::barrier::settle(eng) {
         return None;
     }
     let reference = {
@@ -219,7 +231,7 @@ fn shoot(
         let presents = rs.backend.as_ref().is_some_and(|b| b.presents());
         !presents || !rs.display.kind.displayed() || rs.display.capture_only
     };
-    crate::engine::extract_frame(&eng, world, None, !reference).ok()?;
+    crate::engine::extract_frame(eng, world, None, !reference).ok()?;
     let mut rs = eng.render.borrow_mut();
     let rs = &mut *rs;
     rs.scene.frame.reference = reference;
@@ -247,7 +259,7 @@ fn shoot(
     let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
     rs.scene.frame.camera = main;
     rs.scene.frame.reference = false;
-    crate::world::assets::release_uploaded_textures(&eng, rs);
+    crate::world::assets::release_uploaded_textures(eng, rs);
     // The probe's work, not the game's: the tick's step time leaves it out.
     rs.capture_ms += now_ms() - t0;
     image.map(|image| Frame {

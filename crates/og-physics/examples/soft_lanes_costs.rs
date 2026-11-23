@@ -29,9 +29,16 @@ use support::{at, beyond, floor, spawn_static};
 const WARM: u32 = 120;
 const TIMED: u32 = 300;
 
+/// The grains the arguments set on every scene's world.
+static GRAINS: std::sync::OnceLock<Grains> = std::sync::OnceLock::new();
+
 /// Milliseconds per tick, the hash, and the mean ms of `phase` (the
 /// scene's own, from `PhysicsSystem::stats`).
 fn time((mut w, physics): (World, PhysicsSystem), phase: Phase) -> (f64, u64, f64) {
+    physics.set_lanes(PhysicsLanes {
+        grains: GRAINS.get().copied(),
+        ..PhysicsLanes::default()
+    });
     for _ in 0..WARM {
         w.step().unwrap();
     }
@@ -194,7 +201,7 @@ fn main() {
         .position(|a| a == "--only")
         .map(|k| args[k + 1].as_str());
     let wanted = |kind: &str| only.is_none_or(|o| o.split(',').any(|o| o == kind));
-    set_grains(Some(grains));
+    GRAINS.set(grains).unwrap();
     let mode = if lanes.on {
         format!("on, {} threads", lanes.threads)
     } else {

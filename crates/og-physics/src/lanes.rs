@@ -104,23 +104,60 @@ impl Grains {
     }
 }
 
-static FORCED: Mutex<Option<Grains>> = Mutex::new(None);
+/// Where one world's physics runs on the lanes
+/// ([`crate::PhysicsSystem::set_lanes`]): the world is the same whatever it
+/// is, only where its work runs, and so its time, changes. Each world
+/// keeps its own, so worlds stepped side by side (tests, engines) never
+/// see another's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PhysicsLanes {
+    /// Whether the step may go to the lanes pool at all (false: every pass
+    /// on the thread stepping the world, as og-lanes' `with_enabled(false)`).
+    pub on: bool,
+    /// The grains in force (`None`: [`Grains::measured`] for the pool's
+    /// threads). `examples/lanes_costs.rs` times the passes split with
+    /// [`Grains::always`], and the tests put small worlds on the parallel
+    /// paths with it.
+    pub grains: Option<Grains>,
+}
 
-/// The grains in force for a pool of `threads` threads: the measured ones,
-/// or those [`set_grains`] forced.
-pub fn grains(threads: u32) -> Grains {
-    match *FORCED.lock().unwrap_or_else(|e| e.into_inner()) {
-        Some(g) => g,
-        None => Grains::measured(threads),
+impl Default for PhysicsLanes {
+    fn default() -> Self {
+        PhysicsLanes {
+            on: true,
+            grains: None,
+        }
     }
 }
 
-/// Forces the grains for every thread count (`None`: the measured ones
-/// again): `examples/lanes_costs.rs` times the passes split with
-/// [`Grains::always`], and the tests put small worlds on the parallel
-/// paths with it. The process's, like og-lanes' switch.
-pub fn set_grains(grains: Option<Grains>) {
-    *FORCED.lock().unwrap_or_else(|e| e.into_inner()) = grains;
+thread_local! {
+    /// The forced grains of the world this thread is stepping ([`with_grains`]).
+    static FORCED: std::cell::Cell<Option<Grains>> = const { std::cell::Cell::new(None) };
+}
+
+/// Runs `f` with `grains` forced on the calling thread (the step's world's
+/// [`PhysicsLanes::grains`]), the previous ones again after it. A pass that
+/// hands its work to a pool thread carries them there ([`forced`]).
+pub(crate) fn with_grains<R>(grains: Option<Grains>, f: impl FnOnce() -> R) -> R {
+    struct Back(Option<Grains>);
+    impl Drop for Back {
+        fn drop(&mut self) {
+            let _ = FORCED.try_with(|g| g.set(self.0));
+        }
+    }
+    let _back = Back(FORCED.try_with(|g| g.replace(grains)).unwrap_or(None));
+    f()
+}
+
+/// The grains the calling thread has forced ([`with_grains`]).
+pub(crate) fn forced() -> Option<Grains> {
+    FORCED.try_with(|g| g.get()).unwrap_or(None)
+}
+
+/// The grains in force for a pool of `threads` threads: the measured ones,
+/// or those the world being stepped forced ([`PhysicsLanes::grains`]).
+pub fn grains(threads: u32) -> Grains {
+    forced().unwrap_or_else(|| Grains::measured(threads))
 }
 
 /// [`Grains::pool_bodies`] in force for `threads` threads.
@@ -215,7 +252,8 @@ static GAUGES: Mutex<[Gauge; 4]> = Mutex::new(
 /// `f` on every soft body job of `kind`, side by side on the lanes when
 /// [`soft_grain`] splits them (`work` against `per_task`) and the kind's
 /// [`Gauge`] admits the pool, else one after the other on the calling
-/// thread. Forced grains ([`set_grains`]) always split as they say.
+/// thread. Forced grains ([`PhysicsLanes::grains`]) always split as they
+/// say, and reach the jobs on the pool's threads.
 pub(crate) fn soft_each<T: Send>(
     kind: Soft,
     jobs: &mut [T],
@@ -225,9 +263,9 @@ pub(crate) fn soft_each<T: Send>(
 ) {
     let site = og_lanes::Site::Physics;
     let grain = soft_grain(jobs.len(), work, per_task);
-    let forced = FORCED.lock().unwrap_or_else(|e| e.into_inner()).is_some();
-    if grain >= jobs.len() || forced {
-        og_lanes::for_each_mut(site, jobs, grain, f);
+    let forced = forced();
+    if grain >= jobs.len() || forced.is_some() {
+        og_lanes::for_each_mut(site, jobs, grain, |job| with_grains(forced, || f(job)));
         return;
     }
     let gauges = || GAUGES.lock().unwrap_or_else(|e| e.into_inner());

@@ -4,25 +4,24 @@
 
 use serde_json::json;
 
-/// Registers `lanes:<on|off>` and `dump_lanes[:path]`. Lanes are one switch
-/// for the process (every engine in it shares the pool).
+/// Registers `lanes:<on|off>` and `dump_lanes[:path]`. The switch is this
+/// engine's (its ticks, frames and captures run inside
+/// og_lanes::with_enabled); every engine in the process shares the pool.
 pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
     let _ = probe.register_command(
         "lanes",
         og_probe::CommandDesc {
             usage: "lanes:<on|off>".into(),
-            doc: "run the parallel systems on the lanes pool (on, the default) or on the engine's thread (off); results are the same either way".into(),
+            doc: "run this engine's parallel systems on the lanes pool (on, the default) or on its own thread (off); results are the same either way".into(),
         },
-        move |_world, args| match args.first().map(String::as_str) {
-            Some("on") => {
-                og_lanes::set_enabled(true);
-                Ok(())
-            }
-            Some("off") => {
-                og_lanes::set_enabled(false);
-                Ok(())
-            }
-            _ => Err("write lanes:on or lanes:off".into()),
+        move |_world, args| {
+            let on = match args.first().map(String::as_str) {
+                Some("on") => true,
+                Some("off") => false,
+                _ => return Err("write lanes:on or lanes:off".into()),
+            };
+            crate::engine::engine(engine)?.lanes.set(on);
+            Ok(())
         },
     );
     let _ = probe.register_dump(
@@ -35,7 +34,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine: u32) {
         move |_world, _args| {
             let eng = crate::engine::engine(engine)?;
             let st = eng.state.borrow();
-            let mut out = report();
+            let mut out = og_lanes::with_enabled(eng.lanes.get(), report);
             out["stepMs"] = json!((st.step_ms * 1000.0).round() / 1000.0);
             out["renderMs"] = json!((st.render_ms * 1000.0).round() / 1000.0);
             Ok(out)
