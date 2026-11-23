@@ -48,7 +48,7 @@ export function Celebration(props: CelebrationProps) {
     <View class="absolute inset-0 text-fg text-shadow-2xs">
       <For each={props.shots ?? []} key={(s) => s.id}>
         {() => (
-          <View sound="reward" class="absolute inset-0 flex-col items-center justify-center">
+          <View sound={kind() == "levelUp" ? "levelup" : "reward"} class="absolute inset-0 flex-col items-center justify-center">
             <Show when={kind() == "confetti"}>
               <View class="absolute top-0 inset-x-0 h-1">
                 <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.confetti} seed={1} />
