@@ -3089,6 +3089,7 @@ dependencies = [
  "og-bundle",
  "og-core",
  "og-ecs",
+ "serde_json",
 ]
 
 [[package]]
@@ -3473,6 +3474,7 @@ dependencies = [
  "rapier3d",
  "rayon",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3797,6 +3799,7 @@ version = "0.9.0"
 dependencies = [
  "og-core",
  "og-ecs",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,4 +1,5 @@
 use super::*;
+use og_core::block_form::BlockForm;
 use og_core::bytes::{ByteReader, ByteWriter};
 
 /// What a snapshot holds: the paths, and the registry's edits.
@@ -99,6 +100,49 @@ fn get_shape(r: &mut ByteReader<'_>) -> Result<Shape> {
             ErrorKind::Invalid,
             "the og.nav state block holds a shape it cannot read",
         )
+    })
+}
+
+fn v3(v: Vec3) -> [f32; 3] {
+    v.to_array()
+}
+
+fn shape_json(s: &Shape) -> serde_json::Value {
+    use serde_json::json;
+    match s {
+        Shape::Box { min, max } => json!({ "box": { "min": v3(*min), "max": v3(*max) } }),
+        Shape::Oriented { center, half, yaw } => {
+            json!({ "oriented": { "center": v3(*center), "half": v3(*half), "yaw": yaw } })
+        }
+        Shape::Cylinder {
+            base,
+            radius,
+            height,
+        } => json!({ "cylinder": { "base": v3(*base), "radius": radius, "height": height } }),
+        Shape::Convex {
+            points,
+            bottom,
+            top,
+        } => {
+            let points: Vec<[f32; 2]> = points.iter().map(|p| p.to_array()).collect();
+            json!({ "convex": { "points": points, "bottom": bottom, "top": top } })
+        }
+    }
+}
+
+fn link_json(l: &Link) -> serde_json::Value {
+    serde_json::json!({
+        "start": v3(l.start), "end": v3(l.end), "kind": format!("{:?}", l.kind),
+        "bidirectional": l.bidirectional, "cost": l.cost, "open": l.open,
+        "duration": l.duration, "game": l.game,
+    })
+}
+
+fn traverse_json(t: &Traverse) -> serde_json::Value {
+    serde_json::json!({
+        "link": t.link, "kind": format!("{:?}", t.kind), "from": v3(t.from), "to": v3(t.to),
+        "elapsed": t.elapsed, "duration": t.duration, "game": t.game, "finished": t.finished,
+        "corner": t.corner, "land": t.land,
     })
 }
 
@@ -564,5 +608,79 @@ impl StateBlock for NavBlock {
             }
         }
         st.origin = s.moved(st.origin);
+    }
+
+    /// One `path` record per agent (its corners, crossing and the nav
+    /// handle it plans on, a registry handle and not an entity); the
+    /// grids', navmeshes' and flow fields' edits by handle, their edit
+    /// counts and the nav origin are global.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm> {
+        use og_core::block_form::{Field, Record, Records};
+        use serde_json::json;
+        let saved = self
+            .decode(bytes)?
+            .downcast::<Saved>()
+            .expect("decoded by NavBlock::decode");
+        let mut out = Records::default();
+        for (k, p) in &saved.paths {
+            let (links, traverse) = saved
+                .crossing
+                .get(k)
+                .map_or((&p.links, &p.traverse), |(l, t)| (l, t));
+            let links: Vec<serde_json::Value> = links
+                .iter()
+                .map(|l| json!({ "corner": l.corner, "link": l.link, "reverse": l.reverse }))
+                .collect();
+            let corners: Vec<[f32; 3]> = p.corners.iter().map(|c| v3(*c)).collect();
+            out.entities.push(
+                Record::new(*k, "path")
+                    .field("corners", Field::of(&corners))
+                    .field("next", Field::of(&p.next))
+                    .field("target", Field::of(&v3(p.target)))
+                    .field("nav", Field::of(&p.nav))
+                    .field("version", Field::of(&p.version))
+                    .field("age", Field::of(&p.age))
+                    .field("poly", Field::of(&p.poly))
+                    .field("status", Field::of(&p.status))
+                    .field("links", Field::of(&links))
+                    .field("traverse", Field::of(&traverse.as_ref().map(traverse_json))),
+            );
+        }
+        for (h, costs) in &saved.grids {
+            let down = saved.rows_down.as_ref().map(|d| d.contains(h));
+            out.global.push((
+                format!("grid {h}"),
+                Field::of(&json!({ "costs": costs, "rowsDown": down })),
+            ));
+        }
+        for (h, list) in &saved.obstacles {
+            let obstacles: Vec<_> = list
+                .iter()
+                .map(|(id, s)| json!([id, shape_json(s)]))
+                .collect();
+            let areas: Vec<_> = saved
+                .areas
+                .get(h)
+                .into_iter()
+                .flatten()
+                .map(|(id, s, a)| json!([id, a, shape_json(s)]))
+                .collect();
+            let links: Option<Vec<_>> = saved
+                .links
+                .get(h)
+                .map(|l| l.iter().map(|(id, l)| json!([id, link_json(l)])).collect());
+            out.global.push((
+                format!("navmesh {h}"),
+                Field::of(&json!({ "obstacles": obstacles, "areas": areas, "links": links })),
+            ));
+        }
+        for (h, targets) in &saved.flows {
+            out.global.push((format!("flow {h}"), Field::of(targets)));
+        }
+        out.global
+            .push(("versions".to_owned(), Field::of(&saved.versions)));
+        out.global
+            .push(("origin".to_owned(), Field::of(&v3(saved.origin))));
+        Ok(BlockForm::Entities(out))
     }
 }

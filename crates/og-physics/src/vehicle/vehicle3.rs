@@ -420,3 +420,45 @@ pub(crate) fn wheels(sim: &Sim, entity: u64) -> Option<Vec<WheelPose>> {
             .collect(),
     )
 }
+
+impl VehicleState {
+    /// Its records by entity ([`Sim::form`]): the `vehicle` (og.Vehicle as
+    /// built, the controller's state, its chassis by entity) and a `wheel`
+    /// per controller wheel (keyed by index), the collider its ray last
+    /// hit by entity.
+    pub(crate) fn form(
+        &self,
+        entity: u64,
+        w: &rp::PhysicsWorld,
+        out: &mut Vec<og_core::block_form::Record>,
+    ) {
+        use super::sim::owner;
+        use og_core::block_form::{Field, Record, members};
+        let chassis = w
+            .bodies
+            .get(self.chassis)
+            .map_or(Field::Entity(0), |b| owner(b.user_data));
+        let mut controller = members(&self.controller, &[]);
+        controller.retain(|(k, _)| k != "chassis" && k != "wheels");
+        let mut r = Record::new(entity, "vehicle")
+            .field("chassis", chassis)
+            .members(&self.layout, &[]);
+        r.fields.extend(controller);
+        out.push(r);
+        for (i, wheel) in self.controller.wheels().iter().enumerate() {
+            let info = wheel.raycast_info();
+            let ground = info
+                .ground_object
+                .and_then(|h| w.colliders.get(h))
+                .map_or(Field::Entity(0), |c| owner(c.user_data));
+            let mut r = Record::new(entity, "wheel")
+                .key(Field::of(&i))
+                .members(wheel, &[]);
+            r.fields.retain(|(k, _)| k != "raycast_info");
+            let mut ray = members(info, &[]);
+            ray.retain(|(k, _)| k != "ground_object");
+            r.fields.extend(ray);
+            out.push(r.field("ground", ground));
+        }
+    }
+}

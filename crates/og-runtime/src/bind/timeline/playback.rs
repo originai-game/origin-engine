@@ -371,6 +371,60 @@ impl StateBlock for TimelineBlock {
         *now = next;
     }
 
+    /// Per og.Timeline entity: its `run` (the asset handle a value; the
+    /// shot solo, voices' players and scene roots as entities) and its
+    /// queued `op`s, keyed by their place in the queue. The scene roots
+    /// waiting to leave are global, as entities.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        let sh = load_state(bytes)?;
+        let mut out = Records::default();
+        for (i, (e, op)) in sh.ops.iter().enumerate() {
+            let (name, time) = match op {
+                Op::Play => ("play", None),
+                Op::Pause => ("pause", None),
+                Op::Seek(t) => ("seek", Some(*t)),
+                Op::Stop => ("stop", None),
+            };
+            out.entities.push(
+                Record::new(*e, "op")
+                    .key(Field::of(&i))
+                    .field("op", Field::of(&name))
+                    .field("time", Field::of(&time)),
+            );
+        }
+        for (&e, r) in &sh.runs {
+            let (found, wrote) = r.solo.unwrap_or_default();
+            let tk = |v: &[(u32, u32, u64)]| v.iter().map(|&(t, k, _)| [t, k]).collect::<Vec<_>>();
+            let ids = |v: &[(u32, u32, u64)]| v.iter().map(|x| x.2).collect::<Vec<_>>();
+            out.entities.push(
+                Record::new(e, "run")
+                    .field("asset", Field::of(&r.asset))
+                    .field("num", Field::of(&r.num))
+                    .field("written", Field::of(&r.written))
+                    .field("playing", Field::of(&r.playing))
+                    .field("advance", Field::of(&r.advance))
+                    .field("paused", Field::of(&r.paused))
+                    .field("active", Field::of(&r.active))
+                    .field("release", Field::of(&r.release))
+                    .field("camera", Field::of(&r.camera))
+                    .field("focus", Field::of(&r.focus))
+                    .field("solo", Field::of(&r.solo.is_some()))
+                    .field("soloFound", Field::Entity(found))
+                    .field("soloWrote", Field::Entity(wrote))
+                    .field("anim", Field::of(&r.anim))
+                    .field("voiceKeys", Field::of(&tk(&r.voices)))
+                    .field("voices", Field::Entities(ids(&r.voices)))
+                    .field("sceneKeys", Field::of(&tk(&r.scenes)))
+                    .field("scenes", Field::Entities(ids(&r.scenes)))
+                    .field("due", Field::of(&r.due)),
+            );
+        }
+        out.global
+            .push(("leaving".into(), Field::Entities(sh.leaving.clone())));
+        Ok(BlockForm::Entities(out))
+    }
+
     /// The camera a run hands back is a place in the world.
     fn shift(&mut self, s: &og_ecs::Shift) {
         let mut sh = lock(&self.0);

@@ -268,4 +268,99 @@ impl StateBlock for AiBlock {
         }
         st.origin = s.moved(st.origin);
     }
+
+    /// Per agent: its `mind` (the behaviour handle it runs, the machine's
+    /// state, each node's memory, home, speed, leaf and pending results),
+    /// its `blackboard` (every key, an entity value as an entity) and its
+    /// `perception` (the way it last moved, whether it ever saw or heard).
+    /// A noise is a `noise` record on its source (one with none is in the
+    /// global `noises`). The ticks things started, wait until and were last
+    /// seen or heard at are the clock, which a restart does not turn back:
+    /// left out, as og.ecs leaves its change ticks.
+    fn form(&self, bytes: &[u8]) -> Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        use serde_json::json;
+        let s = self
+            .decode(bytes)?
+            .downcast::<Saved>()
+            .expect("decoded by AiBlock::decode");
+        let mut out = Records::default();
+        for (k, m) in &s.mems {
+            let nodes: Vec<_> = m
+                .nodes
+                .iter()
+                .map(|n| {
+                    json!({ "running": n.running, "index": n.index, "count": n.count,
+                            "point": n.point.to_array() })
+                })
+                .collect();
+            out.entities.push(
+                Record::new(*k, "mind")
+                    .field("behaviour", Field::of(&m.behaviour))
+                    .field("started", Field::of(&m.started))
+                    .field("entered", Field::of(&m.entered))
+                    .field("state", Field::of(&m.state))
+                    .field("nodes", Field::of(&nodes))
+                    .field("home", Field::of(&m.home.to_array()))
+                    .field("baseSpeed", Field::of(&m.base_speed))
+                    .field("leaf", Field::of(&m.leaf))
+                    .field("status", Field::of(&m.status))
+                    .field("path", Field::of(&m.path))
+                    .field("results", Field::of(&m.results)),
+            );
+            let mut board = Record::new(*k, "blackboard");
+            for (name, v) in &m.keys {
+                let f = match *v {
+                    Value::Num(n) => Field::of(&n),
+                    Value::Bool(b) => Field::of(&b),
+                    Value::Vec(v) => Field::of(&v.to_array()),
+                    Value::Entity(e) => Field::Entity(e),
+                };
+                board = board.field(name, f);
+            }
+            out.entities.push(board);
+        }
+        let mut sensed: Vec<u64> = s
+            .forward
+            .keys()
+            .chain(s.seen.keys())
+            .chain(s.heard.keys())
+            .copied()
+            .collect();
+        sensed.sort_unstable();
+        sensed.dedup();
+        for k in sensed {
+            out.entities.push(
+                Record::new(k, "perception")
+                    .field(
+                        "forward",
+                        Field::of(&s.forward.get(&k).map(|v| v.to_array())),
+                    )
+                    .field("everSeen", Field::of(&s.seen.contains_key(&k)))
+                    .field("everHeard", Field::of(&s.heard.contains_key(&k))),
+            );
+        }
+        let mut unsourced = Vec::new();
+        let mut index: BTreeMap<u64, u32> = BTreeMap::new();
+        for n in &s.noises {
+            let at = (n.position.to_array(), n.loudness);
+            if n.source == 0 {
+                unsourced.push(at);
+                continue;
+            }
+            let i = index.entry(n.source).or_insert(0);
+            out.entities.push(
+                Record::new(n.source, "noise")
+                    .key(Field::of(&*i))
+                    .field("position", Field::of(&at.0))
+                    .field("loudness", Field::of(&at.1)),
+            );
+            *i += 1;
+        }
+        out.global
+            .push(("noises".to_owned(), Field::of(&unsourced)));
+        out.global
+            .push(("origin".to_owned(), Field::of(&s.origin.to_array())));
+        Ok(BlockForm::Entities(out))
+    }
 }

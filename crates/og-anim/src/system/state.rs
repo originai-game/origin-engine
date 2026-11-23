@@ -1,6 +1,7 @@
 //! Animation state block encoding and restoration.
 
 use super::*;
+use og_core::block_form::{BlockForm, Field, Record, Records};
 
 // ---- the state block -------------------------------------------------------
 
@@ -437,5 +438,170 @@ impl StateBlock for AnimState {
     fn shift(&mut self, s: &og_ecs::Shift) {
         let mut sh = lock(&self.0);
         sh.shift(s);
+    }
+
+    /// Per skeleton entity a `pose` record (the skeleton, skin and mesh
+    /// handles, the final pose, weights and visible flags), a `player`
+    /// record and a `layer` record per graph layer (by index, the graph's
+    /// handle in the `pose` record); per og.FootLock entity a `lock`, per
+    /// og.SpringBone entity a `spring`, each naming its skeleton entity.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm> {
+        let saved = decode(bytes)?;
+        let mut entities = Vec::new();
+        for (&e, s) in &saved.states {
+            let pose: Vec<[f32; 10]> = s
+                .pose
+                .iter()
+                .map(|t| {
+                    let (p, q, k) = (t.translation, t.rotation, t.scale);
+                    [p.x, p.y, p.z, q.x, q.y, q.z, q.w, k.x, k.y, k.z]
+                })
+                .collect();
+            entities.push(
+                Record::new(e, "pose")
+                    .field("skeleton", Field::of(&s.skeleton))
+                    .field("skin", Field::of(&s.skin))
+                    .field("mesh", Field::of(&s.mesh))
+                    .field("graph", Field::of(&s.graph.asset))
+                    .field("pose", Field::of(&pose))
+                    .field("weights", Field::of(&&s.weights[..]))
+                    .field("visible", Field::of(&s.visible)),
+            );
+            let p = &s.player;
+            entities.push(
+                Record::new(e, "player")
+                    .field("clip", Field::of(&p.clip))
+                    .field("time", Field::of(&p.time))
+                    .field("written", Field::of(&p.written))
+                    .field("speed", Field::of(&p.speed))
+                    .field("looping", Field::of(&p.looping))
+                    .field("prev_clip", Field::of(&p.prev_clip))
+                    .field("prev_time", Field::of(&p.prev_time))
+                    .field("prev_speed", Field::of(&p.prev_speed))
+                    .field("prev_looping", Field::of(&p.prev_looping))
+                    .field("fade", Field::of(&p.fade))
+                    .field("fade_duration", Field::of(&p.fade_duration)),
+            );
+            for (i, l) in s.graph.layers.iter().enumerate() {
+                entities.push(l.record(e, i));
+            }
+        }
+        for (&e, l) in &saved.locks {
+            let (mode, at, t) = match l.lock {
+                Lock::Free => ("free", Vec3::ZERO, 0.0),
+                Lock::Held(at) => ("held", at, 0.0),
+                Lock::Releasing(from, t) => ("releasing", from, t),
+            };
+            entities.push(
+                Record::new(e, "lock")
+                    .field("skeleton", Field::Entity(l.skeleton))
+                    .field("mode", Field::of(&mode))
+                    .field("at", Field::of(&at.to_array()))
+                    .field("t", Field::of(&t)),
+            );
+        }
+        for (&e, s) in &saved.springs {
+            let tails: Vec<[[f32; 3]; 2]> = s
+                .tails
+                .iter()
+                .map(|(x, v)| [x.to_array(), v.to_array()])
+                .collect();
+            entities.push(
+                Record::new(e, "spring")
+                    .field("skeleton", Field::Entity(s.skeleton))
+                    .field("space", Field::of(&s.space))
+                    .field("tails", Field::of(&tails)),
+            );
+        }
+        Ok(BlockForm::Entities(Records {
+            global: Vec::new(),
+            entities,
+        }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_form_names_an_entitys_layers_by_index_and_its_foot_lock() {
+        let (e, foot, skel) = ((1u64 << 32) | 3, (2u64 << 32) | 5, 77u64);
+        let layer = |state, time, fade| LayerState {
+            state,
+            phase: Phase {
+                cycles: 2,
+                frac: 0.25,
+            },
+            time,
+            prev: NONE,
+            prev_phase: Phase::default(),
+            fade,
+            fade_duration: 0.5,
+            guard: Interrupt::Any,
+        };
+        let mut states = IdMap::new();
+        states.insert(
+            e,
+            EntityState {
+                skeleton: skel,
+                skin: 0,
+                mesh: 0,
+                pose: vec![Trs::new(Vec3::ZERO, Quat::IDENTITY, Vec3::ONE)],
+                weights: [0.0; BLENDSHAPES],
+                visible: vec![true],
+                player: PlayerState::default(),
+                graph: GraphState {
+                    asset: 9,
+                    layers: vec![layer(1, 0.75, 1.0), layer(3, 1.5, 0.25)],
+                },
+            },
+        );
+        let mut locks = IdMap::new();
+        locks.insert(
+            foot,
+            LockState {
+                skeleton: e,
+                lock: Lock::Held(Vec3::new(1.0, 0.0, 2.0)),
+            },
+        );
+        let mut bytes = Vec::new();
+        encode(&states, &locks, &IdMap::new(), &mut bytes);
+        let block = AnimState(Arc::new(Mutex::new(Shared::default())));
+        let BlockForm::Entities(form) = block.form(&bytes).unwrap() else {
+            panic!("og.anim holds entities");
+        };
+        let get = |r: &Record, n: &str| {
+            r.fields
+                .iter()
+                .find(|(k, _)| k == n)
+                .map(|(_, f)| f.clone())
+        };
+        let layers: Vec<&Record> = form
+            .entities
+            .iter()
+            .filter(|r| r.entity == e && r.kind == "layer")
+            .collect();
+        assert_eq!(layers.len(), 2);
+        for (i, (r, (state, time, fade))) in layers
+            .iter()
+            .zip([(1u32, 0.75f32, 1.0f32), (3, 1.5, 0.25)])
+            .enumerate()
+        {
+            assert_eq!(r.key, Field::of(&i));
+            assert_eq!(get(r, "state"), Some(Field::of(&state)));
+            assert_eq!(get(r, "time"), Some(Field::of(&time)));
+            assert_eq!(get(r, "fade"), Some(Field::of(&fade)));
+            assert_eq!(get(r, "phase_cycles"), Some(Field::of(&2u32)));
+            assert_eq!(get(r, "phase_frac"), Some(Field::of(&0.25f32)));
+        }
+        let lock = form
+            .entities
+            .iter()
+            .find(|r| r.entity == foot && r.kind == "lock")
+            .expect("a lock record");
+        assert_eq!(get(lock, "skeleton"), Some(Field::Entity(e)));
+        assert_eq!(get(lock, "mode"), Some(Field::of(&"held")));
+        assert_eq!(get(lock, "at"), Some(Field::of(&[1.0f32, 0.0, 2.0])));
     }
 }

@@ -133,6 +133,47 @@ impl StateBlock for PhysicsState {
         Ok(Box::new(saved))
     }
 
+    /// The saved simulation by entity, decoded as [`Self::decode`] decodes
+    /// it (applied to nothing): each entity's bodies, colliders, joints,
+    /// vehicles, ragdolls, ropes, cloths, fluids, soft volumes, garments,
+    /// water and contacts ([`dim3::Sim::form`]), and in `global` the
+    /// profile, gravity, integration parameters and the pushes not yet
+    /// applied (each push's fields as `push {i}.…`, its body an entity).
+    fn form(&self, bytes: &[u8]) -> Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Records};
+        let decoded = self.decode(bytes)?;
+        let saved = *decoded
+            .downcast::<Saved>()
+            .expect("decoded by PhysicsState::decode");
+        let mut out = Records::default();
+        let profile = bytes.first().map_or(0, |&t| u32::from(t));
+        out.global.push(("profile".to_owned(), Field::of(&profile)));
+        let pushes = match saved {
+            Saved::Empty => Vec::new(),
+            Saved::Pushes(p) => p,
+            Saved::D3(sim, p, _) => {
+                sim.form(&mut out);
+                p
+            }
+            Saved::D2(sim, p) => {
+                sim.form(&mut out);
+                p
+            }
+        };
+        out.global
+            .push(("pushes".to_owned(), Field::of(&pushes.len())));
+        for (i, p) in pushes.iter().enumerate() {
+            let name = |f: &str| format!("push {i}.{f}");
+            out.global.extend([
+                (name("entity"), Field::Entity(p.entity)),
+                (name("kind"), Field::of(&p.kind)),
+                (name("vector"), Field::of(&p.vector)),
+                (name("point"), Field::of(&p.point)),
+            ]);
+        }
+        Ok(BlockForm::Entities(out))
+    }
+
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         let mut shared = lock(&self.0);
         // The restored colliders are as saved, whatever was registered before.

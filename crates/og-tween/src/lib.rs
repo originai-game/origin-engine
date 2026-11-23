@@ -866,4 +866,106 @@ impl StateBlock for TweenState {
             r.node.leaves_mut().into_iter().for_each(|l| l.shift(s));
         }
     }
+
+    /// One `tween` record per running tween, on the entity its first leaf
+    /// targets, keyed by its place among that entity's tweens in handle
+    /// order: how it runs, its node's fields (a leaf's own; a group's or a
+    /// timeline's with every leaf in it) and every leaf's target entity in
+    /// `targets`. The handles and the next one are og.tween's own count of
+    /// the tweens the world started: left out.
+    fn form(&self, bytes: &[u8]) -> Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        let state = codec::decode(bytes)?;
+        let mut out = Records::default();
+        let mut index: std::collections::BTreeMap<u64, u32> = Default::default();
+        for r in state.running.values() {
+            let entity = r.node.entity();
+            let i = index.entry(entity).or_insert(0);
+            let targets: Vec<u64> = r.node.leaves().iter().map(|l| l.target.entity).collect();
+            let mut rec = Record::new(entity, "tween")
+                .key(Field::of(&*i))
+                .field("unscaled", Field::of(&r.unscaled))
+                .field("tag", Field::of(&r.tag));
+            *i += 1;
+            match &r.node {
+                Node::Leaf(l) => {
+                    rec = rec
+                        .field("kind", Field::of(&"leaf"))
+                        .field("target", Field::Entity(l.target.entity));
+                    if let serde_json::Value::Object(m) = form::leaf(l) {
+                        for (k, v) in m {
+                            rec = rec.field(&k, Field::Value(v));
+                        }
+                    }
+                }
+                Node::Group(g) => {
+                    let kind = match g.kind {
+                        GroupKind::Sequence => "sequence",
+                        GroupKind::Parallel => "parallel",
+                    };
+                    let children: Vec<_> = g.children.iter().map(form::leaf).collect();
+                    rec = rec
+                        .field("kind", Field::of(&kind))
+                        .field("loops", Field::of(&g.loops))
+                        .field("current", Field::of(&g.current))
+                        .field("runs", Field::of(&g.runs))
+                        .field("children", Field::of(&children))
+                        .field("targets", Field::Entities(targets));
+                }
+                Node::Timeline(t) => {
+                    rec = rec
+                        .field("kind", Field::of(&"timeline"))
+                        .field("timeline", Field::Value(form::timeline(t)))
+                        .field("targets", Field::Entities(targets));
+                }
+            }
+            out.entities.push(rec);
+        }
+        Ok(BlockForm::Entities(out))
+    }
+}
+
+/// The tweens' fields as JSON for [`TweenState`]'s form, target entities
+/// left out (the record names them as entities).
+mod form {
+    use super::{Leaf, timeline::Callbacks, timeline::Item, timeline::Timeline};
+    use serde_json::{Value, json};
+
+    pub(super) fn leaf(l: &Leaf) -> Value {
+        let t = &l.target;
+        json!({
+            "component": t.component, "offset": t.offset, "lane": format!("{:?}", t.lane),
+            "lanes": t.lanes, "to": l.to, "from": l.from, "relative": l.relative,
+            "duration": l.duration, "delay": l.delay, "ease": format!("{:?}", l.ease),
+            "loops": l.loops, "yoyo": l.yoyo, "repeatDelay": l.repeat_delay,
+            "elapsed": l.elapsed, "started": l.started, "start": l.start, "end": l.end,
+        })
+    }
+
+    fn callbacks(c: &Callbacks) -> Value {
+        json!({ "start": c.start, "update": c.update, "complete": c.complete, "repeat": c.repeat })
+    }
+
+    pub(super) fn timeline(t: &Timeline) -> Value {
+        let children: Vec<Value> = t
+            .children
+            .iter()
+            .map(|c| {
+                let item = match &c.item {
+                    Item::Tween(l) => json!({ "tween": leaf(l) }),
+                    Item::Call(name) => json!({ "call": name }),
+                    Item::Timeline(nested) => json!({ "timeline": timeline(nested) }),
+                };
+                json!({ "start": c.start, "immediate": c.immediate, "last": c.last,
+                        "on": callbacks(&c.on), "item": item })
+            })
+            .collect();
+        json!({
+            "children": children, "labels": t.labels, "repeat": t.repeat, "yoyo": t.yoyo,
+            "repeatDelay": t.repeat_delay, "timeScale": t.time_scale, "paused": t.paused,
+            "reversed": t.reversed, "autoKill": t.auto_kill, "on": callbacks(&t.on),
+            "total": t.total, "last": t.last, "lastLocal": t.last_local, "quiet": t.quiet,
+            "dirty": t.dirty, "recent": t.recent,
+        })
+    }
 }

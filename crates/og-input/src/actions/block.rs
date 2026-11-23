@@ -196,4 +196,10 @@ impl og_ecs::StateBlock for ActionsBlock {
 
     /// Bindings and their state: nothing in the world.
     fn shift(&mut self, _: &og_ecs::Shift) {}
+
+    /// Actions, bindings and devices: no entity id, compared byte for byte.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        self.decode(bytes)?;
+        Ok(og_core::block_form::BlockForm::Global)
+    }
 }

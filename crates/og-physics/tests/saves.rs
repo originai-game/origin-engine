@@ -388,3 +388,134 @@ fn an_empty_world_carries_no_simulation_until_its_first_body() {
         );
     }
 }
+
+/// Whether `v` holds a rapier handle or arena index anywhere: an object of
+/// exactly `index` and `generation`, or a key naming a handle.
+fn holds_handle(v: &serde_json::Value) -> bool {
+    use serde_json::Value;
+    match v {
+        Value::Object(m) => {
+            let mut keys: Vec<&str> = m.keys().map(String::as_str).collect();
+            keys.sort_unstable();
+            keys == ["generation", "index"]
+                || m.keys().any(|k| {
+                    k.contains("handle")
+                        || ["body1", "body2", "collider1", "collider2"].contains(&k.as_str())
+                })
+                || m.values().any(holds_handle)
+        }
+        Value::Array(list) => list.iter().any(holds_handle),
+        _ => false,
+    }
+}
+
+#[test]
+fn the_block_form_names_bodies_and_joints_by_entity_without_rapier_handles() {
+    use og_core::block_form::{BlockForm, Field};
+    let (mut w, _physics) = world(
+        Physics {
+            gravity: Vec3::ZERO,
+            ..Physics::default()
+        },
+        5,
+    );
+    let moving = Velocity {
+        linear: Vec3::new(2.0, 0.0, 0.0),
+        angular: Vec3::ZERO,
+    };
+    let a = spawn_body(
+        &mut w,
+        at(0.0, 2.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.5),
+    );
+    let b = spawn_body(
+        &mut w,
+        at(3.0, 2.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::ONE),
+    );
+    w.insert(a, moving).unwrap();
+    w.insert(b, moving).unwrap();
+    let joint = w
+        .spawn((Joint {
+            kind: JOINT_FIXED,
+            body: a.to_bits(),
+            other: b.to_bits(),
+            other_anchor: Vec3::new(-3.0, 0.0, 0.0),
+            ..Joint::default()
+        },))
+        .unwrap();
+    run(&mut w, 1);
+    let snap = w.snapshot();
+    let edit = og_ecs::SnapshotEdit::from_bytes(&snap).unwrap();
+    let bytes = edit.block("og.physics").expect("the physics block");
+    let Some(Ok(BlockForm::Entities(form))) = w.block_form("og.physics", bytes) else {
+        panic!("og.physics has no per-entity form");
+    };
+    let field = |e: og_ecs::Entity, kind: &str, name: &str| {
+        let r = form
+            .entities
+            .iter()
+            .find(|r| r.entity == e.to_bits() && r.kind == kind)
+            .unwrap_or_else(|| panic!("no {kind} record for {e:?}"));
+        r.fields
+            .iter()
+            .find(|(k, _)| k == name)
+            .map(|(_, f)| f.clone())
+    };
+    for e in [a, b] {
+        // The velocity physics wrote back is the stored one, exactly; a
+        // fixed joint between two bodies moving alike changes nothing.
+        let written = velocity(&w, e).linear;
+        assert!((written - moving.linear).length() < 1e-4, "{written}");
+        assert_eq!(field(e, "body", "linear"), Some(Field::of(&written)));
+        assert!(field(e, "body", "position").is_some());
+        assert_eq!(field(e, "body", "sleeping"), Some(Field::of(&false)));
+        assert!(field(e, "collider", "friction").is_some());
+    }
+    assert_eq!(
+        field(joint, "joint", "body"),
+        Some(Field::Entity(a.to_bits()))
+    );
+    assert_eq!(
+        field(joint, "joint", "other"),
+        Some(Field::Entity(b.to_bits()))
+    );
+    assert_eq!(
+        field(joint, "joint", "first"),
+        Some(Field::Entity(a.to_bits()))
+    );
+    assert_eq!(
+        field(joint, "joint", "second"),
+        Some(Field::Entity(b.to_bits()))
+    );
+    assert_eq!(
+        field(joint, "joint", "body1"),
+        Some(Field::Entity(b.to_bits()))
+    );
+    assert_eq!(
+        field(joint, "joint", "body2"),
+        Some(Field::Entity(a.to_bits()))
+    );
+    let fields = form
+        .global
+        .iter()
+        .chain(form.entities.iter().flat_map(|r| r.fields.iter()));
+    for (name, f) in fields {
+        if let Field::Value(v) = f {
+            assert!(!holds_handle(v), "{name} holds a rapier handle: {v}");
+        }
+    }
+    // An empty block is still a form.
+    assert_eq!(
+        w.block_form("og.physics", &[]).unwrap().unwrap(),
+        BlockForm::Entities(og_core::block_form::Records {
+            global: vec![
+                ("profile".to_owned(), Field::of(&0u32)),
+                ("pushes".to_owned(), Field::of(&0usize)),
+            ],
+            entities: Vec::new(),
+        })
+    );
+}

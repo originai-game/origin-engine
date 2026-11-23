@@ -687,3 +687,48 @@ fn timelines_render_from_their_playhead_and_restore_whole() {
     assert_eq!(body(&w, e).opacity, 1.0);
     assert!(!t.with_timeline(h, |tl| tl.is_active()).unwrap());
 }
+
+/// A restart check reads the running tweens by entity: a `tween` record on
+/// its target (keyed by its place, not its handle) with the values set and
+/// the target as an entity. Fails if the form keys by handle, drops a
+/// field or gives the target as a plain number.
+#[test]
+fn the_block_form_names_each_tween_on_its_entity() {
+    use og_core::block_form::{BlockForm, Field};
+    let (mut w, t, e) = setup();
+    t.start(
+        Node::Leaf(
+            Leaf::new(target(&w, e, "opacity"), vec![0.25])
+                .duration(0.5)
+                .ease(Ease::BackOut)
+                .loops(3, true),
+        ),
+        false,
+        7,
+    )
+    .unwrap();
+    steps(&mut w, 3);
+    let snap = og_ecs::SnapshotEdit::from_bytes(&w.snapshot()).unwrap();
+    let bytes = snap.block(og_tween::SYSTEM_NAME).unwrap();
+    let Some(Ok(BlockForm::Entities(form))) = w.block_form(og_tween::SYSTEM_NAME, bytes) else {
+        panic!("og.tween has a per-entity form");
+    };
+    assert_eq!(form.entities.len(), 1);
+    let r = &form.entities[0];
+    assert_eq!((r.entity, r.kind.as_str()), (e.to_bits(), "tween"));
+    assert_eq!(r.key, Field::of(&0));
+    let get = |n: &str| {
+        r.fields
+            .iter()
+            .find(|(k, _)| k == n)
+            .map(|(_, f)| f.clone())
+    };
+    assert_eq!(get("target"), Some(Field::Entity(e.to_bits())));
+    assert_eq!(get("to"), Some(Field::of(&vec![0.25f32])));
+    assert_eq!(get("duration"), Some(Field::of(&0.5f32)));
+    assert_eq!(get("loops"), Some(Field::of(&3)));
+    assert_eq!(get("yoyo"), Some(Field::of(&true)));
+    assert_eq!(get("tag"), Some(Field::of(&7)));
+    assert_eq!(get("ease"), Some(Field::of(&"BackOut")));
+    assert_eq!(get("started"), Some(Field::of(&true)));
+}

@@ -1,7 +1,9 @@
 //! The goals' state block: saved and restored with the world.
 
 use super::*;
+use og_core::block_form::{self as bf, BlockForm, Field, Record};
 use og_core::bytes::ByteReader;
+use serde_json::json;
 
 pub(super) struct Block(pub(super) Arc<Mutex<Goals>>);
 
@@ -208,6 +210,48 @@ impl StateBlock for Block {
             .and_then(|d| d.downcast::<Goals>().ok())
             .map(|b| *b)
             .unwrap_or_default();
+    }
+
+    /// One `agent` record per entity: its counters, speed, queue, current
+    /// goal and performance (look and reaction), none naming an entity.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<BlockForm> {
+        let g = load(bytes)?;
+        let goal = |g: &Goal| {
+            json!({
+                "kind": KIND_NAMES[g.kind as usize], "pose": g.pose,
+                "target": g.target.to_array(), "heading": g.heading,
+                "duration": g.duration, "speed": g.speed,
+                "arrivalHeading": g.arrival_heading, "deceleration": g.deceleration,
+                "acceleration": g.acceleration, "height": g.height, "prepare": g.prepare,
+            })
+        };
+        let mut out = bf::Records::default();
+        for (&e, a) in &g.agents {
+            let current = a.current.as_ref().map(|c| {
+                json!({
+                    "goal": goal(&c.goal), "elapsed": c.elapsed,
+                    "start": c.start.to_array(), "startHeading": c.start_heading,
+                    "jump": c.jump.as_ref().map(|j| json!({
+                        "stage": format!("{:?}", j.stage), "v0": j.v0,
+                        "gravity": j.gravity, "base": j.base, "air": j.air,
+                        "landed": j.landed, "velocity": j.velocity, "left": j.left,
+                        "rest": j.rest, "eta": j.eta,
+                    })),
+                })
+            });
+            let queue: Vec<_> = a.queue.iter().map(goal).collect();
+            out.entities.push(
+                Record::new(e, "agent")
+                    .field("completed", Field::of(&a.completed))
+                    .field("hold", Field::of(&a.hold))
+                    .field("serial", Field::of(&a.serial))
+                    .field("speed", Field::of(&a.speed))
+                    .field("queue", Field::of(&queue))
+                    .field("current", Field::of(&current))
+                    .field("performance", Field::of(&a.performance)),
+            );
+        }
+        Ok(BlockForm::Entities(out))
     }
 
     /// A place's or a walk's target and the pose a goal started from are

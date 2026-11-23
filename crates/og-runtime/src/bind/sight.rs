@@ -357,6 +357,36 @@ impl StateBlock for Block {
         s.epoch = epoch;
     }
 
+    /// The og.SightMap entity's one `map` record: its plane and the map's
+    /// saved bytes (grid and every team's cells).
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        let s = *self
+            .decode(bytes)?
+            .downcast::<Saved>()
+            .expect("decoded by the og.sight block");
+        let mut map = Vec::new();
+        s.map.save(&mut map);
+        let fields = vec![
+            ("flat".to_owned(), Field::of(&s.flat)),
+            ("map".to_owned(), Field::of(&map)),
+        ];
+        // No og.SightMap (entity 0): what is left is no entity's.
+        Ok(BlockForm::Entities(if s.entity == 0 {
+            Records {
+                global: fields,
+                entities: Vec::new(),
+            }
+        } else {
+            let mut r = Record::new(s.entity, "map");
+            r.fields = fields;
+            Records {
+                global: Vec::new(),
+                entities: vec![r],
+            }
+        }))
+    }
+
     /// The map lies where its entity stands: it moves with a root.
     fn shift(&mut self, shift: &og_ecs::Shift) {
         let mut s = lock(&self.0);

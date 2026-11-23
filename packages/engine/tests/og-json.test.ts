@@ -3,7 +3,7 @@
 // status, and `og build --json` with where the build lands. A change to
 // any shape asserted here is a breaking change.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -166,6 +166,58 @@ const Round = defineSystem("Round", { reads: [], writes: [Count, Piece, Target] 
 export default og.game({ systems: [Clear, Round] });
 `;
 
+/**
+ * A game whose first tick spawns a ground, a falling crate (a dynamic body) and the template's walker
+ * playing its first clip, and whose restart in its 30th tick despawns them all and spawns them again:
+ * new ids, new bodies and skeletons in og.physics and og.anim. With `moving`, the restart leaves the
+ * crate thrown upward.
+ */
+const physicsGame = (moving: boolean) => `import { ClipAsset, defineComponent, defineResource, defineSystem, og, SkeletonAsset, u32 } from "@origingame/engine";
+const Count = defineResource("Count", { n: u32() });
+const Piece = defineComponent("Piece", { v: u32() });
+const Rig = defineResource("Rig", { skeleton: SkeletonAsset(), clip: ClipAsset() });
+const spawnAll = (world: any, thrown: boolean) => {
+  const rig = world.resource(Rig).value;
+  const must = (r: any) => { if (!r.ok) throw new Error(r.reason); return r.value; };
+  const ground = must(world.spawn({ name: "ground", position: { x: 0, y: -0.5, z: 0 } }));
+  must(world.insert(ground, og.Collider, { shape: "box", size: { x: 20, y: 1, z: 20 } }));
+  must(world.insert(ground, Piece, { v: 1 }));
+  const crate = must(world.spawn({ name: "crate", position: { x: 0, y: 2, z: 0 } }));
+  must(world.insert(crate, og.RigidBody, { kind: "dynamic" }));
+  must(world.insert(crate, og.Collider, { shape: "box", size: { x: 1, y: 1, z: 1 } }));
+  must(world.insert(crate, og.Velocity, { linear: { x: 0, y: thrown ? 5 : 0, z: 0 } }));
+  must(world.insert(crate, Piece, { v: 2 }));
+  const walker = must(world.spawn({ name: "walker", position: { x: 3, y: 0, z: 0 } }));
+  must(world.insert(walker, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
+  must(world.insert(walker, og.AnimationPlayer, { clip: rig.clip, speed: 1 }));
+  must(world.insert(walker, Piece, { v: 3 }));
+};
+const Clear = defineSystem("Clear", { reads: [Count], writes: [Piece] }, (q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok || c.value.n !== 29) return;
+  const all: any[] = [];
+  for (const a of q.archetypes()) for (let i = 0; i < a.count; i++) all.push(a.entity(i));
+  for (const e of all) world.despawn(e);
+});
+const Round = defineSystem("Round", { reads: [Rig], writes: [Count, Piece, og.Transform, og.RigidBody, og.Collider, og.Velocity, og.Skeleton, og.AnimationPlayer] }, (_q, _t, world) => {
+  const c = world.resource(Count);
+  if (!c.ok) return;
+  if (c.value.n === 0 || c.value.n === 29) spawnAll(world, c.value.n === 29 && ${moving});
+  c.value.n = c.value.n === 29 ? 1 : c.value.n + 1;
+});
+export default og.game({
+  systems: [Clear, Round],
+  start(world) {
+    const a = og.load.animation(world, "models/walker.glb");
+    if (!a.ok) throw new Error(a.reason);
+    const r = world.resource(Rig);
+    if (!r.ok) throw new Error(r.reason);
+    r.value.skeleton = a.value.skeleton;
+    r.value.clip = a.value.clips[0]!.clip;
+  },
+});
+`;
+
 test("a playtest's timings are absent with the reason without a renderer, and a budget on them is unchecked; a restart check names the first difference", () => {
   const original = join(game, "src/main.ts");
   rmSync(join(game, "tests/smoke.og.ts"), { force: true });
@@ -225,6 +277,29 @@ test("restarts", async () => {
         expect(restart.restart.diff.entities).toMatchObject({ missing: [] });
       }
     }
+    // A physics and animated game respawned: og.physics and og.anim compare by entity through the
+    // pairing; a crate left moving names its entity and field.
+    mkdirSync(join(game, "assets/models"), { recursive: true });
+    copyFileSync(join(repo, "tests/fixtures/cook-assets/assets/models/walker.glb"), join(game, "assets/models/walker.glb"));
+    for (const moving of [false, true]) {
+      writeFileSync(original, physicsGame(moving));
+      const ran = og("test", game, "--json");
+      const restart = lines(ran.stdout).find((e) => e.playtest === "restart") as Record<string, any> | undefined;
+      if (!restart?.restart) throw new Error(ran.stdout + ran.stderr);
+      const blocks = (restart.restart.diff.records ?? []).map((r: { block: string }) => r.block);
+      if (!moving) {
+        expect(restart, JSON.stringify(restart.restart)).toMatchObject({ ok: true, status: "passed", restart: { tick: 30, ok: true, first: null, unchecked: [], diff: { records: [], blocks: [] } } });
+      } else {
+        expect(restart).toMatchObject({ ok: false, status: "failed", restart: { tick: 30, ok: false } });
+        expect(restart.restart.first).toStartWith("crate og.");
+        expect(restart.restart.diff.components).toContainEqual(expect.objectContaining({ entity: "crate", component: "og.Velocity", fields: [expect.objectContaining({ field: "linear" })] }));
+        // og.physics's own body record says the same, by entity and field.
+        const body = restart.restart.diff.records.find((r: Record<string, any>) => r.block === "og.physics" && r.entity === "crate" && r.record === "body");
+        expect(body?.fields.map((f: { field: string }) => f.field)).toContain("linear");
+        expect(blocks.filter((b: string) => b !== "og.physics")).toEqual([]);
+      }
+    }
+    rmSync(join(game, "assets/models/walker.glb"));
   } finally {
     writeFileSync(original, `import { og } from "@origingame/engine"; export default og.game({});`);
     rmSync(join(game, "tests/budget.og.ts"), { force: true });

@@ -31,6 +31,7 @@ use crate::host::wire::{
     ExplosionDesc, FromJson, record,
 };
 use glam::{Quat, Vec3};
+use og_core::block_form::{self as bf, BlockForm, Field, Record};
 use og_core::hash::mix64 as scramble;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
@@ -300,6 +301,63 @@ impl StateBlock for Block {
             .and_then(|d| d.downcast::<State>().ok())
             .map(|b| *b)
             .unwrap_or_default();
+    }
+    /// Per og.Destructible: its `prop` (chunk entities and bodies as
+    /// entities), its queued damage and fracture calls (`op`, keyed by
+    /// their place in the queue), its fine pieces (`debris`) and grit
+    /// (`crumb`) by index; per breakFx or hitFx burst entity its `fx`.
+    /// Explosions name no entity: global, with their place in the queue.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<BlockForm> {
+        let s = State::decode(bytes)?;
+        let mut out = bf::Records::default();
+        for (&e, p) in &s.props {
+            out.entities
+                .push(Record::new(e, "prop").members(p, &["entities", "body"]));
+        }
+        let mut explosions = Vec::new();
+        for (i, op) in s.ops.iter().enumerate() {
+            match op {
+                Op::Damage { entity, .. } | Op::Fracture { entity } => {
+                    // `{"Damage": {..}}`: the call's name, then its fields
+                    // but the entity (the record's).
+                    let mut rec = Record::new(*entity, "op").key(Field::of(&i));
+                    if let Ok(Value::Object(tagged)) = serde_json::to_value(op) {
+                        for (name, args) in tagged {
+                            rec = rec.field("call", Field::of(&name));
+                            if let Value::Object(mut args) = args {
+                                args.remove("entity");
+                                rec = rec.members(&args, &[]);
+                            }
+                        }
+                    }
+                    out.entities.push(rec);
+                }
+                Op::Explode { .. } => explosions.push(json!({ "at": i, "op": op })),
+            }
+        }
+        out.global
+            .push(("explosions".into(), Field::of(&explosions)));
+        for &(e, until) in &s.fx {
+            out.entities
+                .push(Record::new(e, "fx").field("until", Field::of(&until)));
+        }
+        let mut seen: BTreeMap<(u64, &str), usize> = BTreeMap::new();
+        let mut index = |prop: u64, kind: &'static str| {
+            let n = seen.entry((prop, kind)).or_default();
+            *n += 1;
+            Field::of(&(*n - 1))
+        };
+        for d in &s.debris {
+            let key = index(d.prop, "debris");
+            out.entities
+                .push(Record::new(d.prop, "debris").key(key).members(d, &["prop"]));
+        }
+        for c in &s.crumbs {
+            let key = index(c.prop, "crumb");
+            out.entities
+                .push(Record::new(c.prop, "crumb").key(key).members(c, &["prop"]));
+        }
+        Ok(BlockForm::Entities(out))
     }
     fn shift(&mut self, s: &og_ecs::Shift) {
         lock(&self.0).shift(s.d);

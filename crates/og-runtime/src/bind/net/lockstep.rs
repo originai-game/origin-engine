@@ -404,6 +404,29 @@ pub fn world_snapshot_bytes(world: u32) -> Result<Vec<u8>, String> {
     engine_of(world).and_then(|e| e.world().map(|w| w.snapshot()))
 }
 
+/// Each of `blocks` (a snapshot's state blocks, by name with their bytes)
+/// in the form engine `world`'s own blocks read it ([`og_ecs::World::block_form`]):
+/// `None` for a block this world has none of. Outside a tick only.
+pub fn world_block_forms(
+    world: u32,
+    blocks: &[(String, Vec<u8>)],
+) -> Result<Vec<Option<Result<og_core::block_form::BlockForm, String>>>, String> {
+    if running(world).is_some() {
+        return Err("block forms are read between ticks".into());
+    }
+    engine_of(world).and_then(|e| {
+        e.world().map(|w| {
+            blocks
+                .iter()
+                .map(|(name, bytes)| {
+                    w.block_form(name, bytes)
+                        .map(|r| r.map_err(|e| e.to_string()))
+                })
+                .collect()
+        })
+    })
+}
+
 /// The hash as text, or `error: <reason>`; the host writes it as a JSON
 /// string.
 pub fn og_net_hash(world: u32) -> String {

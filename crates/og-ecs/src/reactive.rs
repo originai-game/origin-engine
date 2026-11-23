@@ -942,3 +942,59 @@ pub(crate) struct SavedReactive {
     pub states: Vec<(usize, u32, Option<u32>, bool)>,
     pub transitions: Vec<Transition>,
 }
+
+impl World {
+    /// The og.ecs block's form: each tracked row's change state relative to
+    /// the last step (added or changed since it began, a shadow pending),
+    /// by entity; the state machines and their transitions, and how many
+    /// removals each tracked type logged in the last step. The change
+    /// ticks themselves are the clock (a restart cannot turn them back):
+    /// left out, as og.Time is.
+    pub(crate) fn reactive_form(&self, bytes: &[u8]) -> Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        let saved = self.decode_reactive(bytes, None)?;
+        let mut out = Records::default();
+        for (id, rows, log) in &saved.types {
+            let name = self.registry.name(*id);
+            for row in rows {
+                out.entities.push(
+                    Record::new(row.entity.to_bits(), "changes")
+                        .key(Field::of(&name))
+                        .field("addedThisStep", Field::of(&(row.added >= saved.step_start)))
+                        .field(
+                            "changedThisStep",
+                            Field::of(&(row.changed >= saved.step_start)),
+                        )
+                        .field("shadow", Field::of(&row.shadow)),
+                );
+            }
+            let removed = log.iter().filter(|(_, t)| *t >= saved.step_start).count();
+            out.global
+                .push((format!("removed {name}"), Field::of(&removed)));
+        }
+        let r = &self.reactive;
+        for &(state, current, pending, entered) in &saved.states {
+            let s = &r.states[state];
+            let value = |v: u32| s.values[v as usize].clone();
+            out.global.push((
+                format!("state {}", s.name),
+                Field::of(&(value(current), pending.map(value), entered)),
+            ));
+        }
+        let transitions: Vec<(String, Option<String>, String)> = saved
+            .transitions
+            .iter()
+            .map(|t| {
+                let s = &r.states[t.state];
+                (
+                    s.name.clone(),
+                    t.from.map(|f| s.values[f as usize].clone()),
+                    s.values[t.to as usize].clone(),
+                )
+            })
+            .collect();
+        out.global
+            .push(("transitions".to_owned(), Field::of(&transitions)));
+        Ok(BlockForm::Entities(out))
+    }
+}

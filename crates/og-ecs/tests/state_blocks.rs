@@ -56,6 +56,9 @@ impl StateBlock for Counter {
     }
     /// A count is no place.
     fn shift(&mut self, _: &og_ecs::Shift) {}
+    fn form(&self, _: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        Ok(og_core::block_form::BlockForm::Global)
+    }
 }
 
 fn world() -> World {

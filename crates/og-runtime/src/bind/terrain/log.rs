@@ -145,6 +145,12 @@ impl og_ecs::StateBlock for TerrainBlock {
         log.replay = true;
     }
 
+    /// Edits by terrain asset id and brush: no entity id.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        self.decode(bytes)?;
+        Ok(og_core::block_form::BlockForm::Global)
+    }
+
     /// Each logged brush carries its terrain's pose with its centre, as
     /// they were when it was applied: a replay applies it where it was in
     /// the terrain, whatever the world's zero is now. Left as logged, so a

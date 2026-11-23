@@ -764,3 +764,51 @@ fn a_grids_row_direction_is_saved_with_the_world() {
         "made over a tilemap, it still counts down"
     );
 }
+
+/// A restart check reads og.nav's paths by entity: a `path` record on the
+/// agent with the target and corners it planned, the grid's costs global.
+/// Fails if the form keys a path by anything but its agent, drops a field
+/// or holds the grid's costs on a record.
+#[test]
+fn the_block_form_names_each_agents_path() {
+    use og_core::block_form::{BlockForm, Field};
+    let mut navs = Navs::default();
+    let h = navs.insert(Nav::Grid(Grid::new(16, 16, 1.0, Vec2::ZERO)));
+    let mut w = world_with(Arc::new(Mutex::new(navs)), Plane::Xy);
+    let e = w
+        .spawn((
+            og_ai::nav::system::Transform {
+                position: Vec3::new(1.5, 1.5, 0.0),
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target: Vec3::new(12.5, 9.5, 0.0),
+                seeking: true,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    w.step().unwrap();
+    let snap = og_ecs::SnapshotEdit::from_bytes(&w.snapshot()).unwrap();
+    let bytes = snap.block(og_ai::nav::SYSTEM_NAME).unwrap();
+    let Some(Ok(BlockForm::Entities(form))) = w.block_form(og_ai::nav::SYSTEM_NAME, bytes) else {
+        panic!("og.nav has a per-entity form");
+    };
+    assert_eq!(form.entities.len(), 1);
+    let r = &form.entities[0];
+    assert_eq!((r.entity, r.kind.as_str()), (e.to_bits(), "path"));
+    let get = |n: &str| {
+        r.fields
+            .iter()
+            .find(|(k, _)| k == n)
+            .map(|(_, f)| f.clone())
+    };
+    assert_eq!(get("target"), Some(Field::of(&[12.5f32, 9.5, 0.0])));
+    assert_eq!(get("nav"), Some(Field::of(&h)));
+    let Some(Field::Value(serde_json::Value::Array(corners))) = get("corners") else {
+        panic!("the path's corners");
+    };
+    assert!(!corners.is_empty(), "the agent planned a path");
+    assert!(form.global.iter().any(|(k, _)| *k == format!("grid {h}")));
+}

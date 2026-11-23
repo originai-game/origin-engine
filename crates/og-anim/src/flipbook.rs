@@ -10,6 +10,7 @@ use crate::asset::NONE;
 use crate::graph2d::{Machine, SpriteGraph, heaviest};
 use crate::schema::AnimationGraph;
 use og_core::IdMap;
+use og_core::block_form::{BlockForm, Field, Record, Records};
 use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::ogt::{Document, Entry};
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
@@ -994,4 +995,41 @@ impl StateBlock for FlipState {
 
     /// Frames and clips only: nothing in the world.
     fn shift(&mut self, _: &og_ecs::Shift) {}
+
+    /// Per entity a `flipbook` record (its playback), and per graph-driven
+    /// entity a `graph` record (the graph handle and the layer, state and
+    /// sync group on screen) and a `layer` record per graph layer, by index.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm> {
+        let (playback, driven) = *self
+            .decode(bytes)?
+            .downcast::<Saved>()
+            .expect("decoded by FlipState");
+        let mut entities = Vec::new();
+        for (&e, p) in &playback {
+            entities.push(
+                Record::new(e, "flipbook")
+                    .field("sheet", Field::of(&p.sheet))
+                    .field("clip", Field::of(&p.clip))
+                    .field("time", Field::of(&p.time))
+                    .field("step", Field::of(&p.step))
+                    .field("base", Field::of(&p.base)),
+            );
+        }
+        for (&e, d) in &driven {
+            entities.push(
+                Record::new(e, "graph")
+                    .field("graph", Field::of(&d.machine.asset))
+                    .field("layer", Field::of(&d.layer))
+                    .field("state", Field::of(&d.state))
+                    .field("sync", Field::of(&d.sync)),
+            );
+            for (i, l) in d.machine.layers.iter().enumerate() {
+                entities.push(l.record(e, i));
+            }
+        }
+        Ok(BlockForm::Entities(Records {
+            global: Vec::new(),
+            entities,
+        }))
+    }
 }

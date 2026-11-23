@@ -132,8 +132,220 @@ impl StateBlock for StoryBlock {
         lock(&self.0).story = Some(story);
     }
 
+    /// The story is mostly no entity's (variables, nodes, conversations,
+    /// quests, the random stream: global, by name). What names an entity
+    /// is a record on it: a bark being said (`bark`), a bark asked for
+    /// (`barkRequest`, by index), an ambient barker (`ambient`), a bark's
+    /// cooldown for it (`barkLast`, keyed by the bark), a bark's voice
+    /// (`voice`), a queued bark event (`event`, by index). A conversation's
+    /// cast, a quest's marker, the camera solo and a conversation's voice
+    /// player are entities in their global fields.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        story_form(
+            *self
+                .decode(bytes)?
+                .downcast::<Story>()
+                .expect("decoded by the og.story block"),
+        )
+    }
+
     /// A story's state is its variables and choices: nothing in the world.
     fn shift(&mut self, _: &og_ecs::Shift) {}
+}
+
+/// [`StoryBlock`]'s form of a decoded story.
+fn story_form(s: Story) -> og_core::Result<og_core::block_form::BlockForm> {
+    use og_core::block_form::{BlockForm, Field, Record, Records};
+    let val = |v: &Val| match v {
+        Val::Num(n) => json!(n),
+        Val::Bool(b) => json!(b),
+        Val::Str(t) => json!(t),
+    };
+    let vars = |m: &BTreeMap<String, Val>| -> Value {
+        Value::Object(m.iter().map(|(k, v)| (k.clone(), val(v))).collect())
+    };
+    let args = |a: &[(String, Val)]| -> Value {
+        Value::Array(a.iter().map(|(k, v)| json!([k, val(v)])).collect())
+    };
+    let roll = |r: &og_story::Roll| json!({ "stat": r.stat, "target": r.target, "roll": r.roll, "passed": r.passed });
+    let mut out = Records::default();
+    let mut g = |name: String, f: Field| out.global.push((name, f));
+    g("rngSeed".into(), Field::of(&s.rng.seed()));
+    g("rngState".into(), Field::of(&s.rng.save()));
+    g("tick".into(), Field::of(&s.tick));
+    g("seq".into(), Field::of(&s.seq));
+    g("nextConv".into(), Field::of(&s.next_conv));
+    g("globals".into(), Field::Value(vars(&s.globals)));
+    g("seen".into(), Field::of(&s.seen));
+    g("visits".into(), Field::of(&s.visits));
+    g("once".into(), Field::of(&s.once));
+    g("saliency".into(), Field::of(&format!("{:?}", s.saliency)));
+    g("contentViews".into(), Field::of(&s.content_views));
+    g("read".into(), Field::of(&s.read));
+    g("barkLastAny".into(), Field::of(&s.bark_last));
+    g("barkCycle".into(), Field::of(&s.bark_cycle));
+    g("barkOnce".into(), Field::of(&s.bark_once));
+    let (found, wrote) = s.camera.unwrap_or_default();
+    g("camera".into(), Field::of(&s.camera.is_some()));
+    g("cameraFound".into(), Field::Entity(found));
+    g("cameraWrote".into(), Field::Entity(wrote));
+    for (id, c) in &s.convs {
+        let history: Vec<Value> = c
+            .history
+            .iter()
+            .map(|h| {
+                json!({
+                    "node": h.node, "step": h.step, "speaker": h.speaker, "key": h.key,
+                    "args": args(&h.args), "voice": h.voice, "expression": h.expression,
+                    "shot": h.shot, "seq": h.seq, "seen": h.seen, "chosen": h.chosen,
+                    "chosenArgs": args(&h.chosen_args), "voiceTicks": h.voice_ticks,
+                    "voiceStart": h.voice_start,
+                })
+            })
+            .collect();
+        let choices: serde_json::Map<String, Value> = c
+            .choice_values
+            .iter()
+            .map(|(k, v)| {
+                let v = json!({
+                    "visible": v.visible, "enabled": v.enabled, "chance": v.chance,
+                    "args": args(&v.args), "reasonArgs": args(&v.reason_args),
+                    "target": v.target,
+                });
+                (k.clone(), v)
+            })
+            .collect();
+        let conv = json!({
+            "dialogue": c.dialogue, "node": c.node, "pc": c.pc,
+            "wait": format!("{:?}", c.wait), "locals": vars(&c.locals),
+            "castRoles": c.cast.keys().collect::<Vec<_>>(), "visited": c.visited,
+            "history": history, "timer": c.timer,
+            "lastRoll": c.last_roll.as_ref().map(roll), "stack": c.stack,
+            "activeNodes": c.active_nodes, "choiceValues": choices,
+            "hold": c.hold, "released": c.released,
+        });
+        g(format!("conv {id}"), Field::Value(conv));
+        g(
+            format!("conv {id} cast"),
+            Field::Entities(c.cast.values().copied().collect()),
+        );
+    }
+    for q in &s.quests {
+        let quest = json!({
+            "stage": q.stage, "status": q.status, "counts": q.counts, "failed": q.failed,
+            "tracked": q.tracked, "isNew": q.is_new, "updated": q.updated,
+            "updatedTick": q.updated_tick, "markerAt": q.marker.map(|m| m.1),
+        });
+        g(format!("quest {}", q.id), Field::Value(quest));
+        g(
+            format!("quest {} marker", q.id),
+            Field::Entity(q.marker.map_or(0, |m| m.0)),
+        );
+    }
+    let mut events = Vec::new();
+    let mut bark_events = Vec::new();
+    for (i, e) in s.events.iter().enumerate() {
+        let v = match e {
+            og_story::Event::Line { conv, seq } => json!({ "line": { "conv": conv, "seq": seq } }),
+            og_story::Event::Ended { conv } => json!({ "ended": { "conv": conv } }),
+            og_story::Event::Check { conv, roll: r } => {
+                json!({ "check": { "conv": conv, "roll": roll(r) } })
+            }
+            og_story::Event::Quest { quest, status } => {
+                json!({ "quest": { "quest": quest, "status": status } })
+            }
+            og_story::Event::Emit { conv, name, arg } => {
+                json!({ "emit": { "conv": conv, "name": name, "arg": arg } })
+            }
+            og_story::Event::Bark {
+                entity,
+                bark,
+                key,
+                seq,
+            } => {
+                bark_events.push(
+                    Record::new(*entity, "event")
+                        .key(Field::of(&i))
+                        .field("bark", Field::of(bark))
+                        .field("key", Field::of(key))
+                        .field("seq", Field::of(seq)),
+                );
+                continue;
+            }
+        };
+        events.push(json!({ "at": i, "event": v }));
+    }
+    g("events".into(), Field::of(&events));
+    let mut conv_voices = serde_json::Map::new();
+    let mut players = Vec::new();
+    let mut voices = Vec::new();
+    for (k, &(seq, e)) in &s.voices {
+        // `b<entity>`: a bark's voice, on its speaker; `c<conversation>`.
+        match k.strip_prefix('b').and_then(|n| n.parse::<u64>().ok()) {
+            Some(speaker) => voices.push(
+                Record::new(speaker, "voice")
+                    .field("seq", Field::of(&seq))
+                    .field("player", Field::Entity(e)),
+            ),
+            None => {
+                conv_voices.insert(k.clone(), json!(seq));
+                players.push(e);
+            }
+        }
+    }
+    g(
+        "convVoices".into(),
+        Field::Value(Value::Object(conv_voices)),
+    );
+    g("convVoicePlayers".into(), Field::Entities(players));
+    for (&e, b) in &s.barks {
+        out.entities.push(
+            Record::new(e, "bark")
+                .field("dialogue", Field::of(&b.dialogue))
+                .field("bark", Field::of(&b.bark))
+                .field("key", Field::of(&b.key))
+                .field("args", Field::Value(args(&b.args)))
+                .field("speaker", Field::of(&b.speaker))
+                .field("voice", Field::of(&b.voice))
+                .field("seq", Field::of(&b.seq))
+                .field("start", Field::of(&b.start))
+                .field("until", Field::of(&b.until))
+                .field("priority", Field::of(&b.priority))
+                .field("voiceTicks", Field::of(&b.voice_ticks))
+                .field("voiceStart", Field::of(&b.voice_start)),
+        );
+    }
+    let mut asked: BTreeMap<u64, usize> = BTreeMap::new();
+    for q in &s.bark_requests {
+        let n = asked.entry(q.entity).or_default();
+        out.entities.push(
+            Record::new(q.entity, "barkRequest")
+                .key(Field::of(n))
+                .field("topic", Field::of(&q.topic))
+                .field("dialogue", Field::of(&q.dialogue)),
+        );
+        *n += 1;
+    }
+    for (&e, a) in &s.ambient {
+        out.entities.push(
+            Record::new(e, "ambient")
+                .field("topic", Field::of(&a.topic))
+                .field("dialogue", Field::of(&a.dialogue))
+                .field("every", Field::of(&a.every))
+                .field("jitter", Field::of(&a.jitter))
+                .field("next", Field::of(&a.next)),
+        );
+    }
+    for ((bark, e), t) in &s.bark_last_by {
+        out.entities.push(
+            Record::new(*e, "barkLast")
+                .key(Field::of(bark))
+                .field("tick", Field::of(t)),
+        );
+    }
+    out.entities.extend(voices);
+    out.entities.extend(bark_events);
+    Ok(BlockForm::Entities(out))
 }
 
 /// og.Story was registered with `world` (crate::engine::lazy::ensure, or assembly

@@ -87,7 +87,7 @@ pub mod exports {
         og_net_shape, og_net_status, og_net_submit, og_net_submit_input, og_platform_quick_play,
         og_platform_room_create, og_platform_room_info, og_platform_room_join,
         og_platform_room_leave, og_platform_room_message, og_platform_room_peers,
-        og_platform_room_send, og_room_deliver, og_room_set_host, og_room_take,
+        og_platform_room_send, og_room_deliver, og_room_set_host, og_room_take, world_block_forms,
         world_snapshot_bytes,
     };
     pub use super::physics_ext::{

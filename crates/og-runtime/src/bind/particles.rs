@@ -16,6 +16,7 @@
 use crate::host::codec::{Layout, RecordKind};
 use crate::host::wire::record;
 use glam::{Mat4, Vec3};
+use og_core::block_form as bf;
 use og_core::bytes::ByteReader;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
@@ -477,6 +478,46 @@ impl StateBlock for Block {
             .and_then(|d| d.downcast::<BTreeMap<u64, HostedSystem>>().ok())
             .map(|b| *b)
             .unwrap_or_default();
+    }
+
+    /// One `emitter` record per hosted og.ParticleSystem entity: its
+    /// simulation as saved (space, counts, clock, last tick and transform,
+    /// origin, its particles and, per sub-emitter in its emitter's order,
+    /// theirs, as value lists). The block saves no generator state and no
+    /// other entity (a sub-emitter's particles are its parent's, this
+    /// record's), so neither is a field.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<bf::BlockForm> {
+        let slots = |s: &[ParticleState]| -> Vec<serde_json::Value> {
+            s.iter()
+                .map(|p| json!({ "posAge": p.pos_age, "velLife": p.vel_life, "misc": p.misc }))
+                .collect()
+        };
+        let mut out = bf::Records::default();
+        for (&e, h) in &load(bytes)? {
+            let c = &h.cpu;
+            let children: Vec<_> = c
+                .children
+                .iter()
+                .map(|ch| json!({ "born": ch.born, "count": ch.slots.len(), "particles": slots(&ch.slots) }))
+                .collect();
+            out.entities.push(
+                bf::Record::new(e, "emitter")
+                    .field("world", bf::Field::of(&h.world))
+                    .field("count", bf::Field::of(&c.slots.len()))
+                    .field("particles", bf::Field::of(&slots(&c.slots)))
+                    .field("lastTick", bf::Field::of(&c.last_tick))
+                    .field(
+                        "prevTransform",
+                        bf::Field::of(&c.prev_transform.map(|m| m.to_cols_array())),
+                    )
+                    .field("tick", bf::Field::of(&c.clock.tick))
+                    .field("time", bf::Field::of(&c.clock.time))
+                    .field("scale", bf::Field::of(&c.clock.scale))
+                    .field("origin", bf::Field::of(&c.origin.to_array()))
+                    .field("children", bf::Field::of(&children)),
+            );
+        }
+        Ok(bf::BlockForm::Entities(out))
     }
 
     /// Particles are places in the world, whatever their emitter's

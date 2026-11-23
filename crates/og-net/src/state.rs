@@ -22,6 +22,7 @@
 //! [`diff`] compares two snapshots the same way and names every entity,
 //! component, field, resource and state block that differs.
 
+use og_core::block_form::{BlockForm, Field, Record, Records};
 use og_core::bytes::ByteReader;
 use og_core::hash::StableHasher;
 use og_core::reflect::{FieldSchema, FieldType, Layout, Schema};
@@ -1211,11 +1212,155 @@ fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
     h.finish()
 }
 
+/// A state block's saved bytes in the form the world's own block reads them
+/// (og-ecs's `World::block_form`): `None` for a block the world lacks.
+pub type Forms<'a> = &'a dyn Fn(&str, &[u8]) -> Option<Result<BlockForm, String>>;
+
+/// Whether `now`'s field stands for `start`'s through the pairing.
+fn same_field(start: &Field, now: &Field, map: &std::collections::HashMap<u64, u64>) -> bool {
+    let entity = |a: &u64, b: &u64| a == b || map.get(b) == Some(a);
+    match (start, now) {
+        (Field::Entity(a), Field::Entity(b)) => entity(a, b),
+        (Field::Entities(a), Field::Entities(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(x, y)| entity(x, y))
+        }
+        (Field::Value(a), Field::Value(b)) => a == b,
+        _ => false,
+    }
+}
+
+/// A field as JSON: an entity by its path in its own world.
+fn field_value(s: &Snapshot, f: &Field) -> Value {
+    let id = |e: u64| {
+        if s.rows.iter().any(|r| r.entity == e) {
+            json!(s.entity_path(e))
+        } else if e == 0 {
+            Value::Null
+        } else {
+            json!(format!("#{}.{} (not alive)", e as u32, e >> 32))
+        }
+    };
+    match f {
+        Field::Entity(e) => id(*e),
+        Field::Entities(l) => Value::Array(l.iter().map(|e| id(*e)).collect()),
+        Field::Value(v) => v.clone(),
+    }
+}
+
+/// A block's per-entity records that differ between the two worlds' forms,
+/// read through the entity pairing: `{ block, entity, record, fields: [{ field, start, now }] }`,
+/// or `only: "start" | "now"` for a record one world lacks (a body left
+/// behind for an entity that is gone is one), and `{ block, global, start, now }`
+/// for module-global state. Records of an extra or missing entity are left
+/// to `entities`.
+fn block_changes(
+    name: &str,
+    (start, a): (&Snapshot, &Records),
+    (now, b): (&Snapshot, &Records),
+    pairing: &Pairing,
+) -> Vec<Value> {
+    let map = &pairing.now_to_start;
+    let mut out = Vec::new();
+    for (g, f) in &a.global {
+        match b.global.iter().find(|(h, _)| h == g) {
+            Some((_, f2)) if same_field(f, f2, map) => {}
+            other => out.push(json!({ "block": name, "global": g, "start": field_value(start, f), "now": other.map(|(_, f2)| field_value(now, f2)) })),
+        }
+    }
+    for (g, f2) in &b.global {
+        if !a.global.iter().any(|(h, _)| h == g) {
+            out.push(
+                json!({ "block": name, "global": g, "start": null, "now": field_value(now, f2) }),
+            );
+        }
+    }
+    let alive = |s: &Snapshot, e: u64| s.rows.iter().any(|r| r.entity == e);
+    let missing: std::collections::HashSet<u64> = pairing
+        .missing
+        .iter()
+        .map(|&i| start.rows[i].entity)
+        .collect();
+    // A record's place in the start world's terms: its entity, kind and key, an entity read through the pairing.
+    let key = |f: &Field, from_now: bool| -> String {
+        let at = |e: &u64| {
+            if from_now {
+                map.get(e).copied().unwrap_or(u64::MAX ^ e)
+            } else {
+                *e
+            }
+        };
+        match f {
+            Field::Entity(e) => format!("e{}", at(e)),
+            Field::Entities(l) => format!("{:?}", l.iter().map(at).collect::<Vec<_>>()),
+            Field::Value(v) => v.to_string(),
+        }
+    };
+    let label = |r: &Record| match &r.key {
+        Field::Value(Value::Null) => r.kind.clone(),
+        Field::Value(v) => format!("{} {v}", r.kind),
+        other => format!("{} {}", r.kind, field_value(start, other)),
+    };
+    let theirs: std::collections::HashMap<(u64, &str, String), &Record> = b
+        .entities
+        .iter()
+        .filter_map(|r| {
+            let e = match map.get(&r.entity) {
+                Some(&e) => e,
+                // An extra entity's records go with it.
+                None if alive(now, r.entity) => return None,
+                None => u64::MAX ^ r.entity,
+            };
+            Some(((e, r.kind.as_str(), key(&r.key, true)), r))
+        })
+        .collect();
+    let mut seen = std::collections::HashSet::new();
+    for r in &a.entities {
+        if missing.contains(&r.entity) {
+            continue;
+        }
+        let k = (r.entity, r.kind.as_str(), key(&r.key, false));
+        let entity = field_value(start, &Field::Entity(r.entity));
+        match theirs.get(&k) {
+            Some(r2) => {
+                seen.insert(k);
+                let mut fields = Vec::new();
+                for (n, f) in &r.fields {
+                    match r2.fields.iter().find(|(m, _)| m == n) {
+                        Some((_, f2)) if same_field(f, f2, map) => {}
+                        other => fields.push(json!({ "field": n, "start": field_value(start, f), "now": other.map(|(_, f2)| field_value(now, f2)) })),
+                    }
+                }
+                for (n, f2) in &r2.fields {
+                    if !r.fields.iter().any(|(m, _)| m == n) {
+                        fields.push(
+                            json!({ "field": n, "start": null, "now": field_value(now, f2) }),
+                        );
+                    }
+                }
+                if !fields.is_empty() {
+                    out.push(json!({ "block": name, "entity": entity, "record": label(r), "fields": fields }));
+                }
+            }
+            None => out.push(
+                json!({ "block": name, "entity": entity, "record": label(r), "only": "start" }),
+            ),
+        }
+    }
+    for (k, r2) in &theirs {
+        if !seen.contains(k) {
+            out.push(json!({ "block": name, "entity": field_value(now, &Field::Entity(r2.entity)), "record": label(r2), "only": "now" }));
+        }
+    }
+    out
+}
+
 /// What differs between a fresh start's world (`start`) and the world after
 /// a restart (`now`), structurally: entities paired by name, then in spawn
 /// order within their component set; every handle field (u64, and lists of
-/// them) read through that pairing; the allocator's generations and free
-/// list, each peer's session and `ignore` left out.
+/// them) read through that pairing; every module state block in the form
+/// its own code gives it (`forms`, og-ecs's `World::block_form`): records
+/// by paired entity, module-global state as is; the allocator's
+/// generations and free list, each peer's session and `ignore` left out.
 ///
 /// ```text
 /// { differs, hash, startHash,
@@ -1224,16 +1369,17 @@ fn structural_hash(s: &Snapshot, order: &[usize], ignore: &Ignore) -> u64 {
 ///   entities: { missing: [path], extra: [path] },
 ///   resources: [{ resource, fields | only }],
 ///   events: [{ event, start, now }]     (queued counts)
-///   blocks: [{ block, startBytes, nowBytes }], unchecked: [block], truncated: n }
+///   blocks: [{ block, startBytes, nowBytes }]   (a block that holds no entity id, by its bytes)
+///   records: [{ block, entity, record, fields | only } | { block, global, start, now }],
+///   unchecked: ["<block>: <why>"], truncated: n }
 /// ```
 ///
 /// Entities are named by path ([`Snapshot::entity_path`], the fresh
-/// start's). A module state block (physics, animation) is compared by its
-/// bytes while every entity kept its id; once ids moved it holds ids the
-/// pairing cannot read, and one that differs is listed in `unchecked`
-/// instead. `hash` and `startHash` are each world's structural hash
-/// (entities by their paired place): equal when nothing but blocks differs.
-pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore) -> Value {
+/// start's). A block the world cannot read by entity (it lacks the block,
+/// or its form fails) is listed in `unchecked`, never passed. `hash` and
+/// `startHash` are each world's structural hash (entities by their paired
+/// place; module blocks left out).
+pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore, forms: Forms<'_>) -> Value {
     let pairing = pair(start, now);
     let map = &pairing.now_to_start;
     let mut truncated = 0usize;
@@ -1359,23 +1505,48 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore) -> Value 
             events.push(json!({ "event": name, "start": count(Some(q)), "now": count(theirs) }));
         }
     }
-    let ids_kept = pairing
-        .pairs
-        .iter()
-        .all(|&(i, j)| start.rows[i].entity == now.rows[j].entity);
-    let (mut blocks, mut unchecked) = (Vec::new(), Vec::new());
-    for (name, bytes) in &start.blocks {
-        if SESSION_BLOCKS.contains(&name.as_str()) {
+    let (mut blocks, mut records, mut unchecked) = (Vec::new(), Vec::new(), Vec::new());
+    let mut block_names: Vec<&str> = start.blocks.iter().map(|(n, _)| n.as_str()).collect();
+    for (n, _) in &now.blocks {
+        if !block_names.contains(&n.as_str()) {
+            block_names.push(n);
+        }
+    }
+    for name in block_names {
+        if SESSION_BLOCKS.contains(&name) {
             continue;
         }
-        let theirs = now.blocks.iter().find(|(n, _)| n == name).map(|(_, b)| b);
-        if theirs == Some(bytes) {
+        fn bytes_of<'s>(s: &'s Snapshot, name: &str) -> Option<&'s [u8]> {
+            s.blocks
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, b)| b.as_slice())
+        }
+        let (ours, theirs) = (bytes_of(start, name), bytes_of(now, name));
+        if ours == theirs {
             continue;
         }
-        if ids_kept || theirs.is_none() {
-            blocks.push(json!({ "block": name, "startBytes": bytes.len(), "nowBytes": theirs.map(Vec::len) }));
-        } else {
-            unchecked.push(json!(name));
+        let (Some(ours), Some(theirs)) = (ours, theirs) else {
+            blocks.push(json!({ "block": name, "startBytes": ours.map(<[u8]>::len), "nowBytes": theirs.map(<[u8]>::len) }));
+            continue;
+        };
+        match (forms(name, ours), forms(name, theirs)) {
+            (Some(Ok(BlockForm::Entities(a))), Some(Ok(BlockForm::Entities(b)))) => {
+                for d in block_changes(name, (start, &a), (now, &b), &pairing) {
+                    push(&mut records, d);
+                }
+            }
+            (Some(Ok(BlockForm::Global)), Some(Ok(BlockForm::Global))) => {
+                blocks.push(
+                    json!({ "block": name, "startBytes": ours.len(), "nowBytes": theirs.len() }),
+                );
+            }
+            (Some(Err(e)), _) | (_, Some(Err(e))) => unchecked.push(json!(format!("{name}: {e}"))),
+            (None, _) | (_, None) => unchecked.push(json!(format!(
+                "{name}: this world has no such block to read it"
+            ))),
+            _ => blocks
+                .push(json!({ "block": name, "startBytes": ours.len(), "nowBytes": theirs.len() })),
         }
     }
     let start_order: Vec<usize> = pairing
@@ -1396,7 +1567,8 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore) -> Value 
         || !extra.is_empty()
         || !resources.is_empty()
         || !events.is_empty()
-        || !blocks.is_empty();
+        || !blocks.is_empty()
+        || !records.is_empty();
     json!({
         "differs": differs,
         "hash": format!("{:016x}", structural_hash(now, &now_order, ignore)),
@@ -1407,6 +1579,7 @@ pub fn restart_diff(start: &Snapshot, now: &Snapshot, ignore: &Ignore) -> Value 
         "resources": resources,
         "events": events,
         "blocks": blocks,
+        "records": records,
         "unchecked": unchecked,
         "truncated": truncated,
     })
@@ -1590,6 +1763,86 @@ mod tests {
         r
     }
 
+    fn no_forms(_: &str, _: &[u8]) -> Option<Result<BlockForm, String>> {
+        None
+    }
+
+    /// A physics-like block: (entity, linear velocity) per body, a gravity first.
+    fn bodies(gravity: f32, list: &[(u64, f32)]) -> Vec<u8> {
+        let mut out = gravity.to_le_bytes().to_vec();
+        for (e, v) in list {
+            out.extend_from_slice(&e.to_le_bytes());
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        out
+    }
+
+    /// The block's form, as og-physics's own code gives it.
+    fn body_forms(name: &str, b: &[u8]) -> Option<Result<BlockForm, String>> {
+        (name == "og.physics").then(|| {
+            let gravity = f32::from_le_bytes(b[..4].try_into().unwrap());
+            let entities = b[4..]
+                .as_chunks::<12>()
+                .0
+                .iter()
+                .map(|c| {
+                    let e = u64::from_le_bytes(c[..8].try_into().unwrap());
+                    let v = f32::from_le_bytes(c[8..].try_into().unwrap());
+                    Record::new(e, "body").field("linear", Field::of(&v))
+                })
+                .collect();
+            Ok(BlockForm::Entities(Records {
+                global: vec![("gravity".into(), Field::of(&gravity))],
+                entities,
+            }))
+        })
+    }
+
+    #[test]
+    fn a_module_block_compares_by_entity_through_the_pairing() {
+        let mut start = arena();
+        start.blocks = vec![("og.physics".into(), bodies(-9.8, &[(0, 0.0), (1, 2.5)]))];
+        let mut now = respawned(&start);
+        let hero = now.rows[0].entity;
+        let coin = now.rows[1].entity;
+        now.blocks = vec![(
+            "og.physics".into(),
+            bodies(-9.8, &[(coin, 2.5), (hero, 0.0)]),
+        )];
+        let d = restart_diff(&start, &now, &Ignore::new(), &body_forms);
+        assert_eq!(d["differs"], json!(false), "{d:#}");
+        assert_eq!(d["unchecked"], json!([]));
+        // A body left moving after the restart: the entity, the record and the field.
+        let mut moving = now.clone();
+        moving.blocks = vec![(
+            "og.physics".into(),
+            bodies(-9.8, &[(coin, 2.5), (hero, 4.0)]),
+        )];
+        let d = restart_diff(&start, &moving, &Ignore::new(), &body_forms);
+        assert_eq!(d["differs"], json!(true));
+        assert_eq!(
+            d["records"][0],
+            json!({ "block": "og.physics", "entity": "hero", "record": "body", "fields": [{ "field": "linear", "start": 0.0, "now": 4.0 }] })
+        );
+        // A body for an entity that is gone, and a changed gravity.
+        let mut stale = now.clone();
+        stale.blocks = vec![(
+            "og.physics".into(),
+            bodies(-1.0, &[(coin, 2.5), (hero, 0.0), (9, 0.0)]),
+        )];
+        let d = restart_diff(&start, &stale, &Ignore::new(), &body_forms);
+        assert_eq!(d["records"][0]["global"], json!("gravity"));
+        assert_eq!(
+            d["records"][1],
+            json!({ "block": "og.physics", "entity": "#9.0 (not alive)", "record": "body", "only": "now" })
+        );
+        // Without a form, a block whose ids moved is unchecked, never passed.
+        assert_eq!(
+            restart_diff(&start, &moving, &Ignore::new(), &no_forms)["unchecked"][0],
+            json!("og.physics: this world has no such block to read it")
+        );
+    }
+
     #[test]
     fn a_restart_that_spawns_its_entities_again_is_the_fresh_start() {
         let start = arena();
@@ -1598,14 +1851,14 @@ mod tests {
             start.portable_hash(&start.portable_table()),
             now.portable_hash(&now.portable_table())
         );
-        let d = restart_diff(&start, &now, &Ignore::new());
+        let d = restart_diff(&start, &now, &Ignore::new(), &no_forms);
         assert_eq!(d["differs"], json!(false), "{d:#}");
         assert_eq!(d["hash"], d["startHash"]);
         // The hero's Target holding the first coin instead of the second is a difference.
         let mut wrong = now.clone();
         let target = wrong.rows[0].components[1].0;
         wrong.rows[0].components[1] = (target, ((1u64 << 32) | 1).to_le_bytes().to_vec());
-        let d = restart_diff(&start, &wrong, &Ignore::new());
+        let d = restart_diff(&start, &wrong, &Ignore::new(), &no_forms);
         assert_eq!(d["components"][0]["entity"], json!("hero"));
         assert_eq!(d["components"][0]["component"], json!("Target"));
         assert_ne!(d["hash"], d["startHash"]);
@@ -1616,7 +1869,7 @@ mod tests {
             components: vec![(1, floats(&[30.0]))],
         });
         leak.slots.push((0, true));
-        let d = restart_diff(&start, &leak, &Ignore::new());
+        let d = restart_diff(&start, &leak, &Ignore::new(), &no_forms);
         assert_eq!(d["differs"], json!(true));
         assert_eq!(d["entities"]["extra"], json!(["#3.0"]));
         assert_eq!(d["entities"]["missing"], json!([]));
@@ -1624,19 +1877,19 @@ mod tests {
         let mut lost = now.clone();
         lost.rows.pop();
         assert_eq!(
-            restart_diff(&start, &lost, &Ignore::new())["entities"]["missing"],
+            restart_diff(&start, &lost, &Ignore::new(), &no_forms)["entities"]["missing"],
             json!(["#2.0"])
         );
         // An ignored field is left out.
         let mut moved = now.clone();
         moved.resources[0].1 = floats(&[9.0]);
         assert_eq!(
-            restart_diff(&start, &moved, &Ignore::new())["resources"][0]["resource"],
+            restart_diff(&start, &moved, &Ignore::new(), &no_forms)["resources"][0]["resource"],
             json!("Clock")
         );
         let clock = Ignore::from([("Clock".to_owned(), vec![])]);
         assert_eq!(
-            restart_diff(&start, &moved, &clock)["differs"],
+            restart_diff(&start, &moved, &clock, &no_forms)["differs"],
             json!(false)
         );
     }

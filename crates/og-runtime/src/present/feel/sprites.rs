@@ -1,6 +1,7 @@
 //! The og.sprite system and its state block.
 
 use super::*;
+use og_core::block_form::{self as bf, BlockForm, Field, Record};
 
 /// The rotation about z of a quaternion (deterministic arithmetic).
 pub(super) fn yaw_z(q: Quat) -> f32 {
@@ -232,6 +233,56 @@ impl StateBlock for SpriteBlock {
             .unwrap_or_default();
         // The camera ops are the og.camera block's.
         sh.camera_ops = ops;
+    }
+
+    /// Per entity: its afterimages (`ghost`, by index, newest first) and
+    /// whether a squash or a flash tween of its is live (the tween's
+    /// handle is og.tween's own number: left out). The floating texts and
+    /// the spawn count are no entity's.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<BlockForm> {
+        let sh = *self
+            .decode(bytes)?
+            .downcast::<FeelShared>()
+            .expect("decoded by SpriteBlock");
+        let mut out = bf::Records::default();
+        out.global.push(("spawned".into(), Field::of(&sh.spawned)));
+        let floating: Vec<Value> = sh
+            .floating
+            .iter()
+            .map(|t| {
+                json!({
+                    "text": t.text, "family": t.family,
+                    "position": t.position.to_array(), "drift": t.drift,
+                    "start": t.start, "size": t.size, "color": t.color.to_array(),
+                    "outline": t.outline, "outlineColor": t.outline_color.to_array(),
+                    "rise": t.rise, "lifetime": t.lifetime, "fade": t.fade,
+                    "pop": t.pop, "layer": t.layer, "facing": facing_byte(t.facing),
+                })
+            })
+            .collect();
+        out.global.push(("floating".into(), Field::of(&floating)));
+        for (&e, list) in &sh.ghosts {
+            for (i, g) in list.iter().enumerate() {
+                out.entities.push(
+                    Record::new(e, "ghost")
+                        .key(Field::of(&i))
+                        .field("position", Field::of(&g.position.to_array()))
+                        .field("rotation", Field::of(&g.rotation))
+                        .field("scale", Field::of(&g.scale.to_array()))
+                        .field("sheet", Field::of(&g.sheet))
+                        .field("clip", Field::of(&g.clip))
+                        .field("frame", Field::of(&g.frame))
+                        .field("flip", Field::of(&g.flip))
+                        .field("tick", Field::of(&g.tick)),
+                );
+            }
+        }
+        for (kind, map) in [("squash", &sh.squash), ("flash", &sh.flash)] {
+            for (&e, _) in map {
+                out.entities.push(Record::new(e, kind));
+            }
+        }
+        Ok(BlockForm::Entities(out))
     }
 
     /// Afterimages and floating texts are at places in the world.

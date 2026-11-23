@@ -34,6 +34,7 @@ use crate::host::wire::{
 };
 use crate::present::extract::{Hierarchy, RenderState};
 use glam::{Quat, Vec2, Vec3};
+use og_core::block_form::{self as bf, BlockForm, Field, Record};
 use og_core::hash::splitmix64 as splitmix;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
@@ -214,6 +215,69 @@ impl StateBlock for Block {
             .map(|b| *b)
             .unwrap_or_default();
         g.epoch += 1;
+    }
+    /// Per og.PixelTerrain its `terrain` (cells, origin, look, revision)
+    /// and per chunk with a collider its `collider` (keyed by chunk: the
+    /// collider's entity, its mesh handle, a hash of the mesh); per
+    /// og.PixelPiece its `piece` (the terrain it was cut from an entity);
+    /// queued carves, fills and fractures as `op` on their entity, keyed
+    /// by their place in the queue. Explosions and the mesh set are global.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<BlockForm> {
+        let s = *self
+            .decode(bytes)?
+            .downcast::<State>()
+            .expect("decoded by the og.destruction2d block");
+        let mut out = bf::Records::default();
+        for (&e, g) in &s.terrains {
+            out.entities.push(
+                Record::new(e, "terrain")
+                    .field("grid", Field::of(&g.grid))
+                    .field("shape", Field::of(&g.shape))
+                    .field("origin", Field::of(&g.origin))
+                    .field("built", Field::of(&g.built))
+                    .field("look", Field::of(&g.look))
+                    .field("revision", Field::of(&g.revision)),
+            );
+            for (&chunk, &(collider, mesh)) in &g.colliders {
+                out.entities.push(
+                    Record::new(e, "collider")
+                        .key(Field::of(&chunk))
+                        .field("entity", Field::Entity(collider))
+                        .field("mesh", Field::of(&mesh)),
+                );
+            }
+        }
+        for (&e, p) in &s.pieces {
+            out.entities
+                .push(Record::new(e, "piece").members(p, &["terrain"]));
+        }
+        let mut explosions = Vec::new();
+        for (i, op) in s.ops.iter().enumerate() {
+            match op {
+                Op::Carve { entity, .. }
+                | Op::Fill { entity, .. }
+                | Op::Fracture { entity, .. } => {
+                    // `{"Carve": {..}}`: the call's name, then its fields
+                    // but the entity (the record's).
+                    let mut rec = Record::new(*entity, "op").key(Field::of(&i));
+                    if let Ok(Value::Object(tagged)) = serde_json::to_value(op) {
+                        for (name, args) in tagged {
+                            rec = rec.field("call", Field::of(&name));
+                            if let Value::Object(mut args) = args {
+                                args.remove("entity");
+                                rec = rec.members(&args, &[]);
+                            }
+                        }
+                    }
+                    out.entities.push(rec);
+                }
+                Op::Explode { .. } => explosions.push(json!({ "at": i, "op": op })),
+            }
+        }
+        out.global
+            .push(("explosions".into(), Field::of(&explosions)));
+        out.global.push(("meshes".into(), Field::of(&s.meshes)));
+        Ok(BlockForm::Entities(out))
     }
     /// A terrain's origin is its root entity's og.Transform.position (its
     /// colliders, roots too, move with the shift); queued points are in

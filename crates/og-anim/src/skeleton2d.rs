@@ -13,6 +13,7 @@ use crate::machine::Phase;
 use crate::rig2d::{Affine2, Clip2d, Pose2d, Rig2dAsset, atan2};
 use crate::schema::{AnimationGraph, Transform};
 use og_core::IdMap;
+use og_core::block_form::{BlockForm, Field, Record, Records};
 use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::glam::Vec2;
 use og_core::{Error, ErrorKind, Reflect, Result, Str64};
@@ -715,6 +716,48 @@ impl StateBlock for SkeletonState {
                 }
             }
         }
+    }
+
+    /// Per entity a `skeleton` record (its playback), a `boxes` record per
+    /// box its last pose showed (by index), and per graph-driven skeleton a
+    /// `graph` record (the graph handle) and a `layer` record per graph
+    /// layer, by index.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm> {
+        let (playback, boxes, driven) = *self
+            .decode(bytes)?
+            .downcast::<Saved>()
+            .expect("decoded by SkeletonState");
+        let mut entities = Vec::new();
+        for (&e, p) in &playback {
+            entities.push(
+                Record::new(e, "skeleton")
+                    .field("rig", Field::of(&p.rig))
+                    .field("clip", Field::of(&p.clip))
+                    .field("time", Field::of(&p.time)),
+            );
+        }
+        for (&e, list) in &boxes {
+            for (i, b) in list.iter().enumerate() {
+                let points: Vec<[f32; 2]> = b.points.iter().map(|p| p.to_array()).collect();
+                entities.push(
+                    Record::new(e, "boxes")
+                        .key(Field::of(&i))
+                        .field("slot", Field::of(&b.slot))
+                        .field("name", Field::of(&b.name))
+                        .field("points", Field::of(&points)),
+                );
+            }
+        }
+        for (&e, m) in &driven {
+            entities.push(Record::new(e, "graph").field("graph", Field::of(&m.asset)));
+            for (i, l) in m.layers.iter().enumerate() {
+                entities.push(l.record(e, i));
+            }
+        }
+        Ok(BlockForm::Entities(Records {
+            global: Vec::new(),
+            entities,
+        }))
     }
 }
 

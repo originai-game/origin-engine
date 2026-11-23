@@ -17,6 +17,7 @@
 //! cells registers them, and with them the block, first. Its bytes are a
 //! function of its state: cells by entity, rows in order.
 
+use og_core::block_form::{BlockForm, Field, Record, Records};
 use og_core::bytes::{ByteReader, ByteWriter};
 use og_core::{Error, ErrorKind, Result};
 use std::any::Any;
@@ -212,6 +213,40 @@ impl og_ecs::StateBlock for Block {
         *lock(&self.0) = next;
     }
 
+    /// Per cell: each kept row (its saved id an entity; its components'
+    /// packed bytes as they are), its load in progress and its retry.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm> {
+        let s = Store::read(bytes)?;
+        let mut out = Records::default();
+        for (&cell, rows) in &s.kept {
+            for (i, r) in rows.iter().enumerate() {
+                out.entities.push(
+                    Record::new(cell, "kept")
+                        .key(Field::of(&i))
+                        .field("id", Field::Entity(r.id))
+                        .field("name", Field::of(&r.name))
+                        .field("components", Field::of(&r.components)),
+                );
+            }
+        }
+        for (&cell, l) in &s.loading {
+            out.entities.push(
+                Record::new(cell, "loading")
+                    .field("source", Field::of(&(l.source as u8)))
+                    .field("spawned", Field::Entities(l.spawned.clone())),
+            );
+        }
+        for (&cell, r) in &s.retries {
+            out.entities.push(
+                Record::new(cell, "retry")
+                    .field("scene", Field::of(&r.scene))
+                    .field("attempts", Field::of(&r.attempts))
+                    .field("next", Field::of(&r.next)),
+            );
+        }
+        Ok(BlockForm::Entities(out))
+    }
+
     /// R12's origin shift: the kept entities' places move as they would
     /// in the world (a row with og.Parent is a child; its parent's frame
     /// moved with the parent). A load in progress keeps ids only.
@@ -268,5 +303,54 @@ mod tests {
         let mut empty = Vec::new();
         Store::default().save(&mut empty);
         assert_eq!(Store::read(&empty).unwrap(), Store::default());
+    }
+
+    #[test]
+    fn the_form_names_each_cells_rows_and_load_with_entity_ids_as_entities() {
+        use og_core::block_form::{BlockForm, Field};
+        use og_ecs::StateBlock;
+        let mut s = Store::default();
+        let row = |id: u64, name: &str| Row {
+            id,
+            name: name.into(),
+            components: vec![("og.Transform".into(), 42, vec![1, 2])],
+        };
+        s.kept
+            .insert(7, vec![row(1 << 32 | 9, "well"), row(1 << 32 | 10, "")]);
+        s.loading.insert(
+            3,
+            Loading {
+                source: Source::Kept,
+                spawned: vec![5, 6],
+            },
+        );
+        let mut bytes = Vec::new();
+        s.save(&mut bytes);
+        let block = Block(Shared::default());
+        let BlockForm::Entities(r) = block.form(&bytes).unwrap() else {
+            panic!("og.cells is by cell entity");
+        };
+        let get = |i: usize, n: &str| {
+            r.entities[i]
+                .fields
+                .iter()
+                .find(|(k, _)| k == n)
+                .map(|(_, f)| f.clone())
+        };
+        assert_eq!(r.entities.len(), 3);
+        assert_eq!(
+            (r.entities[1].entity, r.entities[1].kind.as_str()),
+            (7, "kept")
+        );
+        assert_eq!(r.entities[1].key, Field::of(&1usize));
+        assert_eq!(get(0, "id"), Some(Field::Entity(1 << 32 | 9)));
+        assert_eq!(get(0, "name"), Some(Field::of(&"well")));
+        assert_eq!(
+            (r.entities[2].entity, r.entities[2].kind.as_str()),
+            (3, "loading")
+        );
+        assert_eq!(get(2, "spawned"), Some(Field::Entities(vec![5, 6])));
+        assert_eq!(get(2, "source"), Some(Field::of(&1u8)));
+        assert_eq!(*lock(&block.0), Store::default());
     }
 }

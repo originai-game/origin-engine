@@ -413,3 +413,36 @@ pub(crate) fn joint_written(sim: &mut Sim, e: Entity, joint: &Joint) {
         t.joint = *joint;
     }
 }
+
+/// The tracked joints by entity ([`Sim::form`]): og.Joint as built (its
+/// `body` and `other` as entities), the bodies it joins (`first`, the
+/// joint's body, and `second`, `other`'s or the ground's: 0), and the
+/// rapier joint's state, which holds them as `body2` and `body1`.
+pub(crate) fn joint_records(
+    joints: &IdMap<u64, TrackedJoint>,
+    w: &rp::PhysicsWorld,
+    out: &mut Vec<og_core::block_form::Record>,
+) {
+    use og_core::block_form::{Field, Record};
+    let of = |h: rp::RigidBodyHandle| {
+        w.bodies
+            .get(h)
+            .map_or(Field::Entity(0), |b| Field::Entity(b.user_data as u64))
+    };
+    for (&e, t) in joints.iter() {
+        let mut r = Record::new(e, "joint")
+            .members(&t.joint, &["body", "other"])
+            .field("break_force", Field::of(&t.joint.break_force))
+            .field("break_torque", Field::of(&t.joint.break_torque))
+            .field("broken", Field::of(&t.joint.broken))
+            .field("first", of(t.first))
+            .field("second", of(t.second));
+        match w.impulse_joints.get(t.handle) {
+            Some(j) => r
+                .fields
+                .extend(super::super::sim::joint_fields(j, &w.bodies)),
+            None => r = r.field("missing", Field::of(&true)),
+        }
+        out.push(r);
+    }
+}

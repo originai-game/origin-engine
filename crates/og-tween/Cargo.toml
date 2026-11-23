@@ -10,6 +10,8 @@ description = "Origin Engine tweens: eased, delayed, looping and grouped animati
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+# The state block's per-entity form (`StateBlock::form`) holds JSON values.
+serde_json = "1"
 
 [[test]]
 name = "tests"

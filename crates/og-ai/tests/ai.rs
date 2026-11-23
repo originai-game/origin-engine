@@ -770,3 +770,47 @@ tree {
     let e = Behaviour::parse(main).unwrap_err();
     assert!(e.contains("use reads another behaviour asset"), "{e}");
 }
+
+/// A restart check reads og.ai's memories by entity: a `mind` record with
+/// the machine's values, a `blackboard` with every key (an entity value as
+/// an entity) and a noise on its source. Fails if a key that holds an
+/// entity is read as a number, or a record is missing or misnamed.
+#[test]
+fn the_block_form_names_each_agents_memory_and_its_entities() {
+    use og_core::block_form::{BlockForm, Field};
+    let mut s = scene(GUARD, false);
+    steps(&mut s, 2);
+    assert!(s.ai.set(s.guard, "prey", Value::Entity(s.hero.to_bits())));
+    assert!(s.ai.set(s.guard, "bites", Value::Num(3.0)));
+    s.ai.noise(og_ai::Noise {
+        position: Vec3::new(4.0, 5.0, 0.0),
+        loudness: 0.5,
+        source: s.hero.to_bits(),
+    });
+    let snap = og_ecs::SnapshotEdit::from_bytes(&s.world.snapshot()).unwrap();
+    let bytes = snap.block(og_ai::SYSTEM_NAME).unwrap();
+    let Some(Ok(BlockForm::Entities(form))) = s.world.block_form(og_ai::SYSTEM_NAME, bytes) else {
+        panic!("og.ai has a per-entity form");
+    };
+    let record = |e: Entity, kind: &str| {
+        form.entities
+            .iter()
+            .find(|r| r.entity == e.to_bits() && r.kind == kind)
+            .unwrap_or_else(|| panic!("a {kind} record"))
+    };
+    let get = |r: &og_core::block_form::Record, n: &str| {
+        r.fields
+            .iter()
+            .find(|(k, _)| k == n)
+            .map(|(_, f)| f.clone())
+    };
+    let mind = record(s.guard, "mind");
+    assert_eq!(get(mind, "started"), Some(Field::of(&true)));
+    assert_eq!(get(mind, "baseSpeed"), Some(Field::of(&2.0f32)));
+    let board = record(s.guard, "blackboard");
+    assert_eq!(get(board, "prey"), Some(Field::Entity(s.hero.to_bits())));
+    assert_eq!(get(board, "bites"), Some(Field::of(&3.0f64)));
+    let noise = record(s.hero, "noise");
+    assert_eq!(get(noise, "loudness"), Some(Field::of(&0.5f32)));
+    assert_eq!(get(noise, "position"), Some(Field::of(&[4.0f32, 5.0, 0.0])));
+}

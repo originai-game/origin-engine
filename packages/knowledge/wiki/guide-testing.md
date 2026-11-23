@@ -244,9 +244,13 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   fails the playtest with its first one by entity path
   (`run.restart.first`: `level/hero Health.hp is 3, a fresh start's 10`,
   `entity #7.1 is not in a fresh start (1 extra in all)`) and the whole
-  diff (`run.restart.diff`). A module's state (og.physics, og.anim) that
-  differs once entity ids moved holds ids the pairing cannot read: it is
-  listed in `unchecked`, never passed.
+  diff (`run.restart.diff`). Every module's state compares by entity
+  through the same pairing: og.physics's bodies, colliders and joints,
+  og.anim's layers and foot locks, a tween, a path, an emitter
+  (`run.restart.diff.records`: `crate og.physics body.linear is [0,5,0], a
+  fresh start's [0,0,0]`); what is no entity's (a gravity) compares as is.
+  A module state the check could not read is listed in `unchecked`, never
+  passed.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.

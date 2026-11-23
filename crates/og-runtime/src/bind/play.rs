@@ -336,6 +336,29 @@ impl StateBlock for Block {
             .unwrap_or_default();
     }
 
+    /// Per owner one `swing` record keyed by its swing number, the targets
+    /// struck as entities. Read after `Swings::from_bytes` accepts the
+    /// bytes, in its layout (og-play keeps the map private).
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        self.decode(bytes)?;
+        let mut r = og_core::bytes::ByteReader::new(bytes, SYSTEM);
+        let mut out = Records::default();
+        for _ in 0..r.u32()? {
+            let owner = r.u64()?;
+            let swing = r.u32()?;
+            let targets = (0..r.u32()?)
+                .map(|_| r.u64())
+                .collect::<og_core::Result<Vec<_>>>()?;
+            out.entities.push(
+                Record::new(owner, "swing")
+                    .key(Field::of(&swing))
+                    .field("struck", Field::Entities(targets)),
+            );
+        }
+        Ok(BlockForm::Entities(out))
+    }
+
     /// Entities and swings only: nothing moves with the world's zero.
     fn shift(&mut self, _: &og_ecs::Shift) {}
 }

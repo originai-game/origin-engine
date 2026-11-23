@@ -7,6 +7,7 @@
 //! world that registered the same blocks.
 
 use og_core::Result;
+use og_core::block_form::BlockForm;
 use std::any::Any;
 
 /// One module's state, saved and restored with the world.
@@ -29,6 +30,14 @@ pub trait StateBlock: Send {
     /// ([`crate::Shift::of`]). A block with no world positions does
     /// nothing, and says so: there is no default, so a new block decides.
     fn shift(&mut self, shift: &crate::Shift);
+    /// Saved bytes (another world's too, [`Self::save`]'s) by entity, for a
+    /// comparison that pairs two worlds' entities whatever ids they hold (a
+    /// restart check, og-net's `restart_diff`): [`BlockForm::Global`] for a
+    /// block that holds no entity id, else every entity's records (fields
+    /// by name, entity references as [`Field::Entity`](og_core::block_form::Field))
+    /// and the rest. Read through the block's own decoding, changing nothing.
+    /// No default: a new block decides.
+    fn form(&self, bytes: &[u8]) -> Result<BlockForm>;
 }
 
 pub(crate) struct Block {

@@ -289,3 +289,53 @@ pub(crate) fn wheels(sim: &Sim, entity: u64) -> Option<Vec<WheelPose>> {
             .collect(),
     )
 }
+
+impl VehicleState {
+    /// Its records by entity ([`Sim::form`]): the `vehicle` (its built
+    /// layout, its chassis by entity), and per wheel (0 front, 1 rear) a
+    /// `wheel` body, its `wheel collider`s and its `wheel joint`.
+    pub(crate) fn form(
+        &self,
+        entity: u64,
+        w: &rp::PhysicsWorld,
+        out: &mut Vec<og_core::block_form::Record>,
+    ) {
+        use super::sim::{body_record, collider_records, joint_fields, owner};
+        use og_core::block_form::{Field, Record};
+        let chassis = w
+            .bodies
+            .get(self.chassis)
+            .map_or(Field::Entity(0), |b| owner(b.user_data));
+        let [base, radius, mount, rest, mass, grip] = self.layout.map(f32::from_bits);
+        out.push(
+            Record::new(entity, "vehicle")
+                .field("chassis", chassis)
+                .field("wheelBase", Field::of(&base))
+                .field("wheelRadius", Field::of(&radius))
+                .field("mountHeight", Field::of(&mount))
+                .field("suspensionRest", Field::of(&rest))
+                .field("wheelMass", Field::of(&mass))
+                .field("grip", Field::of(&grip)),
+        );
+        for (i, (&h, &j)) in self.wheels.iter().zip(&self.joints).enumerate() {
+            out.push(body_record(
+                entity,
+                "wheel",
+                Field::of(&i),
+                h,
+                w,
+                Vec3::ZERO,
+            ));
+            if let Some(rb) = w.bodies.get(h) {
+                let key = |k: usize| Field::of(&(i, k));
+                collider_records(out, entity, "wheel collider", rb.colliders(), w, &key);
+            }
+            let mut r = Record::new(entity, "wheel joint").key(Field::of(&i));
+            match w.impulse_joints.get(j) {
+                Some(j) => r.fields = joint_fields(j, &w.bodies),
+                None => r = r.field("missing", Field::of(&true)),
+            }
+            out.push(r);
+        }
+    }
+}

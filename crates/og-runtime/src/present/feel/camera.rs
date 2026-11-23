@@ -308,6 +308,12 @@ impl StateBlock for CameraBlock {
             .unwrap_or_default();
     }
 
+    /// Queued shakes, punches and kicks: no entity's.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        self.decode(bytes)?;
+        Ok(og_core::block_form::BlockForm::Global)
+    }
+
     /// Shakes, punches and kicks are offsets: nothing in the world.
     fn shift(&mut self, _: &og_ecs::Shift) {}
 }

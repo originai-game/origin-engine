@@ -67,8 +67,9 @@
 //   with the world after the run's first tick (the restart's tick is the new
 //   game's first, so both sides ran exactly one tick), structurally by
 //   og-net's restart_diff: entities paired by name, then in spawn order
-//   within their component set, handle fields read through that pairing,
-//   the allocator and the clock left out (og.Time and
+//   within their component set, handle fields and every module's state
+//   block (its per-entity form) read through that pairing, the allocator
+//   and the clock left out (og.Time and
 //   og.TimeScale.elapsed: a restart cannot turn it back). --json's
 //   `restart` is the result; a world that differs, or an extra or missing
 //   entity, fails the run, naming the first difference by entity path.
@@ -599,6 +600,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         resources?: Array<{ resource: string; fields?: Fields; only?: string }>;
         events?: Array<{ event: string; start: number; now: number }>;
         blocks?: Array<{ block: string }>;
+        records?: Array<{ block: string; entity?: string; record?: string; global?: string; fields?: Fields; only?: string; start?: unknown; now?: unknown }>;
         unchecked?: string[];
       };
       const d = JSON.parse(extras.og_node_restart_diff(engine.id, startWorld!, restartIgnore)) as Diff;
@@ -608,6 +610,15 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       const r = d.resources?.[0];
       const n = d.names?.[0];
       const { missing = [], extra = [] } = d.entities ?? {};
+      // A module's record by its entity: `hero og.physics body.linear is [0,0,4], a fresh start's [0,0,0]`.
+      const record = (m: NonNullable<Diff["records"]>[number]) =>
+        m.global !== undefined
+          ? `module state ${m.block} ${m.global} is ${JSON.stringify(m.now)}, a fresh start's ${JSON.stringify(m.start)}`
+          : m.only === "start"
+            ? `${m.entity} has no ${m.block} ${m.record}, which a fresh start's has`
+            : m.only === "now"
+              ? `${m.entity} has a ${m.block} ${m.record}, which a fresh start's has not`
+              : `${m.entity} ${m.block} ${m.record}${field(m.fields)}`;
       // An extra or a missing entity first: it shifts the pairing of the rest of its component set.
       const first =
         extra[0] !== undefined
@@ -626,9 +637,11 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
                   ? `resource ${r.resource}${r.only === "start" ? " is missing" : r.only === "now" ? " is not in a fresh start" : field(r.fields)}`
                   : d.events?.[0]
                     ? `event queue ${d.events[0].event} holds ${d.events[0].now}, a fresh start's ${d.events[0].start}`
-                    : d.blocks?.[0]
-                      ? `module state ${d.blocks[0].block} differs`
-                      : null;
+                    : d.records?.[0]
+                      ? record(d.records[0])
+                      : d.blocks?.[0]
+                        ? `module state ${d.blocks[0].block} differs`
+                        : null;
       return { tick, ok: first === null && d.differs === false, hash: d.hash!, startHash: d.startHash!, first, unchecked: d.unchecked ?? [], diff: d };
     };
     // Each frame's own time and the time between consecutive frames are the engine's performance record's

@@ -1026,6 +1026,21 @@ impl World {
 
     // ---- state blocks -------------------------------------------------------
 
+    /// The form of state block `name`'s saved `bytes` (another world's
+    /// snapshot's too: [`StateBlock::form`]), og.ecs's own included; `None`
+    /// when this world has no such block.
+    pub fn block_form(
+        &self,
+        name: &str,
+        bytes: &[u8],
+    ) -> Option<Result<og_core::block_form::BlockForm>> {
+        if name == crate::reactive::BLOCK {
+            return Some(self.reactive_form(bytes));
+        }
+        let b = self.blocks.iter().find(|b| b.name == name)?;
+        Some(b.block.form(bytes))
+    }
+
     /// Adds a state block ([`StateBlock`]) under `name`: snapshots save it,
     /// the world hash covers it and restores bring it back. A world with a
     /// block writes snapshot format 3. Refused for an empty name, one longer

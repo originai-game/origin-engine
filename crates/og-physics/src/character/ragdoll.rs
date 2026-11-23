@@ -345,3 +345,39 @@ pub(crate) fn pose_of(sim: &Sim, entity: u64) -> Option<Vec<(Vec3, Quat)>> {
             .collect(),
     )
 }
+
+impl RagdollState {
+    /// Its records by entity ([`Sim::form`]): the ragdoll, a `bone` per
+    /// bone body (keyed by rig index) with its `bone collider`s, and a
+    /// `bone joint` per joint, its bodies by entity.
+    pub(crate) fn form(
+        &self,
+        entity: u64,
+        w: &rp::PhysicsWorld,
+        out: &mut Vec<og_core::block_form::Record>,
+    ) {
+        use super::sim::{body_record, collider_records, joint_fields};
+        use og_core::block_form::{Field, Record};
+        out.push(
+            Record::new(entity, "ragdoll")
+                .field("dynamic", Field::of(&self.dynamic))
+                .field("last", Field::of(&self.last))
+                .field("rig", Field::of(&self.rig)),
+        );
+        for (i, &h) in self.bones.iter().enumerate() {
+            out.push(body_record(entity, "bone", Field::of(&i), h, w, Vec3::ZERO));
+            if let Some(rb) = w.bodies.get(h) {
+                let key = |k: usize| Field::of(&(i, k));
+                collider_records(out, entity, "bone collider", rb.colliders(), w, &key);
+            }
+        }
+        for (i, &h) in self.joints.iter().enumerate() {
+            let mut r = Record::new(entity, "bone joint").key(Field::of(&i));
+            match w.impulse_joints.get(h) {
+                Some(j) => r.fields = joint_fields(j, &w.bodies),
+                None => r = r.field("missing", Field::of(&true)),
+            }
+            out.push(r);
+        }
+    }
+}

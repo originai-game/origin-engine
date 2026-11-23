@@ -10,7 +10,7 @@
 //!   `state::diff` as JSON, or `{"error": reason}`;
 //! - `og_node_restart_diff`: og-net's `state::restart_diff` of a fresh
 //!   start's save (start) against the world now, within an ignore table,
-//!   for `og run --restart-at`.
+//!   each module block in its per-entity form, for `og run --restart-at`.
 
 // napi registers the exports outside `cfg(test)` only.
 #![cfg_attr(test, allow(dead_code))]
@@ -68,7 +68,15 @@ pub fn og_node_restart_diff(engine: u32, save_text: String, ignore_json: String)
         .map_err(|e| format!("the ignore table: {e}"))
         .and_then(|ignore| {
             let start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
-            Ok(restart_diff(&start, &world(engine)?, &ignore))
+            // Each module block read by the world's own block code, by entity.
+            let forms = |name: &str, bytes: &[u8]| {
+                let blocks = [(name.to_owned(), bytes.to_vec())];
+                match og_runtime::world_block_forms(engine, &blocks) {
+                    Ok(mut v) => v.pop().flatten(),
+                    Err(e) => Some(Err(e)),
+                }
+            };
+            Ok(restart_diff(&start, &world(engine)?, &ignore, &forms))
         });
     match diffed {
         Ok(v) => v.to_string(),

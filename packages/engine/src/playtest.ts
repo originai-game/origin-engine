@@ -145,9 +145,9 @@ export interface PlaytestRestart {
   readonly startHash: string;
   /** The first difference by entity path, such as `level/hero Health.hp is 3, a fresh start's 10` or `entity #7.0 is not in a fresh start`; null when equal. */
   readonly first: string | null;
-  /** Module state blocks (og.physics, og.anim) that differ while the restart moved entity ids, which they hold: not compared, listed in the playtest's `unchecked`. */
+  /** Module state blocks that could not be read by entity (`<block>: <why>`): not compared, listed in the playtest's `unchecked`, never passed. */
   readonly unchecked: readonly string[];
-  /** og-net's whole restart diff: `{ differs, components, names, entities: { missing, extra }, resources, events, blocks, unchecked }`. */
+  /** og-net's whole restart diff: `{ differs, components, names, entities: { missing, extra }, resources, events, blocks, records, unchecked }`; `records` are the modules' per-entity state that differs (`{ block, entity, record, fields }`, `{ block, global }`). */
   readonly diff: unknown;
 }
 
@@ -286,8 +286,9 @@ export interface PlaytestDesc {
    * start's after its first tick (the restart's tick is the new game's first: both sides ran
    * exactly one tick), the clock left out (og.Time, og.TimeScale.elapsed). The comparison is
    * structural: entities paired by name, then in spawn order within their component set, every
-   * handle field read through that pairing, the entity allocator left out, so despawning
-   * everything and spawning it again is a restart. A different world, or an extra or missing
+   * handle field read through that pairing, every module's state (og.physics bodies, colliders
+   * and joints, og.anim layers and foot locks, ...) by its paired entity, the entity allocator
+   * left out, so despawning everything and spawning it again is a restart. A different world, or an extra or missing
    * entity, fails the playtest, naming the first difference by entity path.
    */
   readonly restart?: { readonly at: number };

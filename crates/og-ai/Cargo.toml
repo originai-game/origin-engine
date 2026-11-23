@@ -16,6 +16,8 @@ og-ecs = { path = "../og-ecs" }
 # A cooked navmesh decodes into the nav types (`nav::cooked`); the blob
 # schema is og-bundle's.
 og-bundle = { path = "../og-bundle" }
+# The state blocks' per-entity forms (`StateBlock::form`) are JSON values.
+serde_json = "1"
 
 [features]
 default = []

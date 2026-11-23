@@ -5,6 +5,7 @@
 use crate::asset::NONE;
 use crate::graph::{Interrupt, Layer};
 use crate::schema::GRAPH_PARAMS;
+use og_core::block_form::{Field, Record};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Phase {
@@ -45,6 +46,26 @@ pub(crate) struct LayerState {
 }
 
 impl LayerState {
+    /// `entity`'s `layer` record, keyed by the layer's `index`, for a state
+    /// block's form ([`og_ecs::StateBlock::form`]).
+    pub(crate) fn record(&self, entity: u64, index: usize) -> Record {
+        Record::new(entity, "layer")
+            .key(Field::of(&index))
+            .field("state", Field::of(&self.state))
+            .field("phase_cycles", Field::of(&self.phase.cycles))
+            .field("phase_frac", Field::of(&self.phase.frac))
+            .field("time", Field::of(&self.time))
+            .field("prev", Field::of(&self.prev))
+            .field("prev_phase_cycles", Field::of(&self.prev_phase.cycles))
+            .field("prev_phase_frac", Field::of(&self.prev_phase.frac))
+            .field("fade", Field::of(&self.fade))
+            .field("fade_duration", Field::of(&self.fade_duration))
+            .field(
+                "guard",
+                Field::of(&format!("{:?}", self.guard).to_lowercase()),
+            )
+    }
+
     /// A layer at its entry state.
     pub(crate) fn entry(layer: &Layer) -> LayerState {
         LayerState {

@@ -586,3 +586,28 @@ fn pressed_at_is_the_first_press_of_its_controls_in_seconds() {
         "only in the tick it went down"
     );
 }
+
+/// The actions block holds no entity id: a restart check compares it byte
+/// for byte (`BlockForm::Global`), and bytes it cannot decode are refused,
+/// not passed as equal. Fails if the block falls back to an error form or
+/// stops reading what it is given.
+#[test]
+fn the_actions_block_form_is_global() {
+    use og_core::block_form::BlockForm;
+    let mut rig = Rig::new(&[action(
+        "jump",
+        ActionKind::Button,
+        vec![Binding::control("Space")],
+    )]);
+    rig.tick(&[]);
+    let snap = og_ecs::SnapshotEdit::from_bytes(&rig.world.snapshot()).unwrap();
+    let bytes = snap.block(og_input::ACTIONS_BLOCK).unwrap();
+    assert!(matches!(
+        rig.world.block_form(og_input::ACTIONS_BLOCK, bytes),
+        Some(Ok(BlockForm::Global))
+    ));
+    assert!(matches!(
+        rig.world.block_form(og_input::ACTIONS_BLOCK, b"not json"),
+        Some(Err(_))
+    ));
+}

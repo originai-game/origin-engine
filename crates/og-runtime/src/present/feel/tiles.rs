@@ -752,62 +752,20 @@ impl StateBlock for TileBlock {
             let t = lock(&self.0);
             (t.maps.clone(), t.originals.clone())
         };
-        let mut r = Reader::new(bytes, "og.tilemap state block");
-        let n = r.u32()?;
-        type Saved<'a> = (u64, u64, Vec3, u32, u32, f32, Vec<u64>, &'a [u8]);
-        let mut saved: Vec<Saved> = Vec::new();
-        for _ in 0..n {
-            let key = r.u64()?;
-            let map = r.u64()?;
-            let origin = Vec3::new(r.f32()?, r.f32()?, r.f32()?);
-            let flags = r.u32()?;
-            let layers = r.u32()?;
-            let friction = r.f32()?;
-            let colliders = (0..r.u32()?)
-                .map(|_| r.u64())
-                .collect::<og_core::Result<Vec<_>>>()?;
-            saved.push((
-                key,
-                map,
-                origin,
-                flags,
-                layers,
-                friction,
-                colliders,
-                r.sized()?,
-            ));
-        }
+        let (saved, made, next_runtime) = read_saved(bytes)?;
         let mut runtime: Vec<(u64, Arc<MapAsset>)> = Vec::new();
-        let mut next_runtime = 0;
-        for (tag, body) in og_ecs::trailer::read(TILEMAP_SYSTEM, r.rest())? {
-            let mut b = Reader::new(body, "og.tilemap state block");
-            match tag {
-                RUNTIME_SECTION => {
-                    for _ in 0..b.u32()? {
-                        let h = b.u64()?;
-                        let asset = TilemapAsset::decode(b.sized()?)?;
-                        // The map this session has, when it is the saved one.
-                        let have = maps.get(&h).filter(|m| m.asset == asset).cloned();
-                        let map = match have {
-                            Some(m) => m,
-                            None => {
-                                let eng = engine(self.1)
-                                    .map_err(|e| Error::new(ErrorKind::NotFound, e))?;
-                                build_map(&eng, "og.tilemap state block", asset)
-                                    .map_err(|e| Error::new(ErrorKind::NotFound, e))?
-                            }
-                        };
-                        runtime.push((h, map));
-                    }
-                    b.finish()?;
+        for (h, asset) in made {
+            // The map this session has, when it is the saved one.
+            let have = maps.get(&h).filter(|m| m.asset == asset).cloned();
+            let map = match have {
+                Some(m) => m,
+                None => {
+                    let eng = engine(self.1).map_err(|e| Error::new(ErrorKind::NotFound, e))?;
+                    build_map(&eng, "og.tilemap state block", asset)
+                        .map_err(|e| Error::new(ErrorKind::NotFound, e))?
                 }
-                COUNTER_SECTION => {
-                    next_runtime = b.u64()?;
-                    b.finish()?;
-                }
-                // A later section this engine does not know: skipped.
-                _ => {}
-            }
+            };
+            runtime.push((h, map));
         }
         let mut live = IdMap::new();
         for (key, map, origin, flags, layers, friction, colliders, s) in saved {
@@ -878,6 +836,46 @@ impl StateBlock for TileBlock {
         }
     }
 
+    /// Per og.Tilemap entity its `map` (placement,
+    /// collider entities, its cells' saved bytes). A loaded map's handle
+    /// is an asset handle (a value); a map made at run time is named by
+    /// its asset's bytes instead, since its handle is og.tilemap.create's
+    /// own counter (left out, as is the counter). The run-time maps no
+    /// entity uses are global, as their assets' bytes in handle order.
+    fn form(&self, bytes: &[u8]) -> og_core::Result<og_core::block_form::BlockForm> {
+        use og_core::block_form::{BlockForm, Field, Record, Records};
+        let (saved, made, _) = read_saved(bytes)?;
+        let asset_bytes = |a: &TilemapAsset| {
+            let mut v = Vec::new();
+            a.encode(&mut v);
+            v
+        };
+        let mut out = Records::default();
+        for (key, map, origin, flags, layers, friction, colliders, cells) in &saved {
+            let mut rec = Record::new(*key, "map");
+            rec = match made.iter().find(|(h, _)| h == map) {
+                Some((_, a)) => rec.field("runtimeMap", Field::of(&asset_bytes(a))),
+                None => rec.field("map", Field::of(map)),
+            };
+            out.entities.push(
+                rec.field("origin", Field::of(&origin.to_array()))
+                    .field("collision", Field::of(&(flags & 1 != 0)))
+                    .field("dirty", Field::of(&(flags & 2 != 0)))
+                    .field("layers", Field::of(layers))
+                    .field("friction", Field::of(friction))
+                    .field("colliders", Field::Entities(colliders.clone()))
+                    .field("state", Field::of(cells)),
+            );
+        }
+        let unused: Vec<Vec<u8>> = made
+            .iter()
+            .filter(|(h, _)| !saved.iter().any(|s| s.1 == *h))
+            .map(|(_, a)| asset_bytes(a))
+            .collect();
+        out.global.push(("runtimeMaps".into(), Field::of(&unused)));
+        Ok(BlockForm::Entities(out))
+    }
+
     /// Each live map's origin is its entity's og.Transform.position: it
     /// moves with a root, as the Transform does (so the map does not
     /// rebuild its colliders, which the shift moved too).
@@ -890,3 +888,61 @@ impl StateBlock for TileBlock {
 }
 
 struct LiveMaps(IdMap<u64, LiveMap>, Vec<(u64, Arc<MapAsset>)>, u64);
+
+/// One adopted map as saved: its entity, map handle, origin, flags,
+/// layers, friction, collider entities and its MapState's bytes.
+type Saved<'a> = (u64, u64, Vec3, u32, u32, f32, Vec<u64>, &'a [u8]);
+
+/// The adopted maps, the maps made at run time (handle, asset) and the
+/// create counter.
+type SavedBlock<'a> = (Vec<Saved<'a>>, Vec<(u64, TilemapAsset)>, u64);
+
+/// The block's bytes as saved, nothing built: the adopted maps, the maps
+/// made at run time (handle, asset) and the create counter.
+fn read_saved(bytes: &[u8]) -> og_core::Result<SavedBlock<'_>> {
+    let mut r = Reader::new(bytes, "og.tilemap state block");
+    let n = r.u32()?;
+    let mut saved: Vec<Saved> = Vec::new();
+    for _ in 0..n {
+        let key = r.u64()?;
+        let map = r.u64()?;
+        let origin = Vec3::new(r.f32()?, r.f32()?, r.f32()?);
+        let flags = r.u32()?;
+        let layers = r.u32()?;
+        let friction = r.f32()?;
+        let colliders = (0..r.u32()?)
+            .map(|_| r.u64())
+            .collect::<og_core::Result<Vec<_>>>()?;
+        saved.push((
+            key,
+            map,
+            origin,
+            flags,
+            layers,
+            friction,
+            colliders,
+            r.sized()?,
+        ));
+    }
+    let mut made = Vec::new();
+    let mut next_runtime = 0;
+    for (tag, body) in og_ecs::trailer::read(TILEMAP_SYSTEM, r.rest())? {
+        let mut b = Reader::new(body, "og.tilemap state block");
+        match tag {
+            RUNTIME_SECTION => {
+                for _ in 0..b.u32()? {
+                    let h = b.u64()?;
+                    made.push((h, TilemapAsset::decode(b.sized()?)?));
+                }
+                b.finish()?;
+            }
+            COUNTER_SECTION => {
+                next_runtime = b.u64()?;
+                b.finish()?;
+            }
+            // A later section this engine does not know: skipped.
+            _ => {}
+        }
+    }
+    Ok((saved, made, next_runtime))
+}
