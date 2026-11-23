@@ -1,23 +1,28 @@
-//! The input ring as the web shell writes it: `fixtures/ring.bin` is a
-//! SharedArrayBuffer written by `packages/engine/src/web/input.ts` itself
-//! (`node fixtures/make-ring.mjs`), with its live events straddling the slot
-//! wrap, and `fixtures/ring.json` is what the TypeScript `drainRing` reads
-//! from it. The Rust decoder must read the same events, and the Rust writer
-//! must produce bytes the same decoder reads back.
+//! The input ring as the web shell writes it: `fixtures/make-ring.mjs`
+//! generates a SharedArrayBuffer with `packages/engine/src/web/input.ts`
+//! itself, with its live events straddling the slot wrap. The Rust decoder
+//! must read the same events, and the Rust writer must produce bytes the
+//! same decoder reads back.
 
 use og_ecs::{World, WorldDesc};
 use og_input::ring::{self, SLOTS};
 use og_input::{
     Gamepad, InjectedInput, Input, InputLayer, InputSink, PointerAction, PointerButton, Pointers,
 };
-use serde_json::Value;
 
-fn fixture() -> (Vec<u8>, Value) {
+fn fixture() -> Vec<u8> {
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
-    let bin = std::fs::read(dir.join("ring.bin")).unwrap();
-    let json =
-        serde_json::from_str(&std::fs::read_to_string(dir.join("ring.json")).unwrap()).unwrap();
-    (bin, json)
+    let made = std::process::Command::new("node")
+        .arg(dir.join("make-ring.mjs"))
+        .arg("--stdout")
+        .output()
+        .expect("node runs the web input ring's fixture generator");
+    assert!(
+        made.status.success(),
+        "{}",
+        String::from_utf8_lossy(&made.stderr)
+    );
+    made.stdout
 }
 
 #[test]
@@ -107,7 +112,7 @@ fn the_writer_and_the_decoder_agree_and_a_full_ring_refuses() {
 
 #[test]
 fn the_input_layer_drains_a_ring_into_the_world() {
-    let (bin, _) = fixture();
+    let bin = fixture();
     let mut w = World::new(&WorldDesc::default()).unwrap();
     let mut layer = InputLayer::new();
     layer.attach(&mut w).unwrap();

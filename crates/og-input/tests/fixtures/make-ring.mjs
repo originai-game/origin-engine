@@ -1,7 +1,7 @@
 // Writes ring.bin and ring.json with the web shell's own ring code
 // (packages/engine/src/web/input.ts), for tests/ring.rs:
 //
-//   node crates/og-input/tests/fixtures/make-ring.mjs [path/to/input.ts]
+//   node crates/og-input/tests/fixtures/make-ring.mjs [path/to/input.ts] [--stdout]
 //
 // ring.bin is the SharedArrayBuffer after a sequence of writes and drains
 // that wraps the slot index; ring.json is what the TypeScript drainRing
@@ -11,7 +11,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const source = resolve(process.argv[2] ?? join(here, "../../../../packages/engine/src/web/input.ts"));
+const args = process.argv.slice(2);
+const source = resolve(args.find((arg) => arg !== "--stdout") ?? join(here, "../../../../packages/engine/src/web/input.ts"));
 const { createRing, writeRing, drainRing, RING_SLOTS } = await import(source);
 
 const ring = createRing();
@@ -50,9 +51,15 @@ const copy = new SharedArrayBuffer(ring.byteLength);
 new Uint8Array(copy).set(new Uint8Array(ring));
 const header = new Int32Array(ring);
 const decoded = drainRing(copy);
-writeFileSync(join(here, "ring.bin"), new Uint8Array(ring));
-writeFileSync(
-  join(here, "ring.json"),
-  JSON.stringify({ write: header[0], read: header[1], slots: RING_SLOTS, bytes: ring.byteLength, events: decoded }, null, 2) + "\n",
-);
-console.log(`ring.bin ${ring.byteLength} bytes, write ${header[0]}, read ${header[1]}, ${decoded.length} events`);
+if (args.includes("--stdout")) {
+  // Rust tests generate their independent TypeScript-written fixture without
+  // installing an asset or modifying files shared by concurrent tests.
+  process.stdout.write(new Uint8Array(ring));
+} else {
+  writeFileSync(join(here, "ring.bin"), new Uint8Array(ring));
+  writeFileSync(
+    join(here, "ring.json"),
+    JSON.stringify({ write: header[0], read: header[1], slots: RING_SLOTS, bytes: ring.byteLength, events: decoded }, null, 2) + "\n",
+  );
+  console.log(`ring.bin ${ring.byteLength} bytes, write ${header[0]}, read ${header[1]}, ${decoded.length} events`);
+}
