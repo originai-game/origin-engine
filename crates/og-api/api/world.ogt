@@ -466,6 +466,17 @@ module world {
       param index u32 "The row, from 0 to count - 1."
       returns Entity
     }
+    fn handle {
+      doc "The handle a field of entity i holds (an Entity, a TableRow, an asset), typed as the field's value: what world.get answers for it, without reading the whole component. Its column holds two u32 words a row, not handles. Throws for a field that holds no single handle, as column does for a component the system did not declare."
+      aliases "read handle column, table row from column, entity field from column"
+      host false
+      generic C AnyComponent
+      generic K HandleField.C
+      param component C "The component token."
+      param field K "The field, such as `row`."
+      param index u32 "The row, from 0 to count - 1."
+      returns FieldValue.C.K
+    }
     fn has {
       doc "Whether the archetype carries a component."
       host false

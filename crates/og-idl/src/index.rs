@@ -33,6 +33,9 @@ pub const GENERICS: &[(&str, usize)] = &[
     ("Partial", 1),
     ("Value", 1),
     ("View", 1),
+    // A component's handle fields, and one field's value: ArchetypeView.handle.
+    ("HandleField", 1),
+    ("FieldValue", 2),
     ("Array", 2),
     ("OneOf", 2),
     ("ComponentType", 1),

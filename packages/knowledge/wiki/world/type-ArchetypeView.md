@@ -115,6 +115,44 @@ fn entity {
 
 <sub>Module `world` line 464</sub>
 
+<a id="member-ArchetypeView-handle"></a>
+
+#### `ArchetypeView.handle`
+
+The handle a field of entity i holds (an Entity, a TableRow, an asset), typed as the field's value: what world.get answers for it, without reading the whole component. Its column holds two u32 words a row, not handles. Throws for a field that holds no single handle, as column does for a component the system did not declare.
+
+Also known as: read handle column, table row from column, entity field from column
+
+```ts
+ArchetypeView.handle<C extends AnyComponent, K extends HandleField<C>>(component: C, field: K, index: number): Value<C>[K]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `component` | `C` | no | The component token. |
+| `field` | `K` | no | The field, such as `row`. |
+| `index` | `number` | no | The row, from 0 to count - 1. |
+
+**Returns** `Value<C>[K]`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn handle {
+  doc "The handle a field of entity i holds (an Entity, a TableRow, an asset), typed as the field's value: what world.get answers for it, without reading the whole component. Its column holds two u32 words a row, not handles. Throws for a field that holds no single handle, as column does for a component the system did not declare."
+  aliases "read handle column, table row from column, entity field from column"
+  host false
+  generic C AnyComponent
+  generic K HandleField.C
+  param component C "The component token."
+  param field K "The field, such as `row`."
+  param index u32 "The row, from 0 to count - 1."
+  returns FieldValue.C.K
+}
+```
+
+<sub>Module `world` line 469</sub>
+
 <a id="member-ArchetypeView-has"></a>
 
 #### `ArchetypeView.has`
@@ -143,7 +181,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 469</sub>
+<sub>Module `world` line 480</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -176,7 +214,7 @@ fn column {
 }
 ```
 
-<sub>Module `world` line 476</sub>
+<sub>Module `world` line 487</sub>
 
 <a id="member-ArchetypeView-addScaled"></a>
 
@@ -218,4 +256,4 @@ fn addScaled {
 }
 ```
 
-<sub>Module `world` line 484</sub>
+<sub>Module `world` line 495</sub>

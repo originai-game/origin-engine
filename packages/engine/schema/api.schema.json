@@ -2753,6 +2753,43 @@
               "publish": true
             },
             {
+              "name": "handle",
+              "doc": "The handle a field of entity i holds (an Entity, a TableRow, an asset), typed as the field's value: what world.get answers for it, without reading the whole component. Its column holds two u32 words a row, not handles. Throws for a field that holds no single handle, as column does for a component the system did not declare.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                },
+                {
+                  "name": "K",
+                  "bound": "HandleField<C>"
+                }
+              ],
+              "params": [
+                {
+                  "name": "component",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component token."
+                },
+                {
+                  "name": "field",
+                  "type": "K",
+                  "optional": false,
+                  "doc": "The field, such as `row`."
+                },
+                {
+                  "name": "index",
+                  "type": "u32",
+                  "optional": false,
+                  "doc": "The row, from 0 to count - 1."
+                }
+              ],
+              "returns": "FieldValue<C,K>",
+              "publish": true,
+              "host": false
+            },
+            {
               "name": "has",
               "doc": "Whether the archetype carries a component.",
               "generics": [

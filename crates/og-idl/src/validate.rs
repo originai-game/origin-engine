@@ -345,6 +345,8 @@ impl<'a> Validator<'a, '_> {
             match g.bound.name() {
                 "Fields" | "AnyComponent" | "AnyResource" | "AnyEvent" | "AnyReflected"
                 | "Json" | "UiStores" => {}
+                // A field name of an earlier component generic: `generic K HandleField.C`.
+                "HandleField" => self.ty(&g.bound, &f.generics, g.line),
                 other => self.error(
                     g.line,
                     format!(
@@ -948,6 +950,30 @@ impl<'a> Validator<'a, '_> {
                             line,
                             format!("`Array<{},..>` must hold plain numeric data", args[0]),
                         );
+                    }
+                }
+                "HandleField" | "FieldValue" => {
+                    let component = args[0].name();
+                    if !generic(component).is_some_and(|g| g.bound.name() == "AnyComponent") {
+                        self.error(
+                            line,
+                            format!(
+                                "`{name}<{component}>` needs a generic bounded by AnyComponent"
+                            ),
+                        );
+                    }
+                    if name == "FieldValue" {
+                        let field = args[1].name();
+                        let bounded = generic(field).is_some_and(|g| {
+                            g.bound.name() == "HandleField"
+                                && matches!(&g.bound, TypeRef::Named { args, .. } if args.first().map(|a| a.name()) == Some(component))
+                        });
+                        if !bounded {
+                            self.error(
+                                line,
+                                format!("`FieldValue<{component}, {field}>` needs a generic bounded by HandleField.{component}"),
+                            );
+                        }
                     }
                 }
                 "Value" | "View" => {

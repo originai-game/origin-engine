@@ -151,6 +151,17 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 
 /** The typed column views of a component token, as `ArchetypeView.column` returns them. */
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
+
+/** The names of a component token's fields that hold one handle (an Entity, a TableRow, an asset): two u32 words a row, which `ArchetypeView.handle` reads. */
+export type HandleField<T> = T extends ComponentType<infer F, any>
+  ? {
+      [K in keyof F]: F[K] extends { readonly list: number }
+        ? never
+        : ColumnKinds[F[K]["kind"]] extends { readonly array: Uint32Array; readonly stride: 2 }
+          ? K
+          : never;
+    }[keyof F] & string
+  : never;
 "#;
 
 impl<'a> Gen<'a, '_> {
@@ -693,6 +704,8 @@ impl<'a> Gen<'a, '_> {
                     _ => format!("{name}<{a}>"),
                 }
             }
+            "HandleField" => format!("HandleField<{}>", arg(0)),
+            "FieldValue" => format!("Value<{}>[{}]", arg(0), arg(1)),
             "Array" => {
                 let n = match args.get(1) {
                     Some(TypeRef::Int(n)) => *n as usize,

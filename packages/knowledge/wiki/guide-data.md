@@ -94,6 +94,9 @@ and an edited table changes what every holder reads.
   report it; nothing is changed for it.
 - og.table.name answers a handle's table and id: for a save's own
   migration, a debug line or a UI.
+- In a system, a TableRow column (as an Entity column) holds two u32
+  words a row, not handles: read row i's handle with
+  `a.handle(Wields, "item", i)`, typed as the field's TableRow.
 
 <a id="guide-data-4"></a>
 ### `data §4` Recipes
@@ -132,7 +135,8 @@ row "arrow" {
 const Check = defineSystem("Check", { reads: [Wields] }, (q, _time, world) => {
   for (const a of q.archetypes()) {
     for (let i = 0; i < a.count; i++) {
-      const bow = must(og.table.get(world, must(world.get(a.entity(i), Wields)).item, Item));
+      // A TableRow column holds two words a row: a.handle answers row i's handle.
+      const bow = must(og.table.get(world, a.handle(Wields, "item", i), Item));
       const arrow = must(og.table.get(world, bow.ammo, Item));
       og.assert.always(bow.damage === 7 && arrow.damage === 3, "a row and the row it names read back", {});
       og.assert.reachable("the wielded bow's arrow was read", {});

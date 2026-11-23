@@ -117,6 +117,17 @@ class ArchetypeViewImpl {
     return e[index * 2]! + e[index * 2 + 1]! * 4294967296;
   }
 
+  handle(component: Token, field: string, index: number): number {
+    const { names, kinds } = layoutOf(component);
+    const kind = kinds[names.indexOf(field)];
+    if (!kind || kind.array !== "Uint32Array" || kind.stride !== 2) {
+      throw new Error(`'${component.name}.${field}' holds no single handle: ArchetypeView.handle reads an Entity, a TableRow or an asset field`);
+    }
+    // Two u32 words a row, low first, as entity(i) reads its pair.
+    const w = (this.column(component) as Record<string, Uint32Array>)[field]!;
+    return w[index * 2]! + w[index * 2 + 1]! * 4294967296;
+  }
+
   has(component: Token): boolean {
     this.#check();
     return this.#types.includes(componentId(this.#engine, component.name));

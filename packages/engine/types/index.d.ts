@@ -129,6 +129,17 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 /** The typed column views of a component token, as `ArchetypeView.column` returns them. */
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
 
+/** The names of a component token's fields that hold one handle (an Entity, a TableRow, an asset): two u32 words a row, which `ArchetypeView.handle` reads. */
+export type HandleField<T> = T extends ComponentType<infer F, any>
+  ? {
+      [K in keyof F]: F[K] extends { readonly list: number }
+        ? never
+        : ColumnKinds[F[K]["kind"]] extends { readonly array: Uint32Array; readonly stride: 2 }
+          ? K
+          : never;
+    }[keyof F] & string
+  : never;
+
 /** Every column kind, from the IDL's `column` declarations. */
 export interface ColumnKinds {
   /**
@@ -2007,6 +2018,14 @@ export interface ArchetypeView {
    * @param index The row, from 0 to count - 1.
    */
   entity(index: number): Entity;
+  /**
+   * The handle a field of entity i holds (an Entity, a TableRow, an asset), typed as the field's value: what world.get answers for it, without reading the whole component. Its column holds two u32 words a row, not handles. Throws for a field that holds no single handle, as column does for a component the system did not declare.
+   *
+   * @param component The component token.
+   * @param field The field, such as `row`.
+   * @param index The row, from 0 to count - 1.
+   */
+  handle<C extends AnyComponent, K extends HandleField<C>>(component: C, field: K, index: number): Value<C>[K];
   /**
    * Whether the archetype carries a component.
    *

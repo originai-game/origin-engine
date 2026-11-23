@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "ArchetypeView.handle",
+      "summary": "Reads the handle a field of entity i holds (a TableRow, an Entity, an asset) from the view, typed as the field's value: `og.table.get(world, a.handle(Foe, \"row\", i), Enemy)`. A handle column holds two u32 words a row, so `a.column(Foe).row[i]` was half of some row's handle and typed as a plain number; reading it took a world.get of the whole component per entity."
+    }
+  ]
+}

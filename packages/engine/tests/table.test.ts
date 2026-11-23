@@ -95,3 +95,53 @@ test("two rows with one handle are refused across tables, as in one", () => {
   expect(must(og.table.get(world, must(og.table.row(world, "a.ogt", "779d5caa6d657a20")), Item)).damage).toBe(3);
   engine.destroy();
 });
+
+// ArchetypeView.handle: a TableRow or Entity column holds two words a row.
+// - the words read as one handle each (`row[i]`) → og.table.get refuses it
+// - the high word dropped or the words swapped → a 52-bit handle whose high
+//   word is not 0 reads as another number than world.get's
+// - row i read at word i, not 2i → the second entity reads the first's
+test("a view answers a TableRow or Entity field's handle, as world.get does", async () => {
+  const { Entity, TableRow, defineComponent, defineSystem, f32 } = await import("@origingame/engine");
+  const Enemy = defineComponent("ViewEnemy", { hp: f32() });
+  const Foe = defineComponent("ViewFoe", { t: f32(), row: TableRow(), leader: Entity() });
+  const read: { hp: number; row: number; leader: number; want: { row: number; leader: number } }[] = [];
+  let refused = "";
+  const Read = defineSystem("Read", { reads: [Foe] }, (q, _time, world) => {
+    for (const a of q.archetypes()) {
+      for (let i = 0; i < a.count; i++) {
+        const row = a.handle(Foe, "row", i);
+        const want = must(world.get(a.entity(i), Foe));
+        read.push({ hp: must(og.table.get(world, row, Enemy)).hp, row, leader: a.handle(Foe, "leader", i), want: { row: want.row, leader: want.leader } });
+      }
+      try {
+        // @ts-expect-error `t` is an f32: no handle field.
+        a.handle(Foe, "t", 0);
+      } catch (e) {
+        refused = (e as Error).message;
+      }
+    }
+  });
+  const engine = must(
+    createEngine(
+      og.game({
+        systems: [Read],
+        start(world: World) {
+          must(og.table.parse(world, "enemies.ogt", HEAD + 'row "cross" {\n  hp 2\n}\nrow "ring" {\n  hp 5\n}\n', Enemy));
+          const boss = must(world.spawn({ name: "boss" }));
+          for (const id of ["cross", "ring"]) {
+            must(world.insert(must(world.spawn({})), Foe, { row: must(og.table.row(world, "enemies.ogt", id)), leader: boss }));
+          }
+        },
+      } as never) as GameToken,
+      {},
+    ),
+  );
+  must(engine.advance(1));
+  expect(read.map((r) => r.hp)).toEqual([2, 5]);
+  for (const r of read) expect({ row: r.row, leader: r.leader }).toEqual(r.want);
+  // The handles use their high word: one that dropped it would differ.
+  expect(read.every((r) => r.row > 2 ** 32)).toBe(true);
+  expect(refused).toBe("'ViewFoe.t' holds no single handle: ArchetypeView.handle reads an Entity, a TableRow or an asset field");
+  engine.destroy();
+});
