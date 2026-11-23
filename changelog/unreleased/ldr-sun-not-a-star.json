@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook environment sun extract",
+      "summary": "An LDR sky whose sun is drawn below white (cream, pale yellow) no longer takes a star for its sun. A white region smaller than a disc 1° across is a star, never the sun, and a white region that a compact disc drawn below white outshines four times over is a star beside a sun drawn too dim. Both report the existing \"none bright enough … draw the sun as a small white disc\" note, naming the dim disc's colour. The cooker version moves to r34, so every sky re-cooks."
+    }
+  ]
+}

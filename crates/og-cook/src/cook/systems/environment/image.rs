@@ -255,42 +255,52 @@ fn daylight(img: &Rgb32FImage, sun: Vec3) -> Option<Vec3> {
 /// as the sun's disc: about 11° across.
 const MAX_SUN_AREA: f32 = 0.03;
 
-/// Locate the brightest compact connected disc in the upper hemisphere.
-/// Its observed solid angle and the unclipped circumsolar gradient determine
-/// the estimate. It is deliberately reported as an estimate: clipping has
-/// destroyed information, and a white cloud can be ambiguous. `Err` names
-/// why no sun was measured: nothing bright enough, a bright region too
-/// large (clipped clouds or haze merged with the disc, or a disc drawn too
-/// large), or no sky around it to measure against.
-pub(super) fn take_sun(
-    img: &mut Rgb32FImage,
-    strength: f32,
-) -> Result<og_render_data::EnvironmentSun, String> {
+/// The smallest solid angle a white region must cover to be a sun's disc,
+/// not a star: a disc 1° across. A clipped star dot of a space sky is
+/// smaller.
+const MIN_SUN_AREA: f32 = 2.4e-4;
+
+/// How much more light a compact bright disc that is not white may hold
+/// than the white region before that white region is taken for a star
+/// beside a sun drawn too dim to measure.
+const OUTSHONE: f32 = 4.0;
+
+/// A connected region above the horizon: its pixels (seed first), solid
+/// angle, light (luminance over solid angle) and solid-angle-weighted aim.
+struct Region {
+    pixels: Vec<usize>,
+    area: f32,
+    light: f32,
+    aim: Vec3,
+}
+
+/// Every connected region of the upper half whose pixels pass `keep`.
+fn regions(img: &Rgb32FImage, keep: impl Fn(Vec3) -> bool) -> Vec<Region> {
     let (w, h) = img.dimensions();
     let pixels = (w * h) as usize;
-    let rgb = |img: &Rgb32FImage, k: usize| Vec3::from_slice(&img.as_raw()[3 * k..3 * k + 3]);
-    let white = |img: &Rgb32FImage, k: usize| rgb(img, k).min_element() >= 0.8;
-    // Every white region above the horizon, each a candidate disc: the
-    // one holding the most light (luminance over solid angle) is the sun,
-    // so a drawn disc wins over the clipped stars of a night or space sky,
-    // which tie with it pixel for pixel.
+    let rgb = |k: usize| Vec3::from_slice(&img.as_raw()[3 * k..3 * k + 3]);
     let mut visited = vec![false; pixels];
-    let mut best: Option<(f32, Vec<usize>, f32, Vec3)> = None;
+    let mut out = Vec::new();
     for seed in 0..pixels / 2 {
-        if visited[seed] || !white(img, seed) {
+        if visited[seed] || !keep(rgb(seed)) {
             continue;
         }
         visited[seed] = true;
-        let mut region = vec![seed];
-        let (mut at, mut area, mut light, mut aim) = (0, 0.0, 0.0, Vec3::ZERO);
-        while at < region.len() {
-            let k = region[at];
+        let mut r = Region {
+            pixels: vec![seed],
+            area: 0.0,
+            light: 0.0,
+            aim: Vec3::ZERO,
+        };
+        let mut at = 0;
+        while at < r.pixels.len() {
+            let k = r.pixels[at];
             at += 1;
             let d = direction(w, h, k);
             let solid = TAU / w as f32 * PI / h as f32 * (1.0 - d.y * d.y).sqrt();
-            area += solid;
-            aim += d * solid;
-            light += rgb(img, k).dot(LUMA) * solid;
+            r.area += solid;
+            r.aim += d * solid;
+            r.light += rgb(k).dot(LUMA) * solid;
             let (x, y) = (k as u32 % w, k as u32 / w);
             for (nx, ny) in [
                 ((x + w - 1) % w, y),
@@ -299,64 +309,125 @@ pub(super) fn take_sun(
                 (x, (y + 1).min(h / 2 - 1)),
             ] {
                 let j = (ny * w + nx) as usize;
-                if !visited[j] && white(img, j) {
+                if !visited[j] && keep(rgb(j)) {
                     visited[j] = true;
-                    region.push(j);
+                    r.pixels.push(j);
                 }
             }
         }
-        if best.as_ref().is_none_or(|b| light > b.0) {
-            best = Some((light, region, area, aim));
-        }
+        out.push(r);
     }
-    let Some((_, disc, area, aim)) = best else {
+    out
+}
+
+/// Whether a region is drawn as a disc in the image: it reaches about its
+/// equivalent radius in pixels from its centre (a circle 1, a 2:1
+/// rectangle 1.3), with x unwrapped around `around`. One that sprawls past
+/// that is clouds or haze.
+fn compact(w: u32, region: &[usize], around: usize) -> bool {
+    let (px, py) = ((around as u32 % w) as f32, (around as u32 / w) as f32);
+    let offsets: Vec<(f32, f32)> = region
+        .iter()
+        .map(|&k| {
+            let dx = (k as u32 % w) as f32 - px;
+            let dx = dx - w as f32 * (dx / w as f32).round();
+            (dx, (k as u32 / w) as f32 - py)
+        })
+        .collect();
+    let n = offsets.len() as f32;
+    let (cx, cy) = offsets
+        .iter()
+        .fold((0.0, 0.0), |(a, b), &(x, y)| (a + x / n, b + y / n));
+    let reach = offsets
+        .iter()
+        .map(|&(x, y)| (x - cx).hypot(y - cy))
+        .fold(0.0f32, f32::max);
+    reach <= 1.25 * (n / PI).sqrt().max(1.0)
+}
+
+/// Why a sun was not measured when its disc is not white: names the
+/// brightest colour, as the author's fix is to draw the disc white.
+fn not_white(p: Vec3, what: &str) -> String {
+    format!(
+        "none bright enough: the brightest {what} above the horizon is sRGB {:.2} {:.2} {:.2}, and a sun disc has every channel at 0.9 or more in sRGB (0.8 linear); draw the sun as a small white disc",
+        image_srgb(p.x),
+        image_srgb(p.y),
+        image_srgb(p.z)
+    )
+}
+
+/// Locate the brightest compact connected disc in the upper hemisphere.
+/// Its observed solid angle and the unclipped circumsolar gradient determine
+/// the estimate. It is deliberately reported as an estimate: clipping has
+/// destroyed information, and a white cloud can be ambiguous. `Err` names
+/// why no sun was measured: nothing bright enough (no white disc, only
+/// white specks smaller than a disc 1° across, or a white region outshone
+/// by a disc drawn below white, which is the real sun drawn too dim), a
+/// bright region too large (clipped clouds or haze merged with the disc, or
+/// a disc drawn too large), or no sky around it to measure against.
+pub(super) fn take_sun(
+    img: &mut Rgb32FImage,
+    strength: f32,
+) -> Result<og_render_data::EnvironmentSun, String> {
+    let (w, h) = img.dimensions();
+    let pixels = (w * h) as usize;
+    let rgb = |img: &Rgb32FImage, k: usize| Vec3::from_slice(&img.as_raw()[3 * k..3 * k + 3]);
+    let brightest = |img: &Rgb32FImage, region: &[usize]| {
+        region.iter().copied().fold(region[0], |a, k| {
+            if rgb(img, k).dot(LUMA) > rgb(img, a).dot(LUMA) {
+                k
+            } else {
+                a
+            }
+        })
+    };
+    // Every white region above the horizon at least a disc 1° across, each
+    // a candidate disc: the one holding the most light (luminance over
+    // solid angle) is the sun, so a drawn disc wins over the clipped stars
+    // of a night or space sky, which tie with it pixel for pixel and are
+    // smaller than any disc.
+    let best = regions(img, |p| p.min_element() >= 0.8)
+        .into_iter()
+        .filter(|r| r.area >= MIN_SUN_AREA)
+        .max_by(|a, b| a.light.total_cmp(&b.light));
+    // A compact disc drawn below white (cream, pale yellow) that outshines
+    // every white region is the sun the author meant, too dim to measure:
+    // a white region beside it is a star or a highlight, never the sun.
+    let outshone = |light: f32, inside: Option<usize>| {
+        regions(img, |p| p.dot(LUMA) >= 0.5)
+            .into_iter()
+            .filter(|r| r.area <= MAX_SUN_AREA && inside.is_none_or(|k| !r.pixels.contains(&k)))
+            .filter(|r| r.light >= OUTSHONE * light)
+            .filter(|r| compact(w, &r.pixels, brightest(img, &r.pixels)))
+            .max_by(|a, b| a.light.total_cmp(&b.light))
+            .map(|r| rgb(img, brightest(img, &r.pixels)))
+    };
+    let Some(Region {
+        pixels: disc,
+        area,
+        aim,
+        light,
+    }) = best
+    else {
+        if let Some(p) = outshone(0.0, None) {
+            return Err(not_white(p, "disc"));
+        }
         let peak = (0..pixels / 2)
             .max_by(|&a, &b| rgb(img, a).dot(LUMA).total_cmp(&rgb(img, b).dot(LUMA)))
             .unwrap_or(0);
-        let p = rgb(img, peak);
-        return Err(format!(
-            "none bright enough: the brightest pixel above the horizon is sRGB {:.2} {:.2} {:.2}, and a sun disc has every channel at 0.9 or more in sRGB (0.8 linear); draw the sun as a small white disc",
-            image_srgb(p.x),
-            image_srgb(p.y),
-            image_srgb(p.z)
-        ));
+        return Err(not_white(rgb(img, peak), "pixel"));
     };
+    if let Some(p) = outshone(light, Some(disc[0])) {
+        return Err(not_white(p, "disc"));
+    }
     // The disc's brightest pixel (its first, of equals).
-    let peak = disc.iter().copied().fold(disc[0], |a, k| {
-        if rgb(img, k).dot(LUMA) > rgb(img, a).dot(LUMA) {
-            k
-        } else {
-            a
-        }
-    });
+    let peak = brightest(img, &disc);
     let peak_rgb = rgb(img, peak);
     let aim = aim.normalize();
     let radius = (1.0 - area / TAU).acos();
     // Large overcast white regions are not a measurable solar disc.
     if area > MAX_SUN_AREA {
-        // Drawn as a disc in the image, the region reaches about its
-        // equivalent radius in pixels from its centre (a circle 1, a 2:1
-        // rectangle 1.3); one that sprawls past that is clouds or haze
-        // joined to the sun. Measured in the image, where a generator draws
-        // the disc round, with x unwrapped around the peak.
-        let (px, py) = ((peak as u32 % w) as f32, (peak as u32 / w) as f32);
-        let offsets: Vec<(f32, f32)> = disc
-            .iter()
-            .map(|&k| {
-                let dx = (k as u32 % w) as f32 - px;
-                let dx = dx - w as f32 * (dx / w as f32).round();
-                (dx, (k as u32 / w) as f32 - py)
-            })
-            .collect();
-        let n = offsets.len() as f32;
-        let (cx, cy) = offsets
-            .iter()
-            .fold((0.0, 0.0), |(a, b), &(x, y)| (a + x / n, b + y / n));
-        let reach = offsets
-            .iter()
-            .map(|&(x, y)| (x - cx).hypot(y - cy))
-            .fold(0.0f32, f32::max);
-        let compact = reach <= 1.25 * (n / PI).sqrt().max(1.0);
+        let compact = compact(w, &disc, peak);
         let across = (2.0 * radius).to_degrees();
         let largest = (2.0 * (1.0 - MAX_SUN_AREA / TAU).acos()).to_degrees();
         return Err(if !compact {

@@ -1296,3 +1296,73 @@ fn an_ldr_sky_without_a_measurable_sun_names_the_cause() {
         sun("large.ogt")
     );
 }
+
+/// A space sky whose sun is drawn cream, below white, holds white only in
+/// its star dots. A star is no sun: one smaller than a disc 1° across is
+/// never measured, and a larger white speck that a cream disc outshines is
+/// a star beside a sun drawn too dim. Both skies say why, with the cream
+/// disc's colour, rather than putting the sun where a star is.
+#[test]
+fn an_ldr_sky_with_a_cream_disc_does_not_take_a_star_for_its_sun() {
+    let sky = |stars: &'static [(u32, u32)]| {
+        ldr_image(
+            512,
+            256,
+            move |x, y| {
+                let (dx, dy) = (x as f32 - 300.0, y as f32 - 70.0);
+                if dx.hypot(dy) < 6.0 {
+                    [250, 235, 170]
+                } else if stars.contains(&(x, y)) {
+                    [255, 255, 255]
+                } else {
+                    [8, 10, 24]
+                }
+            },
+            image::ImageFormat::Png,
+        )
+    };
+    let dots = sky(&[(40, 20), (210, 95), (470, 60), (120, 30)]);
+    let speck = sky(&[(40, 20), (41, 20), (40, 21), (41, 21), (470, 60)]);
+    let env = |source: &str| {
+        format!(
+            "type environment\nversion 1\n---\nsource \"{source}\"\nsize 32\nsamples 16\nexpand 0\n"
+        )
+    };
+    let root = project(
+        "ldr-cream-sun",
+        &[
+            ("dots.png", &dots),
+            ("speck.png", &speck),
+            ("dots.ogt", env("dots.png").as_bytes()),
+            ("speck.ogt", env("speck.png").as_bytes()),
+        ],
+    );
+    let report = cook(&root);
+    let stats =
+        og_cook::cook::stats::cook_report_json(&report, &root.join("cooked"), &Default::default());
+    for source in ["dots.ogt", "speck.ogt"] {
+        let asset = stats["assets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["source"] == source)
+            .unwrap()
+            .clone();
+        assert!(
+            asset["environment"]["sun"]["missing"].is_string(),
+            "{source}: a star is not the sun: {asset}"
+        );
+        let notes = report
+            .assets
+            .iter()
+            .find(|a| a.source == source)
+            .unwrap()
+            .notes
+            .join("\n");
+        assert!(
+            notes.contains("none bright enough")
+                && notes.contains("disc above the horizon is sRGB 0.98"),
+            "{source}: the note names the cream disc: {notes}"
+        );
+    }
+}
