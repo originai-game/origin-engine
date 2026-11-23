@@ -28171,6 +28171,42 @@ export interface SavedSceneFile {
   readonly text: string;
 }
 
+/** One probe log or warning entry. */
+export interface ProbeLogEntry {
+  /** The tick when it was recorded. */
+  readonly tick: number;
+  /** True for a warning or refusal reason. */
+  readonly warning: boolean;
+  /** The message. */
+  readonly text: string;
+}
+
+/** Recent probe logs and warnings (up to 512 entries). */
+export interface ProbeLogs {
+  /** Entries in chronological order. */
+  readonly entries: readonly ProbeLogEntry[];
+  /** Older entries evicted before this read. */
+  readonly dropped: number;
+}
+
+/** Outcome of a synchronous probe set call. */
+export interface ProbeSetResult {
+  /** True when the field was written. */
+  readonly ok: boolean;
+  /** Why the write was refused, when ok is false. */
+  readonly error?: string;
+}
+
+/** Outcome of a synchronous probe get call. */
+export interface ProbeGetResult {
+  /** True when the target was read. */
+  readonly ok: boolean;
+  /** The read value, when ok is true. */
+  readonly value?: unknown;
+  /** Why the read was refused, when ok is false. */
+  readonly error?: string;
+}
+
 /**
  * RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values.
  */
@@ -28390,6 +28426,25 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null when no UI element that shows something or takes input is under the point.
    */
   pickUi(x: number, y: number): UiPickElement | null;
+  /**
+   * Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene).
+   *
+   * @param take Clear the log ring after answering. Default `false`.
+   */
+  logs(take?: boolean): ProbeLogs;
+  /**
+   * Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene.
+   *
+   * @param target Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`).
+   * @param value New JSON value.
+   */
+  set(target: string, value: unknown): ProbeSetResult;
+  /**
+   * Synchronously read any reflected resource, resource field, entity, component, or component field.
+   *
+   * @param target Target path (`<Resource>[.<field>]` or `<entity>[.<Component>[.<field>]]`).
+   */
+  get(target: string): ProbeGetResult;
 }
 
 // ── terrain ─────────────────────────────────────────────────────

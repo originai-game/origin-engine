@@ -54,9 +54,12 @@ commands:
   new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\" | --commands-file <f>] [--seed S] [--port P]
-      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
-      [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--room <ws url>]
-      [--shared <ws or https url> [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--json] [--no-check] [--require-checked]
+      [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>]
+      [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
+      [--trace <out.json>] [--perf <dir> [--budget <line>=<ms>]...] [--gpu-serial] [--profile <out.cpuprofile|out.md>]
+      [--room <ws url>] [--shared <ws or https url> [--shared-token-file <f>] [--shared-cert-hash <hex>]]
+      [--capture-only] [--forks N] [--restart-at S [--restart-keep Type.field,...]]
+      [--json] [--no-check] [--require-checked]
                       cook, type-check, bundle and run the game on the native host with the probe;
                       outputs of screenshot/dump_* land in --out (default <project>/og-out)
                       --require-checked exits 1 when GPU checks remain unchecked (default: warning)
@@ -68,8 +71,9 @@ commands:
                       address), pass the play gate and time the first frame and the frames;
                       report.md and device.json in --out (default <project>/og-out/device)
   replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S]
-      [--clock <UTC ms>] [--locale <tag>] [--keyframe-every K] --out <trace.json> [--json]
-  replay compare <trace.json> [project] [--json]
+      [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>]
+      [--keyframe-every K] [--loads <journal.json>] [--content <dir>] --out <trace.json> [--json]
+  replay compare <trace.json> [project] [--content <dir>] [--json]
                       record the world's portable hash after every tick of a scripted headless run
                       (and its save every K ticks, default 30), or replay a trace with this engine
                       and report the first divergent tick with the keyframe's diff; compare exits
@@ -117,16 +121,17 @@ commands:
                       rewrite a three.js file towards og where the mapping is mechanical (geometries,
                       materials, meshes, lights, the scene graph, transforms, the camera, texture
                       loads) and list each line that is not, with the three-to-og guide's section
-  probe <method> [params-json] [--port P] [--out file.png] [--raw]
+  probe <method> [params-json] [--port P] [--out file.png] [--timeout S] [--raw]
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket):
                       the result as JSON on stdout, exit 0 (a refusal, false or null, is a result); an
-                      error on stderr, exit 1; a capture's PNG written to --out (default capture.png)
-                      and its path in png; capture_views writes each frame beside it as
-                      <stem>-<view>.png (capture-0.png, ...), each frame's png its path;
+                      error on stderr, exit 1; a capture/marks PNG written to --out (default capture.png),
+                      capture_views/sweep frames beside it as <stem>-<view>.png, listen WAV to --out
+                      (default listen.wav); --timeout sets socket timeout in seconds (default 30);
                       --raw prints the whole answer frame (the testing guide §9)
-  mcp                 serve the og tool over MCP on stdio: the tools probe, run, test, render,
-                      compare, api_find and api_show, with the same JSON as the commands
-  dev [project] [--port P] [--exit-after N] [--json]
+  mcp                 serve the og tool over MCP on stdio: probe, run_logs, run, test, check, cook,
+                      build, create, explore, replay, ui, style, model, assets, prefab, doctor,
+                      render, compare, api_find and api_show, with the same JSON as the commands
+  dev [project] [--port P] [--exit-after N] [--json] [--engine]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
                       beside the rebuild (reported, never refusing the reload)
@@ -139,15 +144,16 @@ commands:
                       type-check the game code with tsrs (tsgo where tsrs has no package);
                       --json prints the diagnostics as one `check` event; og run, og test and
                       og build check before bundling (--no-check skips it), og dev on each save
-  test [project] [--filter <path>] [--jobs N] [--json] [--no-check] [--require-checked]
+  test [project] [--filter <path>] [--skip <path>] [--affected <rev>] [--jobs N] [--json] [--no-check] [--require-checked]
                       the project's bun tests, then each tests/*.og.ts playtest file (bun:test,
                       its tests awaiting runPlaytest) under bun test against the built game
                       --filter selects suite files by a project-relative path substring;
+                      --skip omits suite files matching a substring (repeatable);
                       --affected <git-revision> selects changed dependencies (unknown inputs run all);
                       --jobs N runs up to N playtest files at once, each one's output whole, in order
                       --json: stdout is JSON Lines only, the check, playtest and test events (the
                       testing guide §9); the prose goes to stderr
-  build [project] [--publish] [--out DIR] [--json] [--no-check]
+  build [project] [--publish] [--out DIR] [--assets URL] [--content URL] [--modules cdn|local] [--json] [--no-check]
                       cook, type-check and export the game to dist/ (or publish.out): the player shell,
                       game.js, the web host, cooked/, og-build.json, _headers; --publish keeps
                       only the player-facing probe members and adds the PWA (sw.js, manifest);
@@ -257,6 +263,10 @@ commands:
                       capture the title, play and results screens (project.ogt's screens block or
                       the flags) and measure their colours, palette and edges; exit 0 within the
                       game's own contract or with no look, 3 off it
+  ui list [project] [--json]
+                      list bundled and installed UI style packs, effect packs and materials
+  ui add <materials|directory> [project]
+                      install UI materials or a UI pack directory into assets/ui
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]
@@ -308,9 +318,10 @@ commands:
                       `world-server token` signs an HS256 token for a self-hosted server;
                       `world-server cert` makes a self-signed WebTransport certificate and prints
                       the hash a page passes
-  doctor [--json] [--require-checked]
+  doctor [--project <dir>] [--json] [--require-checked]
                       check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;
+                      --project validates a game project's layout and pin;
                       --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned, and
                       no version after the pin up to the installed one has breaking entries)
   upgrade [project] [--to <version>] [--dry-run] [--json]

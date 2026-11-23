@@ -13309,7 +13309,11 @@
         "ExpectResult",
         "ExpectReport",
         "SavedScene",
-        "SavedSceneFile"
+        "SavedSceneFile",
+        "ProbeLogEntry",
+        "ProbeLogs",
+        "ProbeSetResult",
+        "ProbeGetResult"
       ],
       "consts": [
         {
@@ -13871,6 +13875,55 @@
               ],
               "returns": "Option<UiPickElement>",
               "returnsDoc": "Null when no UI element that shows something or takes input is under the point.",
+              "publish": false
+            },
+            {
+              "name": "logs",
+              "doc": "Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene).",
+              "params": [
+                {
+                  "name": "take",
+                  "type": "bool",
+                  "optional": true,
+                  "default": false,
+                  "doc": "Clear the log ring after answering."
+                }
+              ],
+              "returns": "ProbeLogs",
+              "publish": false
+            },
+            {
+              "name": "set",
+              "doc": "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene.",
+              "params": [
+                {
+                  "name": "target",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`)."
+                },
+                {
+                  "name": "value",
+                  "type": "Json",
+                  "optional": false,
+                  "doc": "New JSON value."
+                }
+              ],
+              "returns": "ProbeSetResult",
+              "publish": false
+            },
+            {
+              "name": "get",
+              "doc": "Synchronously read any reflected resource, resource field, entity, component, or component field.",
+              "params": [
+                {
+                  "name": "target",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "Target path (`<Resource>[.<field>]` or `<entity>[.<Component>[.<field>]]`)."
+                }
+              ],
+              "returns": "ProbeGetResult",
               "publish": false
             }
           ]
@@ -51243,6 +51296,103 @@
         "written",
         "lines",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeLogEntry": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One probe log or warning entry.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick when it was recorded."
+        },
+        "warning": {
+          "type": "boolean",
+          "description": "True for a warning or refusal reason."
+        },
+        "text": {
+          "type": "string",
+          "description": "The message."
+        }
+      },
+      "required": [
+        "tick",
+        "warning",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeLogs": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "Recent probe logs and warnings (up to 512 entries).",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProbeLogEntry"
+          },
+          "description": "Entries in chronological order."
+        },
+        "dropped": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Older entries evicted before this read."
+        }
+      },
+      "required": [
+        "entries",
+        "dropped"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeSetResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "Outcome of a synchronous probe set call.",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "True when the field was written."
+        },
+        "error": {
+          "type": "string",
+          "description": "Why the write was refused, when ok is false."
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
+    },
+    "ProbeGetResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "Outcome of a synchronous probe get call.",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "True when the target was read."
+        },
+        "value": {
+          "description": "The read value, when ok is true."
+        },
+        "error": {
+          "type": "string",
+          "description": "Why the read was refused, when ok is false."
+        }
+      },
+      "required": [
+        "ok"
       ],
       "additionalProperties": false
     },

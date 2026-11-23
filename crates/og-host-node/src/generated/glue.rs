@@ -3328,6 +3328,27 @@ pub fn og_engine_probe_pick_ui(env: Env, engine_probe: u32, x: f64, y: f64) -> S
     <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, engine_probe, x, y)
 }
 
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_logs")]
+pub fn og_engine_probe_logs(env: Env, engine_probe: u32, take: Option<bool>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_logs(&Host, engine_probe, take)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_set")]
+pub fn og_engine_probe_set(env: Env, engine_probe: u32, target: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_set(&Host, engine_probe, target, value)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_get")]
+pub fn og_engine_probe_get(env: Env, engine_probe: u32, target: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_get(&Host, engine_probe, target)
+}
+
 #[napi(js_name = "og_terrain_load")]
 pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);

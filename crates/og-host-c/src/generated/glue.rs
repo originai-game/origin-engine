@@ -2780,6 +2780,24 @@ unsafe extern "C" fn og_engine_probe_pick_ui(args: *const crate::OgValue, out: *
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+#[cfg(not(feature = "publish"))]
+unsafe extern "C" fn og_engine_probe_logs(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProbeApi>::og_engine_probe_logs(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+#[cfg(not(feature = "publish"))]
+unsafe extern "C" fn og_engine_probe_set(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProbeApi>::og_engine_probe_set(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+#[cfg(not(feature = "publish"))]
+unsafe extern "C" fn og_engine_probe_get(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProbeApi>::og_engine_probe_get(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_terrain_load(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as TerrainApi>::og_terrain_load(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3948,6 +3966,12 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_engine_probe_save_scene", arity: 3, call: og_engine_probe_save_scene },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_pick_ui", arity: 3, call: og_engine_probe_pick_ui },
+    #[cfg(not(feature = "publish"))]
+    crate::Symbol { name: c"og_engine_probe_logs", arity: 2, call: og_engine_probe_logs },
+    #[cfg(not(feature = "publish"))]
+    crate::Symbol { name: c"og_engine_probe_set", arity: 3, call: og_engine_probe_set },
+    #[cfg(not(feature = "publish"))]
+    crate::Symbol { name: c"og_engine_probe_get", arity: 2, call: og_engine_probe_get },
     crate::Symbol { name: c"og_terrain_load", arity: 2, call: og_terrain_load },
     crate::Symbol { name: c"og_terrain_sample", arity: 2, call: og_terrain_sample },
     crate::Symbol { name: c"og_terrain_bounds", arity: 5, call: og_terrain_bounds },

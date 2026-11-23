@@ -385,16 +385,110 @@ impl Probe {
 
     /// `patch`: move one tunable field for this run only. `false` for an
     /// unknown entity or field, a field that is not tunable, or a value of
-    /// another kind or outside the schema's range.
+    /// another kind or outside the schema's range. Refusal reasons are noted
+    /// in the probe log (`logs`).
     pub fn patch(&mut self, world: &mut World, id: &str, parameter: &str, value: &Value) -> bool {
-        let written = match self.names.resolve(world, id) {
-            Some(e) => self.write_field(world, e, parameter, value, true).is_ok(),
-            None => false,
+        let result = match self.names.resolve(world, id) {
+            Some(e) => self.write_field(world, e, parameter, value, true),
+            None => Err(format!("unknown entity '{id}'")),
         };
-        if written {
-            self.tuned.insert(format!("{id}.{parameter}"));
+        match result {
+            Ok(()) => {
+                self.tuned.insert(format!("{id}.{parameter}"));
+                true
+            }
+            Err(reason) => {
+                self.out.note(
+                    world.time().tick,
+                    true,
+                    format!("patch {id}.{parameter}: {reason}"),
+                );
+                false
+            }
         }
-        written
+    }
+
+    /// `logs`: the probe's recent log and warning lines (up to
+    /// [`MAX_RECENT_LOGS`]), kept even when the host drains `take_log`.
+    /// With `take`, the ring is cleared after answering.
+    pub fn logs(&mut self, take: bool) -> Value {
+        let entries: Vec<Value> = self
+            .out
+            .recent_log
+            .iter()
+            .map(|l| {
+                json!({
+                    "tick": l.tick,
+                    "warning": l.warning,
+                    "text": l.text,
+                })
+            })
+            .collect();
+        let dropped = self.out.dropped_logs;
+        if take {
+            self.out.recent_log.clear();
+            self.out.dropped_logs = 0;
+        }
+        json!({ "entries": entries, "dropped": dropped })
+    }
+
+    /// `set`: synchronously write any reflected component or resource field
+    /// (`<Resource>.<field>` or `<entity>.<Component>.<field>`) using a JSON
+    /// value, remembering it for `save_scene`, and returning `{ ok, error? }`.
+    pub fn set_target(&mut self, world: &mut World, target: &str, value: &Value) -> Value {
+        match self.set_target_inner(world, target, value) {
+            Ok(()) => json!({ "ok": true }),
+            Err(reason) => {
+                self.out
+                    .note(world.time().tick, true, format!("set {target}: {reason}"));
+                json!({ "ok": false, "error": reason })
+            }
+        }
+    }
+
+    fn set_target_inner(
+        &mut self,
+        world: &mut World,
+        target: &str,
+        value: &Value,
+    ) -> Result<(), String> {
+        let usage = "target must be `<entity>.<Component>.<field>` or `<Resource>.<field>`";
+        if let (Some(register), Some((name, _))) = (&self.host.register, target.rsplit_once('.'))
+            && world.id_by_name(name).is_err()
+        {
+            register(world, name);
+        }
+        if let Some((resource, field)) = Self::resource_target(world, target) {
+            Self::write_resource_field(world, resource, &field, value)?;
+            self.tuned.insert(target.to_owned());
+            return Ok(());
+        }
+        let (entity, parameter) = match target.strip_prefix('#') {
+            Some(rest) => {
+                let mut parts = rest.splitn(3, '.');
+                match (parts.next(), parts.next(), parts.next()) {
+                    (Some(i), Some(g), Some(p)) => (format!("#{i}.{g}"), p.to_owned()),
+                    _ => return Err(usage.to_owned()),
+                }
+            }
+            None => {
+                let (entity, parameter) = target.split_once('.').ok_or_else(|| usage.to_owned())?;
+                (entity.to_owned(), parameter.to_owned())
+            }
+        };
+        let e = self.entity_of(world, &entity)?;
+        self.write_field(world, e, &parameter, value, false)?;
+        self.tuned.insert(format!("{entity}.{parameter}"));
+        Ok(())
+    }
+
+    /// `get`: synchronously read any reflected resource, resource field,
+    /// entity, component, or component field, returning `{ ok, value?, error? }`.
+    pub fn get_target(&self, world: &World, target: &str) -> Value {
+        match self.read_target(world, target) {
+            Ok(value) => json!({ "ok": true, "value": value }),
+            Err(reason) => json!({ "ok": false, "error": reason }),
+        }
     }
 
     /// `run`: a program of members, stopping at the first refusal.
@@ -736,6 +830,7 @@ impl Probe {
         let mut resources = Map::new();
         let mut components = Map::new();
         let mut types = Map::new();
+        let mut truncated = Map::new();
         for i in 0..world.type_count() {
             let id = og_ecs::SchemaId::from_index(i as u32);
             let Ok(schema) = world.schema(id) else {
@@ -766,10 +861,12 @@ impl Probe {
             }
             let sizes: Vec<usize> = schema.fields.iter().map(|f| f.ty.size()).collect();
             let mut rows = Map::new();
+            let mut total = 0usize;
             world.scan_component(id, None, None, None, |entities, cols, _| {
+                total += entities.len();
                 for (row, &e) in entities.iter().enumerate() {
                     if rows.len() >= OBSERVE_ROWS {
-                        return;
+                        break;
                     }
                     let mut bytes = Vec::new();
                     for (k, size) in sizes.iter().enumerate() {
@@ -781,6 +878,9 @@ impl Probe {
                     );
                 }
             });
+            if total > OBSERVE_ROWS {
+                truncated.insert(schema.name.clone(), json!(total));
+            }
             if !rows.is_empty() {
                 components.insert(schema.name.clone(), Value::Object(rows));
             }
@@ -796,6 +896,9 @@ impl Probe {
         }
         let mut out =
             json!({ "tick": world.time().tick, "resources": resources, "components": components });
+        if !truncated.is_empty() {
+            out["truncated"] = Value::Object(truncated);
+        }
         if with_types {
             out["types"] = Value::Object(types);
         }

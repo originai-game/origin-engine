@@ -56,6 +56,8 @@ pub const MAX_CAPTURE_EDGE: u32 = 4096;
 pub const MAX_SNAPSHOTS: usize = 16;
 /// The most entities `observe` reads of one component.
 pub const OBSERVE_ROWS: usize = 256;
+/// The most log lines kept for the probe's `logs` member.
+pub const MAX_RECENT_LOGS: usize = 512;
 /// The most calls a `screenshot` or `sweep` value waits for a frame that
 /// lands on a later call (the web's readback) before it gives up.
 const MAX_CAPTURE_POLLS: u32 = 120;
@@ -103,6 +105,9 @@ pub const MEMBERS: &[&str] = &[
     "timeline",
     "visible",
     "capture_views",
+    "logs",
+    "set",
+    "get",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -509,6 +514,8 @@ impl Probe {
             out: state::Out {
                 outputs: Vec::new(),
                 log: Vec::new(),
+                recent_log: VecDeque::new(),
+                dropped_logs: 0,
                 gets: (u64::MAX, 0),
                 written: BTreeMap::new(),
             },

@@ -761,6 +761,38 @@ module probe {
     field text String "Its new text."
   }
 
+  struct ProbeLogEntry {
+    doc "One probe log or warning entry."
+    field tick u32 "The tick when it was recorded."
+    field warning bool "True for a warning or refusal reason."
+    field text String "The message."
+  }
+
+  struct ProbeLogs {
+    doc "Recent probe logs and warnings (up to 512 entries)."
+    field entries List.ProbeLogEntry "Entries in chronological order."
+    field dropped u32 "Older entries evicted before this read."
+  }
+
+  struct ProbeSetResult {
+    doc "Outcome of a synchronous probe set call."
+    field ok bool "True when the field was written."
+    field error String "Why the write was refused, when ok is false." {
+      optional true
+    }
+  }
+
+  struct ProbeGetResult {
+    doc "Outcome of a synchronous probe get call."
+    field ok bool "True when the target was read."
+    field value Json "The read value, when ok is true." {
+      optional true
+    }
+    field error String "Why the read was refused, when ok is false." {
+      optional true
+    }
+  }
+
   interface RuntimeProbe {
     doc "RuntimeProbe protocol 5, member for member. Every member answers synchronously with JSON-serialisable values."
     publish false
@@ -999,6 +1031,24 @@ module probe {
       param x f32 "Horizontal position in CSS pixels."
       param y f32 "Vertical position in CSS pixels."
       returns Option.UiPickElement "Null when no UI element that shows something or takes input is under the point."
+    }
+    fn logs {
+      doc "Recent probe log and warning entries (including refusal reasons from patch, reload, commands and save_scene)."
+      param take bool "Clear the log ring after answering." {
+        default false
+      }
+      returns ProbeLogs
+    }
+    fn set {
+      doc "Synchronously write any reflected component or resource field (`<entity>.<Component>.<field>` or `<Resource>.<field>`) using a JSON value, recording it for saveScene."
+      param target String "Target path (`<entity>.<Component>.<field>` or `<Resource>.<field>`)."
+      param value Json "New JSON value."
+      returns ProbeSetResult
+    }
+    fn get {
+      doc "Synchronously read any reflected resource, resource field, entity, component, or component field."
+      param target String "Target path (`<Resource>[.<field>]` or `<entity>[.<Component>[.<field>]]`)."
+      returns ProbeGetResult
     }
   }
 }

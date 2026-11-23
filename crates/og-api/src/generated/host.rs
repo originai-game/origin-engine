@@ -1231,6 +1231,12 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_save_scene(&self, engine_probe: u32, write: Option<bool>, spawned: Option<bool>) -> String;
     /// `EngineProbe.pickUi`
     fn og_engine_probe_pick_ui(&self, engine_probe: u32, x: f64, y: f64) -> String;
+    /// `EngineProbe.logs`
+    fn og_engine_probe_logs(&self, engine_probe: u32, take: Option<bool>) -> String;
+    /// `EngineProbe.set`
+    fn og_engine_probe_set(&self, engine_probe: u32, target: String, value: String) -> String;
+    /// `EngineProbe.get`
+    fn og_engine_probe_get(&self, engine_probe: u32, target: String) -> String;
 }
 
 /// `terrain`: packages/knowledge/wiki/terrain.md.
@@ -2046,6 +2052,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_observe",
     "og_engine_probe_save_scene",
     "og_engine_probe_pick_ui",
+    "og_engine_probe_logs",
+    "og_engine_probe_set",
+    "og_engine_probe_get",
     "og_terrain_load",
     "og_terrain_sample",
     "og_terrain_bounds",

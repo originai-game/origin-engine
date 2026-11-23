@@ -544,6 +544,24 @@ impl Probe {
                     }
                 }
             }
+            #[cfg(not(feature = "publish"))]
+            "logs" => {
+                let take = p.get("take").and_then(Value::as_bool).unwrap_or(false);
+                self.logs(take)
+            }
+            #[cfg(not(feature = "publish"))]
+            "set" => {
+                let target = string(p, "target")?.to_owned();
+                let value = p
+                    .get("value")
+                    .ok_or_else(|| RpcError::invalid("value is required"))?;
+                self.set_target(world, &target, value)
+            }
+            #[cfg(not(feature = "publish"))]
+            "get" => {
+                let target = string(p, "target")?;
+                self.get_target(world, target)
+            }
             _ => unreachable!("served_members lists only implemented members"),
         })
     }

@@ -369,3 +369,16 @@ pub fn og_engine_probe_save_scene(
     )
     .to_string()
 }
+
+pub fn og_engine_probe_logs(probe: u32, take: Option<bool>) -> String {
+    member(probe, "logs", json!({ "take": take.unwrap_or(false) })).to_string()
+}
+
+pub fn og_engine_probe_set(probe: u32, target: String, value: String) -> String {
+    let val: Value = serde_json::from_str(&value).unwrap_or(Value::String(value));
+    member(probe, "set", json!({ "target": target, "value": val })).to_string()
+}
+
+pub fn og_engine_probe_get(probe: u32, target: String) -> String {
+    member(probe, "get", json!({ "target": target })).to_string()
+}

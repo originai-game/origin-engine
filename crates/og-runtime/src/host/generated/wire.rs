@@ -21243,6 +21243,172 @@ impl ToJson for SavedSceneFile {
     }
 }
 
+/// `ProbeLogEntry`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProbeLogEntry {
+    pub tick: u32,
+    pub warning: bool,
+    pub text: String,
+}
+
+impl Default for ProbeLogEntry {
+    fn default() -> Self {
+        Self {
+            tick: Default::default(),
+            warning: Default::default(),
+            text: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ProbeLogEntry {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            tick: field(o, "tick", d.tick)?,
+            warning: field(o, "warning", d.warning)?,
+            text: field(o, "text", d.text)?,
+        })
+    }
+}
+
+impl ToJson for ProbeLogEntry {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("tick".into(), self.tick.to_json());
+        o.insert("warning".into(), self.warning.to_json());
+        o.insert("text".into(), self.text.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ProbeLogs`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProbeLogs {
+    pub entries: Vec<ProbeLogEntry>,
+    pub dropped: u32,
+}
+
+impl Default for ProbeLogs {
+    fn default() -> Self {
+        Self {
+            entries: Default::default(),
+            dropped: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ProbeLogs {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            entries: field(o, "entries", d.entries)?,
+            dropped: field(o, "dropped", d.dropped)?,
+        })
+    }
+}
+
+impl ToJson for ProbeLogs {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("entries".into(), self.entries.to_json());
+        o.insert("dropped".into(), self.dropped.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ProbeSetResult`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProbeSetResult {
+    pub ok: bool,
+    pub error: Option<String>,
+}
+
+impl Default for ProbeSetResult {
+    fn default() -> Self {
+        Self {
+            ok: Default::default(),
+            error: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ProbeSetResult {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            ok: field(o, "ok", d.ok)?,
+            error: field(o, "error", d.error)?,
+        })
+    }
+}
+
+impl ToJson for ProbeSetResult {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("ok".into(), self.ok.to_json());
+        if let Some(x) = &self.error {
+            o.insert("error".into(), x.to_json());
+        }
+        Value::Object(o)
+    }
+}
+
+/// `ProbeGetResult`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProbeGetResult {
+    pub ok: bool,
+    pub value: Option<Value>,
+    pub error: Option<String>,
+}
+
+impl Default for ProbeGetResult {
+    fn default() -> Self {
+        Self {
+            ok: Default::default(),
+            value: Default::default(),
+            error: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ProbeGetResult {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            ok: field(o, "ok", d.ok)?,
+            value: field(o, "value", d.value)?,
+            error: field(o, "error", d.error)?,
+        })
+    }
+}
+
+impl ToJson for ProbeGetResult {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("ok".into(), self.ok.to_json());
+        if let Some(x) = &self.value {
+            o.insert("value".into(), x.to_json());
+        }
+        if let Some(x) = &self.error {
+            o.insert("error".into(), x.to_json());
+        }
+        Value::Object(o)
+    }
+}
+
 /// `TerrainBrushMode`: packages/knowledge/wiki/terrain.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum TerrainBrushMode {

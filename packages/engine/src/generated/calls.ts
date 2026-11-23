@@ -413,6 +413,15 @@ export class EngineProbe extends RuntimeProbe {
   pickUi(x: number, y: number): unknown {
     return JSON.parse(abi().og_engine_probe_pick_ui(this.#handle, x, y)) as unknown;
   }
+  logs(take?: boolean): unknown {
+    return JSON.parse(abi().og_engine_probe_logs(this.#handle, take)) as unknown;
+  }
+  set(target: string, value: unknown): unknown {
+    return JSON.parse(abi().og_engine_probe_set(this.#handle, target, JSON.stringify(value ?? null))) as unknown;
+  }
+  get(target: string): unknown {
+    return JSON.parse(abi().og_engine_probe_get(this.#handle, target)) as unknown;
+  }
 }
 
 /** The methods each engine resource's object carries beside its fields, made for one world. */

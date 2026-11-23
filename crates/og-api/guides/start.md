@@ -147,27 +147,29 @@ most; `--all` lists every member.
 | begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
 | write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
 | read a unit, an angle, a row or a name the right way round | `conventions`, `facing` | `og.transform.face`, `og.transform.face2d` |
-| test the loop, measure frames | `testing` | `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
+| test the loop, capture & measure frames | `testing`, `captures`, `perf` | `og.assert.always`, `og.assert.sometimes`, `og.probe.capture`, `og.probe.marks` |
 | save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
 | call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |
 | read the player's input | `input` | `og.Input`, `og.input.action`, `og.Gamepad` |
 | move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
 | break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |
+| compose combat, abilities, items and interactions | `combat`, `abilities`, `items`, `interaction` | `og.systems.combatStep`, `og.systems.abilitiesStep`, `og.systems.inventoryStep`, `og.systems.interactStep` |
+| author reflected data tables | `data` | `og.table`, `type table` |
 | point the camera | `camera` | `og.Camera`, `og.Follow2D`, `og.camera.shake` |
 | play sound and music | `audio` | `og.AudioSource`, `og.audio.createSound` |
-| play online | `networking`, determinism §3 | `og.Lockstep`, `og.PlayerInput`, `og.net.submit` |
-| load models, textures, sounds | `loading` | `og.load.gltf`, `og.load.texture`, `og.load.flipbook` |
+| play online or build shared worlds | `networking`, `shared-worlds`, determinism §3 | `og.Lockstep`, `og.PlayerInput`, `og.net.submit`, `og.shared` |
+| load models, textures, sounds & author `.ogt` assets | `loading`, `assets` | `og.load.gltf`, `og.load.texture`, `og.load.flipbook` |
 | choose the look | `looks`, `art-review` | `og.render.applyLook`, `og.Stylise` |
 | light and render the scene | `render`, looks §3, looks §5 | `og.Mesh`, `og.DirectionalLight`, `og.RenderSettings`, `og.render.standardMaterial` |
 | set the time of day, the season and the weather | render §7, `seasons` | `og.DayNight`, `og.Season`, `og.Weather`, `og.atmosphere.season` |
 | draw 2D sprites and lights | looks §13, render §11 | `og.Sprite`, `og.Light2D`, `og.Lighting2D` |
-| make models in code | `models` | the `type model` asset |
+| make models in code or with `og model` | `models`, `model` | `type model`, `.shape.json`, `og model` |
 | animate characters and props | `animation` | `og.AnimationPlayer`, `og.anim.clip`, `og.MotionAgent`, `og.tween` |
 | build terrain, tilemaps, paths, AI | `world` | `og.Terrain`, `og.Tilemap`, `og.tilemap.setTile`, `og.nav` |
 | add effects | `effects`, `effect-files`, `effect-packs`, `pixel-vfx` | `og.vfx.spawn`, `og.ParticleSystem` |
 | write screens and HUDs | `screens`, `components`, `ui-materials` | `og.ui.configure`, `og.ui.scope`, `mount` from `@origingame/engine/ui` |
 | translate text | `localization`, screens §6 | `og.i18n.t` |
-| write dialogue and quests | `yarn` | `og.story` |
+| write dialogue, quests and interactive video | `yarn`, `video-to-game` | `og.story`, `og.flow`, `og video study` |
 | port three.js code | `three-to-og` | `og migrate three` |
 | explore a game's states | `explore` | `og explore` |
 

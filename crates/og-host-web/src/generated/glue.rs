@@ -2779,6 +2779,24 @@ pub fn og_engine_probe_pick_ui(engine_probe: u32, x: f64, y: f64) -> String {
     <Host as ProbeApi>::og_engine_probe_pick_ui(&Host, engine_probe, x, y)
 }
 
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_logs(engine_probe: u32, take: Option<bool>) -> String {
+    <Host as ProbeApi>::og_engine_probe_logs(&Host, engine_probe, take)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_set(engine_probe: u32, target: String, value: String) -> String {
+    <Host as ProbeApi>::og_engine_probe_set(&Host, engine_probe, target, value)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_get(engine_probe: u32, target: String) -> String {
+    <Host as ProbeApi>::og_engine_probe_get(&Host, engine_probe, target)
+}
+
 #[wasm_bindgen]
 pub fn og_terrain_load(world: u32, path: String) -> String {
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)
