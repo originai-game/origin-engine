@@ -955,7 +955,15 @@ impl Next {
         tree.virtual_cursor(self.vcursor.take(), &mut pad, &mut ptr, tps);
         // A press the cursor took confirms nothing at the focus.
         let a_taken = a_was && !(pad.a_pressed || pad.a_held);
-        tree.pointer(ptr.x, ptr.y, ptr.pressed, ptr.released);
+        // A pointer not over the surface (never come, or gone out) hovers
+        // nothing, as a page's after pointerleave: not what lies at its
+        // last place, or at the origin before it first moves.
+        let (px, py) = if ptr.inside || ptr.pressed || ptr.released {
+            (ptr.x, ptr.y)
+        } else {
+            (f32::MIN, f32::MIN)
+        };
+        tree.pointer(px, py, ptr.pressed, ptr.released);
         // Every finger: pinches, turns and swipes on the elements they
         // went down on.
         if tree.has_ops() {
