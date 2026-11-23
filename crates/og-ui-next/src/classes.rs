@@ -219,7 +219,7 @@ impl Classes {
         out.extend(
             p.nine
                 .iter()
-                .filter(|n| !images.contains_key(&***n))
+                .filter(|n| &***n != crate::pack::NINE_NONE && !images.contains_key(&***n))
                 .map(|n| format!("nine-{n}")),
         );
         self.images = images;
@@ -348,7 +348,11 @@ impl Classes {
                 .z_index
                 .and_then(|z| usize::try_from(z - 1).ok())
                 .and_then(|i| nine.get(i));
-            if let Some(image) = held.and_then(|n| self.images.get(&**n)) {
+            // `nine-none` holds no art: the box draws its fill alone.
+            if let Some(image) = held
+                .filter(|n| &***n != crate::pack::NINE_NONE)
+                .and_then(|n| self.images.get(&**n))
+            {
                 record.skin.image = *image;
             }
         }
@@ -1336,6 +1340,13 @@ mod tests {
         // A name the pack lacks draws nothing and is reported.
         assert_eq!(c.record("nine-gone", &env).skin.image, Slice::default());
         assert_eq!(c.unknown("p-2 nine-gone nine-plate"), ["nine-gone"]);
+        // nine-none in a state drops the art the base named, and is no unknown name.
+        let owned = "nine-plate bg-red-500 data-owned:nine-none data-owned:bg-green-500";
+        assert!(c.unknown(owned).is_empty());
+        assert_eq!(c.record(owned, &env).skin.image.texture, 7);
+        let r = c.record_data(owned, "", &env, "owned");
+        assert_eq!(r.skin.image, Slice::default(), "the state's fill shows");
+        assert!(r.skin.fill[3] > 0.0);
     }
 
     /// A side's colour over the border's (a spinner's arc,

@@ -1734,7 +1734,10 @@ Art, icons, fonts, import settings and licences travel with their pack
 (`templates/styles/<name>/`) or the shared resource directory. Cut
 corners, sockets and frames are nine-slice art as `nine-<name>` classes,
 tinted by `bg-*`; they shrink their insets in proportion when the box is
-smaller than the art (CSS border-image). Placeholder characters are not
+smaller than the art (CSS border-image). `nine-none` draws no art, so a
+state drops the art its base named and its fill shows
+(`data-kind-owned:nine-none` on a chip whose component sets
+`data-kind-owned:bg-success`); no pack image takes that name. Placeholder characters are not
 finished icons, and core font fixtures never depend on a commercial pack.
 
 The UI gallery (§6.5) draws every built-in component's fixtures under every

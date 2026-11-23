@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI style packs: nine-none",
+      "summary": "`nine-none` draws no nine-slice art, so a state can drop the art its base names and let the component's fill show: a pack whose Chip.frame is `nine-chip` writes `data-kind-owned:nine-none` and the Shop's Owned chip shows green, not the dark chip art. The cook and the unknown-class check took `none` for a missing image and refused the pack."
+    }
+  ]
+}

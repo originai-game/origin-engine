@@ -605,14 +605,21 @@ fn kebab(name: &str) -> bool {
         })
 }
 
+/// `nine-none`: no nine-slice art, so a state can drop the art an earlier
+/// `nine-<name>` gave (`data-kind-owned:nine-none`) and its fill shows. No
+/// pack image takes this name.
+pub const NINE_NONE: &str = "none";
+
 /// The names of the nine-slice art `classes` gives (`nine-<name>`, under
-/// any variant: `hover:nine-plate-lit`), and the classes without them.
+/// any variant: `hover:nine-plate-lit`), [`NINE_NONE`] left out, and the
+/// classes without any `nine-` class.
 pub fn split_nine(classes: &str) -> (Vec<&str>, String) {
     let mut names = Vec::new();
     let mut rest = Vec::new();
     for class in classes.split_whitespace() {
         let utility = class.rsplit(':').next().unwrap_or(class);
         match utility.strip_prefix("nine-") {
+            Some(NINE_NONE) => {}
             Some(name) => names.push(name),
             None => rest.push(class),
         }
@@ -973,8 +980,9 @@ mod tests {
         assert!(l.assets().contains(&"styles/x/art/frame.png"));
         assert_eq!(Layer::parse(&l.to_json()).unwrap().images, l.images);
         assert_eq!(
-            split_nine("p-4 nine-frame hover:nine-plate"),
-            (vec!["frame", "plate"], "p-4".to_owned())
+            split_nine("p-4 nine-frame hover:nine-plate data-on:nine-none"),
+            (vec!["frame", "plate"], "p-4".to_owned()),
+            "nine-none names no image the cook looks for"
         );
         for (text, wants) in [
             (
