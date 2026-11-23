@@ -93,7 +93,10 @@ test("a TSX component's ops, its updates and its events", async () => {
     const pressed: unknown[] = [];
     mount(world, Hud, { get hp() { return hp(); }, get on() { return on(); }, press: (e: unknown) => pressed.push(e) }, { layer: "hud" });
 
-    // The mount's one batch builds the whole tree and puts its root in 0.
+    // The mount's one batch builds the whole tree and puts its root in 0. A
+    // string table another test's component registered in this process goes
+    // first, alone, so t() reads it as the tree builds.
+    while (batches[0]?.every((op) => op[0] === "strings")) batches.shift();
     expect(batches).toHaveLength(1);
     const first = batches[0]!;
     expect(first).toContainEqual(["create", 2, 0]);
@@ -164,6 +167,8 @@ export function Bare(props: { label: string }) { return <View>{props.label}</Vie
     expect(texts(Labelled)).toEqual(["Go"]);
     // The element's own children win over the spread's.
     expect(texts(Shadowed)).toEqual(["own"]);
+    // The function form (View, Text called directly) puts its children in once.
+    expect(texts(() => View({ children: [Text({ children: "Go" })] }))).toEqual(["Go"]);
     // Dynamic text has no <Text>: an error naming the text, never a wrap.
     expect(() => texts(Bare, { label: "Continue" })).toThrow('og.ui: the text "Continue" is a bare child of <view>: put it in a <Text>');
   } finally {

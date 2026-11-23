@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@origingame/engine/ui View, Text, Image, Icon, Scroll, Line, Particles, Input (called as functions)",
+      "summary": "An element called as a function puts its children in once. It inserted them twice, so Text({ children: \"Go\" }) drew \"GoGo\". Compiled TSX was not affected."
+    }
+  ]
+}

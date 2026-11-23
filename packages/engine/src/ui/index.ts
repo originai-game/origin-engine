@@ -25,7 +25,6 @@ function host<P extends HostProps>(tag: string): (props: P) => UiNode {
   return (props) => {
     const node = element(tag);
     spread(node, props as unknown as Record<string, unknown>);
-    if ("children" in props) insert(node, () => props.children);
     return node;
   };
 }
