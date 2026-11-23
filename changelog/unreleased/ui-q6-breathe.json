@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "animate-breathe: a 1.05x swell and back every 1.2 s, looping, for a call to action waiting on a tap. Reduced motion holds it still."
+    }
+  ]
+}

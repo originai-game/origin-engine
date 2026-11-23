@@ -925,6 +925,7 @@ fn motion_of(style: &Style) -> motion::Spec {
             Keyframes::Rise => motion::Keyframes::Rise,
             Keyframes::Charge => motion::Keyframes::Charge,
             Keyframes::Nudge => motion::Keyframes::Nudge,
+            Keyframes::Breathe => motion::Keyframes::Breathe,
         },
         duration: a.duration / 1000.0,
         delay: a.delay / 1000.0,

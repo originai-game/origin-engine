@@ -1075,6 +1075,8 @@ pub enum Keyframes {
     Charge,
     /// Swells to 1.08× and back once (a control that became ready).
     Nudge,
+    /// Swells to 1.05× and back, forever (a call to action waiting on a tap).
+    Breathe,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.

@@ -92,6 +92,9 @@ pub enum Keyframes {
     Charge,
     /// Ours: swells to 1.08× and back once (a control that became ready).
     Nudge,
+    /// Ours: swells to 1.05× and back, forever (a call to action waiting
+    /// on a tap: a claimable reward, a recommended button).
+    Breathe,
 }
 
 /// `animate-*` and how it is timed (the class resolver's presets, or
@@ -892,6 +895,7 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
         }
         K::Shimmer => shift[0] = size[0] * lerp(-1.0, 4.2, ez(p)),
         K::Nudge => scale = 1.0 + 0.08 * og_core::math::sin(std::f32::consts::PI * ez(p)),
+        K::Breathe => scale = 1.0 + 0.05 * og_core::math::sin(std::f32::consts::PI * ez(p)),
         K::Rise => {
             let q = ez(p);
             *o *= q.clamp(0.0, 1.0);
@@ -1228,6 +1232,22 @@ mod tests {
         assert!(burst > 1.13, "{burst}");
         let settling = at(&mut m, 0.8);
         assert!(settling < burst && settling > 1.0, "{settling}");
+
+        // A breath swells to 1.05 at its middle, is back at its size at
+        // its end, and keeps breathing (a call to action waiting on a tap).
+        let mut m = Motion::new();
+        let mut breathe = looping(Keyframes::Breathe, 1.0, None);
+        breathe.animate.as_mut().unwrap().ease = LINEAR;
+        let r = with(breathe, |_| {});
+        m.enter(4, &r, None::<&R>);
+        m.tick_at(0.0);
+        let at = |m: &mut Motion, t: f64| {
+            assert!(m.tick_at(t), "still breathing at {t}");
+            m.skin(4, &r.skin).transform.scale[0]
+        };
+        assert!((at(&mut m, 0.5) - 1.05).abs() < 1e-3);
+        assert!((at(&mut m, 0.999) - 1.0).abs() < 1e-2);
+        assert!((at(&mut m, 7.5) - 1.05).abs() < 1e-3, "forever");
 
         let mut m = Motion::new();
         let beat = looping(Keyframes::Beat, 0.4, Some(1));
