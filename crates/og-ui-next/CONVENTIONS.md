@@ -711,6 +711,25 @@ is in those files; `og_ui_next::theme` only merges and maps.
   slots (`Button.plate[.primary]`, `Panel.frame`, `Plate.frame`,
   `Chip.frame`, `Slot.frame`, `Field.frame`) draw that art with their fill
   cleared. The art spec goes to og-cook's generator (`cook/ui_art.rs`).
+- Each art slot names its own ink (`art-<image>-fg`, the disabled
+  button's `art-button-disabled-fg` at 3:1), solved on the faces it
+  draws, and reads in its faces' scheme (`scheme-light` on a light face).
+  When no ink holds 4.5:1 on a face pair, the faces move away from it in
+  OKLCH lightness until one does. Every ink role (`theme::INKS`) is then
+  solved on the grounds of its scheme, the art faces registered with the
+  design's own surfaces, moving lightness only; a role the solve does not
+  move is not written.
+- A child inside an art slot reads in the slot's ink. One that sets its
+  own (`text-danger`, a state's `data-on:text-gold-fg`) is held to its
+  ratio on that art by `og check` (OG9107); a state that paints its own
+  fill sets its own shape with it (`data-on:nine-chip-cut`, or
+  `data-on:nine-none`), and its `-fg` ink then pairs with that fill.
+- og cook compiles `assets/styles/<name>/theme.json` into that style's
+  `pack.json` and art (drawn by `cook/ui_art.rs`, cached by spec under
+  `.og/ui-art/`); a style has a theme.json or a pack.json, not both. A
+  look's `ui "<name>"` finds the game's style, then an engine theme
+  (`templates/themes/<name>/theme.json`, bundled as `@themes/<name>/`
+  only when named), then a built-in style.
 - `pack`, written as a pack.json, lies over the compiled layer and the
   generated art: a hand-drawn image replaces its generated one by name.
   The layer order is unchanged: the default pack, the look's theme, the

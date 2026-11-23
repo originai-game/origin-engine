@@ -297,6 +297,155 @@ fn pair(v: &Value, at: &str) -> Result<[f64; 2], String> {
     }
 }
 
+/// The WCAG relative luminance of `#rrggbb`.
+fn luminance(hex: &str) -> f32 {
+    let h = hex.trim_start_matches('#');
+    let c = |i: usize| {
+        let v = u8::from_str_radix(h.get(i..i + 2).unwrap_or("00"), 16).unwrap_or(0) as f32 / 255.0;
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            og_core::math::pow((v + 0.055) / 1.055, 2.4)
+        }
+    };
+    0.2126 * c(0) + 0.7152 * c(2) + 0.0722 * c(4)
+}
+
+/// The WCAG contrast ratio of two `#rrggbb` colours.
+pub fn contrast(a: &str, b: &str) -> f32 {
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
+/// An ink in `hue`'s hue that holds `ratio` on every face, and the least
+/// ratio it reaches: a near-white moved lighter or a near-black moved
+/// darker, in OKLCH lightness only (hue and chroma kept); the better
+/// extreme when none holds.
+pub fn solve(hue: Lch, faces: &[String], ratio: f32) -> (String, f32) {
+    let c = hue.c.min(0.02);
+    let worst = |ink: &str| {
+        faces
+            .iter()
+            .map(|f| contrast(ink, f))
+            .fold(f32::MAX, f32::min)
+    };
+    // From near-white up and from near-black down: the first that holds,
+    // else the better of the two extremes.
+    let mut best = (String::new(), 0.0);
+    for (from, step) in [(0.9f32, 0.005f32), (0.3, -0.005)] {
+        let mut l = from;
+        loop {
+            let ink = hex(Lch { l, c, h: hue.h });
+            let w = worst(&ink);
+            if w >= ratio {
+                return (ink, w);
+            }
+            if !(0.0..=1.0).contains(&(l + step)) {
+                if w > best.1 {
+                    best = (ink, w);
+                }
+                break;
+            }
+            l += step;
+        }
+    }
+    best
+}
+
+/// The ink roles the solver holds on every ground, with their ratio.
+pub const INKS: [(&str, f32); 26] = [
+    ("fg", 4.5),
+    ("fg-muted", 4.5),
+    ("fg-subtle", 3.0),
+    ("accent", 4.5),
+    ("accent-ink", 4.5),
+    ("danger", 4.5),
+    ("warn", 4.5),
+    ("success", 4.5),
+    ("info", 4.5),
+    ("gold", 4.5),
+    ("gold-hi", 3.0),
+    ("xp", 4.5),
+    ("common", 4.5),
+    ("uncommon", 4.5),
+    ("rare", 4.5),
+    ("epic", 4.5),
+    ("legendary", 4.5),
+    ("mythic", 4.5),
+    ("hud-accent-ink", 4.5),
+    ("foe-ink", 4.5),
+    ("ally-ink", 4.5),
+    ("boon-ink", 4.5),
+    ("fever-ink", 4.5),
+    ("late-ink", 4.5),
+    ("team1", 4.5),
+    ("epic-hi", 3.0),
+];
+
+/// The `--seed-*` CSS a compiled pack's seeds give.
+fn seed_css(pack: &Map<String, Value>) -> String {
+    let seeds: String = pack
+        .get("seeds")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+        .map(|(k, v)| format!("--seed-{k}: {};", v.as_str().unwrap_or_default()))
+        .collect();
+    format!(":root {{ {seeds} }}")
+}
+
+/// Each ink role ([`INKS`]) as a light/dark pair that holds its ratio on
+/// every ground of its scheme: `art` (the art faces registered per scheme,
+/// `Scheme::ALL` order) and the design's own surfaces. Hue and chroma are
+/// the design's; only OKLCH lightness moves, away from the grounds. A role
+/// the solve leaves where the design put it in both schemes is not written.
+fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Value>) {
+    let design = crate::pack::design::colors(seeds);
+    const SURFACES: [&str; 8] = [
+        "bg",
+        "bg-subtle",
+        "surface",
+        "surface-raised",
+        "layer-1",
+        "layer-2",
+        "layer-3",
+        "layer-4",
+    ];
+    for (role, ratio) in INKS {
+        let mut pair = Map::new();
+        let mut moved = false;
+        for (i, scheme) in ["light", "dark"].into_iter().enumerate() {
+            let Some(have) = design[i].get(role).and_then(Value::as_str) else {
+                continue;
+            };
+            let mut grounds = art[i].clone();
+            grounds.extend(
+                SURFACES
+                    .iter()
+                    .filter_map(|s| design[i].get(*s)?.as_str().map(str::to_owned)),
+            );
+            let worst = |ink: &str| {
+                grounds
+                    .iter()
+                    .map(|g| contrast(ink, g))
+                    .fold(f32::MAX, f32::min)
+            };
+            let mut ink = have[..7.min(have.len())].to_owned();
+            let Ok(mut c) = lch(&ink) else { continue };
+            let up = i == 1;
+            while worst(&ink) < ratio && (if up { c.l < 1.0 } else { c.l > 0.0 }) {
+                c.l = (c.l + if up { 0.005 } else { -0.005 }).clamp(0.0, 1.0);
+                ink = hex(c);
+                moved = true;
+            }
+            pair.insert(scheme.into(), json!(ink));
+        }
+        if moved && pair.len() == 2 {
+            colors.entry(role.to_owned()).or_insert(Value::Object(pair));
+        }
+    }
+}
+
 /// The art's nine-slice pieces and the slots that draw them: each slot's
 /// art is its edge (CONVENTIONS.md §Grounds and inks), so its fill is
 /// cleared and the art's face is the ground.
@@ -409,6 +558,7 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
     // material's lightness, the slots that draw it, and its spec.
     let mut art = Value::Null;
     let mut palette = Map::new();
+    let mut colors = Map::new();
     if let Some(m) = &material {
         let source = lch(col("source").unwrap_or("#808080"))?;
         let accent = col("accent").map(lch).transpose()?.unwrap_or(source);
@@ -460,20 +610,89 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             "header".into(),
             json!(at(source, 0.45, (source.c as f64).max(0.1))),
         );
-        let s = if dark { "dark" } else { "light" };
+        // Each art slot's ink, solved on the faces it draws (4.5:1 for
+        // text, 3:1 on the disabled button): the component's own ink was
+        // chosen for its own ground, so an art slot names its own. When no
+        // ink holds on a face pair, the faces move away from the ink in
+        // lightness (the material's band narrows) until one does.
+        // A slot's scheme is its own faces' (a material mixes light and dark
+        // pieces), so the inks of the text inside it are that scheme's.
+        let mut ink = |name: String, role: &str, ratio: f32| -> (String, &'static str) {
+            let mut faces: Vec<String> = palette
+                .get(role)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|f| f.as_str().map(str::to_owned))
+                .collect();
+            let (mut fg, mut worst) = solve(neutral, &faces, ratio);
+            let away = if luminance(&fg) > 0.5 { -0.01 } else { 0.01 };
+            for _ in 0..60 {
+                if worst >= ratio {
+                    break;
+                }
+                faces = faces
+                    .iter()
+                    .map(|f| {
+                        let c = lch(f).unwrap_or(neutral);
+                        hex(Lch {
+                            l: (c.l + away).clamp(0.0, 1.0),
+                            ..c
+                        })
+                    })
+                    .collect();
+                (fg, worst) = solve(neutral, &faces, ratio);
+            }
+            let light = faces.iter().map(|f| luminance(f)).sum::<f32>()
+                / (faces.len().max(1) as f32)
+                >= 0.18;
+            palette.insert(role.into(), json!(faces));
+            colors.insert(name.clone(), json!(fg));
+            (name, if light { "light" } else { "dark" })
+        };
+        let (disabled, _) = ink("art-button-disabled-fg".into(), "disabled", 3.0);
         for (slot, image) in ART_SLOTS {
+            let role = match image {
+                "button-primary" => "primary",
+                other => other,
+            };
+            let (fg, s) = ink(format!("art-{image}-fg"), role, 4.5);
             let states = if slot.starts_with("Button") {
                 format!(
-                    " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled"
+                    " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled data-pressed:text-{fg} disabled:text-{disabled}"
                 )
             } else {
                 String::new()
             };
             variants.insert(
                 slot.into(),
-                json!(format!("scheme-{s} nine-{image}{states} bg-transparent hover:bg-transparent active:bg-transparent")),
+                json!(format!("scheme-{s} nine-{image}{states} bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
             );
         }
+        // Ground registration (plan §4): each art slot's faces are grounds
+        // of the scheme its text reads in, with the design's own surfaces;
+        // every ink role is moved in OKLCH lightness until it holds its
+        // ratio on all of that scheme's grounds.
+        let mut grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
+        for (_, image) in ART_SLOTS {
+            let role = if image == "button-primary" {
+                "primary"
+            } else {
+                image
+            };
+            let faces: Vec<String> = palette
+                .get(role)
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|f| f.as_str().map(str::to_owned))
+                .collect();
+            let light = faces.iter().map(|f| luminance(f)).sum::<f32>()
+                / (faces.len().max(1) as f32)
+                >= 0.18;
+            grounds[usize::from(!light)].extend(faces);
+        }
+        solve_inks(&seed_css(&pack), &grounds, &mut colors);
         art = json!({
             "scale": 4,
             "palette": palette,
@@ -495,7 +714,6 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 .map(|(k, v)| format!("--seed-{k}: {};", v.as_str().unwrap_or_default()))
                 .collect();
             let design = crate::pack::design::colors(&format!(":root {{ {seeds} }}"));
-            let mut colors = Map::new();
             for (k, v) in cs {
                 let v = v.as_str().unwrap_or_default();
                 // A bare name is an art palette role (`outline`), else a
@@ -517,8 +735,10 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 };
                 colors.insert(k.clone(), v);
             }
-            theme.insert("colors".into(), Value::Object(colors));
         }
+    }
+    if !colors.is_empty() {
+        theme.insert("colors".into(), Value::Object(colors));
     }
     if !theme.is_empty() {
         pack.insert("theme".into(), Value::Object(theme));
@@ -728,7 +948,7 @@ mod tests {
             t.pack["variants"]["Button.plate.primary"]
                 .as_str()
                 .unwrap()
-                .starts_with("scheme-dark nine-button-primary hover:nine-button-primary-hover")
+                .starts_with("scheme-light nine-button-primary hover:nine-button-primary-hover")
         );
         assert!(
             t.pack["variants"]["Press.feedback"]
@@ -759,6 +979,53 @@ mod tests {
             layer.images[Scheme::Dark as usize]["plate"].src,
             "art/plate.png"
         );
+    }
+
+    /// Every material, light or dark: each art slot names its own ink, and
+    /// that ink holds 4.5:1 on the faces the slot draws (a component's ink
+    /// was chosen for its own ground, which the art replaces).
+    #[test]
+    fn each_art_slot_names_an_ink_that_reads_on_its_faces() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../templates/themes/dimensions/material");
+        for m in std::fs::read_dir(&root).unwrap() {
+            let m = m
+                .unwrap()
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .into_owned();
+            for source in ["#d9a531", "#5cc8ff", "#ff5c9a"] {
+                let mut r = Map::new();
+                r.insert("material".into(), json!(m));
+                r.insert(
+                    "color".into(),
+                    json!({ "source": source, "neutral": "#4c5643" }),
+                );
+                let t = compile(&r, &mut templates()).unwrap();
+                for (slot, image) in ART_SLOTS {
+                    let role = if image == "button-primary" {
+                        "primary"
+                    } else {
+                        image
+                    };
+                    let ink = format!("art-{image}-fg");
+                    assert!(
+                        t.pack["variants"][slot]
+                            .as_str()
+                            .unwrap()
+                            .contains(&format!("text-{ink}")),
+                        "{m} {slot}"
+                    );
+                    let ink = t.pack["theme"]["colors"][&ink].as_str().unwrap();
+                    for face in t.art["palette"][role].as_array().unwrap() {
+                        let r = contrast(ink, face.as_str().unwrap());
+                        assert!(r >= 4.5, "{m} {source} {slot}: {ink} on {face} {r:.2}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
