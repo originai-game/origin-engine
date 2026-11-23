@@ -54,14 +54,14 @@ export interface ResultsScreenProps {
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
     <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${props.class ?? ""}`}>
-      <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 shrink ${packClass("Panel", "frame")}`}>
-        <Scroll class="grow shrink basis-0 gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
-          <View class="items-end gap-6 compact:items-start compact:gap-3">
+      <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 compact:h-auto compact:max-h-full compact:my-auto shrink ${packClass("Panel", "frame")}`}>
+        <Scroll class="grow shrink basis-0 compact:grow-0 compact:basis-auto gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
+          <View class="flex-row items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
               <Text class={`font-display text-display-lg compact:text-display-md font-bold leading-flat tracking-xs uppercase text-gold-hi m-0 short:text-8xl data-outcome-lost:text-danger`} data-outcome-lost={!props.won} data-outcome-won={props.won}>
                 {props.title}
               </Text>
-              <View class="h-0.5">
+              <View class="h-px w-full max-w-140 bg-linear-to-r from-transparent via-fg/65 to-transparent">
                 <Text class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 bg-hud-accent shadow-glow size-2.25" />
               </View>
               <Show when={props.level !== undefined}>

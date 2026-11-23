@@ -780,7 +780,7 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     loadNativeHost();
 
     type El = { id: string; parent: string; name: string; role: string; x: number; y: number; width: number; height: number };
-    const rootOf = (name: string, extra?: string, height = 844, more: Record<string, unknown> = {}) => {
+    const rootOf = (name: string, extra?: string, height = 844, more: Record<string, unknown> = {}, phone = false) => {
       const mod = mods[`S${FULL_SCREENS.indexOf(name)}`]!;
       const Screen = Object.entries(mod).find(([k, v]) => /Screen$/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
       const props = { ...(mod.fixtures as Record<string, Record<string, unknown>>).default, ...(extra ? { class: extra } : {}), ...more };
@@ -794,6 +794,8 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
       if (!created.ok) throw new Error(created.reason);
       const engine = created.value;
       const id = (engine.world as unknown as { id: number }).id;
+      // A phone's viewport sets the compact breakpoint, as a 390x844 phone does.
+      if (phone) og.ui.previewViewport(engine.world, { width: 390, height, dpr: 1 } as never);
       try {
         for (let i = 0; i < 3; i++) engine.frame(1000 / 60);
         const els = (JSON.parse(native().og_node_ui_frame(id)) as { elements: El[] }).elements;
@@ -802,7 +804,10 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
         const root = els.find((e) => (e as El & { path: string }).path.split("/").length === 3)!;
         const shown = (text: string) => els.some((e) => (e as El & { text: string }).text === text && e.y >= 0 && e.y < height);
         const tabs = els.filter((e) => e.role === "tab").map((e) => e.name);
-        return { name, box: [root.x, root.y, root.width, root.height], shown, tabs };
+        const panel = els.find((e) => e.parent === root.id && e.height > 0)!;
+        const diamond = els.find((e) => e.width > 8 && e.width < 16 && Math.abs(e.height - e.width) < 0.01 && !e.role && els.find((p) => p.id === e.parent)?.height === 1);
+        const rule = diamond && els.find((p) => p.id === diamond.parent)!;
+        return { name, box: [root.x, root.y, root.width, root.height], panel: [panel.y, panel.height], rule: rule && [rule.width, Math.round(diamond!.x + diamond!.width / 2 - rule.x - rule.width / 2)], shown, tabs };
       } finally {
         renderers.delete(id);
         engine.destroy();
@@ -812,6 +817,17 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     // Results never clips its grade, stats or rewards: all on a phone, and on a short column the page scrolls from its top.
     const results = rootOf("results");
     expect(["A", "Score", "Kills", "screen.results.rewards"].map((t) => [t, results.shown(t)])).toEqual([["A", true], ["Score", true], ["Kills", true], ["screen.results.rewards", true]]);
+    // The verdict's rule is a line with its diamond at the middle, not a lone diamond.
+    expect(results.rule![0]).toBeGreaterThan(200);
+    expect(Math.abs(results.rule![1]!)).toBeLessThanOrEqual(1);
+    // On a phone the panel hugs its page and buttons, centred: no empty block under the stats.
+    const phone = rootOf("results", undefined, 844, {}, true);
+    const [top, h] = phone.panel as [number, number];
+    expect(h).toBeLessThan(700);
+    expect(Math.abs(top - (844 - top - h))).toBeLessThanOrEqual(2);
+    // A short phone: the panel stays inside it and its page scrolls from the verdict.
+    const low = rootOf("results", undefined, 480, {}, true);
+    expect({ fits: low.panel[0]! >= 0 && low.panel[0]! + low.panel[1]! <= 480, title: low.shown("Victory") }).toEqual({ fits: true, title: true });
     const short = rootOf("results", undefined, 360);
     expect({ box: short.box, title: short.shown("Victory") }).toEqual({ box: [0, 0, 390, 360], title: true });
     // Results draws its tab row only for a caller that switches tabs (onTab), its labels from the string table.
