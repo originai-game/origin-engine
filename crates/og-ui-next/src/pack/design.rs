@@ -535,6 +535,41 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
     ),
     (
+        "Menu.frame",
+        "a menu's popup by its trigger, around its items",
+        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
+    ),
+    (
+        "Menu.item",
+        "an item of a menu; focus: is the one the keys are on",
+        "flex-row items-center gap-2.5 min-h-11 px-3 rounded-control text-sm font-semibold text-fg transition duration-90 hover:bg-hover focus:bg-hover active:bg-pressed disabled:text-fg-subtle",
+    ),
+    (
+        "Menu.item.danger",
+        "a menu item that destroys or cannot be undone",
+        "text-danger",
+    ),
+    (
+        "Menu.indicator",
+        "the check before a checkable menu item's text, shown while it is checked",
+        "flex items-center justify-center size-4.5 shrink-0 text-accent opacity-0 checked:opacity-100",
+    ),
+    (
+        "Menu.shortcut",
+        "a menu item's hint after its text: a key or a count",
+        "shrink-0 ml-auto pl-4 text-xs font-semibold text-fg-muted tabular-nums",
+    ),
+    (
+        "Menu.separator",
+        "a line between groups of a menu's items",
+        "h-px my-1 mx-2 bg-border",
+    ),
+    (
+        "Menu.label",
+        "a group's heading in a menu",
+        "px-3 pt-2 pb-1 text-xs font-bold uppercase tracking-label text-fg-muted",
+    ),
+    (
         "Tooltip.frame",
         "a tooltip's bubble",
         "max-w-64 px-2.5 py-1.5 rounded-control bg-fg text-fg-inverse text-xs font-semibold shadow-float",

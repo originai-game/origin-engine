@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "Menu, ContextMenu, MenuItem, MenuSeparator, MenuLabel (ui/controls/menu)",
+      "summary": "A menu of actions on a trigger, ported from NSH base: `Menu` opens from its trigger (a dropdown on a button), `ContextMenu` from a right click, a finger held, Shift+F10 or the Menu key on its trigger. The popup follows the trigger, stays inside the screen and takes the focus while open (the arrows move among its items, the trigger gets the focus back); choosing an item, a press outside and `back` close it. `MenuItem` reports `onSelect`, and with `checked` (and `radio`) it is a checkable setting or one choice of a group; `danger`, `icon`, `shortcut` and `closeOnSelect` dress and keep it. The pack draws `Menu.frame`, `Menu.item[.danger]`, `Menu.indicator`, `Menu.shortcut`, `Menu.separator` and `Menu.label`. The game owns `open` and every value."
+    },
+    {
+      "member": "provide (@origingame/engine/ui)",
+      "summary": "`provide(context, value, fn)` sets a context for what `fn` makes, which `useContext` reads below it, as a component's provider."
+    }
+  ]
+}

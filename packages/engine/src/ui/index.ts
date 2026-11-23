@@ -10,7 +10,7 @@ import { json } from "../runtime/result.ts";
 import { type Renderer, Renderer as UiRenderer, RendererContext, component, element, insert, spread } from "./rt.ts";
 import { type Accessor, createContext, createMemo, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 
-export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, untrack, useContext } from "./signals.ts";
+export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 export type { Accessor, Context, Signal } from "./signals.ts";
 import type { HostProps, UiChild, UiNode } from "./types.ts";
 export type { HostProps, UiChild, UiEvent, UiNode } from "./types.ts";
