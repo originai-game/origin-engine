@@ -257,9 +257,9 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   A module state the check could not read is listed in `unchecked`, never
   passed.
 - Progress the game deliberately carries across a restart (coins earned,
-  a best score, unlocked stages) is stated with `restart: { at, keep }`:
-  each entry a field of a component or a resource the world declares
-  (`keep: ["Run.best", "Wallet.coins"]`). Those fields are left out of the
+  a best score, unlocked stages) is stated in the `restart` option's
+  `keep` list, `{ at, keep: ["Run.best", "Wallet.coins"] }`: each entry a
+  field of a component or a resource the world declares. Those fields are left out of the
   comparison and `run.restart.kept` reports each with its value at the
   fresh start and after the restart (by entity for a component), so a
   reader sees what the game carried over. A name the world does not
