@@ -22,6 +22,15 @@ pub trait RenderBackend {
     fn cursor(&mut self, shape: &crate::host::ui_cursor::CursorShape) {
         let _ = shape;
     }
+    /// The UI's focused text field this frame, given every frame: the
+    /// frame answer's `text` (`TextTarget`'s JSON, `Value::Null` when none),
+    /// and `copy`, text a copy or cut took. A backend that owns a window
+    /// (the native host's) asks its platform for an input method at the
+    /// caret while a field is focused and puts the copy on the clipboard;
+    /// the web shell reads both from the frame answer instead.
+    fn text_entry(&mut self, target: &serde_json::Value, copy: Option<&str>) {
+        let _ = (target, copy);
+    }
     /// The frames drawn so far and the frames TAA's history holds
     /// (og-render's `Renderer::history`); `None` for a backend without one.
     fn history(&self) -> Option<(u64, u64)> {

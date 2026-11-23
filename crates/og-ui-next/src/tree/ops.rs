@@ -5350,6 +5350,104 @@ mod tests {
         assert!(t.take_copy().is_none(), "password must never copy");
     }
 
+    /// The host's text frame: a commit and the next word's preedit in one
+    /// tick keep both, an empty composition cancels without a change, the
+    /// caret and the reported caret rect stand after CJK text and its
+    /// preedit (underlined), and a paste replaces the selection, its line
+    /// breaks spaces in a one-line field and newlines in a multi-line one.
+    #[test]
+    fn an_input_takes_the_hosts_text_frame() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(4);
+        b.op(7).u32(1).u8(Event::Change as u8).u8(1);
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(1).u32(2).u8(4);
+        b.op(7).u32(2).u8(Event::Change as u8).u8(1);
+        b.op(6).u32(2).str("multiline").str("true");
+        b.op(8).u32(0).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let changes = |t: &mut Tree| -> Vec<String> {
+            t.events
+                .drain(..)
+                .filter(|f| f.event == Event::Change)
+                .map(|f| f.value.to_string())
+                .collect()
+        };
+        let advance = |text: &str| {
+            let run = crate::arena::Run::sized(16.0);
+            TEXT.with_borrow_mut(|(fonts, _)| {
+                crate::text::Texts::default()
+                    .measure(fonts, 0, text, &run, crate::arena::Avail::Max)
+                    .0
+                    .round()
+            })
+        };
+        // The caret bar painted (from the field's left) and the one the
+        // host is told, which an input method opens its candidates at.
+        let caret = |t: &mut Tree| {
+            frame(t);
+            let x0 = t.op_box(1).unwrap()[0];
+            let painted = t
+                .drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == og_draw::paint::PaintKind::Solid as u32 && q.rect[2] <= 2.0)
+                .map(|q| q.rect[0] - x0);
+            let told = t.text_target().map(|g| (g.caret[0] - x0).round());
+            assert_eq!(painted, told, "the host hears the caret it sees");
+            painted
+        };
+        t.events.clear();
+
+        t.text_frame("", Some("ni"));
+        assert!(changes(&mut t).is_empty(), "a preedit is no change");
+        // 你 committed and the next word's preedit, in one tick.
+        t.text_frame("你", Some("h"));
+        assert_eq!(changes(&mut t), ["你"]);
+        assert!(t.text_target().unwrap().composing, "the new preedit stays");
+        assert_eq!(caret(&mut t), Some(advance("你h")));
+        // The preedit is underlined: a hairline under its run alone.
+        let x0 = t.op_box(1).unwrap()[0];
+        let under: Vec<[f32; 4]> = t
+            .drawn
+            .quads
+            .iter()
+            .filter(|q| {
+                q.kind == og_draw::paint::PaintKind::Solid as u32
+                    && q.rect[3] <= 1.0
+                    && q.rect[2] > 2.0
+            })
+            .map(|q| q.rect)
+            .collect();
+        assert_eq!(under.len(), 1, "{under:?}");
+        assert_eq!((under[0][0] - x0).round(), advance("你"));
+        // Cancelled: the preedit goes, nothing changes, the caret is back.
+        t.text_frame("", Some(""));
+        assert!(changes(&mut t).is_empty());
+        assert!(!t.text_target().unwrap().composing);
+        assert_eq!(caret(&mut t), Some(advance("你")));
+        // A commit ends the preedit before it (og-input's frame).
+        t.text_frame("", Some("hao"));
+        t.text_frame("好", Some(""));
+        assert_eq!(changes(&mut t), ["你好"]);
+        assert_eq!(caret(&mut t), Some(advance("你好")));
+
+        // A paste over a selection replaces it once; its line breaks are
+        // spaces here.
+        t.key("ArrowLeft", true, false, false, false);
+        t.text_frame("a\r\nb\nc", None);
+        assert_eq!(changes(&mut t), ["你a b c"]);
+        // And newlines in a multi-line field.
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        t.text_frame("a\r\nb\rc", None);
+        assert_eq!(changes(&mut t), ["a\nb\nc"]);
+    }
+
     /// A control sounds the pack's sound for its slot (`@Component.slot`
     /// in its class; a variant falls back to its bare slot), else the
     /// pack's generic one: hover as the pointer comes over it, press on a

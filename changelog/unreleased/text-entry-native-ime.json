@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Input (native window)",
+      "summary": "A focused Input takes the platform's input method in a native window as it does on the web: Chinese, Japanese and Korean preedit shows underlined at the caret and commits into the field, the candidate window opens at the caret, Ctrl+C/X (Cmd on macOS) put the selection on the OS clipboard and Ctrl+V pastes from it."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui Input",
+      "summary": "An input method's commit and the next word's preedit arriving in one frame no longer lose the preedit. A pasted line break becomes a space in a one-line Input (it was dropped, joining the words) and a newline in a multi-line one, Windows' CRLF included. On the web, the input method's candidate window opens at the caret instead of the field's left edge."
+    }
+  ]
+}

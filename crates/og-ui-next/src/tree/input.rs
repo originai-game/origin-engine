@@ -420,7 +420,10 @@ pub struct Input {
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextTarget {
     pub path: String,
+    /// The field's box and its caret bar, in surface (CSS) px: an input
+    /// method's candidate window opens at the caret.
     pub rect: [f32; 4],
+    pub caret: [f32; 4],
     pub multiline: bool,
     pub selection: String,
     pub composing: bool,
@@ -435,6 +438,7 @@ impl TextTarget {
         let mut obj = serde_json::Map::new();
         obj.insert("path".into(), serde_json::json!(self.path));
         obj.insert("rect".into(), serde_json::json!(self.rect));
+        obj.insert("caret".into(), serde_json::json!(self.caret));
         obj.insert("multiline".into(), serde_json::json!(self.multiline));
         obj.insert("selection".into(), serde_json::json!(self.selection));
         obj.insert("composing".into(), serde_json::json!(self.composing));
@@ -452,6 +456,38 @@ impl TextTarget {
         }
         serde_json::Value::Object(obj)
     }
+}
+
+/// An `Input`'s caret bar, from its box's top left: x, y, its width (a
+/// whole device pixel or more at `scale`) and its line's height. At the
+/// composition's end while an input method composes, before the
+/// placeholder while the text is empty. `None` before its text is laid out.
+pub(super) fn caret_bar(
+    el: &El,
+    f: &Per,
+    texts: &crate::text::Texts,
+    arena: &Arena,
+    scale: f32,
+    text_scale: f32,
+) -> Option<[f32; 4]> {
+    let leaf = el.leaf?;
+    let size = el.eff.size * text_scale;
+    let line = el.eff.text.line_height(el.eff.size) * text_scale;
+    let at = if let Some((_, ce)) = f.composing_display_range() {
+        ce
+    } else if f.value.is_empty() {
+        0
+    } else {
+        f.display_offset(f.caret)
+    };
+    let [cx, top, height] = match el.text.is_empty() {
+        true => None,
+        false => texts.caret(leaf, at),
+    }
+    .unwrap_or([0.0, 0.0, line]);
+    let lb = arena.box_of(leaf);
+    let bar = (size / 14.0 * scale).round().max(1.0) / scale;
+    Some([lb.x + cx, lb.y + top, bar, height])
 }
 
 impl Per {
@@ -787,9 +823,13 @@ impl Tree {
             let (start, end) = p.selection_range();
             p.value[start..end].to_owned()
         };
+        let caret = self
+            .caret_in(e)
+            .map_or([x, y, 0.0, b.h], |[cx, cy, w, h]| [x + cx, y + cy, w, h]);
         Some(TextTarget {
             path: self.els[e as usize].node.to_string(),
             rect: [x, y, b.w, b.h],
+            caret,
             multiline: p.multiline,
             selection,
             composing: !p.composing.is_empty(),
@@ -798,6 +838,13 @@ impl Tree {
             autocomplete: p.autocomplete.to_string(),
             secret: p.secret,
         })
+    }
+
+    /// The `Input` `e`'s caret bar ([`caret_bar`]).
+    pub(super) fn caret_in(&self, e: u32) -> Option<[f32; 4]> {
+        let f = self.input.per(e).filter(|f| f.input)?;
+        let el = &self.els[e as usize];
+        caret_bar(el, f, &self.texts, &self.arena, self.scale, self.text_scale)
     }
 
     /// Text copied or cut from a focused `Input` since the last call.
@@ -825,6 +872,19 @@ impl Tree {
         true
     }
 
+    /// A frame's text from the host (og-input's `InputFrame`): `text` it
+    /// committed, then the input method's `composition` as it stands after
+    /// that commit (`Some("")` ends it). A commit and the next word's
+    /// preedit in one tick keep both.
+    pub fn text_frame(&mut self, text: &str, composition: Option<&str>) {
+        if !text.is_empty() {
+            self.type_text(text);
+        }
+        if let Some(c) = composition {
+            self.compose(c);
+        }
+    }
+
     /// Text typed this frame (og-input's `og.TextInput` stream, or the
     /// printable keys) goes into the focused `Input` at its caret, which
     /// hears `change` with its new text. Whether one took it.
@@ -837,10 +897,17 @@ impl Tree {
             return false;
         }
         let had_composing = !p.composing.is_empty();
-        let allow_newline = p.multiline;
+        // A pasted line break is a newline in a multi-line field and a
+        // space in a one-line one; other control characters are keys.
+        let brk = if p.multiline { '\n' } else { ' ' };
         let filtered: String = text
+            .replace("\r\n", "\n")
             .chars()
-            .filter(|&c| !c.is_control() || (allow_newline && c == '\n'))
+            .filter_map(|c| match c {
+                '\n' | '\r' => Some(brk),
+                c if c.is_control() => None,
+                c => Some(c),
+            })
             .collect();
         if filtered.is_empty() {
             if had_composing {

@@ -1016,13 +1016,8 @@ impl Next {
         if tree.has_ops() {
             tree.wheel(ptr.x, ptr.y, ptr.wheel[0], ptr.wheel[1]);
             // Typed text and IME preedit go into the focused `Input` before
-            // its keys edit it, as they arrived.
-            if let Some(comp) = &input.composition {
-                tree.compose(comp);
-            }
-            if !input.text.is_empty() {
-                tree.type_text(&input.text);
-            }
+            // its keys edit it.
+            tree.text_frame(&input.text, input.composition.as_deref());
             for code in &input.keys_pressed {
                 tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
             }
@@ -1184,7 +1179,7 @@ impl Next {
         };
         let u = self.unit;
         if u != 1.0 {
-            for v in &mut target.rect {
+            for v in target.rect.iter_mut().chain(&mut target.caret) {
                 *v *= u;
             }
         }

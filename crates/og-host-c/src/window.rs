@@ -32,7 +32,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use winit::application::ApplicationHandler;
 use winit::dpi::{LogicalSize, PhysicalSize};
-use winit::event::{ElementState, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event::{ElementState, Ime, KeyEvent, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::keyboard::PhysicalKey;
 use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
@@ -205,6 +205,8 @@ struct App {
     pointer: (f64, f64),
     /// Key codes sent down and not yet up, released when focus goes.
     held: BTreeSet<String>,
+    /// An input method shows a preedit: its keys are its own.
+    composing: bool,
 }
 
 thread_local! {
@@ -215,6 +217,33 @@ thread_local! {
     static RESIZE: Cell<Option<(u32, u32)>> = const { Cell::new(None) };
     /// The last answer of `og_c_window_open`.
     static ANSWER: RefCell<CString> = RefCell::new(CString::default());
+    /// The UI has a text field focused (the frame answer's `text`): the
+    /// paste shortcut reads the clipboard into it.
+    static TEXT_FOCUS: Cell<bool> = const { Cell::new(false) };
+    /// The OS clipboard, opened on its first use.
+    static CLIPBOARD: RefCell<Option<arboard::Clipboard>> = const { RefCell::new(None) };
+}
+
+/// `f` on the OS clipboard, if it opens.
+fn clipboard<R>(f: impl FnOnce(&mut arboard::Clipboard) -> R) -> Option<R> {
+    CLIPBOARD.with_borrow_mut(|c| {
+        if c.is_none() {
+            *c = arboard::Clipboard::new()
+                .map_err(|e| eprintln!("og-host-c: no clipboard: {e}"))
+                .ok();
+        }
+        c.as_mut().map(f)
+    })
+}
+
+/// The paste shortcut's modifier is held: Command on macOS, else Control.
+fn paste_held(held: &BTreeSet<String>) -> bool {
+    let [l, r] = if cfg!(target_os = "macos") {
+        ["MetaLeft", "MetaRight"]
+    } else {
+        ["ControlLeft", "ControlRight"]
+    };
+    held.contains(l) || held.contains(r)
 }
 
 /// A W3C `KeyboardEvent.code` from winit's: the same names but for the
@@ -258,8 +287,21 @@ impl App {
                 json!({ "kind": "key", "key": key, "action": if down { "down" } else { "up" } }),
             );
         }
-        // Typed text for the UI's text fields; control characters are keys.
+        // The paste shortcut into a focused text field: the clipboard's
+        // text, as the page's paste event gives it.
         if down
+            && key == "KeyV"
+            && TEXT_FOCUS.get()
+            && paste_held(&self.held)
+            && let Some(text) = clipboard(|c| c.get_text().ok()).flatten()
+            && !text.is_empty()
+        {
+            self.input.push(json!({ "kind": "text", "text": text }));
+        }
+        // Typed text for the UI's text fields; control characters are keys,
+        // and an input method's keys are its composition's.
+        if down
+            && !self.composing
             && let Some(text) = event
                 .text
                 .as_ref()
@@ -314,6 +356,28 @@ impl App {
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => self.key(&event),
+            // An input method's composition and commit, as the page's
+            // compositionupdate and compositionend; one switched off
+            // mid-word ends its composition uncommitted.
+            WindowEvent::Ime(ime) => match ime {
+                Ime::Preedit(text, _) => {
+                    if self.composing || !text.is_empty() {
+                        self.composing = !text.is_empty();
+                        self.input
+                            .push(json!({ "kind": "text", "text": text, "composing": true }));
+                    }
+                }
+                Ime::Commit(text) => {
+                    self.composing = false;
+                    self.input.push(json!({ "kind": "text", "text": text }));
+                }
+                Ime::Disabled if self.composing => {
+                    self.composing = false;
+                    self.input
+                        .push(json!({ "kind": "text", "text": "", "composing": true }));
+                }
+                Ime::Enabled | Ime::Disabled => {}
+            },
             WindowEvent::CursorMoved { position, .. } => {
                 let (x, y) = (position.x / s, position.y / s);
                 let (dx, dy) = (x - self.pointer.0, y - self.pointer.1);
@@ -373,6 +437,10 @@ struct WindowBackend {
     stats: og_render::FrameStats,
     losses: u32,
     cursor: Option<(&'static str, u64)>,
+    /// The input method is allowed (a text field is focused), and the
+    /// caret it was last told, in CSS px.
+    ime: bool,
+    ime_at: [f64; 4],
 }
 
 impl WindowBackend {
@@ -443,6 +511,35 @@ impl RenderBackend for WindowBackend {
             self.cursor = Some(shape.id());
             self.window
                 .set_cursor(shape.keyword.parse::<CursorIcon>().unwrap_or_default());
+        }
+    }
+    /// A focused text field allows the platform's input method (and the
+    /// soft keyboard where there is one) with its candidates at the caret;
+    /// a copy goes on the OS clipboard.
+    fn text_entry(&mut self, target: &Value, copy: Option<&str>) {
+        let caret = target["caret"].as_array().map(|c| {
+            let v = |i: usize| c.get(i).and_then(Value::as_f64).unwrap_or(0.0);
+            [v(0), v(1), v(2), v(3)]
+        });
+        TEXT_FOCUS.set(caret.is_some());
+        if self.ime != caret.is_some() {
+            self.ime = caret.is_some();
+            self.window.set_ime_allowed(self.ime);
+            self.ime_at = [f64::NAN; 4];
+        }
+        if let Some(at) = caret
+            && at != self.ime_at
+        {
+            self.ime_at = at;
+            self.window.set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(at[0], at[1]),
+                LogicalSize::new(at[2].max(1.0), at[3].max(1.0)),
+            );
+        }
+        if let Some(text) = copy
+            && let Some(Err(e)) = clipboard(|c| c.set_text(text))
+        {
+            eprintln!("og-host-c: the copy did not reach the clipboard: {e}");
         }
     }
     fn set_clock(&mut self, clock: Option<fn() -> f64>) {
@@ -540,6 +637,7 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
         scale: 1.0,
         pointer: (0.0, 0.0),
         held: BTreeSet::new(),
+        composing: false,
     };
     // The window is made when the loop first resumes.
     for _ in 0..100 {
@@ -598,6 +696,8 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
             stats: Default::default(),
             losses: 0,
             cursor: None,
+            ime: false,
+            ime_at: [f64::NAN; 4],
         })),
     )?;
     og_runtime::set_viewport(engine, viewport(size, app.scale))?;
@@ -828,6 +928,7 @@ mod tests {
             scale,
             pointer: (0.0, 0.0),
             held: BTreeSet::new(),
+            composing: false,
         }
     }
 
@@ -890,5 +991,41 @@ mod tests {
             vec![json!({ "kind": "key", "key": "KeyW", "action": "up" })]
         );
         assert!(a.held.is_empty() && a.closed);
+    }
+
+    /// An input method reaches the engine as the page's composition
+    /// events: its preedit composing, its commit typed, and one switched
+    /// off mid-word ends the composition; a key's text while it composes
+    /// is the method's, not typed twice.
+    #[test]
+    fn an_input_methods_events_are_the_pages() {
+        let mut a = app(1.0);
+        a.translate(WindowEvent::Ime(Ime::Enabled));
+        a.translate(WindowEvent::Ime(Ime::Preedit(String::new(), None)));
+        assert!(a.input.is_empty(), "no composition, nothing to clear");
+        a.translate(WindowEvent::Ime(Ime::Preedit("ni".into(), Some((2, 2)))));
+        assert!(a.composing);
+        a.translate(WindowEvent::Ime(Ime::Preedit(String::new(), None)));
+        a.translate(WindowEvent::Ime(Ime::Commit("你".into())));
+        a.translate(WindowEvent::Ime(Ime::Preedit("h".into(), Some((1, 1)))));
+        a.translate(WindowEvent::Ime(Ime::Disabled));
+        assert_eq!(
+            a.input,
+            vec![
+                json!({ "kind": "text", "text": "ni", "composing": true }),
+                json!({ "kind": "text", "text": "", "composing": true }),
+                json!({ "kind": "text", "text": "你" }),
+                json!({ "kind": "text", "text": "h", "composing": true }),
+                json!({ "kind": "text", "text": "", "composing": true }),
+            ]
+        );
+        assert!(!a.composing);
+        assert_eq!(
+            og_input::InjectedInput::from_json(&a.input[2]),
+            Some(og_input::InjectedInput::Text {
+                text: "你".into(),
+                composing: false
+            })
+        );
     }
 }

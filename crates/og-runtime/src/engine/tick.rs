@@ -273,6 +273,9 @@ fn frame_here(id: u32, eng: &Engine, elapsed_ms: f64, interval_ms: Option<f64>) 
             Some((ui.text_target(), ui.take_copy()))
         })
         .unwrap_or((Value::Null, None));
+    if let Some(b) = eng.render.borrow_mut().backend.as_mut() {
+        b.text_entry(&text, copy.as_deref());
+    }
     // `cursor`: the pointer's shape the UI resolved (og.ui.frameCursor, a
     // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
     // the frames where it changed: the first of its `url()` images that

@@ -14,7 +14,7 @@ doctest = false
 default = ["window"]
 publish = ["og-runtime/publish"]
 # The desktop window a store shell draws in (src/window.rs).
-window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audio/device", "dep:gilrs-core", "dep:og-input", "dep:sys-locale"]
+window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:og-audio", "og-audio/device", "dep:gilrs-core", "dep:og-input", "dep:sys-locale", "dep:arboard"]
 
 [dependencies]
 og-api = { path = "../og-api" }
@@ -33,3 +33,5 @@ gilrs-core = { version = "0.6.8", optional = true }
 og-input = { path = "../og-input", optional = true }
 # The player's OS locale, which the shell names at the engine's creation (og_c_locale).
 sys-locale = { version = "0.3", optional = true }
+# The OS clipboard a text field copies to and pastes from (MIT OR Apache-2.0).
+arboard = { version = "3.7", default-features = false, optional = true }

@@ -2369,29 +2369,14 @@ impl Tree {
             }
             // The focused `Input`'s caret: a bar its line's height before
             // the character it stands at, in the text's ink.
-            if let (Some(leaf), Some(f)) = (el.leaf, field)
+            if let Some(f) = field
                 && self.input.focus_el() == e as u32
                 && (f.anchor == f.caret || !f.composing.is_empty())
+                && let Some([cx, top, bar, height]) =
+                    input::caret_bar(el, f, &self.texts, &self.arena, scale, self.text_scale)
             {
-                let size = el.eff.size * self.text_scale;
-                let line = el.eff.text.line_height(el.eff.size) * self.text_scale;
-                // The placeholder shows: the caret stands before it.
-                let at = if let Some((_, ce)) = f.composing_display_range() {
-                    ce
-                } else if f.value.is_empty() {
-                    0
-                } else {
-                    f.display_offset(f.caret)
-                };
-                let [cx, top, height] = match el.text.is_empty() {
-                    true => None,
-                    false => self.texts.caret(leaf, at),
-                }
-                .unwrap_or([0.0, 0.0, line]);
-                let lb = self.arena.box_of(leaf);
-                let bar = (size / 14.0 * scale).round().max(1.0) / scale;
                 let snap = |v: f32| (v * scale).round() / scale;
-                let rect = [snap(x + lb.x + cx), snap(y + lb.y + top), bar, height];
+                let rect = [snap(x + cx), snap(y + top), bar, height];
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,

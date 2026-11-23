@@ -55,6 +55,8 @@ export interface TextTarget {
   path: string;
   /** Its rectangle in CSS pixels of the play surface: x, y, width, height. */
   rect: [number, number, number, number];
+  /** Its caret bar, the same way: the element stands there, so an input method's candidates open at it. */
+  caret?: [number, number, number, number];
   multiline: boolean;
   /** The selected text (empty: none). */
   selection: string;
@@ -210,11 +212,13 @@ export class TextEntry {
     const box = this.#canvas.getBoundingClientRect();
     const sx = box.width / (this.#canvas.clientWidth || box.width || 1);
     const sy = box.height / (this.#canvas.clientHeight || box.height || 1);
-    const [x, y, w, h] = target.rect;
+    // From the caret to the field's right edge, the caret line's height.
+    const [fx, fy, fw, fh] = target.rect;
+    const [x, y, , h] = target.caret ?? [fx, fy, 0, fh];
     Object.assign(area.style, {
       left: `${box.left + x * sx}px`,
       top: `${box.top + y * sy}px`,
-      width: `${Math.max(1, w * sx)}px`,
+      width: `${Math.max(1, (fx + fw - x) * sx)}px`,
       height: `${Math.max(1, h * sy)}px`,
     });
     if (was !== area || area.ownerDocument.activeElement !== area) {

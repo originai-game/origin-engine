@@ -161,3 +161,17 @@ test("a field's type, inputmode and autocomplete reach the focused element; a pa
   expect((mail as unknown as { value: string }).value).toBe("");
   shell.dispose();
 });
+
+test("the focused element stands at the field's caret, where an input method opens its candidates", async () => {
+  const { doc, worker, shell } = await start();
+  worker.say({ type: "text", target: { ...target, caret: [500, 248, 2, 24] } });
+  await settle();
+  const style = (doc.activeElement as unknown as { style: Record<string, string> }).style;
+  // From the caret to the field's right edge (420 + 440), the caret line's height.
+  expect([style.left, style.top, style.width, style.height]).toEqual(["500px", "248px", "360px", "24px"]);
+  // The caret moves on: the element follows it.
+  worker.say({ type: "text", target: { ...target, caret: [620, 248, 2, 24] } });
+  await settle();
+  expect([style.left, style.width]).toEqual(["620px", "240px"]);
+  shell.dispose();
+});
