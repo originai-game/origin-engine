@@ -197,7 +197,21 @@ try {
   // browser refuses invalidates every frame that uses it. Not with --scene: a run of chosen scenes.
   if (!opt("--scene")) {
     const refused = await tab.eval<Array<{ label: string; messages: string[] }>>(`(async () => {
-      const device = await (await navigator.gpu.requestAdapter()).requestDevice();
+      // Match the player's adapter options; a cold NVIDIA GPU process can also answer null initially.
+      const deadline = performance.now() + 30_000;
+      let adapter;
+      do {
+        let timer;
+        try {
+          adapter = await Promise.race([
+            navigator.gpu.requestAdapter({ powerPreference: "high-performance", featureLevel: "compatibility" }),
+            new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("the browser found no WebGPU adapter after 30000 ms")), Math.max(0, deadline - performance.now())); }),
+          ]);
+        } finally { clearTimeout(timer); }
+        if (!adapter) await new Promise((resolve) => setTimeout(resolve, 100));
+      } while (!adapter && performance.now() < deadline);
+      if (!adapter) throw new Error("the browser found no WebGPU adapter after 30000 ms");
+      const device = await adapter.requestDevice();
       const out = [];
       for (const s of JSON.parse(globalThis.__gfx.og_gfx_shader_sources())) {
         const info = await device.createShaderModule({ label: s.label, code: s.wgsl }).getCompilationInfo();
