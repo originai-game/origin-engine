@@ -23,6 +23,7 @@ pub mod body;
 pub mod earcut;
 pub mod extrude;
 pub mod frames;
+pub mod grammar;
 pub mod hull;
 pub mod lathe;
 pub mod loft;
