@@ -449,9 +449,10 @@ fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Valu
 /// The art's nine-slice pieces and the slots that draw them: each slot's
 /// art is its edge (CONVENTIONS.md §Grounds and inks), so its fill is
 /// cleared and the art's face is the ground.
-const ART_SLOTS: [(&str, &str); 7] = [
+const ART_SLOTS: [(&str, &str); 8] = [
     ("Button.plate", "button"),
     ("Button.plate.primary", "button-primary"),
+    ("Button.plate.danger", "button-danger"),
     ("Panel.frame", "panel"),
     ("Plate.frame", "plate"),
     ("Chip.frame", "chip"),
@@ -654,6 +655,7 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
         for (slot, image) in ART_SLOTS {
             let role = match image {
                 "button-primary" => "primary",
+                "button-danger" => "danger",
                 other => other,
             };
             let (fg, s) = ink(format!("art-{image}-fg"), role, 4.5);
@@ -692,10 +694,10 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
         // ratio on all of that scheme's grounds.
         let mut grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
         for (_, image) in ART_SLOTS {
-            let role = if image == "button-primary" {
-                "primary"
-            } else {
-                image
+            let role = match image {
+                "button-primary" => "primary",
+                "button-danger" => "danger",
+                other => other,
             };
             let faces: Vec<String> = palette
                 .get(role)
@@ -969,7 +971,13 @@ mod tests {
         );
         // A button variant without art of its own draws its own plate in
         // the page's scheme, not a second edge over the base's art.
-        for v in ["danger", "outline", "ghost-muted"] {
+        assert!(
+            t.pack["variants"]["Button.plate.danger"]
+                .as_str()
+                .unwrap()
+                .contains("nine-button-danger hover:nine-button-danger-hover")
+        );
+        for v in ["outline", "ghost-muted"] {
             let class = t.pack["variants"][format!("Button.plate.{v}")]
                 .as_str()
                 .unwrap();
@@ -1033,10 +1041,10 @@ mod tests {
                 );
                 let t = compile(&r, &mut templates()).unwrap();
                 for (slot, image) in ART_SLOTS {
-                    let role = if image == "button-primary" {
-                        "primary"
-                    } else {
-                        image
+                    let role = match image {
+                        "button-primary" => "primary",
+                        "button-danger" => "danger",
+                        other => other,
                     };
                     let ink = format!("art-{image}-fg");
                     assert!(
