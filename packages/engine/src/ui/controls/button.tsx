@@ -1,4 +1,4 @@
-import { Text, View, type UiEvent } from "@origingame/engine/ui";
+import { Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
 
 export interface ButtonProps {
   /** The look: a plain button, the primary action, a destructive one, a ghost (a rim on the plain surface) or quiet (the plain surface, no rim). */
@@ -42,7 +42,9 @@ const LOOK: Record<string, string> = {
 
 /**
  * A button: a row of its content, centred, at least a touch target tall, in the
- * button type. A pack restyles it through the "Button.base" variants.
+ * button type. A pack dresses a plain, primary or danger one through its
+ * "Button.plate" slot (and "Button.plate.primary", "Button.plate.danger");
+ * a ghost or quiet one keeps the plain surface.
  */
 export function Button(props: ButtonProps) {
   return (
@@ -50,7 +52,7 @@ export function Button(props: ButtonProps) {
       {...props}
       role="button"
       data-pressed={props.pressed}
-      class={`flex-row items-center justify-center gap-2 min-h-11 text-sm font-semibold ${LOOK[`${props.variant ?? ""}|${props.small ? "small" : ""}`]} ${props.class ?? ""}`}
+      class={`flex-row items-center justify-center gap-2 min-h-11 text-sm font-semibold ${LOOK[`${props.variant ?? ""}|${props.small ? "small" : ""}`]} ${props.variant === "ghost" || props.variant === "quiet" ? "" : packClass("Button", "plate", props.variant)} ${props.class ?? ""}`}
     />
   );
 }

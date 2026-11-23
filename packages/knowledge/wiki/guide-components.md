@@ -4104,7 +4104,7 @@ A slot of generated art: an image that covers its box, cropped about its centre.
 <a id="guide-components-176"></a>
 ### `components §176` Button
 
-A button: a row of its content, centred, at least a touch target tall, in the button type. A pack restyles it through the "Button.base" variants.
+A button: a row of its content, centred, at least a touch target tall, in the button type. A pack dresses a plain, primary or danger one through its "Button.plate" slot (and "Button.plate.primary", "Button.plate.danger"); a ghost or quiet one keeps the plain surface.
 
 `import { Button } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/button.tsx`).
 
@@ -4124,6 +4124,8 @@ A button: a row of its content, centred, at least a touch target tall, in the bu
 | `onLongPress?` | `((e: UiEvent) => void) \| undefined` |  |
 | `onAction?` | `Record<string, (e: UiEvent) => void> \| undefined` |  |
 | `children?` | `any` |  |
+
+Pack slots: `Button.plate.…`.
 
 Fixtures: `default`, `primary`, `danger`, `ghost`, `quiet`, `pressed`, `disabled`.
 

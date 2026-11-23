@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Button",
+      "summary": "A plain, primary or danger Button takes the pack's Button.plate dressing (and Button.plate.primary or Button.plate.danger), so a pack's button art reaches every built-in Button; a ghost or quiet one keeps the plain surface. A caller's class still comes last and wins."
+    }
+  ]
+}
