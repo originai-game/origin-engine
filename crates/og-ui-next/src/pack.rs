@@ -790,9 +790,6 @@ fn sound(v: &Value) -> Result<Sound, String> {
             .collect(),
         _ => Vec::new(),
     };
-    if clips.is_empty() {
-        return Err("clips: one or more sound assets".into());
-    }
     // A number is a fixed value, a pair a range.
     let range = |k: &str, default: f32| -> Result<[f32; 2], String> {
         match m.get(k) {
@@ -804,9 +801,15 @@ fn sound(v: &Value) -> Result<Sound, String> {
             _ => Err(format!("{k}: a number or [low, high]")),
         }
     };
+    let volume = range("volume", 1.0)?;
+    // An event at volume 0 is silent and needs no clip: it silences the
+    // layers' under it.
+    if clips.is_empty() && volume != [0.0; 2] {
+        return Err("clips: one or more sound assets (or volume 0, for silence)".into());
+    }
     Ok(Sound {
         clips,
-        volume: range("volume", 1.0)?,
+        volume,
         pitch: range("pitch", 1.0)?,
     })
 }
