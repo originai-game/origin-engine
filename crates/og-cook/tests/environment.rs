@@ -1151,6 +1151,54 @@ fn near_equirect_resamples_but_a_distant_aspect_names_its_size() {
     );
 }
 
+/// A space sky's clipped stars tie with its sun disc pixel for pixel; the
+/// sun is the white region holding the most light, so a one-pixel star near
+/// the horizon (the last clipped pixel in the image's order) is not taken
+/// for it.
+#[test]
+fn an_ldr_space_sky_takes_its_disc_not_a_clipped_star() {
+    let stars = [(40, 20), (210, 95), (470, 60), (120, 124), (400, 126)];
+    let png = ldr_image(
+        512,
+        256,
+        move |x, y| {
+            let (dx, dy) = (x as f32 - 300.0, y as f32 - 70.0);
+            if dx.hypot(dy) < 4.0 || stars.contains(&(x, y)) {
+                [255, 255, 255]
+            } else {
+                [8, 10, 24]
+            }
+        },
+        image::ImageFormat::Png,
+    );
+    let root = project(
+        "ldr-space-sun",
+        &[
+            ("space.png", &png),
+            (
+                "space.ogt",
+                b"type environment\nversion 1\n---\nsource \"space.png\"\nsize 32\nsamples 16\nexpand 0\n",
+            ),
+        ],
+    );
+    let report = cook(&root);
+    let stats =
+        og_cook::cook::stats::cook_report_json(&report, &root.join("cooked"), &Default::default());
+    let sun = stats["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["source"] == "space.ogt")
+        .unwrap()["environment"]["sun"]
+        .clone();
+    // The disc's centre row 70 of 256 is 90 - 70 / 256 * 180 = 40.8 degrees up.
+    let up = sun["direction"][1].as_f64().unwrap();
+    assert!(
+        (up.asin().to_degrees() - 40.8).abs() < 1.5,
+        "the sun is the disc 40.8 degrees up: {sun}"
+    );
+}
+
 /// When `sun extract` finds no sun in an LDR sky, the cook's message and
 /// report name why: nothing bright enough, white clouds merged with the
 /// disc (a clipped area), or a disc drawn too large. A small white disc in
