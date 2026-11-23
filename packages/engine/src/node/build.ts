@@ -24,7 +24,7 @@
 //
 //   bun src/node/build.ts --entry <src/main.ts> --out <file.js> [--target native|web] [--minify] [--json]
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire, isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -293,8 +293,17 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
           : relative(a.path.startsWith(assets) ? assets : project, a.path);
         const name = JSON.stringify(id.split(sep).join("/"));
         if (/^type particles\s*$/m.test(readFileSync(a.path, "utf8").split("---", 1)[0]!)) return { contents: `export default ${name};\n`, loader: "js" };
+        // An engine table's translations (`x.zh-CN.ogt` beside `x.en.ogt`)
+        // come with it: bundled with it, and registered as translations of it.
+        const translations = a.path.startsWith(engineUi) && a.path.endsWith(".en.ogt")
+          ? readdirSync(dirname(a.path))
+              .filter((f) => f.startsWith(basename(a.path, ".en.ogt") + ".") && f.endsWith(".ogt") && f !== basename(a.path) && /^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(f.slice(basename(a.path, ".en.ogt").length + 1, -4)))
+              .sort()
+              .map((f) => `import ${JSON.stringify(join(dirname(a.path), f))};\n`)
+              .join("")
+          : "";
         return {
-          contents: `import { strings } from "@origingame/engine/ui/rt";\nstrings(${name});\nexport default ${name};\n`,
+          contents: `import { strings } from "@origingame/engine/ui/rt";\nstrings(${name});\n${translations}export default ${name};\n`,
           loader: "js",
         };
       });

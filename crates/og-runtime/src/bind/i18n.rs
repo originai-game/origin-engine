@@ -56,10 +56,25 @@ pub(crate) fn base_strings(
     locale: &str,
     strings: &BTreeMap<String, String>,
 ) -> Result<(), String> {
+    authored(eng, locale, strings, true)
+}
+
+/// [`base_strings`], or a translation of them (`base` false): the engine
+/// UI's tables of another locale than English.
+fn authored(
+    eng: &Engine,
+    locale: &str,
+    strings: &BTreeMap<String, String>,
+    base: bool,
+) -> Result<(), String> {
     let active = |s: &mut State| s.catalog.active().map(|t| t.locale.clone());
     let moved = with(eng.id, |s| -> Result<bool, String> {
         let before = active(s);
-        s.catalog.extend_base(locale, strings)?;
+        if base {
+            s.catalog.extend_base(locale, strings)?;
+        } else {
+            s.catalog.extend_translation(locale, strings)?;
+        }
         Ok(before.is_some() && active(s) != before)
     })?;
     if moved {
@@ -78,16 +93,24 @@ pub(crate) fn read_table(eng: &Engine, id: &str) -> Result<StringTable, String> 
     StringTable::parse(&text).map_err(|e| format!("{id}: {e}"))
 }
 
-/// A UI's string table as base strings of its locale, beside the game's
-/// tables (a document's, a TSX component's): a translation table of the
-/// same locale keeps its own entries.
+/// A UI's string table as authored strings of its locale, beside the
+/// game's tables (a document's, a TSX component's): a game's table of the
+/// same locale keeps its own entries. English is the base; a table of
+/// another locale (the engine's `x.zh-CN.ogt` beside `x.en.ogt`) is a
+/// translation of it, unless it says `base true`.
 pub(crate) fn add_base(eng: &Engine, table: StringTable) -> Result<(), String> {
+    let base = table.base
+        || table
+            .locale
+            .split(['-', '_'])
+            .next()
+            .is_some_and(|l| l.eq_ignore_ascii_case("en"));
     let strings = table
         .entries
         .into_iter()
         .map(|(key, (text, _))| (key, text))
         .collect();
-    base_strings(eng, &table.locale, &strings)
+    authored(eng, &table.locale, &strings, base)
 }
 
 /// The string tables a world's TSX components import (op 12 of the UI's

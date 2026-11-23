@@ -1,0 +1,6 @@
+type strings
+version 1
+---
+locale "zh-CN"
+string "screen.flow-choices.label" "请选择"
+string "screen.flow-choices.qte" "长按或点按"

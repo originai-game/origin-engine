@@ -101,3 +101,64 @@ impl Job for StringsJob<'_> {
         cook_strings(self.0, p.stamp)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// Every string table the engine's UI ships in English has a zh-CN
+    /// translation beside it with exactly its keys, each taking the same
+    /// arguments: the two cannot drift apart.
+    #[test]
+    fn engine_ui_tables_have_a_matching_zh_cn_table() {
+        let ui =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+        let mut stack = vec![ui];
+        let mut pairs = 0;
+        let mut gaps = Vec::new();
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                    continue;
+                }
+                let name = path.file_name().unwrap().to_string_lossy().to_string();
+                let Some(stem) = name.strip_suffix(".en.ogt") else {
+                    continue;
+                };
+                let zh = path.with_file_name(format!("{stem}.zh-CN.ogt"));
+                let read = |p: &std::path::Path| {
+                    og_i18n::StringTable::parse(
+                        &std::fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display()))?,
+                    )
+                    .map_err(|e| format!("{}: {e}", p.display()))
+                };
+                let (en, zh_table) = match (read(&path), read(&zh)) {
+                    (Ok(en), Ok(zh)) => (en, zh),
+                    (Err(e), _) | (_, Err(e)) => {
+                        gaps.push(e);
+                        continue;
+                    }
+                };
+                if zh_table.locale != "zh-CN" {
+                    gaps.push(format!(
+                        "{}: locale '{}', not zh-CN",
+                        zh.display(),
+                        zh_table.locale
+                    ));
+                }
+                pairs += 1;
+                for g in og_i18n::check_tables(&[en, zh_table]) {
+                    gaps.push(format!(
+                        "{}: {} key '{}' ({})",
+                        zh.display(),
+                        g.problem,
+                        g.key,
+                        g.detail
+                    ));
+                }
+            }
+        }
+        assert!(pairs > 0, "no engine UI tables found");
+        assert!(gaps.is_empty(), "{}", gaps.join("\n"));
+    }
+}

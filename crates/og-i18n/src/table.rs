@@ -200,6 +200,28 @@ impl Catalog {
         locale: &str,
         strings: &BTreeMap<String, String>,
     ) -> Result<(), String> {
+        self.extend(locale, strings, true)
+    }
+
+    /// Adds authored strings of a translation (the engine's own UI in
+    /// another locale than its base): as [`Catalog::extend_base`], but a
+    /// locale it makes is not a base, so the game's base stays the one
+    /// every other table falls back to, and a game's table of the locale
+    /// keeps its own entries over these.
+    pub fn extend_translation(
+        &mut self,
+        locale: &str,
+        strings: &BTreeMap<String, String>,
+    ) -> Result<(), String> {
+        self.extend(locale, strings, false)
+    }
+
+    fn extend(
+        &mut self,
+        locale: &str,
+        strings: &BTreeMap<String, String>,
+        base: bool,
+    ) -> Result<(), String> {
         let locale = canonical(locale);
         let entries: BTreeMap<_, _> = strings
             .iter()
@@ -218,7 +240,7 @@ impl Catalog {
             .or_insert_with(|| StringTable {
                 locale: locale.clone(),
                 fallback: None,
-                base: true,
+                base,
                 direction: direction_of_locale(&locale),
                 fonts: Vec::new(),
                 entries: BTreeMap::new(),
