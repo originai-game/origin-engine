@@ -14,15 +14,15 @@ export interface SaveLoadScreenProps {
   /** Content the caller supplies (was the preview snippet). */
   preview?: (() => JSX.Element) | undefined;
   /** The back event, with the row's key where it comes from a row. */
-  onBack?: (e: UiEvent, key?: string) => void;
+  onBack?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The delete event, with the row's key where it comes from a row. */
-  onDelete?: (e: UiEvent, key?: string) => void;
+  onDelete?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The load event, with the row's key where it comes from a row. */
-  onLoad?: (e: UiEvent, key?: string) => void;
+  onLoad?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The newSlot event, with the row's key where it comes from a row. */
-  onNewSlot?: (e: UiEvent, key?: string) => void;
+  onNewSlot?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The save event, with the row's key where it comes from a row. */
-  onSave?: (e: UiEvent, key?: string) => void;
+  onSave?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The select event, with the row's key where it comes from a row. */
   onSelect?: (e: UiEvent, key?: string) => void;
 }
@@ -38,12 +38,14 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
     <View class={`pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
-        <Button class={`text-fg-muted narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
-          <View class="flex-row items-center gap-x-1">
-            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
-            <Text class="shrink">{t("screen.common.back")}</Text>
-          </View>
-        </Button>
+        <Show when={props.onBack}>
+          <Button class={`text-fg-muted narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+            <View class="flex-row items-center gap-x-1">
+              <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
+              <Text class="shrink">{t("screen.common.back")}</Text>
+            </View>
+          </Button>
+        </Show>
         <Show when={props.mode === "save"} fallback={
             <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg shrink m-0 compact:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
               {t("screen.save-load.loadTitle")}
@@ -124,22 +126,30 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           </For>
           <View class={`shrink narrow:hidden`}>{props.preview?.()}</View>
           <View class={`flex-row flex-wrap justify-end mt-auto pt-3 gap-2 narrow:pt-0`}>
-            <Button class={`text-danger nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
-              <Text>{t("screen.save-load.delete")}</Text>
-            </Button>
+            <Show when={props.onDelete}>
+              <Button class={`text-danger nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate")}`} onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
+                <Text>{t("screen.save-load.delete")}</Text>
+              </Button>
+            </Show>
             <Show when={props.mode === "save"} fallback={
                 <Show when={props.slots.length > 0}>
-                  <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
-                    <Text>{t("screen.save-load.load")}</Text>
-                  </Button>
+                  <Show when={props.onLoad}>
+                    <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onLoad?.(e)}>
+                      <Text>{t("screen.save-load.load")}</Text>
+                    </Button>
+                  </Show>
                 </Show>
             }>
-              <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-30 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-25 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
-                <Text>{t("screen.save-load.new")}</Text>
-              </Button>
-              <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
-                <Text>{t("screen.save-load.save")}</Text>
-              </Button>
+              <Show when={props.onNewSlot}>
+                <Button class={`text-fg bg-plate-hi nine-plate-cut grow shrink basis-30 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent narrow:basis-25 data-pressed:hover:border-transparent ${packClass("Button", "plate")}`} onPress={(e) => props.onNewSlot?.(e)}>
+                  <Text>{t("screen.save-load.new")}</Text>
+                </Button>
+              </Show>
+              <Show when={props.onSave}>
+                <Button class={`text-accent nine-plate-cut grow shrink basis-30 h-9 narrow:basis-25 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onSave?.(e)}>
+                  <Text>{t("screen.save-load.save")}</Text>
+                </Button>
+              </Show>
             </Show>
           </View>
         </Scroll>
@@ -148,8 +158,11 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<SaveLoadScreenProps>> = {
-  default: {"mode":"load","selected":"item-0","slots":[{"auto":true,"date":"Today 18:42","empty":false,"id":"item-0","place":"Old mill","played":15120,"thumb":0,"title":"Chapter 3"},{"auto":false,"date":"Yesterday","empty":false,"id":"item-1","place":"Harbour","played":9800,"thumb":0,"title":"Chapter 2"},{"auto":false,"date":"","empty":true,"id":"item-2","place":"","played":0,"thumb":0,"title":""}]},
+  default: {"mode":"load","selected":"item-0","slots":[{"auto":true,"date":"Today 18:42","empty":false,"id":"item-0","place":"Old mill","played":15120,"thumb":0,"title":"Chapter 3"},{"auto":false,"date":"Yesterday","empty":false,"id":"item-1","place":"Harbour","played":9800,"thumb":0,"title":"Chapter 2"},{"auto":false,"date":"","empty":true,"id":"item-2","place":"","played":0,"thumb":0,"title":""}],"onBack":press,"onDelete":press,"onLoad":press,"onNewSlot":press,"onSave":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

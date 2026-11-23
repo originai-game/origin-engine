@@ -14,9 +14,9 @@ export interface ModeSelectScreenProps {
   /** Content the caller supplies (was the detail snippet). */
   detail?: (() => JSX.Element) | undefined;
   /** The back event, with the row's key where it comes from a row. */
-  onBack?: (e: UiEvent, key?: string) => void;
+  onBack?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The play event, with the row's key where it comes from a row. */
-  onPlay?: (e: UiEvent, key?: string) => void;
+  onPlay?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The select event, with the row's key where it comes from a row. */
   onSelect?: (e: UiEvent, key?: string) => void;
 }
@@ -34,12 +34,14 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       </Show>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
-        <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
-          <View class="flex-row items-center gap-x-1">
-            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
-            <Text class="shrink">{t("screen.common.back")}</Text>
-          </View>
-        </Button>
+        <Show when={props.onBack}>
+          <Button class={`narrow:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+            <View class="flex-row items-center gap-x-1">
+              <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
+              <Text class="shrink">{t("screen.common.back")}</Text>
+            </View>
+          </Button>
+        </Show>
         <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg shrink m-0 narrow:text-3xl narrow:grow narrow:shrink-0 narrow:basis-full`}>
           {t("screen.mode-select.title")}
         </Text>
@@ -81,16 +83,21 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
       </Scroll>
       <View>{props.detail?.()}</View>
       <View class="flex-row justify-end">
-        <Button class={`text-accent min-w-60 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
-          <Text>{t("screen.mode-select.play")}</Text>
-        </Button>
+        <Show when={props.onPlay}>
+          <Button class={`text-accent min-w-60 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Button", "plate", "primary")}`} disabled={props.modes.length === 0} onPress={(e) => props.onPlay?.(e)} onAction={{ confirm: (e) => props.onPlay?.(e) }}>
+            <Text>{t("screen.mode-select.play")}</Text>
+          </Button>
+        </Show>
       </View>
     </View>
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<ModeSelectScreenProps>> = {
-  default: {"keyArt":0,"modes":[{"id":"item-0","line":"The campaign, alone or with a friend.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"item-1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"item-2","line":"Hard challenges for the brave.","locked":true,"name":"Trials","reason":"Finish chapter 2","tag":"New","texture":0}],"selected":"item-0"},
+  default: {"keyArt":0,"modes":[{"id":"item-0","line":"The campaign, alone or with a friend.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"item-1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"item-2","line":"Hard challenges for the brave.","locked":true,"name":"Trials","reason":"Finish chapter 2","tag":"New","texture":0}],"selected":"item-0","onBack":press,"onPlay":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

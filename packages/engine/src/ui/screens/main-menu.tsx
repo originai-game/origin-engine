@@ -23,25 +23,26 @@ export interface MainMenuScreenProps {
   /** Content the caller supplies (was the extra snippet). */
   extra?: (() => JSX.Element) | undefined;
   /** The continue event, with the row's key where it comes from a row. */
-  onContinue?: (e: UiEvent, key?: string) => void;
+  onContinue?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The credits event, with the row's key where it comes from a row. */
-  onCredits?: (e: UiEvent, key?: string) => void;
+  onCredits?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The modes event, with the row's key where it comes from a row. */
-  onModes?: (e: UiEvent, key?: string) => void;
+  onModes?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The newGame event, with the row's key where it comes from a row. */
-  onNewGame?: (e: UiEvent, key?: string) => void;
+  onNewGame?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The news event, with the row's key where it comes from a row. */
-  onNews?: (e: UiEvent, key?: string) => void;
+  onNews?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The quit event, with the row's key where it comes from a row. */
-  onQuit?: (e: UiEvent, key?: string) => void;
+  onQuit?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The settings event, with the row's key where it comes from a row. */
-  onSettings?: (e: UiEvent, key?: string) => void;
+  onSettings?: ((e: UiEvent, key?: string) => void) | undefined;
 }
 
 /**
  * The main menu over the key art: the logo or the name as a wordmark,
  * Continue with the last save's line when a save exists, New game, Modes,
- * Settings, Credits and Quit, a news card and the version. It resolves in
+ * Settings, Credits and Quit, each drawn only when the game passes its
+ * handler, a news card (pressable with onNews) and the version. It resolves in
  * the dark scheme in both schemes.
  */
 export function MainMenuScreen(props: MainMenuScreenProps) {
@@ -63,7 +64,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
           </Text>
         </Show>
         <Show when={props.news !== ""}>
-          <View class={`flex-row absolute right-12 bottom-12 items-center gap-x-3 w-90 bg-plate-hi border border-rim nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={0}>
+          <View class={`flex-row absolute right-12 bottom-12 items-center gap-x-3 w-90 bg-plate-hi border border-rim nine-panel-cut py-3 px-4 compact:static compact:w-auto compact:max-w-none compact:mt-auto compact:mb-3 compact:py-2 compact:px-3 short:hidden hover:translate-x-0 hover:-translate-y-0.25 active:translate-x-0 active:translate-y-0 ${packClass("Panel", "frame")}`} onPress={(e) => props.onNews?.(e)} tabIndex={props.onNews ? 0 : -1}>
             <View class="gap-y-0.5 grow shrink">
               <Text class="text-xs font-bold tracking-kicker uppercase text-hud-accent-ink m-0">
                 {t("screen.main-menu.newsEyebrow")}
@@ -72,11 +73,13 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
                 {props.news}
               </Text>
             </View>
-            <Icon class="text-fg-muted size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+            <Show when={props.onNews}>
+              <Icon class="text-fg-muted size-4 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+            </Show>
           </View>
         </Show>
         <View class="gap-y-0.5 w-110 max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" data-after-news={props.news !== ""}>
-          <Show when={props.canContinue}>
+          <Show when={props.canContinue && props.onContinue}>
             <View class={`flex-row items-center justify-center gap-1 group/continue w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
               <View class="flex-row items-center gap-x-3 w-full">
                 <View class="grow shrink">
@@ -91,45 +94,57 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
               </View>
             </View>
           </Show>
-          <View class={`flex-row items-center justify-center gap-1 group/newgame w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
-            <View class="flex-row items-center gap-x-3 w-full">
-              <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                {t("screen.main-menu.newGame")}
-              </Text>
-              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+          <Show when={props.onNewGame}>
+            <View class={`flex-row items-center justify-center gap-1 group/newgame w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onNewGame?.(e)} autofocus={!props.canContinue}>
+              <View class="flex-row items-center gap-x-3 w-full">
+                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
+                  {t("screen.main-menu.newGame")}
+                </Text>
+                <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/newgame:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              </View>
             </View>
-          </View>
-          <View class={`flex-row items-center justify-center gap-1 group/modes w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
-            <View class="flex-row items-center gap-x-3 w-full">
-              <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                {t("screen.main-menu.modes")}
-              </Text>
-              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+          </Show>
+          <Show when={props.onModes}>
+            <View class={`flex-row items-center justify-center gap-1 group/modes w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onModes?.(e)}>
+              <View class="flex-row items-center gap-x-3 w-full">
+                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
+                  {t("screen.main-menu.modes")}
+                </Text>
+                <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/modes:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              </View>
             </View>
-          </View>
-          <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
-            <View class="flex-row items-center gap-x-3 w-full">
-              <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                {t("screen.main-menu.settings")}
-              </Text>
-              <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+          </Show>
+          <Show when={props.onSettings}>
+            <View class={`flex-row items-center justify-center gap-1 group/settings w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onSettings?.(e)}>
+              <View class="flex-row items-center gap-x-3 w-full">
+                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
+                  {t("screen.main-menu.settings")}
+                </Text>
+                <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/settings:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+              </View>
             </View>
-          </View>
-          <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6" />
-          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
-            <View class="flex-row items-center gap-x-3 w-full">
-              <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                {t("screen.main-menu.credits")}
-              </Text>
+          </Show>
+          <Show when={(props.onNewGame || props.onModes || props.onSettings || (props.canContinue && props.onContinue)) && (props.onCredits || props.onQuit)}>
+            <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6" />
+          </Show>
+          <Show when={props.onCredits}>
+            <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onCredits?.(e)}>
+              <View class="flex-row items-center gap-x-3 w-full">
+                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
+                  {t("screen.main-menu.credits")}
+                </Text>
+              </View>
             </View>
-          </View>
-          <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
-            <View class="flex-row items-center gap-x-3 w-full">
-              <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
-                {t("screen.main-menu.quit")}
-              </Text>
+          </Show>
+          <Show when={props.onQuit}>
+            <View class={`flex-row items-center justify-center gap-1 w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent hover:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onQuit?.(e)}>
+              <View class="flex-row items-center gap-x-3 w-full">
+                <Text class="grow shrink text-start text-3xl leading-tight font-semibold text-shadow-xs text-shadow-bg">
+                  {t("screen.main-menu.quit")}
+                </Text>
+              </View>
             </View>
-          </View>
+          </Show>
           <View>{props.extra?.()}</View>
         </View>
       </Scroll>
@@ -140,8 +155,11 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<MainMenuScreenProps>> = {
-  default: {"canContinue":true,"keyArt":0,"logo":0,"name":"Lantern Coast","news":"Season 2 is live","saveLine":"Chapter 3 · 4h 12m","version":"1.0.0"},
+  default: {"canContinue":true,"keyArt":0,"logo":0,"name":"Lantern Coast","news":"Season 2 is live","saveLine":"Chapter 3 · 4h 12m","version":"1.0.0","onContinue":press,"onNewGame":press,"onModes":press,"onSettings":press,"onCredits":press,"onNews":press,"onQuit":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

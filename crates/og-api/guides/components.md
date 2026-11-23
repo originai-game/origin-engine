@@ -4301,11 +4301,11 @@ Game over: the defeat's line, the run's score and the best, an optional revive o
 | `checkpoint?` | `boolean` | A checkpoint exists. |
 | `offerArt?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the offerArt snippet). |
 | `stats?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the stats snippet). |
-| `onCheckpoint?` | `(e: UiEvent, key?: string) => void` | The checkpoint event, with the row's key where it comes from a row. |
-| `onDecline?` | `(e: UiEvent, key?: string) => void` | The decline event, with the row's key where it comes from a row. |
-| `onQuit?` | `(e: UiEvent, key?: string) => void` | The quit event, with the row's key where it comes from a row. |
-| `onRetry?` | `(e: UiEvent, key?: string) => void` | The retry event, with the row's key where it comes from a row. |
-| `onRevive?` | `(e: UiEvent, key?: string) => void` | The revive event, with the row's key where it comes from a row. |
+| `onCheckpoint?` | `((e: UiEvent, key?: string) => void) \| undefined` | The checkpoint event, with the row's key where it comes from a row. |
+| `onDecline?` | `((e: UiEvent, key?: string) => void) \| undefined` | The decline event, with the row's key where it comes from a row. |
+| `onQuit?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quit event, with the row's key where it comes from a row. |
+| `onRetry?` | `((e: UiEvent, key?: string) => void) \| undefined` | The retry event, with the row's key where it comes from a row. |
+| `onRevive?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revive event, with the row's key where it comes from a row. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
 
@@ -4396,7 +4396,7 @@ Actions: `confirm` (Continue).
 
 ## 199. MainMenuScreen
 
-The main menu over the key art: the logo or the name as a wordmark, Continue with the last save's line when a save exists, New game, Modes, Settings, Credits and Quit, a news card and the version. It resolves in the dark scheme in both schemes.
+The main menu over the key art: the logo or the name as a wordmark, Continue with the last save's line when a save exists, New game, Modes, Settings, Credits and Quit, each drawn only when the game passes its handler, a news card (pressable with onNews) and the version. It resolves in the dark scheme in both schemes.
 
 `import { MainMenuScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/main-menu.tsx`).
 
@@ -4411,13 +4411,13 @@ The main menu over the key art: the logo or the name as a wordmark, Continue wit
 | `name` | `string` | The game's name, set as a wordmark where there is no logo (empty: the logo slot's placeholder). |
 | `background?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the background snippet). |
 | `extra?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the extra snippet). |
-| `onContinue?` | `(e: UiEvent, key?: string) => void` | The continue event, with the row's key where it comes from a row. |
-| `onCredits?` | `(e: UiEvent, key?: string) => void` | The credits event, with the row's key where it comes from a row. |
-| `onModes?` | `(e: UiEvent, key?: string) => void` | The modes event, with the row's key where it comes from a row. |
-| `onNewGame?` | `(e: UiEvent, key?: string) => void` | The newGame event, with the row's key where it comes from a row. |
-| `onNews?` | `(e: UiEvent, key?: string) => void` | The news event, with the row's key where it comes from a row. |
-| `onQuit?` | `(e: UiEvent, key?: string) => void` | The quit event, with the row's key where it comes from a row. |
-| `onSettings?` | `(e: UiEvent, key?: string) => void` | The settings event, with the row's key where it comes from a row. |
+| `onContinue?` | `((e: UiEvent, key?: string) => void) \| undefined` | The continue event, with the row's key where it comes from a row. |
+| `onCredits?` | `((e: UiEvent, key?: string) => void) \| undefined` | The credits event, with the row's key where it comes from a row. |
+| `onModes?` | `((e: UiEvent, key?: string) => void) \| undefined` | The modes event, with the row's key where it comes from a row. |
+| `onNewGame?` | `((e: UiEvent, key?: string) => void) \| undefined` | The newGame event, with the row's key where it comes from a row. |
+| `onNews?` | `((e: UiEvent, key?: string) => void) \| undefined` | The news event, with the row's key where it comes from a row. |
+| `onQuit?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quit event, with the row's key where it comes from a row. |
+| `onSettings?` | `((e: UiEvent, key?: string) => void) \| undefined` | The settings event, with the row's key where it comes from a row. |
 
 Pack slots: `Panel.frame`.
 
@@ -4437,8 +4437,8 @@ A mode select: the modes as cards with their line, tag and picture, a locked mod
 | `selected` | `string` | The stable collection key selected now. |
 | `keyArt` | `Texture \| 0` | The key art's texture under the screen's veil (og.load.texture; 0: the style's dark ground). |
 | `detail?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the detail snippet). |
-| `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
-| `onPlay?` | `(e: UiEvent, key?: string) => void` | The play event, with the row's key where it comes from a row. |
+| `onBack?` | `((e: UiEvent, key?: string) => void) \| undefined` | The back event, with the row's key where it comes from a row. |
+| `onPlay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The play event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`.
@@ -4505,7 +4505,7 @@ Actions: `previous` (Previous page), `next` (Next page), `page` (Go to page).
 
 ## 204. PauseScreen
 
-The pause menu: Resume, Save (when allowed), Load, Settings, Controls, Quit to menu and Quit game, with the current objective and the time played beside it. Each reports its event.
+The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, Quit to menu and Quit game, each drawn only when the game passes its handler, and the game's own rows among them, with the current objective and the time played beside it. Each reports its event.
 
 `import { PauseScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/pause.tsx`).
 
@@ -4514,18 +4514,31 @@ The pause menu: Resume, Save (when allowed), Load, Settings, Controls, Quit to m
 | `objective` | `string` | The current objective (empty: none). |
 | `played` | `number` | Seconds played this run. |
 | `canSave?` | `boolean` | Saving is allowed here. |
+| `rows?` | `ReadonlyArray<PauseRow>` | The game's own rows (Restart stage), each drawn as a built-in row and reported by onRow with its key: in the main group after the built-in ones, or after the row `after` names (a built-in row's key: resume, settings, controls, save, load, quitToMenu, quit; or an earlier row of the game's); a `minor` row goes below the rule with Quit to menu and Quit game. |
+| `onRow?` | `((e: UiEvent, key: string) => void) \| undefined` | A row of the game's (props.rows) pressed, with its key. |
 | `side?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the side snippet). |
-| `onControls?` | `(e: UiEvent, key?: string) => void` | The controls event, with the row's key where it comes from a row. |
-| `onLoad?` | `(e: UiEvent, key?: string) => void` | The load event, with the row's key where it comes from a row. |
-| `onQuit?` | `(e: UiEvent, key?: string) => void` | The quit event, with the row's key where it comes from a row. |
-| `onQuitToMenu?` | `(e: UiEvent, key?: string) => void` | The quitToMenu event, with the row's key where it comes from a row. |
-| `onResume?` | `(e: UiEvent, key?: string) => void` | The resume event, with the row's key where it comes from a row. |
-| `onSave?` | `(e: UiEvent, key?: string) => void` | The save event, with the row's key where it comes from a row. |
-| `onSettings?` | `(e: UiEvent, key?: string) => void` | The settings event, with the row's key where it comes from a row. |
+| `onControls?` | `((e: UiEvent, key?: string) => void) \| undefined` | The controls event, with the row's key where it comes from a row. |
+| `onLoad?` | `((e: UiEvent, key?: string) => void) \| undefined` | The load event, with the row's key where it comes from a row. |
+| `onQuit?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quit event, with the row's key where it comes from a row. |
+| `onQuitToMenu?` | `((e: UiEvent, key?: string) => void) \| undefined` | The quitToMenu event, with the row's key where it comes from a row. |
+| `onResume?` | `((e: UiEvent, key?: string) => void) \| undefined` | The resume event, with the row's key where it comes from a row. |
+| `onSave?` | `((e: UiEvent, key?: string) => void) \| undefined` | The save event, with the row's key where it comes from a row. |
+| `onSettings?` | `((e: UiEvent, key?: string) => void) \| undefined` | The settings event, with the row's key where it comes from a row. |
+
+Each `PauseRow`:
+
+| Field | Type | What |
+|---|---|---|
+| `key` | `string` | Its stable key, reported by onRow. |
+| `label` | `string` | What it says. |
+| `after?` | `string` | The key of the row it follows; empty or unknown: the end of its group. |
+| `minor?` | `boolean` | Below the rule, with Quit to menu and Quit game, without a chevron. |
+| `danger?` | `boolean` | Tinted as a danger when hovered, as Quit game is. |
+| `disabled?` | `boolean` | Drawn grey and takes no press. |
 
 Pack slots: `Panel.frame`.
 
-Fixtures: `default`.
+Fixtures: `default`, `ownRows`.
 
 Actions: `confirm` (Select), `back` (Resume).
 
@@ -4549,9 +4562,9 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `celebration?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the celebration snippet). |
 | `graph?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the graph snippet). |
 | `scores?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the scores snippet). |
-| `onAgain?` | `(e: UiEvent, key?: string) => void` | The again event, with the row's key where it comes from a row. |
-| `onContinue?` | `(e: UiEvent, key?: string) => void` | The continue event, with the row's key where it comes from a row. |
-| `onReplay?` | `(e: UiEvent, key?: string) => void` | The replay event, with the row's key where it comes from a row. |
+| `onAgain?` | `((e: UiEvent, key?: string) => void) \| undefined` | The again event, with the row's key where it comes from a row. |
+| `onContinue?` | `((e: UiEvent, key?: string) => void) \| undefined` | The continue event, with the row's key where it comes from a row. |
+| `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`.
@@ -4572,11 +4585,11 @@ Saving or loading: the slots with their title, place, time played, date and thum
 | `slots` | `ReadonlyArray<{ auto: boolean; date: string; empty: boolean; id: string; place: string; played: number; thumb: Texture \| 0; title: string }>` | The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }. |
 | `selected` | `string` | The stable collection key selected now. |
 | `preview?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the preview snippet). |
-| `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
-| `onDelete?` | `(e: UiEvent, key?: string) => void` | The delete event, with the row's key where it comes from a row. |
-| `onLoad?` | `(e: UiEvent, key?: string) => void` | The load event, with the row's key where it comes from a row. |
-| `onNewSlot?` | `(e: UiEvent, key?: string) => void` | The newSlot event, with the row's key where it comes from a row. |
-| `onSave?` | `(e: UiEvent, key?: string) => void` | The save event, with the row's key where it comes from a row. |
+| `onBack?` | `((e: UiEvent, key?: string) => void) \| undefined` | The back event, with the row's key where it comes from a row. |
+| `onDelete?` | `((e: UiEvent, key?: string) => void) \| undefined` | The delete event, with the row's key where it comes from a row. |
+| `onLoad?` | `((e: UiEvent, key?: string) => void) \| undefined` | The load event, with the row's key where it comes from a row. |
+| `onNewSlot?` | `((e: UiEvent, key?: string) => void) \| undefined` | The newSlot event, with the row's key where it comes from a row. |
+| `onSave?` | `((e: UiEvent, key?: string) => void) \| undefined` | The save event, with the row's key where it comes from a row. |
 | `onSelect?` | `(e: UiEvent, key?: string) => void` | The select event, with the row's key where it comes from a row. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Row.frame`, `Row.frame.selected`.
@@ -4602,10 +4615,10 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onPage?` | `(e: UiEvent, id: string) => void` | The page tab picked, with the tab's id; the game writes props.page back. |
 | `onChange?` | `(e: UiEvent, id: string, value: boolean \| number \| string) => void` | An entry's value changed, with the entry's id and its new value; the game writes entries' value back. |
 | `onRebind?` | `(e: UiEvent, id: string, key: string) => void` | The key captured while a binding row listens, with the entry's id and the key; the game writes entries' value back. Escape cancels without calling this. |
-| `onApply?` | `(e: UiEvent, key?: string) => void` | The apply event, with the row's key where it comes from a row. |
-| `onBack?` | `(e: UiEvent, key?: string) => void` | The back event, with the row's key where it comes from a row. |
-| `onDefaults?` | `(e: UiEvent, key?: string) => void` | The defaults event, with the row's key where it comes from a row. |
-| `onRevert?` | `(e: UiEvent, key?: string) => void` | The revert event, with the row's key where it comes from a row. |
+| `onApply?` | `((e: UiEvent, key?: string) => void) \| undefined` | The apply event, with the row's key where it comes from a row. |
+| `onBack?` | `((e: UiEvent, key?: string) => void) \| undefined` | The back event, with the row's key where it comes from a row. |
+| `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
+| `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
 Pack slots: `Button.plate`, `Button.plate.primary`, `Row.frame`.
 
@@ -4681,7 +4694,7 @@ Actions: `choose` (Open row).
 
 ## 212. TitleScreen
 
-The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen), the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
+The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen) when the game passes onStart, the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
 
 `import { TitleScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/title.tsx`).
 
@@ -4693,7 +4706,7 @@ The title screen over the key art: the logo or the name as a wordmark, Press any
 | `logo` | `Texture \| 0` | The game's logo texture (og.load.texture; 0: the name set as a wordmark). |
 | `name` | `string` | The game's name, set as a wordmark where there is no logo (empty: the logo slot's placeholder). |
 | `background?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the background snippet). |
-| `onStart?` | `(e: UiEvent, key?: string) => void` | The start event, with the row's key where it comes from a row. |
+| `onStart?` | `((e: UiEvent, key?: string) => void) \| undefined` | The start event, with the row's key where it comes from a row. |
 
 Fixtures: `default`.
 

@@ -624,3 +624,86 @@ test("FlowChartScreen passes a picked node's id through and plays only where it 
     renderers.delete(9004);
   }
 });
+
+// A built-in screen draws a row only where the game passes its handler
+// (screens README, Rows): a row it draws without one is dead, a press that
+// does nothing. Every screen with action rows is mounted once per handler
+// its source names, with that one left out and every other one a spy; each
+// button drawn is pressed, and a press that reaches no spy and redraws
+// nothing is a dead row.
+// Its own rows (PauseScreenProps.rows) take their place and report onRow.
+test("a built-in screen draws no row the game passes no handler for", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-rows-"));
+  const screens = ["pause", "main-menu", "results", "game-over", "title", "settings", "mode-select", "save-load"];
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    const src = (n: string) => fileURLToPath(new URL(`../src/ui/screens/${n}.tsx`, import.meta.url));
+    writeFileSync(join(dir, "main.ts"), screens.map((n, i) => `export * as S${i} from ${JSON.stringify(src(n))};`).join("\n") + "\n");
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const mods = (await import(out)) as Record<string, Record<string, unknown>>;
+    const { loadNativeHost } = await import("../src/node/index.ts");
+    loadNativeHost();
+
+    let id = 9100;
+    /** Mounts a screen; answers its buttons' labels and which spies a press of each reached. */
+    const presses = (Screen: unknown, props: Record<string, unknown>, spies: string[]) => {
+      const world = { id: ++id } as unknown as World;
+      const batches: Op[][] = [];
+      let next: Uint8Array = reply([]);
+      renderers.set(id, new Renderer((bytes) => { batches.push(decode(bytes)); const r = next; next = reply([]); return r; }, world));
+      const called: string[] = [];
+      const p: Record<string, unknown> = { ...props };
+      for (const s of spies) p[s] = (_e: unknown, key?: string) => called.push(key === undefined ? s : `${s}:${key}`);
+      mount(world, Screen as never, p);
+      const ops = () => batches.flat();
+      const buttons = ops().filter((op) => op[0] === "setProp" && op[2] === "role" && op[3] === "button").map((op) => op[1] as number);
+      const label = (b: number): string => {
+        const under = (x: number): number[] => ops().filter((op) => op[0] === "insert" && op[1] === x).map((op) => op[2] as number);
+        const queue = [b];
+        while (queue.length) {
+          const x = queue.shift()!;
+          const text = ops().find((op) => op[0] === "createText" && op[1] === x);
+          if (text) return String(text[2]);
+          queue.push(...under(x));
+        }
+        return "";
+      };
+      const out = buttons.map((b) => {
+        const before = called.length;
+        const drawn = ops().length;
+        next = reply([[b, 0]]);
+        renderers.get(id)!.flush();
+        renderers.get(id)!.flush();
+        // A press that only changes the screen's own state (a binding row listening) redraws it.
+        return { label: label(b), reached: called.slice(before), redrew: ops().length > drawn };
+      });
+      renderers.delete(id);
+      return out;
+    };
+
+    screens.forEach((name, i) => {
+      const mod = mods[`S${i}`]!;
+      const Screen = Object.values(mod).find((v) => typeof v === "function")!;
+      const base = (mod.fixtures as Record<string, Record<string, unknown>>).default!;
+      const handlers = [...new Set([...readFileSync(src(name), "utf8").matchAll(/props\.(on[A-Z]\w*)/g)].map((m) => m[1]!))];
+      for (const left of handlers) {
+        const props = Object.fromEntries(Object.entries(base).filter(([k]) => !k.startsWith("on")));
+        const dead = presses(Screen, props, handlers.filter((h) => h !== left)).filter((p) => p.reached.length === 0 && !p.redrew);
+        expect({ screen: name, without: left, dead: dead.map((d) => d.label) }).toEqual({ screen: name, without: left, dead: [] });
+      }
+    });
+
+    // Star Focus's pause menu: three built-in rows and one of its own after Resume.
+    const pause = mods.S0!;
+    const rows = presses(pause.PauseScreen, { objective: "", played: 0, canSave: false, rows: [{ key: "restart", label: "Restart stage", after: "resume" }] }, ["onResume", "onSettings", "onQuitToMenu", "onRow"]);
+    expect(rows.map((r) => r.label)).toEqual(["screen.pause.resume", "Restart stage", "screen.pause.settings", "screen.pause.quitToMenu"]);
+    expect(rows.map((r) => r.reached)).toEqual([["onResume"], ["onRow:restart"], ["onSettings"], ["onQuitToMenu"]]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

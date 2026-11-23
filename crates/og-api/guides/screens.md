@@ -50,6 +50,14 @@ Nothing is installed or copied to use them.
 
   Its props are its exported interface (`PauseScreenProps`), which
   `og check` checks.
+- A built-in screen draws an action row only for a handler the game
+  passes: `<PauseScreen onResume={resume} onSettings={settings}
+  onQuitToMenu={quit} … />` has those three rows and no Controls, Save,
+  Load or Quit game. Leave a handler out (or pass `undefined`) to drop
+  its row; a row that may not be taken now stays grey by its own prop
+  (Save by `canSave`). The pause menu takes the game's own rows,
+  `rows={[{ key: "restart", label: "Restart stage", after: "resume" }]}`
+  with `onRow={(e, key) => …}`, drawn as the built-in ones.
 - To change one, run `og ui eject <name>` (`og ui eject pause`,
   `og ui eject panels/backpack`). It copies the document and its strings into
   `assets/ui/`, where the game owns it. The game's document of the same

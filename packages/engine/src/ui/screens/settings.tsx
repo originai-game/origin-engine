@@ -22,13 +22,13 @@ export interface SettingsScreenProps {
   /** The key captured while a binding row listens, with the entry's id and the key; the game writes entries' value back. Escape cancels without calling this. */
   onRebind?: (e: UiEvent, id: string, key: string) => void;
   /** The apply event, with the row's key where it comes from a row. */
-  onApply?: (e: UiEvent, key?: string) => void;
+  onApply?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The back event, with the row's key where it comes from a row. */
-  onBack?: (e: UiEvent, key?: string) => void;
+  onBack?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The defaults event, with the row's key where it comes from a row. */
-  onDefaults?: (e: UiEvent, key?: string) => void;
+  onDefaults?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The revert event, with the row's key where it comes from a row. */
-  onRevert?: (e: UiEvent, key?: string) => void;
+  onRevert?: ((e: UiEvent, key?: string) => void) | undefined;
 }
 
 /**
@@ -43,12 +43,14 @@ export function SettingsScreen(props: SettingsScreenProps) {
     <View class={`pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4`}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
-        <Button class={`text-fg-muted compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
-          <View class="flex-row items-center gap-x-1">
-            <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
-            <Text class="shrink">{t("screen.common.back")}</Text>
-          </View>
-        </Button>
+        <Show when={props.onBack}>
+          <Button class={`text-fg-muted compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onBack?.(e)}>
+            <View class="flex-row items-center gap-x-1">
+              <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
+              <Text class="shrink">{t("screen.common.back")}</Text>
+            </View>
+          </Button>
+        </Show>
         <View class="flex-row grow shrink basis-0 items-baseline flex-wrap gap-x-4 gap-y-0.5 compact:grow compact:shrink-0 compact:basis-full compact:items-start compact:flex-col">
           <Text class={`font-display text-display-lg font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-3xl shrink`}>
             {t("screen.settings.title")}
@@ -198,15 +200,21 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </Scroll>
           </View>
           <View class="flex-row flex-wrap items-center justify-end gap-y-2 gap-x-3 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDefaults?.(e)}>
-              <Text>{t("screen.settings.defaults")}</Text>
-            </Button>
-            <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
-              <Text>{t("screen.settings.revert")}</Text>
-            </Button>
-            <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
-              <Text>{t("screen.settings.apply")}</Text>
-            </Button>
+            <Show when={props.onDefaults}>
+              <Button class={`mr-auto compact:mr-0 compact:col-span-full compact:justify-self-start compact:-ml-2 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onDefaults?.(e)}>
+                <Text>{t("screen.settings.defaults")}</Text>
+              </Button>
+            </Show>
+            <Show when={props.onRevert}>
+              <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+                <Text>{t("screen.settings.revert")}</Text>
+              </Button>
+            </Show>
+            <Show when={props.onApply}>
+              <Button class={`text-accent nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+                <Text>{t("screen.settings.apply")}</Text>
+              </Button>
+            </Show>
           </View>
         </Show>
         {props.tree?.()}
@@ -215,8 +223,11 @@ export function SettingsScreen(props: SettingsScreenProps) {
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<SettingsScreenProps>> = {
-  default: {"note":"Some changes apply after a restart.","pages":[{"id":"general","name":"General"}],"page":"general","pending":true,"entries":[{"id":"subtitles","page":"general","name":"Subtitles","description":"Show dialogue captions.","kind":"toggle","value":true},{"id":"volume","page":"general","name":"Master volume","description":"Adjust all game audio.","kind":"range","value":75,"min":0,"max":100,"step":5},{"id":"quality","page":"general","name":"Quality","description":"Choose the rendering quality.","kind":"select","value":"High","options":["Low","High"]},{"id":"interact","page":"general","name":"Interact","description":"Choose the interaction key.","kind":"binding","value":"E","action":"interact"}]},
+  default: {"note":"Some changes apply after a restart.","pages":[{"id":"general","name":"General"}],"page":"general","pending":true,"entries":[{"id":"subtitles","page":"general","name":"Subtitles","description":"Show dialogue captions.","kind":"toggle","value":true},{"id":"volume","page":"general","name":"Master volume","description":"Adjust all game audio.","kind":"range","value":75,"min":0,"max":100,"step":5},{"id":"quality","page":"general","name":"Quality","description":"Choose the rendering quality.","kind":"select","value":"High","options":["Low","High"]},{"id":"interact","page":"general","name":"Interact","description":"Choose the interaction key.","kind":"binding","value":"E","action":"interact"}],"onBack":press,"onDefaults":press,"onRevert":press,"onApply":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

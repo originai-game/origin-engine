@@ -17,13 +17,13 @@ export interface TitleScreenProps {
   /** Content the caller supplies (was the background snippet). */
   background?: (() => JSX.Element) | undefined;
   /** The start event, with the row's key where it comes from a row. */
-  onStart?: (e: UiEvent, key?: string) => void;
+  onStart?: ((e: UiEvent, key?: string) => void) | undefined;
 }
 
 /**
  * The title screen over the key art: the logo or the name as a wordmark,
- * Press any button (Tap on a touch screen), the legal line and the version.
- * Any press reports onStart. It resolves in the dark scheme in both
+ * Press any button (Tap on a touch screen) when the game passes onStart,
+ * the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both
  * schemes.
  */
 export function TitleScreen(props: TitleScreenProps) {
@@ -42,16 +42,18 @@ export function TitleScreen(props: TitleScreenProps) {
             {props.name}
           </Text>
         </Show>
-        <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
-          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow compact:basis-8`} />
-          <View class={`grow shrink basis-0 text-lg font-semibold tracking-kicker uppercase text-center compact:text-base compact:tracking-wide`}>
-            <Text class="text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
-            <Text class="hidden text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex">
-              {t("screen.title.tap")}
-            </Text>
+        <Show when={props.onStart}>
+          <View class="flex-row row-[4] items-center gap-x-4 compact:gap-x-2">
+            <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow compact:basis-8`} />
+            <View class={`grow shrink basis-0 text-lg font-semibold tracking-kicker uppercase text-center compact:text-base compact:tracking-wide`}>
+              <Text class="text-shadow-sm text-shadow-bg m-0 pointer-coarse:hidden">{t("screen.title.press")}</Text>
+              <Text class="hidden text-shadow-sm text-shadow-bg m-0 pointer-coarse:flex">
+                {t("screen.title.tap")}
+              </Text>
+            </View>
+            <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow -scale-x-100 scale-y-100 compact:basis-8`} />
           </View>
-          <Text class={`shrink-0 basis-30 h-px bg-linear-to-r from-transparent to-hud-accent shadow-glow -scale-x-100 scale-y-100 compact:basis-8`} />
-        </View>
+        </Show>
         <Text class="row-[5] text-xs tracking-sm text-fg-muted text-center m-0">{props.legal}</Text>
         <Text class="row-[6] justify-self-end text-xs tabular-nums text-fg-muted m-0 compact:justify-self-center">
           {props.version}
@@ -61,8 +63,11 @@ export function TitleScreen(props: TitleScreenProps) {
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<TitleScreenProps>> = {
-  default: {"keyArt":0,"legal":"© Studio. All rights reserved.","logo":0,"name":"Lantern Coast","version":"1.0.0"},
+  default: {"keyArt":0,"legal":"© Studio. All rights reserved.","logo":0,"name":"Lantern Coast","version":"1.0.0","onStart":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

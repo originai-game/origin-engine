@@ -44,6 +44,22 @@ the card stands at `x` and `y`. Its input mode is `all`, so the player
 can do what a waiting step asks for; a game that wants a step read
 before play goes on holds its own input until `next`.
 
+## Rows
+
+A screen draws an action row or button only when the game passes its
+handler: `PauseScreen` without `onLoad` has no Load row, `MainMenuScreen`
+without `onModes` no Modes, `TitleScreen` without `onStart` no prompt. A
+row a game gives no handler would do nothing when pressed, so it is never
+drawn; a game hides one by leaving its handler out (or passing
+`undefined`). A row that may not be taken now stays drawn and grey by its
+own prop: Save by `canSave` (with `onSave`), Apply and Revert by `pending`.
+Data a screen lists (slots, modes, tabs, settings) is drawn whatever the
+handlers; only the actions follow this rule. The pause menu also takes
+the game's own rows (`rows`, each `{ key, label, after?, minor?, danger?,
+disabled? }`), drawn as the built-in ones in their place and reported by
+`onRow` with their key. `ui-tsx.test.ts` presses every button of these
+screens with one handler left out and fails on a press that does nothing.
+
 `og ui eject --list` prints these generic screens. og-ui's
 `tests/component_documents.rs` builds each from its fixtures, and
 og-tests-ui's `tests/document_frames.rs` draws its `fixture:default` in

@@ -22,15 +22,15 @@ export interface GameOverScreenProps {
   /** Content the caller supplies (was the stats snippet). */
   stats?: (() => JSX.Element) | undefined;
   /** The checkpoint event, with the row's key where it comes from a row. */
-  onCheckpoint?: (e: UiEvent, key?: string) => void;
+  onCheckpoint?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The decline event, with the row's key where it comes from a row. */
-  onDecline?: (e: UiEvent, key?: string) => void;
+  onDecline?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The quit event, with the row's key where it comes from a row. */
-  onQuit?: (e: UiEvent, key?: string) => void;
+  onQuit?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The retry event, with the row's key where it comes from a row. */
-  onRetry?: (e: UiEvent, key?: string) => void;
+  onRetry?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The revive event, with the row's key where it comes from a row. */
-  onRevive?: (e: UiEvent, key?: string) => void;
+  onRevive?: ((e: UiEvent, key?: string) => void) | undefined;
 }
 
 /**
@@ -65,15 +65,19 @@ export function GameOverScreen(props: GameOverScreenProps) {
         <View class="self-stretch">{props.stats?.()}</View>
         <Show when={props.offer} fallback={
             <View class="grid justify-items-stretch self-stretch gap-2 short:justify-self-stretch">
-              <Button class={`text-accent min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRetry?.(e)}>
-                <Text>{t("screen.game-over.retry")}</Text>
-              </Button>
-              <Show when={props.checkpoint}>
+              <Show when={props.onRetry}>
+                <Button class={`text-accent min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRetry?.(e)}>
+                  <Text>{t("screen.game-over.retry")}</Text>
+                </Button>
+              </Show>
+              <Show when={props.checkpoint && props.onCheckpoint}>
                 <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onCheckpoint?.(e)}>
                   <Text>{t("screen.game-over.checkpoint")}</Text>
                 </Button>
               </Show>
-              <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+              <Show when={props.onQuit}>
+                <Button class={`${packClass("Button", "plate")}`} onPress={(e) => props.onQuit?.(e)}><Text>{t("screen.game-over.quit")}</Text></Button>
+              </Show>
             </View>
         }>
           <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi border border-rim nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
@@ -84,12 +88,16 @@ export function GameOverScreen(props: GameOverScreenProps) {
               {t("screen.game-over.revive")}
             </Text>
             <View class="self-stretch">{props.offerArt?.()}</View>
-            <Button class={`text-accent justify-self-stretch min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRevive?.(e)}>
-              <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
-            </Button>
-            <Button class={`justify-self-stretch ${packClass("Button", "plate")}`} onPress={(e) => props.onDecline?.(e)}>
-              <Text>{t("screen.game-over.decline")}</Text>
-            </Button>
+            <Show when={props.onRevive}>
+              <Button class={`text-accent justify-self-stretch min-h-9 ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onRevive?.(e)}>
+                <Text>{t("screen.game-over.Revive", { price: props.price })}</Text>
+              </Button>
+            </Show>
+            <Show when={props.onDecline}>
+              <Button class={`justify-self-stretch ${packClass("Button", "plate")}`} onPress={(e) => props.onDecline?.(e)}>
+                <Text>{t("screen.game-over.decline")}</Text>
+              </Button>
+            </Show>
           </View>
         </Show>
       </View>
@@ -97,8 +105,11 @@ export function GameOverScreen(props: GameOverScreenProps) {
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<GameOverScreenProps>> = {
-  default: {"best":24100,"checkpoint":true,"left":5,"offer":true,"price":"50 gems","score":18420,"title":"You died"},
+  default: {"best":24100,"checkpoint":true,"left":5,"offer":true,"price":"50 gems","score":18420,"title":"You died","onRetry":press,"onCheckpoint":press,"onQuit":press,"onRevive":press,"onDecline":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */

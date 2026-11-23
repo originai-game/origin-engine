@@ -32,11 +32,11 @@ export interface ResultsScreenProps {
   /** Content the caller supplies (was the scores snippet). */
   scores?: (() => JSX.Element) | undefined;
   /** The again event, with the row's key where it comes from a row. */
-  onAgain?: (e: UiEvent, key?: string) => void;
+  onAgain?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The continue event, with the row's key where it comes from a row. */
-  onContinue?: (e: UiEvent, key?: string) => void;
+  onContinue?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The replay event, with the row's key where it comes from a row. */
-  onReplay?: (e: UiEvent, key?: string) => void;
+  onReplay?: ((e: UiEvent, key?: string) => void) | undefined;
   /** The tab switched (onTab), the tab's value (summary, graphs or board). */
   onTab?: (e: UiEvent, value: string) => void;
 }
@@ -165,23 +165,32 @@ export function ResultsScreen(props: ResultsScreenProps) {
           </Show>
         </Scroll>
         <View class="flex-row flex-wrap justify-end gap-2 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] short:flex-nowrap short:justify-end short:flex-col">
-          <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onReplay?.(e)}>
-            <Text>{t("screen.results.replay")}</Text>
-          </Button>
-          <Button class={`min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onAgain?.(e)}>
-            <Text>{t("screen.results.again")}</Text>
-          </Button>
-          <Button class={`text-accent min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
-            <Text>{t("screen.results.continue")}</Text>
-          </Button>
+          <Show when={props.onReplay}>
+            <Button class={`min-h-11 min-w-36 compact:min-w-0 compact:col-span-full compact:row-[2] shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onReplay?.(e)}>
+              <Text>{t("screen.results.replay")}</Text>
+            </Button>
+          </Show>
+          <Show when={props.onAgain}>
+            <Button class={`min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate")}`} onPress={(e) => props.onAgain?.(e)}>
+              <Text>{t("screen.results.again")}</Text>
+            </Button>
+          </Show>
+          <Show when={props.onContinue}>
+            <Button class={`text-accent min-h-11 min-w-36 compact:min-w-0 shrink ${packClass("Button", "plate", "primary")}`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }}>
+              <Text>{t("screen.results.continue")}</Text>
+            </Button>
+          </Show>
         </View>
       </View>
     </View>
   );
 }
 
+/** The fixtures' handler: a row is drawn only where the game passes one. */
+const press = () => {};
+
 export const fixtures: Record<string, Partial<ResultsScreenProps>> = {
-  default: {"gained":1240,"grade":"A","level":18,"rewards":[{"amount":320,"id":"item-0","name":"Gold","texture":0},{"amount":1,"id":"item-1","name":"Crate","texture":0}],"stats":[{"best":true,"count":true,"id":"item-0","name":"Score","value":48210},{"best":false,"id":"item-1","name":"Kills","value":14},{"best":false,"format":"percent","id":"item-2","name":"Accuracy","value":0.62}],"tab":"summary","title":"Victory","won":true,"xp":0.45},
+  default: {"gained":1240,"grade":"A","level":18,"rewards":[{"amount":320,"id":"item-0","name":"Gold","texture":0},{"amount":1,"id":"item-1","name":"Crate","texture":0}],"stats":[{"best":true,"count":true,"id":"item-0","name":"Score","value":48210},{"best":false,"id":"item-1","name":"Kills","value":14},{"best":false,"format":"percent","id":"item-2","name":"Accuracy","value":0.62}],"tab":"summary","title":"Victory","won":true,"xp":0.45,"onReplay":press,"onAgain":press,"onContinue":press},
 };
 
 /** The input actions it answers, with the label a hint shows for each. */
