@@ -62,7 +62,8 @@ export const HOSTS: Host[] = [
 
 /** Bundles every built-in with fixtures once; then `frame(page, host)` lays one out. */
 export async function fixtureFrames(filter?: (p: Page) => boolean) {
-  const list = pages().filter(filter ?? (() => true));
+  // The built-ins only: an asset sheet is the gallery's preview of art, not a component a game mounts.
+  const list = pages().filter((p) => !p.module.startsWith("sheets/") && (filter ?? (() => true))(p));
   const modules = [...new Set(list.map((p) => p.module))];
   const dir = mkdtempSync(join(tmpdir(), "og-fixture-frames-"));
   writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\nname \"fixtures\"\n");
