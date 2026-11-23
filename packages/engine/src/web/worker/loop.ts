@@ -22,7 +22,8 @@ export const BEAT_MS = 1000;
 export class FrameLoop {
   readonly #run: Run;
   readonly #gate: Gate;
-  #scheduled = false;
+  #scheduled: ((t: number) => void) | null = null;
+  #timer: ReturnType<typeof setTimeout> | undefined;
   #lastBeat = 0;
 
   constructor(run: Run, gate: Gate) {
@@ -32,7 +33,9 @@ export class FrameLoop {
 
   #frame(now: number): void {
     const run = this.#run;
-    this.#scheduled = false;
+    this.#scheduled = null;
+    clearTimeout(this.#timer);
+    this.#timer = undefined;
     const engine = run.engine;
     if (!engine || run.crashed) return;
     const probes = run.probes;
@@ -90,16 +93,19 @@ export class FrameLoop {
    * so a capture still lands.
    */
   schedule(): void {
-    if (this.#scheduled) return;
-    this.#scheduled = true;
-    let ran = false;
-    const run = (t: number) => {
-      if (ran) return;
-      ran = true;
-      this.#frame(t);
-    };
-    if (self.requestAnimationFrame) self.requestAnimationFrame(run);
-    if (!this.#run.playing || !self.requestAnimationFrame) setTimeout(() => run(performance.now()), self.requestAnimationFrame ? 100 : 16);
+    if (!this.#scheduled) {
+      const run = (t: number) => {
+        if (this.#scheduled !== run) return;
+        this.#frame(t);
+      };
+      this.#scheduled = run;
+      if (self.requestAnimationFrame) self.requestAnimationFrame(run);
+    }
+    // Also arm an already scheduled display callback: a capture may arrive
+    // after it was requested, and a hidden/loaded canvas need not deliver it.
+    if (this.#timer === undefined && (!this.#run.playing || this.#run.probes.waiting > 0 || !self.requestAnimationFrame)) {
+      this.#timer = setTimeout(() => this.#scheduled?.(performance.now()), self.requestAnimationFrame ? 100 : 16);
+    }
   }
 
   /** Start or stop the clock (the shell's `play`): the next drawn frame is handed no time from before. */

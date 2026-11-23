@@ -214,8 +214,8 @@ export class ProbeRequests {
   rings: RpcRings | undefined;
   readonly #run: ProbeRun;
   readonly #post: Post;
-  /** Captures waiting for their readback (requested on tick N, answered on N + 1). */
-  readonly #retries: Array<{ frame: string; until: number; viaRing: boolean }> = [];
+  /** Captures waiting for their readback without changing the requested tick. */
+  readonly #retries: Array<{ frame: string; until: number; viaRing: boolean; tick: number | null }> = [];
 
   constructor(run: ProbeRun, post: Post) {
     this.#run = run;
@@ -258,7 +258,8 @@ export class ProbeRequests {
       return;
     }
     if (this.#run.rendering() && isPendingCapture(frame, out)) {
-      this.#retries.push({ frame, until: performance.now() + waitOf(frame), viaRing });
+      const method = (JSON.parse(frame) as { method: string }).method;
+      this.#retries.push({ frame, until: performance.now() + waitOf(frame), viaRing, tick: method === "sweep" ? null : engine.world.tick });
       this.#run.schedule();
     } else this.#answer(out, viaRing);
   }
@@ -269,10 +270,18 @@ export class ProbeRequests {
     if (!engine) return;
     for (let i = this.#retries.length - 1; i >= 0; i--) {
       const r = this.#retries[i]!;
+      if (r.tick !== null && engine.world.tick !== r.tick) {
+        this.#retries.splice(i, 1);
+        this.refuse(r.frame, `capture requested at tick ${r.tick}, but the world advanced to tick ${engine.world.tick} before its readback completed`, r.viaRing);
+        continue;
+      }
       const out = this.#run.call(r.frame);
-      if (!isPendingCapture(r.frame, out) || performance.now() >= r.until) {
+      if (!isPendingCapture(r.frame, out)) {
         this.#retries.splice(i, 1);
         this.#answer(out, r.viaRing);
+      } else if (performance.now() >= r.until) {
+        this.#retries.splice(i, 1);
+        this.refuse(r.frame, `capture readback did not complete within ${waitOf(r.frame)} ms (presentation work or GPU mapping is still pending)`, r.viaRing);
       }
     }
   }

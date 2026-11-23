@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "web probe capture and screenshot",
+      "summary": "Delayed browser readbacks no longer return another tick's frame. Captures validate the tick and view that started the readback, retain it until consumed, and report mapping failures, capacity exhaustion and deadlines instead of silently restarting or returning null. A playing Worker's pending captures also progress when presentation callbacks stop arriving. Screenshot commands preserve readback error causes."
+    }
+  ]
+}

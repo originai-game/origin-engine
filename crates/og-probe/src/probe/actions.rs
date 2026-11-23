@@ -1042,11 +1042,11 @@ fn capture_step(
             };
             let frame = capture.capture(world, width, height);
             let Some(frame) = frame else {
+                if let Some(why) = capture.capture_error() {
+                    return Err(format!("the renderer produced no frame: {why}"));
+                }
                 if !capture.deferred() {
-                    return Err(match capture.capture_error() {
-                        Some(why) => format!("the renderer produced no frame: {why}"),
-                        None => "the renderer produced no frame".into(),
-                    });
+                    return Err("the renderer produced no frame".into());
                 }
                 // Its frame lands on a later call: written then.
                 schedule.shot = Some(Shot {

@@ -12,6 +12,9 @@ struct CanvasBackend {
     /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
     /// oldest first.
     pending: Vec<Pending>,
+    /// Why the last capture failed, exposed through the probe instead of
+    /// silently starting a different frame's readback.
+    capture_error: Option<String>,
     /// What the last frame submitted.
     stats: og_render::FrameStats,
     /// Display frames drawn so far.
@@ -82,7 +85,6 @@ impl CanvasBackend {
             self.renderer = renderer;
             self.lost_at = None;
             self.losses += 1;
-            self.pending.clear();
             self.kept = None;
         }
         let Some(why) = self.renderer.lost() else {
@@ -133,12 +135,14 @@ struct Pending {
     req: og_render::CaptureRequest,
     /// The size it was asked at.
     size: (u32, u32),
-    /// Landed by a display frame and not taken since.
-    landed: bool,
+    tick: u64,
+    camera: og_render::Camera,
+    reference: bool,
+    losses: u32,
 }
 
-/// The most captures of different sizes in flight at once; asking for
-/// another drops the oldest.
+/// The most captures of different sizes in flight at once. Refuse a new
+/// request at the limit; never cancel a different caller's readback.
 const MAX_CAPTURES: usize = 4;
 
 impl RenderBackend for CanvasBackend {
@@ -174,13 +178,6 @@ impl RenderBackend for CanvasBackend {
             self.renderer.resize(w, h);
         }
         self.renderer.poll();
-        // Its asker takes a landed frame on its next call, before the
-        // next display frame; one left a whole display frame was given up on.
-        self.pending.retain_mut(|p| {
-            let kept = !p.landed;
-            p.landed = p.req.is_ready();
-            kept
-        });
         match self.renderer.render(scene, &RenderTarget::Surface) {
             Ok(s) => {
                 self.stats = s;
@@ -274,6 +271,7 @@ impl RenderBackend for CanvasBackend {
     /// answers the frame once the copy has landed (the scene as it was
     /// at the request). Captures of different sizes wait side by side.
     fn capture(&mut self, scene: &RenderScene, width: u32, height: u32) -> Option<RgbaImage> {
+        self.capture_error = None;
         let target = self.renderer.size();
         let size = if width == 0 || height == 0 {
             target
@@ -282,35 +280,58 @@ impl RenderBackend for CanvasBackend {
         };
         if let Some(i) = self.pending.iter().position(|p| p.size == size) {
             let mut p = self.pending.remove(i);
+            if p.tick != scene.frame.tick {
+                self.capture_error = Some(format!(
+                    "capture readback belongs to tick {}, not tick {}",
+                    p.tick, scene.frame.tick
+                ));
+                return None;
+            }
+            if p.camera != scene.frame.camera || p.reference != scene.frame.reference {
+                self.capture_error =
+                    Some("capture view changed while its readback was pending".into());
+                return None;
+            }
+            if p.losses != self.losses {
+                self.capture_error = Some("capture invalidated by GPU device recovery".into());
+                return None;
+            }
             match p.req.try_finish(&self.renderer) {
                 Ok(Some(image)) => return Some(image),
-                Ok(None) if self.renderer.lost().is_none() => {
+                Ok(None) => {
                     self.pending.push(p);
                     return None;
                 }
-                // A failed readback, or one on a lost device (it never
-                // lands), is asked again, on the new device once made.
-                _ => {}
+                Err(error) => {
+                    self.capture_error = Some(error.to_string());
+                    return None;
+                }
             }
+        }
+        if self.pending.len() >= MAX_CAPTURES {
+            self.capture_error =
+                Some("capture readback capacity exhausted (4 pending captures)".into());
+            return None;
         }
         // og-render's `capture_frame`; the runtime made a lost device again
         // before asking.
-        let started = self
-            .renderer
-            .capture_frame(scene, size.0, size.1)
-            .ok()
-            .map(|(_, req)| req);
-        if let Some(req) = started {
-            if self.pending.len() >= MAX_CAPTURES {
-                self.pending.remove(0);
+        match self.renderer.capture_frame(scene, size.0, size.1) {
+            Ok((_, req)) => {
+                self.pending.push(Pending {
+                    req,
+                    size,
+                    tick: scene.frame.tick,
+                    camera: scene.frame.camera,
+                    reference: scene.frame.reference,
+                    losses: self.losses,
+                });
             }
-            self.pending.push(Pending {
-                req,
-                size,
-                landed: false,
-            });
+            Err(error) => self.capture_error = Some(error.to_string()),
         }
         None
+    }
+    fn capture_error(&self) -> Option<String> {
+        self.capture_error.clone()
     }
     fn deferred(&self) -> bool {
         true
@@ -338,7 +359,20 @@ impl RenderBackend for CanvasBackend {
         Some(self.renderer.gpu_memory())
     }
     fn recover(&mut self) -> Result<bool, String> {
-        self.recover_device()
+        self.capture_error = None;
+        let lost = self.renderer.lost();
+        let recovered = self.recover_device();
+        if let Some(why) = lost
+            && !self.pending.is_empty()
+        {
+            let why = format!("capture readback lost its GPU device: {why}");
+            self.capture_error = Some(why.clone());
+            return Err(why);
+        }
+        if let Err(why) = &recovered {
+            self.capture_error = Some(why.clone());
+        }
+        recovered
     }
     fn device_losses(&self) -> u32 {
         self.losses
@@ -422,6 +456,7 @@ pub async fn og_web_attach_canvas(
             tier: tier.clone(),
             cpu_pass_timing_only: cpu_pass_timing_only.unwrap_or(false),
             pending: Vec::new(),
+            capture_error: None,
             drawn: 0,
             kept: None,
             stats: Default::default(),

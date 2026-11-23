@@ -458,7 +458,13 @@ impl Probe {
                     None | Some(Value::Null) => None,
                     Some(r) => Some(screen_box(r)?),
                 };
-                or_null(self.capture(world, width, height, fit(p)?, region))
+                let captured = self.capture(world, width, height, fit(p)?, region);
+                if captured.is_none()
+                    && let Some(why) = self.host.capture.as_ref().and_then(|c| c.capture_error())
+                {
+                    return Err(RpcError::internal(why));
+                }
+                or_null(captured)
             }
             #[cfg(not(feature = "publish"))]
             "capture_views" => {

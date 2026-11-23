@@ -185,8 +185,9 @@ impl Schedule {
             Some(capture) => capture.capture(world, shot.width, shot.height),
             None => None,
         };
+        let error = host.capture.as_ref().and_then(|c| c.capture_error());
         shot.polls += 1;
-        if frame.is_none() && shot.polls < MAX_CAPTURE_POLLS {
+        if frame.is_none() && error.is_none() && shot.polls < MAX_CAPTURE_POLLS {
             return true;
         }
         let shot = self.shot.take().expect("waiting");
@@ -208,8 +209,11 @@ impl Schedule {
                 shot.tick,
                 true,
                 format!(
-                    "{}s screenshot: the renderer produced no frame in {MAX_CAPTURE_POLLS} frames",
-                    shot.at
+                    "{}s screenshot: {}",
+                    shot.at,
+                    error.unwrap_or_else(|| format!(
+                        "the renderer produced no frame in {MAX_CAPTURE_POLLS} frames"
+                    ))
                 ),
             ),
         }
