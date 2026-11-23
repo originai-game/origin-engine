@@ -259,12 +259,23 @@ mod local {
         } else {
             "run"
         };
+        // The environment the command's script runs with: og's, with what
+        // the command sets or clears (OG_COOK_FORMATS, project::bun), as
+        // the host that runs it was started with.
+        let mut env = std::env::vars().collect::<BTreeMap<_, _>>();
+        for (key, value) in command.get_envs() {
+            let key = key.to_string_lossy().into_owned();
+            match value {
+                Some(value) => env.insert(key, value.to_string_lossy().into_owned()),
+                None => env.remove(&key),
+            };
+        }
         let mut socket = connect(project)?;
         let call = serde_json::json!({
             "kind": kind,
             "build": build(package)?,
             "cwd": std::env::current_dir().map_err(|e| e.to_string())?,
-            "env": std::env::vars().collect::<BTreeMap<_, _>>(),
+            "env": env,
             "argv": argv,
         });
         writeln!(socket, "{call}").map_err(|e| {
