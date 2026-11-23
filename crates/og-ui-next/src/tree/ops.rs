@@ -2903,6 +2903,16 @@ mod tests {
         buttons(&mut t, &["b hw", "b aw"]);
         at(&mut t, 10.0, 10.0, false, false);
         assert_eq!(t.op_box(1).unwrap()[2], 80.0, "hovered");
+        // A finger hovers nothing: what the mouse lit goes out, and a tap
+        // leaves nothing lit.
+        t.set_device(true, false);
+        frame(&mut t);
+        assert_eq!(t.op_box(1).unwrap()[2], 50.0, "a finger hovers nothing");
+        at(&mut t, 10.0, 12.0, true, false);
+        at(&mut t, 10.0, 12.0, false, true);
+        assert_eq!(t.op_box(1).unwrap()[2], 50.0, "no hover left after a tap");
+        t.events.clear();
+        t.set_device(false, false);
         at(&mut t, 10.0, 200.0, false, false);
         assert_eq!(t.op_box(1).unwrap()[2], 50.0, "left");
         // 2 sits at x 50..100 now.

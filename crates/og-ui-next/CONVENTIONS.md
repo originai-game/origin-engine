@@ -176,8 +176,9 @@ machines do (ported as logic).
   centre, holds it, and the retention covers that grown box: a small
   control keeps its look and still takes a finger (Apple's 44 pt, WCAG
   2.5.8).
-- **States** that classes read: `hover:` (the node under the pointer and
-  those around it), `active:` (held, while the pointer is on the node or
+- **States** that classes read: `hover:` (the node under the mouse and
+  those around it; a finger hovers nothing, so a tapped control is not
+  left lit), `active:` (held, while the pointer is on the node or
   within 8 px of it: NSH's press retention), `focus:`, `focus-visible:`
   (focus the keys moved: Tab, Enter or Space, an action or a screen
   reader; a press's focus shows no ring), `focus-within:` and `disabled:`.

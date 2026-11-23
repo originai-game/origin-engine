@@ -1090,7 +1090,9 @@ impl Tree {
         let top = self.hit_where(x, y, |el| el.js != NONE);
         let mut next = std::mem::take(&mut self.input.next);
         next.clear();
-        let mut e = top;
+        // A finger hovers nothing: `hover:` is the mouse's, so a tapped
+        // control is not left lit after the finger lifts (sticky hover).
+        let mut e = if self.input.touch { NONE } else { top };
         while e != NONE {
             if self.els[e as usize].js != NONE {
                 next.push(e);
@@ -1496,6 +1498,12 @@ impl Tree {
     /// pans what scrolls, a still finger long-presses) or a pad (`pad`:
     /// focus a node takes by itself shows its ring).
     pub fn set_device(&mut self, touch: bool, pad: bool) {
+        if touch && !self.input.touch {
+            // What the mouse lit goes out: a finger hovers nothing.
+            for e in std::mem::take(&mut self.input.hover) {
+                self.set_state(e, HOVERED, false);
+            }
+        }
         self.input.touch = touch;
         self.input.pad = pad;
     }
