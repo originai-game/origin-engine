@@ -1,25 +1,26 @@
-//! The og.destruction calls.
+//! The og.destruction calls. A game calls them from its systems, so they
+//! reach the world as world.has, world.alive and world.get do: inside a
+//! system, through its declared access.
 
 use super::*;
+use crate::host::api::{og_world_alive, og_world_get, og_world_has};
 
-pub(super) fn row_of<T: FromJson>(eng: &Engine, name: &str, e: Entity) -> Option<T> {
-    let w = eng.world().ok()?;
-    let id = w.id_by_name(name).ok()?;
-    let bytes = w.get_bytes(e, id).ok()?;
-    let layout = eng.state.borrow().layouts.get(name).cloned()?;
-    layout.read(&bytes).ok()
+/// `e`'s row of `name`, read as world.get reads it.
+pub(super) fn row_of<T: FromJson>(world: u32, name: &str, e: Entity) -> Result<T, String> {
+    T::from_json(&og_world_get(world, e.to_bits() as f64, name.into())?)
 }
 
 /// The og.Destructible `e` names: itself, or the one its og.Chunk is of.
-pub(super) fn destructible_of(eng: &Engine, e: Entity, chunks: bool) -> Result<Entity, String> {
-    let w = eng.world()?;
-    if !w.is_alive(e) {
+pub(super) fn destructible_of(world: u32, e: Entity, chunks: bool) -> Result<Entity, String> {
+    let id = e.to_bits() as f64;
+    if !og_world_alive(world, id) {
         return Err(format!("entity {} is not alive", e.to_bits()));
     }
-    if row_of::<record::Destructible>(eng, DESTRUCTIBLE, e).is_some() {
+    if og_world_has(world, id, DESTRUCTIBLE.into()) {
         return Ok(e);
     }
-    if chunks && let Some(c) = row_of::<record::Chunk>(eng, CHUNK, e) {
+    if chunks && og_world_has(world, id, CHUNK.into()) {
+        let c: record::Chunk = row_of(world, CHUNK, e)?;
         return Ok(Entity::from_bits(c.destructible));
     }
     Err(format!(
@@ -50,7 +51,7 @@ pub(super) fn radius(r: f32, key: &str) -> Result<f32, String> {
 pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> Result<(), String> {
     (|| {
         let eng = engine(world)?;
-        let target = destructible_of(&eng, Entity::from_bits(entity as u64), true)?;
+        let target = destructible_of(world, Entity::from_bits(entity as u64), true)?;
         let d: DamageDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Damage {
             entity: target.to_bits(),
@@ -77,7 +78,7 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> Result<(), St
             impulse: radius(d.impulse, "impulse")?,
         };
         // A world with no destructible has nothing to break.
-        if eng.world()?.systems().contains(&SYSTEM) {
+        if eng.modules.destruction.enabled.load(Ordering::Relaxed) {
             lock(&eng.modules.destruction.state).ops.push(op);
         }
         Ok(())
@@ -87,7 +88,7 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> Result<(), St
 pub fn og_destruction_fracture(world: u32, entity: f64) -> Result<(), String> {
     (|| {
         let eng = engine(world)?;
-        let target = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
+        let target = destructible_of(world, Entity::from_bits(entity as u64), false)?;
         lock(&eng.modules.destruction.state).ops.push(Op::Fracture {
             entity: target.to_bits(),
         });
@@ -101,9 +102,8 @@ pub fn og_destruction_info(
 ) -> Result<crate::host::wire::DestructibleInfo, String> {
     (|| {
         let eng = engine(world)?;
-        let e = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
-        let model: record::Model = row_of(&eng, "og.Model", e)
-            .ok_or_else(|| format!("entity {} has no og.Model", e.to_bits()))?;
+        let e = destructible_of(world, Entity::from_bits(entity as u64), false)?;
+        let model: record::Model = row_of(world, "og.Model", e)?;
         let asset = model.asset;
         let m = &eng.modules.destruction;
         let a = lock(&m.assets).get(&asset).cloned().ok_or_else(|| {

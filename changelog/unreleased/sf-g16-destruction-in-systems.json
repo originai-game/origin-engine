@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "destruction.explode",
+      "summary": "og.destruction.damage, explode, fracture and info work when a game system calls them, as their docs say: they refused with \"not available while a system runs\" because they read the world outside the system's views. They now read it as world.has, world.alive and world.get do; naming a chunk needs read access to og.Chunk, and info needs og.Model."
+    }
+  ]
+}

@@ -6,7 +6,7 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 ### `og.destruction.damage`
 
-Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step.
+Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step. Naming a chunk from a system needs read access to og.Chunk.
 
 ```ts
 og.destruction.damage(world: World, entity: Entity, desc?: DamageDesc): Result<void>
@@ -24,7 +24,7 @@ Binding symbol `og_destruction_damage` · publish builds: kept
 
 ```ogt
 fn damage {
-  doc "Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step."
+  doc "Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step. Naming a chunk from a system needs read access to og.Chunk."
   param world World "The world."
   param entity Entity "An entity with og.Destructible, or one of its chunks."
   param desc DamageDesc "Where, how far and how much."

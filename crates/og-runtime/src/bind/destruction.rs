@@ -56,6 +56,7 @@ use og_physics::destruction::{Damage, FractureAsset, Instance, Material, stress:
 use serde_json::{Value, json};
 use std::any::Any;
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 mod api;
@@ -98,6 +99,10 @@ pub(crate) struct ModuleState {
     state: Arc<Mutex<State>>,
     assets: Arc<Mutex<Assets>>,
     physics: Arc<Mutex<Option<og_physics::PhysicsSystem>>>,
+    /// Whether the world runs the og.destruction system: what an explosion
+    /// asks before it queues, from inside a system too (where the world's
+    /// system list is out of reach).
+    enabled: Arc<AtomicBool>,
 }
 
 /// The physics an engine's destruction queries (made with its world).
@@ -199,6 +204,7 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()>
     let m = mount.modules.destruction.clone();
     *lock(&m.state) = State::default();
     let sh = m.state.clone();
+    let enabled = m.enabled.clone();
     let s = |v: &[&str]| v.iter().map(|n| n.to_string()).collect::<Vec<_>>();
     // og.Vfx, for breakVfx and hitVfx, when the game already plays
     // composed effects (else og.vfx grants it when it does).
@@ -222,6 +228,7 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()>
     if world.systems().contains(&"og.physics") {
         world.move_system_before(SYSTEM, "og.physics")?;
     }
+    enabled.store(true, Ordering::Relaxed);
     world.add_state_block(SYSTEM, Box::new(Block(sh)))
 }
 

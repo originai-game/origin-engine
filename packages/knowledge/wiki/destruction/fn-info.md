@@ -6,7 +6,7 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 ### `og.destruction.info`
 
-How much of a destructible stands.
+How much of a destructible stands. From a system, declare read access to og.Model.
 
 ```ts
 og.destruction.info(world: World, entity: Entity): Result<DestructibleInfo>
@@ -23,7 +23,7 @@ Binding symbol `og_destruction_info` · publish builds: kept
 
 ```ogt
 fn info {
-  doc "How much of a destructible stands."
+  doc "How much of a destructible stands. From a system, declare read access to og.Model."
   param world World "The world."
   param entity Entity "An entity with og.Destructible."
   returns Result.DestructibleInfo "Refused for an entity without one, or one whose model is not loaded or has no fracture."

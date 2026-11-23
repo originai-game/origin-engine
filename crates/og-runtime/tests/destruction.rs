@@ -788,3 +788,90 @@ fn a_destructibles_break_and_hit_effects_play_and_end() {
         assert!(!og_world_alive(w, *e), "the {name} effect ended and went");
     }
 }
+
+/// What a game system's destruction calls answered, and the wall it aims at.
+#[derive(Default)]
+struct Charge {
+    wall: std::cell::Cell<f64>,
+    answers: std::cell::RefCell<Vec<Value>>,
+}
+
+struct Blast(Rc<Charge>);
+
+impl Hooks for Blast {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        let w = call.engine;
+        if call.kind == 0 && call.id == 1 && og_runtime::og_world_get_tick(w) == 6 {
+            let wall = self.0.wall.get();
+            let blow = json!({ "point": { "x": 0, "y": 0.1, "z": 0 }, "radius": 0.9, "innerRadius": 0.5, "amount": 4000 });
+            let charge = json!({ "point": { "x": 0, "y": 0.3, "z": 0.15 }, "radius": 1.5, "innerRadius": 0.8, "damage": 6000, "impulse": 2500 });
+            let mut answers = self.0.answers.borrow_mut();
+            answers.push(
+                serde_json::from_str(&og_runtime::host_impl::answer(og_destruction_damage(
+                    w,
+                    wall,
+                    Some(blow.to_string()),
+                )))
+                .unwrap(),
+            );
+            answers.push(
+                serde_json::from_str(&og_runtime::host_impl::answer(
+                    og_runtime::og_destruction_explode(w, Some(charge.to_string())),
+                ))
+                .unwrap(),
+            );
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Disk.read_asset(path)
+    }
+}
+
+/// A game system breaks a destructible as its docs say: og.destruction.damage
+/// and explode called while the system runs are applied after the game's
+/// systems that tick. Both refused there while they read the world outside
+/// the system's views, so Star Focus's Titan could not shatter when it died.
+#[test]
+fn a_game_system_damages_and_blows_up_a_destructible() {
+    let root = project();
+    let charge = Rc::new(Charge::default());
+    set_hooks(Rc::new(Blast(charge.clone())));
+    og_host_begin_bundle();
+    let blast = og_system_define_system(
+        "Blast".into(),
+        json!({ "reads": [], "writes": [] }).to_string(),
+        1,
+    );
+    let game = og_game_game(Some(json!({ "seed": 1, "systems": [blast] }).to_string()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let w = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let asset = value(og_runtime::host_impl::answer(og_load_gltf(
+        w,
+        "props/wall.ogt".into(),
+        None,
+    )))
+    .as_f64()
+    .unwrap();
+    let wall = value(og_runtime::host_impl::answer(og_world_instantiate(
+        w, asset, None,
+    )))
+    .as_f64()
+    .unwrap();
+    value(og_runtime::host_impl::answer(og_world_insert(
+        w,
+        wall,
+        "og.Destructible".into(),
+        Some(json!({ "toughness": 400, "strength": 4000, "friction": 0 }).to_string()),
+    )));
+    charge.wall.set(wall);
+    frames(w, 10);
+    let answers = charge.answers.borrow();
+    assert_eq!(answers.len(), 2, "the system ran its tick-6 calls");
+    for a in answers.iter() {
+        assert_eq!(a["ok"], json!(true), "{a}");
+    }
+    let d = destructible(w, wall);
+    assert_eq!(d["fractured"], json!(true), "{d}");
+    assert!(d["broken"].as_u64().unwrap() > 0, "{d}");
+}

@@ -39550,7 +39550,7 @@ export declare namespace og {
    */
   namespace destruction {
     /**
-     * Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step.
+     * Damage a destructible at a point: every bond, anchor and chunk within reach takes the amount, all of it within innerRadius and falling to nothing at radius. Applied by og.destruction after the game's systems this tick (in the order called), so a bond broken now splits the prop before this tick's physics step. Naming a chunk from a system needs read access to og.Chunk.
      *
      * @param world The world.
      * @param entity An entity with og.Destructible, or one of its chunks.
@@ -39575,7 +39575,7 @@ export declare namespace og {
      */
     function fracture(world: World, entity: Entity): Result<void>;
     /**
-     * How much of a destructible stands.
+     * How much of a destructible stands. From a system, declare read access to og.Model.
      *
      * @param world The world.
      * @param entity An entity with og.Destructible.
