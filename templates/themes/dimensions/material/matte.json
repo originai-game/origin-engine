@@ -1,0 +1,22 @@
+{
+  "about": "Matte: a clean flat face, a hairline edge and a soft drop, no gloss or lip (Material, iOS, minimal puzzle games).",
+  "art": {
+    "drop": { "dy": 1.0, "blur": 1.6, "alpha": 0.16 },
+    "outline": { "width": 1, "color": { "mix": ["bottom", "outline", 0.35] } },
+    "toplight": { "depth": 4, "alpha": 0.35 },
+    "sunk": { "depth": 6, "alpha": 0.08 },
+    "press": { "dy": 1 },
+    "hover": { "toward": "#ffffff", "t": 0.08 }
+  },
+  "scheme": "light",
+  "faces": {
+    "button": { "hue": "n", "l": [0.98, 0.95], "c": 0.01 },
+    "panel": { "hue": "n", "l": [0.99, 0.97], "c": 0.005 },
+    "plate": { "hue": "n", "l": [0.96, 0.94], "c": 0.01 },
+    "chip": { "hue": "n", "l": [0.93, 0.91], "c": 0.015 },
+    "slot": { "hue": "n", "l": [0.91, 0.94], "c": 0.01 },
+    "field": { "hue": "n", "l": [1.0, 0.99], "c": 0.0 }
+  },
+  "primary": { "l": [0.56, 0.5], "c": 0.12 },
+  "text": { "min": 0.82, "max": 1.0 }
+}

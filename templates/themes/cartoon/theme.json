@@ -1,0 +1,13 @@
+{
+  "about": "Cartoon: a light panel under a coloured header, a thick clean outline, a gloss band and a 3D lip, round corners, chunky display type, bouncy motion (Brawl Stars, Clash Royale).",
+  "color": { "source": "#ff8a3d", "accent": "#2ec4a6", "neutral": "#8a7560", "variant": "vibrant", "scheme": "light" },
+  "material": "flat",
+  "shape": "round",
+  "type": "rounded-display",
+  "motion": "bouncy",
+  "ornament": "none",
+  "effects": "sheen",
+  "sound": "cute",
+  "icons": "sticker",
+  "density": "touch"
+}

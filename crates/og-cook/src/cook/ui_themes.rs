@@ -174,6 +174,41 @@ mod tests {
         let _ = std::fs::remove_dir_all(&cache);
     }
 
+    /// Every engine theme (`templates/themes/<name>/theme.json`) resolves,
+    /// compiles and cooks into a pack with its art.
+    ///
+    /// Ways this could fail: a recipe naming a dimension value that does not
+    /// exist, an `extends` to a missing theme, a compiled pack the layer
+    /// parser refuses, a material and shape pair the generator cannot draw.
+    #[test]
+    fn every_engine_theme_cooks() {
+        let dir = themes_dir().unwrap();
+        let cache = std::env::temp_dir().join(format!("og-ui-themes-all-{}", std::process::id()));
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .unwrap()
+            .filter_map(|e| {
+                let p = e.ok()?.path();
+                p.join(RECIPE)
+                    .is_file()
+                    .then(|| p.file_name()?.to_str().map(str::to_owned))?
+            })
+            .collect();
+        names.sort();
+        assert!(names.len() >= 10, "{names:?}");
+        let mut bad = Vec::new();
+        for name in &names {
+            let at = format!("@themes/{name}/{RECIPE}");
+            let text = std::fs::read_to_string(dir.join(name).join(RECIPE)).unwrap();
+            match files(&text, &at, &cache) {
+                Ok(f) if f.iter().any(|(n, _)| n == "art/panel.png") => {}
+                Ok(_) => bad.push(format!("{at}: no art")),
+                Err(e) => bad.push(e),
+            }
+        }
+        let _ = std::fs::remove_dir_all(&cache);
+        assert!(bad.is_empty(), "{}", bad.join("\n"));
+    }
+
     #[test]
     fn only_a_styles_directorys_recipe_is_one() {
         assert!(is_recipe("styles/game/theme.json"));

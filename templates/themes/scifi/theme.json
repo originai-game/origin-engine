@@ -1,0 +1,12 @@
+{
+  "about": "Scifi: dark glass, four cut corners, a technical condensed face, snappy motion, cyan accent bars (Zenless Zone Zero, Destiny 2).",
+  "color": { "source": "#3fd6ff", "accent": "#3fd6ff", "neutral": "#1f3448", "variant": "vibrant", "scheme": "dark" },
+  "material": "glass",
+  "shape": "cut4",
+  "type": "condensed-tech",
+  "motion": "snappy",
+  "ornament": { "button": "bar", "panel": "tab", "slot": "notch" },
+  "effects": "spark",
+  "sound": "arcade",
+  "icons": "glow"
+}

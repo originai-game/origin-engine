@@ -1,0 +1,13 @@
+{
+  "about": "Ink on rice paper: a faint wash, a brushed edge, Song type, calm motion, cinnabar accents (wuxia and xianxia games).",
+  "color": { "source": "#b8322a", "accent": "#b8322a", "neutral": "#5a5248", "variant": "muted", "scheme": "light" },
+  "material": "ink",
+  "shape": "brush",
+  "type": "song",
+  "motion": "calm",
+  "ornament": { "panel": "brush-corner" },
+  "effects": "ink-splash",
+  "sound": "soft",
+  "icons": "ink",
+  "density": "comfortable"
+}
