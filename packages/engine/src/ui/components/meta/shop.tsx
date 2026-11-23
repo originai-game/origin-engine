@@ -119,12 +119,12 @@ export function Shop(props: ShopProps) {
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
                           <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
-                              <View class={`justify-center items-center w-full text-border-strong bg-well nine-plate-cut gap-2`}>
+                              <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                                 <View class="absolute opacity-26 inset-0" />
-                                <Icon class="size-4" name={o().icon} />
+                                <Icon class="size-12 compact:size-9" name={o().icon} />
                               </View>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                                <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
@@ -186,12 +186,12 @@ export function Shop(props: ShopProps) {
                       }>
                         <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
-                            <View class={`justify-center items-center w-full text-border-strong bg-well nine-plate-cut gap-2`}>
+                            <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
                               <View class="absolute opacity-26 inset-0" />
-                              <Icon class="size-4" name={o().icon} />
+                              <Icon class="size-12 compact:size-9" name={o().icon} />
                             </View>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
+                              <Text class={`absolute top-2 left-2 max-w-[calc(50%-12px)] bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>

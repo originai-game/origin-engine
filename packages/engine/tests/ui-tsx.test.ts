@@ -813,3 +813,69 @@ test("every built-in full-screen screen fills a game's 390x844 column and takes 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Three parts the TSX port drew wrong at a phone's width (Star Focus's UI
+// audit): PuzzleLevelPath's roads, which must meet the discs they join (they
+// all stacked at the lane's left edge); Carousel's Next arrow, which had no
+// size and drew nothing; Shop's Featured tag, which must sit on the art,
+// not on the offer's name.
+test("level path roads meet their discs, the carousel's Next arrow shows, the shop's Featured tag sits on its art", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-tsx-parts-"));
+  const parts = ["puzzle/level-path", "panels/carousel", "meta/shop"];
+  try {
+    writeFileSync(join(dir, "project.ogt"), "type project\nversion 1\n---\n");
+    const src = (n: string) => fileURLToPath(new URL(`../src/ui/components/${n}.tsx`, import.meta.url));
+    writeFileSync(join(dir, "main.ts"), parts.map((n, i) => `export * as P${i} from ${JSON.stringify(src(n))};`).join("\n") + "\n");
+    const out = join(dir, "game.js");
+    const b = await bundleGame(join(dir, "main.ts"), out, "native");
+    if (!b.ok) throw new Error(b.reason);
+    const rt = fileURLToPath(new URL("../src/ui/rt.ts", import.meta.url));
+    const ui = fileURLToPath(new URL("../src/ui/index.ts", import.meta.url));
+    writeFileSync(out, readFileSync(out, "utf8").replace(/(["'])[^"']*\/ui\/rt(\.ts)?\1/g, JSON.stringify(rt)).replace(/(["'])@origingame\/engine\/ui\1/g, JSON.stringify(ui)));
+    const mods = (await import(out)) as Record<string, Record<string, unknown>>;
+    loadNativeHost();
+    type El = { id: string; parent: string; name: string; role: string; text: string; path: string; x: number; y: number; width: number; height: number };
+    const frameOf = (i: number, fixture: string) => {
+      const mod = mods[`P${i}`]!;
+      const Part = Object.entries(mod).find(([k, v]) => /^[A-Z]/.test(k) && typeof v === "function")![1] as (p: unknown) => never;
+      const props = (mod.fixtures as Record<string, Record<string, unknown>>)[fixture]!;
+      const game = og.game({ ui(world) { mount(world, () => View({ class: "absolute left-0 top-0 w-[390px] h-[844px] flex-col", children: Part(props) }), {}); } });
+      const created = createEngine(game as unknown as GameToken);
+      if (!created.ok) throw new Error(created.reason);
+      const engine = created.value;
+      const id = (engine.world as unknown as { id: number }).id;
+      try {
+        for (let n = 0; n < 3; n++) engine.frame(1000 / 60);
+        return (JSON.parse(native().og_node_ui_frame(id)) as { elements: El[] }).elements;
+      } finally {
+        renderers.delete(id);
+        engine.destroy();
+      }
+    };
+    const centre = (e: El) => e.x + e.width / 2;
+
+    // Every vertical road stands under a disc's centre (within a pixel).
+    const path = frameOf(0, "default");
+    const discs = path.filter((e) => e.role === "option");
+    const roads = path.filter((e) => e.width > 0 && e.width <= 12 && e.height > e.width * 2 && !e.role && !e.text);
+    expect(discs.length).toBeGreaterThan(2);
+    expect(roads.length).toBeGreaterThan(2);
+    const off = roads.map((r) => Math.min(...discs.map((d) => Math.abs(centre(d) - centre(r))))).filter((d) => d > 1);
+    expect(off).toEqual([]);
+
+    // Next draws an arrow as Prev does.
+    const car = frameOf(1, "default");
+    const inside = (b: El) => car.filter((e) => e.path.startsWith(`${b.path}/`) && e.width > 0 && e.height > 0);
+    const button = (name: string) => car.find((e) => e.role === "button" && e.name === name)!;
+    expect(inside(button("component.carousel.next")).map((e) => [e.width, e.height])).toEqual(inside(button("component.carousel.prev")).map((e) => [e.width, e.height]));
+
+    // The Featured tag lies above its offer's name.
+    const shop = frameOf(2, "default");
+    const tag = shop.find((e) => e.text === "general.shop.featured")!;
+    const tile = shop.filter((e) => e.role === "gridcell" && tag.path.startsWith(`${e.path}/`))[0]!;
+    const name = shop.find((e) => e.text === tile.name && e.path.startsWith(`${tile.path}/`))!;
+    expect(tag.y + Math.max(tag.height, 12)).toBeLessThanOrEqual(name.y);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

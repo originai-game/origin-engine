@@ -71,7 +71,7 @@ export function Carousel(props: CarouselProps) {
           </Show>
         </View>
         <View class={`flex-row gap-1 p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.next")} disabled={props.pages.length < 2} onPress={(e) => props.onNext?.(e)}>
-          <Icon class="rotate-180" name="back" />
+          <Icon class="size-4 rotate-180" name="back" />
         </View>
       </View>
     </View>
