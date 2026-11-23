@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "transform.matrixWorld",
+      "summary": "og.transform.matrixWorld(world, entity) reads any entity's world matrix: its og.Transform composed down its og.Parent chain (a bone attachment's posed bone included), as it stands. A game could not place a child in the world before: og.MatrixWorld is written for bone attachments only, which its doc now says."
+    }
+  ]
+}

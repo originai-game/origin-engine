@@ -519,6 +519,11 @@ pub fn og_transform_decompose(matrix: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_transform_matrix_world(world: u32, entity: f64) -> String {
+    <Host as TransformApi>::og_transform_matrix_world(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> String {
     <Host as TransformApi>::og_transform_look_at(&Host, eye, target, up)
 }

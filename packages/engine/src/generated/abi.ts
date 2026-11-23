@@ -231,6 +231,8 @@ export interface HostAbi<A, V> {
   og_transform_compose(position: string, quaternion: string, scale: string): string;
   /** `og.transform.decompose` */
   og_transform_decompose(matrix: string): string;
+  /** `og.transform.matrixWorld` */
+  og_transform_matrix_world(world: number, entity: number): string;
   /** `og.transform.lookAt` */
   og_transform_look_at(eye: string, target: string, up: string | undefined): string;
   /** `og.transform.face` */
@@ -1411,6 +1413,7 @@ export const SYMBOLS: readonly string[] = [
   "og_game_game",
   "og_transform_compose",
   "og_transform_decompose",
+  "og_transform_matrix_world",
   "og_transform_look_at",
   "og_transform_face",
   "og_transform_forward",
@@ -2070,6 +2073,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);
       return abi.og_world_name_of(world, entity);
+    },
+    og_transform_matrix_world(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.transform.matrixWorld", "entity", entity);
+      return abi.og_transform_matrix_world(world, entity);
     },
     og_time_group_dt(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.time.groupDt", "entity", entity);

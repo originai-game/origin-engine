@@ -473,6 +473,7 @@ export const og = Object.freeze({
   transform: Object.freeze({
     compose: (position: unknown, quaternion: unknown, scale: unknown): unknown => JSON.parse(abi().og_transform_compose(JSON.stringify(position), JSON.stringify(quaternion), JSON.stringify(scale))) as unknown,
     decompose: (matrix: unknown): unknown => JSON.parse(abi().og_transform_decompose(JSON.stringify(matrix))) as unknown,
+    matrixWorld: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_transform_matrix_world(world.id, entity)) as unknown,
     lookAt: (eye: unknown, target: unknown, up?: unknown): unknown => JSON.parse(abi().og_transform_look_at(JSON.stringify(eye), JSON.stringify(target), json(up))) as unknown,
     face: (position: unknown, target: unknown, up?: unknown): unknown => JSON.parse(abi().og_transform_face(JSON.stringify(position), JSON.stringify(target), json(up))) as unknown,
     forward: (quaternion: unknown): unknown => JSON.parse(abi().og_transform_forward(JSON.stringify(quaternion))) as unknown,

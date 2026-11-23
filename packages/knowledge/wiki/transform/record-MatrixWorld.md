@@ -6,7 +6,7 @@ Module [`transform`](../transform.md) · [index](../index.md)
 
 ### `og.MatrixWorld` (component)
 
-The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.
+The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. Other entities have none: read any entity's world matrix with og.transform.matrixWorld.
 
 Token `og.MatrixWorld`, registered under the schema name `og.MatrixWorld`; its value type is `MatrixWorld`.
 
@@ -16,7 +16,7 @@ Token `og.MatrixWorld`, registered under the schema name `og.MatrixWorld`; its v
 
 ```ogt
 component MatrixWorld {
-  doc "The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld."
+  doc "The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. Other entities have none: read any entity's world matrix with og.transform.matrixWorld."
   field matrix Matrix4 "The composed world matrix." {
     readonly true
   }

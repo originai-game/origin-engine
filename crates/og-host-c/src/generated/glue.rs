@@ -519,6 +519,11 @@ unsafe extern "C" fn og_transform_decompose(args: *const crate::OgValue, out: *m
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_transform_matrix_world(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TransformApi>::og_transform_matrix_world(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_transform_look_at(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as TransformApi>::og_transform_look_at(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3461,6 +3466,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_game_game", arity: 1, call: og_game_game },
     crate::Symbol { name: c"og_transform_compose", arity: 3, call: og_transform_compose },
     crate::Symbol { name: c"og_transform_decompose", arity: 1, call: og_transform_decompose },
+    crate::Symbol { name: c"og_transform_matrix_world", arity: 2, call: og_transform_matrix_world },
     crate::Symbol { name: c"og_transform_look_at", arity: 3, call: og_transform_look_at },
     crate::Symbol { name: c"og_transform_face", arity: 3, call: og_transform_face },
     crate::Symbol { name: c"og_transform_forward", arity: 1, call: og_transform_forward },

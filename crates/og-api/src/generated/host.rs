@@ -255,6 +255,8 @@ pub trait TransformApi: Wire {
     fn og_transform_compose(&self, position: String, quaternion: String, scale: String) -> String;
     /// `og.transform.decompose`
     fn og_transform_decompose(&self, matrix: String) -> String;
+    /// `og.transform.matrixWorld`
+    fn og_transform_matrix_world(&self, world: u32, entity: f64) -> String;
     /// `og.transform.lookAt`
     fn og_transform_look_at(&self, eye: String, target: String, up: Option<String>) -> String;
     /// `og.transform.face`
@@ -1596,6 +1598,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_game_game",
     "og_transform_compose",
     "og_transform_decompose",
+    "og_transform_matrix_world",
     "og_transform_look_at",
     "og_transform_face",
     "og_transform_forward",

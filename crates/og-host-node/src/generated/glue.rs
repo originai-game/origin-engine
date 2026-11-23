@@ -621,6 +621,12 @@ pub fn og_transform_decompose(env: Env, matrix: String) -> String {
     <Host as TransformApi>::og_transform_decompose(&Host, matrix)
 }
 
+#[napi(js_name = "og_transform_matrix_world")]
+pub fn og_transform_matrix_world(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_matrix_world(&Host, world, entity)
+}
+
 #[napi(js_name = "og_transform_look_at")]
 pub fn og_transform_look_at(env: Env, eye: String, target: String, up: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

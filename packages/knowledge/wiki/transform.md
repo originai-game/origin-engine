@@ -6,7 +6,7 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 20 more are advanced (`og api show transform --all`).
+- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.matrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 20 more are advanced (`og api show transform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -23,7 +23,7 @@ module transform {
 |---|---|---|---|
 | [`og.Transform`](transform/record-Transform.md) | component |  | Where an entity is, relative to its parent (or the world). |
 | [`og.Parent`](transform/record-Parent.md) | component |  | The entity this one's Transform is relative to. |
-| [`og.MatrixWorld`](transform/record-MatrixWorld.md) | component |  | The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld. |
+| [`og.MatrixWorld`](transform/record-MatrixWorld.md) | component |  | The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. |
 | [`og.Volume`](transform/record-Volume.md) | component |  | The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. |
 | [`WorldOriginPlane`](transform/type-WorldOriginPlane.md) | enum |  | The axes og.WorldOrigin moves the world's zero along. |
 | [`WorldOriginPlane()`](#column-WorldOriginPlane) | column kind |  | A WorldOriginPlane field: the variant's index. |
@@ -31,6 +31,7 @@ module transform {
 | [`og.OriginShifted`](transform/record-OriginShifted.md) | event |  | og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. |
 | [`og.transform.compose`](transform/fn-compose.md) | function | `(position: Vector3, quaternion: Quaternion, scale: Vector3): Matrix4` | A matrix from position, rotation and scale, as three.js Matrix4.compose. |
 | [`og.transform.decompose`](transform/fn-decompose.md) | function | `(matrix: Matrix4): Transform` | Position, rotation and scale from a matrix, as three.js Matrix4.decompose. |
+| [`og.transform.matrixWorld`](transform/fn-matrixWorld.md) | function | `(world: World, entity: Entity): Result<Matrix4>` | An entity's world matrix, as three.js Object3D.matrixWorld after updateMatrixWorld: its og.Transform composed with its parents' down the og.Parent chain (a bone attachment's posed bone included), fro… |
 | [`og.transform.lookAt`](transform/fn-lookAt.md) | function | `(eye: Vector3, target: Vector3, up?: Vector3): Quaternion` | The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. |
 | [`og.transform.face`](transform/fn-face.md) | function | `(position: Vector3, target: Vector3, up?: Vector3): Quaternion` | The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. |
 | [`og.transform.forward`](transform/fn-forward.md) | function | `(quaternion: Quaternion): Vector3` | The way an object with this rotation faces: its local +Z, as a unit vector. |

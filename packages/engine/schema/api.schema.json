@@ -3262,6 +3262,27 @@
           "publish": true
         },
         {
+          "name": "matrixWorld",
+          "doc": "An entity's world matrix, as three.js Object3D.matrixWorld after updateMatrixWorld: its og.Transform composed with its parents' down the og.Parent chain (a bone attachment's posed bone included), from the values as they stand now, this tick's writes included. Declare read access to og.Transform.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world the entity lives in."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity, with og.Transform."
+            }
+          ],
+          "returns": "Result<Matrix4>",
+          "returnsDoc": "Refused for a dead entity, one without og.Transform, or a system that does not read og.Transform.",
+          "publish": true
+        },
+        {
           "name": "lookAt",
           "doc": "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. An object (a character, a vehicle) faces a target with og.transform.face.",
           "params": [
@@ -18759,7 +18780,7 @@
     "MatrixWorld": {
       "x-og-kind": "component",
       "x-og-module": "transform",
-      "description": "The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.",
+      "description": "The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. Other entities have none: read any entity's world matrix with og.transform.matrixWorld.",
       "type": "object",
       "properties": {
         "matrix": {

@@ -113,6 +113,19 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> Result<serde_js
     })()
 }
 
+/// og.transform.matrixWorld: the entity's og.Transform composed down its
+/// og.Parent chain, a bone attachment's posed frame included, as it stands.
+pub fn og_transform_matrix_world(world: u32, entity_id: f64) -> Result<glam::Mat4, String> {
+    // world.get's live-entity and read-access checks, on og.Transform.
+    og_world_get(world, entity_id, "og.Transform".into())?;
+    let e = entity(entity_id)?;
+    if let Some(f) = running(world) {
+        // SAFETY: the frame is published while its system runs.
+        return unsafe { f.ctx() }.matrix_world(e).map_err(err);
+    }
+    engine(world)?.world()?.matrix_world(e).map_err(err)
+}
+
 /// `world.get`/`world.set` inside a system on an entity whose column of
 /// `comp` a view of the system holds: the reason, naming the component, the
 /// entity (its name, else `#<index>.<generation>`) and the system, with the

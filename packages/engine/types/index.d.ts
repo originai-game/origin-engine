@@ -2512,7 +2512,7 @@ export interface Parent {
 }
 
 /**
- * The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.
+ * The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. Other entities have none: read any entity's world matrix with og.transform.matrixWorld.
  *
  * The value of the `MatrixWorld` component (token `og.MatrixWorld`).
  */
@@ -2657,6 +2657,7 @@ export interface OriginShifted {
    */
   readonly z: number;
 }
+
 
 
 
@@ -34885,7 +34886,7 @@ export declare namespace og {
   /** The entity this one's Transform is relative to. Set by SpawnDesc.parent. */
   const Parent: ComponentType<{ readonly entity: FieldSpec<"Entity"> }, Parent>;
   /**
-   * The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.
+   * The world matrix of an entity attached to a bone (og.BoneAttachment), written after og.anim poses it, as three.js Object3D.matrixWorld. Other entities have none: read any entity's world matrix with og.transform.matrixWorld.
    */
   const MatrixWorld: ComponentType<{ readonly matrix: FieldSpec<"Matrix4"> }, MatrixWorld>;
   /**
@@ -34919,6 +34920,14 @@ export declare namespace og {
      * @param matrix An affine matrix.
      */
     function decompose(matrix: Matrix4): Transform;
+    /**
+     * An entity's world matrix, as three.js Object3D.matrixWorld after updateMatrixWorld: its og.Transform composed with its parents' down the og.Parent chain (a bone attachment's posed bone included), from the values as they stand now, this tick's writes included. Declare read access to og.Transform.
+     *
+     * @param world The world the entity lives in.
+     * @param entity The entity, with og.Transform.
+     * @returns Refused for a dead entity, one without og.Transform, or a system that does not read og.Transform.
+     */
+    function matrixWorld(world: World, entity: Entity): Result<Matrix4>;
     /**
      * The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. An object (a character, a vehicle) faces a target with og.transform.face.
      *

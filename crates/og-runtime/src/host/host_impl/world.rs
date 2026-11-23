@@ -246,6 +246,9 @@ macro_rules! __og_host_bindings_world {
             fn og_transform_decompose(&self, matrix: String) -> String {
                 $crate::host_impl::json($crate::og_transform_decompose(matrix))
             }
+            fn og_transform_matrix_world(&self, world: u32, entity: f64) -> String {
+                $crate::host_impl::answer($crate::og_transform_matrix_world(world, entity))
+            }
             fn og_transform_look_at(
                 &self,
                 eye: String,
