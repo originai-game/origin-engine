@@ -10,10 +10,11 @@ use super::{
 };
 use og_render_data::{MaterialShader, ShaderMode};
 
-/// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL). The
+/// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL, HLSL). The
 /// engine also compiles it on the device and skips it, reported, when that
 /// fails.
 pub fn validate_post(post: &og_render_data::PostShader) -> Result<Vec<String>, String> {
+    use naga::back::hlsl;
     use naga::valid::{Capabilities, ValidationFlags, Validator};
     let src = og_render_data::post_module_source(post);
     let first = src
@@ -36,9 +37,21 @@ pub fn validate_post(post: &og_render_data::PostShader) -> Result<Vec<String>, S
         })?;
     naga::back::spv::write_vec(&module, &info, &Default::default(), None)
         .map_err(|e| format!("SPIR-V: {e}"))?;
-    naga::back::msl::write_string(&module, &info, &Default::default(), &Default::default())
+    let msl = naga::back::msl::Options {
+        lang_version: (2, 4),
+        ..Default::default()
+    };
+    naga::back::msl::write_string(&module, &info, &msl, &Default::default())
         .map_err(|e| format!("MSL: {e}"))?;
-    Ok(vec!["SPIR-V, MSL".to_string()])
+    let hlsl_opts = hlsl::Options {
+        shader_model: hlsl::ShaderModel::V6_0,
+        ..Default::default()
+    };
+    let mut out = String::new();
+    hlsl::Writer::new(&mut out, &hlsl_opts, &hlsl::PipelineOptions::default())
+        .write(&module, &info, None)
+        .map_err(|e| format!("HLSL: {e}"))?;
+    Ok(vec!["SPIR-V, MSL, HLSL".to_string()])
 }
 
 /// Compiles a UI material's composite module for every back end the
@@ -93,6 +106,7 @@ pub fn validate_ui_material(
 /// engine draws with. Returns what was compiled, or naga's message for the
 /// first that failed.
 pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
+    use naga::back::hlsl;
     use naga::back::pipeline_constants::process_overrides;
     use naga::valid::{Capabilities, ValidationFlags, Validator};
     // A full shader's casters run its code too (custom.rs).
@@ -107,6 +121,10 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     if matches!(shader.mode, ShaderMode::Full { .. }) {
         modules.push(og_render_data::shadow_module_source);
     }
+    let hlsl_opts = hlsl::Options {
+        shader_model: hlsl::ShaderModel::V6_0,
+        ..Default::default()
+    };
     for source in modules {
         let src = source(shader);
         let first = src
@@ -150,9 +168,13 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
             };
             naga::back::msl::write_string(&module, &info, &msl, &Default::default())
                 .map_err(|e| format!("MSL: {e}"))?;
+            let mut out = String::new();
+            hlsl::Writer::new(&mut out, &hlsl_opts, &hlsl::PipelineOptions::default())
+                .write(&module, &info, None)
+                .map_err(|e| format!("HLSL: {e}"))?;
         }
     }
-    Ok(vec!["SPIR-V, MSL".to_string()])
+    Ok(vec!["SPIR-V, MSL, HLSL".to_string()])
 }
 
 /// naga's report with `wgsl:<line>` locations inside the hooks (lines
@@ -411,9 +433,24 @@ mod tests {
         let s = parse_shader("crt", &full(CODE), &mut refuse).expect("parses");
         assert_eq!(s.mode, ShaderMode::Full { lit: false });
         let done = validate_shader(&s).expect("validates");
-        assert_eq!(done, ["SPIR-V, MSL"]);
+        assert_eq!(done, ["SPIR-V, MSL, HLSL"]);
         let again = parse_shader("crt", &shader_text(&s), &mut refuse).expect("round trip");
         assert_eq!(again, s);
+    }
+
+    #[test]
+    fn roughness_metalness_and_ao_hooks_validate_for_every_back_end() {
+        let code = "\
+fn surface_roughness(h: Hook, p: Params, r: f32) -> f32 { return clamp(r * p.wet, 0.04, 1.0); }
+fn surface_metalness(h: Hook, p: Params, m: f32) -> f32 { return clamp(m + p.metal, 0.0, 1.0); }
+fn surface_ao(h: Hook, p: Params, ao: f32) -> f32 { return ao * (1.0 - p.cavity * 0.5); }";
+        let text = format!(
+            "type shader\nversion 1\n---\ncode \"{}\"\nparam wet float 0.5\nparam metal float 0.2\nparam cavity float 0.3\n",
+            code.replace('\n', "\\n")
+        );
+        let s = parse_shader("pbr_hooks", &text, &mut refuse).expect("parses");
+        let done = validate_shader(&s).expect("validates");
+        assert_eq!(done, ["SPIR-V, MSL, HLSL"]);
     }
 
     /// A sprite shader validates against the sprite module, where
@@ -457,9 +494,12 @@ mod tests {
                 code.replace('\n', "\\n")
             )
         };
-        let code = "fn post(f: PostInput, p: Params) -> vec4<f32> {\n  let d = depth(f.uv) + normal(f.uv).x;\n  return previous(f.uv * (1.0 + p.curve)) + scene_color(f.uv) * 0.0 * d;\n}";
+        let code = "fn post(f: PostInput, p: Params) -> vec4<f32> {\n  let d = depth(f.uv) + normal(f.uv).x + (f.inv_view_proj * vec4<f32>(f.camera_pos, 1.0)).x * 0.0;\n  return previous(f.uv * (1.0 + p.curve)) + scene_color(f.uv) * 0.0 * d;\n}";
         let post = parse_post("crt", &text(code), &mut refuse).expect("parses");
-        assert_eq!(validate_post(&post).expect("validates"), ["SPIR-V, MSL"]);
+        assert_eq!(
+            validate_post(&post).expect("validates"),
+            ["SPIR-V, MSL, HLSL"]
+        );
         assert_eq!(
             parse_post("crt", &post_text(&post), &mut refuse).expect("again"),
             post

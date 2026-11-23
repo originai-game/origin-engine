@@ -596,3 +596,51 @@ fn a_script_gets_a_screenshot_at_its_last_step() {
         "3:screenshot;4:quit"
     );
 }
+
+#[test]
+fn a_skinned_model_under_a_scaled_armature_reports_bind_pose_texel_density() {
+    // A 1 m × 1 m right triangle mapped to a 1024 × 1024 texture (UV 0..1)
+    // has 1024 texels/m. Under an Armature scaled 0.01 (common FBX/Blender
+    // cm-to-m export), the node's world matrix has scale 0.01 while the
+    // bind pose (`skin_binds`) is identity (scale 1.0).
+    let mut m = model(1, 1, 0);
+    m.primitives[0].vertices[0].uv = [0.0, 0.0];
+    m.primitives[0].vertices[1].uv = [1.0, 0.0];
+    m.primitives[0].vertices[2].uv = [0.0, 1.0];
+    m.materials.push(og_cook::runtime::CookedMaterial {
+        name: "skin".into(),
+        base_color: [1.0; 4],
+        metallic: 0.0,
+        roughness: 1.0,
+        normal_scale: 1.0,
+        occlusion_strength: 1.0,
+        emissive: [0.0; 3],
+        alpha_mode: 0,
+        alpha_cutoff: 0.5,
+        double_sided: false,
+        base_color_texture: Some(0),
+        metallic_roughness_texture: None,
+        normal_texture: None,
+        emissive_texture: None,
+        occlusion_texture: None,
+        physical: Default::default(),
+        unlit: false,
+        translucency: 0.0,
+        dome_normals: 0.0,
+        season: Default::default(),
+        uv_transforms: Default::default(),
+    });
+    m.textures.push(og_cook::runtime::TextureRef {
+        id: "albedo.png".into(),
+        kind: 0,
+    });
+    m.nodes[0].scale = glam::Vec3::splat(0.01);
+    m.skin_binds.insert(0, glam::Mat4::IDENTITY);
+
+    let got = measure_model(&m, &|id| (id == "albedo.png").then_some((1024, 1024)));
+    let [median, _, _] = got.density.expect("textured density");
+    assert!(
+        (median - 1024.0).abs() < 1.0,
+        "expected ~1024 texels/m at bind pose, got {median}"
+    );
+}

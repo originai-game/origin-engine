@@ -12,7 +12,9 @@ fn vs(@builtin(vertex_index) i: u32) -> VsOut {
 
 struct PostUniform {
   params: array<vec4<f32>, 8>,
-  screen: vec4<f32>,  // xy: size in pixels, z: seconds
+  screen: vec4<f32>,          // xy: size in pixels, z: seconds
+  inv_view_proj: mat4x4<f32>, // clip -> render-origin-relative world
+  camera_pos: vec4<f32>,      // xyz: camera position (render-origin-relative), w: orthographic (1 or 0)
 };
 @group(0) @binding(0) var previous_tex: texture_2d<f32>;
 @group(0) @binding(1) var scene_tex: texture_2d<f32>;
@@ -22,10 +24,12 @@ struct PostUniform {
 @group(0) @binding(5) var<uniform> u: PostUniform;
 
 struct PostInput {
-  uv: vec2<f32>,     // 0..1 from the top left
-  pixel: vec2<f32>,  // the pixel's centre
-  size: vec2<f32>,   // the target's size in pixels
-  time: f32,         // the scene clock in seconds
+  uv: vec2<f32>,              // 0..1 from the top left
+  pixel: vec2<f32>,           // the pixel's centre
+  size: vec2<f32>,            // the target's size in pixels
+  time: f32,                  // the scene clock in seconds
+  inv_view_proj: mat4x4<f32>, // inverse view-projection matrix
+  camera_pos: vec3<f32>,      // camera position (render-origin-relative)
 };
 
 // The pass before this one (the lit image for the first), linear HDR.
@@ -61,6 +65,8 @@ fn fs_custom_post(in: VsOut) -> @location(0) vec4<f32> {
   f.pixel = in.pos.xy;
   f.size = u.screen.xy;
   f.time = u.screen.z;
+  f.inv_view_proj = u.inv_view_proj;
+  f.camera_pos = u.camera_pos.xyz;
   return post(f, post_params());
 }
 

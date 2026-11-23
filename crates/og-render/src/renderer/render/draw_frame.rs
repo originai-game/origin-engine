@@ -1470,6 +1470,11 @@ impl Renderer {
             CustomPostPlan {
                 scene,
                 posts: &effects.custom_posts,
+                inv_view_proj: cam.jittered_view_proj.inverse().to_cols_array_2d(),
+                camera_pos: camera
+                    .position
+                    .extend(if cam.orthographic { 1.0 } else { 0.0 })
+                    .to_array(),
             },
         );
         // The bind steps of the passes over the finished frame: into the

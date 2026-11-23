@@ -97,6 +97,10 @@ pub enum ModelError {
     Edit(EditError),
     /// A fillet, chamfer or soften refused.
     Bevel(BevelError),
+    /// A skin or rig operation refused.
+    Rig(crate::skin::RigError),
+    /// A morph target refused.
+    Morph(crate::mesh::MorphError),
     /// The scene could not be written.
     Export(ExportError),
     /// A clip is refused: its name, and why.
@@ -208,6 +212,8 @@ impl fmt::Display for ModelError {
             ModelError::Bool(e) => write!(f, "{e}"),
             ModelError::Edit(e) => write!(f, "{e}"),
             ModelError::Bevel(e) => write!(f, "{e}"),
+            ModelError::Rig(e) => write!(f, "{e}"),
+            ModelError::Morph(e) => write!(f, "{e}"),
             ModelError::Export(e) => write!(f, "{e}"),
             ModelError::Clip(name, why) => write!(f, "clip {name:?}: {why}"),
             ModelError::Atlas(e) => write!(f, "{e}"),
@@ -274,6 +280,18 @@ impl From<EditError> for ModelError {
 impl From<BevelError> for ModelError {
     fn from(e: BevelError) -> Self {
         ModelError::Bevel(e)
+    }
+}
+
+impl From<crate::skin::RigError> for ModelError {
+    fn from(e: crate::skin::RigError) -> Self {
+        ModelError::Rig(e)
+    }
+}
+
+impl From<crate::mesh::MorphError> for ModelError {
+    fn from(e: crate::mesh::MorphError) -> Self {
+        ModelError::Morph(e)
     }
 }
 

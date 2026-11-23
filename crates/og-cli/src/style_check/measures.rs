@@ -282,49 +282,52 @@ pub fn measure_model(
         let Some(mesh) = m.nodes[n].mesh.and_then(|i| m.meshes.get(i)) else {
             continue;
         };
-        for p in &m.primitives[mesh.primitives.clone()] {
-            out.faces += p.triangle_count(0) as u64;
-            let lod = p.lods[0];
-            let tris = &p.indices[lod.first..lod.first + lod.count];
-            let material = m.materials.get(p.material);
-            let tex = material
-                .and_then(|mat| mat.base_color_texture)
-                .and_then(|t| m.textures.get(t))
-                .and_then(|t| texture_size(&t.id));
-            let factor = material.map_or([1.0; 4], |mat| mat.base_color);
-            for t in tris.as_chunks::<3>().0 {
-                let v = [0, 1, 2].map(|k| &p.vertices[t[k] as usize]);
-                let pos = v.map(|x| glam::Vec3::from(x.position));
-                let face = (pos[1] - pos[0]).cross(pos[2] - pos[0]);
-                if face.length_squared() <= 1e-20 {
-                    continue;
-                }
-                let fnorm = face.normalize();
-                for x in &v {
-                    let vn = glam::Vec3::from(x.normal);
-                    if vn.length_squared() > 0.0 {
-                        corners += 1;
-                        if vn.normalize().dot(fnorm).abs() >= FLAT_COS {
-                            flat += 1;
+        for xf in m.node_draws(&world, n) {
+            for p in &m.primitives[mesh.primitives.clone()] {
+                out.faces += p.triangle_count(0) as u64;
+                let lod = p.lods[0];
+                let tris = &p.indices[lod.first..lod.first + lod.count];
+                let material = m.materials.get(p.material);
+                let tex = material
+                    .and_then(|mat| mat.base_color_texture)
+                    .and_then(|t| m.textures.get(t))
+                    .and_then(|t| texture_size(&t.id));
+                let factor = material.map_or([1.0; 4], |mat| mat.base_color);
+                for t in tris.as_chunks::<3>().0 {
+                    let v = [0, 1, 2].map(|k| &p.vertices[t[k] as usize]);
+                    let pos = v.map(|x| glam::Vec3::from(x.position));
+                    let face = (pos[1] - pos[0]).cross(pos[2] - pos[0]);
+                    if face.length_squared() <= 1e-20 {
+                        continue;
+                    }
+                    let fnorm = face.normalize();
+                    for x in &v {
+                        let vn = glam::Vec3::from(x.normal);
+                        if vn.length_squared() > 0.0 {
+                            corners += 1;
+                            if vn.normalize().dot(fnorm).abs() >= FLAT_COS {
+                                flat += 1;
+                            }
                         }
                     }
-                }
-                match tex {
-                    Some((tw, th)) => {
-                        let wp = pos.map(|q| world[n].transform_point3(q));
-                        let area = f64::from((wp[1] - wp[0]).cross(wp[2] - wp[0]).length()) / 2.0;
-                        let uv = v.map(|x| glam::Vec2::from(x.uv));
-                        let (a, b) = (uv[1] - uv[0], uv[2] - uv[0]);
-                        let uv_area = f64::from((a.x * b.y - a.y * b.x).abs()) / 2.0;
-                        if area > 1e-12 && uv_area > 0.0 {
-                            let d = (uv_area * f64::from(tw) * f64::from(th) / area).sqrt();
-                            densities.push((d, area));
+                    match tex {
+                        Some((tw, th)) => {
+                            let wp = pos.map(|q| xf.transform_point3(q));
+                            let area =
+                                f64::from((wp[1] - wp[0]).cross(wp[2] - wp[0]).length()) / 2.0;
+                            let uv = v.map(|x| glam::Vec2::from(x.uv));
+                            let (a, b) = (uv[1] - uv[0], uv[2] - uv[0]);
+                            let uv_area = f64::from((a.x * b.y - a.y * b.x).abs()) / 2.0;
+                            if area > 1e-12 && uv_area > 0.0 {
+                                let d = (uv_area * f64::from(tw) * f64::from(th) / area).sqrt();
+                                densities.push((d, area));
+                            }
                         }
-                    }
-                    None => {
-                        for x in &v {
-                            let c = [0, 1, 2].map(|k| srgb8(x.color[k] * factor[k]));
-                            *out.colours.entry(c).or_insert(0) += 1;
+                        None => {
+                            for x in &v {
+                                let c = [0, 1, 2].map(|k| srgb8(x.color[k] * factor[k]));
+                                *out.colours.entry(c).or_insert(0) += 1;
+                            }
                         }
                     }
                 }

@@ -42,7 +42,8 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.eye = frame.view_pos.xyz;
   hook.front = hook_front;
   hook.wind = frame.foliage_wind[0][0];
-  let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
+  let params = shader_params();
+  let base = surface_color(hook, params, material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(uv, in.local_pos).w > 0.5;
   // An instance fading in: the pixels the lit pass cuts (instance.wgsl
   // `dither_cut`), from the bits `outline_object` put above its id.
@@ -64,8 +65,8 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
   let unlit = (u32(material.flags.w) & 2u) != 0u;
-  var metalness = material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv).b;
-  var roughness = material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv).g;
+  var metalness = clamp(surface_metalness(hook, params, material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv).b), 0.0, 1.0);
+  var roughness = clamp(surface_roughness(hook, params, material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv).g), 0.04, 1.0);
   // Wet ground, streaks and puddles as the lit pass shades them
   // (weather_surface.wgsl weather_gloss): reflections see the puddles as
   // mirrors and their ripples, and the normal is the water's.
