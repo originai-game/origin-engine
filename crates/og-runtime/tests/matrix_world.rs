@@ -53,7 +53,11 @@ fn a_childs_world_matrix_composes_its_parents() {
     og_host_begin_bundle();
     let component = |name: &str| json!({ "kind": "component", "name": name });
     let reads = json!({ "reads": [component("og.Transform"), component("og.Parent")] });
-    let systems = [og_system_define_system("Read".into(), reads.to_string(), READ)];
+    let systems = [og_system_define_system(
+        "Read".into(),
+        reads.to_string(),
+        READ,
+    )];
     let game = og_game_game(Some(json!({ "seed": 1, "systems": systems }).to_string()));
     let w = value(og_engine_create(game, json!({}).to_string()))
         .as_u64()
@@ -70,19 +74,30 @@ fn a_childs_world_matrix_composes_its_parents() {
     .unwrap();
     og_world_spawn(
         w,
-        Some(json!({ "name": "pod", "parent": boss, "position": {"x": 1, "y": 0, "z": 0.5} }).to_string()),
+        Some(
+            json!({ "name": "pod", "parent": boss, "position": {"x": 1, "y": 0, "z": 0.5} })
+                .to_string(),
+        ),
     )
     .unwrap();
     for _ in 0..3 {
         value(og_engine_frame(w, 1000.0 / 60.0));
     }
     let expected = [0.0, 0.0, 0.0];
-    let inside = SEEN.with(|s| s.borrow().clone()).expect("the system read the pod");
+    let inside = SEEN
+        .with(|s| s.borrow().clone())
+        .expect("the system read the pod");
     let pod = og_world_find(w, "pod".into()).unwrap() as f64;
-    for (when, at) in [("inside the system", inside), ("between ticks", place(w, pod))] {
+    for (when, at) in [
+        ("inside the system", inside),
+        ("between ticks", place(w, pod)),
+    ] {
         for (axis, want) in ["x", "y", "z"].iter().zip(expected) {
             let got = at[axis].as_f64().unwrap();
-            assert!((got - want).abs() < 1e-5, "{when}: {axis} is {got}, not {want} ({at})");
+            assert!(
+                (got - want).abs() < 1e-5,
+                "{when}: {axis} is {got}, not {want} ({at})"
+            );
         }
     }
 }
