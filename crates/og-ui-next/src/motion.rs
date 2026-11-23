@@ -87,6 +87,9 @@ pub enum Keyframes {
     Shimmer,
     /// Ours: in from opacity 0, rising from 12 px below (a list's row).
     Rise,
+    /// Ours: gathers to 1.08× over its first 40% (eased in, the charge),
+    /// jumps to 1.15× and settles back to its size (the burst's pop).
+    Charge,
 }
 
 /// `animate-*` and how it is timed (the class resolver's presets, or
@@ -835,6 +838,14 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
             *o *= q.clamp(0.0, 1.0);
             shift[1] = lerp(12.0, 0.0, q);
         }
+        K::Charge => {
+            scale = if p < 0.4 {
+                let q = p / 0.4;
+                lerp(1.0, 1.08, q * q)
+            } else {
+                lerp(1.15, 1.0, ez((p - 0.4) / 0.6))
+            }
+        }
     }
     if !reduced {
         let t = &mut s.transform;
@@ -1139,6 +1150,25 @@ mod tests {
         let turn = m.skin(1, &r.skin).transform.rotate;
         assert!((turn - std::f32::consts::FRAC_PI_2).abs() < 1e-3, "{turn}");
         assert!(m.tick_at(10.0), "forever");
+
+        // A charge gathers a little, then jumps past it and settles: it is
+        // never at the burst's 1.15 while it charges.
+        let mut m = Motion::new();
+        let mut charge = looping(Keyframes::Charge, 1.0, Some(1));
+        charge.animate.as_mut().unwrap().ease = LINEAR;
+        let r = with(charge, |_| {});
+        m.enter(3, &r, None::<&R>);
+        m.tick_at(0.0);
+        let at = |m: &mut Motion, t: f64| {
+            m.tick_at(t);
+            m.skin(3, &r.skin).transform.scale[0]
+        };
+        let gathering = at(&mut m, 0.3);
+        assert!(gathering > 1.0 && gathering < 1.08, "{gathering}");
+        let burst = at(&mut m, 0.41);
+        assert!(burst > 1.13, "{burst}");
+        let settling = at(&mut m, 0.8);
+        assert!(settling < burst && settling > 1.0, "{settling}");
 
         let mut m = Motion::new();
         let beat = looping(Keyframes::Beat, 0.4, Some(1));

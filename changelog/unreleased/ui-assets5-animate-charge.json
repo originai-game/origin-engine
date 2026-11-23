@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "animate-charge",
+      "summary": "`animate-charge`: a one-shot keyframe animation that gathers to 1.08× over its first 40%, jumps to 1.15× and settles back to its size (0.6 s), a reveal's charge and pop on the thing revealed."
+    }
+  ]
+}

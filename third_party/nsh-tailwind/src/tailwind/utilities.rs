@@ -1890,6 +1890,7 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "animate-float" => Decl::Part(Part::Animate(Some(Keyframes::Float))),
         "animate-shimmer" => Decl::Part(Part::Animate(Some(Keyframes::Shimmer))),
         "animate-rise" => Decl::Part(Part::Animate(Some(Keyframes::Rise))),
+        "animate-charge" => Decl::Part(Part::Animate(Some(Keyframes::Charge))),
         // Interactivity.
         "pointer-events-none" => Decl::Set(
             K::PointerEvents,
@@ -3224,12 +3225,14 @@ fn preset(keyframes: Keyframes) -> KeyframeAnimation {
         | Keyframes::Beat
         | Keyframes::Float
         | Keyframes::Shimmer
-        | Keyframes::Rise => {
+        | Keyframes::Rise
+        | Keyframes::Charge => {
             let (duration, easing, iterations) = match keyframes {
                 Keyframes::Rise => (320.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 Keyframes::Pop => (520.0, [0.34, 1.3, 0.64, 1.0], Some(1)),
                 Keyframes::Stamp | Keyframes::Beat => (400.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 Keyframes::Float => (800.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
+                Keyframes::Charge => (600.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 _ => (1400.0, [0.42, 0.0, 0.58, 1.0], None),
             };
             KeyframeAnimation {

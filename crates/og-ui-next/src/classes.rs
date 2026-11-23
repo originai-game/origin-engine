@@ -909,6 +909,7 @@ fn motion_of(style: &Style) -> motion::Spec {
             Keyframes::Float => motion::Keyframes::Float,
             Keyframes::Shimmer => motion::Keyframes::Shimmer,
             Keyframes::Rise => motion::Keyframes::Rise,
+            Keyframes::Charge => motion::Keyframes::Charge,
         },
         duration: a.duration / 1000.0,
         delay: a.delay / 1000.0,
@@ -1128,7 +1129,7 @@ mod tests {
             None
         );
         assert!(
-            c.unknown("animate-pop animate-stamp animate-float animate-wobble")
+            c.unknown("animate-pop animate-stamp animate-float animate-charge animate-wobble")
                 == ["animate-wobble"]
         );
         // `starting:` and `exit:` give the entering and leaving records.

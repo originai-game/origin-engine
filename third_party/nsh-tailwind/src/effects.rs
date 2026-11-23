@@ -1070,6 +1070,9 @@ pub enum Keyframes {
     Shimmer,
     /// In from transparent, rising from 12 px below (a list's row).
     Rise,
+    /// Gathers to 1.08× over its first 40%, jumps to 1.15× and settles
+    /// back to its size (a reveal's charge and burst).
+    Charge,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.
