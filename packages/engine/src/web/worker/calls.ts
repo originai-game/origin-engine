@@ -163,13 +163,7 @@ export function callsOf(run: Run): Calls {
       const call = () => (f as (...a: unknown[]) => unknown)(...rest);
       // While the game plays, a capture is the frame the player sees next (its history, the display's render scale).
       // While a harness steps the frames (`frame`), the probe's calls are the script's too: a capture is a reference.
-      if (run.playing) return call();
-      run.glue!.og_web_frame_kind(e.id, "scripted");
-      try {
-        return call();
-      } finally {
-        run.glue!.og_web_frame_kind(e.id, "display");
-      }
+      return run.probeCall(call);
     },
   };
 }

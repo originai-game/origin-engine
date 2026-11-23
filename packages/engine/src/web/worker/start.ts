@@ -190,7 +190,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
         (e: unknown) => ({ tier: "none", error: e instanceof Error ? e.message : String(e) }),
       );
       if (attached.error !== null) {
-        if (/^no (GPU|WebGPU) adapter/.test(attached.error)) return self.postMessage({ type: "unsupported", reason: attached.error });
+        if (/^no (GPU|WebGPU) adapter/.test(attached.error)) return self.postMessage({ type: "unsupported", reason: "the browser found no WebGPU adapter" });
         throw new Error(`WebGPU did not start: ${attached.error}`);
       }
       tier = attached.tier;

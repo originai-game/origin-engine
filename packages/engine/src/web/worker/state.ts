@@ -194,6 +194,8 @@ function waitOf(frame: string): number {
 export interface ProbeRun {
   /** The engine once it started. */
   engine(): Engine | null;
+  /** A request under the run's display or scripted capture policy. */
+  call(frame: string): string;
   /** Whether a renderer is attached (a capture's readback then lands on a later frame). */
   rendering(): boolean;
   /** The engine failed serving a request. */
@@ -248,7 +250,7 @@ export class ProbeRequests {
     let out: string;
     try {
       // A probe call that renders (capture, sweep) waits for the pipelines it meets (og-render gpu/deferred.rs).
-      out = engine.call(frame);
+      out = this.#run.call(frame);
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       this.refuse(frame, message, viaRing);
@@ -267,7 +269,7 @@ export class ProbeRequests {
     if (!engine) return;
     for (let i = this.#retries.length - 1; i >= 0; i--) {
       const r = this.#retries[i]!;
-      const out = engine.call(r.frame);
+      const out = this.#run.call(r.frame);
       if (!isPendingCapture(r.frame, out) || performance.now() >= r.until) {
         this.#retries.splice(i, 1);
         this.#answer(out, r.viaRing);

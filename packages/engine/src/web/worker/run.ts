@@ -79,7 +79,18 @@ export class Run {
 
   /** `schedule` asks for a display frame (the frame loop's). */
   constructor(schedule: () => void) {
-    this.probes = new ProbeRequests({ engine: () => this.engine, rendering: () => this.rendering, crash: (message) => this.crash(message), schedule }, post);
+    this.probes = new ProbeRequests({ engine: () => this.engine, call: (frame) => this.probeCall(() => this.engine!.call(frame)), rendering: () => this.rendering, crash: (message) => this.crash(message), schedule }, post);
+  }
+
+  /** A playing page captures its display history; a harness captures a settled reference, on every request and retry. */
+  probeCall<T>(call: () => T): T {
+    if (this.playing) return call();
+    this.glue!.og_web_frame_kind(this.engine!.id, "scripted");
+    try {
+      return call();
+    } finally {
+      this.glue!.og_web_frame_kind(this.engine!.id, "display");
+    }
   }
 
   /** A line of the console or the engine's log, to the shell (the crash card's last lines). */
