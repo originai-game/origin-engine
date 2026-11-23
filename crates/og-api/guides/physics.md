@@ -537,7 +537,7 @@ things most.
 
 Fracture is cooked, never computed at run time (`determinism §4`):
 
-1. Add a `fracture { }` block at the top of a `type model`, or in a glTF's
+1. Add a `fracture` block at the top of a `type model`, or in a glTF's
    import settings, with a `style` (brick, concrete, wood, glass). The cook
    cuts the model into Voronoi chunks bonded where they touch, and anchors
    the chunks resting on its floor to the world.

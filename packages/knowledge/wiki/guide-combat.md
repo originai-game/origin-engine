@@ -55,7 +55,7 @@ scale is 0 (a hit stop) nothing advances and no link is taken; the buffer
 keeps the press.
 
 **Each swing strikes once.** Every move started counts a `swing`, written to
-the attacker's volumes with `owner` and `active`; og.systems.play reports a
+the attacker's volumes with `owner` and `active`; og.systems.combat counts a
 volume's hit on a target once a swing, so a move cannot take damage twice
 from one target however long its active window is.
 

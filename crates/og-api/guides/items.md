@@ -1,6 +1,6 @@
 # Items: containers, stacks, pickups, crafting and loot
 
-How og.systems.inventory keeps items: containers of slots, stacks limited by the item table, moves that are all or nothing, pickups taken through a sensor, crafting and loot tables. Read before building a backpack, a chest, a shop, a crafting bench or loot drops. The item rows themselves are tables (`data`); sensors are `physics` §5; the screens are `panels/backpack`, `panels/crafting` and `panels/loot`.
+How og.systems.inventory keeps items: containers of slots, stacks limited by the item table, moves that are all or nothing, pickups taken through a sensor, crafting and loot tables. Read before building a backpack, a chest, a shop, a crafting bench or loot drops. The item rows themselves are tables (`data`); sensors are `physics §5`; the screens are `panels/backpack`, `panels/crafting` and `panels/loot`.
 
 The API: `og api show inventory`.
 

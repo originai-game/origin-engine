@@ -232,17 +232,17 @@ it once. Read state before guessing at it:
 const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 16.6 }, gpuPasses: { main: { p95: 6 } } } });
 ```
 
-- A restart is checked with `restart: { at }`: the script restarts the
+- A restart is checked with the playtest's `restart` option, `{ at }`: the script restarts the
   game so the restart runs in the tick at `at` seconds, and the world
   after that tick must be a fresh start's after its first tick. Both sides
   ran exactly one tick of their game: the restart's tick is the new game's
   first. The comparison is structural. Entities pair by name, then in spawn
   order within their component set; every handle field reads through that
   pairing; the entity allocator (generations, free list) and the clock
-  (og.Time, og.TimeScale.elapsed) are left out. Despawning everything and
+  (og.Time and the time scale) are left out. Despawning everything and
   spawning it again is a restart, as is resetting in place. A difference
   fails the playtest with its first one by entity path
-  (`run.restart.first`: `level/hero Health.hp is 3, a fresh start's 10`,
+  (`run.restart.first`: `level/hero Hp.now is 3, a fresh start's 10`,
   `entity #7.1 is not in a fresh start (1 extra in all)`) and the whole
   diff (`run.restart.diff`). Every module's state compares by entity
   through the same pairing: og.physics's bodies, colliders and joints,
@@ -291,7 +291,7 @@ from its own on. Their forms:
 
 - A value written `$<path>` is another path of the same source, read when
   the expectation is evaluated: `state:coins<=$total`,
-  `entity:hero:Health.hp<=$Health.max`.
+  `entity:hero:Hp.now<=$Hp.max`.
 - A failed `expect` is a warning with the tick and the observed value;
   `og run --json` lists every result and exits 1 on a failure. A failed
   `invariant` is an assertion violation (og.assert's report, the probe's

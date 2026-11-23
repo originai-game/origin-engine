@@ -576,7 +576,7 @@ entity "house-12" {
 - Conditions read blackboard keys (declared, set by actions or og.ai.set,
   or built in: self, position, sees, heard, target, targetPosition,
   targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the
-  agent's component fields (`Health.hp`) and resource fields
+  agent's component fields (`Hp.now`) and resource fields
   (`Game.alarm`), and compare with a literal or another key or field read
   each time (`check Foe.hp below Tuning.fleeHp`): keep thresholds in a
   tuning resource so they are tuned without editing behaviours.

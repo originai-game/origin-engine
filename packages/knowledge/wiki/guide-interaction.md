@@ -2,7 +2,7 @@
 
 # The `interaction` guide: Interaction: focus, use, hold, doors, switches and carrying
 
-How og.systems.interact picks what the player can use, uses it on a press or a hold, opens doors with their navmesh links, flips levers and pressure plates, and picks things up to throw. Read before building an adventure's "press E", a puzzle's switches or a physics game's carrying. The candidates themselves are og.play.candidates; buffered presses are in `input`; sensors in `physics` §5; navmesh links in `og api show nav`.
+How og.systems.interact picks what the player can use, uses it on a press or a hold, opens doors with their navmesh links, flips levers and pressure plates, and picks things up to throw. Read before building an adventure's "press E", a puzzle's switches or a physics game's carrying. The candidates themselves are og.play.candidates; buffered presses are in `input`; sensors in `physics §5`; navmesh links in `og api show nav`.
 
 The API: `og api show interact`, `og api show play`.
 
