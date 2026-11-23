@@ -99,9 +99,10 @@ fn saved_depth(at: vec2<i32>) -> f32 {
   return textureSampleLevel(previous_depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
 }
 
-// Do not interpolate a foreground's history with a farther surface. A
-// closer history can carry sub-scene-pixel foreground missed this frame;
-// whole-footprint occlusion is checked separately before this filter.
+// Interpolate only taps on the reprojected surface. The closest current
+// foreground supplies its depth even when jitter misses a thin feature
+// at the colour sample; accepting any closer history would also retain
+// an occluder that just moved away from that foreground.
 fn history_on_surface(uv: vec2<f32>, expected_uv: vec2<f32>, expected: f32,
                       catmull_rom: bool, current_sample: vec4<f32>) -> vec4<f32> {
   let size = vec2<f32>(textureDimensions(history));
@@ -131,7 +132,7 @@ fn history_on_surface(uv: vec2<f32>, expected_uv: vec2<f32>, expected: f32,
       let right = vec2<f32>(saved_depth(at + vec2<i32>(1, 0)) - d, saved_depth(at + vec2<i32>(0, 1)) - d);
       let slope = select(vec2<f32>(0.0), min(abs(left), abs(right)), left * right > vec2<f32>(0.0));
       let distance = abs(vec2<f32>(at) + 0.5 - (expected_uv * scene_size + taa.previous_jitter.xy));
-      if (d > expected + dot(slope, distance) + DEPTH_ROUNDOFF) { continue; }
+      if (abs(d - expected) > dot(slope, distance) + DEPTH_ROUNDOFF) { continue; }
       let c = textureLoad(history, q, 0);
       colour += c.rgb * weight;
       total += weight;

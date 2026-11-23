@@ -215,6 +215,14 @@ mod web {
                 true,
             ),
             ("fractional pan half with prepass", 0.5, 0.5, true, 0, false),
+            (
+                "fractional uncover half with prepass",
+                0.5,
+                0.25,
+                true,
+                14,
+                false,
+            ),
         ] {
             let uncover = uncover_pixels > 0;
             let mut scene = RenderScene::new();
@@ -274,6 +282,12 @@ mod web {
                 let cover = scene.objects.instances.last_mut().unwrap();
                 cover.transform.w_axis.x = -2.5;
                 cover.transform.w_axis.z = 1.0;
+                if pan > 0.0 {
+                    // Put the old edge at x=62. Its depth footprint
+                    // spans the cover and background, so whole-footprint
+                    // rejection deliberately leaves the per-tap test.
+                    cover.transform.w_axis.x -= 2.0 * (5.0 / 64.0);
+                }
             }
             let mut renderer = Renderer::new(&RenderDesc {
                 width: 256,
@@ -314,7 +328,12 @@ mod web {
             }
             renderer.reset_history();
             for frame in 0_u32..88 {
-                let x = frame.saturating_sub(64) as f32 * 0.09375 * pan;
+                let step = if uncover && pan > 0.0 {
+                    u32::from(frame == 87)
+                } else {
+                    frame.saturating_sub(64)
+                };
+                let x = step as f32 * 0.09375 * pan;
                 scene.frame.camera.position.x = x;
                 scene.frame.camera.target.x = x;
                 if uncover {
@@ -355,6 +374,20 @@ mod web {
                 return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
             }
             if uncover {
+                if pan > 0.0 {
+                    // The last-frame quarter-pixel pan puts this bar at
+                    // x=62.75, fully covering pixel 62. The moving cover
+                    // is now fourteen pixels away; its old history tap
+                    // must not dilute the uncovered red foreground.
+                    let pixel = &image.pixels[(64 * 256 + 62) * 4..][..4];
+                    if !(pixel[0] > 188 && pixel[1] < 188 && pixel[2] < 188) {
+                        return Err(err(format!(
+                            "TAAU {name}: uncovered foreground retained the occluder at (62,64): {pixel:?}"
+                        )));
+                    }
+                    checked += 1;
+                    continue;
+                }
                 if corners {
                     let pixel = &image.pixels[(64 * 256 + 74) * 4..][..4];
                     if !(pixel[0] > 188 && pixel[1] < 188 && pixel[2] < 188) {
