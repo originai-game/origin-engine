@@ -70,6 +70,9 @@ function start(world: World): void {
   lock.enabled = true;
   lock.players = 2;
   lock.hashEveryTicks = 10;
+  // The room waits for a slow peer however long it is silent: a host
+  // starved for 5 s (a loaded gate) must not drop a seat and change the game.
+  lock.stallTimeoutMs = 0;
   for (const player of [0, 1]) {
     must(world.insert(must(world.spawn({ name: `cursor-${player}` })), Cursor, { player }));
     for (const index of [0, 1, 2]) must(world.insert(must(world.spawn({ name: `unit-${player}-${index}` })), Unit, { owner: player, index }));

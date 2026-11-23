@@ -17,12 +17,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type GameToken } from "../src/runtime.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 const project = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tests", "fixtures", "inventory-chest");
 const fixture = (await import(join(project, "src", "main.ts"))) as typeof import("../../../tests/fixtures/inventory-chest/src/main.ts");
 
 beforeAll(() => {
   loadNativeHost();
+  // The fixture's cooked/ is not tracked: cooked here, as og test cooks it.
+  cookProject(project, join(project, "..", "..", ".."));
 });
 
 const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
