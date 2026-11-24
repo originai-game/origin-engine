@@ -1,4 +1,5 @@
-//! G2-3's PBD soft volumes (og.SoftBody) are world state.
+//! XPBD soft volumes (og.SoftBody) are deterministic world state,
+//! including centroid-fan hydrostatic constraints far from the origin.
 //!
 //! Ways this could fail, each caught below: the points are not world state,
 //! so a restore mid-fall lands differently; two runs differ.
@@ -34,11 +35,12 @@ fn soft_volumes_are_world_state_identical_across_runs_and_after_a_restore() {
         let a = ball(&mut w, 3.0, SoftBody::default());
         let b = w
             .spawn((
-                rotated(at(0.4, 4.5, 0.3), Quat::from_rotation_y(0.7)),
+                rotated(at(1024.4, 4.5, -2047.7), Quat::from_rotation_y(0.7)),
                 SoftBody {
                     shape: SOFT_BOX,
                     size: Vec3::new(0.8, 0.5, 0.6),
-                    detail: 3,
+                    detail: 1,
+                    tetra_stiffness: 50000.0,
                     ..SoftBody::default()
                 },
             ))
@@ -56,6 +58,13 @@ fn soft_volumes_are_world_state_identical_across_runs_and_after_a_restore() {
     let mid = w1.snapshot();
     run(&mut w1, 100);
     let end = points(&p1, a, b);
+    assert!(
+        end.0
+            .points
+            .iter()
+            .chain(&end.1.points)
+            .all(|p| p.is_finite())
+    );
     let (mut w2, p2, a2, b2) = start();
     run(&mut w2, 150);
     assert_eq!(points(&p2, a2, b2), end, "two runs differ");

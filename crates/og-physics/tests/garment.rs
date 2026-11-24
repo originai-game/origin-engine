@@ -43,11 +43,21 @@ fn cape() -> (GarmentRig, Vec<Vec3>) {
 
 /// The skin's pose at `tick`: the cape on a body that sways along z.
 fn pose(rest: &[Vec3], tick: u64, at: Vec3) -> GarmentPose {
-    let sway = Vec3::new(0.0, 0.0, og_core::math::sin(tick as f32 * 0.15) * 0.6);
+    let sway = Vec3::new(
+        if tick >= 60 { 3.0 } else { 0.0 },
+        0.0,
+        og_core::math::sin(tick as f32 * 0.15) * 0.6,
+    );
     GarmentPose {
         targets: rest.iter().map(|p| *p + at + sway).collect(),
         normals: vec![Vec3::NEG_Z; rest.len()],
         scale: 1.0,
+        capsules: vec![GarmentCapsule {
+            a: at + sway + Vec3::new(0.3, 0.3, 0.0),
+            b: at + sway + Vec3::new(0.3, 1.0, 0.0),
+            radius_a: 0.22,
+            radius_b: 0.25,
+        }],
     }
 }
 
@@ -61,6 +71,15 @@ fn world(settings: Physics) -> (World, PhysicsSystem) {
 fn walk(w: &mut World, p: &PhysicsSystem, e: Entity, rest: &[Vec3], at: Vec3, ticks: u64) {
     for _ in 0..ticks {
         let tick = w.time().tick;
+        let mut garment = w.get::<Garment>(e).unwrap();
+        garment.substeps = if tick < 30 {
+            1
+        } else if tick < 70 {
+            4
+        } else {
+            2
+        };
+        w.insert(e, garment).unwrap();
         p.set_garment_pose(e, pose(rest, tick, at));
         w.step().unwrap();
     }
@@ -71,7 +90,16 @@ fn garments_are_world_state_identical_across_runs_and_after_a_restore() {
     let (rig, rest) = cape();
     let start = || {
         let (mut w, p) = world(Physics::default());
-        let e = w.spawn((Garment::default(),)).unwrap();
+        let e = w
+            .spawn((Garment {
+                backstop_radius: 0.3,
+                teleport_distance: 2.0,
+                drag: 0.1,
+                lift: 0.05,
+                wind: Vec3::new(0.0, 0.0, -1.0),
+                ..Garment::default()
+            },))
+            .unwrap();
         p.set_garment_rig(e, 42, rig.clone()).unwrap();
         (w, p, e)
     };
@@ -80,6 +108,7 @@ fn garments_are_world_state_identical_across_runs_and_after_a_restore() {
     let mid = w1.snapshot();
     walk(&mut w1, &p1, e, &rest, Vec3::ZERO, 60);
     let end = p1.garment_points(e).unwrap();
+    assert!(end.points.iter().all(|p| p.is_finite()));
     // It moved off the skin: the hem swings.
     let off = end
         .points

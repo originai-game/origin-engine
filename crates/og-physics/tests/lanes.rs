@@ -7,7 +7,7 @@
 //! Ways this could fail, each of which a test here would catch: a soft
 //! body stepped from another one's state or in a different order of its
 //! passes (the hashes differ); a fluid's neighbour pairs joined out of
-//! particle order (the relaxation, Gauss-Seidel over them, differs); a
+//! particle order (the Jacobi gathers differ); a
 //! query reaching rayon's global pool or another thread (the calling thread
 //! is left in no pool); a panic in a query lost or attributed to a lane.
 //!
@@ -79,9 +79,22 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
         for i in 0..48 {
             let x = -6.0 + (i % 12) as f32;
             let z = -2.0 + (i / 12) as f32;
+            let end = if i % 3 == 0 {
+                w.spawn((at(x + 0.4, 2.0, z),)).unwrap()
+            } else {
+                w.spawn((
+                    at(x + 0.4, 2.0, z),
+                    RigidBody::dynamic(),
+                    Collider::sphere(0.1),
+                    Velocity::default(),
+                ))
+                .unwrap()
+            };
             w.spawn((
                 at(x, 3.5, z),
                 Rope {
+                    end: end.to_bits(),
+                    coupling: true,
                     wind: Vec3::new(0.5, 0.0, 0.2),
                     ..Rope::default()
                 },
@@ -92,6 +105,10 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
             w.spawn((
                 at(-8.0 + i as f32, 2.5, 3.0),
                 Cloth {
+                    bending: 2.0,
+                    tether: 10000.0,
+                    drag: 0.08,
+                    lift: 0.04,
                     pins: if i % 2 == 0 { PIN_TOP } else { PIN_TOP_CORNERS },
                     thickness: if i % 4 == 0 { 0.05 } else { 0.0 },
                     wind: Vec3::new(0.0, 0.0, 1.0),
@@ -102,9 +119,14 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
         }
         for (i, count) in [3000u32, 1200, 1200, 600].into_iter().enumerate() {
             w.spawn((
-                at(-6.0 + 4.0 * i as f32, 1.5, -6.0),
+                at(if i == 3 { 2.55 } else { -6.0 + 4.0 * i as f32 }, 1.5, -6.0),
                 Fluid3D {
                     count,
+                    solver_iterations: 4,
+                    viscosity: 4.0,
+                    vorticity: 0.02,
+                    mixing: 0.4,
+                    density: 1.0 + i as f32 * 0.3,
                     bounds: Vec3::new(3.0, 6.0, 3.0),
                     group: if i >= 2 { 1 } else { 0 },
                     ..Fluid3D::default()
@@ -120,8 +142,12 @@ fn many_soft_bodies_split_and_off_the_lanes_end_in_the_same_world() {
         floor(&mut w);
         for i in 0..6 {
             w.spawn((
-                at(-12.0 + 5.0 * i as f32, 2.0, 0.0),
+                at(if i == 5 { 8.6 } else { -12.0 + 5.0 * i as f32 }, 2.0, 0.0),
                 Fluid2D {
+                    solver_iterations: 4,
+                    viscosity: 4.0,
+                    vorticity: 0.02,
+                    mixing: 0.4,
                     count: if i == 0 { 2600 } else { 700 },
                     size: Vec2::new(3.0, 3.0),
                     bounds: Vec2::new(4.5, 8.0),

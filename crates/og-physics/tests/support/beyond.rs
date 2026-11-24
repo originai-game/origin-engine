@@ -212,6 +212,10 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
             Cloth {
                 columns: 8,
                 rows: 8,
+                bending: 2.0,
+                tether: 10000.0,
+                drag: 0.05,
+                lift: 0.02,
                 wind: Vec3::new(0.0, 0.0, 6.0),
                 ..Cloth::default()
             },
@@ -299,6 +303,9 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
     );
     let fluid = |density: f32, seed: u32| Fluid3D {
         count: 200,
+        solver_iterations: 3,
+        viscosity: 4.0,
+        vorticity: 0.01,
         size: Vec3::new(0.8, 0.6, 0.8),
         group: 1,
         density,
