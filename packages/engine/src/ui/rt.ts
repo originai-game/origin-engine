@@ -25,7 +25,7 @@ import {
 
 const TAGS: Record<string, number> = { view: 0, text: 1, image: 2, scroll: 3, input: 4, icon: 5, line: 6, particles: 7 };
 /** Event codes (§Ops) and the handler props they call. */
-const EVENTS = ["onPress", "onTap", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel", "onFocus", "onBlur", "onKey", "onChange", "onAction", "onLongPress", "onHold", "onDragStart", "onDragMove", "onDragEnd", "onDrop", "onPinch", "onRotate", "onSwipe", "onContextMenu"] as const;
+const EVENTS = ["onPress", "onTap", "onPointerDown", "onPointerMove", "onPointerUp", "onWheel", "onFocus", "onBlur", "onKey", "onChange", "onAction", "onLongPress", "onHold", "onDragStart", "onDragMove", "onDragEnd", "onDrop", "onPinch", "onRotate", "onSwipe", "onContextMenu", "onScroll"] as const;
 const EVENT_CODE = new Map<string, number>(EVENTS.map((name, code) => [name, code]));
 const APPEND = 0xffff_ffff;
 
@@ -80,6 +80,8 @@ export class Renderer {
   private readonly owners = new Map<number, unknown>();
   /** Each node's children as the renderer put them, to free their ids with it. */
   private readonly kids = new Map<number, Set<number>>();
+  /** Each `Scroll`'s built-in bar track. */
+  private readonly bars = new Map<number, number>();
   private readonly parents = new Map<number, number>();
   /** Each node's host tag (`#text` for a text run), so a text run outside a <Text> is refused. */
   private readonly tags = new Map<number, string>();
@@ -143,7 +145,32 @@ export class Renderer {
     const node = this.alloc();
     this.tags.set(node.id, tag);
     this.op(1); this.u32(node.id); this.u8(code);
+    if (tag === "scroll") this.scrollbar(node);
     return node;
+  }
+  /**
+   * A `Scroll`'s own bar (NSH base's built-in bars): a track pinned over
+   * its edge, drawn by the pack (`Scrollbar.track`, `Scrollbar.thumb`),
+   * whose thumb the tree sizes and moves with the scroll; `scrollbar={false}`
+   * hides it.
+   */
+  private scrollbar(scroll: UiNode): void {
+    const track = this.alloc();
+    const thumb = this.alloc();
+    this.bars.set(scroll.id, track.id);
+    this.op(1); this.u32(track.id); this.u8(TAGS.view!);
+    this.op(4); this.u32(track.id); this.str("@Scrollbar.track");
+    this.op(6); this.u32(track.id); this.str("pinned"); this.str("true");
+    this.op(6); this.u32(track.id); this.str("role"); this.str("scrollbar");
+    this.op(1); this.u32(thumb.id); this.u8(TAGS.view!);
+    this.op(4); this.u32(thumb.id); this.str("@Scrollbar.thumb");
+    this.op(6); this.u32(thumb.id); this.str("thumb"); this.str(".");
+    this.op(8); this.u32(track.id); this.u32(thumb.id); this.u32(APPEND);
+    this.op(8); this.u32(scroll.id); this.u32(track.id); this.u32(APPEND);
+    this.parents.set(thumb.id, track.id);
+    this.parents.set(track.id, scroll.id);
+    this.kids.set(track.id, new Set([thumb.id]));
+    this.kids.set(scroll.id, new Set([track.id]));
   }
   text(value: string): UiNode {
     const node = this.alloc();
@@ -159,7 +186,14 @@ export class Renderer {
   setText(node: UiNode, value: string): void { this.op(3); this.u32(node.id); this.str(value); }
   setClass(node: UiNode, value: string): void { this.op(4); this.u32(node.id); this.str(value); }
   setStyle(node: UiNode, value: string): void { this.op(5); this.u32(node.id); this.str(value); }
-  setProp(node: UiNode, name: string, value: string): void { this.op(6); this.u32(node.id); this.str(name); this.str(value); }
+  setProp(node: UiNode, name: string, value: string): void {
+    const bar = name === "scrollbar" ? this.bars.get(node.id) : undefined;
+    if (bar !== undefined) {
+      this.op(4); this.u32(bar); this.str(value === "false" ? "@Scrollbar.track hidden" : "@Scrollbar.track");
+      return;
+    }
+    this.op(6); this.u32(node.id); this.str(name); this.str(value);
+  }
   listen(node: UiNode, name: string, handler: ((e: UiEvent) => void) | undefined): void {
     const code = EVENT_CODE.get(name)!;
     let map = this.handlers.get(node.id);
@@ -192,6 +226,7 @@ export class Renderer {
   private forget(id: number): void {
     for (const kid of this.kids.get(id) ?? []) this.forget(kid);
     this.kids.delete(id);
+    this.bars.delete(id);
     this.parents.delete(id);
     this.tags.delete(id);
     this.handlers.delete(id);

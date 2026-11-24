@@ -33,4 +33,6 @@ in `crates/og-ui-next`.
 | `select.rs` `Select` | `controls/select.tsx` | combobox role, arrows step the value while closed, the list a focus group with the chosen option selected | The list is under the trigger on every device; no type-ahead yet |
 | `collapsible.rs`, `accordion.rs` | `controls/collapsible.tsx` `Collapsible`, `Accordion` | the header's expanded state, one or `multiple` open | The panel enters by the pack's `Collapsible.panel`, not a springing clipped height |
 
-Not ported yet: `scrollbar.rs` (`Scroll` reports no offset for a drawn thumb to follow) and `Combobox`.
+| `scrollbar.rs` `Scrollbar` (built-in bars) | every `Scroll`'s own bar (`Scrollbar.track`, `Scrollbar.thumb`), the tree's `thumb` and `pinned` props | the thumb's length and place follow the content, viewport and offset; a drag on the thumb scrolls, a press on the track brings the thumb's middle there; `scrollbar={false}` hides it | Always shown while something runs over (no hover or scroll-only mode, no fade timing); no placed `Scrollbar` component yet: a game sets `thumb="<name>"` on its own node |
+
+Not ported yet: `Combobox`.

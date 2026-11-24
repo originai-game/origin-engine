@@ -1104,6 +1104,7 @@ fn aria(role: Role) -> &'static str {
         Role::RadioButton => "radio",
         Role::Switch => "switch",
         Role::Slider => "slider",
+        Role::ScrollBar => "scrollbar",
         Role::SpinButton => "spinbutton",
         Role::TextInput => "textbox",
         Role::ComboBox => "combobox",

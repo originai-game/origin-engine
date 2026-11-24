@@ -98,6 +98,17 @@ pub(super) struct Per {
     /// the control it is in, at paint.
     pub knob: [f32; 2],
     pub rides_knob: bool,
+    /// `thumb`: the name of the scroller it is the scroll bar thumb of,
+    /// and the length and axis the tree last fitted it to (0: none).
+    pub thumb: Box<str>,
+    pub thumb_len: f32,
+    pub thumb_horizontal: bool,
+    /// What its last `scroll` event said of its viewport and content
+    /// (`onScroll` reports again when they change, not only its offset).
+    pub reported: [f32; 4],
+    /// `pinned`: in a scroller, it keeps its place while the content
+    /// scrolls, and the scroller's extent leaves it out (a scroll bar).
+    pub pinned: bool,
     /// An `Input`'s text, its `placeholder` (shown while the text is
     /// empty) and its caret, a byte offset at a grapheme cluster's edge.
     pub value: String,
@@ -402,7 +413,7 @@ pub struct Input {
     /// The field a held press is selecting in, as the pointer drags.
     selecting: Option<u32>,
     /// The field whose text was last scrolled to its caret.
-    scrolled: Option<u32>,
+    caret_scrolled: Option<u32>,
     focus: u32,
     modality: Modality,
     /// The open modals, innermost last, each with the focus it returns.
@@ -455,6 +466,13 @@ pub struct Input {
     drag: Option<Drag>,
     /// Text copied or cut from the focused `Input` this frame (`Tree::take_copy`).
     copied: Option<String>,
+    /// The scroll bar thumbs, the one the pointer holds and where on it,
+    /// and the scrollers that moved since the events were last taken.
+    pub(super) thumbs: Vec<u32>,
+    pub(super) grab: Option<(u32, f32)>,
+    pub(super) scrolled: Vec<u32>,
+    /// The arena nodes of `pinned` elements (few: scroll bars).
+    pub(super) pinned: Vec<Id>,
 }
 
 /// The focused `Input` reported to the host shell (`packages/engine/src/web/text-input.ts`)
@@ -1088,7 +1106,7 @@ impl Tree {
         let focused = self
             .editing()
             .filter(|&e| !self.input.per[e as usize].multiline);
-        if let Some(was) = self.input.scrolled
+        if let Some(was) = self.input.caret_scrolled
             && Some(was) != focused
             && let Some(p) = self.input.per.get_mut(was as usize)
             && p.scroll_x != 0.0
@@ -1096,7 +1114,7 @@ impl Tree {
             p.scroll_x = 0.0;
             self.paint = true;
         }
-        self.input.scrolled = focused;
+        self.input.caret_scrolled = focused;
         let Some(e) = focused else {
             return;
         };
@@ -1811,6 +1829,19 @@ impl Tree {
                 self.fire(l, OpEvent::PointerMove, x, y);
             }
         }
+        // A grabbed scroll bar thumb takes the pointer until it lets go.
+        if self.input.grab.is_some() {
+            if moved {
+                self.drag_thumb(x, y);
+            }
+            if released {
+                self.drop_thumb();
+            }
+            return true;
+        }
+        if pressed && self.grab_thumb(x, y) {
+            return true;
+        }
         if moved && !pressed {
             self.drag_moved(x, y);
             self.finger_moved(x, y);
@@ -1966,11 +1997,15 @@ impl Tree {
 
     /// How far a scroller's children may move it: what runs past its box,
     /// right and down.
-    fn extent(&self, e: u32) -> [f32; 2] {
+    pub(super) fn extent(&self, e: u32) -> [f32; 2] {
         let node = self.els[e as usize].node;
         let b = self.arena.box_of(node);
         let (mut right, mut bottom) = (0.0f32, 0.0f32);
         for &c in self.arena.children(node) {
+            // What stays put (a built-in scroll bar) runs over nothing.
+            if self.pinned_node(c) {
+                continue;
+            }
             let k = self.arena.box_of(c);
             right = right.max(k.x + k.w);
             bottom = bottom.max(k.y + k.h);
@@ -2027,6 +2062,20 @@ impl Tree {
         }
     }
 
+    /// Whether arena node `n` is a `pinned` element's.
+    fn pinned_node(&self, n: Id) -> bool {
+        self.input.pinned.contains(&n)
+    }
+
+    /// How far op element `e` is moved by the scroller it is in: its
+    /// parent's scroll, none when it is `pinned`.
+    pub(super) fn moved_by(&self, e: u32) -> [f32; 2] {
+        if self.input.per(e).is_some_and(|p| p.pinned) {
+            return [0.0; 2];
+        }
+        self.scroll_of(self.els[e as usize].arena_parent)
+    }
+
     /// Op element `e`'s scroll offset along `horizontal` (else down).
     pub(super) fn scroll_at(&self, e: u32, horizontal: bool) -> f32 {
         self.scroll_of(e)[usize::from(!horizontal)]
@@ -2034,7 +2083,7 @@ impl Tree {
 
     /// Sets scroller `e`'s offset along an axis, within its extent;
     /// whether it moved.
-    fn scroll_to(&mut self, e: u32, horizontal: bool, to: f32) -> bool {
+    pub(super) fn scroll_to(&mut self, e: u32, horizontal: bool, to: f32) -> bool {
         let k = usize::from(!horizontal);
         let to = to.clamp(0.0, self.extent(e)[k]);
         let p = &mut self.input.per[e as usize];
@@ -2043,6 +2092,9 @@ impl Tree {
         }
         p.scroll[k] = to;
         self.paint = true;
+        if !self.input.scrolled.contains(&e) {
+            self.input.scrolled.push(e);
+        }
         true
     }
 
@@ -2055,6 +2107,7 @@ impl Tree {
                 self.scroll_to(e, false, y);
             }
         }
+        self.note_resized();
     }
 
     /// A wheel by (dx, dy) at (x, y). The nearest op element under it

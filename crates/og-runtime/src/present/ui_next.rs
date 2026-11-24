@@ -1247,6 +1247,7 @@ impl Next {
             "radio",
             "switch",
             "slider",
+            "scrollbar",
             "textbox",
             "combobox",
             "option",

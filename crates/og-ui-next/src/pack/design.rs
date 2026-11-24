@@ -530,6 +530,16 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "self-center w-10 h-1.5 my-1 rounded-capsule bg-border-strong",
     ),
     (
+        "Scrollbar.track",
+        "a scroll view's own bar over its edge; its thumb hides while nothing runs over",
+        "absolute z-10 top-1 bottom-1 right-0.5 w-2.5 flex-col items-center pointer-coarse:w-1.5",
+    ),
+    (
+        "Scrollbar.thumb",
+        "the thumb of a scroll view's bar: as long as the share shown, dragged to scroll",
+        "w-1 rounded-capsule bg-fg-subtle opacity-60 transition duration-120 hover:scale-x-150 hover:opacity-90 active:scale-x-150 active:opacity-100",
+    ),
+    (
         "Popover.frame",
         "a popover's panel by its trigger",
         "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",

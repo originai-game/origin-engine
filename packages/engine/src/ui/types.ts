@@ -95,6 +95,13 @@ export interface HostProps {
    * box's bottom start.
    */
   onContextMenu?: Handler;
+  /**
+   * Its scroll moved (a `Scroll`), once a frame: `x`, `y` the offset,
+   * `value` `"viewportWidth viewportHeight contentWidth contentHeight"`.
+   */
+  onScroll?: Handler;
+  /** A `Scroll`'s own bar (`Scrollbar.track`, `Scrollbar.thumb`): its thumb follows the scroll and drags it; `false` hides it. Default true. */
+  scrollbar?: boolean | undefined;
   /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. Like `touchPad` and `touchButton`, it is `active:` while a touch holds it. */
   touchStick?: string | undefined;
   /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. Held, it carries the way it reads as `data-dir-up`, `data-dir-right`, `data-dir-down` and `data-dir-left` (two on a diagonal), so a class lights the pressed arm (`group-data-dir-up/pad:`). */

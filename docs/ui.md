@@ -77,7 +77,8 @@ There are no `.svelte` documents, no `<style>` sheets and no CSS cascade.
   `onWheel`, `onFocus`, `onBlur`, `onKey`, `onChange`, `onLongPress`,
   `onHold`, drag-and-drop (`onDragStart/Move/End`, `onDrop`), gestures
   (`onPinch`, `onRotate`, `onSwipe`), `onContextMenu` (a right click,
-  Shift+F10 or the Menu key), and `onAction={{ confirm, back, ... }}`
+  Shift+F10 or the Menu key), `onScroll` (a `Scroll`'s offset, viewport
+  and content), and `onAction={{ confirm, back, ... }}`
   run at the tick boundary with `{ world, type, x, y, key, value }`.
 - **Mounting & layers**: `mount(world, Component, props, { layer })` mounts
   a component on `hud`, `menu`, `modal`, `popover`, `toast`, `tooltip`, or

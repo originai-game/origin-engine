@@ -584,6 +584,7 @@ mod input;
 mod ops;
 mod particles;
 mod stacking;
+mod thumb;
 mod vcursor;
 pub use input::{Cue, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
@@ -1070,7 +1071,7 @@ impl Tree {
             if el.arena_parent == NONE {
                 break;
             }
-            let [sx, sy] = self.scroll_of(el.arena_parent);
+            let [sx, sy] = self.moved_by(c);
             (x, y) = (x - sx, y - sy);
             c = el.arena_parent;
         }
@@ -1157,13 +1158,32 @@ impl Tree {
         // auto` is: its automatic minimum is 0, so its content does not
         // size it. An anchored node is out of flow: the host places it.
         let scroller = self.input.per(e).is_some_and(|p| p.scroller);
-        if el.hidden > 0 || el.anchored().is_some() || scroller {
+        // A scroll bar's thumb is as long as the tree fitted it, and
+        // hidden while its scroller has nothing to scroll.
+        let thumb = self
+            .input
+            .per(e)
+            .filter(|p| !p.thumb.is_empty())
+            .map(|p| (p.thumb_len, p.thumb_horizontal));
+        if el.hidden > 0 || el.anchored().is_some() || scroller || thumb.is_some() {
             let mut s = taffy::Style::from(&layout);
             if scroller {
                 s.overflow = taffy::Point {
                     x: taffy::Overflow::Scroll,
                     y: taffy::Overflow::Scroll,
                 };
+            }
+            if let Some((len, horizontal)) = thumb {
+                let len = taffy::Dimension::length(len);
+                if horizontal {
+                    s.size.width = len;
+                } else {
+                    s.size.height = len;
+                }
+                s.flex_shrink = 0.0;
+                if len == taffy::Dimension::length(0.0) {
+                    s.display = taffy::Display::None;
+                }
             }
             if el.hidden > 0 {
                 s.display = taffy::Display::None;
@@ -1367,6 +1387,18 @@ impl Tree {
         if laid_out {
             self.clamp_scrolls();
         }
+        // A scroll bar's thumb fits its scroller's share shown: what that
+        // changes lays out again.
+        let laid_out = if laid_out && self.fit_thumbs() {
+            let texts = &mut self.texts;
+            self.arena.layout(w, h, &mut |id, t, run, avail| {
+                texts.measure(fonts, id, t, run, avail)
+            });
+            self.clamp_scrolls();
+            true
+        } else {
+            laid_out
+        };
         // A box that moved slides there when it transitions its layout.
         let arena = &self.arena;
         self.motion.relayout(|n| arena.box_of(n));
@@ -1560,7 +1592,7 @@ impl Tree {
                 (0.0, 0.0, true, screen)
             } else {
                 // A scroller's children move by its scroll.
-                let [sx, sy] = self.scroll_of(el.arena_parent);
+                let [sx, sy] = self.moved_by(e as u32);
                 let (px, py, pv, pclip) = self.abs[el.arena_parent as usize];
                 (px - sx, py - sy, pv, pclip)
             };
@@ -1669,8 +1701,10 @@ impl Tree {
             }
             // A `knob` node rides its on-screen control's knob.
             let [kx, ky] = self.knob_of(e as u32);
+            // A scroll bar's thumb rides its scroller's offset.
+            let [hx, hy] = self.thumb_shift(e as u32);
             let mut t = s.transform;
-            t.translate = [t.translate[0] + kx, t.translate[1] + ky];
+            t.translate = [t.translate[0] + kx + hx, t.translate[1] + ky + hy];
             let hole = self.hole(e as u32);
             // Its `blur-*` and `drop-shadow-*` draw it and its subtree
             // through a layer of their own, while the paint has room for

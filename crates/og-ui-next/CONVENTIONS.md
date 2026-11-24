@@ -142,7 +142,7 @@ uniform and centred, the stroke staying in px), 7 `Particles` (its
 `Paint.points`, box-relative, width `p.x`, closed `p.y`. Events: 0 press, 1 tap, 2 pointerdown,
 3 pointermove, 4 pointerup, 5 wheel, 6 focus, 7 blur, 8 key, 9 change,
 10 action, 11 longpress, 12 hold, 13 dragstart, 14 dragmove, 15 dragend, 16 drop,
-17 pinch, 18 rotate, 19 swipe, 20 contextmenu.
+17 pinch, 18 rotate, 19 swipe, 20 contextmenu, 21 scroll.
 
 The reply is `OGEV`, a u32 count and the events since the last batch, each
 an id (u32), event (u8), x and y on the UI's surface (f32), then key and
@@ -234,7 +234,21 @@ machines do (ported as logic).
   scroller under where it went down, along the way it went, unless what
   heard its `pointerdown` drags; a pan lets the press go, and a pan let go
   while moving flings on, slowing by e each 0.5 s (Rune's touch
-  scrolling). Focus the keys move scrolls into view.
+  scrolling). Focus the keys move scrolls into view. `scroll` (event 21)
+  goes to a scroller that listens once a frame when its offset moved, and
+  after a layout that changed its viewport or content size: `x`, `y` the
+  offset, `value` `"viewportWidth viewportHeight contentWidth
+  contentHeight"`.
+- **Scroll bars** (NSH base's `Scrollbar`): a node with `thumb="<name>"`
+  is the thumb of the scroller of that name (`"."`: the scroller its
+  track sits in), in a track (its parent, whose longer side is the axis).
+  The tree sizes it to the share of the content shown (24 px at least),
+  moves it by the offset at paint, and hides it while nothing runs over;
+  a press on the track grabs the thumb (its middle jumps there when the
+  press missed it) and the drag scrolls the scroller. A `pinned` node in
+  a scroller keeps its place as the content scrolls and adds nothing to
+  what runs over. Every `Scroll` carries such a bar (`Scrollbar.track`,
+  `Scrollbar.thumb`); `scrollbar={false}` hides it.
 - **Hold**: a node with `hold` presses when a press or `confirm` has been
   held on it that long, not on release; `hold` events carry the progress
   in `value` each frame (`"0.42"`, `"1"` as it completes, `"0"` when it

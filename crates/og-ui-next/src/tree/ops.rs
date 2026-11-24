@@ -66,10 +66,14 @@ pub enum Event {
     /// pressed while the focus was in it (`value` `"key"`, `x`, `y` its
     /// box's bottom start) (`onContextMenu`).
     ContextMenu,
+    /// Its scroll moved (a `Scroll`, or overflow that scrolls), once a
+    /// frame: `x`, `y` the offset, `value` `"viewportWidth viewportHeight
+    /// contentWidth contentHeight"` (`onScroll`).
+    Scroll,
 }
 
 impl Event {
-    const ALL: [Event; 21] = [
+    const ALL: [Event; 22] = [
         Event::Press,
         Event::Tap,
         Event::PointerDown,
@@ -91,6 +95,7 @@ impl Event {
         Event::Rotate,
         Event::Swipe,
         Event::ContextMenu,
+        Event::Scroll,
     ];
 
     pub fn bit(self) -> u32 {
@@ -1115,6 +1120,23 @@ impl Tree {
                         }
                         "draggable" => self.input.per[e as usize].drag = value.trim().into(),
                         "dropTarget" => self.input.per[e as usize].drop = value.trim().into(),
+                        "pinned" => {
+                            let on = !matches!(value, "" | "false" | "0" | "null");
+                            let node = self.els[e as usize].node;
+                            self.input.per[e as usize].pinned = on;
+                            self.input.pinned.retain(|&n| n != node);
+                            if on {
+                                self.input.pinned.push(node);
+                            }
+                            self.paint = true;
+                        }
+                        "thumb" => {
+                            self.input.per[e as usize].thumb = value.trim().into();
+                            if !self.input.thumbs.contains(&e) {
+                                self.input.thumbs.push(e);
+                            }
+                            self.inherit(e);
+                        }
                         "knob" => {
                             self.input.per[e as usize].rides_knob =
                                 !matches!(value, "" | "false" | "0" | "null");
@@ -1578,6 +1600,7 @@ impl Tree {
     }
 
     pub fn take_events(&mut self, out: &mut Vec<u8>) {
+        self.fire_scrolled();
         out.extend_from_slice(EVENTS);
         out.extend_from_slice(&(self.events.len() as u32).to_le_bytes());
         for f in self.events.drain(..) {
@@ -5055,6 +5078,138 @@ mod tests {
         at(&mut t, 10.0, 30.0, false, true);
         let got: Vec<_> = t.events.iter().map(|f| (f.id, f.event)).collect();
         assert_eq!(got, [(2, Event::LongPress)]);
+    }
+
+    /// A `thumb` node in its track is as long as the share of its
+    /// scroller's content that shows, rides its offset, and hides while
+    /// nothing runs over; a press on the track jumps the thumb's middle
+    /// there and the drag scrolls the scroller, which reports `scroll`.
+    #[test]
+    fn a_thumb_follows_its_scroller_and_drags_it() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, _, _| {
+            classes
+                .borrow_mut()
+                .record_styled(class, style, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(0);
+        b.op(4).u32(1).str("flex-row items-start");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(1).u32(10).u8(3);
+        b.op(4).u32(10).str("flex-col w-[100px] h-[100px]");
+        b.op(6).u32(10).str("name").str("list");
+        b.op(7).u32(10).u8(Event::Scroll as u8).u8(1);
+        b.op(8).u32(1).u32(10).u32(u32::MAX);
+        for id in 11..=18 {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("w-full h-[50px] shrink-0");
+            b.op(8).u32(10).u32(id).u32(u32::MAX);
+        }
+        b.op(1).u32(20).u8(0);
+        b.op(4).u32(20).str("flex-col w-[10px] h-[100px]");
+        b.op(8).u32(1).u32(20).u32(u32::MAX);
+        b.op(1).u32(21).u8(0);
+        b.op(4).u32(21).str("w-full");
+        b.op(6).u32(21).str("thumb").str("list");
+        b.op(8).u32(20).u32(21).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let (s, th) = (t.op(10).unwrap(), t.op(21).unwrap());
+        // 100 of 400 px show: a quarter of the track.
+        assert_eq!(t.op_box(21).unwrap()[3], 25.0);
+        // Laid out, it reports its viewport and content once, unmoved.
+        t.fire_scrolled();
+        let first: Vec<_> = t
+            .events
+            .drain(..)
+            .map(|f| (f.y, f.value.to_string()))
+            .collect();
+        assert_eq!(first, [(0.0, "100 100 100 400".to_string())]);
+        frame(&mut t);
+        t.fire_scrolled();
+        assert!(t.events.is_empty(), "nothing changed, nothing more");
+        t.wheel(50.0, 50.0, 0.0, 150.0);
+        frame(&mut t);
+        assert_eq!(t.thumb_shift(th), [0.0, 37.5], "75 px of room × 150 / 300");
+        t.fire_scrolled();
+        let got: Vec<_> = t
+            .events
+            .drain(..)
+            .map(|f| (f.id, f.event, f.y, f.value.to_string()))
+            .collect();
+        assert_eq!(got, [(10, Event::Scroll, 150.0, "100 100 100 400".into())]);
+        // A press below the thumb jumps its middle there (clamped to the
+        // end), the drag scrolls, and the release lets go.
+        t.pointer(105.0, 90.0, true, false);
+        frame(&mut t);
+        assert_eq!(t.scroll_at(s, false), 300.0);
+        t.pointer(105.0, 50.0, false, false);
+        frame(&mut t);
+        assert_eq!(t.scroll_at(s, false), 150.0);
+        t.pointer(105.0, 50.0, false, true);
+        t.pointer(105.0, 20.0, false, false);
+        frame(&mut t);
+        assert_eq!(
+            t.scroll_at(s, false),
+            150.0,
+            "let go, the pointer moves nothing"
+        );
+        // Nothing runs over: the thumb hides.
+        let mut b = Batch::default();
+        for id in 13..=18 {
+            b.op(9).u32(10).u32(id);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        assert_eq!(t.op_box(21).unwrap()[3], 0.0);
+    }
+
+    /// A scroller's built-in bar: a `pinned` track in it keeps its place
+    /// as the content scrolls and adds nothing to what runs over, and its
+    /// `thumb="."` follows the scroller it sits in.
+    #[test]
+    fn a_pinned_track_in_a_scroller_stays_put_and_its_thumb_follows_it() {
+        let mut t = tree();
+        let classes = std::cell::RefCell::new(crate::classes::Classes::new(None).unwrap().0);
+        t.set_resolver(Box::new(move |class, style, _, _| {
+            classes
+                .borrow_mut()
+                .record_styled(class, style, &crate::classes::Env::default())
+        }));
+        let mut b = Batch::default();
+        b.op(1).u32(10).u8(3);
+        b.op(4).u32(10).str("flex-col w-[100px] h-[100px] p-[8px]");
+        b.op(8).u32(0).u32(10).u32(u32::MAX);
+        b.op(1).u32(20).u8(0);
+        b.op(4)
+            .u32(20)
+            .str("absolute inset-y-0 right-0 w-[6px] flex-col");
+        b.op(6).u32(20).str("pinned").str("true");
+        b.op(8).u32(10).u32(20).u32(u32::MAX);
+        b.op(1).u32(21).u8(0);
+        b.op(4).u32(21).str("w-full");
+        b.op(6).u32(21).str("thumb").str(".");
+        b.op(8).u32(20).u32(21).u32(u32::MAX);
+        for id in 11..=14 {
+            b.op(1).u32(id).u8(0);
+            b.op(4).u32(id).str("w-full h-[42px] shrink-0");
+            b.op(8).u32(10).u32(id).u32(u32::MAX);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let s = t.op(10).unwrap();
+        // 4 × 42 + 16 of padding = 184 in a 100 box: 84 runs over, down
+        // only (the bar at the right adds none across).
+        assert_eq!(t.extent(s), [0.0, 84.0]);
+        // The thumb is the 100 px shown of the 184 the padding box holds.
+        assert_eq!(t.op_box(21).unwrap()[3], 100.0f32 * 100.0 / 184.0);
+        let track = t.op_box(20).unwrap();
+        t.wheel(50.0, 50.0, 0.0, 84.0);
+        frame(&mut t);
+        assert_eq!(t.op_box(20).unwrap(), track, "the bar stays put");
+        assert_eq!(t.op_box(11).unwrap()[1], 8.0 - 84.0, "the content scrolls");
     }
 
     /// A right click asks the nearest node under it that listens for its

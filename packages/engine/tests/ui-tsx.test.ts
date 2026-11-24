@@ -888,7 +888,9 @@ test("level path roads meet their discs, the carousel's Next arrow shows, the sh
     // Every vertical road stands under a disc's centre (within a pixel).
     const path = frameOf(0, "default");
     const discs = path.filter((e) => e.role === "option");
-    const roads = path.filter((e) => e.width > 0 && e.width <= 12 && e.height > e.width * 2 && !e.role && !e.text);
+    // A scroll view's own bar is no road.
+    const bars = path.filter((e) => e.role === "scrollbar");
+    const roads = path.filter((e) => e.width > 0 && e.width <= 12 && e.height > e.width * 2 && !e.role && !e.text && !bars.some((b) => e.path.startsWith(`${b.path}/`)));
     expect(discs.length).toBeGreaterThan(2);
     expect(roads.length).toBeGreaterThan(2);
     const off = roads.map((r) => Math.min(...discs.map((d) => Math.abs(centre(d) - centre(r))))).filter((d) => d > 1);

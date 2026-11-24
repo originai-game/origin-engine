@@ -1290,6 +1290,8 @@
     "Row.frame.muted": "bg-layer-3 text-fg-muted",
     "Row.frame.selected": "bg-layer-4 text-fg inset-shadow-bar",
     "Screen.frame": "transition duration-180 ease-out starting:opacity-0 starting:scale-104 exit:opacity-0 exit:scale-98 exit:duration-120 exit:ease-exit",
+    "Scrollbar.thumb": "w-1 rounded-capsule bg-fg-subtle opacity-60 transition duration-120 hover:scale-x-150 hover:opacity-90 active:scale-x-150 active:opacity-100",
+    "Scrollbar.track": "absolute z-10 top-1 bottom-1 right-0.5 w-2.5 flex-col items-center pointer-coarse:w-1.5",
     "Select.list": "flex-col p-1 rounded-card bg-layer-2 shadow-float transition duration-120 ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
     "Select.option": "flex-row items-center gap-2 min-h-11 px-3 rounded-control text-fg hover:bg-hover active:bg-pressed selected:bg-layer-4 selected:font-semibold disabled:text-fg-subtle",
     "Select.trigger": "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-1 inset-ring-border text-fg hover:inset-ring-border-strong aria-expanded:inset-ring-accent disabled:text-fg-subtle",
