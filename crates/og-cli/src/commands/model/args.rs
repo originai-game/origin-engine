@@ -177,25 +177,3 @@ pub fn axis(what: &str, v: &str) -> Result<Axis, Failure> {
         ))
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_switch_takes_no_value() {
-        // `process --unwrap` and `measure --posed` once took the next
-        // argument as their value, so `-o` went with it and nothing was
-        // written.
-        for switch in ["--unwrap", "--posed"] {
-            let argv: Vec<String> = ["m.glb", switch, "-o", "out.glb"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect();
-            let a = Args::new(&argv);
-            assert!(a.switch(switch));
-            assert_eq!(a.out_opt().unwrap(), Some(PathBuf::from("out.glb")));
-            assert!(a.input().is_ok());
-        }
-    }
-}

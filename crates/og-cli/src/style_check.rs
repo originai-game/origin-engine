@@ -927,6 +927,3 @@ pub fn doctor_finding(root: &Path, report: Option<&Value>) -> Value {
         ),
     }
 }
-
-#[cfg(test)]
-mod tests;

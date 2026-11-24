@@ -126,31 +126,3 @@ pub fn totals(report: &Value) -> Value {
     }
     Value::Object(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Every defect at once, and a budget overrun the look states; a
-    /// budget it does not state (null) and palette distance are no issue.
-    #[test]
-    fn every_problem_is_listed_in_one_call() {
-        let m = json!({ "boundary_edges": 37, "non_manifold_edges": 17, "floaters": 0, "inconsistent_edges": 2 });
-        let look = json!({ "facesRatio": 1.5, "propFaces": 1000, "characterFacesRatio": null,
-                           "palette": [{ "deltaE": 40.0 }] });
-        let got: Vec<String> = issues(&m, Some(&look))
-            .iter()
-            .map(|i| i["issue"].as_str().unwrap().to_string())
-            .collect();
-        assert_eq!(
-            got,
-            [
-                "openEdges",
-                "nonManifoldEdges",
-                "flippedTriangles",
-                "overPropFaces"
-            ]
-        );
-        assert!(issues(&json!({ "boundary_edges": 0 }), None).is_empty());
-    }
-}

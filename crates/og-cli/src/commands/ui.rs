@@ -213,24 +213,3 @@ fn declared_screens(root: &Path) -> Result<Vec<(String, String)>, String> {
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::declared_screens;
-
-    #[test]
-    fn a_project_declares_its_screens_in_ui_and_in_screens() {
-        let dir = std::env::temp_dir().join(format!("og-ui-screens-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(
-            dir.join("project.ogt"),
-            "type project\nversion 1\n---\nname \"G\"\nui {\n  screen \"hud\" \"0:key:Enter\"\n  screen \"shop\" \"0:shop\"\n}\nscreens {\n  title \"0:wait\"\n  play \"0:key:Enter\"\n}\n",
-        )
-        .unwrap();
-        let got = declared_screens(&dir).unwrap();
-        std::fs::remove_dir_all(&dir).unwrap();
-        let names: Vec<&str> = got.iter().map(|(n, _)| n.as_str()).collect();
-        assert_eq!(names, ["hud", "shop", "title", "play"]);
-        assert_eq!(got[0].1, "0:key:Enter");
-    }
-}

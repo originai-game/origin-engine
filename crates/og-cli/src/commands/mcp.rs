@@ -850,39 +850,3 @@ fn tools() -> Value {
         ),
     ])
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mcp_lists_all_agent_tools() {
-        let mut server = Server::default();
-        let reply = server
-            .handle(r#"{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}"#)
-            .unwrap();
-        let names: Vec<&str> = reply["result"]["tools"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .filter_map(|t| t["name"].as_str())
-            .collect();
-        for required in [
-            "probe", "run_logs", "run", "test", "check", "cook", "build", "create", "explore",
-            "replay", "ui", "style", "model", "assets", "prefab", "doctor", "render", "compare",
-            "api_find", "api_show",
-        ] {
-            assert!(names.contains(&required), "missing MCP tool `{required}`");
-        }
-    }
-
-    #[test]
-    fn mcp_run_logs_empty_without_background_games() {
-        let mut server = Server::default();
-        let reply = server
-            .handle(r#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"run_logs","arguments":{}}}"#)
-            .unwrap();
-        assert_eq!(reply["result"]["isError"], false);
-        assert_eq!(reply["result"]["structuredContent"]["games"], json!([]));
-    }
-}

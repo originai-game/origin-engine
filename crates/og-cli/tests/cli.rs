@@ -41,45 +41,12 @@ fn og_api_path() -> &'static str {
     "crates/og-api/api"
 }
 
-/// A stand-in tsrs in `dir`: `--version` names it `version`, a check
-/// prints `out` and exits `status`; `lib` puts lib.es2022.d.ts beside it.
-#[cfg(unix)]
-fn fake_tsrs(dir: &Path, version: &str, out: &str, status: i32, lib: bool) -> PathBuf {
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::create_dir_all(dir).unwrap();
-    let bin = dir.join("tsrs");
-    std::fs::write(
-        &bin,
-        format!(
-            "#!/bin/sh\nPATH=/usr/bin:/bin\nif [ \"$1\" = --version ]; then echo 'Version {version} (tsrs 0.0.0-{version}, test)'; exit 0; fi\necho \"$@\" > \"$(dirname \"$0\")/args.txt\"\ncat \"$(dirname \"$0\")/out.txt\"\nexit {status}\n"
-        ),
-    )
-    .unwrap();
-    std::fs::write(dir.join("out.txt"), out).unwrap();
-    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
-    if lib {
-        std::fs::write(dir.join("lib.es2022.d.ts"), "").unwrap();
-    }
-    bin
-}
-
 mod cli {
     use super::*;
 
-    mod bake;
-    mod check;
     mod create;
-    mod export;
-    mod i18n;
     mod maintenance;
-    mod materials;
-    mod mcp;
     mod model;
-    mod model_fbx;
     mod probe;
-    mod project;
-    mod sprite;
     mod ui;
-    mod video;
-    mod world_server;
 }

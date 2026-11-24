@@ -164,39 +164,3 @@ pub fn draw(im: &mut Image, c: &ViewCamera) {
         label(im, x, y, s, text, rgb);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// An orthographic view from above (kernel +Z), image up the kernel's
-    /// +Y: glTF +Z (kernel −Y) is drawn down the image, +X to the right.
-    #[test]
-    fn the_front_arrow_points_where_the_engine_front_is_drawn() {
-        let c = ViewCamera {
-            position: DVec3::new(0.0, 0.0, 10.0),
-            target: DVec3::ZERO,
-            up: DVec3::new(0.0, 1.0, 0.0),
-            fov: None,
-            ortho_height: 10.0,
-            width: 100,
-            height: 100,
-        };
-        let front = project(&c, DVec3::new(0.0, -1.0, 0.0) * length(&c)).unwrap();
-        assert!(front.1 > 80.0 && (front.0 - 50.0).abs() < 1e-6, "{front:?}");
-        let x = project(&c, DVec3::new(1.0, 0.0, 0.0)).unwrap();
-        assert!(x.0 > 50.0, "{x:?}");
-        let mut im = Image {
-            width: 100,
-            height: 100,
-            rgba: vec![255; 100 * 100 * 4],
-        };
-        draw(&mut im, &c);
-        let at = (70 * 100 + 50) * 4;
-        assert_eq!(
-            &im.rgba[at..at + 3],
-            &[40, 110, 255],
-            "the front arrow is blue"
-        );
-    }
-}

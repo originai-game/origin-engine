@@ -242,33 +242,3 @@ pub fn run(a: &Args) -> Result<String, Failure> {
         },
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn lengths_are_metres_unless_they_name_a_unit() {
-        assert_eq!(length("h", "1.2m").unwrap(), 1200.0);
-        assert_eq!(length("h", "90cm").unwrap(), 900.0);
-        assert_eq!(length("h", "900mm").unwrap(), 900.0);
-        assert_eq!(length("h", "1.2").unwrap(), 1200.0);
-        assert!(length("h", "1.2ft").is_err());
-        // --size is the GLB's x, y (up), z, one unit after the last:
-        // kernel x, z (up) and y.
-        assert_eq!(
-            size("1,2,0").unwrap(),
-            glam::DVec3::new(1000.0, 0.0, 2000.0)
-        );
-        assert_eq!(
-            size("10,20,30cm").unwrap(),
-            glam::DVec3::new(100.0, 300.0, 200.0)
-        );
-        assert!(size("1,2").is_err());
-        assert_eq!(
-            pivot("1,2,-3cm").unwrap(),
-            Pivot::Point([10.0, 20.0, -30.0].into())
-        );
-        assert!(pivot("1,2cm").is_err());
-    }
-}

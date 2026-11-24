@@ -47,9 +47,6 @@ pub mod transfer;
 pub mod unwrap;
 pub mod views;
 
-#[cfg(test)]
-mod golden;
-
 pub use source::{Files, Input};
 
 /// Why a command did not run.

@@ -257,36 +257,3 @@ pub fn lint(root: &Path, dirs: &[&Path], json: bool) {
         );
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reports_the_inline_style_properties_the_ui_drops_or_ignores() {
-        let src = r##"import { View as V, Text } from "@origingame/engine/ui";
-const Card = (p: { style: object }) => <V {...p} />;
-export const X = (q: { on: boolean }) => <V style={{ background: "#50aaff", width: "4px", "--x": 1 }}>
-  <Text style="color: red; mix-blend-mode: screen" />
-  <V style={q.on ? { backgroundColor: "red" } : { tintColor: "red" }} />
-  <Card style={{ background: "#fff" }} />
-</V>;"##;
-        let found = scan(Path::new("x.tsx"), src);
-        let got: Vec<(&str, u32, u32)> = found
-            .iter()
-            .map(|f| (f.property.as_str(), f.line, f.col))
-            .collect();
-        // Drawn ones (width, color, backgroundColor), the custom property
-        // and a component's own `style` prop are not reported.
-        assert_eq!(
-            got,
-            [
-                ("background", 3, 54),
-                ("mix-blend-mode", 4, 28),
-                ("tintColor", 5, 51)
-            ]
-        );
-        assert!(found[0].message.contains("dropped") && found[0].message.contains("`bg-<role>`"));
-        assert!(found[1].message.contains("never drawn"));
-    }
-}

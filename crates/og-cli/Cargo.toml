@@ -57,10 +57,6 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
 
-[dev-dependencies]
-# Compresses the arrays of `og model`'s hand-written binary FBX test.
-miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
-
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"

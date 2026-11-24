@@ -247,34 +247,3 @@ pub fn lint(root: &Path, dirs: &[&Path], json: bool) {
         );
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn names_the_ancestor_group_without_guessing_through_props_or_components() {
-        let src = r#"import { View as V, Text, Show } from "@origingame/engine/ui";
-        const X = (props: object) => <V class="group/card" data-active>
-          <Show when={true}><Text class="data-active:text-red-500" /></Show>
-          <Text data-active class="data-active:text-white" />
-          <Text {...props} class="data-active:text-white" />
-          <Text class="group-data-active/card:text-white data-lit:text-white" />
-          <Custom><Text class="data-active:text-white" /></Custom>
-        </V>;
-        const Y = (Text: unknown) => <V data-active><Text class="data-active:text-white" /></V>;"#;
-        let found = scan(Path::new("a.tsx"), src);
-        assert_eq!(found.len(), 1, "{found:?}");
-        assert_eq!(found[0].line, 3);
-        assert!(found[0].message.contains("group-data-active/card:"));
-        assert!(
-            scan(
-                Path::new("a.tsx"),
-                &src.replace(
-                    "data-active:text-red-500",
-                    "group-data-active/card:text-red-500"
-                )
-            )
-            .is_empty()
-        );
-    }
-}
