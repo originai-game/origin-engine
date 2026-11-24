@@ -96,12 +96,32 @@ fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
   // The uniform far-base strip belongs below a deck, never over its top.
   if (frame.view_pos.y + frame.origin.y > c[0].z) { return vec4<f32>(0.0); }
-  let to_light = normalize(frame.light_dir.xyz);
-  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let side = dot(mix(view_side, sun_side, 0.5), LUMA);
-  let light = dot(frame.light_color.rgb, LUMA) / max(c[4].y, 9.1e-4);
-  return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
+  var to_light = normalize(frame.light_dir.xyz);
+  var key_light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
+  if (frame.sky_scatter[0].w > 0.5) {
+    let sun = normalize(frame.sky_sun_dir.xyz);
+    let sun_above = 3.0 * frame.sky_glow.yzw * smoothstep(-0.04, 0.22, sun.y);
+    var moon_above = vec3<f32>(0.0);
+    if (frame.sky_moon.w > 0.0) {
+      let moon = normalize(frame.sky_moon.xyz);
+      moon_above = 3.0 * frame.sky_moon_look.rgb * frame.sky_sun_dir.w * smoothstep(-0.04, 0.22, moon.y);
+      if (dot(moon_above, LUMA) > dot(sun_above, LUMA)) {
+        to_light = moon;
+        key_light = moon_above;
+      } else {
+        to_light = sun;
+        key_light = sun_above;
+      }
+    } else {
+      to_light = sun;
+      key_light = sun_above;
+    }
+  }
+  let sun_side = low_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let view_side = low_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let lit = (mix(view_side, sun_side, 0.5) * 0.24 + key_light * 0.018) * c[2].rgb * 2.0;
+  let grey = mix(lit, vec3<f32>(dot(lit, LUMA)), 0.35 * smoothstep(0.65, 1.0, c[0].x));
+  return vec4<f32>(grey, smoothstep(0.6, 0.95, c[0].x));
 }
 
 // How much of the stars a cloud deck leaves (clouds.rs): none through an overcast, all of them under a broken sky,

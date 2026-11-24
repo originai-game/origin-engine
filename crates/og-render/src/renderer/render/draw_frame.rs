@@ -921,14 +921,27 @@ impl Renderer {
                 prepass: effects.prepass,
             });
         // The clouds' history step: which texel of each two by two this frame marches (clouds.rs).
-        if CloudsPass::runs(scene) {
+        if CloudsPass::runs(scene)
+            && let Some(clouds) = &scene.atmosphere.clouds
+        {
             let phase = self.phase();
+            let rate = if scene.frame.tick_rate > 0.0 {
+                scene.frame.tick_rate
+            } else {
+                60.0
+            };
+            let seconds = scene.frame.tick as f64 / f64::from(rate);
+            let sun_dir = clouds.key_direction(scene);
             self.sky.clouds_low.temporal.prepare(
                 &self.device,
                 &self.queue,
                 (self.width, self.height),
                 phase,
-                cam.jittered_view_proj,
+                cam.view_proj,
+                scene.frame.origin,
+                seconds,
+                clouds,
+                sun_dir,
                 scene.frame.camera_cut,
             );
         }

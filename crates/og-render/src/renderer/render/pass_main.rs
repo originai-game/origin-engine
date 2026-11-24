@@ -510,8 +510,10 @@ impl Renderer {
             .as_ref()
             .filter(|_| ground_heights::wanted(scene))
             .map(|m| &m.group);
+        let use_ground =
+            matches!(scene.lighting.environment.background, Background::Sky) && ground.is_some();
         let sky = match scene.lighting.environment.background {
-            Background::Sky if ground.is_some() => self.sky.ground.pipeline.get(),
+            Background::Sky if use_ground => self.sky.ground.pipeline.get(),
             _ if clouds_low.is_some() => self.sky.clouds_low.sky.get(),
             Background::Sky => self.sky.sky_pipeline.get(),
             Background::Procedural { .. } => self.sky.sky_look_pipeline.get(),
@@ -540,13 +542,13 @@ impl Renderer {
         if let Some(sky) = sky {
             pass.set_pipeline(sky);
             pass.set_bind_group(1, sky_group, &[]);
-            if let Some(ground) = ground {
+            if use_ground && let Some(ground) = ground {
                 pass.set_bind_group(2, ground, &[]);
             } else if let Some(clouds_low) = &clouds_low {
                 pass.set_bind_group(2, clouds_low, &[]);
             }
             pass.draw(0..3, 0..1);
-            if clouds_low.is_some() || ground.is_some() {
+            if clouds_low.is_some() || use_ground {
                 // The effects' back for what follows.
                 pass.set_bind_group(2, fx_group, &[]);
             }

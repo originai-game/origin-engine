@@ -65,7 +65,7 @@ impl Renderer {
             )
         };
         let sky_pipeline = sky_state(sky_pl, "vs_sky", "fs_sky");
-        let sky_look_pipeline = sky_state(sky_pl, "vs_sky_look", "fs_sky_look");
+        let sky_look_pipeline = sky_state(sky_pl, "vs_sky", "fs_sky_look");
         // The main camera's clouds at half the frame's size: their march into the cloud target (group 2: the
         // history's step, with the frame's view depth in a frame with a prepass), the resolve that reprojects the
         // history around a march of one texel in four (group 2: the step, this frame's march, the history), and the
@@ -142,13 +142,10 @@ impl Renderer {
                     )
                 })
             };
-            // Only the march reads the overcast strip's grey, which
-            // vs_sky_look marches: the sky over the target and the resolve
-            // take vs_sky's triangle and compile no march of their own.
             clouds::CloudsLow {
                 sky: sky_state(&sky_low_pl, "vs_sky", "fs_sky_look_low"),
-                march: march(&with(&temporal), "vs_sky_look", "fs_clouds_low"),
-                march_depth: march(&with(&depth), "vs_sky_look", "fs_clouds_low_depth"),
+                march: march(&with(&temporal), "vs_sky", "fs_clouds_low"),
+                march_depth: march(&with(&depth), "vs_sky", "fs_clouds_low_depth"),
                 resolve: march(&with(&resolve), "vs_sky", "fs_clouds_resolve"),
                 temporal: clouds::CloudsTemporal::new(device, temporal, depth, resolve),
                 layout,

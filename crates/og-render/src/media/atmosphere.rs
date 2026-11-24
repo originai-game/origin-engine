@@ -595,6 +595,28 @@ impl DayNightLook {
     }
 }
 
+/// CPU twin of `sky.wgsl` `sky_rolloff`: rolls off strongly saturated sky
+/// highlights while preserving hue, so clear-sky cloud ambient matches the
+/// drawn physical sky at sunset/sunrise instead of over-lighting clouds.
+fn sky_rolloff(c: Vec3, knee: f32, chroma: f32) -> Vec3 {
+    let m = c.x.max(c.y).max(c.z);
+    if m <= knee {
+        return c;
+    }
+    let saturation = 1.0 - c.x.min(c.y).min(c.z) / m;
+    let w = ramp(0.3, 0.7, saturation);
+    let rolled = knee + (m - knee) / (1.0 + (m - knee) / knee);
+    let over = ramp(knee, 3.0 * knee, m);
+    let exp = 1.0 + chroma * w * over;
+    let ratio = c / m;
+    let hue = Vec3::new(
+        ratio.x.max(0.0).powf(exp),
+        ratio.y.max(0.0).powf(exp),
+        ratio.z.max(0.0).powf(exp),
+    );
+    mix3(c, hue * rolled, w)
+}
+
 /// The clear sky's radiance along unit `d` as the sky pass draws it under
 /// `look` (sky_look.wgsl `sky_look`, sky.wgsl `sky_physical_look`) without the
 /// sun's disc, the stars or the moon's disc: the gradient or the air's
@@ -607,8 +629,9 @@ fn clear_sky(look: &SkyLook, sun: Vec3, color: Vec3, d: Vec3) -> Vec3 {
         } else {
             p.radiance(p.altitude, d, look.moon_toward(sun), 8) * moon
         };
-        return (p.radiance(p.altitude, d, sun, 8) * color + moonlit + p.night.max(Vec3::ZERO))
+        let raw = (p.radiance(p.altitude, d, sun, 8) * color + moonlit + p.night.max(Vec3::ZERO))
             * look.brightness;
+        return sky_rolloff(raw, 0.6, 0.8);
     }
     let up = d.y.clamp(-1.0, 1.0);
     let sky = mix3(look.horizon, look.zenith, up.max(0.0).powf(0.55));

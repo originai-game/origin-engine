@@ -92,7 +92,7 @@ impl GroundCatcher {
                 label: "sky ground",
                 layout,
                 module,
-                vs: "vs_sky_look",
+                vs: "vs_sky",
                 fs: "fs_sky_ground",
                 buffers: &[],
                 cull: None,

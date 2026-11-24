@@ -93,17 +93,9 @@ impl Renderer {
             label: Some("sky"),
             entries: &[
                 texture_entry(0, true, wgpu::TextureViewDimension::Cube),
-                // The clouds' noise volume and its repeating sampler
-                // (clouds.rs); the vertex stage marches the overcast
-                // strip's shared grey through it (sky.wgsl vs_sky_look).
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..texture_entry(1, true, wgpu::TextureViewDimension::D3)
-                },
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..sampler_entry(2, wgpu::SamplerBindingType::Filtering)
-                },
+                // The clouds' noise volume and its repeating sampler (clouds.rs).
+                texture_entry(1, true, wgpu::TextureViewDimension::D3),
+                sampler_entry(2, wgpu::SamplerBindingType::Filtering),
                 // The background's blurriness and map (sky.wgsl SkyParams).
                 uniform_entry(3, wgpu::ShaderStages::FRAGMENT),
                 // An environment map drawn from its own cube, and the map it
@@ -111,26 +103,13 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 texture_entry(5, true, wgpu::TextureViewDimension::Cube),
                 // The aurora's footprint and table (aurora.rs), read with
-                // the frame group's IBL sampler; the vertex stage's march
-                // lights its clouds by the aurora's row (aurora_cloud_light).
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..texture_entry(6, true, wgpu::TextureViewDimension::D2)
-                },
+                // the frame group's IBL sampler.
+                texture_entry(6, true, wgpu::TextureViewDimension::D2),
                 // The clouds' detail volume and map (clouds.rs) and their
                 // Beer shadow map (clouds/shadow.rs).
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..texture_entry(7, true, wgpu::TextureViewDimension::D3)
-                },
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..texture_entry(8, true, wgpu::TextureViewDimension::D2)
-                },
-                wgpu::BindGroupLayoutEntry {
-                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
-                    ..texture_entry(9, true, wgpu::TextureViewDimension::D2)
-                },
+                texture_entry(7, true, wgpu::TextureViewDimension::D3),
+                texture_entry(8, true, wgpu::TextureViewDimension::D2),
+                texture_entry(9, true, wgpu::TextureViewDimension::D2),
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

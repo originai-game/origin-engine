@@ -44,8 +44,9 @@ pub(crate) struct CloudShadow {
     pending: bool,
     /// Whether the maps hold a bake.
     drawn: bool,
-    /// The frame uniform's rows for this frame's shadow, when it has one.
-    rows: Option<([f32; 2], [f32; 4])>,
+    /// The frame uniform's rows for this frame's shadow, when it has one:
+    /// `(run.xz, [side, strength, held])` (leaving `clouds[11][3]` wind heading intact).
+    rows: Option<([f32; 2], [f32; 3])>,
 }
 
 struct BakePass {
@@ -58,10 +59,10 @@ struct BakePass {
 }
 
 /// What a bake is a function of: the layer (as the frame uniform holds it,
-/// which the bake reads) and the bake's own uniform.
+/// including `kind`, `detail`, and `seed`) and the bake's own uniform.
 #[derive(Clone, Copy, PartialEq)]
 struct Bake {
-    layer: [u32; 5],
+    layer: [u32; 8],
     ray: [f32; 4],
 }
 
@@ -86,13 +87,15 @@ impl Bake {
             .clamp(12.0, 64.0);
         Bake {
             layer: [
-                clouds.coverage.clamp(0.0, 1.0),
-                clouds.density.max(0.0),
-                clouds.base,
-                clouds.thickness.max(0.0),
-                scale,
-            ]
-            .map(f32::to_bits),
+                clouds.coverage.clamp(0.0, 1.0).to_bits(),
+                clouds.density.max(0.0).to_bits(),
+                clouds.base.to_bits(),
+                clouds.thickness.max(0.0).to_bits(),
+                scale.to_bits(),
+                clouds.detail.clamp(0.0, 1.0).to_bits(),
+                clouds.kind as u32,
+                clouds.seed,
+            ],
             ray: [run.x, turned, run.y, steps],
         }
     }
@@ -132,20 +135,16 @@ impl CloudShadow {
 
     /// The frame uniform's rows while this frame's clouds cast a shadow:
     /// the ray's run per metre it rises (`frame.clouds[10].zw`), and
-    /// (`[11]`) the world's map's side (0: no shadow falls on the world),
+    /// (`[11].xyz`) the world's map's side (0: no shadow falls on the world),
     /// that shadow's strength and whether the Beer shadow map holds this
     /// frame's clouds.
-    pub(crate) fn rows(&self) -> Option<([f32; 2], [f32; 4])> {
+    pub(crate) fn rows(&self) -> Option<([f32; 2], [f32; 3])> {
         self.rows
     }
 
     /// Plans the frame's shadow for `clouds` at `seconds` under a light
     /// towards `to_light`, and its bake when the maps hold another:
     /// [`CloudShadow::encode`] records it before any pass reads them.
-    /// `world`: whether the shadow falls on the world (never from a light
-    /// below the horizon, whose ray is baked at the steepest slant the map
-    /// takes for the clouds alone). `None`, or no layer: no shadow.
-    /// `frame`: the main camera's frame uniform, whose clouds the bake reads.
     pub(crate) fn update(
         &mut self,
         device: &wgpu::Device,
@@ -177,6 +176,13 @@ impl CloudShadow {
         }
         let pass = self.pass.as_ref().expect("made above");
         if self.baked != Some(bake) {
+            if self
+                .baked
+                .is_some_and(|prev| prev.layer[7] != bake.layer[7])
+            {
+                // Seed changed: invalidate stale shadow map until new noise + bake run.
+                self.drawn = false;
+            }
             crate::traffic::write_buffer(queue, &pass.uniform, 0, bytemuck::cast_slice(&bake.ray));
             self.baked = Some(bake);
             self.pending = true;
@@ -194,10 +200,7 @@ impl CloudShadow {
         } else {
             0.0
         };
-        self.rows = Some((
-            run.to_array(),
-            [side, strength, f32::from(u8::from(held)), 0.0],
-        ));
+        self.rows = Some((run.to_array(), [side, strength, f32::from(u8::from(held))]));
     }
 
     /// Records the bake [`CloudShadow::update`] planned: nothing without one.

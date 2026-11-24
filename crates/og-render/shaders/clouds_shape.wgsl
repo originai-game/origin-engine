@@ -15,20 +15,13 @@
 //     rising inward (cloud_profile);
 //   - the noise erodes the profile: the cloud is where the profile passes
 //     the noise, so the billows' round middles stand out of the surface
-//     and the creases between them cut into it, and the density rises to
-//     the cloud's own within a few tens of metres of that surface
-//     (cloud_density_from).
+//     and the creases between them cut into it, with a soft Nubis density
+//     ramp and height-based base wispiness (cloud_density_from).
 // frame.clouds: [0] coverage, density, base, thickness; [1] the wind's
-// offset, the scale; [2].w detail; [10].xy the viewer's place; [12] the
-// kind's envelope: the share of a cloud's height at which it is widest,
-// how far up the layer it stands in its core, the power its top rounds off
-// by (2: a dome; more: a tower with a flat top; less: a sheet), the
-// anvil's reach; [13]
-// the kind's field (0 the map's r, 1 its b), the profile's width in the
-// field, how much the noise erodes, how much the tops vary; [14] x the
-// share of a cloud's height its base takes to become whole (how ragged it
-// hangs), y how much it narrows from its widest down to its base. ([14].zw:
-// the high layer's place, sky.wgsl.)
+// offset, the scale; [2].w detail; [10].xy the viewer's place; [11].w wind
+// heading (radians); [12] the kind's envelope: girth, height, top power,
+// anvil reach; [13] kind field selector, profile edge width, erosion,
+// height variation; [14] base raggedness, under-girth taper, high layer xz.
 
 // The shape volume and its repeating sampler, the detail volume and the
 // map (clouds.rs, clouds_noise.wgsl).
@@ -37,10 +30,10 @@
 @group(1) @binding(7) var cloud_detail: texture_3d<f32>;
 @group(1) @binding(8) var cloud_map: texture_2d<f32>;
 
-// How far past the surface (in the eroded profile, 0 to 1) the density
-// reaches the cloud's own: a cumulus has an edge some tens of metres deep,
-// not a haze that thickens to its middle.
-const CLOUD_EDGE: f32 = 0.08;
+// Characteristic softness of a cloud's boundary in the eroded profile (0 to 1),
+// shared by the shadow bake (cloud_edge_in) and raymarcher base edge. Softer
+// than a clay shell so billow edges and wispy tops feather naturally into air.
+const CLOUD_EDGE: f32 = 0.16;
 
 fn cloud_remap(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-4), 0.0, 1.0);
@@ -60,9 +53,6 @@ fn cloud_noise_at(p: vec3<f32>, h: f32) -> vec3<f32> {
 // `t` at `uv` through a cubic B-spline of its texels (Sigg and Hadwiger,
 // "Fast Third-Order Texture Filtering", GPU Gems 2, 2005: four reads
 // between texels): its slope has no step from one texel to the next.
-// Read between its texels in straight lines, a map of 70 m texels left a
-// crease along every texel's edge in the clouds' shape and in their shade,
-// and a base seen at a low angle showed them as a ruling of fine lines.
 fn cloud_cubic(t: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
   let size = vec2<f32>(textureDimensions(t));
   let st = uv * size - 0.5;
@@ -82,11 +72,7 @@ fn cloud_cubic(t: texture_2d<f32>, uv: vec2<f32>) -> vec4<f32> {
 }
 
 // The map over the field's point `at`: every read of the map, the march's,
-// the light's and the shadow bake's, so they are of one cloud (and what
-// places clouds in the map is joined here). Smooth between its texels
-// (cloud_cubic); not `exact`, in straight lines between them, a quarter
-// of the reads, for a march's stride over clear air and its samples behind
-// a cloud's visible surface, which never show the creases that leaves.
+// the light's and the shadow bake's, so they are of one cloud.
 fn cloud_map_at(at: vec3<f32>, exact: bool) -> vec4<f32> {
   let uv = at.xz / (4.0 * frame.clouds[1].w);
   if (!exact) { return textureSampleLevel(cloud_map, cloud_sampler, uv, 0.0); }
@@ -94,7 +80,7 @@ fn cloud_map_at(at: vec3<f32>, exact: bool) -> vec4<f32> {
 }
 
 // How much of the map's field stands in cloud for a cover of `c0`, the
-// profile `edge` wide: the field is uniform, the noise erodes the outer
+// profile `edge` wide: the field is uniform-ish, the noise erodes the outer
 // fifth of the profile on average, so a little more than `c0`; an overcast
 // stands everywhere, in every column's core.
 fn cloud_stand(c0: f32, edge: f32) -> f32 {
@@ -118,21 +104,24 @@ struct CloudColumn {
 // The column of the map's texel `m`, `hf` of the way up the layer: a
 // cloud is as tall as the map says, its envelope round (cloud_profile),
 // and a vigorous tower of a kind with an anvil spreads out under the
-// layer's top.
+// layer's top — gated by tower presence so anvils never float detached
+// over clear sky.
 fn cloud_column(m: vec4<f32>, hf: f32) -> CloudColumn {
   let c = frame.clouds;
   let tops = c[12];
   let kind = c[13];
   let field = mix(m.r, m.b, kind.x);
-  let reach = tops.w * m.a * smoothstep(0.6, 0.9, hf);
-  let inside = clamp((field - 1.0 + cloud_stand(c[0].x, kind.y)) / kind.y + reach, 0.0, 1.0);
+  let stand = cloud_stand(c[0].x, kind.y);
+  let raw_inside = (field - 1.0 + stand) / kind.y;
+  let base_inside = clamp(raw_inside, 0.0, 1.0);
+  // Anvil spreads only around genuine convective towers (never in clear air).
+  let tower_mask = smoothstep(-0.35, 0.25, raw_inside);
+  let reach = tops.w * m.a * tower_mask * smoothstep(0.62, 0.88, hf);
+  let inside = clamp(base_inside + reach, 0.0, 1.0);
   let height = tops.y * mix(1.0, m.g, kind.w);
   let girth = tops.x * height;
   let out = 1.0 - inside;
   let top = girth + (height - girth) * pow(max(1.0 - out * out, 0.0), 1.0 / tops.z);
-  // The base hangs lower in some places than in others, by the map's
-  // other field (the one that does not place the kind's clouds): 0.4 to
-  // 1.6 of the kind's share, so an underside is no plane.
   let base = c[14].x * height * (0.4 + 1.2 * mix(m.b, m.r, kind.x));
   return CloudColumn(inside, height, top, base);
 }
@@ -141,12 +130,6 @@ fn cloud_column(m: vec4<f32>, hf: f32) -> CloudColumn {
 // (of `inside`).
 const CLOUD_MARGIN: f32 = 0.3;
 
-// How much of the cloud's own density the column `col` holds: a cloud is
-// thin in its outermost columns, the margin of its base, and whole in from
-// there (Schneider 2022: the density falls with the dimensional profile
-// towards a cloud's edge). As dense at its margin as in its core, a base
-// ended in a hard rim, and a column that only just stood in the cloud was
-// a small dark rag alone in the sky.
 fn cloud_thin(col: CloudColumn) -> f32 {
   return smoothstep(0.0, CLOUD_MARGIN, col.inside);
 }
@@ -154,26 +137,13 @@ fn cloud_thin(col: CloudColumn) -> f32 {
 // How far in from a cloud's side the profile is whole (of `inside`).
 const CLOUD_SIDE: f32 = 0.7;
 
-// `x` eased up to 1: rising from 0 at twice the slope and levelling off
-// where it meets 1, so a ramp made of it ends without a crease (a ramp cut
-// off at 1 drew a line round every cloud where its profile became whole).
 fn cloud_ease(x: f32) -> f32 {
   let t = clamp(x, 0.0, 1.0);
   return t * (2.0 - t);
 }
 
 // The dimensional profile of `col` at `hf` of the way up the layer: 0 at
-// the cloud's skin and outside it, 1 in its body. The skin is a round
-// envelope (Schneider 2023 makes the profile from a cloud's signed
-// distance field; this is that of a dome): how far out of the cloud's
-// core the column stands and how far the height is from the cloud's
-// widest towards its top are the two axes of an ellipse, so the cloud
-// narrows as it rises and its sides lean in to a round top (the product
-// of a side's ramp and a top's, the side's was the same at every height:
-// a wall). Under its widest the cloud narrows a little to its base, which
-// is flat, at the condensation level; the profile becomes whole over a
-// share of the cloud's height above it, which the noise erodes: a base
-// hangs ragged by some tens of metres, not cut on a plane.
+// the cloud's skin and outside it, 1 in its body.
 fn cloud_profile(col: CloudColumn, hf: f32) -> f32 {
   if (col.inside <= 0.0 || hf <= 0.0 || hf >= col.top) { return 0.0; }
   let c = frame.clouds;
@@ -189,103 +159,88 @@ fn cloud_profile(col: CloudColumn, hf: f32) -> f32 {
   return cloud_base(col, hf) * cloud_ease((1.0 - sqrt(out * out + rise)) / CLOUD_SIDE);
 }
 
-// How whole the cloud of `col` is over its base at `hf` of the way up the
-// layer: 0 at the layer's base, 1 from the column's own share up.
 fn cloud_base(col: CloudColumn, hf: f32) -> f32 {
   return cloud_ease(hf / max(col.base, 1e-3));
 }
 
-// The billows' erosion at the field's point `at`, `up` of the way up its
-// own cloud (cloud_up), read over `texel` metres: what the profile there
-// must pass for the point to hold any cloud, whatever the detail
-// (cloud_density_from). Over a cloud's lowest third the billows (their
-// creases cut in, their middles stand out) give way to wisps: the
-// inverted Worley of another lattice, which erodes the middles of its
-// cells and leaves the web between them (Schneider 2015 and 2022: wispy
-// under, billowy over; of smooth distances, so the web's crests are
-// round: clouds_noise.wgsl). Two fields, blended: the one field and its own
-// inverse cancelled halfway, and every cloud had a smooth level sheet
-// through it there, which drew bands across the bases.
-fn cloud_coarse(at: vec3<f32>, up: f32, texel: f32) -> f32 {
-  let c = frame.clouds;
-  let s = at.xzy / c[1].w;
-  // Sheared, so a tile of the volume (a quarter of the scale) shows another
-  // slice of it at each place: the shear is whole tiles over the field's
-  // period.
-  let q = vec3<f32>(s.x, s.y, s.z + s.x * 0.1875 + s.y * 0.3125) * 4.0;
-  let n = textureSampleLevel(cloud_noise, cloud_sampler, q, log2(max(texel / c[1].w * 512.0, 1.0)));
-  // (The field's fiftieth quantiles: 0.35 to 0.75.)
-  let wisps = clamp((n.a - 0.35) / 0.4, 0.0, 1.0);
-  // (The wisps erode a third deeper than the billows: a base hangs in
-  // rags, where the billows' depth left it level.)
-  let rise = smoothstep(0.0, 0.3, up);
-  return c[13].z * mix(1.3 * wisps, n.r, rise) * (1.0 - cloud_detail_share());
+// Wind-aligned gentle altitude lean (metres of horizontal shear over the
+// layer's height) instead of a fixed 20° diagonal artifact.
+fn cloud_wind_lean(up: f32) -> vec2<f32> {
+  let a = frame.clouds[11].w;
+  return vec2<f32>(cos(a), sin(a)) * (up * 0.08);
 }
 
-// How far up its own cloud a point `hf` of the way up the layer is, in
-// the column `col`.
+// The billows' erosion at the field's point `at`, `up` of the way up its
+// own cloud (cloud_up), read over `texel` metres.
+fn cloud_coarse(at: vec3<f32>, up: f32, texel: f32) -> f32 {
+  let c = frame.clouds;
+  let lean = cloud_wind_lean(up);
+  // Isotropic sampling in cloud space (no permanent diagonal shear), gently
+  // leaned along the real wind heading with altitude.
+  let s = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w);
+  let q = s * 4.0;
+  let mip = clamp(log2(max(texel / c[1].w * 512.0, 1.0)), 0.0, 2.5);
+  let n = textureSampleLevel(cloud_noise, cloud_sampler, q, mip);
+  let wisps = clamp((n.a - 0.35) / 0.4, 0.0, 1.0);
+  let rise = smoothstep(0.0, 0.32, up);
+  return c[13].z * mix(1.25 * wisps, n.r, rise) * (1.0 - cloud_detail_share());
+}
+
 fn cloud_up(col: CloudColumn, hf: f32) -> f32 {
   return hf / max(col.height, 1e-3);
 }
 
-// The detail's share of the erosion: a third, to three fifths at
-// Clouds.detail 1 (wispy).
 fn cloud_detail_share() -> f32 {
-  return 0.3 + 0.3 * clamp((frame.clouds[2].w - 0.35) / 0.65, 0.0, 1.0);
+  return 0.32 + 0.32 * clamp((frame.clouds[2].w - 0.35) / 0.65, 0.0, 1.0);
 }
 
 // The cloud at the field's point `at`, `hf` of the way up the layer in the
-// column `col`, of the dimensional profile `profile` there: x its
-// extinction per metre, y how deep under the surface the point is (0 at
-// it, towards 1 in the body), z how far under the billows' erosion the profile is where they
-// leave no cloud (cloud_clear).
-// `texel`: the size in metres of what the sample stands for (a pixel at
-// its distance, a step of the light's): the noise is read at the level
-// that holds it. `fine`: with the detail volume; without, the detail at
-// its mean (the light's far samples and the shadow's, which are wider than
-// it).
-//
-// The detail erodes as the billows do (cloud_coarse), eight times finer:
-// its web under, its billows over, curled between.
+// column `col`, of the dimensional profile `profile` there:
+//   x: extinction per metre
+//   y: depth under the surface (0 at skin, 1 in body)
+//   z: clearance margin under coarse erosion when empty (for cloud_clear)
 fn cloud_density_from(at: vec3<f32>, col: CloudColumn, hf: f32, profile: f32, texel: f32, fine: bool) -> vec3<f32> {
   let c = frame.clouds;
   let up = cloud_up(col, hf);
   let coarse = cloud_coarse(at, up, texel);
-  // (Not worth the detail's read where the profile cannot pass the noise
-  // with it, or passes it by the whole edge without it.)
   if (profile <= coarse) { return vec3<f32>(0.0, 0.0, coarse - profile); }
   let share = c[13].z * cloud_detail_share();
+  // Height-aware edge softness: slightly crisper at the condensation base,
+  // fluffier on towering billow tops (Nubis² dimensional profile).
+  let edge = mix(0.14, 0.24, smoothstep(0.35, 1.0, up));
   var small = 0.5;
   let most = coarse + share;
-  if (fine && profile - most < CLOUD_EDGE * (1.0 - most)) {
-    let d = textureSampleLevel(cloud_detail, cloud_sampler, at.xzy / c[1].w * 32.0, log2(max(texel / c[1].w * 2048.0, 1.0)));
-    // (The web's fiftieth quantiles: 0.23 to 0.73.)
+  // Smooth distance fade for detail erosion (no hard pop or mip washout).
+  let detail_ratio = texel * 128.0 / c[1].w;
+  let detail_fade = 1.0 - smoothstep(0.45, 1.6, detail_ratio);
+  if (fine && detail_fade > 0.01 && profile - most < edge * (1.0 - most)) {
+    let lean = cloud_wind_lean(up);
+    let dq = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w) * 32.0;
+    let dmip = clamp(log2(max(texel / c[1].w * 2048.0, 1.0)), 0.0, 1.75);
+    let d = textureSampleLevel(cloud_detail, cloud_sampler, dq, dmip);
     let web = clamp((d.b - 0.24) / 0.49, 0.0, 1.0);
-    small = mix(web, mix(d.g, d.r, clamp(up * 1.5, 0.0, 1.0)), smoothstep(0.0, 0.3, up));
+    // Curl-warped billows (d.g) dominate wispy flanks & mid-heights; crisp
+    // cauliflower billows (d.r) define upper domes; soft web erodes bases.
+    let billow = mix(d.g, d.r, smoothstep(0.25, 0.85, up));
+    let raw_small = mix(web, billow, smoothstep(0.0, 0.32, up));
+    small = mix(0.5, raw_small, detail_fade);
   }
   let noise = coarse + share * small;
-  let deep = clamp((profile - noise) / (1.0 - noise), 0.0, 1.0);
-  return vec3<f32>(smoothstep(0.0, CLOUD_EDGE, deep) * c[0].y * cloud_thin(col), deep, 0.0);
+  let deep = clamp((profile - noise) / max(1.0 - noise, 1e-4), 0.0, 1.0);
+  // Nubis density-height gradient: bases are softly wispy and thicken upward
+  // into dense sunlit domes.
+  let height_density = mix(0.48, 1.0, smoothstep(0.0, 0.35, up));
+  let density = smoothstep(0.0, edge, deep) * c[0].y * cloud_thin(col) * height_density;
+  return vec3<f32>(density, deep, 0.0);
 }
 
-// The steepest the billows' erosion (cloud_coarse) changes over a metre,
-// halved: the shape volume's fields change by at most some 50 over a tile
-// (the sum of their octaves' slopes, each one per cell over the range the
-// field is spread from; a quarter of the scale to a tile), and where a
-// path meets the steepest of every octave at once is rare.
 const CLOUD_SLOPE: f32 = 60.0;
 
-// How many metres from the field's point no cloud can stand, where the
-// profile is `under` below the billows' erosion (cloud_density_from's z):
-// the erosion cannot fall to the profile nearer than its slope lets it
-// (the detail only erodes more).
 fn cloud_clear(under: f32) -> f32 {
   let c = frame.clouds;
   return under * c[1].w / (CLOUD_SLOPE * max(c[13].z * (1.0 - cloud_detail_share()), 1e-3));
 }
 
-// The extinction per metre at the field's point `at`, `hf` of the way up
-// the layer.
 fn cloud_density_in(at: vec3<f32>, hf: f32, texel: f32, fine: bool) -> f32 {
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
   let col = cloud_column(cloud_map_at(at, true), hf);
@@ -294,19 +249,12 @@ fn cloud_density_in(at: vec3<f32>, hf: f32, texel: f32, fine: bool) -> f32 {
   return cloud_density_from(at, col, hf, profile, texel, fine).x;
 }
 
-// How far past the cloud's surface the field's point `at` is, `hf` of the
-// way up the layer, in the edge's depth (CLOUD_EDGE): under 0 outside the
-// cloud, 1 and over where the density is the body's own; without the
-// detail. It crosses the surface evenly, where the density starts from
-// nothing within metres: what the clouds' shadow is baked from
-// (cloud_shadow_bake.wgsl), which reads the cloud every some tens of
-// metres. x: of the cloud as it is drawn; y: of the cloud without its
-// billows either (the noise at its mean), its envelope; z: how much of the
-// cloud's density the column holds (cloud_thin).
 fn cloud_edge_in(at: vec3<f32>, hf: f32, texel: f32) -> vec3<f32> {
   let col = cloud_column(cloud_map_at(at, true), hf);
   let profile = cloud_profile(col, hf);
+  let up = cloud_up(col, hf);
   let fine = 0.5 * frame.clouds[13].z * cloud_detail_share();
-  let noise = vec2<f32>(cloud_coarse(at, cloud_up(col, hf), texel), 0.5 * frame.clouds[13].z * (1.0 - cloud_detail_share())) + fine;
-  return vec3<f32>((profile - noise) / (max(1.0 - noise, vec2<f32>(1e-3)) * CLOUD_EDGE), cloud_thin(col));
+  let noise = vec2<f32>(cloud_coarse(at, up, texel), 0.5 * frame.clouds[13].z * (1.0 - cloud_detail_share())) + fine;
+  let height_density = mix(0.48, 1.0, smoothstep(0.0, 0.35, up));
+  return vec3<f32>((profile - noise) / (max(1.0 - noise, vec2<f32>(1e-3)) * CLOUD_EDGE), cloud_thin(col) * height_density);
 }

@@ -109,7 +109,7 @@ impl SkyCapture {
         let pipeline = {
             let device = device.clone();
             crate::deferred::Deferred::anywhere(move || {
-                crate::deferred::note(|| "live sky vs_sky_look/fs_sky_look".into());
+                crate::deferred::note(|| "live sky vs_sky/fs_sky_look".into());
                 let module = crate::gpu::shader_module(
                     &device,
                     wgpu::ShaderModuleDescriptor {
@@ -126,7 +126,7 @@ impl SkyCapture {
                         layout: Some(&layout),
                         vertex: wgpu::VertexState {
                             module: &module,
-                            entry_point: Some("vs_sky_look"),
+                            entry_point: Some("vs_sky"),
                             compilation_options: Default::default(),
                             buffers: &[],
                         },

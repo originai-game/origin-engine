@@ -192,6 +192,8 @@ pub struct Clouds {
     pub shadows: f32,
     /// Samples along a view ray through the layer (16 to 128).
     pub steps: u32,
+    /// Seed driving the cloud weather map and 3D billow/detail fields.
+    pub seed: u32,
     /// A lightning flash lighting the cloud from inside: where (frame
     /// coordinates, xyz) and how bright (w; 0: none). Set by
     /// [`crate::add_lightning`].
@@ -214,6 +216,7 @@ impl Default for Clouds {
             layer_altitude: 8000.0,
             shadows: 1.0,
             steps: 48,
+            seed: 1,
             flash: glam::Vec4::ZERO,
         }
     }
@@ -247,6 +250,11 @@ impl Clouds {
         // there, twice the layer's below.
         let high = |eye: f64, wind: f32| {
             (eye - 2.0 * f64::from(wind) * seconds).rem_euclid(period * 4.0) as f32
+        };
+        let wind_angle = if self.wind.x * self.wind.x + self.wind.z * self.wind.z > 1e-6 {
+            self.wind.z.atan2(self.wind.x)
+        } else {
+            0.0
         };
         let light = self.light();
         let kind = self.kind.shape();
@@ -284,7 +292,9 @@ impl Clouds {
             [0.0; 4],
             [0.0; 4],
             [place(eye.x), place(eye.y), 0.0, 0.0],
-            [0.0; 4],
+            // xyz filled by CloudShadow::rows(); w holds the horizontal wind
+            // heading (radians) for wind-aligned cirrus & gentle altitude lean.
+            [0.0, 0.0, 0.0, wind_angle],
             [kind.girth, kind.height, kind.power, kind.anvil],
             // No detail: smooth lumps, eroded half as deep.
             [
@@ -439,11 +449,14 @@ pub(crate) struct CloudNoise {
     /// The map.
     pub map: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
-    /// Whether the full fields are made: drawn, or their draw pending.
+    /// Whether the full fields have been allocated.
     pub made: bool,
-    /// The fields' draw [`CloudNoise::make`] planned and
-    /// [`CloudNoise::submit`] submits.
-    pending: Option<NoiseDraw>,
+    /// The seed currently queued or rendered into the fields.
+    seed: u32,
+    /// Whether the compute passes must run before the fields are read.
+    dirty: bool,
+    /// Persistent compute pipelines + bind groups for initial bake & re-seeding.
+    draw: Option<NoiseDraw>,
     _textures: [wgpu::Texture; 3],
 }
 
@@ -466,6 +479,7 @@ enum NoiseStep {
 
 struct NoiseDraw {
     pipelines: crate::deferred::Deferred<NoisePipelines>,
+    params: wgpu::Buffer,
     /// Each step's group and workgroups, in order: a level after the one
     /// it averages.
     steps: Vec<(NoiseStep, wgpu::BindGroup, [u32; 3])>,
@@ -479,9 +493,7 @@ pub(crate) struct CloudsLow {
     pub layout: wgpu::BindGroupLayout,
     /// The march into the cloud target, or into the quarter target in a frame that reprojects.
     pub march: crate::deferred::Deferred<wgpu::RenderPipeline>,
-    /// The march in a frame with a prepass: it skips the texels only covered pixels read. A second pipeline, since
-    /// the depth's read costs a frame without one about a tenth of the march (0.3 ms of 2.8 at 720p on an Apple M4
-    /// Pro).
+    /// The march in a frame with a prepass: it skips the texels only covered pixels read.
     pub march_depth: crate::deferred::Deferred<wgpu::RenderPipeline>,
     /// The history reprojected around this frame's quarter march, into the cloud target.
     pub resolve: crate::deferred::Deferred<wgpu::RenderPipeline>,
@@ -508,6 +520,9 @@ struct TemporalUniform {
     prev_view_proj: [[f32; 4]; 4],
     size: [f32; 4],
     mode: [f32; 4],
+    /// xyz: previous-frame displacement of a cloud feature in frame space
+    /// (`origin_delta - wind_delta`); w: 1 when valid.
+    shift: [f32; 4],
 }
 
 /// The texel of each two by two that the frame of `phase` marches: the four in turn, each across from the last.
@@ -516,16 +531,7 @@ fn block_offset(phase: u64) -> [f32; 2] {
 }
 
 /// How far the frame of `phase` moves the march's dither, in texels along
-/// the diagonal: interleaved gradient noise's value moves through its
-/// range 3.865 times in a texel of it, so this is a share of the range.
-/// The four texels of a two by two start their marches a quarter of the
-/// range apart, across from each other first (a 2 x 2 ordered dither over
-/// the noise), and each time a texel is marched again its start moves on
-/// by the golden ratio: the marches the resolve blends into a texel are
-/// spread evenly over a step, whichever of the four it is. (Moved by the
-/// frame's count alone, a row's two texels kept starts close together and
-/// the next row's another pair: fine level lines on a cloud's shaded side
-/// and across a base.) None without a history to average them in.
+/// the diagonal.
 fn dither_turn(phase: u64) -> f32 {
     const RANGE_PER_TEXEL: f64 = 52.982_918_9 * (0.067_110_56 + 0.005_837_15);
     let ordered = [0.0, 0.5, 0.25, 0.75][(phase % 4) as usize];
@@ -533,11 +539,63 @@ fn dither_turn(phase: u64) -> f32 {
     ((ordered + again).fract() / RANGE_PER_TEXEL) as f32
 }
 
+/// Snapshot of cloud lighting/shape parameters to detect discontinuous jumps
+/// that must invalidate temporal history (seed/kind change, cover jump,
+/// lightning flash onset, sun jump).
+#[derive(Clone, Copy, PartialEq)]
+struct CloudTemporalKey {
+    kind: u8,
+    seed: u32,
+    flash_on: bool,
+    coverage: f32,
+    density: f32,
+    base: f32,
+    thickness: f32,
+    scale: f32,
+    sun_dir: Vec3,
+}
+
+impl CloudTemporalKey {
+    fn of(c: &Clouds, sun_dir: Vec3) -> Self {
+        Self {
+            kind: c.kind as u8,
+            seed: c.seed,
+            flash_on: c.flash.w > 0.0,
+            coverage: c.coverage,
+            density: c.density,
+            base: c.base,
+            thickness: c.thickness,
+            scale: c.scale,
+            sun_dir: sun_dir.normalize_or(Vec3::Y),
+        }
+    }
+
+    fn continuous(&self, prev: &Self) -> bool {
+        self.kind == prev.kind
+            && self.seed == prev.seed
+            && self.flash_on == prev.flash_on
+            && (self.coverage - prev.coverage).abs() <= 0.06
+            && (self.density - prev.density).abs() <= 0.02
+            && (self.base - prev.base).abs() <= 100.0
+            && (self.thickness - prev.thickness).abs() <= 200.0
+            && (self.scale - prev.scale).abs() <= self.scale.max(500.0) * 0.1
+            && self.sun_dir.dot(prev.sun_dir) >= 0.985
+    }
+}
+
+/// Previous frame's temporal state for cloud reprojection.
+#[derive(Clone, Copy)]
+struct DrawnTemporal {
+    phase: u64,
+    view_proj: glam::Mat4,
+    origin: Vec3,
+    seconds: f64,
+    key: CloudTemporalKey,
+}
+
 /// The cloud target's history (Schneider 2015, the temporal upsampling of the Horizon Zero Dawn clouds): the last
-/// frame's resolved clouds, the view-projection that frame marched with, and the uniform that tells this frame's
-/// march and resolve which texel of each two by two it marches. A frame whose history is the frame before's (by the
-/// phase, so a capture, a restore and a cut start afresh) marches one texel in four; any other marches every texel.
-/// It is part of the frame history a save keeps (`renderer/history.rs`).
+/// frame's resolved clouds, the unjittered view-projection and world state that frame marched with, and the uniform
+/// that tells this frame's march and resolve which texel of each two by two it marches.
 pub(crate) struct CloudsTemporal {
     /// Group 2 of the march without a prepass, of the march with one (its view depth at 1), and of the resolve.
     pub march: wgpu::BindGroupLayout,
@@ -545,8 +603,7 @@ pub(crate) struct CloudsTemporal {
     pub resolve: wgpu::BindGroupLayout,
     pub uniform: wgpu::Buffer,
     history: Option<(wgpu::Texture, wgpu::TextureView)>,
-    /// The phase of the frame that wrote the history and its jittered view-projection.
-    drawn: Option<(u64, glam::Mat4)>,
+    drawn: Option<DrawnTemporal>,
     /// This frame marches one texel in four and resolves ([`CloudsTemporal::prepare`]).
     pub reproject: bool,
 }
@@ -554,7 +611,7 @@ pub(crate) struct CloudsTemporal {
 /// [`CloudsTemporal::save`]: the history's copy and the frame that wrote it.
 pub(crate) struct CloudsSave {
     copy: crate::gpu::copy::GpuCopy,
-    drawn: Option<(u64, glam::Mat4)>,
+    drawn: Option<DrawnTemporal>,
 }
 
 impl CloudsSave {
@@ -589,8 +646,11 @@ impl CloudsTemporal {
         }
     }
 
-    /// Writes the step of the frame of `phase` at `frame_size`, whose march has `view_proj` (its jitter too); `cut`:
-    /// the camera cut, so the history shows another view. Makes the history at the cloud target's size.
+    /// Writes the step of the frame of `phase` at `frame_size`, using the
+    /// unjittered `view_proj` so TAA jitter never swims into cloud history,
+    /// plus `origin`, `seconds`, `clouds`, and `sun_dir` to account for camera
+    /// translation, world-origin shifts, wind drift, and discontinuous jumps.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn prepare(
         &mut self,
         device: &wgpu::Device,
@@ -598,6 +658,10 @@ impl CloudsTemporal {
         frame_size: (u32, u32),
         phase: u64,
         view_proj: glam::Mat4,
+        origin: Vec3,
+        seconds: f64,
+        clouds: &Clouds,
+        sun_dir: Vec3,
         cut: bool,
     ) {
         let (w, h) = low_size(frame_size.0, frame_size.1);
@@ -627,11 +691,25 @@ impl CloudsTemporal {
             self.history = Some((texture, view));
             self.drawn = None;
         }
-        let previous = self.drawn.filter(|(f, _)| f + 1 == phase && !cut);
+        let key = CloudTemporalKey::of(clouds, sun_dir);
+        let previous = self
+            .drawn
+            .filter(|prev| prev.phase + 1 == phase && !cut && key.continuous(&prev.key));
         self.reproject = previous.is_some();
         let [x, y] = block_offset(phase);
+        let shift = match previous {
+            Some(prev) => {
+                let dt = (seconds - prev.seconds).clamp(-1.0, 1.0) as f32;
+                let wind_delta = Vec3::new(clouds.wind.x * dt, 0.0, clouds.wind.z * dt);
+                let delta = (origin - prev.origin) - wind_delta;
+                [delta.x, delta.y, delta.z, 1.0]
+            }
+            None => [0.0, 0.0, 0.0, 0.0],
+        };
         let u = TemporalUniform {
-            prev_view_proj: previous.map_or(view_proj, |(_, m)| m).to_cols_array_2d(),
+            prev_view_proj: previous
+                .map_or(view_proj, |p| p.view_proj)
+                .to_cols_array_2d(),
             size: [w as f32, h as f32, x, y],
             mode: [
                 f32::from(u8::from(self.reproject)),
@@ -643,9 +721,16 @@ impl CloudsTemporal {
                 0.0,
                 0.0,
             ],
+            shift,
         };
         crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
-        self.drawn = Some((phase, view_proj));
+        self.drawn = Some(DrawnTemporal {
+            phase,
+            view_proj,
+            origin,
+            seconds,
+            key,
+        });
     }
 
     /// The history: what the resolve reads, and what this frame's cloud target is copied into after it.
@@ -693,9 +778,10 @@ impl CloudsTemporal {
     }
 }
 
-const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
-/// The map's: half floats, for a cloud's top follows it (eight bits
-/// would give that top 256 heights).
+/// 16-bit float 3D noise volumes eliminate 8-bit quantization banding in
+/// cloud erosion profiles while staying filterable and WebGPU-compatible.
+const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+/// The map's: half floats, for a cloud's top follows it.
 const MAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// A field's texture: a volume of `size` a side with `levels` levels, or
@@ -733,7 +819,6 @@ fn level(texture: &wgpu::Texture, level: u32) -> wgpu::TextureView {
 
 impl CloudNoise {
     pub(crate) fn placeholder(device: &wgpu::Device) -> CloudNoise {
-        // (Zero where never written: nothing reads them without clouds.)
         let textures = [
             field(device, "cloud shape", 1, 1, false),
             field(device, "cloud detail", 1, 1, false),
@@ -755,28 +840,61 @@ impl CloudNoise {
             map: textures[2].create_view(&Default::default()),
             sampler,
             made: false,
-            pending: None,
+            seed: 0,
+            dirty: false,
+            draw: None,
             _textures: textures,
         }
     }
 
-    /// Makes the full fields (once), to draw by compute passes of
-    /// `clouds_noise.wgsl` before the frame's passes read them
-    /// ([`CloudNoise::submit`]). Their pipelines start compiling on a
-    /// worker now, so the frame's other work and compiles overlap them:
-    /// made here, they were the first frame's longest wait before any of
-    /// the frame's pipelines started (a second of llvmpipe's).
-    pub(crate) fn make(&mut self, device: &wgpu::Device) {
+    /// Ensures the full fields exist and are queued for `seed`; returns true
+    /// when new textures were allocated (caller must rebuild the sky group).
+    pub(crate) fn ensure(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, seed: u32) -> bool {
+        if !self.made {
+            self.make(device, queue, seed);
+            return true;
+        }
+        if self.seed != seed {
+            if let Some(draw) = &self.draw {
+                let data = [seed, 0u32, 0u32, 0u32];
+                crate::traffic::write_buffer(queue, &draw.params, 0, bytemuck::cast_slice(&data));
+            }
+            self.seed = seed;
+            self.dirty = true;
+        }
+        false
+    }
+
+    /// Allocates the full fields and starts compiling their compute pipelines
+    /// on a worker; [`CloudNoise::submit`] dispatches them before any pass reads them.
+    fn make(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, seed: u32) {
         let textures = [
             field(device, "cloud shape", SHAPE_SIZE, SHAPE_LEVELS, false),
             field(device, "cloud detail", DETAIL_SIZE, DETAIL_LEVELS, false),
             field(device, "cloud map", MAP_SIZE, 1, true),
         ];
+        let params = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("cloud noise params"),
+                size: 16,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let seed_data = [seed, 0u32, 0u32, 0u32];
+        crate::traffic::write_buffer(queue, &params, 0, bytemuck::cast_slice(&seed_data));
+
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
             ty,
             count: None,
+        };
+        let uniform_ty = wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Uniform,
+            has_dynamic_offset: false,
+            min_binding_size: None,
         };
         let out = |view_dimension| wgpu::BindingType::StorageTexture {
             access: wgpu::StorageTextureAccess::WriteOnly,
@@ -794,11 +912,17 @@ impl CloudNoise {
         };
         let volume = layout(
             "cloud noise volume",
-            &[entry(0, out(wgpu::TextureViewDimension::D3))],
+            &[
+                entry(0, out(wgpu::TextureViewDimension::D3)),
+                entry(3, uniform_ty),
+            ],
         );
         let map = layout(
             "cloud noise map",
-            &[entry(1, out(wgpu::TextureViewDimension::D2))],
+            &[
+                entry(1, out(wgpu::TextureViewDimension::D2)),
+                entry(3, uniform_ty),
+            ],
         );
         let mips = layout(
             "cloud noise mips",
@@ -814,12 +938,13 @@ impl CloudNoise {
                 ),
             ],
         );
-        let group = |layout: &wgpu::BindGroupLayout, entries: &[(u32, &wgpu::TextureView)]| {
+        let group = |layout: &wgpu::BindGroupLayout,
+                     entries: &[(u32, wgpu::BindingResource<'_>)]| {
             let entries: Vec<_> = entries
                 .iter()
-                .map(|(binding, view)| wgpu::BindGroupEntry {
+                .map(|(binding, resource)| wgpu::BindGroupEntry {
                     binding: *binding,
-                    resource: wgpu::BindingResource::TextureView(view),
+                    resource: resource.clone(),
                 })
                 .collect();
             device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -834,12 +959,28 @@ impl CloudNoise {
             (&textures[1], NoiseStep::Detail, DETAIL_SIZE, DETAIL_LEVELS),
         ] {
             let views: Vec<_> = (0..levels).map(|l| level(texture, l)).collect();
-            steps.push((step, group(&volume, &[(0, &views[0])]), [size / 4; 3]));
+            steps.push((
+                step,
+                group(
+                    &volume,
+                    &[
+                        (0, wgpu::BindingResource::TextureView(&views[0])),
+                        (3, params.as_entire_binding()),
+                    ],
+                ),
+                [size / 4; 3],
+            ));
             for l in 1..levels as usize {
                 let n = (size >> l) / 4;
                 steps.push((
                     NoiseStep::Mips,
-                    group(&mips, &[(0, &views[l]), (2, &views[l - 1])]),
+                    group(
+                        &mips,
+                        &[
+                            (0, wgpu::BindingResource::TextureView(&views[l])),
+                            (2, wgpu::BindingResource::TextureView(&views[l - 1])),
+                        ],
+                    ),
                     [n; 3],
                 ));
             }
@@ -847,7 +988,13 @@ impl CloudNoise {
         let map_view = textures[2].create_view(&Default::default());
         steps.push((
             NoiseStep::Map,
-            group(&map, &[(1, &map_view)]),
+            group(
+                &map,
+                &[
+                    (1, wgpu::BindingResource::TextureView(&map_view)),
+                    (3, params.as_entire_binding()),
+                ],
+            ),
             [MAP_SIZE / 8, MAP_SIZE / 8, 1],
         ));
         let pipelines = {
@@ -888,51 +1035,51 @@ impl CloudNoise {
             })
         };
         crate::deferred::Start::start(&pipelines);
-        self.pending = Some(NoiseDraw { pipelines, steps });
+        self.draw = Some(NoiseDraw {
+            pipelines,
+            params,
+            steps,
+        });
         self.view = textures[0].create_view(&Default::default());
         self.detail = textures[1].create_view(&Default::default());
         self.map = map_view;
         self._textures = textures;
+        self.seed = seed;
+        self.dirty = true;
         self.made = true;
     }
 
-    /// Whether the full fields are drawn: what a bake that keeps what it
-    /// reads waits for.
+    /// Whether the full fields hold the current seed's data (submitted).
     pub(crate) fn drawn(&self) -> bool {
-        self.made && self.pending.is_none()
+        self.made && !self.dirty
     }
 
     /// Whether the full fields are drawn or [`CloudNoise::submit`] draws
-    /// them this frame.
+    /// them this frame before the frame's passes read them.
     pub(crate) fn drawing(&self) -> bool {
         self.made
-            && self
-                .pending
-                .as_ref()
-                .is_none_or(|draw| draw.pipelines.ready().is_some())
+            && (!self.dirty
+                || self
+                    .draw
+                    .as_ref()
+                    .is_some_and(|draw| draw.pipelines.ready().is_some()))
     }
 
-    /// Submits the fields' draw [`CloudNoise::make`] planned, waiting for
-    /// its pipelines if they are still compiling natively: before the
-    /// frame's own commands, the first that read them. While the pipelines
-    /// are not ready the draw waits for a later frame (gpu/deferred.rs).
+    /// Submits the fields' compute passes when `dirty` and pipelines are ready.
     pub(crate) fn submit(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        if self
-            .pending
-            .as_ref()
-            .is_some_and(|draw| draw.pipelines.ready().is_none())
-        {
+        if !self.dirty {
             return;
         }
-        let Some(draw) = self.pending.take() else {
+        let Some(draw) = &self.draw else {
             return;
         };
+        if draw.pipelines.ready().is_none() {
+            return;
+        }
         let pipelines = draw.pipelines.wait();
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cloud noise"),
         });
-        // A pass a step: a level is read by the step after the one that
-        // wrote it.
         for (step, group, [x, y, z]) in &draw.steps {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("cloud noise"),
@@ -948,8 +1095,9 @@ impl CloudNoise {
             pass.dispatch_workgroups(*x, *y, *z);
         }
         queue.submit(Some(encoder.finish()));
+        self.dirty = false;
     }
 }
 
-/// The fields' compute shader, after the hashes it draws from.
+/// The fields' compute shader, after the hashes and noise it draws from.
 pub(crate) const NOISE_WGSL: &str = wgsl_library!("clouds_noise.wgsl");

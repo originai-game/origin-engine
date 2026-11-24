@@ -273,7 +273,7 @@ impl Renderer {
             && uniform.atmosphere.clouds[3][3] > 0.0
         {
             uniform.atmosphere.clouds[10][2..].copy_from_slice(&run);
-            uniform.atmosphere.clouds[11] = row;
+            uniform.atmosphere.clouds[11][..3].copy_from_slice(&row);
         }
         // The weather occlusion map: its view and its layer, the array's
         // last (never a constant: cascades or cached layers may come first).

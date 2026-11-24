@@ -293,6 +293,7 @@ pub(super) fn extract(
             layer_altitude: c.layer_altitude,
             shadows: c.shadows,
             steps: c.steps,
+            seed: 1,
             // A strike's flash, set by lightning_and_surfaces.
             flash: glam::Vec4::ZERO,
         });

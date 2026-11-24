@@ -16,9 +16,14 @@ use super::*;
 pub(super) struct CloudsPass;
 
 impl CloudsPass {
-    /// Clouds are a layer over any background, not a procedural-sky feature.
+    /// Clouds are a layer over any background, except when no sky draws
+    /// (camera plate, flat colour) or a grounded sky draws clouds at full res.
     pub(super) fn runs(scene: &RenderScene) -> bool {
         scene.atmosphere.clouds.is_some()
+            && scene.frame.plate.is_none()
+            && !matches!(scene.lighting.environment.background, Background::Color(_))
+            && !(matches!(scene.lighting.environment.background, Background::Sky)
+                && ground_heights::wanted(scene))
     }
 }
 

@@ -188,10 +188,15 @@ impl Renderer {
             },
             None => EnvironmentKey::Sky(*sky),
         };
-        // The first frame with clouds makes their noise (drawn before the
-        // frame's commands, draw_frame.rs) and the sky group again with it.
-        if scene.atmosphere.clouds.is_some() && !self.sky.cloud_noise.made {
-            self.sky.cloud_noise.make(&self.device);
+        // Ensure cloud noise fields exist and match the current `Clouds.seed`
+        // (submitted before the frame's commands in draw_frame.rs); rebuild
+        // the sky bind group the first frame full textures are allocated.
+        if let Some(c) = &scene.atmosphere.clouds
+            && self
+                .sky
+                .cloud_noise
+                .ensure(&self.device, &self.queue, c.seed)
+        {
             self.lights.environment = None;
         }
         // The clouds' shadow on the world (clouds/shadow.rs): planned every
