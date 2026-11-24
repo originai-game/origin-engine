@@ -13,8 +13,8 @@
     },
     {
       "member": "CharacterController.up, addVelocity, jumpBuffer, buffer, inheritedVelocity, platformInherit; PlatformerController.platformInherit",
-      "change": "Characters use an explicit up axis for grounding, slopes and jumping; zero disables grounded movement. Added velocity is consumed once; jumpBuffer holds presses; platformInherit controls momentum on leaving support. New numbers default to zero (off).",
-      "fix": "Set up to (0,1,0) for ordinary walking or to the desired nonzero up axis. Set jumpBuffer seconds and platformInherit share explicitly; use addVelocity for springs and knockback. Do not write buffer or inheritedVelocity."
+      "change": "Characters use an up axis for grounding, slopes and jumping; zero derives up opposite Physics.gravity each step, with no inferred axis under zero world gravity. Added velocity is consumed once; jumpBuffer holds presses; platformInherit controls momentum on leaving support. New numeric controls default to zero (off).",
+      "fix": "Leave up zero to follow world gravity, or set a nonzero up axis to override it. Use gravityScale zero for free movement. Set jumpBuffer seconds and platformInherit share explicitly; use addVelocity for springs and knockback. Do not write buffer or inheritedVelocity."
     },
     {
       "member": "CharacterController and PlatformerController groundBody, groundPoint, groundPosition, groundQuaternion; CharacterController.velocity",

@@ -9,7 +9,7 @@
     field addVelocity Vector3 "Velocity added once next step, then cleared: knockback or a spring." {
       unit mps
     }
-    field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity."
+    field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up."
     field jumpBuffer f32 "Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps." {
       min 0
       unit s
@@ -38,7 +38,7 @@
     field groundQuaternion Quaternion "Written: supporting frame rotation at the last controller move." {
       readonly true
     }
-    field move Vector3 "The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick." {
+    field move Vector3 "Wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale zero or no explicit or gravity-derived up, all components move freely. Set it every tick." {
       unit mps
     }
     field jump bool "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time)."

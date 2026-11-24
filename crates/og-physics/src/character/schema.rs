@@ -25,7 +25,7 @@ pub struct CharacterController {
     /// Velocity added once next tick, then cleared (knockback or a spring).
     #[reflect(name = "addVelocity", unit = "m/s")]
     pub add_velocity: Vec3,
-    /// Up axis for walking, jumping and slopes. Zero disables grounded motion.
+    /// Up axis for walking, jumping and slopes. Zero derives up opposite world gravity.
     pub up: Vec3,
     /// How long a jump press remains buffered; zero disables buffering.
     #[reflect(name = "jumpBuffer", min = 0, unit = "s")]
@@ -51,8 +51,8 @@ pub struct CharacterController {
     #[reflect(name = "groundQuaternion")]
     pub ground_quaternion: Quat,
     /// Wanted world velocity across the ground; its up component is ignored
-    /// while walking, or used as a swimming stroke. With gravityScale or up
-    /// zero all components move freely. Set it every tick.
+    /// while walking, or used as a swimming stroke. With gravityScale zero or
+    /// no explicit or gravity-derived up, all components move freely. Set it every tick.
     #[reflect(name = "move", unit = "m/s")]
     pub movement: Vec3,
     /// Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time).

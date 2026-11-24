@@ -61,7 +61,6 @@ fn virtual_controllers_move_resize_and_restore_in_both_profiles() {
                 at(0.0, 4098.0, 0.0),
                 Collider::capsule(0.3, 0.8),
                 CharacterController {
-                    up: Vec3::Y,
                     step_height: 0.0,
                     ..CharacterController::default()
                 },
@@ -197,5 +196,53 @@ fn virtual_controllers_move_resize_and_restore_in_both_profiles() {
                 .any(|e| e.sensor == sensor.to_bits() && e.other == first.to_bits()),
             "controller sensor entry is visible in the same tick"
         );
+
+        // The default axis follows world gravity, not a hard-coded Y axis.
+        // An explicit axis overrides it; zero gravity supplies no axis.
+        for (gravity, up, movement, expected) in [
+            (
+                Vec3::new(6.0, -8.0, 0.0),
+                Vec3::ZERO,
+                Vec3::ZERO,
+                Vec3::new(0.1, -8.0 / 60.0, 0.0),
+            ),
+            (
+                Vec3::new(6.0, -8.0, 0.0),
+                Vec3::Y,
+                Vec3::ZERO,
+                Vec3::new(0.0, -8.0 / 60.0, 0.0),
+            ),
+            (
+                Vec3::ZERO,
+                Vec3::ZERO,
+                Vec3::new(1.0, 2.0, 0.0),
+                Vec3::new(1.0, 2.0, 0.0),
+            ),
+        ] {
+            let (mut w, _) = world(
+                Physics {
+                    profile,
+                    gravity,
+                    ..Physics::default()
+                },
+                31,
+            );
+            enable_lazy(&mut w);
+            let actor = w
+                .spawn((
+                    at(0.0, 0.0, 0.0),
+                    Collider::sphere(0.3),
+                    CharacterController {
+                        up,
+                        movement,
+                        ..CharacterController::default()
+                    },
+                ))
+                .unwrap();
+            w.step().unwrap();
+            let c = w.get::<CharacterController>(actor).unwrap();
+            assert!((c.velocity - expected).abs().max_element() < 1e-5);
+            assert_eq!(c.up, up, "deriving an axis does not overwrite the input");
+        }
     }
 }

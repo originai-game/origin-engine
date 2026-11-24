@@ -39,7 +39,12 @@ pub(crate) fn characters(
             .exclude_rigid_body(handle)
             .exclude_sensors()
             .groups(collider.collision_groups());
-        let up = flat(c.up).normalize_or_zero();
+        let up = flat(if c.up == Vec3::ZERO {
+            -settings.gravity
+        } else {
+            c.up
+        })
+        .normalize_or_zero();
         let walking = c.gravity_scale > 0.0 && up != Vec3::ZERO;
         let centre = unv(at.translation);
         let was_grounded = c.grounded;
