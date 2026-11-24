@@ -2,6 +2,7 @@
 //! detail and the render state.
 
 use super::*;
+use std::collections::BTreeMap;
 
 /// A queued `og.render.text`.
 #[derive(Clone, Debug)]
@@ -130,6 +131,8 @@ pub(crate) struct RenderState {
     pub materials: Vec<MaterialHandle>,
     /// Geometry handles (glTF primitives) by index.
     pub geometries: Vec<MeshHandle>,
+    /// Visual convex planes by geometry, rebuilt only when its mesh changes.
+    pub convex_planes: BTreeMap<u64, (MeshHandle, u64, std::sync::Arc<[glam::Vec4]>)>,
     /// Model parts by asset handle bits.
     pub models: IdMap<u64, Parts>,
     /// The models' levels of detail by asset handle bits (models with one
@@ -301,6 +304,7 @@ impl RenderState {
             backend: None,
             materials: Vec::new(),
             geometries: Vec::new(),
+            convex_planes: BTreeMap::new(),
             models: IdMap::new(),
             model_lods: IdMap::new(),
             shared: Default::default(),

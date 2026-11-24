@@ -308,6 +308,7 @@ fn welded<'a>(fx: &'a mut FxState, scene: &RenderScene, asset: u64, mesh: u32) -
 /// points: by model primitive, each garment primitive's weightless copy
 /// and its vertices in the instance's space, posed by this frame's
 /// `palette` plus each point's offset from its target.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn deformed(
     fx: &mut FxState,
     scene: &mut RenderScene,
@@ -316,6 +317,7 @@ pub(crate) fn deformed(
     asset: u64,
     world: Mat4,
     palette: &[Mat4],
+    skin_index: u32,
 ) -> BTreeMap<usize, (MeshHandle, og_render::DeformedVertices)> {
     let mut out = BTreeMap::new();
     let Some(&(posed, mesh, garment)) = fx.garments.posed.get(&entity) else {
@@ -327,6 +329,11 @@ pub(crate) fn deformed(
     let Some(meshes) = fx.models.get(&asset).map(|i| i.meshes.clone()) else {
         return out;
     };
+    let mut rest_palette = Vec::new();
+    if let Some(skin) = fx.models.get(&asset).and_then(|i| fx.skins.get(&i.id)) {
+        skin.skeleton
+            .palette(skin_index, &skin.skeleton.rest_pose(), &mut rest_palette);
+    }
     let Some(w) = fx.garments.welds.get_mut(&(asset, mesh)) else {
         return out;
     };
@@ -341,12 +348,13 @@ pub(crate) fn deformed(
     // skinned pose (the tick's points are its targets), for looks only.
     let (points, targets, visual) = if garment.simulation == og_physics::SIMULATION_VISUAL {
         let (posed, normals) = pose(w, palette);
-        let turn = Mat4::from_quat(world.to_scale_rotation_translation().1);
+        let turn = world.inverse().transpose();
         let targets: std::sync::Arc<Vec<Vec3>> =
             std::sync::Arc::new(posed.iter().map(|p| world.transform_point3(*p)).collect());
         let body = visual_body(
             &garment,
             w,
+            &pose(w, &rest_palette).0,
             world,
             normals
                 .iter()
@@ -408,9 +416,11 @@ pub(crate) fn deformed(
 /// point's reach as the tick's rule gives it (its freedom times
 /// `maxDistance`, 0 within `pinTop` of the top at rest) and the skin's
 /// normals in the world this frame (`normals`), which hold the backstop.
+#[allow(clippy::too_many_arguments)]
 fn visual_body(
     g: &Garment,
     w: &Weld,
+    bind_rest: &[Vec3],
     world: Mat4,
     normals: Vec<Vec3>,
     gravity: Vec3,
@@ -437,9 +447,7 @@ fn visual_body(
         .filter(|&i| reach[i as usize] <= 0.0)
         .collect();
     // Rest lengths at the drawn scale: the bind shape placed in the world.
-    let rest = w
-        .rig
-        .rest
+    let rest = bind_rest
         .iter()
         .map(|p| world.transform_point3(*p))
         .collect();

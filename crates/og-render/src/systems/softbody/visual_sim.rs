@@ -80,12 +80,12 @@ pub struct VisualBody {
     pub keep: f32,
     /// The acceleration of gravity (og.Physics.gravity times the scale).
     pub gravity: Vec3,
-    /// A steady wind and its gusting (a cloth's push along its normal).
+    /// Air velocity in metres per second, and its gusting.
     pub wind: Vec3,
     pub gust: f32,
     /// The distance points keep from the scene's colliders (0: none).
     pub radius: f32,
-    /// The share of its slide a point touching a collider loses a step.
+    /// The share of its slide a point touching a collider loses per tick.
     pub friction: f32,
     /// The distance points keep from the body's other points (0: none).
     pub thickness: f32,
@@ -280,14 +280,26 @@ fn edges(
 /// colour's edges solve in parallel. The edges by colour, and each
 /// colour's (first edge, count).
 fn colour(edges: &[Edge], points: usize) -> (Vec<Edge>, Vec<(u32, u32)>) {
-    let mut used = vec![0u128; points];
+    let mut used: Vec<Vec<u64>> = vec![Vec::new(); points];
     let mut colours = Vec::with_capacity(edges.len());
     let mut most = 0;
     for e in edges {
-        let taken = used[e.a as usize] | used[e.b as usize];
-        let c = (!taken).trailing_zeros().min(127);
-        used[e.a as usize] |= 1 << c;
-        used[e.b as usize] |= 1 << c;
+        let mut c = 0u32;
+        loop {
+            let word = (c / 64) as usize;
+            let taken = used[e.a as usize].get(word).copied().unwrap_or(0)
+                | used[e.b as usize].get(word).copied().unwrap_or(0);
+            if taken != u64::MAX {
+                c += (!taken).trailing_zeros();
+                break;
+            }
+            c += 64;
+        }
+        for p in [e.a, e.b] {
+            let bits = &mut used[p as usize];
+            bits.resize(bits.len().max((c / 64 + 1) as usize), 0);
+            bits[(c / 64) as usize] |= 1u64 << (c % 64);
+        }
         colours.push(c);
         most = most.max(c + 1);
     }
@@ -370,7 +382,9 @@ mod h {
     pub const ALPHA_SHEAR: usize = 39;
     pub const WORLD: usize = 40;
     pub const MODEL: usize = 52;
-    pub const LEN: usize = 64;
+    pub const SHIFT: usize = 64;
+    pub const FORCES: usize = 67;
+    pub const LEN: usize = 68;
 }
 
 /// A body's topology as the GPU reads it, and what decides when to build
@@ -398,6 +412,8 @@ struct TopologyKey {
     /// Every edge's points and rest length: a rest shape whose lengths
     /// moved builds the topology again.
     edges: Vec<(u32, u32, f32)>,
+    /// Roundoff in lengths formed from world-space rest positions.
+    precision: f32,
 }
 
 /// A rest length's change that builds the topology again.
@@ -521,6 +537,11 @@ impl Topology {
                 reach: body.reach.clone(),
                 thickness: body.thickness > 0.0,
                 edges: edges.iter().map(|e| (e.a, e.b, e.rest)).collect(),
+                precision: rest
+                    .iter()
+                    .map(|p| p.abs().max_element())
+                    .fold(0.0, f32::max)
+                    * (2.0 * f32::EPSILON),
             },
         }
     }
@@ -541,8 +562,12 @@ impl Topology {
             && k.reach == body.reach
             && k.thickness == (body.thickness > 0.0)
             && k.edges.iter().all(|&(a, b, r)| {
-                let now = (rest[b as usize] - rest[a as usize]).length();
-                (now - r).abs() <= REST_TOLERANCE * r.max(1.0)
+                let (a, b) = (rest[a as usize], rest[b as usize]);
+                let now = (b - a).length();
+                // A rebase rounds the endpoints, not the constraint's
+                // rest length. Do not restart the solver for that error.
+                let precision = a.abs().max(b.abs()).max_element() * (2.0 * f32::EPSILON);
+                (now - r).abs() <= REST_TOLERANCE * r.max(1.0) + k.precision.max(precision)
             })
     }
 
@@ -644,6 +669,8 @@ pub(crate) struct VisualMesh {
     group: Option<(u64, wgpu::BindGroup)>,
     /// The tick last stepped.
     last: Option<u64>,
+    origin: Vec3,
+    shifted: bool,
     /// The targets of the frame before (the pins' start this frame), and
     /// a garment's skin normals.
     targets: Vec<[f32; 4]>,
@@ -786,6 +813,8 @@ impl VisualPipelines {
             grid,
             group: None,
             last: None,
+            origin: Vec3::ZERO,
+            shifted: false,
             targets: Vec::new(),
             normals: Vec::new(),
             plan: plan(None, 0),
@@ -810,11 +839,21 @@ impl VisualPipelines {
         dt: f32,
         list: u32,
         world: Mat4,
+        origin: Vec3,
+        forces: &og_env::force::Forces,
         output: &wgpu::Buffer,
     ) {
         let p = plan(mesh.last, tick);
         mesh.plan = p;
         mesh.last = Some(tick);
+        let shift = mesh.origin - origin;
+        mesh.origin = origin;
+        mesh.shifted = shift != Vec3::ZERO;
+        for target in &mut mesh.targets {
+            for k in 0..3 {
+                target[k] += shift[k];
+            }
+        }
         let now: Vec<[f32; 4]> = targets.iter().map(|t| t.extend(0.0).to_array()).collect();
         if p.reset || mesh.targets.len() != now.len() {
             mesh.targets.clone_from(&now);
@@ -839,8 +878,30 @@ impl VisualPipelines {
             );
             mesh.normals = now;
         }
-        let mut header = mesh.topology.words[..h::LEN].to_vec();
+        let mut header = mesh.topology.words.clone();
         frame_header(&mut header, body, p, dt, list, world);
+        for k in 0..3 {
+            header[h::SHIFT + k] = shift[k].to_bits();
+        }
+        header[h::FORCES] = header.len() as u32;
+        header.extend(
+            crate::particles_gpu::pack_fields(forces)
+                .iter()
+                .flatten()
+                .map(|v| v.to_bits()),
+        );
+        if header.len() as u64 * 4 > mesh.body.size() {
+            mesh.body = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("visual body"),
+                    size: (header.len() as u64 * 4).next_power_of_two(),
+                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                },
+            );
+            mesh.group = None;
+        }
         crate::traffic::write_buffer(queue, &mesh.body, 0, bytemuck::cast_slice(&header));
         if mesh
             .group
@@ -877,7 +938,7 @@ impl VisualPipelines {
         let Some((_, group)) = &mesh.group else {
             return;
         };
-        if mesh.plan.steps == 0 && !mesh.plan.reset {
+        if mesh.plan.steps == 0 && !mesh.plan.reset && !mesh.shifted {
             return;
         }
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {

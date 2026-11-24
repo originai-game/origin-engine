@@ -65,6 +65,8 @@ const BACKSTOP: u32 = 38u;
 const ALPHA_SHEAR: u32 = 39u;
 const WORLD: u32 = 40u;   // garment: model to world, 12 words (3x4 rows)
 const MODEL: u32 = 52u;   // garment: world to model, 12 words
+const SHIFT: u32 = 64u;
+const FORCES: u32 = 67u;
 
 // Kinds.
 const CLOTH: u32 = 0u;
@@ -88,6 +90,8 @@ fn vec(i: u32) -> vec3<f32> { return vec3<f32>(word(i), word(i + 1u), word(i + 2
 
 var<workgroup> partial: array<f32, WG>;
 var<workgroup> partial_b: array<f32, WG>;
+var<workgroup> prefix: array<u32, WG>;
+var<workgroup> centroid: array<vec3<f32>, WG>;
 
 fn sync() {
     storageBarrier();
@@ -98,6 +102,43 @@ fn unit(v: vec3<f32>) -> vec3<f32> {
     let d = dot(v, v);
     if d > 1e-20 { return v * inverseSqrt(d); }
     return vec3<f32>(0.0);
+}
+
+fn field_row(i: u32) -> vec4<f32> { return row(body[FORCES] + i * 4u); }
+fn field_turn(q: vec4<f32>, v: vec3<f32>) -> vec3<f32> {
+    return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
+}
+
+// Same field records and acceleration as particles and og-env's Forces::at.
+fn field_acceleration(p: vec3<f32>) -> vec3<f32> {
+    var a = vec3<f32>(0.0);
+    for (var i = 0u; i < u32(field_row(0u).x); i++) {
+        let b = 1u + i * 6u;
+        let at = field_row(b);
+        let q = field_row(b + 1u);
+        let scale_strength = field_row(b + 2u);
+        let direction = field_row(b + 3u);
+        let shape = field_row(b + 4u);
+        let fade = field_row(b + 5u).x;
+        let off = p - at.xyz;
+        var weight = 1.0;
+        if direction.w > 0.5 {
+            let scale = abs(scale_strength.xyz);
+            var outside = 0.0;
+            if shape.w > 0.0 {
+                outside = max(length(off) - shape.w * max(scale.x, max(scale.y, scale.z)), 0.0);
+            } else {
+                let local = field_turn(vec4<f32>(-q.xyz, q.w), off);
+                outside = length(max(abs(local) - abs(shape.xyz) * scale * 0.5, vec3<f32>(0.0)));
+            }
+            if outside > 0.0 { weight = select(0.0, max(1.0 - outside / max(fade, 1e-12), 0.0), fade > 0.0); }
+        }
+        var d = direction.xyz;
+        if at.w == 1.0 { d = unit(off); }
+        if at.w == 2.0 { d = cross(d, unit(off - d * dot(d, off))); }
+        a += d * (scale_strength.w * weight);
+    }
+    return a;
 }
 
 fn planar(p: vec3<f32>) -> vec3<f32> {
@@ -115,8 +156,8 @@ fn inv_mass(i: u32) -> f32 { return word(body[INV_MASS] + i); }
 // and lift across it, by the flat-plate split of the normal pressure that
 // NVIDIA NvCloth documents for its cloth wind (drag ∝ |cos θ| |v|², lift
 // ∝ cos θ sin θ |v|²); a point takes a third of each of its triangles'
-// force over a third of their area. Scaled so a still face square to the
-// wind feels `wind` (the og.Cloth field's acceleration).
+// force over a third of their area. Wind is air velocity; acceleration
+// follows relative speed squared, including motion through still air.
 const DRAG: f32 = 1.0;
 const LIFT: f32 = 0.7;
 
@@ -168,8 +209,6 @@ fn air(p: vec3<f32>, t: f32) -> vec3<f32> {
 }
 
 fn aero(i: u32, h: f32, t: f32) -> vec3<f32> {
-    let speed = length(vec(WIND));
-    if speed <= 0.0 { return vec3<f32>(0.0); }
     let tris = body[TRIANGLES];
     let csr = body[CSR];
     let first = body[csr + i];
@@ -196,11 +235,11 @@ fn aero(i: u32, h: f32, t: f32) -> vec3<f32> {
         if len < 1e-5 { continue; }
         let flow = rel / len;
         let cos_t = dot(n, flow);
-        let q = len * len / (speed * speed);
+        let q = len * len;
         force += share * q * (DRAG * abs(cos_t) * flow + LIFT * cos_t * (n - flow * cos_t));
     }
     if area <= 0.0 { return vec3<f32>(0.0); }
-    return force * (speed / area);
+    return force / area;
 }
 
 // ---- scene colliders -------------------------------------------------------
@@ -233,7 +272,6 @@ fn build_neighbours(lid: u32) {
     sync();
     for (var i = lid; i < n; i += WG) {
         let h = hash_cell(cell_of(state[at_pos(i)].xyz, reach));
-        state[at_delta(i)].w = bitcast<f32>(h);
         atomicAdd(&grid[h], 1u);
     }
     sync();
@@ -241,18 +279,18 @@ fn build_neighbours(lid: u32) {
     let run = (cells + WG - 1u) / WG;
     var sum = 0u;
     for (var c = lid * run; c < min(cells, (lid + 1u) * run); c++) { sum += atomicLoad(&grid[c]); }
-    partial[lid] = bitcast<f32>(sum);
+    prefix[lid] = sum;
     sync();
     if lid == 0u {
         var total = 0u;
         for (var t = 0u; t < WG; t++) {
-            let s = bitcast<u32>(partial[t]);
-            partial[t] = bitcast<f32>(total);
+            let s = prefix[t];
+            prefix[t] = total;
             total += s;
         }
     }
     sync();
-    var at = bitcast<u32>(partial[lid]);
+    var at = prefix[lid];
     for (var c = lid * run; c < min(cells, (lid + 1u) * run); c++) {
         let count = atomicLoad(&grid[c]);
         atomicStore(&grid[starts + c], at);
@@ -261,7 +299,7 @@ fn build_neighbours(lid: u32) {
     }
     sync();
     for (var i = lid; i < n; i += WG) {
-        let h = bitcast<u32>(state[at_delta(i)].w);
+        let h = hash_cell(cell_of(state[at_pos(i)].xyz, reach));
         let slot = atomicAdd(&grid[h], 1u);
         atomicStore(&grid[sorted + slot], i);
     }
@@ -423,7 +461,18 @@ fn volume(lid: u32, h2: f32) {
     let n = body[N];
     let k = word(VOLUME_K);
     if k <= 0.0 || body[KIND] == CLOTH || body[KIND] == GARMENT { return; }
-    let origin = state[at_new(0u)].xyz;
+    // Sum offsets from a current point to avoid large-coordinate cancellation.
+    let anchor = state[at_pos(0u)].xyz;
+    var centre = vec3<f32>(0.0);
+    for (var i = lid; i < n; i += WG) { centre += state[at_pos(i)].xyz - anchor; }
+    centroid[lid] = centre;
+    workgroupBarrier();
+    for (var stride = WG / 2u; stride > 0u; stride >>= 1u) {
+        if lid < stride { centroid[lid] += centroid[lid + stride]; }
+        workgroupBarrier();
+    }
+    let origin = anchor + centroid[0] / f32(n);
+    workgroupBarrier();
     let ring = body[KIND] == RING;
     var v = 0.0;
     if ring {
@@ -475,7 +524,7 @@ fn volume(lid: u32, h2: f32) {
     let sums = reduce(lid);
     let c = sums.x - word(REST_VOLUME) * word(PRESSURE);
     // Stiffness 1 restores the volume in a step; lower is compliant.
-    let alpha = (1.0 - k) / max(k, 1e-6) * 1e-3 / h2;
+    let alpha = (1.0 - k) / max(k, 1e-6) * 1e-6 / h2;
     let denom = sums.y + alpha;
     if denom > 1e-12 {
         let lambda = -c / denom;
@@ -516,7 +565,7 @@ fn collide(lid: u32) {
     let radius = word(RADIUS);
     if radius <= 0.0 { return; }
     let n = body[N];
-    let friction = clamp(word(FRICTION), 0.0, 1.0);
+    let friction = 1.0 - pow(1.0 - clamp(word(FRICTION), 0.0, 1.0), 1.0 / f32(max(body[SUB], 1u)));
     for (var i = lid; i < n; i += WG) {
         if inv_mass(i) <= 0.0 { continue; }
         let p = state[at_pos(i)].xyz;
@@ -540,6 +589,13 @@ fn collide(lid: u32) {
 fn solve(@builtin(local_invocation_index) lid: u32) {
     let n = body[N];
     let kind = body[KIND];
+    if body[RESET] == 0u {
+        for (var i = lid; i < n; i += WG) {
+            state[at_pos(i)] += vec4<f32>(vec(SHIFT), 0.0);
+            state[at_prev(i)] += vec4<f32>(vec(SHIFT), 0.0);
+        }
+        sync();
+    }
     if body[RESET] != 0u {
         for (var i = lid; i < n; i += WG) {
             let p = state[at_new(i)];
@@ -557,8 +613,7 @@ fn solve(@builtin(local_invocation_index) lid: u32) {
     let h2 = max(h * h, 1e-12);
     let keep = word(KEEP);
     let gravity = vec(GRAVITY);
-    let wind = vec(WIND);
-    let windy = (kind == CLOTH || kind == GARMENT) && dot(wind, wind) > 0.0 && body[TRIANGLE_COUNT] > 0u;
+    let windy = (kind == CLOTH || kind == GARMENT) && body[TRIANGLE_COUNT] > 0u;
     for (var s = 0u; s < steps; s++) {
         let tick = body[TICK] + s;
         if word(THICKNESS) > 0.0 { build_neighbours(lid); }
@@ -580,7 +635,7 @@ fn solve(@builtin(local_invocation_index) lid: u32) {
                     state[at_pos(i)] = vec4<f32>(pin, 0.0);
                     continue;
                 }
-                var a = gravity;
+                var a = gravity + field_acceleration(p);
                 if windy { a += state[at_delta(i)].xyz; }
                 let v = (p - state[at_prev(i)].xyz) * keep;
                 state[at_prev(i)] = vec4<f32>(p, 0.0);

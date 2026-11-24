@@ -231,6 +231,16 @@ pub enum SceneCollider {
         b: Vec3,
         radius: f32,
     },
+    Cylinder {
+        transform: Mat4,
+        radius: f32,
+        half_height: f32,
+    },
+    /// Local outward planes, `normal · p <= w`, placed by `transform`.
+    Convex {
+        transform: Mat4,
+        planes: std::sync::Arc<[glam::Vec4]>,
+    },
     /// A height field placed as og-render's `Terrain::transform` places it
     /// (centred, along its x and z): solid below its surface, within its
     /// rectangle.
@@ -265,6 +275,10 @@ enum PreparedCollider<'a> {
         data: &'a crate::TerrainData,
         inv: Mat4,
         inv_t: Mat4,
+    },
+    Solid {
+        shape: &'a SceneCollider,
+        inv: Mat4,
     },
 }
 
@@ -313,6 +327,12 @@ impl<'a> PreparedCollider<'a> {
                     inv_t: inv.transpose(),
                 }
             }
+            SceneCollider::Cylinder { transform, .. } | SceneCollider::Convex { transform, .. } => {
+                PreparedCollider::Solid {
+                    shape: c,
+                    inv: transform.inverse(),
+                }
+            }
         }
     }
 
@@ -359,10 +379,45 @@ impl<'a> PreparedCollider<'a> {
                     return None;
                 }
                 let at = glam::Vec2::new(l.x, l.z);
-                (l.y < data.height(at)).then(|| {
+                (l.y < data.height(at) && !data.hole(at)).then(|| {
                     let n = data.normal(at);
                     inv_t.transform_vector3(n).normalize_or(Vec3::Y)
                 })
+            }
+            PreparedCollider::Solid { shape, inv } => {
+                let l = inv.transform_point3(p);
+                let n = match shape {
+                    SceneCollider::Cylinder {
+                        radius,
+                        half_height,
+                        ..
+                    } => {
+                        let radial = glam::Vec2::new(l.x, l.z).length();
+                        if radial >= *radius || l.y.abs() >= *half_height {
+                            return None;
+                        }
+                        if half_height - l.y.abs() < radius - radial {
+                            Vec3::Y * if l.y >= 0.0 { 1.0 } else { -1.0 }
+                        } else {
+                            Vec3::new(l.x, 0.0, l.z).normalize_or(Vec3::X)
+                        }
+                    }
+                    SceneCollider::Convex { planes, .. } => {
+                        let mut nearest = (f32::NEG_INFINITY, Vec3::ZERO);
+                        for plane in planes.iter() {
+                            let distance = plane.truncate().dot(l) - plane.w;
+                            if distance >= 0.0 {
+                                return None;
+                            }
+                            if distance > nearest.0 {
+                                nearest = (distance, plane.truncate());
+                            }
+                        }
+                        nearest.1
+                    }
+                    _ => unreachable!(),
+                };
+                Some(inv.transpose().transform_vector3(n).normalize_or(Vec3::Y))
             }
         }
     }
