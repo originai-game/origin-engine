@@ -2,7 +2,7 @@
 // compute pass the first frame that has clouds, each tiling in every axis
 // (every lattice point is hashed from its cell wrapped by the frequency):
 //
-//   shape, 128³ (one tile a quarter of Clouds.scale):
+//   shape, 128³ (one tile half of Clouds.scale):
 //     r: the billows, Schneider's Perlin-Worley as what erodes a cloud:
 //        the distance to the nearest feature point (Worley's F1) at 4, 8,
 //        16 and 32 cells, low in a billow's middle and high in the creases
@@ -15,7 +15,7 @@
 //     a: the wisps a base hangs in: that fBm of smooth distances, which
 //        have no crease where two cells meet
 //   detail, 64³ (one tile a thirty-second of the scale):
-//     r: the billows again, eight times finer
+//     r: the billows again, sixteen times finer
 //     g: the same field read through a gradient-noise warp (curled wisps)
 //     b: an inverted Worley fBm at 8 and 16 cells
 //   map, 512² (the whole cloud field: four tiles of the scale):
@@ -39,7 +39,7 @@
 // Schneider's Perlin-Worley shape and Worley detail (2015, 2017) and the
 // curled detail of Nubis³ (2023); the code and the fields are Origin's own.
 
-@group(0) @binding(0) var volume_out: texture_storage_3d<rgba8unorm, write>;
+@group(0) @binding(0) var volume_out: texture_storage_3d<rgba16float, write>;
 @group(0) @binding(1) var map_out: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(2) var mip_src: texture_3d<f32>;
 

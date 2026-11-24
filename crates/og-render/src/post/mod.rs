@@ -475,8 +475,8 @@ pub(crate) struct PostPasses {
     pub stylise_buffer: wgpu::Buffer,
     /// Repeats: the paint pass's canvas texture.
     repeat_sampler: wgpu::Sampler,
-    /// The blue-noise dither's thresholds ([`crate::blue_noise`]).
-    blue_noise: wgpu::TextureView,
+    /// The blue-noise dither's thresholds, shared with cloud marching.
+    pub(crate) blue_noise: wgpu::TextureView,
     sampler: wgpu::Sampler,
     /// TAA's depth read: nearest at the pixel's centre, which reads exactly
     /// its texel (taa.wgsl `depth_sampler`).

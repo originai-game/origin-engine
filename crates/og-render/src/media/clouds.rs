@@ -14,9 +14,9 @@
 //! the air down to each sample's own height, so a sunset lights low clouds
 //! orange from below; else the frame's directional light) through the cloud
 //! between: two samples near, then a Beer shadow map of the whole field
-//! (`clouds/shadow.rs`), scattered by a phase function fitted to cloud
-//! droplets and by octaves of multiple scattering; by the sky above them
-//! and the ground below, each through the cloud between; and by a lightning
+//! (`clouds/shadow.rs`), scattered by forward and backward HG lobes and
+//! by octaves of multiple scattering; by the sky above them and the
+//! ground below, each through the cloud between; and by a lightning
 //! strike's flash inside them ([`Clouds::flash`]). sky.wgsl `clouds_march`.
 //!
 //! The wind moves them by the tick's seconds, so they look the same on
@@ -515,9 +515,7 @@ fn block_offset(phase: u64) -> [f32; 2] {
     [[0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0]][(phase % 4) as usize]
 }
 
-/// How far the frame of `phase` moves the march's dither, in texels along
-/// the diagonal: interleaved gradient noise's value moves through its
-/// range 3.865 times in a texel of it, so this is a share of the range.
+/// How far the frame of `phase` rotates the blue-noise thresholds.
 /// The four texels of a two by two start their marches a quarter of the
 /// range apart, across from each other first (a 2 x 2 ordered dither over
 /// the noise), and each time a texel is marched again its start moves on
@@ -527,10 +525,9 @@ fn block_offset(phase: u64) -> [f32; 2] {
 /// the next row's another pair: fine level lines on a cloud's shaded side
 /// and across a base.) None without a history to average them in.
 fn dither_turn(phase: u64) -> f32 {
-    const RANGE_PER_TEXEL: f64 = 52.982_918_9 * (0.067_110_56 + 0.005_837_15);
     let ordered = [0.0, 0.5, 0.25, 0.75][(phase % 4) as usize];
     let again = ((phase / 4) % 64) as f64 * 0.618_033_988_75;
-    ((ordered + again).fract() / RANGE_PER_TEXEL) as f32
+    (ordered + again).fract() as f32
 }
 
 /// The cloud target's history (Schneider 2015, the temporal upsampling of the Horizon Zero Dawn clouds): the last
@@ -693,7 +690,9 @@ impl CloudsTemporal {
     }
 }
 
-const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+// The density remap magnifies erosion near the skin: eight-bit fields
+// quantise that gradient even when the ray's sampling is jittered.
+const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// The map's: half floats, for a cloud's top follows it (eight bits
 /// would give that top 256 heights).
 const MAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;

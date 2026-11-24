@@ -131,6 +131,10 @@ impl Renderer {
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                     ..texture_entry(9, true, wgpu::TextureViewDimension::D2)
                 },
+                wgpu::BindGroupLayoutEntry {
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ..texture_entry(10, true, wgpu::TextureViewDimension::D2)
+                },
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -63,7 +63,8 @@ SIGGRAPH 2017.
 
 - Sébastien Hillaire, *Physically Based Sky, Atmosphere and Cloud Rendering
   in Frostbite*, SIGGRAPH 2016 (Physically Based Shading in Theory and
-  Practice): the energy-conserving integration of a step's light, and the
+  Practice): the dual-lobe Henyey-Greenstein phase function (§5.7), the
+  energy-conserving integration of a step's light, and the
   octaves of multiple scattering whose contribution never exceeds their
   extinction's scale.
   https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/s2016-pbs-frostbite-sky-clouds-new.pdf
@@ -75,12 +76,6 @@ SIGGRAPH 2017.
   map, a cloud's shadow along the light as a front depth, a mean extinction
   and a far depth (`cloud_shadow_bake.wgsl`, here a slab of the ray's mean
   height and spread over the cloud field's period).
-- Johannes Jendersie and Eugene d'Eon, *An Approximate Mie Scattering
-  Function for Fog and Cloud Rendering*, SIGGRAPH 2023 Talks: the blend of a
-  Henyey-Greenstein and a Draine lobe and its fit to droplet diameter
-  (equations 2 to 7), evaluated at 6 µm into `sky.wgsl`'s `CLOUD_G_HG`,
-  `CLOUD_G_D`, `CLOUD_ALPHA` and `CLOUD_W_D`.
-  https://research.nvidia.com/labs/rtr/approximate-mie/
 - B. T. Draine, *Scattering by Interstellar Dust Grains. I. Optical and
   Ultraviolet*, The Astrophysical Journal 598, 2003: the Draine phase
   function.
@@ -99,10 +94,10 @@ SIGGRAPH 2017.
   GPU Gems 2, 2005, chapter 20: a cubic B-spline read as four bilinear
   reads (`clouds_shape.wgsl` `cloud_cubic`, the read of the cloud map and
   of the shadow map).
-- Jorge Jimenez, *Next Generation Post Processing in Call of Duty: Advanced
-  Warfare*, SIGGRAPH 2014 (Advances in Real-Time Rendering): interleaved
-  gradient noise, the march's dither. Its turn per march is a 2 x 2 ordered
-  dither and the golden ratio's sequence (`clouds.rs` `dither_turn`).
+- Robert Ulichney, *Void-and-cluster method for dither array generation*,
+  1993: the shared blue-noise tile (`shader/blue_noise.rs`) offsets the
+  march. Its turn per march is a 2 x 2 ordered dither and the golden
+  ratio's sequence (`clouds.rs` `dither_turn`).
 
 ## Implementations read, not copied
 

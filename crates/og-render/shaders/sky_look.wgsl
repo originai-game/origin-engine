@@ -87,7 +87,7 @@ fn low_sky_light(n: vec3<f32>) -> vec3<f32> {
   return max(2.0 * side - under, 0.25 * side);
 }
 
-// An overcast deck's base seen far off along `d`, as the sky's march lights a base (sky.wgsl clouds_over): its grey
+// An overcast deck's base seen far off along `d`, as the sky's march lights a base (sky.wgsl clouds_over): its
 // ambient from the clear sky's low light (clear_sky_light) and a little of the sun through it. a: how much of the sky
 // the deck closes (none under a broken sky), the weight the distant sky, what lies under the horizon and a mirror of
 // the sky take it by.
@@ -99,9 +99,9 @@ fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let to_light = normalize(frame.light_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let side = dot(mix(view_side, sun_side, 0.5), LUMA);
-  let light = dot(frame.light_color.rgb, LUMA) / max(c[4].y, 9.1e-4);
-  return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
+  let side = mix(view_side, sun_side, 0.5);
+  let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
+  return vec4<f32>((side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
 }
 
 // How much of the stars a cloud deck leaves (clouds.rs): none through an overcast, all of them under a broken sky,

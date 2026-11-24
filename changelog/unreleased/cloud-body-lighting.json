@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.Clouds",
+      "summary": "Clouds retain the spectrum of sky fill instead of becoming greyer with coverage, and physical skies derive underside fill from their own atmosphere. Low-sun shadows follow the sun down to 2.9 degrees. Diffuse sunlight is normalized as reflected irradiance and no longer inherits fine near-shadow marbling; directional scattering still supplies self-shadow and lit rims."
+    },
+    {
+      "member": "og.Clouds",
+      "summary": "Clouds use a dual-lobe forward/backward phase function and preserve the atmosphere's multiple-scattering spectrum separately from direct solar transmittance. Resolved top erosion is retained with a smaller filter footprint, half-float density fields and blue-noise ray offsets instead of broad top filtering. Authored coverage, density, layer depth and shadow strength are unchanged."
+    }
+  ]
+}

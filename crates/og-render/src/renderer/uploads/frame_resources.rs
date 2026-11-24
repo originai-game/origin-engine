@@ -373,6 +373,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&self.sky.cloud_noise.detail),
                 wgpu::BindingResource::TextureView(&self.sky.cloud_noise.map),
                 wgpu::BindingResource::TextureView(&self.sky.cloud_shadow.light),
+                wgpu::BindingResource::TextureView(&self.post.blue_noise),
             ],
         );
         self.lights.environment = Some((key, group, sky_group, reflection_group));
