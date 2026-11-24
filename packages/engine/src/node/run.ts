@@ -130,6 +130,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let size = { width: 1280, height: 720 };
     let realtime = false;
     let watchFile: string | undefined;
+    let watchRefreshFile: string | undefined;
     let render = true;
     let captureOnly = false;
     let forks = 0;
@@ -178,6 +179,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         size = { width: Number(m![1]), height: Number(m![2]) };
       } else if (a === "--realtime") realtime = true;
       else if (a === "--watch") watchFile = resolve(next());
+      else if (a === "--watch-refresh") watchRefreshFile = resolve(next());
       else if (a === "--no-render") render = false;
       else if (a === "--capture-only") captureOnly = true;
       else if (a === "--forks") forks = Number(next());
@@ -672,6 +674,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       sink.pump();
     } else {
       let pendingReload: { mtimeMs: number; importMs: number } | null = null;
+      let pendingRefresh: { mtimeMs: number } | null = null;
       // Imports in flight: a reload swaps only once the last one has declared
       // everything (a second write of the bundle starts another import, whose
       // beginBundle clears the declarations the first one made).
@@ -704,6 +707,26 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           }, 5);
         });
         cleanup.push(() => watcher.close());
+      }
+      if (watchRefreshFile) {
+        let seenRefreshMtime = statSync(watchRefreshFile).mtimeMs;
+        let refreshBusy = false;
+        const refreshWatcher = watch(watchRefreshFile, () => {
+          if (refreshBusy) return;
+          refreshBusy = true;
+          setTimeout(() => {
+            refreshBusy = false;
+            try {
+              const mtimeMs = statSync(watchRefreshFile!).mtimeMs;
+              if (mtimeMs === seenRefreshMtime) return;
+              seenRefreshMtime = mtimeMs;
+              pendingRefresh = { mtimeMs };
+            } catch {
+              // File removed during shutdown.
+            }
+          }, 5);
+        });
+        cleanup.push(() => refreshWatcher.close());
       }
       // Announce readiness only after the watcher is installed: an editor
       // responding to this line must not lose its first change.
@@ -744,6 +767,40 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           const tick = worldTick();
           process.stdout.write(JSON.stringify({ event: "handoff", tick }) + "\n");
           return 0;
+        }
+        if (pendingRefresh && !pendingReload && importing === 0) {
+          const { mtimeMs } = pendingRefresh;
+          pendingRefresh = null;
+          const started = performance.now();
+          let report: Record<string, unknown> | null = null;
+          let ok = false;
+          if (typeof extras.og_node_dev_refresh === "function") {
+            const raw = JSON.parse(extras.og_node_dev_refresh(engine.id)) as Record<string, unknown>;
+            report = raw;
+            ok = !("error" in raw);
+          } else {
+            report = engine.probe.reload() as Record<string, unknown> | null;
+            ok = report !== null;
+          }
+          const refreshed = performance.now();
+          const first = engine.frame(0);
+          const submitted = performance.now();
+          let rendered = false;
+          if (first.rendered) {
+            const waited: Result<void> = JSON.parse(extras.og_node_wait_gpu(engine.id));
+            if (!waited.ok) fail(`refresh's first frame: ${waited.reason}`);
+            rendered = true;
+          }
+          const timings = {
+            refreshMs: refreshed - started,
+            frameMs: submitted - refreshed,
+            gpuWaitMs: performance.now() - submitted,
+          };
+          const latencyMs = Date.now() - mtimeMs;
+          process.stdout.write(
+            JSON.stringify({ event: "refresh", ok: ok && first.ok, report, tick: first.tick, rendered, timings, latencyMs: +latencyMs.toFixed(1) }) + "\n",
+          );
+          drain();
         }
         if (pendingReload && importing === 0) {
           const { mtimeMs, importMs } = pendingReload as { mtimeMs: number; importMs: number };

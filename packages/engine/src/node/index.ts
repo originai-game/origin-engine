@@ -90,6 +90,8 @@ export interface NativeExtras {
   og_node_restart_diff(engine: number, saveText: string, ignoreJson: string, keepJson: string): string;
   /** `og ui check`: the UI's last laid-out frame (elements, overlaps, drawn text, fills, the accessibility tree, counts, viewport and theme facts; src/node/ui-check.ts's UiFrameSnapshot), or `{ error }`. Not in publish builds. */
   og_node_ui_frame(engine: number): string;
+  /** `og dev`: in-place asset/UI refresh without a bundle reload (`{ ms, steps, warnings }` or `{ error }`). Not in publish builds. */
+  og_node_dev_refresh?(engine: number): string;
 }
 
 /**

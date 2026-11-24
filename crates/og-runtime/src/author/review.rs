@@ -22,6 +22,7 @@ use crate::present::extract::{Hierarchy, RenderState};
 #[cfg(test)]
 use glam::Mat4;
 use glam::Vec3;
+use og_core::IdMap;
 use og_render::{Camera, Projection};
 
 /// The share of the framed extent left free on each side.
@@ -94,8 +95,39 @@ pub(crate) struct ReviewView {
     pub preset: Preset,
 }
 
-/// The world box of what `rs.scene.instances` draws for the view's entity
-/// and its descendants; `of` is each instance's entity (bits).
+fn grow_box(lo: &mut Vec3, hi: &mut Vec3, a: Vec3, b: Vec3, m: glam::Mat4) {
+    for k in 0..8 {
+        let corner = Vec3::new(
+            if k & 1 == 0 { a.x } else { b.x },
+            if k & 2 == 0 { a.y } else { b.y },
+            if k & 4 == 0 { a.z } else { b.z },
+        );
+        let p = m.transform_point3(corner);
+        *lo = lo.min(p);
+        *hi = hi.max(p);
+    }
+}
+
+fn grow_sprite(lo: &mut Vec3, hi: &mut Vec3, sp: &og_render::Sprite) {
+    let x0 = -sp.anchor.x * sp.size.x;
+    let x1 = (1.0 - sp.anchor.x) * sp.size.x;
+    let y0 = -sp.anchor.y * sp.size.y;
+    let y1 = (1.0 - sp.anchor.y) * sp.size.y;
+    let (sin, cos) = og_core::math::sin_cos(sp.rotation);
+    for (lx, ly) in [(x0, y0), (x1, y0), (x0, y1), (x1, y1)] {
+        let p = Vec3::new(
+            sp.position.x + lx * cos - ly * sin,
+            sp.position.y + lx * sin + ly * cos,
+            sp.position.z,
+        );
+        *lo = lo.min(p);
+        *hi = hi.max(p);
+    }
+}
+
+/// The world box of what `rs.scene` draws for the view's entity and its
+/// descendants (static instances, skinned/morphed instances, and sprites);
+/// `of` is each static instance's entity (bits).
 pub(crate) fn bounds(rs: &mut RenderState, h: &Hierarchy, of: &[u64]) -> Option<(Vec3, Vec3)> {
     let target = rs.review.as_ref()?.entity;
     let picked: Vec<_> = rs
@@ -112,15 +144,77 @@ pub(crate) fn bounds(rs: &mut RenderState, h: &Hierarchy, of: &[u64]) -> Option<
         let Some((a, b)) = crate::present::geometry::mesh_bounds(rs, mesh) else {
             continue;
         };
-        for k in 0..8 {
-            let corner = Vec3::new(
-                if k & 1 == 0 { a.x } else { b.x },
-                if k & 2 == 0 { a.y } else { b.y },
-                if k & 4 == 0 { a.z } else { b.z },
-            );
-            let p = m.transform_point3(corner);
-            lo = lo.min(p);
-            hi = hi.max(p);
+        grow_box(&mut lo, &mut hi, a, b, m);
+    }
+    if !rs.scene.objects.skinned_instances.is_empty() && !rs.atmo.palettes.is_empty() {
+        let by_palette: IdMap<u32, u64> =
+            IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
+        let mut fallback_meshes = Vec::new();
+        for inst in &rs.scene.objects.skinned_instances {
+            let Some(&owner) = by_palette.get(&inst.palette) else {
+                continue;
+            };
+            if !h.descends(owner, target) {
+                continue;
+            }
+            if let Some(di) = inst.deformed
+                && let Some(def) = rs.scene.objects.deformed_vertices.get(di as usize)
+                && !def.positions.is_empty()
+            {
+                for &p in &def.positions {
+                    let wp = inst.transform.transform_point3(p);
+                    lo = lo.min(wp);
+                    hi = hi.max(wp);
+                }
+                continue;
+            }
+            if let (Some(mesh), Some(skin), Some(palette)) = (
+                rs.scene.mesh(inst.mesh),
+                rs.scene.skin(inst.mesh),
+                rs.scene.objects.joint_palettes.get(inst.palette as usize),
+            ) && skin.joints.len() == mesh.vertices.len()
+                && skin.weights.len() == mesh.vertices.len()
+                && !palette.matrices.is_empty()
+            {
+                for ((v, joints), weights) in
+                    mesh.vertices.iter().zip(&skin.joints).zip(&skin.weights)
+                {
+                    let p0 = Vec3::from_array(v.position);
+                    let mut posed = Vec3::ZERO;
+                    let mut sum = 0.0f32;
+                    for k in 0..4 {
+                        let w = weights[k];
+                        if w > 0.0 {
+                            let m = palette
+                                .matrices
+                                .get(joints[k] as usize)
+                                .copied()
+                                .unwrap_or(glam::Mat4::IDENTITY);
+                            posed += m.transform_point3(p0) * w;
+                            sum += w;
+                        }
+                    }
+                    let local = if sum > 0.0 { posed / sum } else { p0 };
+                    let wp = inst.transform.transform_point3(local);
+                    lo = lo.min(wp);
+                    hi = hi.max(wp);
+                }
+                continue;
+            }
+            fallback_meshes.push((inst.mesh, inst.transform));
+        }
+        for (mesh, m) in fallback_meshes {
+            if let Some((a, b)) = crate::present::geometry::mesh_bounds(rs, mesh) {
+                grow_box(&mut lo, &mut hi, a, b, m);
+            }
+        }
+    }
+    for &(idx, owner) in &rs.ids.sprites {
+        if !h.descends(owner, target) {
+            continue;
+        }
+        if let Some(sp) = rs.scene.sprite.sprites.get(idx as usize) {
+            grow_sprite(&mut lo, &mut hi, sp);
         }
     }
     (lo.cmple(hi).all() && lo.is_finite() && hi.is_finite()).then_some((lo, hi))
@@ -325,5 +419,86 @@ mod tests {
         let side = camera(Preset::Orbit(90.0), lo, hi, 1.0);
         assert!(side.position.x > 1.0 && side.position.z.abs() < 1e-3);
         assert!(side.position.y > 0.5, "above the horizon");
+    }
+
+    #[test]
+    fn bounds_frames_skinned_instances_and_sprites() {
+        let mut rs = RenderState::new(serde_json::Value::Null);
+        let h = Hierarchy::default();
+        let skinned_ent = 42u64;
+        let sprite_ent = 99u64;
+
+        // Skinned mesh: a triangle shifted by joint 0 to x = +5.
+        let mut mesh = og_render::MeshData::default();
+        mesh.vertices = vec![
+            og_render::Vertex {
+                position: [0.0, 0.0, 0.0],
+                ..Default::default()
+            },
+            og_render::Vertex {
+                position: [1.0, 0.0, 0.0],
+                ..Default::default()
+            },
+            og_render::Vertex {
+                position: [0.0, 2.0, 0.0],
+                ..Default::default()
+            },
+        ];
+        mesh.indices = vec![0, 1, 2];
+        let skin = og_render::SkinData {
+            joints: vec![[0, 0, 0, 0]; 3],
+            weights: vec![[1.0, 0.0, 0.0, 0.0]; 3],
+        };
+        let handle = rs.scene.add_skinned_mesh(mesh, skin);
+        let mat = rs.scene.add_material(og_render::Material::default());
+        rs.scene
+            .objects
+            .joint_palettes
+            .push(og_render::JointPalette {
+                matrices: vec![Mat4::from_translation(Vec3::new(5.0, 0.0, 0.0))],
+            });
+        rs.atmo.palettes.insert(skinned_ent, 0);
+        rs.scene
+            .objects
+            .skinned_instances
+            .push(og_render::SkinnedInstance::new(
+                handle,
+                mat,
+                Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
+                0,
+            ));
+
+        rs.review = Some(ReviewView {
+            entity: skinned_ent,
+            name: "hero".into(),
+            preset: Preset::Front,
+        });
+        let (lo, hi) = bounds(&mut rs, &h, &[]).expect("skinned bounds");
+        assert!((lo - Vec3::new(5.0, 1.0, 0.0)).length() < 1e-5, "lo={lo}");
+        assert!((hi - Vec3::new(6.0, 3.0, 0.0)).length() < 1e-5, "hi={hi}");
+
+        // Sprite entity: 4x2 quad centered at (10, 2, -1), rotated 90° -> 2x4 box.
+        rs.scene.sprite.sprites.push(og_render::Sprite {
+            position: Vec3::new(10.0, 2.0, -1.0),
+            size: glam::Vec2::new(4.0, 2.0),
+            anchor: glam::Vec2::splat(0.5),
+            rotation: std::f32::consts::FRAC_PI_2,
+            ..Default::default()
+        });
+        rs.ids.sprites.push((0, sprite_ent));
+        rs.review = Some(ReviewView {
+            entity: sprite_ent,
+            name: "badge".into(),
+            preset: Preset::Front,
+        });
+        let (slo, shi) = bounds(&mut rs, &h, &[]).expect("sprite bounds");
+        assert!(
+            (slo - Vec3::new(9.0, 0.0, -1.0)).length() < 1e-4,
+            "slo={slo}"
+        );
+        assert!(
+            (shi - Vec3::new(11.0, 4.0, -1.0)).length() < 1e-4,
+            "shi={shi}"
+        );
     }
 }

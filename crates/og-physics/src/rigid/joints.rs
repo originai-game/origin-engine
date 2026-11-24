@@ -11,6 +11,16 @@ pub(crate) struct TrackedJoint {
     second: rp::RigidBodyHandle,
 }
 
+impl TrackedJoint {
+    pub(crate) fn kind(&self) -> u32 {
+        self.joint.kind
+    }
+
+    pub(crate) fn other_entity(&self) -> u64 {
+        self.joint.other
+    }
+}
+
 /// What the tracked joints hold that [`Sim`]'s own bytes leave out
 /// (og.Joint's breakForce and breakTorque are serde-skipped, so a world
 /// without a breakable joint saves as before): the two as bits, by joint

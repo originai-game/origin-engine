@@ -260,12 +260,17 @@ function features(o: Observed, cells: readonly string[], ignore: readonly string
 
 // ── inputs ───────────────────────────────────────────────────────────────
 
-/** One input the search sends: a press (down, held, up) or an intent. */
-type Input = { kind: "press"; down: [string, string]; up: [string, string]; label: string } | { kind: "intent"; event: string; payload: string; label: string };
+/** One input the search sends: a press (down, held, up), a UI click, or an intent. */
+type Input =
+  | { kind: "press"; down: [string, string]; up: [string, string]; label: string }
+  | { kind: "ui"; action: "touch_move_to" | "move_to_text"; args: string; label: string }
+  | { kind: "intent"; event: string; payload: string; label: string };
 
 type ExploreDesc = { cells?: string[]; ignore?: string[]; actions?: string[]; intents?: { event: string; values?: Record<string, unknown>[] }[] };
 type Binding = { control?: string; negative?: string; positive?: string; up?: string; down?: string; left?: string; right?: string };
 type FieldType = { name: string; type: string; min: number | null; max: number | null; variants: string[] };
+
+const INTERACTIVE_UI_ROLES = new Set(["button", "link", "checkbox", "radio", "switch", "tab", "menuitem", "slider"]);
 
 /** A control as a press through the command channel, or null for one it cannot press. */
 function pressOf(control: string | undefined): Input | null {
@@ -275,8 +280,60 @@ function pressOf(control: string | undefined): Input | null {
     if (/X|Y|XY|Trigger|dpad/.test(button)) return null;
     return { kind: "press", down: ["gamepad", button], up: ["gamepad", "-"], label: control };
   }
+  if (control === "mouse.left" || control === "touch" || control === "touch.tap" || control === "touch.primary") {
+    return { kind: "press", down: ["touch_start", ""], up: ["touch_end", ""], label: control };
+  }
   if (/^(mouse|wheel|touch)/.test(control)) return null;
   return { kind: "press", down: ["key_down", control], up: ["key_up", control], label: control };
+}
+
+/** Interactive UI controls visible right now, addressable by `touch_move_to` or `move_to_text`. */
+function uiInputs(engine: Engine): Input[] {
+  const dump = engine.probe.dump({ what: "ui" }) as {
+    elements?: Array<{
+      id?: string;
+      path?: string;
+      kind?: string;
+      disabled?: boolean;
+      text?: string;
+      role?: string;
+      states?: string[];
+      width?: number;
+      height?: number;
+    }>;
+  } | null;
+  const elements = dump?.elements;
+  if (!Array.isArray(elements) || elements.length === 0) return [];
+  const out: Input[] = [];
+  const seen = new Set<string>();
+  for (const el of elements) {
+    if (el.disabled) continue;
+    if (!((el.width ?? 0) > 0 && (el.height ?? 0) > 0)) continue;
+    const role = (el.role ?? "").toLowerCase();
+    const kind = (el.kind ?? "").toLowerCase();
+    const states = el.states ?? [];
+    const interactive = INTERACTIVE_UI_ROLES.has(role) || kind === "button" || states.includes("focusable");
+    if (!interactive) continue;
+    const target = el.path || el.id || "";
+    if (target) {
+      const key = `touch_move_to:${target}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: "ui", action: "touch_move_to", args: target, label: `ui click ${target}` });
+    } else if (el.text && el.text.trim().length > 0 && !el.text.includes(";") && !el.text.includes(":")) {
+      const args = `=${el.text.trim()}`;
+      const key = `move_to_text:${args}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ kind: "ui", action: "move_to_text", args, label: `ui click "${el.text.trim()}"` });
+    }
+  }
+  return out;
+}
+
+/** Formats one command-channel action at time 0, omitting trailing `:` when `args` is empty. */
+function cmd0(action: string, args: string): string {
+  return args ? `0:${action}:${args}` : `0:${action}`;
 }
 
 /** The payloads of an intent from its reflection: each field's values, the others at defaults, one field varied at a time. */
@@ -391,7 +448,19 @@ async function search(worker: number, seed: number, budget: { ticks: number; ms:
   const desc = declaredGameExplore(game) as ExploreDesc;
   const observed0 = engine.probe.observe(null, true) as unknown as Observed & { types: Record<string, { kind?: string; fields: FieldType[] }> };
   const inputs = vocabulary(engine, desc, observed0.types);
-  if (inputs.length === 0) fail("the game defines no button action the command channel can press, and GameDesc.explore names no intent: nothing to explore with");
+  let initialUi = uiInputs(engine);
+  if (inputs.length === 0 && initialUi.length === 0) {
+    const snap0 = engine.world.snapshot();
+    if (snap0.ok) {
+      engine.frame(0);
+      initialUi = uiInputs(engine);
+      engine.world.restore(snap0.value);
+    }
+  }
+  if (inputs.length === 0 && initialUi.length === 0) {
+    fail("the game defines no button action or interactive UI control the command channel can press, and GameDesc.explore names no intent: nothing to explore with");
+  }
+  const seenInputLabels = new Set<string>([...inputs.map((i) => i.label), ...initialUi.map((i) => i.label)]);
   const slice = Math.max(1, Math.ceil(horizon / 64));
   const rateOf = engine.rate;
   const cellsOf = (o: Observed) => features(o, desc.cells ?? [], desc.ignore ?? [], slice);
@@ -526,7 +595,7 @@ async function search(worker: number, seed: number, budget: { ticks: number; ms:
           if (pending[j]!.tick <= now) {
             const up = pending.splice(j, 1)[0]!;
             steps.push({ ...up, tick: now });
-            engine.probe.commands(`0:${up.action}:${up.args}`);
+            engine.probe.commands(cmd0(up.action, up.args));
           }
         const r = engine.advance(1);
         ticks++;
@@ -562,19 +631,27 @@ async function search(worker: number, seed: number, budget: { ticks: number; ms:
     for (let i = 0; i < n && ticks < budget.ticks; i++) {
       const at = tickOf(engine);
       if (at >= horizon) break;
-      // One in (inputs + 1) is a wait of up to half a second instead: time passes cheaply.
-      if (rng() * (inputs.length + 1) < 1) {
+      const liveUi = uiInputs(engine);
+      for (const u of liveUi) seenInputLabels.add(u.label);
+      const choices: readonly Input[] = liveUi.length > 0 ? [...inputs, ...liveUi] : inputs;
+      // One in (choices + 1) is a wait of up to half a second instead: time passes cheaply.
+      if (choices.length === 0 || rng() * (choices.length + 1) < 1) {
         step(1 + Math.floor(rng() * Math.max(1, Math.round(rateOf / 2))));
         look();
         if (failed) break;
         continue;
       }
-      const input = pick(inputs);
+      const input = pick(choices);
       const unit = ++unitSeq;
       if (input.kind === "press") {
         steps.push({ tick: at, action: input.down[0], args: input.down[1], unit });
-        engine.probe.commands(`0:${input.down[0]}:${input.down[1]}`);
+        engine.probe.commands(cmd0(input.down[0], input.down[1]));
         pending.push({ tick: at + 1 + Math.floor(rng() * 3), action: input.up[0], args: input.up[1], unit });
+      } else if (input.kind === "ui") {
+        steps.push({ tick: at, action: input.action, args: input.args, unit });
+        steps.push({ tick: at, action: "touch_start", args: "", unit });
+        engine.probe.commands(`${cmd0(input.action, input.args)};0:touch_start`);
+        pending.push({ tick: at + 1, action: "touch_end", args: "", unit });
       } else {
         steps.push({ tick: at, action: "intent", args: `${input.event}:${input.payload}`, unit });
         engine.probe.commands(`0:intent:${input.event}:${input.payload}`);
@@ -608,7 +685,7 @@ async function search(worker: number, seed: number, budget: { ticks: number; ms:
     ms: Math.round(performance.now() - t0),
     stopped,
     evicted,
-    inputs: inputs.map((i) => i.label),
+    inputs: [...seenInputLabels],
     cellFields,
     fired: [...firedSites],
     sitesSeen: final.sites,

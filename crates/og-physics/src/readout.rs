@@ -74,6 +74,99 @@ pub struct WaterHeights {
     pub heights: Vec<f32>,
 }
 
+/// Counts of rigid bodies in the physics world.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PhysicsBodyCounts {
+    pub tracked: usize,
+    pub rapier: usize,
+    pub dynamic: usize,
+    pub fixed: usize,
+    pub kinematic: usize,
+    pub awake: usize,
+    pub sleeping: usize,
+}
+
+/// Counts of colliders in the physics world.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PhysicsColliderCounts {
+    pub total: usize,
+    pub statics: usize,
+    pub sensors: usize,
+    pub compounds: usize,
+}
+
+/// Snapshot of one tracked rigid body.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PhysicsBodyDump {
+    pub entity: u64,
+    pub kind: &'static str,
+    pub sleeping: bool,
+    pub position: Vec3,
+    pub linear_velocity: Vec3,
+    pub angular_velocity: Vec3,
+    pub colliders: usize,
+}
+
+/// Snapshot of one tracked joint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PhysicsJointDump {
+    pub entity: u64,
+    pub kind: &'static str,
+    pub other: u64,
+}
+
+/// Snapshot of an active solid contact pair or sensor intersection.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PhysicsContactDump {
+    pub a: u64,
+    pub b: u64,
+    pub sensor: bool,
+    pub manifolds: usize,
+    pub points: usize,
+    pub deepest_dist: f32,
+    pub point: Vec3,
+    pub normal: Vec3,
+}
+
+/// Snapshot of a tracked vehicle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PhysicsVehicleDump {
+    pub entity: u64,
+    pub wheels: usize,
+    pub grounded_wheels: usize,
+}
+
+/// Snapshot of a tracked ragdoll.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PhysicsRagdollDump {
+    pub entity: u64,
+    pub bones: usize,
+    pub dynamic: bool,
+}
+
+/// Read-only diagnostic snapshot of the physics simulation (`dump_physics`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PhysicsDump {
+    pub profile: &'static str,
+    pub gravity: Vec3,
+    pub stats: PhysicsStats,
+    pub body_counts: PhysicsBodyCounts,
+    pub collider_counts: PhysicsColliderCounts,
+    pub bodies: Vec<PhysicsBodyDump>,
+    pub joints: Vec<PhysicsJointDump>,
+    pub contacts: Vec<PhysicsContactDump>,
+    pub vehicles: Vec<PhysicsVehicleDump>,
+    pub ragdolls: Vec<PhysicsRagdollDump>,
+    pub ropes: Vec<(u64, usize)>,
+    pub cloths: Vec<(u64, usize)>,
+    pub soft_bodies: Vec<(u64, usize)>,
+    pub garments: Vec<(u64, usize)>,
+    pub fluids2d: Vec<(u64, usize)>,
+    pub fluids3d: Vec<(u64, usize)>,
+    pub water_surfaces: usize,
+    pub water_lines: usize,
+}
+
 /// Runs `$body` with `$s` bound to the active profile's simulation, or
 /// answers `None` when there is none yet.
 macro_rules! with_sim {
@@ -92,6 +185,19 @@ macro_rules! with_sim {
 /// What physics keeps beyond the components, read for drawing and by game
 /// code (`og.physics.ropePoints` and friends): as the last step left it.
 impl PhysicsSystem {
+    /// Read-only diagnostic snapshot of the active simulation (`None` before
+    /// the first step).
+    pub fn dump(&self) -> Option<PhysicsDump> {
+        let shared = lock(&self.shared);
+        let mut out = if let Some(s) = shared.sim3.as_deref() {
+            s.dump()
+        } else {
+            shared.sim2.as_deref()?.dump()
+        };
+        out.stats = shared.stats.clone();
+        Some(out)
+    }
+
     /// The physics overlay's segments with their RGBA colours: collider
     /// shapes, joints and contacts as the last step left them (rapier's
     /// debug render). For drawing only; `None` before the first step.

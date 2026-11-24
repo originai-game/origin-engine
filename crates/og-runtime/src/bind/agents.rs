@@ -237,6 +237,8 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
     crate::present::geometry::register(probe, engine);
     #[cfg(not(feature = "publish"))]
     crate::author::review::register(probe, engine);
+    #[cfg(not(feature = "publish"))]
+    crate::author::diagnostics::register(probe, engine);
     probe.set_memory(move |world| crate::author::memory::report(engine, world));
     probe.set_listen(move |seconds| {
         let link = og_audio::link(engine)?;

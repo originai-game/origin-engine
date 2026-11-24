@@ -363,12 +363,12 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
     ),
     (
         "expect",
-        "expect:<entity:<id>:within:x,y,w,h | event:<Name>[:count] | ui:text:<text> | region:x,y,w,h:color:#rrggbb[:tol] | frame:<ref.png>:rmse:<=v | state:<path>==<value> | entity:<id>:<path>==<value> | timings:<path>==<value>>",
-        "Assert at this tick (a value written `$<path>` is another path of the same source: `state:coins<=$total`): a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer is unchecked.",
+        "expect:<entity:<id>:within:x,y,w,h | event:<Name>[:count] | ui:text:<text> | region:x,y,w,h:color:#rrggbb[:tol] | frame:<ref.png>:rmse:<=v | state:<path>==<value> | entity:<id>:<path>==<value> | timings:<path>==<value> | audio:[<sec>:]<audible|silent|<metric><op><value>>>",
+        "Assert at this tick (a value written `$<path>` is another path of the same source: `state:coins<=$total`): a failure is logged as a warning with the tick and the observed value, and fails `og run --json` (exit 1) and the playtest; a frame expectation without a renderer or an audio expectation without audio is unchecked.",
     ),
     (
         "invariant",
-        "invariant:<an expect: form but region and frame>",
+        "invariant:<an expect: form but region, frame and audio>",
         "From now on, check the expectation after every tick: the first tick it fails is an assertion violation (the probe's `assertions`, `og run --json`'s) with the tick and the observed value, which fails `og run` (exit 1) and the playtest.",
     ),
     (

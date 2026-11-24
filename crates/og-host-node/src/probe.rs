@@ -51,3 +51,13 @@ pub fn og_node_probe_serve(env: Env, engine: u32) -> u32 {
 pub fn og_node_probe_close(engine: u32) -> bool {
     SERVERS.with(|s| s.borrow_mut().remove(&engine).is_some())
 }
+
+/// Development build in-place asset/UI refresh without a bundle reload.
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_node_dev_refresh")]
+pub fn og_node_dev_refresh(engine: u32) -> String {
+    match og_runtime::dev_refresh(engine) {
+        Ok(v) => v.to_string(),
+        Err(e) => serde_json::json!({ "error": e }).to_string(),
+    }
+}

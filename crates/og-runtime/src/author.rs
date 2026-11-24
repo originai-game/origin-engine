@@ -7,6 +7,8 @@ pub(crate) mod describe;
 #[cfg(not(feature = "publish"))]
 pub(crate) mod determinism;
 #[cfg(not(feature = "publish"))]
+pub(crate) mod diagnostics;
+#[cfg(not(feature = "publish"))]
 pub(crate) mod inspector;
 pub(crate) mod lanes;
 pub(crate) mod memory;

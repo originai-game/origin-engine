@@ -828,6 +828,8 @@ pub(crate) const COMMANDS: &[Commands] = &[
             "debug",
             "view",
             "turntable",
+            "dump_physics",
+            "dump_audio",
             "dump_memory",
             "dump_ai",
             "dump_nav",
