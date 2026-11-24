@@ -21,8 +21,8 @@ export interface PuzzleLevelPathProps {
  * a road, each at the place across the path the game gives (x). The road
  * is lit gold up to the level to play and pale past it. A disc shows its
  * number, a lock when it is locked, its stars on a dark capsule at its
- * foot once done, and the Play plate under the current one, the road leaving
- * only below it after a gap; the chosen
+ * foot once done, and the Play plate under the current one, the road running
+ * on behind it; the chosen
  * one is ringed and says Selected, an open one says Open. Reports choose
  * (a level's key; a locked level is disabled and sends nothing) and, with
  * X or pad Y on the focused disc, details. The game decides what is open
@@ -76,7 +76,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                         </Show>
                         <Show when={i() + 1 < (props.levels ?? []).length && (props.levels ?? [])[i() + 1]['chapter'] === l().chapter}>
                           <View class="absolute inset-y-0 w-0" style={{ left: `${100 * l().x}%` }}>
-                            <View class={`absolute -left-1.5 compact:-left-1.25 bg-fg shadow-plate ring-thick ring-shade-deep top-13 bottom-0 w-3 rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent group-data-worded/lane:top-auto group-data-worded/lane:h-5 compact:top-9.5 compact:w-2.5`} data-lit={(props.levels ?? [])[i() + 1]['state'] === 'done' || (props.levels ?? [])[i() + 1]['state'] === 'current'} />
+                            <View class={`absolute -left-1.5 compact:-left-1.25 bg-fg shadow-plate ring-thick ring-shade-deep bottom-0 w-3 rounded-capsule data-lit:bg-linear-to-r data-lit:from-gold-hi data-lit:to-gold data-lit:bg-transparent top-13 compact:top-9.5 compact:w-2.5`} data-lit={(props.levels ?? [])[i() + 1]['state'] === 'done' || (props.levels ?? [])[i() + 1]['state'] === 'current'} />
                           </View>
                         </Show>
                       </View>

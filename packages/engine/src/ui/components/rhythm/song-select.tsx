@@ -214,7 +214,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                   <View class={`w-0.75 h-2/5 bg-current animate-pulse`} />
                                 </View>
                               </Show>
-                              <Text class={`text-caption font-bold tracking-label uppercase whitespace-nowrap`}>
+                              <Text class={`shrink-0 text-caption font-bold tracking-label uppercase whitespace-nowrap`}>
                                 {s().id === props.previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}
                               </Text>
                             </View>

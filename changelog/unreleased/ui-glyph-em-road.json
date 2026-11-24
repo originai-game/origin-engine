@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Glyph",
+      "summary": "A binding glyph drawn as the pack's key or button art takes its em square in the layout, whatever the font. Fonts without an em space (Fredoka, Lilita One and others) left it no width, so the key cap covered the next word (\"X review\" on song select's Preview)."
+    },
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "The road runs on from every disc to the next behind its Play, Open or Selected word, instead of starting below the word as a detached piece."
+    }
+  ]
+}
