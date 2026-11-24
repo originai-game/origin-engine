@@ -5,6 +5,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // stores and output paths remain live: those are state, not prepared inputs.
 // `.amp` is an agent's workspace (scratch, captures, portals), never the game's.
 const OMIT = new Set([".git", ".og", ".amp", "og-out", "node_modules", "dist"]);
+/** Bytes a run may copy; clones are free. */
 const MAX_BYTES = 512 * 1024 * 1024;
 const MAX_FILES = 32768;
 
@@ -35,10 +36,17 @@ export function freezeInputs(argv: readonly string[], cwd: string, directory: st
       mkdirSync(target, { recursive: true });
       for (const name of names(source)) copy(join(source, name), join(target, name), depth + 1);
     } else {
-      bytes += stat.size;
-      if (bytes > MAX_BYTES) throw new Error("session inputs exceed 512 MiB");
       mkdirSync(dirname(target), { recursive: true });
-      copyFileSync(source, target, constants.COPYFILE_FICLONE);
+      // A clone shares the source's blocks until one is written, and nothing
+      // writes a frozen input: it costs no space, so only a real copy counts
+      // against the budget (a cooked project is the size of its sources again).
+      try {
+        copyFileSync(source, target, constants.COPYFILE_FICLONE_FORCE);
+      } catch {
+        bytes += stat.size;
+        if (bytes > MAX_BYTES) throw new Error(`session inputs exceed 512 MiB of copies (this filesystem cannot clone ${source})`);
+        copyFileSync(source, target);
+      }
     }
     if (stamp(source) !== before) throw new Error(`input changed during admission: ${source}`);
   };

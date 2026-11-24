@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og session (og run, og test, og ui check on a shared host)",
+      "summary": "A project past 512 MiB of files (its sources plus its cooked bundle) runs on the shared host again instead of failing with \"session inputs exceed 512 MiB\". The frozen inputs are clones, which cost no space; only files the filesystem cannot clone count against the 512 MiB copy budget."
+    }
+  ]
+}

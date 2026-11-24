@@ -27,11 +27,12 @@ declare module "node:fs" {
   export function readFileSync(path: string | URL): Uint8Array;
   export function readFileSync(path: string | URL, encoding: string): string;
   export function writeFileSync(path: string, data: string | Uint8Array): void;
+  export function truncateSync(path: string, length?: number): void;
   export function appendFileSync(path: string, data: string): void;
   export function writeSync(fd: number, data: Uint8Array, offset?: number, length?: number): number;
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function mkdirSync(path: string, options?: { recursive?: boolean }): void;
-  export const constants: { COPYFILE_FICLONE: number };
+  export const constants: { COPYFILE_FICLONE: number; COPYFILE_FICLONE_FORCE: number };
   export function copyFileSync(from: string, to: string, mode?: number): void;
   export function renameSync(from: string, to: string): void;
   interface Stats { mtimeMs: number; ctimeMs: number; ino: number; size: number; isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }
