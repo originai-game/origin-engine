@@ -319,10 +319,10 @@ impl Ocean {
             (Some(c), Some(f)) => self.shoaling(c.shore.sample(f + rest), &c.trains, trains_phase),
             _ => Shoaling::OPEN,
         };
-        // 4-step 2x2 Newton-Raphson inversion for rest + D(rest) = 0: converges
+        // Three-step 2x2 Newton-Raphson inversion for rest + D(rest) = 0: converges
         // quadratically without the Picard oscillation at high choppiness.
         let mut rest = Vec2::ZERO;
-        for _ in 0..4 {
+        for _ in 0..3 {
             let sh = shoal_at(rest);
             let mut dx = 0.0f32;
             let mut dz = 0.0f32;
@@ -351,14 +351,11 @@ impl Ocean {
             let fx = rest.x + dx;
             let fz = rest.y + dz;
             let det = jxx * jzz - jxz * jxz;
-            if det > 0.2 {
-                let inv = 1.0 / det;
-                rest.x -= (jzz * fx - jxz * fz) * inv;
-                rest.y -= (-jxz * fx + jxx * fz) * inv;
-            } else {
-                rest.x -= 0.5 * fx;
-                rest.y -= 0.5 * fz;
-            }
+            // Non-folding spectra have a positive Jacobian. Guard only
+            // its singular limit, not a second (Picard) solver path.
+            let inv = 1.0 / det.max(1e-6);
+            rest.x -= (jzz * fx - jxz * fz) * inv;
+            rest.y -= (-jxz * fx + jxx * fz) * inv;
         }
         let shoal = shoal_at(rest);
         let mut point = SurfacePoint {

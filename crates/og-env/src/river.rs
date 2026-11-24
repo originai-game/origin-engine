@@ -12,7 +12,8 @@
 //! Hydraulics*, 1959, §8-1), here (1 − a²)^¼ of the speed for `a` the share
 //! of the half width from the centre.
 
-use og_core::glam::{DVec2, Vec2, Vec3, Vec3Swizzles};
+use og_core::glam::{Vec2, Vec3, Vec3Swizzles};
+use std::collections::BTreeMap;
 
 /// A river's centreline, width (m) and mid-stream speed (m/s).
 #[derive(Clone, Debug, PartialEq)]
@@ -22,6 +23,10 @@ pub struct River {
     points: Vec<Vec3>,
     /// The arc length to each point (m, along xz).
     along: Vec<f64>,
+    /// Segment AABBs expanded by half width, in canonical segment order.
+    grid: BTreeMap<(i32, i32), Vec<usize>>,
+    grid_origin: Vec2,
+    cell: f32,
     pub width: f32,
     pub speed: f32,
 }
@@ -67,7 +72,7 @@ impl River {
                 kept.push(p);
             }
         }
-        if kept.len() < 2 || width.is_nan() || width <= 0.0 {
+        if kept.len() < 2 || !width.is_finite() || width <= 0.0 {
             return None;
         }
         let mut along = vec![0.0f64];
@@ -75,9 +80,31 @@ impl River {
             let d = f64::from(w[0].xz().distance(w[1].xz()));
             along.push(along.last().copied().unwrap_or(0.0) + d);
         }
+        let cell = kept
+            .windows(2)
+            .map(|w| w[0].xz().distance(w[1].xz()))
+            .fold(width, f32::max);
+        let grid_origin = kept[0].xz();
+        let mut grid: BTreeMap<(i32, i32), Vec<usize>> = BTreeMap::new();
+        for (i, w) in kept.windows(2).enumerate() {
+            let lo = ((w[0].xz().min(w[1].xz()) - Vec2::splat(width * 0.5) - grid_origin) / cell)
+                .floor()
+                .as_ivec2();
+            let hi = ((w[0].xz().max(w[1].xz()) + Vec2::splat(width * 0.5) - grid_origin) / cell)
+                .floor()
+                .as_ivec2();
+            for z in lo.y..=hi.y {
+                for x in lo.x..=hi.x {
+                    grid.entry((x, z)).or_default().push(i);
+                }
+            }
+        }
         Some(River {
             points: kept,
             along,
+            grid,
+            grid_origin,
+            cell,
             width,
             speed: speed.max(0.0),
         })
@@ -93,6 +120,9 @@ impl River {
         River {
             points: self.points.iter().map(|&p| p + delta).collect(),
             along: self.along.clone(),
+            grid: self.grid.clone(),
+            grid_origin: self.grid_origin + delta.xz(),
+            cell: self.cell,
             width: self.width,
             speed: self.speed,
         }
@@ -106,40 +136,41 @@ impl River {
     /// The river at frame point `p` (xz): None outside it (further from the
     /// centreline than half its width, or past either end).
     pub fn at(&self, p: Vec2) -> Option<RiverPoint> {
-        let q = DVec2::new(f64::from(p.x), f64::from(p.y));
         // The nearest point of the centreline: the segment it lies on, how far
         // along it, and its distance (ties to the earlier segment).
-        let mut best: Option<(usize, f64, f64)> = None;
-        for (i, w) in self.points.windows(2).enumerate() {
-            let a = w[0].xz().as_dvec2();
-            let b = w[1].xz().as_dvec2();
-            let t = og_core::math::segment_t(q, a, b);
-            let d = q.distance(a + (b - a) * t);
+        let key = ((p - self.grid_origin) / self.cell).floor().as_ivec2();
+        let mut best: Option<(usize, f32, f32)> = None;
+        for &i in self.grid.get(&(key.x, key.y))? {
+            let a = self.points[i].xz();
+            let b = self.points[i + 1].xz();
+            let ab = b - a;
+            let t = ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
+            let d = p.distance(a + ab * t);
             if best.is_none_or(|(_, _, e)| d < e) {
                 best = Some((i, t, d));
             }
         }
         let (i, t, d) = best?;
-        let half = f64::from(self.width) * 0.5;
+        let half = self.width * 0.5;
         let a = self.points[i];
         let b = self.points[i + 1];
         let tangent = (b.xz() - a.xz()).normalize();
-        let off = q - a.xz().as_dvec2();
-        let ab = (b.xz() - a.xz()).as_dvec2();
+        let off = p - a.xz();
+        let ab = b.xz() - a.xz();
         // Past either end of the river (off the end of its first or last segment).
         let s = off.dot(ab) / ab.length_squared();
         if (i == 0 && s < 0.0) || (i + 2 == self.points.len() && s > 1.0) || d > half {
             return None;
         }
         // Right of the tangent (facing downstream) is +across.
-        let side = tangent.x * off.y as f32 - tangent.y * off.x as f32;
-        let across = (d / half) as f32 * if side >= 0.0 { 1.0 } else { -1.0 };
+        let side = tangent.x * off.y - tangent.y * off.x;
+        let across = (d / half) * if side >= 0.0 { 1.0 } else { -1.0 };
         Some(RiverPoint {
-            level: a.y + (b.y - a.y) * t as f32,
+            level: a.y + (b.y - a.y) * t,
             velocity: tangent * (self.speed * bank_profile(across)),
             tangent,
             across,
-            along: self.along[i] + (self.along[i + 1] - self.along[i]) * t,
+            along: self.along[i] + (self.along[i + 1] - self.along[i]) * f64::from(t),
         })
     }
 }
