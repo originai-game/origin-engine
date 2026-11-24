@@ -43,6 +43,24 @@ pub struct TargetDesc {
     pub usage: wgpu::TextureUsages,
 }
 
+impl TargetDesc {
+    /// Whether two texture descriptions can share the same physical allocation
+    /// by unioning their usage flags.
+    pub(crate) fn compatible_with(self, other: TargetDesc) -> bool {
+        self.width == other.width
+            && self.height == other.height
+            && self.format == other.format
+            && self.samples == other.samples
+    }
+}
+
+/// A buffer/SSBO resource tracked by the render graph for dependency edges.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct BufferDesc {
+    pub size: u64,
+    pub usage: wgpu::BufferUsages,
+}
+
 /// Why a graph does not compile. Every variant names what is wrong.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GraphError {
@@ -88,10 +106,40 @@ impl fmt::Display for GraphError {
 impl std::error::Error for GraphError {}
 
 #[derive(Clone, Debug)]
+enum ResourceKind {
+    TransientTexture(TargetDesc),
+    ImportedTexture,
+    TransientBuffer(BufferDesc),
+    ImportedBuffer,
+}
+
+impl ResourceKind {
+    fn is_transient(&self) -> bool {
+        matches!(
+            self,
+            ResourceKind::TransientTexture(_) | ResourceKind::TransientBuffer(_)
+        )
+    }
+
+    fn texture_desc(&self) -> Option<TargetDesc> {
+        match *self {
+            ResourceKind::TransientTexture(d) => Some(d),
+            _ => None,
+        }
+    }
+
+    fn buffer_desc(&self) -> Option<BufferDesc> {
+        match *self {
+            ResourceKind::TransientBuffer(d) => Some(d),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 struct TargetDecl {
     name: String,
-    /// `None` for an imported target.
-    desc: Option<TargetDesc>,
+    kind: ResourceKind,
 }
 
 #[derive(Clone, Debug)]
@@ -115,11 +163,12 @@ impl RenderGraph {
     }
 
     /// Declares a texture the frame allocates (and may alias with another
-    /// transient target of the same description whose lifetime has ended).
+    /// transient target of compatible size/format/samples whose lifetime has
+    /// ended, unioning their usage bits).
     pub fn transient(&mut self, name: impl Into<String>, desc: TargetDesc) -> &mut Self {
         self.targets.push(TargetDecl {
             name: name.into(),
-            desc: Some(desc),
+            kind: ResourceKind::TransientTexture(desc),
         });
         self
     }
@@ -129,7 +178,29 @@ impl RenderGraph {
     pub fn import(&mut self, name: impl Into<String>) -> &mut Self {
         self.targets.push(TargetDecl {
             name: name.into(),
-            desc: None,
+            kind: ResourceKind::ImportedTexture,
+        });
+        self
+    }
+
+    /// Declares a transient GPU buffer (SSBO / indirect args / visibility
+    /// scratch) that participates in pass dependency edges.
+    #[allow(dead_code)]
+    pub fn transient_buffer(&mut self, name: impl Into<String>, desc: BufferDesc) -> &mut Self {
+        self.targets.push(TargetDecl {
+            name: name.into(),
+            kind: ResourceKind::TransientBuffer(desc),
+        });
+        self
+    }
+
+    /// Declares an external GPU buffer owned outside the frame that
+    /// participates in pass dependency edges.
+    #[allow(dead_code)]
+    pub fn import_buffer(&mut self, name: impl Into<String>) -> &mut Self {
+        self.targets.push(TargetDecl {
+            name: name.into(),
+            kind: ResourceKind::ImportedBuffer,
         });
         self
     }
@@ -162,6 +233,17 @@ impl RenderGraph {
     /// Orders the passes, checks the graph and assigns transient targets to
     /// physical textures.
     pub fn compile(&self) -> Result<GraphPlan, GraphError> {
+        self.compile_with_roots(None)
+    }
+
+    /// Orders the passes, pruning any pass that cannot reach one of the
+    /// `roots` targets (dead-pass culling), then assigns physical slots.
+    #[allow(dead_code)]
+    pub fn compile_culled(&self, roots: &[&str]) -> Result<GraphPlan, GraphError> {
+        self.compile_with_roots(Some(roots))
+    }
+
+    fn compile_with_roots(&self, roots: Option<&[&str]>) -> Result<GraphPlan, GraphError> {
         let n = self.passes.len();
         for (i, t) in self.targets.iter().enumerate() {
             if self.targets[..i].iter().any(|u| u.name == t.name) {
@@ -218,7 +300,7 @@ impl RenderGraph {
             if let Some(&after) = w.iter().find(|&&q| q > p) {
                 return Ok(Some(after));
             }
-            if self.targets[t].desc.is_some() {
+            if self.targets[t].kind.is_transient() {
                 return Err(GraphError::NeverWritten {
                     target: self.targets[t].name.clone(),
                     pass: self.passes[p].name.clone(),
@@ -278,18 +360,49 @@ impl RenderGraph {
             return Err(GraphError::Cycle(self.find_cycle(&edges, &indegree)));
         }
 
+        // Optional dead-pass culling backwards from root target outputs.
+        if let Some(roots) = roots {
+            let mut reverse: Vec<Vec<usize>> = vec![Vec::new(); n];
+            for (from, tos) in edges.iter().enumerate() {
+                for &to in tos {
+                    reverse[to].push(from);
+                }
+            }
+            let mut live = vec![false; n];
+            let mut stack = Vec::new();
+            for root_name in roots {
+                if let Some(t) = self.targets.iter().position(|t| t.name == *root_name) {
+                    for &w in &writers[t] {
+                        if !live[w] {
+                            live[w] = true;
+                            stack.push(w);
+                        }
+                    }
+                }
+            }
+            while let Some(p) = stack.pop() {
+                for &pred in &reverse[p] {
+                    if !live[pred] {
+                        live[pred] = true;
+                        stack.push(pred);
+                    }
+                }
+            }
+            order.retain(|&p| live[p]);
+        }
+
         // Lifetimes (positions in `order`) and physical slots.
-        let mut position = vec![0usize; n];
+        let mut position: Vec<Option<usize>> = vec![None; n];
         for (i, &p) in order.iter().enumerate() {
-            position[p] = i;
+            position[p] = Some(i);
         }
         let mut lifetimes: Vec<Option<(usize, usize)>> = vec![None; self.targets.len()];
-        for p in 0..n {
+        for (p, pos) in position.iter().enumerate() {
+            let Some(at) = *pos else { continue };
             for &t in reads[p].iter().chain(&writes[p]).chain(&binds[p]) {
-                if self.targets[t].desc.is_none() {
+                if !self.targets[t].kind.is_transient() {
                     continue;
                 }
-                let at = position[p];
                 lifetimes[t] = Some(match lifetimes[t] {
                     Some((a, b)) => (a.min(at), b.max(at)),
                     None => (at, at),
@@ -302,23 +415,50 @@ impl RenderGraph {
         og_core::sort::sort_by_key(&mut by_first, |&t| (lifetimes[t].expect("filtered").0, t));
         let mut physical: Vec<(TargetDesc, usize)> = Vec::new(); // (desc, last use)
         let mut slots = vec![None; self.targets.len()];
+        let mut physical_buffers: Vec<(BufferDesc, usize)> = Vec::new();
+        let mut buffer_slots: Vec<Option<usize>> = vec![None; self.targets.len()];
         for t in by_first {
-            let desc = self.targets[t].desc.expect("transient");
             let (first, last) = lifetimes[t].expect("used");
-            let slot = match physical
-                .iter()
-                .position(|&(d, end)| d == desc && end < first)
-            {
-                Some(s) => {
-                    physical[s].1 = last;
-                    s
-                }
-                None => {
-                    physical.push((desc, last));
-                    physical.len() - 1
-                }
-            };
-            slots[t] = Some(slot);
+            if let Some(desc) = self.targets[t].kind.texture_desc() {
+                // Prefer exact usage match first, otherwise alias any compatible
+                // (width, height, format, samples) slot whose lifetime ended and
+                // union its usage bits.
+                let slot = match physical
+                    .iter()
+                    .position(|&(d, end)| d == desc && end < first)
+                    .or_else(|| {
+                        physical
+                            .iter()
+                            .position(|&(d, end)| d.compatible_with(desc) && end < first)
+                    }) {
+                    Some(s) => {
+                        physical[s].0.usage |= desc.usage;
+                        physical[s].1 = last;
+                        s
+                    }
+                    None => {
+                        physical.push((desc, last));
+                        physical.len() - 1
+                    }
+                };
+                slots[t] = Some(slot);
+            } else if let Some(desc) = self.targets[t].kind.buffer_desc() {
+                // Transient buffers alias across non-overlapping lifetimes as well,
+                // taking the largest required size and the union of usage flags.
+                let slot = match physical_buffers.iter().position(|&(_, end)| end < first) {
+                    Some(s) => {
+                        physical_buffers[s].0.size = physical_buffers[s].0.size.max(desc.size);
+                        physical_buffers[s].0.usage |= desc.usage;
+                        physical_buffers[s].1 = last;
+                        s
+                    }
+                    None => {
+                        physical_buffers.push((desc, last));
+                        physical_buffers.len() - 1
+                    }
+                };
+                buffer_slots[t] = Some(slot);
+            }
         }
         Ok(GraphPlan {
             pass_names: self.passes.iter().map(|p| p.name.clone()).collect(),
@@ -327,6 +467,8 @@ impl RenderGraph {
             lifetimes,
             slots,
             physical: physical.into_iter().map(|(d, _)| d).collect(),
+            buffer_slots,
+            physical_buffers: physical_buffers.into_iter().map(|(d, _)| d).collect(),
         })
     }
 
@@ -363,6 +505,8 @@ pub struct GraphPlan {
     lifetimes: Vec<Option<(usize, usize)>>,
     slots: Vec<Option<usize>>,
     physical: Vec<TargetDesc>,
+    buffer_slots: Vec<Option<usize>>,
+    physical_buffers: Vec<BufferDesc>,
 }
 
 impl GraphPlan {
@@ -386,6 +530,13 @@ impl GraphPlan {
         self.slots[t]
     }
 
+    /// The physical buffer a transient buffer lives in (`None` for an
+    /// imported or unused buffer, or an unknown name).
+    pub fn buffer_slot(&self, target: &str) -> Option<usize> {
+        let t = self.target_names.iter().position(|n| n == target)?;
+        self.buffer_slots[t]
+    }
+
     /// Named transient targets that need views, excluding imports and unused targets.
     pub(crate) fn transients(&self) -> impl Iterator<Item = (&str, usize)> {
         self.target_names
@@ -404,5 +555,80 @@ impl GraphPlan {
     /// The physical textures the frame allocates, by slot.
     pub fn physical(&self) -> &[TargetDesc] {
         &self.physical
+    }
+
+    /// The physical buffers the frame allocates, by slot.
+    pub fn physical_buffers(&self) -> &[BufferDesc] {
+        &self.physical_buffers
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn desc(usage: wgpu::TextureUsages) -> TargetDesc {
+        TargetDesc {
+            width: 64,
+            height: 64,
+            format: wgpu::TextureFormat::Rgba16Float,
+            samples: 1,
+            usage,
+        }
+    }
+
+    #[test]
+    fn aliases_compatible_targets_by_merging_usage_bits() {
+        let mut g = RenderGraph::new();
+        g.transient(
+            "a",
+            desc(wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING),
+        );
+        g.transient(
+            "b",
+            desc(
+                wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC,
+            ),
+        );
+        g.import("out");
+        g.pass("p0", &[], &["a"]);
+        g.pass("p1", &["a"], &["out"]);
+        g.pass("p2", &["out"], &["b"]);
+        g.pass("p3", &["b"], &["out"]);
+        let plan = g.compile().unwrap();
+        assert_eq!(plan.physical().len(), 1);
+        assert_eq!(plan.slot("a"), plan.slot("b"));
+        assert!(
+            plan.physical()[0]
+                .usage
+                .contains(wgpu::TextureUsages::COPY_SRC)
+        );
+    }
+
+    #[test]
+    fn supports_buffer_edges_and_dead_pass_culling() {
+        let mut g = RenderGraph::new();
+        g.transient_buffer(
+            "cull_buf",
+            BufferDesc {
+                size: 1024,
+                usage: wgpu::BufferUsages::STORAGE,
+            },
+        );
+        g.transient(
+            "dead_tex",
+            desc(wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING),
+        );
+        g.import("out");
+        g.pass("draw", &["cull_buf"], &["out"]);
+        g.pass("cull", &[], &["cull_buf"]);
+        g.pass("unused", &[], &["dead_tex"]);
+        let plan = g.compile_culled(&["out"]).unwrap();
+        assert_eq!(plan.ordered_names(), vec!["cull", "draw"]);
+        assert_eq!(plan.physical().len(), 0);
+        assert_eq!(plan.physical_buffers().len(), 1);
+        assert_eq!(plan.buffer_slot("cull_buf"), Some(0));
     }
 }

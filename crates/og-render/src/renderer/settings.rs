@@ -296,12 +296,13 @@ impl Renderer {
         self.width = width;
         self.height = height;
         self.taau = taau;
-        self.graph.invalidate();
-        // Under TAAU before and after the history is the output's size:
-        // a new render scale (dynamic resolution) keeps it.
+        // Under TAAU/FSR before and after, history lives at output size and the
+        // graph's LRU texture pool stays warm across dynamic-resolution rungs.
         if kept {
+            self.graph.invalidate_plan();
             return;
         }
+        self.graph.invalidate();
         let (hw, hh) = self.history_size();
         self.persistent.resize_history(
             &self.device,

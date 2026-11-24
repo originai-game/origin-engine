@@ -113,15 +113,19 @@ impl Temporal {
                         _ => 0,
                     }
                 };
-                // Keep the depth of precisely the frame written into the
-                // colour history. Copy only after its reader's pass ends.
-                let (_, previous_depth) = cx.persistent.taa_depth.as_ref().expect("TAA depth");
-                let depth = cx.graph.view("depth").texture();
-                encoder.copy_texture_to_texture(
-                    depth.as_image_copy(),
-                    previous_depth.texture().as_image_copy(),
-                    depth.size(),
-                );
+                // Keep the depth of precisely the frame written into built-in
+                // TAA's colour history. FSR 3.1 keeps its own dilated depth and
+                // never reads `taa_depth`, so skip the Depth32Float copy under FSR.
+                if !passes.fsr.active()
+                    && let Some((_, previous_depth)) = cx.persistent.taa_depth.as_ref()
+                {
+                    let depth = cx.graph.view("depth").texture();
+                    encoder.copy_texture_to_texture(
+                        depth.as_image_copy(),
+                        previous_depth.texture().as_image_copy(),
+                        depth.size(),
+                    );
+                }
                 draws
             }
             FramePass::TaaSharpen => match (&passes.taa_sharpen_pipeline, &self.sharpen) {

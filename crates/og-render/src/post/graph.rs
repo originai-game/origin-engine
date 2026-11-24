@@ -85,9 +85,12 @@ impl Bindings {
     }
 }
 
+/// Frames an unused pooled transient texture is kept before LRU eviction.
+const POOL_KEEP_FRAMES: u64 = 120;
+
 /// The frame's render graph: the compiled plan for the current pass list,
-/// the transient textures realized from it (kept in a pool across frames
-/// and reused by description) and the bind groups that read them.
+/// the transient textures realized from it (kept in an LRU pool across frames
+/// and reused by compatible description) and the bind groups that read them.
 #[derive(Default)]
 pub(crate) struct FrameGraph {
     passes: Vec<FramePass>,
@@ -98,7 +101,7 @@ pub(crate) struct FrameGraph {
     stylise_key: u64,
     order: Vec<FramePass>,
     plan: Option<GraphPlan>,
-    pool: Vec<(TargetDesc, wgpu::TextureView)>,
+    pool: Vec<(TargetDesc, u64, wgpu::TextureView)>,
     views: HashMap<String, wgpu::TextureView>,
     /// The view depth's MIP chain at the frame's size, while the frame has
     /// its pass.
@@ -106,6 +109,8 @@ pub(crate) struct FrameGraph {
     bindings: Option<Bindings>,
     /// The fog of war texture the bindings hold (`SightTexture::generation`).
     sight_key: u64,
+    /// Monotonic prepare counter for LRU eviction of idle pooled textures.
+    epoch: u64,
     /// Bumped whenever the targets are realized anew (views change).
     pub generation: u64,
 }
@@ -115,15 +120,26 @@ impl FrameGraph {
     pub fn target_bytes(&self) -> u64 {
         self.pool
             .iter()
-            .map(|(_, v)| crate::gpu::texture::view_bytes(v))
+            .map(|(_, _, v)| crate::gpu::texture::view_bytes(v))
             .sum()
     }
 
-    /// Forgets everything size-dependent (on resize).
+    /// Forgets everything size-dependent including pooled textures (on window resize).
     pub fn invalidate(&mut self) {
         let generation = self.generation + 1;
         *self = FrameGraph::default();
         self.generation = generation;
+    }
+
+    /// Invalidates the compiled plan and bindings while keeping the LRU
+    /// texture pool warm (dynamic resolution switches between rungs with zero
+    /// GPU texture reallocations).
+    pub fn invalidate_plan(&mut self) {
+        self.plan = None;
+        self.cfg = None;
+        self.bindings = None;
+        self.views.clear();
+        self.generation += 1;
     }
 
     /// The plan the last [`FrameGraph::prepare`] compiled.
@@ -234,6 +250,8 @@ impl FrameGraph {
             u64,
         ),
     ) -> Result<(), GraphError> {
+        self.epoch = self.epoch.wrapping_add(1);
+        let epoch = self.epoch;
         if self.plan.is_some()
             && passes == self.passes
             && self.cfg.as_ref() == Some(cfg)
@@ -241,16 +259,32 @@ impl FrameGraph {
             && self.stylise_key == stylise.3
             && self.sight_key == post.sight.generation
         {
+            // Touch active pooled entries and evict textures idle for > POOL_KEEP_FRAMES.
+            let cutoff = epoch.saturating_sub(POOL_KEEP_FRAMES);
+            for (_, last, v) in &mut self.pool {
+                if self.views.values().any(|used| used == v) {
+                    *last = epoch;
+                }
+            }
+            self.pool.retain(|(_, last, _)| *last >= cutoff);
             return Ok(());
         }
         let plan = build_graph(&passes, cfg).compile()?;
         self.order = plan.order().iter().map(|&i| passes[i]).collect();
-        // Physical slots to pool textures: the first unused entry with the
-        // same description, else a new texture.
+        // Physical slots to pool textures: prefer exact match, else reuse any
+        // compatible pooled texture whose usage bits cover `desc.usage`.
         let mut taken = vec![false; self.pool.len()];
         let mut slot_views = Vec::with_capacity(plan.physical().len());
         for desc in plan.physical() {
-            let found = (0..self.pool.len()).find(|&i| !taken[i] && self.pool[i].0 == *desc);
+            let found = (0..self.pool.len())
+                .find(|&i| !taken[i] && self.pool[i].0 == *desc)
+                .or_else(|| {
+                    (0..self.pool.len()).find(|&i| {
+                        !taken[i]
+                            && self.pool[i].0.compatible_with(*desc)
+                            && self.pool[i].0.usage.contains(desc.usage)
+                    })
+                });
             let index = match found {
                 Some(i) => i,
                 None => {
@@ -270,14 +304,17 @@ impl FrameGraph {
                         texture_binding_view_dimension: None,
                     });
                     self.pool
-                        .push((*desc, texture.create_view(&Default::default())));
+                        .push((*desc, epoch, texture.create_view(&Default::default())));
                     taken.push(false);
                     self.pool.len() - 1
                 }
             };
             taken[index] = true;
-            slot_views.push(self.pool[index].1.clone());
+            self.pool[index].1 = epoch;
+            slot_views.push(self.pool[index].2.clone());
         }
+        let cutoff = epoch.saturating_sub(POOL_KEEP_FRAMES);
+        self.pool.retain(|(_, last, _)| *last >= cutoff);
         let size = (cfg.width.max(8), cfg.height.max(8));
         self.depth_mips =
             passes

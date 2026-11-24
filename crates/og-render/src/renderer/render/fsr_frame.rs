@@ -12,6 +12,24 @@ pub(super) struct PrepareFsrInputs<'a> {
 }
 
 impl Renderer {
+    /// Whether FSR 3.1 will resolve this frame instead of built-in TAA.
+    pub(super) fn will_use_fsr(&self, scene: &RenderScene, taa: bool) -> bool {
+        let post_size = self.history_size();
+        let render = if self.width > post_size.0 || self.height > post_size.1 {
+            std::cmp::Ordering::Greater
+        } else if self.width < post_size.0 || self.height < post_size.1 {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Equal
+        };
+        taa && scene
+            .frame
+            .quality
+            .upscaler
+            .drawn(render, self.info.caps.contains(Caps::COMPUTE))
+            == crate::Upscaler::Fsr3
+    }
+
     /// Prepares or releases the frame's FSR upscale; returns whether it runs.
     #[allow(clippy::too_many_lines)]
     pub(super) fn prepare_fsr(
@@ -27,20 +45,7 @@ impl Renderer {
         // upscaler draws it (`Upscaler::drawn`, automatic quality's rungs'
         // rule too).
         let post_size = self.history_size();
-        let render = if self.width > post_size.0 || self.height > post_size.1 {
-            std::cmp::Ordering::Greater
-        } else if self.width < post_size.0 || self.height < post_size.1 {
-            std::cmp::Ordering::Less
-        } else {
-            std::cmp::Ordering::Equal
-        };
-        let fsr = taa
-            && scene
-                .frame
-                .quality
-                .upscaler
-                .drawn(render, self.info.caps.contains(Caps::COMPUTE))
-                == crate::Upscaler::Fsr3;
+        let fsr = self.will_use_fsr(scene, taa);
         let no_reactive = self.post.no_reactive.clone();
         match self.graph.fsr_views(&no_reactive, &self.persistent, slot) {
             Some((color, depth, prepass_views, reveal, output, previous_output, sharpened))

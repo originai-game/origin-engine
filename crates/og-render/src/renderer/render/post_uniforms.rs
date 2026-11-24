@@ -71,15 +71,25 @@ impl Renderer {
             prepass,
         }: WriteFramePostUniformsInputs<'_>,
     ) -> FramePostHistory {
+        // FSR 3.1 manages its own dilated depth and temporal history across
+        // dynamic-resolution rungs; skip allocating `taa_depth` when FSR runs.
+        // Under built-in TAAU dynamic resolution, keep `taa_history` and the
+        // frame-graph LRU pool warm (only rebuild the plan).
+        let using_fsr = self.will_use_fsr(scene, taa);
         if taa
+            && !using_fsr
             && self
                 .persistent
                 .ensure_taa_depth(&self.device, self.width, self.height)
         {
-            // Colour and depth must describe the same frame. The new
-            // depth is not a previous frame, and its bindings changed.
-            self.history.taa_history = None;
-            self.graph.invalidate();
+            if self.taau {
+                self.graph.invalidate_plan();
+            } else {
+                // Colour and depth must describe the same frame. The new
+                // depth is not a previous frame, and its bindings changed.
+                self.history.taa_history = None;
+                self.graph.invalidate();
+            }
         }
         // Screen-space GI reads the previous frame's lit image: TAA's
         // history, or without TAA its own copy of the main pass's image.
