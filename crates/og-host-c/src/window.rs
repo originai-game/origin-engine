@@ -360,11 +360,14 @@ impl App {
             // compositionupdate and compositionend; one switched off
             // mid-word ends its composition uncommitted.
             WindowEvent::Ime(ime) => match ime {
-                Ime::Preedit(text, _) => {
+                Ime::Preedit(text, cursor) => {
                     if self.composing || !text.is_empty() {
                         self.composing = !text.is_empty();
-                        self.input
-                            .push(json!({ "kind": "text", "text": text, "composing": true }));
+                        let mut ev = json!({ "kind": "text", "text": text, "composing": true });
+                        if let Some((start, end)) = cursor {
+                            ev["cursor"] = json!([start, end]);
+                        }
+                        self.input.push(ev);
                     }
                 }
                 Ime::Commit(text) => {

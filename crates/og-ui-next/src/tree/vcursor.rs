@@ -185,9 +185,11 @@ impl Tree {
             }
             None => {
                 v.held = 0;
-                // At rest over a control it settles towards its centre.
+                // At rest over a control it settles towards its centre,
+                // normalized to the same half-life regardless of TPS.
                 if let (true, Some([x, y, bw, bh])) = (v.shown, over) {
-                    let k = 0.25 * magnet;
+                    let base = (1.0 - 0.25 * magnet).clamp(0.0, 1.0);
+                    let k = 1.0 - og_core::math::pow(base, 60.0 / tps);
                     v.pos[0] += (x + bw / 2.0 - v.pos[0]) * k;
                     v.pos[1] += (y + bh / 2.0 - v.pos[1]) * k;
                 }

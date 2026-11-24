@@ -352,6 +352,7 @@ pub fn grounds_without_ink(base: &[Layer], layer: &Layer) -> Vec<String> {
                     dark: scheme == Scheme::Dark,
                     rtl: false,
                     touch: false,
+                    reduce_motion: false,
                     states,
                 };
                 let r = classes.record(&class, &env);

@@ -144,15 +144,15 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
         layout: CompactStyle::from(&style.layout),
         ..Record::default()
     };
-    // `pt-[calc(env(hud-inset-top)+16px)]`: padding that adds the HUD's
-    // safe area, on the side whose own inset it reads.
+    // `pt-[calc(env(hud-inset-top)+16px)]` or `env(safe-area-inset-top)`:
+    // padding that adds the HUD's safe area, on the side whose own inset it reads.
     for (k, var) in style.env_padding().into_iter().enumerate() {
         use nsh_tailwind::style::EnvVar::*;
         let side = match var {
-            Some(HudInsetTop) => 0,
-            Some(HudInsetRight) => 1,
-            Some(HudInsetBottom) => 2,
-            Some(HudInsetLeft) => 3,
+            Some(HudInsetTop | SafeAreaInsetTop) => 0,
+            Some(HudInsetRight | SafeAreaInsetRight) => 1,
+            Some(HudInsetBottom | SafeAreaInsetBottom) => 2,
+            Some(HudInsetLeft | SafeAreaInsetLeft) => 3,
             _ => continue,
         };
         if side == k {
@@ -183,7 +183,15 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
         .pointer_events
         .map(|p| p == nsh_tailwind::props::PointerEvents::Auto);
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
-    skin.fill = linear(view.background_color);
+    let mut take_color = |c: Color, bit: u16| -> Rgba {
+        if c.0 >> 8 == CURRENT_RGB {
+            skin.current |= bit;
+            [1.0, 1.0, 1.0, (c.0 & 0xff) as f32 / 255.0]
+        } else {
+            linear(c)
+        }
+    };
+    skin.fill = take_color(view.background_color, crate::record::Skin::CURRENT_FILL);
     skin.opacity = view.opacity;
     skin.blend = match view.blend_mode {
         nsh_tailwind::effects::BlendMode::PlusLighter => 1,
@@ -206,16 +214,16 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
         .rev()
         .max_by_key(|c| cs.iter().filter(|d| d == c).count())
         .expect("four sides");
-    skin.border_color = linear(base);
+    skin.border_color = take_color(base, crate::record::Skin::CURRENT_BORDER);
     skin.border_sides = 0;
     if let Some(&side) = cs.iter().find(|&&c| c != base) {
-        skin.border_side = linear(side);
+        skin.border_side = take_color(side, crate::record::Skin::CURRENT_BORDER_SIDE);
         skin.border_sides = (0..4).filter(|&k| cs[k] != base).fold(0, |m, k| m | 1 << k);
     }
     r.layout.set_border(skin.border);
     skin.outline.width = view.outline.width.0;
     skin.outline.offset = view.outline.offset.0;
-    skin.outline.color = linear(view.outline.color);
+    skin.outline.color = take_color(view.outline.color, crate::record::Skin::CURRENT_OUTLINE);
     // Translate (a fraction of the box's own size resolved at paint),
     // scale, rotate and 2D skew; 3D transforms are left out.
     for op in view.transform.ops() {
@@ -240,11 +248,12 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
     ];
     if let Some(fx) = &view.effects {
         for (k, s) in fx.box_shadows.iter().take(SHADOWS).enumerate() {
+            let color = take_color(s.color, crate::record::Skin::CURRENT_SHADOW0 << k);
             skin.shadows[k] = Shadow {
                 offset: [s.offset_x.0, s.offset_y.0],
                 blur: s.blur.0,
                 spread: s.spread.0,
-                color: linear(s.color),
+                color,
                 inset: s.inset,
             };
             skin.shadow_count = k as u8 + 1;
@@ -333,11 +342,22 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
         .or(props.placeholder_color)
         .map(linear);
     skin.selection = text.selection_color.or(props.selection_color).map(linear);
-    // The outline (`text-stroke-*`), its colour the text's by default.
+    // The outline (`text-stroke-*`), width and colour tracked independently;
+    // an uncoloured stroke inherits the element's ink at paint time.
     if let Some(w) = text.stroke_width {
         skin.text_stroke.width = w.0;
-        skin.text_stroke.color = text.stroke_color.map_or(skin.ink, linear);
         r.stroked = true;
+    }
+    if let Some(c) = text.stroke_color {
+        skin.text_stroke.color = take_color(c, crate::record::Skin::CURRENT_STROKE);
+        r.stroked_color = true;
+    } else if r.stroked {
+        if r.inked {
+            skin.text_stroke.color = skin.ink;
+        } else {
+            skin.current |= crate::record::Skin::CURRENT_STROKE;
+            skin.text_stroke.color = [1.0, 1.0, 1.0, 1.0];
+        }
     }
     let t = &mut r.text;
     if let Some(s) = text.font_size {
@@ -365,12 +385,14 @@ pub(super) fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Rec
         t.set |= Text::TRACKING;
     }
     if let Some(a) = text.text_align {
-        t.align = match a {
-            TextAlign::Auto => 0,
-            TextAlign::Center => 1,
-            TextAlign::Right => 2,
-            TextAlign::Left => 3,
-            TextAlign::Justify => 4,
+        t.align = match (a, text.text_align_physical) {
+            (TextAlign::Auto, _) => 0,
+            (TextAlign::Center, _) => 1,
+            (TextAlign::Right, true) => 2,
+            (TextAlign::Left, true) => 3,
+            (TextAlign::Justify, _) => 4,
+            (TextAlign::Left, false) => 0,
+            (TextAlign::Right, false) => 5,
         };
         t.set |= Text::ALIGN;
     }

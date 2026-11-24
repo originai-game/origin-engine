@@ -454,6 +454,27 @@ pub struct Skin {
     pub stroke: Rgba,
     pub stroke_width: f32,
     pub image: Slice,
+    /// Bits marking colours that read inherited `currentColor` (`Skin::CURRENT_*`).
+    pub current: u16,
+}
+
+impl Skin {
+    pub const CURRENT_FILL: u16 = 1 << 0;
+    pub const CURRENT_BORDER: u16 = 1 << 1;
+    pub const CURRENT_BORDER_SIDE: u16 = 1 << 2;
+    pub const CURRENT_OUTLINE: u16 = 1 << 3;
+    pub const CURRENT_SHADOW0: u16 = 1 << 4;
+    pub const CURRENT_STROKE: u16 = 1 << 8;
+
+    /// Resolves `c` against `ink` when `bit` is set in `self.current`,
+    /// preserving any alpha multiplier stored in `c[3]`.
+    pub fn resolve_current(&self, bit: u16, c: Rgba, ink: Rgba) -> Rgba {
+        if self.current & bit != 0 {
+            [ink[0], ink[1], ink[2], ink[3] * c[3]]
+        } else {
+            c
+        }
+    }
 }
 
 impl Default for Skin {
@@ -484,6 +505,7 @@ impl Default for Skin {
             stroke: [0.0; 4],
             stroke_width: 1.0,
             image: Slice::default(),
+            current: 0,
         }
     }
 }
@@ -507,6 +529,7 @@ pub struct Record {
     /// else each inherits its parent's, as CSS's do.
     pub shadowed: bool,
     pub stroked: bool,
+    pub stroked_color: bool,
     /// `position: fixed`: placed against the viewport.
     pub fixed: bool,
     /// Its `transition-*`, `duration-*`, `ease-*`, `delay-*` and
@@ -636,6 +659,7 @@ impl Default for Record {
             inked: false,
             shadowed: false,
             stroked: false,
+            stroked_color: false,
             fixed: false,
             motion: crate::motion::Spec::default(),
             stroke: None,

@@ -62,8 +62,10 @@ pub struct Run {
     pub hyphens: og_text::layout::Hyphens,
     /// `text-overflow: ellipsis`.
     pub ellipsis: bool,
-    /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify.
+    /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify, 5 end.
     pub align: u8,
+    /// `text-transform`: 0 none, 1 uppercase, 2 lowercase, 3 capitalize.
+    pub transform: u8,
     /// A one-line field's text (an `Input` without `multiline`): it stays
     /// on one line and takes no more width than its box has, as an HTML
     /// input's text scrolls inside it instead of widening it.
@@ -90,6 +92,7 @@ impl Run {
             hyphens: og_text::layout::Hyphens::Manual,
             ellipsis: false,
             align: 0,
+            transform: 0,
             field: false,
             vertical: false,
         }
@@ -107,6 +110,7 @@ impl Run {
             self.wrap,
             self.ellipsis,
             self.align,
+            self.transform,
             self.field,
             self.vertical,
         )

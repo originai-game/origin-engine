@@ -104,7 +104,7 @@ pub(super) fn pose(
         }
         K::Pulse => {
             let q = ez(if p < 0.5 { p * 2.0 } else { 2.0 - p * 2.0 });
-            *o = lerp(*o, 0.5, q);
+            *o *= lerp(1.0, 0.5, q);
         }
         K::Bounce => {
             let q = if p < 0.5 {
@@ -182,6 +182,14 @@ pub(super) fn pose(
         t.scale = [t.scale[0] * scale, t.scale[1] * scale];
         t.translate = [t.translate[0] + shift[0], t.translate[1] + shift[1]];
         t.rotate += turn;
+        (playing, true)
+    } else {
+        // Under reduced motion, transform-only animations do nothing and
+        // must not force continuous every-frame repaints.
+        let opacity_only = matches!(
+            lp.keyframes,
+            K::Ping | K::Pulse | K::Pop | K::Stamp | K::Float | K::Rise | K::Flash
+        );
+        (playing && opacity_only, opacity_only)
     }
-    (playing, true)
 }

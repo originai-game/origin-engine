@@ -32,6 +32,8 @@ icons!(
     "coin",
     "crown",
     "drop",
+    "eye",
+    "eyeOff",
     "fire",
     "flag",
     "gear",

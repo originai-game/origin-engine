@@ -1336,7 +1336,7 @@ impl PaintRenderer {
         let Some(pts) = points.get(q.a as usize..(q.a + q.b) as usize) else {
             return;
         };
-        if width < 1.0 || pts.len() < 2 {
+        if width <= 0.0 || pts.len() < 2 {
             return;
         }
         let n = pts.len();

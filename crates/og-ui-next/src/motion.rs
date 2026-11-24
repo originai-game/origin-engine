@@ -548,7 +548,33 @@ impl Motion {
         }
         l.spec = *spec;
         l.base = *to;
+        // Preserve inset/ink flags on shadows fading out to transparent so
+        // an inset ring/shadow never pops to an outer shadow mid-transition.
+        for k in 0..SHADOWS {
+            if to.shadows[k].color[3] == 0.0 && from.shadows[k].color[3] > 0.0 {
+                l.base.shadows[k].inset = from.shadows[k].inset;
+            }
+        }
+        for k in 0..crate::record::TEXT_SHADOWS {
+            if to.text_shadows.layers[k].color[3] == 0.0
+                && from.text_shadows.layers[k].color[3] > 0.0
+            {
+                l.base.text_shadows.ink[k] = from.text_shadows.ink[k];
+            }
+        }
         self.present(i);
+    }
+
+    /// Drops all active transitions, loops, exits, and layout glides
+    /// (used on checkpoint restore so stale future timestamps never linger).
+    pub fn clear(&mut self) {
+        for l in self.live.drain(..) {
+            self.store.remove_node(node(l.id));
+            if let Some(s) = self.slot.get_mut(l.id as usize) {
+                *s = NONE;
+            }
+        }
+        self.exited.clear();
     }
 
     /// Writes live `i`'s shown skin: its base, its tracks' values, then its

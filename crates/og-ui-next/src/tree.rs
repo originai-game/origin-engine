@@ -265,6 +265,8 @@ pub struct Tree {
     input: input::Input,
     last_pointer: (f32, f32, u64),
     paints: u64,
+    /// Last painted caret blink phase for the focused `<Input>` (1 Hz toggle).
+    caret_blink: bool,
     /// The `<Particles>` nodes' tick and which wait for their emitter
     /// ([`particles`]).
     particles: particles::Clock,
@@ -401,6 +403,7 @@ impl Tree {
             input: input::Input::new(),
             last_pointer: (f32::NAN, f32::NAN, 0),
             paints: 0,
+            caret_blink: true,
             particles: Default::default(),
             tone_colors: Default::default(),
             missing: Vec::new(),
@@ -610,12 +613,32 @@ impl Tree {
             }
             self.paint = true;
         }
+        // A focused `<Input>` blinks its caret at 1 Hz (unless reduced motion
+        // or IME composition holds it steady): repaint on phase changes.
+        if let Some(e) = self.editing() {
+            let p = &self.input.per[e as usize];
+            let on = self.particles.reduced
+                || !p.composing.is_empty()
+                || ((self.time - p.caret_at).max(0.0) % 1.0) < 0.53;
+            if on != self.caret_blink {
+                self.caret_blink = on;
+                self.paint = true;
+            }
+        }
         // A `<Particles>` with anything still to draw paints every frame.
         let painted = laid_out || self.paint || moving || self.particles.live;
         if painted {
             self.particles.live = false;
             self.paint = false;
             self.repaint(fonts, atlas, icons);
+            if !self.input.modals.is_empty() || !self.input.modal_els.is_empty() {
+                self.sync_modals();
+                if self.paint {
+                    self.refresh_data();
+                    self.paint = false;
+                    self.repaint(fonts, atlas, icons);
+                }
+            }
             self.paints += 1;
             let drawn = self.drawn_boxes();
             self.sem.set_drawn(drawn);

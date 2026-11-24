@@ -54,15 +54,6 @@ impl Tree {
         self.scroll_axes(e) != [false; 2]
     }
 
-    /// A scroller's axis: horizontal when only its width runs over.
-    pub(super) fn axis(&self, e: u32) -> Option<bool> {
-        if !self.scroller(e) {
-            return None;
-        }
-        let [w, h] = self.extent(e);
-        Some(h <= 0.0 && w > 0.0)
-    }
-
     /// How far op element `e`'s children are moved: its scroll.
     pub(in crate::tree) fn scroll_of(&self, e: u32) -> [f32; 2] {
         match e {
@@ -141,6 +132,21 @@ impl Tree {
         }
         let taken = heard.is_some_and(|(_, takes)| takes);
         let horizontal = dx.abs() > dy.abs();
+        let scroll_axis = |t: &Tree, e: u32| -> Option<bool> {
+            if !t.scroller(e) {
+                return None;
+            }
+            let [w, h] = t.extent(e);
+            if horizontal && w > 0.0 {
+                Some(true)
+            } else if !horizontal && h > 0.0 {
+                Some(false)
+            } else if w > 0.0 {
+                Some(true)
+            } else {
+                Some(false)
+            }
+        };
         let delta = |axis_h: bool| if axis_h && dx != 0.0 { dx } else { dy };
         let now = self.time * 1000.0;
         let latched = self
@@ -158,9 +164,9 @@ impl Tree {
                     .collect(),
                 nsh_input::Points(dx),
                 nsh_input::Points(dy),
-                |&e| self.axis(e),
+                |&e| scroll_axis(self, e),
                 |&e| {
-                    let h = self.axis(e) == Some(true);
+                    let h = scroll_axis(self, e) == Some(true);
                     let (at, max) = (self.scroll_at(e, h), self.extent(e)[usize::from(!h)]);
                     let d = delta(h);
                     (d > 0.0 && at < max) || (d < 0.0 && at > 0.0)
@@ -169,7 +175,7 @@ impl Tree {
         };
         self.input.chain = chain;
         if let Some(e) = target {
-            let h = self.axis(e) == Some(true);
+            let h = scroll_axis(self, e) == Some(true);
             self.scroll_to(e, h, self.scroll_at(e, h) + delta(h));
             self.input.fling = None;
             self.input.latch = Some((e, horizontal, now));
@@ -189,9 +195,13 @@ impl Tree {
                 && let Some(&(sx, sy, ..)) = self.abs.get(s as usize)
             {
                 let sb = self.arena.box_of(self.els[s as usize].node);
-                for (h, at, size, from, span) in
-                    [(true, ex, b.w, sx, sb.w), (false, ey, b.h, sy, sb.h)]
-                {
+                let [il, it, ir, ib] = sb.inset;
+                let inner_w = (sb.w - il - ir).max(0.0);
+                let inner_h = (sb.h - it - ib).max(0.0);
+                for (h, at, size, from, span) in [
+                    (true, ex, b.w, sx + il, inner_w),
+                    (false, ey, b.h, sy + it, inner_h),
+                ] {
                     let by = if at < from {
                         at - from
                     } else if at + size > from + span {

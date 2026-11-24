@@ -19,6 +19,8 @@ pub struct InputFieldState {
     pub anchor: usize,
     #[serde(default)]
     pub scroll_x: f32,
+    #[serde(default)]
+    pub scroll_y: f32,
 }
 
 /// Saved state of the pad virtual cursor between ticks.
@@ -124,6 +126,7 @@ impl Tree {
                     caret: per.caret,
                     anchor: per.anchor,
                     scroll_x: per.scroll_x,
+                    scroll_y: per.scroll_y,
                 });
             }
         }
@@ -157,9 +160,14 @@ impl Tree {
         } else {
             Modality::Pointer
         };
-        // Clear transient pointer/gesture interactions so restored state starts
-        // clean from the checkpointed tick.
+        // Clear transient pointer/gesture, motion, rolling-count and
+        // text-selection interactions so restored state starts clean from
+        // the checkpointed tick.
         self.input.clear_transient();
+        self.motion.clear();
+        self.counts.clear();
+        self.select = None;
+        self.select_press = None;
 
         // Restore virtual cursor state.
         self.vcursor.restore(&cp.vcursor);
@@ -194,7 +202,7 @@ impl Tree {
             })
             .collect();
 
-        // Restore `<Input>` field text, caret, selection and scroll_x.
+        // Restore `<Input>` field text, caret, selection and scroll offsets.
         for field in &cp.inputs {
             if let Some(e) = self.el_of_js(field.js)
                 && self.input.per.get(e as usize).is_some_and(|p| p.input)
@@ -214,7 +222,13 @@ impl Tree {
                 per.caret = caret;
                 per.anchor = anchor;
                 per.scroll_x = field.scroll_x;
+                per.scroll_y = field.scroll_y;
                 per.composing.clear();
+                per.undo.clear();
+                per.redo.clear();
+                per.last_edit = (super::input::Edit::None, 0.0);
+                per.goal_x = None;
+                per.caret_at = cp.time;
                 self.show_value(e);
             }
         }

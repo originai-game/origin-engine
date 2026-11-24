@@ -29,10 +29,20 @@ impl Tree {
             } else {
                 from.text_shadows
             },
-            text_stroke: if r.stroked {
-                r.skin.text_stroke
-            } else {
-                from.text_stroke
+            text_stroke: {
+                let mut st = from.text_stroke;
+                if r.stroked {
+                    st.width = r.skin.text_stroke.width;
+                }
+                let own_ink = if r.inked { r.skin.ink } else { from.ink };
+                if r.stroked_color || (r.stroked && st.color[3] == 0.0) {
+                    st.color = r.skin.resolve_current(
+                        crate::record::Skin::CURRENT_STROKE,
+                        r.skin.text_stroke.color,
+                        own_ink,
+                    );
+                }
+                st
             },
             decoration: if r.skin.decoration.line != 0 {
                 r.skin.decoration
@@ -156,6 +166,11 @@ impl Tree {
                     },
                     ellipsis: eff.text.overflow == 1,
                     align: eff.text.align,
+                    transform: if field.is_some() {
+                        0
+                    } else {
+                        eff.text.transform
+                    },
                     field: one_line,
                     // A field's text stays in lines: its caret runs along them.
                     vertical: eff.text.vertical && field.is_none(),

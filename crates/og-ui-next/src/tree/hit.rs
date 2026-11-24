@@ -9,16 +9,108 @@ use super::{El, NONE, Tree};
 pub(crate) const TOUCH_TARGET: f32 = 44.0;
 
 impl Tree {
+    /// Whether element `e` draws an opaque/painted surface or listens to
+    /// pointer events directly, so presses landing on it should not punch
+    /// through to underlying controls.
+    fn blocks_hit(&self, e: usize) -> bool {
+        let el = &self.els[e];
+        if el.clickable || el.listens != 0 {
+            return true;
+        }
+        let s = self.motion.skin(el.node, &el.record.skin);
+        let has_image =
+            el.image.as_ref().is_some_and(|i| !i.handle.is_nan()) || s.image.texture != 0;
+        s.fill[3] > 0.0
+            || s.gradient.is_some()
+            || has_image
+            || s.backdrop_blur > 0.0
+            || el.record.backdrop_filter.is_some()
+            || (s.border.iter().any(|&w| w > 0.0)
+                && (s.border_color[3] > 0.0 || s.border_side[3] > 0.0))
+    }
+
     /// The element a press at (x, y) reaches: of the shown, enabled
     /// elements that answer a press and whose box, inside the clip their
     /// parent paints them in, holds the point, the last painted in its
-    /// stacking context; NONE for none.
+    /// stacking context; NONE for none. Opaque surfaces and disabled
+    /// controls occlude anything painted beneath them.
     pub(super) fn hit(&self, x: f32, y: f32) -> u32 {
-        let e = self.hit_where(x, y, |el| el.clickable);
+        let e = self.hit_occluded(x, y);
         if e != NONE || !self.input.touch {
             return e;
         }
         self.near_target(x, y)
+    }
+
+    /// Walks elements front-to-back in paint order: finds the topmost
+    /// clickable hit, stopping if a disabled control or an opaque surface
+    /// outside any clickable ancestor occludes `(x, y)`.
+    fn hit_occluded(&self, x: f32, y: f32) -> u32 {
+        for &raw in self.stacking.order.iter().rev() {
+            let (e, el) = (raw as usize, &self.els[raw as usize]);
+            if el.dead || self.shown.get(e).is_some_and(|s| s.out || !s.touch) {
+                continue;
+            }
+            let Some(&(bx, by, shown, _)) = self.abs.get(e) else {
+                continue;
+            };
+            if let Some(in_hole) = self
+                .in_hole(raw, x, y)
+                .filter(|_| shown && self.reachable(raw))
+            {
+                if in_hole {
+                    continue;
+                }
+                return if el.clickable && !el.disabled {
+                    raw
+                } else {
+                    NONE
+                };
+            }
+            if !shown || !self.reachable(raw) {
+                continue;
+            }
+            let all = [f32::MIN, f32::MIN, f32::MAX, f32::MAX];
+            let [cx0, cy0, cx1, cy1] = match el.arena_parent {
+                _ if el.anchored().is_some() => all,
+                NONE => all,
+                p => self.abs.get(p as usize).map_or(all, |a| a.3),
+            };
+            if x < cx0 || x >= cx1 || y < cy0 || y >= cy1 {
+                continue;
+            }
+            let b = self
+                .motion
+                .box_of(el.node)
+                .unwrap_or_else(|| self.arena.box_of(el.node));
+            let inside = match self.on_span(raw, x, y) {
+                Some(on) => on,
+                None => match self.untransform(raw, x, y) {
+                    Some((lx, ly)) => lx >= bx && lx < bx + b.w && ly >= by && ly < by + b.h,
+                    None => false,
+                },
+            };
+            if !inside {
+                continue;
+            }
+            if el.clickable {
+                return if el.disabled { NONE } else { raw };
+            }
+            if self.blocks_hit(e) {
+                // Children painted inside a clickable control (e.g. an icon or
+                // label plate inside a Button) belong to that control.
+                let mut a = el.parent;
+                while a != NONE {
+                    let ael = &self.els[a as usize];
+                    if !ael.dead && ael.clickable {
+                        return if ael.disabled { NONE } else { a };
+                    }
+                    a = ael.parent;
+                }
+                return NONE;
+            }
+        }
+        NONE
     }
 
     /// Inverse of element `e`'s last painted 2D affine transform, mapping

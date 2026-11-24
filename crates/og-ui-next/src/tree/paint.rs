@@ -224,10 +224,19 @@ impl Tree {
             } else {
                 from.text_shadows
             };
-            let text_stroke = if r.stroked {
-                s.text_stroke
-            } else {
-                from.text_stroke
+            let text_stroke = {
+                let mut st = from.text_stroke;
+                if r.stroked {
+                    st.width = s.text_stroke.width;
+                }
+                if r.stroked_color || (r.stroked && st.color[3] == 0.0) {
+                    st.color = s.resolve_current(
+                        crate::record::Skin::CURRENT_STROKE,
+                        s.text_stroke.color,
+                        own_ink,
+                    );
+                }
+                st
             };
             self.shown[e] = Shown {
                 alpha,
@@ -441,9 +450,10 @@ impl Tree {
             let rect = [x, y, b.w, b.h];
             let radius = radii(s.radius, b.w, b.h);
             // Its backdrop filter: a filtered copy of what is under it,
-            // drawn under its box, rounded as it is.
+            // drawn under its box, rounded as it is. Respects the frame's
+            // offscreen layer budget (`room`).
             let mut backdrop = None;
-            if s.backdrop_blur > 0.0 || r.backdrop_filter.is_some() {
+            if (s.backdrop_blur > 0.0 || r.backdrop_filter.is_some()) && room.take(b.w * b.h) {
                 let first = p.effects.len() as u32;
                 if s.backdrop_blur > 0.0 {
                     p.effects.push(PaintEffect::Blur(s.backdrop_blur));
@@ -507,6 +517,19 @@ impl Tree {
                 c[3] *= alpha;
                 c
             };
+            let fill_color = s.resolve_current(crate::record::Skin::CURRENT_FILL, s.fill, own_ink);
+            let border_color =
+                s.resolve_current(crate::record::Skin::CURRENT_BORDER, s.border_color, own_ink);
+            let border_side = s.resolve_current(
+                crate::record::Skin::CURRENT_BORDER_SIDE,
+                s.border_side,
+                own_ink,
+            );
+            let outline_color = s.resolve_current(
+                crate::record::Skin::CURRENT_OUTLINE,
+                s.outline.color,
+                own_ink,
+            );
             let im = &match &el.image {
                 Some(props) => props.over(&s.image, self.textures.as_ref()),
                 None => s.image,
@@ -516,17 +539,21 @@ impl Tree {
             let framed = image.is_some() && im.slice != [0.0; 4];
             // Outer shadows under the box, the last listed lowest.
             let shadows = &s.shadows[..usize::from(s.shadow_count)];
-            for sh in shadows
-                .iter()
-                .rev()
-                .filter(|sh| !sh.inset && sh.color[3] > 0.0)
-            {
+            for (k, sh) in shadows.iter().enumerate().rev() {
+                if sh.inset {
+                    continue;
+                }
+                let col =
+                    s.resolve_current(crate::record::Skin::CURRENT_SHADOW0 << k, sh.color, own_ink);
+                if col[3] <= 0.0 {
+                    continue;
+                }
                 let p4 = [sh.offset[0], sh.offset[1], sh.blur, sh.spread];
                 p.quads.push(quad(
                     PaintKind::Shadow,
                     rect,
                     clip,
-                    faded(sh.color),
+                    faded(col),
                     radius,
                     p4,
                     0,
@@ -539,7 +566,7 @@ impl Tree {
             // under the box. It is always outside, since the frame covers
             // what is inside.
             let o = &s.outline;
-            if let Some(t) = image.filter(|_| framed && o.width > 0.0 && o.color[3] > 0.0) {
+            if let Some(t) = image.filter(|_| framed && o.width > 0.0 && outline_color[3] > 0.0) {
                 let out = o.width + o.offset.max(0.0);
                 let grown = [x - out, y - out, b.w + 2.0 * out, b.h + 2.0 * out];
                 let width = if im.width == [0.0; 4] {
@@ -556,7 +583,7 @@ impl Tree {
                         PaintKind::Image,
                         grown,
                         clip,
-                        faded(o.color),
+                        faded(outline_color),
                         width.map(|w| w * fit),
                         im.slice,
                         t.to_bits(),
@@ -566,7 +593,7 @@ impl Tree {
             }
             // A fill-tinted image takes the fill's colour in its place.
             let fill_tints = image.is_some() && im.tint == crate::record::Tint::Fill;
-            if let Some(([hx, hy, hw, hh], hr)) = hole.filter(|_| s.fill[3] > 0.0) {
+            if let Some(([hx, hy, hw, hh], hr)) = hole.filter(|_| fill_color[3] > 0.0) {
                 // A spotlight's ground covers the surface but its hole,
                 // the lit node's border box rounded as it is: one quad
                 // cut by the hole's round, inverted.
@@ -583,19 +610,19 @@ impl Tree {
                         PaintKind::Solid,
                         screen,
                         screen,
-                        faded(s.fill),
+                        faded(fill_color),
                         [0.0; 4],
                         [0.0; 4],
                         0,
                         0,
                     )
                 });
-            } else if s.fill[3] > 0.0 && !fill_tints {
+            } else if fill_color[3] > 0.0 && !fill_tints {
                 p.quads.push(quad(
                     PaintKind::Solid,
                     rect,
                     clip,
-                    faded(s.fill),
+                    faded(fill_color),
                     radius,
                     [0.0; 4],
                     0,
@@ -635,25 +662,40 @@ impl Tree {
                 let color = match im.tint {
                     crate::record::Tint::Own => [1.0, 1.0, 1.0, alpha],
                     crate::record::Tint::Ink => faded(own_ink),
-                    crate::record::Tint::Fill => faded(s.fill),
+                    crate::record::Tint::Fill => faded(fill_color),
                 };
                 let flags = (u32::from(im.fill) * og_draw::paint::IMAGE_FILL)
                     | (u32::from(im.tile) * og_draw::paint::IMAGE_TILE);
                 let cut = if im.wipe < 1.0 { 1.0 - im.wipe } else { 0.0 };
                 // `object-*`: the source at its size in the box, placed
                 // and cropped to it.
-                let (rect, uv) = match r.object {
+                let (img_rect, uv) = match r.object {
                     Some(object) if im.slice == [0.0; 4] => fitted(object, rect, im.uv, im.size),
                     _ => (rect, im.uv),
+                };
+                // An image with `rounded-*` (not a nine-slice frame) clips
+                // directly to its own rounded border box.
+                let img_round = if !framed && radius.iter().any(|&k| k > 0.0) {
+                    p.rounds.push(og_draw::paint::PaintRound {
+                        rect: [x, y, x + b.w, y + b.h],
+                        radius,
+                        xf,
+                        invert: 0,
+                        _pad: [0; 2],
+                    });
+                    p.rounds.len() as u32
+                } else {
+                    0
                 };
                 p.quads.push(PaintQuad {
                     uv,
                     wipe: [cut, im.wipe_start, f32::from(u8::from(im.wipe_ccw)), 0.0],
                     mask: 0,
                     filter: 0,
+                    round: img_round,
                     ..quad(
                         PaintKind::Image,
-                        rect,
+                        img_rect,
                         clip,
                         color,
                         width,
@@ -663,41 +705,43 @@ impl Tree {
                     )
                 });
             }
-            for sh in shadows
-                .iter()
-                .rev()
-                .filter(|sh| sh.inset && sh.color[3] > 0.0)
-            {
+            for (k, sh) in shadows.iter().enumerate().rev() {
+                if !sh.inset {
+                    continue;
+                }
+                let col =
+                    s.resolve_current(crate::record::Skin::CURRENT_SHADOW0 << k, sh.color, own_ink);
+                if col[3] <= 0.0 {
+                    continue;
+                }
                 let p4 = [sh.offset[0], sh.offset[1], sh.blur, sh.spread];
                 p.quads.push(quad(
                     PaintKind::InsetShadow,
                     rect,
                     clip,
-                    faded(sh.color),
+                    faded(col),
                     radius,
                     p4,
                     0,
                     0,
                 ));
             }
-            let sides = if s.border_side[3] > 0.0 {
+            let sides = if border_side[3] > 0.0 {
                 s.border_sides
             } else {
                 0
             };
             // The frame takes the border's place: the border keeps only
             // its room in the layout.
-            if !framed
-                && (s.border_color[3] > 0.0 || sides != 0)
-                && s.border.iter().any(|&w| w > 0.0)
+            if !framed && (border_color[3] > 0.0 || sides != 0) && s.border.iter().any(|&w| w > 0.0)
             {
                 p.quads.push(PaintQuad {
-                    uv: faded(s.border_side),
+                    uv: faded(border_side),
                     ..quad(
                         PaintKind::Border,
                         rect,
                         clip,
-                        faded(s.border_color),
+                        faded(border_color),
                         radius,
                         s.border,
                         0,
@@ -705,7 +749,7 @@ impl Tree {
                     )
                 });
             }
-            if !framed && o.width > 0.0 && o.color[3] > 0.0 {
+            if !framed && o.width > 0.0 && outline_color[3] > 0.0 {
                 // The ring of the box grown by the offset and the width; its
                 // corners follow the box's, as browsers draw them.
                 let out = o.offset + o.width;
@@ -715,7 +759,7 @@ impl Tree {
                     PaintKind::Border,
                     grown,
                     clip,
-                    faded(o.color),
+                    faded(outline_color),
                     rr,
                     [o.width; 4],
                     0,
@@ -729,7 +773,7 @@ impl Tree {
             if let Some(line) = &el.line {
                 let stroke = s_line_color(&r.stroke, ink, alpha);
                 let n = line.points.len() / 2;
-                if r.stroke_width >= 1.0 && n >= 2 && stroke[3] > 0.0 {
+                if r.stroke_width > 0.0 && n >= 2 && stroke[3] > 0.0 {
                     let first = p.points.len() as u32;
                     p.points.extend(line.mapped(b.w, b.h));
                     p.quads.push(quad(
@@ -859,13 +903,18 @@ impl Tree {
             }
             // An `Input`'s own placeholder colour, else half its ink.
             let field = self.input.per(e as u32).filter(|f| f.input);
-            // A one-line field's text scrolls inside its content box, with
-            // room past its right edge for the caret standing there.
+            // A one-line field scrolls horizontally, a multi-line field
+            // vertically, clipped to its content box with room for the caret.
             let scroll = field.filter(|f| !f.multiline).map_or(0.0, |f| f.scroll_x);
+            let scroll_y = field.filter(|f| f.multiline).map_or(0.0, |f| f.scroll_y);
             let clip = match field {
                 Some(f) if !f.multiline => {
                     let [l, _, r, _] = self.arena.box_of(el.node).inset;
                     cut_to(clip, [x + l, y, x + b.w - r + 2.0, y + b.h])
+                }
+                Some(_) => {
+                    let [l, t, r, bt_in] = self.arena.box_of(el.node).inset;
+                    cut_to(clip, [x + l, y + t, x + b.w - r + 2.0, y + b.h - bt_in])
                 }
                 _ => clip,
             };
@@ -900,7 +949,7 @@ impl Tree {
                     true => v,
                     false => ((v + t) * scale).round() / scale - t,
                 };
-                let (lx, ly) = (snap(x + lb.x - scroll, tx), snap(y + lb.y, ty));
+                let (lx, ly) = (snap(x + lb.x - scroll, tx), snap(y + lb.y - scroll_y, ty));
                 // `text-overflow` cuts at the box that set it.
                 let mut width = lb.w;
                 if run.ellipsis
@@ -1126,10 +1175,14 @@ impl Tree {
                 }
             }
             // The focused `Input`'s caret: a bar its line's height before
-            // the character it stands at, in the text's ink.
+            // the character it stands at, blinking at 1 Hz unless reduced
+            // motion is active.
             if let Some(f) = field
                 && self.input.focus_el() == e as u32
                 && (f.anchor == f.caret || !f.composing.is_empty())
+                && (self.particles.reduced
+                    || !f.composing.is_empty()
+                    || ((self.time - f.caret_at).max(0.0) % 1.0) < 0.53)
                 && let Some([cx, top, bar, height]) =
                     input::caret_bar(el, f, &self.texts, &self.arena, scale, self.text_scale)
             {

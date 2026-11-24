@@ -155,7 +155,7 @@ impl Tree {
     /// in (NSH's `hover_changes`), and the innermost that listens hears
     /// the move. A held press is inside its element while the pointer is
     /// within NSH's press retention around it.
-    fn hover_to(&mut self, x: f32, y: f32) {
+    fn hover_to(&mut self, x: f32, y: f32) -> u32 {
         // CSS's `cursor`: the innermost element under the pointer that
         // names one, listening or not.
         let mut e = self.topmost(x, y, |_| true, false);
@@ -175,7 +175,7 @@ impl Tree {
         // control is not left lit after the finger lifts (sticky hover).
         let mut e = if self.input.touch { NONE } else { top };
         while e != NONE {
-            if self.els[e as usize].js != NONE {
+            if self.els[e as usize].js != NONE && !self.disabled(e) {
                 next.push(e);
             }
             e = self.els[e as usize].parent;
@@ -206,6 +206,7 @@ impl Tree {
             let inside = self.inside(e, x, y);
             self.set_state(e, PRESSED, inside);
         }
+        top
     }
 
     /// Whether (x, y) is on op element `e`'s box or within NSH's press
@@ -273,8 +274,7 @@ impl Tree {
         released: bool,
     ) -> bool {
         self.sync_modals();
-        self.hover_to(x, y);
-        let under = self.input.hover.first().copied().unwrap_or(NONE);
+        let under = self.hover_to(x, y);
         // While a pointerdown holds it, the moves go to its listener.
         let to = match self.input.capture {
             c if c != NONE && !self.els[c as usize].dead => c,
@@ -359,14 +359,17 @@ impl Tree {
                     due: self.time + LONG_PRESS,
                 });
             }
-            // A press focuses what it lands in, or blurs (Rune: a press
-            // on content that takes no focus).
-            if under != NONE || e != NONE {
-                let from = if e != NONE { e } else { under };
-                let f = self.focusable_up(from);
-                self.input.modality = Modality::Pointer;
-                self.focus(f);
-            }
+            // A press focuses what it lands in, or blurs (including clicking
+            // empty canvas outside any UI element so text inputs release keys).
+            let f = if e != NONE {
+                self.focusable_up(e)
+            } else if under != NONE {
+                self.focusable_up(under)
+            } else {
+                NONE
+            };
+            self.input.modality = Modality::Pointer;
+            self.focus(f);
             self.field_press(x, y);
         }
         if released {

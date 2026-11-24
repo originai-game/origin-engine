@@ -27,15 +27,45 @@ fn cluster_edge(text: &str, at: usize, back: bool) -> usize {
     }
 }
 
+/// Word class for Ctrl/Alt+Arrow and Ctrl/Alt+Backspace/Delete.
+/// Separates ASCII/Latin words, CJK ideographs/kana (stepped per character so
+/// Ctrl+Backspace never deletes an entire CJK paragraph), whitespace, and punctuation.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WordClass {
+    Space,
+    Word,
+    Cjk,
+    Punct,
+}
+
+fn word_class(c: char) -> WordClass {
+    if c.is_whitespace() {
+        WordClass::Space
+    } else if matches!(
+        c as u32,
+        0x3040..=0x30ff   // Hiragana & Katakana
+            | 0x3400..=0x4dbf // CJK Extension A
+            | 0x4e00..=0x9fff // CJK Unified Ideographs
+            | 0xac00..=0xd7af // Hangul Syllables
+            | 0xf900..=0xfaff // CJK Compatibility Ideographs
+            | 0x20000..=0x2ebef // CJK Extensions B–F
+    ) {
+        WordClass::Cjk
+    } else if c.is_alphanumeric() || c == '_' {
+        WordClass::Word
+    } else {
+        WordClass::Punct
+    }
+}
+
 /// Word boundary before (`back`) or after byte `at` in `text`, for Ctrl/Alt+Arrow
 /// and Ctrl/Alt+Backspace/Delete.
 fn word_edge(text: &str, at: usize, back: bool) -> usize {
     let at = at.min(text.len());
-    let is_word = |c: char| c.is_alphanumeric() || c == '_';
     if back {
         let mut iter = text[..at].char_indices().rev().peekable();
         while let Some(&(_, c)) = iter.peek() {
-            if c.is_whitespace() {
+            if word_class(c) == WordClass::Space {
                 iter.next();
             } else {
                 break;
@@ -44,10 +74,13 @@ fn word_edge(text: &str, at: usize, back: bool) -> usize {
         let Some((first_i, first_c)) = iter.next() else {
             return 0;
         };
-        let target_word = is_word(first_c);
+        let target = word_class(first_c);
+        if target == WordClass::Cjk {
+            return first_i;
+        }
         let mut pos = first_i;
         for (i, c) in iter {
-            if is_word(c) == target_word && !c.is_whitespace() {
+            if word_class(c) == target {
                 pos = i;
             } else {
                 break;
@@ -57,18 +90,21 @@ fn word_edge(text: &str, at: usize, back: bool) -> usize {
     } else {
         let mut iter = text[at..].char_indices().peekable();
         while let Some(&(_, c)) = iter.peek() {
-            if c.is_whitespace() {
+            if word_class(c) == WordClass::Space {
                 iter.next();
             } else {
                 break;
             }
         }
-        let Some((_, first_c)) = iter.next() else {
+        let Some((first_i, first_c)) = iter.next() else {
             return text.len();
         };
-        let target_word = is_word(first_c);
+        let target = word_class(first_c);
+        if target == WordClass::Cjk {
+            return at + first_i + first_c.len_utf8();
+        }
         for (i, c) in iter {
-            if is_word(c) != target_word || c.is_whitespace() {
+            if word_class(c) != target {
                 return at + i;
             }
         }
@@ -105,8 +141,9 @@ pub(in crate::tree) fn caret_bar(
     .unwrap_or([0.0, 0.0, line]);
     let lb = arena.box_of(leaf);
     let bar = (size / 14.0 * scale).round().max(1.0) / scale;
-    let scroll = if f.multiline { 0.0 } else { f.scroll_x };
-    Some([lb.x + cx - scroll, lb.y + top, bar, height])
+    let sx = if f.multiline { 0.0 } else { f.scroll_x };
+    let sy = if f.multiline { f.scroll_y } else { 0.0 };
+    Some([lb.x + cx - sx, lb.y + top - sy, bar, height])
 }
 
 impl Tree {
@@ -142,7 +179,7 @@ impl Tree {
     }
 
     /// The focused `Input` that takes edits: shown and enabled.
-    pub(super) fn editing(&self) -> Option<u32> {
+    pub(in crate::tree) fn editing(&self) -> Option<u32> {
         let f = self.input.focus;
         (f != NONE && self.input.per(f).is_some_and(|p| p.input) && !self.disabled(f)).then_some(f)
     }
@@ -205,6 +242,8 @@ impl Tree {
         }
         p.composing.clear();
         p.composing.push_str(text);
+        p.caret_at = self.time;
+        p.goal_x = None;
         self.show_value(e);
         true
     }
@@ -249,6 +288,8 @@ impl Tree {
         (p.caret, p.anchor) = (s.caret, s.anchor);
         p.composing.clear();
         p.last_edit = (Edit::None, 0.0);
+        p.caret_at = self.time;
+        p.goal_x = None;
         if redo { &mut p.undo } else { &mut p.redo }.push(now);
         self.edited(e);
         true
@@ -268,14 +309,16 @@ impl Tree {
     }
 
     /// Field `e`'s text leaf and the surface point its text starts at
-    /// (scrolled with a one-line field's text).
+    /// (scrolled with a one-line field's horizontal scroll or a multi-line
+    /// field's vertical scroll).
     fn field_origin(&self, e: u32) -> Option<(Id, f32, f32)> {
         let leaf = self.els[e as usize].leaf?;
         let &(x, y, ..) = self.abs.get(e as usize)?;
         let lb = self.arena.box_of(leaf);
         let p = &self.input.per[e as usize];
-        let scroll = if p.multiline { 0.0 } else { p.scroll_x };
-        Some((leaf, x + lb.x - scroll, y + lb.y))
+        let sx = if p.multiline { 0.0 } else { p.scroll_x };
+        let sy = if p.multiline { p.scroll_y } else { 0.0 };
+        Some((leaf, x + lb.x - sx, y + lb.y - sy))
     }
 
     /// A press at (x, y) after it focused: in the focused field's text it
@@ -313,6 +356,8 @@ impl Tree {
             _ => (at, at),
         };
         p.last_edit = (Edit::None, 0.0);
+        p.caret_at = self.time;
+        p.goal_x = None;
         self.input.selecting = (n == 1).then_some(e);
         self.paint = true;
     }
@@ -330,51 +375,71 @@ impl Tree {
         if let Some(at) = self.field_hit(e, x, y)
             && at != self.input.per[e as usize].caret
         {
-            self.input.per[e as usize].caret = at;
+            let p = &mut self.input.per[e as usize];
+            p.caret = at;
+            p.caret_at = self.time;
+            p.goal_x = None;
             self.paint = true;
         }
     }
 
     /// ↑ or ↓ in a multi-line field: the caret goes a line up or down,
-    /// keeping its x (extending the selection with `shift`).
+    /// keeping its preferred x (`goal_x`) across short or empty lines
+    /// (extending the selection with `shift`).
     pub(super) fn line_key(&mut self, e: u32, down: bool, shift: bool) {
         let Some(leaf) = self.els[e as usize].leaf else {
             return;
         };
         let p = &self.input.per[e as usize];
         let shown = p.display_offset(p.caret);
-        let Some(to) = self
+        let cur = self.texts.caret(leaf, shown);
+        let goal_x = p.goal_x.or_else(|| cur.map(|c| c[0]));
+        let Some(stepped) = self
             .texts
             .leaf(leaf)
             .map(|l| l.line_step(shown, if down { 1 } else { -1 }))
         else {
             return;
         };
+        let to = if let (Some(gx), Some(old_c), Some(new_c), Some(l)) = (
+            goal_x,
+            cur,
+            self.texts.caret(leaf, stepped),
+            self.texts.leaf(leaf),
+        ) && (new_c[1] - old_c[1]).abs() > 0.5
+        {
+            l.hit(gx, new_c[1] + new_c[2] * 0.5)
+        } else {
+            stepped
+        };
         let p = &mut self.input.per[e as usize];
         p.caret = p.value_offset(to);
         if !shift {
             p.anchor = p.caret;
         }
+        p.goal_x = goal_x;
+        p.caret_at = self.time;
         p.last_edit = (Edit::None, 0.0);
         self.paint = true;
     }
 
-    /// Before paint: the focused one-line field scrolls its text so the
-    /// caret shows inside its content box, no further than its text runs;
-    /// a field that lost the focus shows its text's start again.
+    /// Before paint: the focused field scrolls its text so the caret shows
+    /// inside its content box (horizontally for one-line fields, vertically
+    /// for multi-line fields), no further than its text runs; a one-line
+    /// field that lost the focus shows its text's start again.
     pub(in crate::tree) fn follow_caret(&mut self) {
-        let focused = self
-            .editing()
-            .filter(|&e| !self.input.per[e as usize].multiline);
+        let focused = self.editing();
+        let focused_single = focused.filter(|&e| !self.input.per[e as usize].multiline);
         if let Some(was) = self.input.caret_scrolled
-            && Some(was) != focused
+            && Some(was) != focused_single
             && let Some(p) = self.input.per.get_mut(was as usize)
+            && !p.multiline
             && p.scroll_x != 0.0
         {
             p.scroll_x = 0.0;
             self.paint = true;
         }
-        self.input.caret_scrolled = focused;
+        self.input.caret_scrolled = focused_single;
         let Some(e) = focused else {
             return;
         };
@@ -389,23 +454,43 @@ impl Tree {
         };
         let b = self.arena.box_of(el.node);
         let lb = self.arena.box_of(leaf);
-        let view = (b.w - b.inset[0] - b.inset[2]).max(0.0);
-        let width = self.texts.leaf(leaf).map_or(0.0, |l| l.width());
-        // The caret from the text's start, unscrolled.
-        // (Its bar may stand past the content box's right edge, into the
-        // room paint leaves it there.)
-        let x = caret[0] - lb.x + p.scroll_x;
-        let mut s = p.scroll_x;
-        if x - s > view {
-            s = x - view;
-        }
-        if x < s {
-            s = x;
-        }
-        let s = s.clamp(0.0, (width - view).max(0.0));
-        if s != p.scroll_x {
-            self.input.per[e as usize].scroll_x = s;
-            self.paint = true;
+        if p.multiline {
+            let view_h = (b.h - b.inset[1] - b.inset[3]).max(0.0);
+            let height = self.texts.leaf(leaf).map_or(0.0, |l| l.height());
+            // The caret's top and bottom from the text's top, unscrolled.
+            let y0 = caret[1] - lb.y + p.scroll_y;
+            let y1 = y0 + caret[3];
+            let mut s = p.scroll_y;
+            if y1 - s > view_h {
+                s = y1 - view_h;
+            }
+            if y0 < s {
+                s = y0;
+            }
+            let s = s.clamp(0.0, (height - view_h).max(0.0));
+            if s != p.scroll_y {
+                self.input.per[e as usize].scroll_y = s;
+                self.paint = true;
+            }
+        } else {
+            let view = (b.w - b.inset[0] - b.inset[2]).max(0.0);
+            let width = self.texts.leaf(leaf).map_or(0.0, |l| l.width());
+            // The caret from the text's start, unscrolled.
+            // (Its bar may stand past the content box's right edge, into the
+            // room paint leaves it there.)
+            let x = caret[0] - lb.x + p.scroll_x;
+            let mut s = p.scroll_x;
+            if x - s > view {
+                s = x - view;
+            }
+            if x < s {
+                s = x;
+            }
+            let s = s.clamp(0.0, (width - view).max(0.0));
+            if s != p.scroll_x {
+                self.input.per[e as usize].scroll_x = s;
+                self.paint = true;
+            }
         }
     }
 
@@ -487,6 +572,8 @@ impl Tree {
         p.value.replace_range(start..end, &insert);
         p.caret = start + insert.len();
         p.anchor = p.caret;
+        p.caret_at = self.time;
+        p.goal_x = None;
         self.edited(e);
         true
     }
@@ -531,10 +618,14 @@ impl Tree {
                     let p = &mut self.input.per[e as usize];
                     p.value.replace_range(a..b, "");
                     (p.caret, p.anchor) = (a, a);
+                    p.caret_at = self.time;
+                    p.goal_x = None;
                     self.edited(e);
                 } else {
                     p.anchor = a;
                     p.caret = a;
+                    p.caret_at = self.time;
+                    p.goal_x = None;
                 }
                 self.paint = true;
                 return true;
@@ -563,6 +654,8 @@ impl Tree {
         }
         // The caret moved: the next typing is a new undo step.
         p.last_edit = (Edit::None, 0.0);
+        p.caret_at = self.time;
+        p.goal_x = None;
         if !shift {
             self.input.per[e as usize].anchor = self.input.per[e as usize].caret;
         }

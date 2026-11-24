@@ -93,6 +93,12 @@ impl Tree {
                 self.input.per[g as usize].last = Some(e);
                 g = self.group_of(g);
             }
+            if let Some(p) = self.input.per.get_mut(e as usize)
+                && p.input
+            {
+                p.caret_at = self.time;
+                p.goal_x = None;
+            }
             self.set_state(e, FOCUSED, true);
             self.set_state(e, FOCUS_VISIBLE, visible);
             let mut a = e;
@@ -237,9 +243,24 @@ impl Tree {
         }
     }
 
+    /// Whether element `e` is a horizontal range control (`slider` / `spinbutton`)
+    /// that consumes Left/Right for value adjustment while allowing Up/Down
+    /// focus navigation.
+    fn is_range_control(&self, e: u32) -> bool {
+        e != NONE
+            && self.els[e as usize].listens & OpEvent::Key.bit() != 0
+            && !self.disabled(e)
+            && matches!(
+                self.sem.get(self.els[e as usize].node).role,
+                Some(Some(accesskit::Role::Slider | accesskit::Role::SpinButton))
+            )
+    }
+
     /// A d-pad, stick or arrow move (`Up`, `Down`, `Left`, `Right`): the
     /// focus goes to the nearest Tab stop that way, wrapping to the far
     /// end of its row or column (og-ui's FocusFinder rule), and shows.
+    /// When a `slider` or `spinbutton` is focused, Left/Right adjusts its
+    /// value via `key` so gamepad players can operate sliders and steppers.
     /// With nothing focused it lands on the first stop. Whether a stop
     /// took it.
     pub fn nav(&mut self, dir: og_input::frame::Nav) -> bool {
@@ -252,6 +273,22 @@ impl Tree {
         let f = self.input.focus;
         if f == NONE || !self.input.stops.contains(&f) {
             self.focus(first);
+            return true;
+        }
+        if matches!(
+            dir,
+            og_input::frame::Nav::Left | og_input::frame::Nav::Right
+        ) && self.is_range_control(f)
+        {
+            self.set_state(f, FOCUS_VISIBLE, true);
+            let code = if dir == og_input::frame::Nav::Left {
+                "ArrowLeft"
+            } else {
+                "ArrowRight"
+            };
+            let mut ev = Fired::at(self.els[f as usize].js, OpEvent::Key, 0.0, 0.0);
+            ev.key = code.into();
+            self.events.push(ev);
             return true;
         }
         let to = self.step(f, dir);
@@ -426,9 +463,15 @@ impl Tree {
             _ => None,
         };
         // An arrow moves the focus, unless the focused node takes keys
-        // itself (a slider, a list): then it hears the arrow instead.
+        // itself (a slider, a list): then it hears the arrow instead. For
+        // horizontal range controls (`slider` / `spinbutton`), Up/Down still
+        // move focus between rows while Left/Right adjust the value.
         let own = self.input.focus != NONE
-            && self.els[self.input.focus as usize].listens & OpEvent::Key.bit() != 0;
+            && self.els[self.input.focus as usize].listens & OpEvent::Key.bit() != 0
+            && !(matches!(
+                dir,
+                Some(og_input::frame::Nav::Up | og_input::frame::Nav::Down)
+            ) && self.is_range_control(self.input.focus));
         if let Some(dir) = dir
             && !own
             && !(shift || ctrl || alt || meta)
@@ -651,6 +694,9 @@ impl Tree {
             if inside || self.input.focus == NONE {
                 let back = if restore != NONE && self.focusable(restore) {
                     restore
+                } else if self.input.modality == Modality::Keyboard {
+                    self.tab_stops();
+                    self.input.stops.first().copied().unwrap_or(NONE)
                 } else {
                     NONE
                 };
@@ -661,13 +707,20 @@ impl Tree {
         if self.input.focus != NONE && !self.focusable(self.input.focus) {
             self.focus(NONE);
         }
-        // Inner modals left under the top one's close are dropped too.
+        // Inner modals left under the top one's close are dropped too; pass
+        // their return-focus target upward so closing the top modal still
+        // restores focus to what preceded the dropped inner modal.
         let mut k = 0;
         while k < self.input.modals.len() {
             if live(self, self.input.modals[k].0) {
                 k += 1;
             } else {
-                self.input.modals.remove(k);
+                let (dead_m, dead_restore) = self.input.modals.remove(k);
+                if let Some(&(_, next_restore)) = self.input.modals.get(k)
+                    && (next_restore == NONE || self.within(next_restore, dead_m))
+                {
+                    self.input.modals[k].1 = dead_restore;
+                }
             }
         }
         for i in 0..self.input.modal_els.len() {

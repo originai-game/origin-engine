@@ -66,6 +66,10 @@ impl Next {
         tree: Option<&og_ui_next::tree::TreeCheckpoint>,
         feedback_rng: Option<u64>,
     ) {
+        self.stick = None;
+        self.fired.clear();
+        self.plays.clear();
+        self.haptics.clear();
         if let Some(rng) = feedback_rng {
             self.feedback_rng = rng;
         }

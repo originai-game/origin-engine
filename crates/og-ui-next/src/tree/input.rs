@@ -138,6 +138,14 @@ pub(super) struct Per {
     /// How far a one-line field's text is scrolled left to keep the caret
     /// in view, CSS px.
     pub scroll_x: f32,
+    /// How far a multi-line field's text is scrolled up to keep the caret
+    /// in view, CSS px.
+    pub scroll_y: f32,
+    /// Preferred caret x coordinate preserved across consecutive ↑/↓ steps
+    /// in a multi-line field (`None` outside vertical movement).
+    pub goal_x: Option<f32>,
+    /// UI clock time when the caret last moved or edited (anchors blink phase).
+    pub caret_at: f64,
     /// The states undo goes back to, oldest first, and redo forward to;
     /// the last edit's kind and time, which typing joins.
     pub undo: Vec<Snap>,
@@ -149,6 +157,9 @@ pub(super) struct Per {
     /// `sound`: the pack event the node sounds when it first paints
     /// (empty: none, or sounded already).
     pub cue: Box<str>,
+    /// `exitSound`: the pack event the node sounds when removed/unmounted
+    /// (e.g. `"close"` on dialogs, sheets, popovers, menus).
+    pub exit_cue: Box<str>,
     /// `haptic`: preset override played with non-hover interactions and cues
     /// (empty: pack/default; `"none"`: silence).
     pub haptic: Box<str>,
@@ -403,7 +414,8 @@ pub struct Input {
 }
 
 impl Input {
-    /// Clears transient pointer, fling, drag and hold interactions on checkpoint restore.
+    /// Clears transient pointer, fling, drag, gesture and hold interactions
+    /// on checkpoint restore.
     pub(super) fn clear_transient(&mut self) {
         self.fling = None;
         self.latch = None;
@@ -413,6 +425,12 @@ impl Input {
         self.holding = None;
         self.held = None;
         self.drag = None;
+        self.finger = None;
+        self.gestures = [None; 5];
+        self.pinch = None;
+        self.first = None;
+        self.keyed = false;
+        self.hover.clear();
         self.capture = NONE;
     }
 }
@@ -753,12 +771,39 @@ impl Tree {
     }
 
     /// Whether the pointer and the keys may reach `e`: inside the top
-    /// modal while one is open.
+    /// modal while one is open, or a `spotlight` scrim targeting that modal.
     pub(super) fn reachable(&self, e: u32) -> bool {
-        self.input
-            .modals
-            .last()
-            .is_none_or(|&(m, _)| self.within(e, m))
+        self.input.modals.last().is_none_or(|&(m, _)| {
+            self.within(e, m)
+                || self
+                    .input
+                    .per(e)
+                    .is_some_and(|p| !p.spotlight.is_empty() && self.named(&p.spotlight) == Some(m))
+        })
+    }
+
+    /// Whether the last active pointer device was a touchscreen (`pointer-coarse:`).
+    pub fn is_touch(&self) -> bool {
+        self.input.touch
+    }
+
+    /// Plays `exitSound` cues declared on `top` or any live descendant when
+    /// a subtree is removed/unmounted (e.g. `"close"` on overlays).
+    pub(super) fn play_exit_sounds(&mut self, top: u32) {
+        let mut stack = vec![top];
+        while let Some(e) = stack.pop() {
+            let el = &self.els[e as usize];
+            if el.dead {
+                continue;
+            }
+            stack.extend_from_slice(&el.children);
+            if let Some(p) = self.input.per.get_mut(e as usize)
+                && !p.exit_cue.is_empty()
+            {
+                let ev = std::mem::take(&mut p.exit_cue);
+                self.sound(e, &ev);
+            }
+        }
     }
 
     fn disabled(&self, e: u32) -> bool {

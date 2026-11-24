@@ -134,8 +134,10 @@ fn with_rich<R>(rich: &Rich, f: impl FnOnce(&[Span<'_>], &[Inline]) -> R) -> R {
 /// One text leaf: its layout and its quads.
 #[derive(Default)]
 pub struct Leaf {
-    /// What the layout was shaped from.
+    /// What the layout was shaped from (raw text before `text-transform`).
     pub text: String,
+    /// Transformed text actually shaped when `run.transform != 0` (empty when identity).
+    shaped_text: String,
     run: Option<Run>,
     /// The collection's and the writing's revisions it was shaped at.
     shaped: (u64, u64),
@@ -174,14 +176,70 @@ pub struct Leaf {
     decorations: Option<Decorations>,
 }
 
+/// Applies CSS `text-transform` (`1` uppercase, `2` lowercase, `3` capitalize)
+/// into `out`; returns `true` if `out` was populated (non-identity).
+fn apply_transform(text: &str, mode: u8, out: &mut String) -> bool {
+    out.clear();
+    match mode {
+        1 => {
+            out.reserve(text.len());
+            for c in text.chars() {
+                for u in c.to_uppercase() {
+                    out.push(u);
+                }
+            }
+            true
+        }
+        2 => {
+            out.reserve(text.len());
+            for c in text.chars() {
+                for l in c.to_lowercase() {
+                    out.push(l);
+                }
+            }
+            true
+        }
+        3 => {
+            out.reserve(text.len());
+            let mut start = true;
+            for c in text.chars() {
+                if c.is_alphanumeric() {
+                    if start {
+                        for u in c.to_uppercase() {
+                            out.push(u);
+                        }
+                        start = false;
+                    } else {
+                        out.push(c);
+                    }
+                } else {
+                    out.push(c);
+                    start = true;
+                }
+            }
+            true
+        }
+        _ => false,
+    }
+}
+
 impl Leaf {
+    /// The text passed to Parley (transformed when `text-transform` is active).
+    fn drawn_str(&self) -> &str {
+        if self.shaped_text.is_empty() {
+            &self.text
+        } else {
+            &self.shaped_text
+        }
+    }
+
     /// The font size it was laid out at, CSS px.
     pub fn size(&self) -> f32 {
         self.run.map_or(0.0, |r| r.size)
     }
 
     pub fn broken_words(&self) -> Vec<String> {
-        broken_words(&self.text, &self.line_text, |at| {
+        broken_words(self.drawn_str(), &self.line_text, |at| {
             self.layout.is_discretionary_break(at)
         })
     }
@@ -200,12 +258,16 @@ impl Leaf {
     pub fn width(&self) -> f32 {
         self.layout.width()
     }
+    /// Its laid-out height, CSS px.
+    pub fn height(&self) -> f32 {
+        self.layout.height()
+    }
     pub fn word_at(&self, x: f32, y: f32) -> std::ops::Range<usize> {
         self.layout.word_at(x, y)
     }
     /// The text it laid out: its text, or that cut to an ellipsis.
     pub fn laid(&self) -> &str {
-        self.layout.laid(&self.text)
+        self.layout.laid(self.drawn_str())
     }
     pub fn line_step(&self, at: usize, lines: isize) -> usize {
         self.layout.line_step(at, lines)
@@ -278,6 +340,7 @@ fn style<'a>(
             2 => Alignment::Right,
             3 => Alignment::Left,
             4 => Alignment::Justify,
+            5 => Alignment::End,
             _ => Alignment::Start,
         },
         ellipsis,
@@ -364,6 +427,7 @@ impl Texts {
         if leaf.run != Some(*run) || leaf.shaped != at || *leaf.text != *text {
             leaf.text.clear();
             leaf.text.push_str(text);
+            apply_transform(text, run.transform, &mut leaf.shaped_text);
             leaf.run = Some(*run);
             leaf.shaped = at;
             let family = run.family.map(|f| f.name());
@@ -376,9 +440,14 @@ impl Texts {
                 &self.locale,
                 false,
             );
+            let drawn: &str = if leaf.shaped_text.is_empty() {
+                &leaf.text
+            } else {
+                &leaf.shaped_text
+            };
             let layout = &mut leaf.layout;
             with_rich(&leaf.rich, |spans, boxes| {
-                layout.shape(fonts, text, &Style { spans, boxes, ..s })
+                layout.shape(fonts, drawn, &Style { spans, boxes, ..s })
             });
             leaf.broken = None;
             leaf.painted = None;
@@ -421,9 +490,14 @@ impl Texts {
                 // keeps its lines, as a flex line keeps its items.
                 Avail::Width(w) => Some(w + taffy::LAYOUT_SLACK),
             };
+            let drawn: &str = if leaf.shaped_text.is_empty() {
+                &leaf.text
+            } else {
+                &leaf.shaped_text
+            };
             let layout = &mut leaf.layout;
             with_rich(&leaf.rich, |spans, boxes| {
-                layout.break_at(fonts, text, &Style { spans, boxes, ..s }, width)
+                layout.break_at(fonts, drawn, &Style { spans, boxes, ..s }, width)
             });
             leaf.broken = Some(key);
             leaf.painted = None;

@@ -485,6 +485,11 @@ impl Tree {
                             self.input.per[e as usize].cue = value.into();
                             self.paint = true;
                         }
+                        // `exitSound`: the pack event the node sounds when
+                        // removed/unmounted (e.g. `"close"` on overlays).
+                        "exitSound" => {
+                            self.input.per[e as usize].exit_cue = value.into();
+                        }
                         // `haptic`: preset override played with this node's
                         // non-hover interactions and cues (`"none"` silences).
                         "haptic" => {
@@ -848,6 +853,7 @@ impl Tree {
                 9 => {
                     let _parent = r.u32()?;
                     let child = self.op(r.u32()?)?;
+                    self.play_exit_sounds(child);
                     self.para_touch(self.els[child as usize].parent);
                     if self.els[child as usize].record.glide.is_some() {
                         self.left_glide(child);

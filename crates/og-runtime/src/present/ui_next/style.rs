@@ -295,7 +295,8 @@ type SizeClass = (u8, bool, bool);
 
 /// What a class resolver was made for: the pack, the dark scheme, high
 /// contrast, the size class, the window when a class it resolved
-/// reads the window's exact size, and the locale's direction.
+/// reads the window's exact size, the locale's direction, touch device mode,
+/// and reduced-motion preference.
 pub(super) type Resolved = (
     Option<String>,
     [String; 4],
@@ -304,6 +305,8 @@ pub(super) type Resolved = (
     bool,
     SizeClass,
     Option<[f32; 2]>,
+    bool,
+    bool,
     bool,
 );
 
@@ -319,11 +322,14 @@ fn size_class(widths: &[f32], [w, h]: [f32; 2]) -> SizeClass {
 /// and the configured seeds over it ([`layers`]), its theme in the
 /// scheme, for a UI box of `window` CSS px; and the widths that theme
 /// breaks at.
+#[allow(clippy::too_many_arguments)]
 fn resolver(
     engine: u32,
     pack: Option<&str>,
     dark: bool,
     high_contrast: bool,
+    touch: bool,
+    reduce_motion: bool,
     window: [f32; 2],
     slots: &BTreeMap<String, u32>,
     sized: Rc<std::cell::Cell<bool>>,
@@ -370,10 +376,12 @@ fn resolver(
     // The page's scheme's classes, and the other scheme's for a subtree
     // that names it (`scheme-dark` over dark art), made when first asked.
     let classes = RefCell::new([Some(make(scheme)), None]);
-    // The active locale's direction: `ps-*` and `rtl:` follow it.
+    // The active locale's direction, coarse pointer, and reduced motion.
     let env = og_ui_next::classes::Env {
         window,
         dark,
+        touch,
+        reduce_motion,
         rtl: crate::bind::i18n::rtl(engine),
         ..Default::default()
     };
@@ -405,6 +413,8 @@ impl Next {
         let dark = self.dark;
         // The page's `prefers-contrast: more`, as the host reports it.
         let high = v.high_contrast;
+        let touch = tree.is_touch();
+        let reduce_motion = settings_of(engine).reduced_motion;
         let at = size_class(&self.widths, window);
         let exact = self.sized.get().then_some(window);
         let seeds = configured_seeds(engine);
@@ -413,7 +423,7 @@ impl Next {
         if self
             .resolved
             .as_ref()
-            .is_some_and(|(p, r, s, d, h, c, w, l)| {
+            .is_some_and(|(p, r, s, d, h, c, w, l, t, rm)| {
                 *p == self.pack
                     && *r == roles
                     && *s == seeds
@@ -422,6 +432,8 @@ impl Next {
                     && *c == at
                     && *w == exact
                     && *l == rtl
+                    && *t == touch
+                    && *rm == reduce_motion
             })
         {
             return;
@@ -432,6 +444,8 @@ impl Next {
             self.pack.as_deref(),
             dark,
             high,
+            touch,
+            reduce_motion,
             window,
             &self.images,
             sized.clone(),
@@ -447,6 +461,8 @@ impl Next {
             size_class(&widths, window),
             exact,
             rtl,
+            touch,
+            reduce_motion,
         ));
         self.widths = widths;
     }

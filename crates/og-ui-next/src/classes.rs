@@ -27,6 +27,13 @@ pub use nsh_tailwind::tailwind::state;
 /// below it; a resolver strips it before NSH sees the states.
 pub const OTHER_SCHEME: u16 = 1 << 15;
 
+/// Sentinel sRGB colour used to detect inherited `currentColor` usages
+/// resolved by `nsh-tailwind` when an element specifies no `text-*` of its own.
+/// Its RGB triplet `(1, 2, 3)` is checked via `c.0 >> 8 == CURRENT_RGB`, while
+/// the low alpha byte preserves any `/alpha` modifier (e.g. `border-current/50`).
+pub(super) const CURRENT_RGB: u32 = 0x01_02_03;
+pub(super) const CURRENT_SENTINEL: Color = Color((CURRENT_RGB << 8) | 0xff);
+
 /// What an element's classes are resolved against.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Env {
@@ -36,6 +43,8 @@ pub struct Env {
     pub rtl: bool,
     /// The player touches the screen (`pointer-coarse:`).
     pub touch: bool,
+    /// The player prefers reduced motion (`motion-reduce:`).
+    pub reduce_motion: bool,
     /// The element's [`state`] bits (`hover:`, `active:`, `focus-visible:` …).
     pub states: u16,
 }
@@ -337,6 +346,7 @@ impl Classes {
                 } else {
                     tailwind::Pointer::Fine
                 },
+                reduce_motion: env.reduce_motion,
                 ..ClassEnvironment::default()
             },
             window: Size::new(Points(env.window[0]), Points(env.window[1])),
@@ -359,15 +369,24 @@ impl Classes {
         out.layout.flex_shrink = 1.0;
         out.layout.min_size = taffy::Size::auto();
         let mut props = ClassProps::default();
-        list.apply_data(&cx, &has, &self.theme, &mut out, &mut props, |_| {});
-        for (name, value) in declarations(style) {
-            let value = self.theme.rem_lengths(value);
-            let value = match value.parse::<f32>() {
-                Ok(n) => StyleValue::Number(n),
-                Err(_) => StyleValue::Str(&value),
-            };
-            let _ = out.set(&camel(name), value);
-        }
+        list.apply_data_inherited(
+            &cx,
+            &has,
+            &self.theme,
+            Some(CURRENT_SENTINEL),
+            &mut out,
+            &mut props,
+            |out| {
+                for (name, value) in declarations(style) {
+                    let value = self.theme.rem_lengths(value);
+                    let value = match value.parse::<f32>() {
+                        Ok(n) => StyleValue::Number(n),
+                        Err(_) => StyleValue::Str(&value),
+                    };
+                    let _ = out.set(&camel(name), value);
+                }
+            },
+        );
         // What the classes set of the node's own props (`line-clamp-*`,
         // `pointer-events-*`, `text-ellipsis`) NSH keeps in the style.
         let mut own = ClassProps::default();

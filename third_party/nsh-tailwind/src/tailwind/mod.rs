@@ -774,6 +774,35 @@ impl ClassList {
         );
     }
 
+    /// Like [`ClassList::apply_data`], supplying an explicit inherited text
+    /// colour (or sentinel) for `currentColor` fallback when the element sets
+    /// no text colour of its own.
+    #[allow(clippy::too_many_arguments)]
+    pub fn apply_data_inherited(
+        &self,
+        cx: &Context<'_>,
+        data: &dyn Fn(Option<&str>, &str) -> bool,
+        theme: &Theme,
+        inherited: Option<Color>,
+        style: &mut Style,
+        props: &mut ClassProps,
+        inline: impl FnOnce(&mut Style),
+    ) {
+        self.apply_with(
+            cx,
+            data,
+            theme,
+            CurrentColor {
+                inherited,
+                inline: None,
+            },
+            DEFAULT_CH,
+            style,
+            props,
+            inline,
+        );
+    }
+
     /// [`ClassList::apply`] in a tree, where `current` says what the
     /// node's `currentColor` comes from and `ch` is its font's `0` advance.
     #[allow(clippy::too_many_arguments)]
@@ -852,10 +881,8 @@ impl ClassList {
         }
         parts.finish(style, theme, cx.window, touched::ALL);
         inline(style);
-        if self.deps & deps::CURRENT_COLOR != 0 {
-            // What the classes set to `currentColor` inside a value.
-            style.apply_current_color(current);
-        }
+        let eff_current = style.text.color.unwrap_or(current);
+        style.apply_current_color(eff_current);
         if important {
             // `!` utilities win over the inline style too, as in CSS. The
             // parts keep every rule's values (a `!scale-*` still composes
