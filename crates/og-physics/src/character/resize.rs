@@ -25,10 +25,8 @@ impl PhysicsQuery {
             ));
         }
         let scale = frame.scale.abs();
-        let radial = match &*self.inner {
-            QueryInner::D2(_) => scale.x,
-            QueryInner::D3(_) => scale.x.max(scale.z),
-        };
+        let flat = lock(&self.shared).sim2.is_some();
+        let radial = if flat { scale.x } else { scale.x.max(scale.z) };
         if scale.y <= 0.0 || radial <= 0.0 {
             return Err(Error::new(
                 ErrorKind::Invalid,

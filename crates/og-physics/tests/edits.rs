@@ -80,13 +80,15 @@ fn virtual_controllers_move_resize_and_restore_in_both_profiles() {
             }
         }
         assert!(landed && w.get::<CharacterController>(actor).unwrap().grounded);
-        let before = transform(&w, actor);
         let roof = spawn_static(
             &mut w,
             at(0.0, 4097.8, 0.0),
             Collider::cuboid(Vec3::new(2.0, 0.2, 2.0)),
         );
         assert!(resize_character(&mut w, &p, actor, 0.2, 0.3).unwrap());
+        // Queries see the stepped world, so the roof blocks once a step has taken it in.
+        w.step().unwrap();
+        let before = transform(&w, actor);
         assert!(!resize_character(&mut w, &p, actor, 1.4, 0.3).unwrap());
         assert_eq!(
             transform(&w, actor),
