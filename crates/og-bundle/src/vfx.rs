@@ -561,10 +561,9 @@ impl VfxElement {
     /// by its velocity and acceleration (an Effekseer ancestor's motion,
     /// which its descendants follow).
     pub fn local_at(&self, t: f32) -> glam::Mat4 {
-        let r = self.rotate * (std::f32::consts::PI / 180.0);
         let t = t.max(0.0);
         glam::Mat4::from_rotation_translation(
-            glam::Quat::from_euler(glam::EulerRot::XYZ, r.x, r.y, r.z),
+            play::euler(self.rotate),
             self.offset + self.velocity * t + self.acceleration * (0.5 * t * t),
         )
     }

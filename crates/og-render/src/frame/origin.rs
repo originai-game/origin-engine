@@ -116,6 +116,12 @@ impl RenderScene {
         for p in &mut self.effects.particles {
             moved(&mut p.transform, d);
         }
+        for h in self.effects.particle_history.values_mut() {
+            std::sync::Arc::make_mut(h).shift(d);
+        }
+        for m in &mut self.effects.effect_meshes {
+            moved(&mut m.transform, d);
+        }
         for c in &mut self.world.colliders {
             match c {
                 SceneCollider::Plane { normal, offset } => *offset += normal.dot(d),

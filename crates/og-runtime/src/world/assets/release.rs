@@ -131,23 +131,154 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
     crate::world::stream::check_bundle_release(eng, bundle)?;
     let world = eng.world()?;
     let handles: BTreeSet<_> = indices.iter().map(|&i| handle(i)).collect();
+
+    // Compute which loaded effect materials, emitters, and composed VFX depend
+    // on this bundle directly or via meshes/textures owned by this bundle.
+    let (
+        bundle_effects,
+        bundle_effect_handles,
+        bundle_emitters,
+        bundle_emitter_handles,
+        bundle_vfx,
+        bundle_vfx_handles,
+        candidate_meshes,
+        candidate_textures,
+    ) = {
+        let rs = eng.render.borrow();
+        let mut candidate_meshes = BTreeSet::new();
+        for &i in &indices {
+            let key = handle(i);
+            if let Some(parts) = rs.models.get(&key) {
+                candidate_meshes.extend(parts.iter().map(|(m, _, _)| *m));
+            }
+            if let Some(lods) = rs.model_lods.get(&key) {
+                candidate_meshes.extend(lods.parts.iter().flatten().map(|(m, _)| *m));
+                for (raw, placed, levels) in &lods.scatter_meshes {
+                    candidate_meshes.extend([*raw, *placed]);
+                    candidate_meshes.extend(levels.iter().flatten().map(|(m, _)| *m));
+                }
+            }
+            if let Some(model) = rs.fx.models.get(&key) {
+                candidate_meshes.extend(model.meshes.iter().copied());
+            }
+        }
+        let candidate_textures: BTreeSet<_> = rs
+            .decoded
+            .bundles
+            .iter()
+            .filter(|(_, owner)| **owner == bundle)
+            .map(|(&h, _)| h)
+            .collect();
+
+        let mut bundle_effects = BTreeSet::new();
+        let mut bundle_effect_render = BTreeSet::new();
+        for (i, &h) in rs.effects.handles.iter().enumerate() {
+            let owned = rs.effects.bundles.get(&i) == Some(&bundle);
+            let uses_tex = rs.scene.effect_material(h).is_some_and(|m| {
+                [
+                    m.main.texture,
+                    m.mask.as_ref().and_then(|t| t.texture),
+                    m.erosion.as_ref().and_then(|e| e.noise.texture),
+                    m.flow.as_ref().and_then(|f| f.map.texture),
+                ]
+                .into_iter()
+                .flatten()
+                .any(|t| candidate_textures.contains(&t))
+            });
+            if owned || uses_tex {
+                bundle_effects.insert(i);
+                bundle_effect_render.insert(h);
+            }
+        }
+        let bundle_effect_handles: BTreeSet<u64> =
+            bundle_effects.iter().map(|&i| handle(i)).collect();
+
+        let mut bundle_emitters = BTreeSet::new();
+        let mut bundle_emitter_render = BTreeSet::new();
+        loop {
+            let before = bundle_emitters.len();
+            for (i, &h) in rs.fx.emitters.iter().enumerate() {
+                if bundle_emitters.contains(&i) {
+                    continue;
+                }
+                let owned = rs.fx.emitter_bundles.get(&i) == Some(&bundle);
+                let uses_bundle = rs.scene.emitter(h).is_some_and(|e| {
+                    e.texture.is_some_and(|t| candidate_textures.contains(&t))
+                        || matches!(e.shape, og_render::EmitterShape::Mesh { mesh } if candidate_meshes.contains(&mesh))
+                        || matches!(e.render, og_render::ParticleRender::Mesh { mesh } if candidate_meshes.contains(&mesh))
+                        || e.effect.is_some_and(|m| bundle_effect_render.contains(&m))
+                        || e.sub_emitters
+                            .iter()
+                            .any(|s| bundle_emitter_render.contains(&s.emitter))
+                });
+                if owned || uses_bundle {
+                    bundle_emitters.insert(i);
+                    bundle_emitter_render.insert(h);
+                }
+            }
+            if bundle_emitters.len() == before {
+                break;
+            }
+        }
+        let bundle_emitter_handles: BTreeSet<u64> =
+            bundle_emitters.iter().map(|&i| handle(i)).collect();
+
+        let mut bundle_vfx = BTreeSet::new();
+        if let Some(reg) = &rs.effects.vfx {
+            let loaded = crate::bind::vfx::lock(reg);
+            for (i, l) in loaded.iter().enumerate() {
+                let owned = l.bundle == Some(bundle);
+                let uses_bundle = l.links.iter().any(|lk| match lk {
+                    crate::bind::vfx::Link::Emitter(_, h) => bundle_emitter_render.contains(h),
+                    crate::bind::vfx::Link::Mesh(mesh, mat) => {
+                        candidate_meshes.contains(mesh) || bundle_effect_render.contains(mat)
+                    }
+                    crate::bind::vfx::Link::Effect(Some(mat)) => bundle_effect_render.contains(mat),
+                    _ => false,
+                });
+                if owned || uses_bundle {
+                    bundle_vfx.insert(i);
+                }
+            }
+        }
+        let bundle_vfx_handles: BTreeSet<u64> = bundle_vfx
+            .iter()
+            .map(|&i| crate::bind::vfx::handle(i) as u64)
+            .collect();
+
+        (
+            bundle_effects,
+            bundle_effect_handles,
+            bundle_emitters,
+            bundle_emitter_handles,
+            bundle_vfx,
+            bundle_vfx_handles,
+            candidate_meshes,
+            candidate_textures,
+        )
+    };
+
     // A custom component or resource can keep a model/scene or one of its
-    // exposed geometry/material handles just as the built-in records can.
+    // exposed geometry/material/FX handles just as the built-in records can.
     let referenced = |layout: &Layout, row: &Value| {
         layout.fields.iter().any(|f| {
             let owned = match f.kind {
                 Kind::Asset => {
                     // Font, Texture, ClipAsset, etc. use independent handle
                     // spaces even though their packed column kind is Asset.
-                    if og_api::host::RECORDS
+                    let col = og_api::host::RECORDS
                         .iter()
                         .find(|r| r.schema == layout.schema)
                         .and_then(|r| r.fields.iter().find(|field| field.name == f.name))
-                        .is_some_and(|field| field.column != "Asset")
-                    {
-                        return false;
+                        .map(|field| field.column)
+                        .or_else(|| (!f.column.is_empty()).then_some(f.column.as_str()));
+                    match col {
+                        Some("ParticleEmitter") => &bundle_emitter_handles,
+                        Some("EffectMaterial") => &bundle_effect_handles,
+                        Some("VfxAsset") => &bundle_vfx_handles,
+                        Some(c) if c != "Asset" => return false,
+                        _ => &handles,
                     }
-                    &handles
                 }
                 Kind::Geometry => &geometries,
                 Kind::Material => &materials,
@@ -251,6 +382,95 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
             }
             rs.wind.tops.remove(&key);
         }
+
+        // Scrub unreferenced FX caches that belonged to or pointed into the
+        // closing bundle so no dangling mesh or texture handles survive, and
+        // reload paths will fetch fresh assets if the bundle is re-opened.
+        for &i in &bundle_effects {
+            if let Some(&h) = rs.effects.handles.get(i)
+                && let Some(mut m) = rs.scene.effect_material(h).cloned()
+            {
+                if m.main
+                    .texture
+                    .is_some_and(|t| candidate_textures.contains(&t))
+                {
+                    m.main.texture = None;
+                }
+                if let Some(mask) = &mut m.mask
+                    && mask
+                        .texture
+                        .is_some_and(|t| candidate_textures.contains(&t))
+                {
+                    mask.texture = None;
+                }
+                if let Some(er) = &mut m.erosion
+                    && er
+                        .noise
+                        .texture
+                        .is_some_and(|t| candidate_textures.contains(&t))
+                {
+                    er.noise.texture = None;
+                }
+                if let Some(fl) = &mut m.flow
+                    && fl
+                        .map
+                        .texture
+                        .is_some_and(|t| candidate_textures.contains(&t))
+                {
+                    fl.map.texture = None;
+                }
+                rs.scene.set_effect_material(h, m);
+            }
+            rs.effects.bundles.remove(&i);
+        }
+        rs.effects.paths.retain(|_, i| !bundle_effects.contains(i));
+
+        for &i in &bundle_emitters {
+            if let Some(&h) = rs.fx.emitters.get(i)
+                && let Some(mut e) = rs.scene.emitter(h).cloned()
+            {
+                if e.texture.is_some_and(|t| candidate_textures.contains(&t)) {
+                    e.texture = None;
+                }
+                if matches!(e.shape, og_render::EmitterShape::Mesh { mesh } if candidate_meshes.contains(&mesh))
+                {
+                    e.shape = og_render::EmitterShape::Point;
+                }
+                if matches!(e.render, og_render::ParticleRender::Mesh { mesh } if candidate_meshes.contains(&mesh))
+                {
+                    e.render = og_render::ParticleRender::Billboard;
+                }
+                rs.scene.set_emitter(h, e);
+            }
+            rs.fx.emitter_bundles.remove(&i);
+            if let Some(host) = &rs.fx.host {
+                crate::bind::particles::lock(host).emitters.remove(&i);
+            }
+        }
+        rs.fx
+            .by_path
+            .retain(|k, i| !(k.starts_with("emitter:") && bundle_emitters.contains(i)));
+
+        if let Some(reg) = &rs.effects.vfx
+            && !bundle_vfx.is_empty()
+        {
+            let mut loaded = crate::bind::vfx::lock(reg);
+            for &i in &bundle_vfx {
+                if let Some(slot) = loaded.get_mut(i) {
+                    *slot = std::sync::Arc::new(crate::bind::vfx::Loaded {
+                        id: String::new(),
+                        bundle: None,
+                        vfx: slot.vfx.clone(),
+                        links: vec![crate::bind::vfx::Link::None; slot.links.len()],
+                        clips: vec![0.0; slot.clips.len()],
+                        has_emitters: false,
+                        has_sim_elements: false,
+                        has_visual_elements: false,
+                    });
+                }
+            }
+        }
+
         for mesh in meshes {
             crate::present::geometry::forget_mesh(&mut rs, mesh);
             rs.scene.remove_mesh(mesh);

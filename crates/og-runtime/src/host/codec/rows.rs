@@ -42,6 +42,11 @@ impl Slot {
             at: layout.index_of(key),
         }
     }
+
+    /// Packed byte offset of this field in its layout, if present.
+    pub fn offset(&self) -> Option<usize> {
+        self.at.map(|(_, at)| at)
+    }
 }
 
 impl Key for Slot {
@@ -176,6 +181,27 @@ impl<'a> Row<'a> {
         }
         self.bytes.get(at..at + f.ty.size()).map(|b| (f, b))
     }
+
+    /// Reads a `Kind::F32` list field directly into `out` without JSON decoding.
+    pub(crate) fn list_f32<K: Key + ?Sized>(&self, key: &K, out: &mut Vec<f32>) -> bool {
+        out.clear();
+        let Some((i, at)) = key.index_in(self.layout) else {
+            return false;
+        };
+        let Some(f) = self.layout.fields.get(i) else {
+            return false;
+        };
+        if !f.ty.is_list() || f.kind != Kind::F32 {
+            return false;
+        }
+        let Some(slice) = self.bytes.get(at..at + f.ty.size()) else {
+            return false;
+        };
+        for elem in og_core::list_elements(f.ty, slice) {
+            out.push(f32_at(elem, 0));
+        }
+        true
+    }
 }
 
 impl Packed for Row<'_> {
@@ -230,6 +256,41 @@ pub(crate) enum Cells<'a> {
 impl<'a> ColRow<'a> {
     pub(crate) fn new(layout: &'a Layout, cells: &'a Cells<'a>, row: usize) -> ColRow<'a> {
         ColRow { layout, cells, row }
+    }
+
+    /// Reads a `Kind::F32` list field directly into `out` without JSON decoding.
+    pub(crate) fn list_f32<K: Key + ?Sized>(&self, key: &K, out: &mut Vec<f32>) -> bool {
+        out.clear();
+        match self.cells {
+            Cells::Columns(cols) => {
+                let Some((i, _)) = key.index_in(self.layout) else {
+                    return false;
+                };
+                let Some(c) = cols.get(i) else {
+                    return false;
+                };
+                let Some(f) = self.layout.fields.get(i) else {
+                    return false;
+                };
+                if !c.list || f.kind != Kind::F32 {
+                    return false;
+                }
+                let at = self.row * c.size;
+                let Some(slice) = c.bytes.get(at..at + c.size) else {
+                    return false;
+                };
+                for elem in og_core::list_elements(f.ty, slice) {
+                    out.push(f32_at(elem, 0));
+                }
+                true
+            }
+            Cells::Rows { bytes, stride } => {
+                let Some(row) = bytes.get(self.row * stride..(self.row + 1) * stride) else {
+                    return false;
+                };
+                Row::new(self.layout, row).list_f32(key, out)
+            }
+        }
     }
 
     /// The row's packed bytes ([`Layout::decode`]'s input) appended to `out`.

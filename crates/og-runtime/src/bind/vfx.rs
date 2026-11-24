@@ -8,11 +8,11 @@
 //! og.Vfx and og.VfxEvent are lazy (`crate::engine::lazy`): a world that never names
 //! them keeps its type table and hash, and has no og.vfx system.
 
-use crate::host::codec::{Layout, RecordKind};
+use crate::host::codec::{Layout, Rec, RecordKind, Row, Slot};
 use crate::host::wire::{FlipbookInfo, FromJson, record};
 use glam::Vec3;
 use og_bundle::vfx::{Vfx, VfxCue, VfxKind, VfxShape};
-use og_core::{Error, ErrorKind};
+use og_core::{Error, ErrorKind, IdMap};
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use og_render::{EffectMaterial, EffectMaterialHandle, EmitterHandle, MeshHandle, ParticleBlend};
 use serde_json::{Value, json};
@@ -27,7 +27,7 @@ pub(crate) const UNSET: u64 = u32::MAX as u64;
 /// VfxAsset handles: this tag, then the load index plus one.
 const TAG: u64 = 0x7d << 32;
 
-fn handle(index: usize) -> f64 {
+pub(crate) fn handle(index: usize) -> f64 {
     (TAG | (index as u64 + 1)) as f64
 }
 
@@ -50,7 +50,8 @@ pub struct VfxEvent {
 /// What an element draws from or plays, linked at load.
 #[derive(Clone, Debug)]
 pub(crate) enum Link {
-    Emitter(EmitterHandle),
+    /// `(emitter load index in FxState::emitters, renderer handle)`.
+    Emitter(usize, EmitterHandle),
     Mesh(MeshHandle, EffectMaterialHandle),
     Effect(Option<EffectMaterialHandle>),
     /// A sound's handle (og.AudioSource.sound).
@@ -70,12 +71,20 @@ pub(crate) enum Link {
 #[derive(Debug)]
 pub(crate) struct Loaded {
     pub id: String,
+    /// Source bundle index for safe bundle release checks.
+    pub bundle: Option<usize>,
     pub vfx: Vfx,
     /// Per element, in file order.
     pub links: Vec<Link>,
     /// Per element, a flipbook's first clip's length in seconds (0 for
     /// every other element): what ends one without a `life`.
     pub clips: Vec<f32>,
+    /// Whether any element is a particle emitter (fast early-out in `before_tick`).
+    pub has_emitters: bool,
+    /// Whether any element builds simulation history (`Emitter` or `Trail`).
+    pub has_sim_elements: bool,
+    /// Whether any element is a single-frame visual (`Mesh`, `Glow`, `Beam`, `Light`, `Decal`).
+    pub has_visual_elements: bool,
 }
 
 /// The effects a world loaded, by load index; shared by the loads, the
@@ -146,7 +155,7 @@ fn link(eng: &crate::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
     Ok(match kind {
         VfxKind::Emitter { id, .. } => {
             let i = crate::present::fx::load_emitter(eng, id)?;
-            Link::Emitter(eng.render.borrow().fx.emitters[i])
+            Link::Emitter(i, eng.render.borrow().fx.emitters[i])
         }
         VfxKind::Mesh { shape, effect, .. } => {
             let mesh = builtin_mesh(eng, shape)?;
@@ -183,15 +192,20 @@ fn link(eng: &crate::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
 pub(crate) fn load(eng: &crate::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     let registry = eng.modules.vfx.0.clone();
-    if let Some(i) = lock(&registry).iter().position(|l| l.id == id) {
+    if let Some(i) = lock(&registry)
+        .iter()
+        .position(|l| !l.id.is_empty() && l.id == id)
+    {
         return Ok(i);
     }
-    let text = {
+    let (text, owner) = {
         let assets = eng.assets.borrow();
+        let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        bundle
+        let text = bundle
             .vfx_text(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+        (text, owner)
     };
     let vfx = og_bundle::vfx::parse_vfx(&text).map_err(|e| format!("{id}: {e}"))?;
     let links = vfx
@@ -207,12 +221,34 @@ pub(crate) fn load(eng: &crate::engine::Engine, path: &str) -> Result<usize, Str
             _ => 0.0,
         })
         .collect();
+    let has_emitters = vfx
+        .elements
+        .iter()
+        .any(|e| matches!(e.kind, VfxKind::Emitter { .. }));
+    let has_sim_elements = vfx
+        .elements
+        .iter()
+        .any(|e| matches!(e.kind, VfxKind::Emitter { .. } | VfxKind::Trail { .. }));
+    let has_visual_elements = vfx.elements.iter().any(|e| {
+        matches!(
+            e.kind,
+            VfxKind::Mesh { .. }
+                | VfxKind::Glow { .. }
+                | VfxKind::Beam { .. }
+                | VfxKind::Light { .. }
+                | VfxKind::Decal { .. }
+        )
+    });
     let mut r = lock(&registry);
     r.push(Arc::new(Loaded {
         id,
+        bundle: owner,
         vfx,
         links,
         clips,
+        has_emitters,
+        has_sim_elements,
+        has_visual_elements,
     }));
     eng.render.borrow_mut().effects.vfx = Some(registry.clone());
     Ok(r.len() - 1)
@@ -341,14 +377,26 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
 
 // ── the tick: events, shakes, sounds and the end ─────────────────────────────
 
+struct VfxSlots {
+    asset: Slot,
+    seed: Slot,
+    start_tick: Slot,
+    scale: Slot,
+    tint: Slot,
+    hue: Slot,
+    params: Slot,
+    despawn: Slot,
+    ran: Slot,
+}
+
 struct Records {
-    vfx: (SchemaId, Layout),
+    vfx: (SchemaId, Layout, VfxSlots),
     event: (SchemaId, Layout),
-    source: (SchemaId, Layout),
+    source: (SchemaId, Layout, Slot, Slot),
     transform: (SchemaId, Layout),
-    parent: (SchemaId, Layout),
+    parent: (SchemaId, Layout, Slot),
     sprite: (SchemaId, Layout),
-    flipbook: (SchemaId, Layout),
+    flipbook: (SchemaId, Layout, Slot),
     flip_event: (SchemaId, Layout),
 }
 
@@ -380,14 +428,33 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
         // partner's enable schedules the system.
         return Ok(());
     };
+    let (vfx_id, vfx_l) = layout(world, COMPONENT, RecordKind::Component)?;
+    let vfx_s = VfxSlots {
+        asset: Slot::of(&vfx_l, "asset"),
+        seed: Slot::of(&vfx_l, "seed"),
+        start_tick: Slot::of(&vfx_l, "startTick"),
+        scale: Slot::of(&vfx_l, "scale"),
+        tint: Slot::of(&vfx_l, "tint"),
+        hue: Slot::of(&vfx_l, "hue"),
+        params: Slot::of(&vfx_l, "params"),
+        despawn: Slot::of(&vfx_l, "despawn"),
+        ran: Slot::of(&vfx_l, "ran"),
+    };
+    let (src_id, src_l) = spawned(world, "og.AudioSource")?;
+    let src_sound = Slot::of(&src_l, "sound");
+    let src_playing = Slot::of(&src_l, "playing");
+    let (par_id, par_l) = spawned(world, "og.Parent")?;
+    let par_entity = Slot::of(&par_l, "entity");
+    let (fb_id, fb_l) = spawned(world, "og.Flipbook")?;
+    let fb_sheet = Slot::of(&fb_l, "sheet");
     let r = Records {
-        vfx: layout(world, COMPONENT, RecordKind::Component)?,
+        vfx: (vfx_id, vfx_l, vfx_s),
         event,
-        source: spawned(world, "og.AudioSource")?,
+        source: (src_id, src_l, src_sound, src_playing),
         transform: spawned(world, "og.Transform")?,
-        parent: spawned(world, "og.Parent")?,
+        parent: (par_id, par_l, par_entity),
         sprite: spawned(world, "og.Sprite")?,
-        flipbook: spawned(world, "og.Flipbook")?,
+        flipbook: (fb_id, fb_l, fb_sheet),
         flip_event: layout(world, "og.FlipbookEvent", RecordKind::Event)?,
     };
     let feel = crate::engine::engine(engine_id)
@@ -450,75 +517,125 @@ fn system(
     feel: Option<&Mutex<crate::present::feel::FeelShared>>,
     r: &Records,
 ) -> og_core::Result<()> {
-    let time = ctx.time();
-    let rate = time.rate as f32;
-    let tick = time.tick;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
         rows.extend_from_slice(a.entities());
     }
+    if rows.is_empty() {
+        return Ok(());
+    }
+    let time = ctx.time();
+    let rate = time.rate as f32;
+    let tick = time.tick;
     og_core::sort::sort_by_key(&mut rows, |e| e.index());
-    // Every entity's og.Parent, for the flipbooks an effect spawned.
-    let mut parents: Vec<(Entity, Entity)> = Vec::new();
+
+    // Index only children whose og.Parent is a live og.Vfx entity (O(P + V)
+    // instead of scanning every parented entity per VFX / flipbook event).
+    let mut children_of: IdMap<u64, Vec<Entity>> = IdMap::new();
+    let mut parent_of: IdMap<u64, Entity> = IdMap::new();
     for a in ctx.query(1)? {
         for &c in a.entities() {
-            let p: record::Parent = r
-                .parent
-                .1
-                .read(&ctx.get_bytes(c, r.parent.0)?)
-                .map_err(invalid)?;
-            parents.push((c, Entity::from_bits(p.entity)));
+            let bytes = ctx.get_bytes(c, r.parent.0)?;
+            let parent_bits = Row::new(&r.parent.1, &bytes).uint(&r.parent.2).unwrap_or(0);
+            if parent_bits == 0 {
+                continue;
+            }
+            let parent = Entity::from_bits(parent_bits);
+            if rows
+                .binary_search_by_key(&parent.index(), |x| x.index())
+                .is_ok_and(|k| rows[k] == parent)
+            {
+                children_of.entry(parent_bits).or_default().push(c);
+                parent_of.insert(c.to_bits(), parent);
+            }
         }
     }
+
+    let (vfx_id, vfx_l, vfx_s) = &r.vfx;
     // The events of an effect's flipbooks (sent last tick by og.flipbook),
     // passed on as the effect's: a vfx2d's impact is the effect's impact.
     for ev in ctx.events_bytes(r.flip_event.0)? {
         let f: record::FlipbookEvent = r.flip_event.1.read(&ev).map_err(invalid)?;
-        let child = Entity::from_bits(f.entity);
-        let Some(&(_, e)) = parents.iter().find(|(c, _)| *c == child) else {
+        let Some(&e) = parent_of.get(&f.entity) else {
             continue;
         };
-        if !rows.contains(&e) {
-            continue;
-        }
-        let v: record::Vfx = r.vfx.1.read(&ctx.get_bytes(e, r.vfx.0)?).map_err(invalid)?;
-        let start = u64::from(v.start_tick);
+        let bytes = ctx.get_bytes(e, *vfx_id)?;
+        let row = Row::new(vfx_l, &bytes);
+        let start = row.uint(&vfx_s.start_tick).unwrap_or(UNSET);
         if start == UNSET || tick < start {
             continue;
         }
+        let asset = row.uint(&vfx_s.asset).unwrap_or(0);
         // The frame fired last tick, when og.flipbook ran.
         let at = time.seconds(tick.saturating_sub(1).max(start) - start);
-        let value = json!({ "entity": e.to_bits(), "asset": v.asset, "name": f.name, "time": at });
+        let value = json!({ "entity": e.to_bits(), "asset": asset, "name": f.name, "time": at });
         let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
         ctx.send_bytes(r.event.0, &b)?;
     }
+
+    let loaded = lock(registry).clone();
     let mut ended = Vec::new();
-    // Flipbook sprites despawned this tick (despawns apply after the system).
+    // Child entities despawned this tick (despawns apply after the system).
     let mut gone: Vec<Entity> = Vec::new();
+    let mut params_buf = Vec::new();
     for &e in &rows {
-        let bytes = ctx.get_bytes(e, r.vfx.0)?;
-        let mut v = r.vfx.1.decode(&bytes);
-        let row = record::Vfx::from_json(&v).map_err(invalid)?;
-        let start = u64::from(row.start_tick);
-        let Some(l) = index(row.asset).and_then(|i| lock(registry).get(i).cloned()) else {
+        let bytes = ctx.get_bytes(e, *vfx_id)?;
+        let row = Row::new(vfx_l, &bytes);
+        let asset = row.uint(&vfx_s.asset).unwrap_or(0);
+        let start = row.uint(&vfx_s.start_tick).unwrap_or(UNSET);
+        let Some(l) = index(asset).and_then(|i| loaded.get(i)) else {
             continue;
         };
+        // Reclaim finished child AudioSource entities spawned by this VFX so
+        // looping or non-despawning VFX never leak one-shot sound entities.
+        if let Some(kids) = children_of.get(&e.to_bits()) {
+            for &c in kids {
+                if gone.contains(&c) {
+                    continue;
+                }
+                if let Ok(sb) = ctx.get_bytes(c, r.source.0) {
+                    let srow = Row::new(&r.source.1, &sb);
+                    let playing = srow.flag(&r.source.3).unwrap_or(false);
+                    if !playing {
+                        let sound = srow.uint(&r.source.2).unwrap_or(0) as f64;
+                        let owned = l
+                            .links
+                            .iter()
+                            .any(|lk| matches!(lk, Link::Sound(s) if *s == sound));
+                        if owned {
+                            ctx.despawn(c)?;
+                            gone.push(c);
+                        }
+                    }
+                }
+            }
+        }
         if start == UNSET || tick < start {
             continue;
         }
         let fx = &l.vfx;
         // The ticks to run: those after the last run (a startTick written
         // again starts over), at most one cycle back.
-        let ran = u64::from(row.ran);
+        let ran = row.uint(&vfx_s.ran).unwrap_or(UNSET);
         let Some(from) = fx.run_from(start, (ran != UNSET).then_some(ran), tick, rate) else {
             continue;
         };
-        let scale = row.scale;
-        let values = fx.values(&row.params);
-        for cue in fx.cues(row.seed, &values, start, from..=tick, rate, &l.clips) {
+        let seed = row.uint(&vfx_s.seed).map_or(0, |x| x as u32);
+        let scale = row.num(&vfx_s.scale).map_or(1.0, |x| x as f32);
+        let tint = Vec3::new(
+            row.lane(&vfx_s.tint, "r").map_or(1.0, |x| x as f32),
+            row.lane(&vfx_s.tint, "g").map_or(1.0, |x| x as f32),
+            row.lane(&vfx_s.tint, "b").map_or(1.0, |x| x as f32),
+        );
+        let hue = row.num(&vfx_s.hue).map_or(0.0, |x| x as f32);
+        let hue = if hue.is_finite() { hue } else { 0.0 };
+        let despawn = row.flag(&vfx_s.despawn).unwrap_or(true);
+        row.list_f32(&vfx_s.params, &mut params_buf);
+        let values = fx.values(&params_buf);
+        for cue in fx.cues(seed, &values, start, from..=tick, rate, &l.clips) {
             match cue {
                 VfxCue::Event(ev) => {
-                    let value = json!({ "entity": e.to_bits(), "asset": row.asset, "name": ev.name, "time": ev.time });
+                    let value = json!({ "entity": e.to_bits(), "asset": asset, "name": ev.name, "time": ev.time });
                     let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
                     ctx.send_bytes(r.event.0, &b)?;
                 }
@@ -527,18 +644,18 @@ fn system(
                     let Link::Flipbook { sheet, .. } = &l.links[element] else {
                         continue;
                     };
-                    for &(c, p) in &parents {
-                        if p == e
-                            && !gone.contains(&c)
-                            && ctx.get_bytes(c, r.flipbook.0).is_ok_and(|b| {
-                                r.flipbook
-                                    .1
-                                    .read::<record::Flipbook>(&b)
-                                    .is_ok_and(|fb| fb.sheet as f64 == *sheet)
-                            })
-                        {
-                            ctx.despawn(c)?;
-                            gone.push(c);
+                    if let Some(kids) = children_of.get(&e.to_bits()) {
+                        for &c in kids {
+                            if !gone.contains(&c)
+                                && ctx.get_bytes(c, r.flipbook.0).is_ok_and(|b| {
+                                    Row::new(&r.flipbook.1, &b)
+                                        .uint(&r.flipbook.2)
+                                        .is_some_and(|sh| sh as f64 == *sheet)
+                                })
+                            {
+                                ctx.despawn(c)?;
+                                gone.push(c);
+                            }
                         }
                     }
                 }
@@ -601,9 +718,7 @@ fn system(
                         continue;
                     };
                     let o = el.offset * scale;
-                    let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
                     // Its colour tinted and turned as the drawn elements' are.
-                    let hue = if row.hue.is_finite() { row.hue } else { 0.0 };
                     let c = og_bundle::vfx::hue_rotated(
                         Vec3::new(color[0], color[1], color[2]) * tint,
                         hue,
@@ -646,26 +761,48 @@ fn system(
                 }
             }
         }
-        v["ran"] = json!(tick);
-        let out = r.vfx.1.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
-        ctx.set_bytes(e, r.vfx.0, &out)?;
-        if fx.ended(start, tick, rate) && row.despawn {
-            ended.push(e);
+        // Patch `ran` in-place in packed bytes (avoids full JSON decode + re-encode).
+        let mut out = bytes;
+        if let Some(at) = vfx_s.ran.offset()
+            && at + 4 <= out.len()
+        {
+            out[at..at + 4].copy_from_slice(&(tick as u32).to_le_bytes());
+        } else {
+            let mut v = vfx_l.decode(&out);
+            v["ran"] = json!(tick);
+            out = vfx_l.encode(Some(&out), Some(&v)).map_err(invalid)?;
+        }
+        ctx.set_bytes(e, *vfx_id, &out)?;
+        if fx.ended(start, tick, rate) {
+            if despawn {
+                ended.push(e);
+            } else if let Some(kids) = children_of.get(&e.to_bits()) {
+                // Clean up remaining flipbook children for non-despawning VFX.
+                for &c in kids {
+                    if !gone.contains(&c) && ctx.get_bytes(c, r.flipbook.0).is_ok() {
+                        ctx.despawn(c)?;
+                        gone.push(c);
+                    }
+                }
+            }
         }
     }
     if ended.is_empty() {
         return Ok(());
     }
     // The ended effects and their sounds and flipbooks (children by og.Parent).
-    for (c, parent) in parents {
-        if ended.contains(&parent)
-            && (ctx.get_bytes(c, r.source.0).is_ok() || ctx.get_bytes(c, r.flipbook.0).is_ok())
-            && !gone.contains(&c)
-        {
-            ctx.despawn(c)?;
-        }
-    }
     for e in ended {
+        if let Some(kids) = children_of.get(&e.to_bits()) {
+            for &c in kids {
+                if !gone.contains(&c)
+                    && (ctx.get_bytes(c, r.source.0).is_ok()
+                        || ctx.get_bytes(c, r.flipbook.0).is_ok())
+                {
+                    ctx.despawn(c)?;
+                    gone.push(c);
+                }
+            }
+        }
         ctx.despawn(e)?;
     }
     Ok(())

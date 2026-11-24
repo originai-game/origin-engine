@@ -799,7 +799,7 @@ impl ParticleRenderer {
                     let mut step_gpu = emitter_sim_gpu(
                         e,
                         s.transform,
-                        None,
+                        s.prev_transform,
                         Some(s),
                         s.dt,
                         s.time,

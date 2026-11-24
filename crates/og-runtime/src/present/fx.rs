@@ -5,8 +5,8 @@
 //! their assets (`og.load.lut`, `og.load.emitter`). Like the rest of
 //! extraction it reads the world and never writes it.
 
-use crate::host::codec::Layout;
-use crate::host::wire::{self, Blend, FromJson, record};
+use crate::host::codec::{ColRow, Layout, Rec, Slot};
+use crate::host::wire::{self, FromJson, record};
 use crate::present::extract::{Hierarchy, RenderState};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
@@ -191,6 +191,8 @@ pub(crate) struct FxState {
     /// the renderer's emitter follows the array's handle, and a system of
     /// it draws nothing while the array's streaming group is not resident.
     pub emitter_arrays: IdMap<usize, usize>,
+    /// Source bundle index for each loaded emitter, by emitter load index.
+    pub emitter_bundles: IdMap<usize, usize>,
     pub by_path: BTreeMap<String, usize>,
     /// Built-in mesh particles' shapes (`render mesh box`) and effect
     /// meshes (`vfx:ring ...`), made once.
@@ -285,12 +287,53 @@ pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
 /// never written, so a one-shot emitter has not fired.
 const PARTICLES_ARMED: u32 = u32::MAX;
 
+/// Every row of `rows` sorted by entity index, borrowed directly from the
+/// world's packed archetype columns without JSON allocation.
+pub(crate) fn sorted_column_rows<'a>(
+    rows: &'a crate::present::extract::ColumnRows<'a>,
+) -> Vec<(u64, ColRow<'a>)> {
+    let mut out: Vec<_> = rows.iter().collect();
+    og_core::sort::sort_by_key(&mut out, |(e, _)| Entity::from_bits(*e).index());
+    out
+}
+
+/// Ensures an emitter's streamed texture array (if any) is resident and bound
+/// on the renderer's `ParticleEmitter`. Returns `false` while unloaded.
+pub(crate) fn emitter_ready(
+    scene: &mut og_render::RenderScene,
+    fx: &FxState,
+    texture_arrays: &[crate::world::assets::LoadedArray],
+    index: usize,
+    emitter: og_render::EmitterHandle,
+) -> bool {
+    if let Some(&a) = fx.emitter_arrays.get(&index) {
+        let Some(handle) = texture_arrays.get(a).and_then(|a| a.handle) else {
+            return false;
+        };
+        if let Some(e) = scene.emitter(emitter).filter(|e| e.array != Some(handle)) {
+            let e = og_render::ParticleEmitter {
+                array: Some(handle),
+                ..e.clone()
+            };
+            scene.set_emitter(emitter, e);
+        }
+    }
+    true
+}
+
 /// Each og.LightMask2D's layers by entity (empty until a game names it:
 /// og.LightMask2D is lazy). A receiver without one is lit as mask 1.
 pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32> {
-    rows(world, layouts.light_mask_2d.as_ref())
-        .into_iter()
-        .filter_map(|(e, v)| Some((e, record::LightMask2D::from_json(&v).ok()?.layers)))
+    let Some(layout) = layouts.light_mask_2d.as_ref() else {
+        return IdMap::new();
+    };
+    let rows = crate::present::extract::column_rows(world, layout);
+    if rows.is_empty() {
+        return IdMap::new();
+    }
+    let layers = Slot::of(layout, "layers");
+    rows.iter()
+        .map(|(e, v)| (e, v.uint(&layers).map_or(1, |x| x as u32)))
         .collect()
 }
 
@@ -372,6 +415,119 @@ fn planar(m: Mat4) -> (Vec2, f32, Vec2) {
     (pos.truncate(), about_z, scale.truncate())
 }
 
+#[inline]
+fn col_rgb(v: &ColRow<'_>, s: &Slot, d: Vec3) -> Vec3 {
+    Vec3::new(
+        v.lane(s, "r").map_or(d.x, |x| x as f32),
+        v.lane(s, "g").map_or(d.y, |x| x as f32),
+        v.lane(s, "b").map_or(d.z, |x| x as f32),
+    )
+}
+
+#[inline]
+fn col_vec2(v: &ColRow<'_>, s: &Slot, d: Vec2) -> Vec2 {
+    Vec2::new(
+        v.lane(s, "x").map_or(d.x, |x| x as f32),
+        v.lane(s, "y").map_or(d.y, |x| x as f32),
+    )
+}
+
+#[inline]
+fn col_vec3(v: &ColRow<'_>, s: &Slot, d: Vec3) -> Vec3 {
+    Vec3::new(
+        v.lane(s, "x").map_or(d.x, |x| x as f32),
+        v.lane(s, "y").map_or(d.y, |x| x as f32),
+        v.lane(s, "z").map_or(d.z, |x| x as f32),
+    )
+}
+
+#[inline]
+fn col_blend_additive(v: &ColRow<'_>, s: &Slot, default_additive: bool) -> bool {
+    match v.text(s).as_deref() {
+        Some("additive") => true,
+        Some("alpha") => false,
+        _ => match v.uint(s) {
+            Some(1) => true,
+            Some(0) => false,
+            _ => default_additive,
+        },
+    }
+}
+
+/// Lightweight tick-start extraction of `og.ParticleSystem` rows only, for
+/// `presentation::before_tick` history recording without touching unrelated
+/// scene lists.
+pub(crate) fn extract_particles(
+    world: &World,
+    rs: &mut RenderState,
+    h: &mut Hierarchy,
+    tick: u64,
+    out: &mut Vec<ParticleSystem>,
+) {
+    let RenderState {
+        scene,
+        fx,
+        texture_arrays,
+        draw,
+        ..
+    } = rs;
+    let Some(layout) = draw.fx.particles.as_ref() else {
+        return;
+    };
+    let rows = crate::present::extract::column_rows(world, layout);
+    if rows.is_empty() {
+        return;
+    }
+    let groups = world.time_groups();
+    let mut air: Option<og_env::air::Air> = None;
+    let visible_s = Slot::of(layout, "visible");
+    let emitter_s = Slot::of(layout, "emitter");
+    let seed_s = Slot::of(layout, "seed");
+    let start_s = Slot::of(layout, "startTick");
+    let stop_s = Slot::of(layout, "stopTick");
+    for (e, v) in sorted_column_rows(&rows) {
+        if !v.flag(&visible_s).unwrap_or(true) {
+            continue;
+        }
+        let emitter_bits = v.uint(&emitter_s).unwrap_or(0);
+        let Some(index) = crate::world::assets::index_of(emitter_bits as f64) else {
+            continue;
+        };
+        let Some(&emitter) = fx.emitters.get(index) else {
+            continue;
+        };
+        if !emitter_ready(scene, fx, texture_arrays, index, emitter) {
+            continue;
+        }
+        let start_raw = v.uint(&start_s).map_or(PARTICLES_ARMED, |x| x as u32);
+        let start = match start_raw {
+            PARTICLES_ARMED if scene.emitter(emitter).is_some_and(|e| !e.looping) => continue,
+            PARTICLES_ARMED => 0,
+            t => t,
+        };
+        let stop = v.uint(&stop_s).map_or(0, |x| x as u32);
+        let seed = v.uint(&seed_s).map_or(0, |x| x as u32);
+        let transform = h.tick_world_of(e);
+        let air = air.get_or_insert_with(|| draw.atmo.air(world, h));
+        out.push(ParticleSystem {
+            id: e,
+            emitter,
+            transform,
+            air: air.at(transform.w_axis.truncate()),
+            seed: u64::from(seed),
+            start_tick: u64::from(start),
+            stop_tick: (stop > 0).then_some(u64::from(stop)),
+            tick,
+            time_scale: groups
+                .as_ref()
+                .map_or(1.0, |g| world.group_scale(g, Entity::from_bits(e))),
+            tint: Vec3::ONE,
+            emission: 1.0,
+            hue: 0.0,
+        });
+    }
+}
+
 /// The effect components: 2D lights and occluders, decals, particle
 /// systems, trails and beams; and the queued ribbons.
 pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy, tick: u64) {
@@ -393,271 +549,397 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.effects.particle_layers.clear();
     scene.effects.effect_meshes.clear();
     scene.effects.hosted_particles.clear();
-    let hosted = fx.host.as_ref().map(|h| crate::bind::particles::lock(h));
     scene.effects.trails.clear();
     scene.effects.beams.clear();
     scene.effects.ribbons.clear();
     let texture =
         |h: u64| crate::world::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
-    let rgb = |c: &wire::Color| Vec3::new(c.r, c.g, c.b);
     // og.load.effect's handle: its load index.
     let effect = |h: u64| {
         crate::world::assets::index_of(h as f64).and_then(|i| effects.handles.get(i).copied())
     };
-    // Time groups (og.TimeGroups), once a game uses them.
-    let groups = world.time_groups();
-    for (e, v) in rows(world, layouts.light_2d.as_ref()) {
-        let Ok(v) = record::Light2D::from_json(&v) else {
-            continue;
-        };
-        let m = h.world_of(e);
-        let (pos, _, _) = planar(m);
-        // A spot's and a global light's axis: the entity's local +x in
-        // the plane.
-        let axis = m.x_axis.truncate().truncate();
-        // A NaN angle (decoded as null) keeps its former default: with
-        // both NaN og-render's `inner.clamp(0.0, outer)` would panic.
-        let angle = |a: f32, d: f32| if a.is_nan() { d } else { a };
-        scene.sprite.lights_2d.push(Light2d {
-            position: pos,
-            color: rgb(&v.color),
-            intensity: v.intensity,
-            radius: v.distance,
-            falloff: v.falloff,
-            source_radius: v.source_radius,
-            cast_shadows: v.cast_shadows,
-            kind: match v.kind {
-                wire::Light2DKind::Spot => Light2dKind::Spot,
-                wire::Light2DKind::Global => Light2dKind::Global,
-                wire::Light2DKind::Point => Light2dKind::Point,
-            },
-            direction: axis.normalize_or(Vec2::X),
-            inner_angle: angle(v.inner_angle, 0.35),
-            outer_angle: angle(v.outer_angle, 0.6),
-            height: v.height,
-            layers: v.layers,
-        });
-    }
-    for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
-        let Ok(v) = record::Occluder2D::from_json(&v) else {
-            continue;
-        };
-        let (pos, rot, scale) = planar(h.world_of(e));
-        // The same outline light2dAt reads (`crate::present::light2d_at`).
-        let polygon: Vec<Vec2> = if v.points.len() >= 6 {
-            crate::present::light2d_at::local_outline(&v.points, 0.0, 0.0)
-                .into_iter()
-                .map(|p| p * scale)
-                .collect()
-        } else {
-            Vec::new()
-        };
-        scene.sprite.occluders_2d.push(Occluder2d {
-            half_size: Vec2::new(v.width, v.height) * scale * 0.5,
-            layers: v.layers,
-            ..Occluder2d::polygon(pos, rot, &polygon)
-        });
-    }
-    for (e, v) in rows(world, layouts.decal.as_ref()) {
-        let Ok(v) = record::Decal::from_json(&v) else {
-            continue;
-        };
-        if !v.visible {
-            continue;
-        }
-        let c = &v.color;
-        let (lo, hi) = (v.uv_min, v.uv_max);
-        scene.effects.decals.push(Decal {
-            transform: h.world_of(e),
-            uv_rect: [lo.x, lo.y, hi.x, hi.y],
-            color: [c.r, c.g, c.b, v.opacity],
-            emissive: rgb(&v.emissive),
-            roughness: v.roughness,
-            wet: v.wet,
-            angle_fade_degrees: v.angle_fade,
-            normal_rect: {
-                let (lo, hi) = (v.normal_min, v.normal_max);
-                [lo.x, lo.y, hi.x, hi.y]
-            },
-            normal_scale: v.normal_scale,
-        });
-    }
-    let mut air: Option<og_env::air::Air> = None;
-    for (e, v) in rows(world, layouts.particles.as_ref()) {
-        let Ok(v) = record::ParticleSystem::from_json(&v) else {
-            continue;
-        };
-        if !v.visible {
-            continue;
-        }
-        let Some(index) = crate::world::assets::index_of(v.emitter as f64) else {
-            continue;
-        };
-        let Some(&emitter) = fx.emitters.get(index) else {
-            continue;
-        };
-        // An emitter drawing from a texture array follows the array's
-        // renderer handle (a streaming group may have released and added
-        // it again), and draws nothing while it is not resident.
-        if let Some(&a) = fx.emitter_arrays.get(&index) {
-            let Some(handle) = texture_arrays.get(a).and_then(|a| a.handle) else {
-                continue;
-            };
-            if let Some(e) = scene.emitter(emitter).filter(|e| e.array != Some(handle)) {
-                let e = og_render::ParticleEmitter {
-                    array: Some(handle),
-                    ..e.clone()
+
+    // ── og.Light2D ───────────────────────────────────────────────────────────
+    if let Some(layout) = layouts.light_2d.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let color_s = Slot::of(layout, "color");
+            let intensity_s = Slot::of(layout, "intensity");
+            let distance_s = Slot::of(layout, "distance");
+            let falloff_s = Slot::of(layout, "falloff");
+            let source_radius_s = Slot::of(layout, "sourceRadius");
+            let cast_shadows_s = Slot::of(layout, "castShadows");
+            let kind_s = Slot::of(layout, "kind");
+            let inner_angle_s = Slot::of(layout, "innerAngle");
+            let outer_angle_s = Slot::of(layout, "outerAngle");
+            let height_s = Slot::of(layout, "height");
+            let layers_s = Slot::of(layout, "layers");
+            for (e, v) in sorted_column_rows(&rows) {
+                let m = h.world_of(e);
+                let (pos, _, _) = planar(m);
+                // A spot's and a global light's axis: the entity's local +x in the plane.
+                let axis = m.x_axis.truncate().truncate();
+                let kind = match v.text(&kind_s).as_deref() {
+                    Some("spot") => Light2dKind::Spot,
+                    Some("global") => Light2dKind::Global,
+                    Some("point") => Light2dKind::Point,
+                    _ => match v.uint(&kind_s) {
+                        Some(1) => Light2dKind::Spot,
+                        Some(2) => Light2dKind::Global,
+                        _ => Light2dKind::Point,
+                    },
                 };
-                scene.set_emitter(emitter, e);
+                // ColRow::num returns None for NaN, keeping defaults so
+                // og-render's inner.clamp(0.0, outer) never sees NaN.
+                scene.sprite.lights_2d.push(Light2d {
+                    position: pos,
+                    color: col_rgb(&v, &color_s, Vec3::ONE),
+                    intensity: v.num(&intensity_s).map_or(1.0, |x| x as f32),
+                    radius: v.num(&distance_s).map_or(5.0, |x| x as f32),
+                    falloff: v.num(&falloff_s).map_or(2.0, |x| x as f32),
+                    source_radius: v.num(&source_radius_s).map_or(0.25, |x| x as f32),
+                    cast_shadows: v.flag(&cast_shadows_s).unwrap_or(true),
+                    kind,
+                    direction: axis.normalize_or(Vec2::X),
+                    inner_angle: v.num(&inner_angle_s).map_or(0.35, |x| x as f32),
+                    outer_angle: v.num(&outer_angle_s).map_or(0.6, |x| x as f32),
+                    height: v.num(&height_s).map_or(1.0, |x| x as f32),
+                    layers: v.uint(&layers_s).map_or(u32::MAX, |x| x as u32),
+                });
             }
         }
-        let stop = v.stop_tick;
-        // An unwritten startTick (PARTICLES_ARMED): a looping emitter runs
-        // as if started at tick 0, a one-shot waits for its tick.
-        let start = match v.start_tick {
-            PARTICLES_ARMED if scene.emitter(emitter).is_some_and(|e| !e.looping) => continue,
-            PARTICLES_ARMED => 0,
-            t => t,
-        };
-        let layers = v.layers;
-        if layers != 1 {
-            scene
-                .effects
-                .particle_layers
-                .resize(scene.effects.particles.len(), 1);
-            scene.effects.particle_layers.push(layers);
-        }
-        if let Some(h) = hosted.as_ref().and_then(|h| h.systems.get(&e)) {
-            scene
-                .effects
-                .hosted_particles
-                .push((e, Arc::new(h.cpu.clone())));
-        }
-        let transform = h.world_of(e);
-        // The frame's air, read once for the first system it carries.
-        let air = air.get_or_insert_with(|| draw.atmo.air(world, h));
-        scene.effects.particles.push(ParticleSystem {
-            id: e,
-            emitter,
-            transform,
-            air: air.at(transform.w_axis.truncate()),
-            seed: u64::from(v.seed),
-            start_tick: u64::from(start),
-            stop_tick: (stop > 0).then_some(u64::from(stop)),
-            tick,
-            // Its time group's scale (og.TimeGroup): slowed sparks.
-            time_scale: groups
-                .as_ref()
-                .map_or(1.0, |g| world.group_scale(g, og_ecs::Entity::from_bits(e))),
-            tint: Vec3::ONE,
-            emission: 1.0,
-            hue: 0.0,
-        });
     }
-    drop(hosted);
+
+    // ── og.Occluder2D ────────────────────────────────────────────────────────
+    if let Some(layout) = layouts.occluder_2d.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let width_s = Slot::of(layout, "width");
+            let height_s = Slot::of(layout, "height");
+            let points_s = Slot::of(layout, "points");
+            let layers_s = Slot::of(layout, "layers");
+            let mut pts = Vec::new();
+            for (e, v) in sorted_column_rows(&rows) {
+                let (pos, rot, scale) = planar(h.world_of(e));
+                v.list_f32(&points_s, &mut pts);
+                // The same outline light2dAt reads (`crate::present::light2d_at`).
+                let polygon: Vec<Vec2> = if pts.len() >= 6 {
+                    crate::present::light2d_at::local_outline(&pts, 0.0, 0.0)
+                        .into_iter()
+                        .map(|p| p * scale)
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                scene.sprite.occluders_2d.push(Occluder2d {
+                    half_size: Vec2::new(
+                        v.num(&width_s).map_or(1.0, |x| x as f32),
+                        v.num(&height_s).map_or(1.0, |x| x as f32),
+                    ) * scale
+                        * 0.5,
+                    layers: v.uint(&layers_s).map_or(u32::MAX, |x| x as u32),
+                    ..Occluder2d::polygon(pos, rot, &polygon)
+                });
+            }
+        }
+    }
+
+    // ── og.Decal ─────────────────────────────────────────────────────────────
+    if let Some(layout) = layouts.decal.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let visible_s = Slot::of(layout, "visible");
+            let color_s = Slot::of(layout, "color");
+            let opacity_s = Slot::of(layout, "opacity");
+            let uv_min_s = Slot::of(layout, "uvMin");
+            let uv_max_s = Slot::of(layout, "uvMax");
+            let emissive_s = Slot::of(layout, "emissive");
+            let roughness_s = Slot::of(layout, "roughness");
+            let wet_s = Slot::of(layout, "wet");
+            let angle_fade_s = Slot::of(layout, "angleFade");
+            let normal_min_s = Slot::of(layout, "normalMin");
+            let normal_max_s = Slot::of(layout, "normalMax");
+            let normal_scale_s = Slot::of(layout, "normalScale");
+            for (e, v) in sorted_column_rows(&rows) {
+                if !v.flag(&visible_s).unwrap_or(true) {
+                    continue;
+                }
+                let c = col_rgb(&v, &color_s, Vec3::ONE);
+                let lo = col_vec2(&v, &uv_min_s, Vec2::ZERO);
+                let hi = col_vec2(&v, &uv_max_s, Vec2::ONE);
+                let nlo = col_vec2(&v, &normal_min_s, Vec2::ZERO);
+                let nhi = col_vec2(&v, &normal_max_s, Vec2::ZERO);
+                scene.effects.decals.push(Decal {
+                    transform: h.world_of(e),
+                    uv_rect: [lo.x, lo.y, hi.x, hi.y],
+                    color: [c.x, c.y, c.z, v.num(&opacity_s).map_or(1.0, |x| x as f32)],
+                    emissive: col_rgb(&v, &emissive_s, Vec3::ZERO),
+                    roughness: v.num(&roughness_s).map_or(-1.0, |x| x as f32),
+                    wet: v.flag(&wet_s).unwrap_or(false),
+                    angle_fade_degrees: v.num(&angle_fade_s).map_or(75.0, |x| x as f32),
+                    normal_rect: [nlo.x, nlo.y, nhi.x, nhi.y],
+                    normal_scale: v.num(&normal_scale_s).map_or(1.0, |x| x as f32),
+                });
+            }
+        }
+    }
+
+    // ── og.ParticleSystem ────────────────────────────────────────────────────
+    if let Some(layout) = layouts.particles.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let hosted = fx.host.as_ref().map(|h| crate::bind::particles::lock(h));
+            let groups = world.time_groups();
+            let mut air: Option<og_env::air::Air> = None;
+            let visible_s = Slot::of(layout, "visible");
+            let emitter_s = Slot::of(layout, "emitter");
+            let seed_s = Slot::of(layout, "seed");
+            let start_s = Slot::of(layout, "startTick");
+            let stop_s = Slot::of(layout, "stopTick");
+            let layers_s = Slot::of(layout, "layers");
+            for (e, v) in sorted_column_rows(&rows) {
+                if !v.flag(&visible_s).unwrap_or(true) {
+                    continue;
+                }
+                let emitter_bits = v.uint(&emitter_s).unwrap_or(0);
+                let Some(index) = crate::world::assets::index_of(emitter_bits as f64) else {
+                    continue;
+                };
+                let Some(&emitter) = fx.emitters.get(index) else {
+                    continue;
+                };
+                if !emitter_ready(scene, fx, texture_arrays, index, emitter) {
+                    continue;
+                }
+                let start_raw = v.uint(&start_s).map_or(PARTICLES_ARMED, |x| x as u32);
+                // An unwritten startTick (PARTICLES_ARMED): a looping emitter runs
+                // as if started at tick 0, a one-shot waits for its tick.
+                let start = match start_raw {
+                    PARTICLES_ARMED if scene.emitter(emitter).is_some_and(|e| !e.looping) => {
+                        continue;
+                    }
+                    PARTICLES_ARMED => 0,
+                    t => t,
+                };
+                let stop = v.uint(&stop_s).map_or(0, |x| x as u32);
+                let seed = v.uint(&seed_s).map_or(0, |x| x as u32);
+                let layers = v.uint(&layers_s).map_or(1, |x| x as u32);
+                if layers != 1 {
+                    scene
+                        .effects
+                        .particle_layers
+                        .resize(scene.effects.particles.len(), 1);
+                    scene.effects.particle_layers.push(layers);
+                }
+                if let Some(hs) = hosted.as_ref().and_then(|h| h.systems.get(&e)) {
+                    scene
+                        .effects
+                        .hosted_particles
+                        .push((e, Arc::new(hs.cpu.clone())));
+                }
+                // Uninterpolated tick transform keeps particle simulation deterministic
+                // and independent of display-frame interpolation phase.
+                let transform = h.tick_world_of(e);
+                let air = air.get_or_insert_with(|| draw.atmo.air(world, h));
+                scene.effects.particles.push(ParticleSystem {
+                    id: e,
+                    emitter,
+                    transform,
+                    air: air.at(transform.w_axis.truncate()),
+                    seed: u64::from(seed),
+                    start_tick: u64::from(start),
+                    stop_tick: (stop > 0).then_some(u64::from(stop)),
+                    tick,
+                    // Its time group's scale (og.TimeGroup): slowed sparks.
+                    time_scale: groups
+                        .as_ref()
+                        .map_or(1.0, |g| world.group_scale(g, Entity::from_bits(e))),
+                    tint: Vec3::ONE,
+                    emission: 1.0,
+                    hue: 0.0,
+                });
+            }
+        }
+    }
+
+    // ── og.Trail ─────────────────────────────────────────────────────────────
     fx.active_trails.clear();
-    for (e, v) in rows(world, layouts.trail.as_ref()) {
-        let Ok(v) = record::Trail::from_json(&v) else {
-            continue;
-        };
-        let (c0, c1) = (v.color, v.color_end);
-        let tile = v.uv_tile;
-        let additive = v.blend == Blend::Additive;
-        let style = TrailStyle {
-            lifetime: v.lifetime,
-            min_distance: v.min_distance,
-            width: Curve::linear(v.width_start, v.width_end),
-            color: ColorCurve::new(&[
-                (0.0, [c0.r, c0.g, c0.b, v.opacity]),
-                (1.0, [c1.r, c1.g, c1.b, v.opacity_end]),
-            ]),
-            texture: crate::world::assets::index_of(v.texture as f64)
-                .and_then(|i| textures.get(i).copied()),
-            uv: if tile > 0.0 {
-                RibbonUv::Tile { length: tile }
-            } else {
-                RibbonUv::Stretch
-            },
-            blend: if additive {
-                ParticleBlend::Additive
-            } else {
-                ParticleBlend::Alpha
-            },
-            effect: effect(v.effect),
-        };
-        let handle = fx.trail_style(scene, e, style);
-        if v.layered {
-            scene.effects.trail_layers.push((e, v.layer));
+    if let Some(layout) = layouts.trail.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let lifetime_s = Slot::of(layout, "lifetime");
+            let min_dist_s = Slot::of(layout, "minDistance");
+            let width_start_s = Slot::of(layout, "widthStart");
+            let width_end_s = Slot::of(layout, "widthEnd");
+            let color_s = Slot::of(layout, "color");
+            let opacity_s = Slot::of(layout, "opacity");
+            let color_end_s = Slot::of(layout, "colorEnd");
+            let opacity_end_s = Slot::of(layout, "opacityEnd");
+            let texture_s = Slot::of(layout, "texture");
+            let effect_s = Slot::of(layout, "effect");
+            let uv_tile_s = Slot::of(layout, "uvTile");
+            let blend_s = Slot::of(layout, "blend");
+            let layered_s = Slot::of(layout, "layered");
+            let layer_s = Slot::of(layout, "layer");
+            for (e, v) in sorted_column_rows(&rows) {
+                let c0 = col_rgb(&v, &color_s, Vec3::ONE);
+                let c1 = col_rgb(&v, &color_end_s, Vec3::ONE);
+                let tile = v.num(&uv_tile_s).map_or(0.0, |x| x as f32);
+                let additive = col_blend_additive(&v, &blend_s, true);
+                let style = TrailStyle {
+                    lifetime: v.num(&lifetime_s).map_or(0.4, |x| x as f32),
+                    min_distance: v.num(&min_dist_s).map_or(0.05, |x| x as f32),
+                    width: Curve::linear(
+                        v.num(&width_start_s).map_or(0.15, |x| x as f32),
+                        v.num(&width_end_s).map_or(0.0, |x| x as f32),
+                    ),
+                    color: ColorCurve::new(&[
+                        (
+                            0.0,
+                            [
+                                c0.x,
+                                c0.y,
+                                c0.z,
+                                v.num(&opacity_s).map_or(1.0, |x| x as f32),
+                            ],
+                        ),
+                        (
+                            1.0,
+                            [
+                                c1.x,
+                                c1.y,
+                                c1.z,
+                                v.num(&opacity_end_s).map_or(0.0, |x| x as f32),
+                            ],
+                        ),
+                    ]),
+                    texture: texture(v.uint(&texture_s).unwrap_or(0)),
+                    uv: if tile > 0.0 {
+                        RibbonUv::Tile { length: tile }
+                    } else {
+                        RibbonUv::Stretch
+                    },
+                    blend: if additive {
+                        ParticleBlend::Additive
+                    } else {
+                        ParticleBlend::Alpha
+                    },
+                    effect: effect(v.uint(&effect_s).unwrap_or(0)),
+                };
+                let handle = fx.trail_style(scene, e, style);
+                if v.flag(&layered_s).unwrap_or(false) {
+                    scene
+                        .effects
+                        .trail_layers
+                        .push((e, v.int(&layer_s).map_or(0, |x| x as i32)));
+                }
+                // Uninterpolated tick position keeps trail history ring samples
+                // deterministic across varying display refresh rates.
+                scene.effects.trails.push(Trail {
+                    id: e,
+                    style: handle,
+                    position: h.tick_world_of(e).w_axis.truncate(),
+                    tick,
+                });
+            }
         }
-        scene.effects.trails.push(Trail {
-            id: e,
-            style: handle,
-            position: h.world_of(e).w_axis.truncate(),
-            tick,
-        });
     }
-    for (e, v) in rows(world, layouts.beam.as_ref()) {
-        let Ok(v) = record::Beam::from_json(&v) else {
-            continue;
-        };
-        // Its far end at its target's place, or `end`; a target gone
-        // draws no beam.
-        let end = match v.target {
-            0 => v.end,
-            t if world.is_alive(og_ecs::Entity::from_bits(t)) => h.world_of(t).w_axis.truncate(),
-            _ => continue,
-        };
-        let c = &v.color;
-        scene.effects.beams.push(Beam {
-            start: h.world_of(e).w_axis.truncate(),
-            end,
-            width: v.width,
-            color: [c.r, c.g, c.b, v.opacity],
-            texture: texture(v.texture),
-            uv: if v.uv_tile > 0.0 {
-                RibbonUv::Tile { length: v.uv_tile }
-            } else {
-                RibbonUv::Stretch
-            },
-            scroll: v.scroll,
-            segments: v.segments.max(1),
-            jitter: v.jitter,
-            seed: u64::from(v.seed),
-            blend: if v.blend == Blend::Additive {
-                ParticleBlend::Additive
-            } else {
-                ParticleBlend::Alpha
-            },
-            effect: effect(v.effect),
-        });
+
+    // ── og.Beam ──────────────────────────────────────────────────────────────
+    if let Some(layout) = layouts.beam.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let end_s = Slot::of(layout, "end");
+            let width_s = Slot::of(layout, "width");
+            let color_s = Slot::of(layout, "color");
+            let opacity_s = Slot::of(layout, "opacity");
+            let target_s = Slot::of(layout, "target");
+            let texture_s = Slot::of(layout, "texture");
+            let effect_s = Slot::of(layout, "effect");
+            let uv_tile_s = Slot::of(layout, "uvTile");
+            let scroll_s = Slot::of(layout, "scroll");
+            let segments_s = Slot::of(layout, "segments");
+            let jitter_s = Slot::of(layout, "jitter");
+            let seed_s = Slot::of(layout, "seed");
+            let blend_s = Slot::of(layout, "blend");
+            for (e, v) in sorted_column_rows(&rows) {
+                let target = v.uint(&target_s).unwrap_or(0);
+                // Its far end at its target's place, or `end`; a target gone draws no beam.
+                let end = match target {
+                    0 => col_vec3(&v, &end_s, Vec3::ZERO),
+                    t if world.is_alive(Entity::from_bits(t)) => h.world_of(t).w_axis.truncate(),
+                    _ => continue,
+                };
+                let c = col_rgb(&v, &color_s, Vec3::ONE);
+                let tile = v.num(&uv_tile_s).map_or(1.0, |x| x as f32);
+                let additive = col_blend_additive(&v, &blend_s, true);
+                scene.effects.beams.push(Beam {
+                    start: h.world_of(e).w_axis.truncate(),
+                    end,
+                    width: v.num(&width_s).map_or(0.1, |x| x as f32),
+                    color: [c.x, c.y, c.z, v.num(&opacity_s).map_or(1.0, |x| x as f32)],
+                    texture: texture(v.uint(&texture_s).unwrap_or(0)),
+                    uv: if tile > 0.0 {
+                        RibbonUv::Tile { length: tile }
+                    } else {
+                        RibbonUv::Stretch
+                    },
+                    scroll: v.num(&scroll_s).map_or(0.0, |x| x as f32),
+                    segments: v.uint(&segments_s).map_or(1, |x| x as u32).max(1),
+                    jitter: v.num(&jitter_s).map_or(0.0, |x| x as f32),
+                    seed: u64::from(v.uint(&seed_s).map_or(0, |x| x as u32)),
+                    blend: if additive {
+                        ParticleBlend::Additive
+                    } else {
+                        ParticleBlend::Alpha
+                    },
+                    effect: effect(v.uint(&effect_s).unwrap_or(0)),
+                });
+            }
+        }
     }
-    for (e, v) in rows(world, layouts.effect_mesh.as_ref()) {
-        let Ok(v) = record::EffectMesh::from_json(&v) else {
-            continue;
-        };
-        let mesh = crate::world::assets::index_of(v.geometry as f64)
-            .and_then(|i| geometries.get(i).copied());
-        let (Some(mesh), Some(material)) = (mesh, effect(v.effect)) else {
-            continue;
-        };
-        let c = &v.color;
-        scene.effects.effect_meshes.push(og_render::EffectMesh {
-            id: e,
-            mesh,
-            material,
-            transform: h.world_of(e),
-            life: v.life.clamp(0.0, 1.0),
-            seed: u64::from(v.seed),
-            color: [c.r, c.g, c.b, v.opacity],
-            blend: if v.blend == Blend::Additive {
-                ParticleBlend::Additive
-            } else {
-                ParticleBlend::Alpha
-            },
-            layers: 1,
-            hue: 0.0,
-            billboard: v.billboard,
-        });
+
+    // ── og.EffectMesh ────────────────────────────────────────────────────────
+    if let Some(layout) = layouts.effect_mesh.as_ref() {
+        let rows = crate::present::extract::column_rows(world, layout);
+        if !rows.is_empty() {
+            let geom_s = Slot::of(layout, "geometry");
+            let effect_s = Slot::of(layout, "effect");
+            let life_s = Slot::of(layout, "life");
+            let color_s = Slot::of(layout, "color");
+            let opacity_s = Slot::of(layout, "opacity");
+            let seed_s = Slot::of(layout, "seed");
+            let blend_s = Slot::of(layout, "blend");
+            let billboard_s = Slot::of(layout, "billboard");
+            for (e, v) in sorted_column_rows(&rows) {
+                let geom_bits = v.uint(&geom_s).unwrap_or(0);
+                let mesh = crate::world::assets::index_of(geom_bits as f64)
+                    .and_then(|i| geometries.get(i).copied());
+                let (Some(mesh), Some(material)) = (mesh, effect(v.uint(&effect_s).unwrap_or(0)))
+                else {
+                    continue;
+                };
+                let c = col_rgb(&v, &color_s, Vec3::ONE);
+                let additive = col_blend_additive(&v, &blend_s, true);
+                scene.effects.effect_meshes.push(og_render::EffectMesh {
+                    id: e,
+                    mesh,
+                    material,
+                    transform: h.world_of(e),
+                    life: v.num(&life_s).map_or(0.0, |x| x as f32).clamp(0.0, 1.0),
+                    seed: u64::from(v.uint(&seed_s).map_or(0, |x| x as u32)),
+                    color: [c.x, c.y, c.z, v.num(&opacity_s).map_or(1.0, |x| x as f32)],
+                    blend: if additive {
+                        ParticleBlend::Additive
+                    } else {
+                        ParticleBlend::Alpha
+                    },
+                    layers: 1,
+                    hue: 0.0,
+                    billboard: v.flag(&billboard_s).unwrap_or(false),
+                });
+            }
+        }
     }
 }
 

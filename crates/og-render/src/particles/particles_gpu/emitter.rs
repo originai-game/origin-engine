@@ -264,16 +264,12 @@ pub(super) fn emitter_sim_gpu(
     let (first, count, bursts) = step.map_or((0, 0, 0), |s| (s.first, s.count, s.bursts));
     let (speed_t, speed_v, speed_n) = curve_gpu(e.speed_over_life.as_ref());
     let local = !world_child && e.space == SimulationSpace::Local;
-    let pulls = if world_child {
-        e.attractors
-            .iter()
-            .take(crate::particles::MAX_ATTRACTORS)
-            .copied()
-            .collect()
-    } else {
-        crate::particles::placed_attractors(e, transform)
-    };
     let (mut attract, mut attract_r) = ([[0.0; 4]; 4], [0.0; 4]);
+    let placed = (!world_child).then(|| crate::particles::placed_attractors(e, transform));
+    let pulls: &[crate::particles::Attractor] = match &placed {
+        Some(p) => p,
+        None => &e.attractors[..e.attractors.len().min(crate::particles::MAX_ATTRACTORS)],
+    };
     for (i, att) in pulls.iter().enumerate() {
         attract[i] = att.position.extend(att.strength).to_array();
         attract_r[i] = att.radius;

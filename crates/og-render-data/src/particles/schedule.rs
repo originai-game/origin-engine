@@ -18,11 +18,14 @@ pub struct TickStep {
     pub bursts: u32,
     /// The emitter's transform during this tick.
     pub transform: Mat4,
+    /// The emitter's transform at the start of this tick (for sub-tick spawn
+    /// interpolation along continuous motion; `None` after a reset or burst).
+    pub prev_transform: Option<Mat4>,
     /// The seconds of particle time this tick takes: the tick's length
     /// times the system's time scale.
     pub dt: f32,
     /// The emitter's velocity during this tick (its translation's move
-    /// since the last frame over the ticks between; 0 after a reset).
+    /// since the last tick/frame; 0 after a reset).
     pub velocity: Vec3,
 }
 
@@ -116,11 +119,16 @@ pub fn tick_step(
     clock: &ParticleClock,
 ) -> TickStep {
     let dt = 1.0 / tick_rate.max(1e-3) as f64;
-    let stop = sys
-        .stop_tick
-        .map_or(f64::INFINITY, |s| clock.at(s.max(sys.start_tick), dt));
+    let stop_tick = sys.stop_tick.map(|s| s.max(sys.start_tick));
+    let stop = stop_tick.map_or(f64::INFINITY, |s| clock.at(s, dt));
     let (time, first, count, bursts) = if tick < sys.start_tick {
         (0.0, 0, 0, 0)
+    } else if stop_tick.is_some_and(|s| tick >= s) {
+        // Already at or past stop_tick: never spawn new particles even if a
+        // later time_scale change shifts `clock.at(stop_tick, dt)`.
+        let (t0, t1) = (clock.at(tick, dt), clock.at(tick + 1, dt));
+        let (c0, b0) = spawned_before(e, t0, stop);
+        (t1 as f32, c0 + b0, 0, 0)
     } else {
         let (t0, t1) = (clock.at(tick, dt), clock.at(tick + 1, dt));
         let (c0, b0) = spawned_before(e, t0, stop);
@@ -140,6 +148,7 @@ pub fn tick_step(
         count,
         bursts,
         transform,
+        prev_transform: None,
         dt: (1.0 / tick_rate.max(1e-3)) * clock.scale,
         velocity: Vec3::ZERO,
     }
@@ -172,7 +181,8 @@ pub fn plan_ticks(
     steps.clear();
     let scale = time_scale(sys);
     let window = window(e, scale, tick_rate);
-    let dt = 1.0 / tick_rate.max(1e-3) as f64;
+    let rate = tick_rate.max(1e-3);
+    let dt = 1.0 / rate as f64;
     let before = sys.tick.checked_sub(1);
     if let Some((h, prev)) = history.zip(before).and_then(|(h, b)| Some((h, h.at(b)?))) {
         let first = h.ticks.front().map_or(sys.tick, |t| t.tick);
@@ -184,8 +194,12 @@ pub fn plan_ticks(
         };
         *clock = next_clock(prev.clock, sys.tick, scale, dt);
         let now = *clock;
-        steps.extend(
-            (from..=sys.tick).map(|t| match h.at(t).filter(|_| t < sys.tick) {
+        steps.extend((from..=sys.tick).map(|t| {
+            let prev_m = t
+                .checked_sub(1)
+                .and_then(|p| h.at(p).map(|r| r.transform))
+                .or_else(|| (!reset && t == from).then_some(prev_transform).flatten());
+            let mut step = match h.at(t).filter(|_| t < sys.tick) {
                 Some(r) => {
                     let at = ParticleSystem {
                         transform: r.transform,
@@ -198,8 +212,13 @@ pub fn plan_ticks(
                     tick_step(e, &at, t, tick_rate, r.transform, &r.clock)
                 }
                 None => tick_step(e, sys, t, tick_rate, sys.transform, &now),
-            }),
-        );
+            };
+            if let Some(pm) = prev_m {
+                step.prev_transform = Some(pm);
+                step.velocity = (step.transform.w_axis - pm.w_axis).truncate() * rate;
+            }
+            step
+        }));
         return reset;
     }
     let (reset, from) = match last_tick {
@@ -226,22 +245,30 @@ pub fn plan_ticks(
     let n = (from..=sys.tick).count();
     let velocity = match (reset, prev_transform) {
         (false, Some(prev)) if n > 0 => {
-            (sys.transform.w_axis - prev.w_axis).truncate() * (tick_rate / n as f32)
+            (sys.transform.w_axis - prev.w_axis).truncate() * (rate / n as f32)
         }
         _ => Vec3::ZERO,
     };
     steps.extend((from..=sys.tick).enumerate().map(|(i, t)| {
         // Moving emitters spawn along the path between the frames.
-        let transform = match (reset, prev_transform) {
-            (false, Some(prev)) if n > 1 => {
-                let f = (i + 1) as f32 / n as f32;
-                let mut m = sys.transform;
-                m.w_axis = prev.w_axis.lerp(sys.transform.w_axis, f);
-                m
+        let (prev_m, transform) = match (reset, prev_transform) {
+            (false, Some(prev)) if n > 0 => {
+                let mut m0 = sys.transform;
+                let mut m1 = sys.transform;
+                if n > 1 {
+                    let f0 = i as f32 / n as f32;
+                    let f1 = (i + 1) as f32 / n as f32;
+                    m0.w_axis = prev.w_axis.lerp(sys.transform.w_axis, f0);
+                    m1.w_axis = prev.w_axis.lerp(sys.transform.w_axis, f1);
+                } else {
+                    m0 = prev;
+                }
+                (Some(m0), m1)
             }
-            _ => sys.transform,
+            _ => (None, sys.transform),
         };
         TickStep {
+            prev_transform: prev_m,
             velocity,
             ..tick_step(e, sys, t, tick_rate, transform, &clock)
         }

@@ -155,6 +155,15 @@ impl ParticleHistory {
     pub fn ticks(&self) -> impl Iterator<Item = &ParticleTick> {
         self.ticks.iter()
     }
+
+    /// Translates every recorded emitter transform by `delta` (render origin rebase).
+    pub fn shift(&mut self, delta: Vec3) {
+        for r in &mut self.ticks {
+            r.transform.w_axis.x += delta.x;
+            r.transform.w_axis.y += delta.y;
+            r.transform.w_axis.z += delta.z;
+        }
+    }
 }
 
 /// `sys`'s time scale (non-finite as 1, negative as 0).

@@ -2,6 +2,7 @@
 //! effect`): loaded once per path with the textures and hook shader they
 //! name, for emitters (`effect "<id>"`) to draw with.
 
+use og_core::IdMap;
 use std::collections::BTreeMap;
 
 /// The effect materials loaded, by load index, and their paths.
@@ -9,6 +10,8 @@ use std::collections::BTreeMap;
 pub(crate) struct EffectState {
     pub handles: Vec<og_render::EffectMaterialHandle>,
     pub paths: BTreeMap<String, usize>,
+    /// Source bundle index for each loaded effect material, by load index.
+    pub bundles: IdMap<usize, usize>,
     /// The composed effects loaded (`crate::bind::vfx`), once one is.
     pub vfx: Option<crate::bind::vfx::Registry>,
     /// The vfx flash's material, made once.
@@ -31,12 +34,14 @@ pub(crate) fn load_effect_index(eng: &crate::engine::Engine, path: &str) -> Resu
     if let Some(&i) = eng.render.borrow().effects.paths.get(&id) {
         return Ok(i);
     }
-    let text = {
+    let (text, owner) = {
         let assets = eng.assets.borrow();
+        let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        bundle
+        let text = bundle
             .effect_text(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+        (text, owner)
     };
     let material = og_bundle::effect::parse_effect(
         &text,
@@ -59,6 +64,9 @@ pub(crate) fn load_effect_index(eng: &crate::engine::Engine, path: &str) -> Resu
     let h = rs.scene.add_effect_material(material);
     rs.effects.handles.push(h);
     let i = rs.effects.handles.len() - 1;
+    if let Some(owner) = owner {
+        rs.effects.bundles.insert(i, owner);
+    }
     rs.effects.paths.insert(id, i);
     Ok(i)
 }

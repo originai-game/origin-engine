@@ -50,7 +50,7 @@ fn shaded(c: [f32; 4], t: Vec3, hue: f32) -> [f32; 4] {
         .to_array()
 }
 
-fn euler(deg: Vec3) -> Quat {
+pub(super) fn euler(deg: Vec3) -> Quat {
     let r = deg * (std::f32::consts::PI / 180.0);
     use og_core::math::quat_from_axis_angle as turn;
     turn(Vec3::X, r.x) * turn(Vec3::Y, r.y) * turn(Vec3::Z, r.z)
@@ -350,9 +350,12 @@ impl Vfx {
                     // spin in the camera's frame (the renderer's), no
                     // rotation of its own.
                     let placed = if *face_camera {
-                        let (scale, _, at) = local.to_scale_rotation_translation();
-                        Mat4::from_translation(at)
-                            * Mat4::from_scale(Vec3::splat(scale.abs().element_sum() / 3.0))
+                        let at = local.w_axis.truncate();
+                        let s = (local.x_axis.truncate().length()
+                            + local.y_axis.truncate().length()
+                            + local.z_axis.truncate().length())
+                            / 3.0;
+                        Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(s))
                     } else {
                         local
                     };

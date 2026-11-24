@@ -248,26 +248,27 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
         return;
     }
     let tick = world.time().tick;
+    let rate = world.time().rate as f32;
     // The models that appeared in the world the last tick left start
     // fading in, unless a frame of it saw them first.
     crate::present::reveal::step(rs, world);
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);
-    // The systems a frame at this tick would draw: og.ParticleSystem and
-    // the composed effects' emitters (the next frame's extraction
-    // rebuilds the lists these fill).
-    crate::present::fx::components(world, rs, &mut h, tick);
-    crate::present::vfx::extract(world, rs, &mut h, tick, false);
+    // Extract ONLY particle emitters (og.ParticleSystem and composed VFX
+    // emitters) into a scratch list so before_tick never touches unrelated
+    // scene lists (lights, trails, trail_layers, beams, decals, effect_meshes)
+    // or reads stale tick_rate before frame 1.
+    let mut systems = Vec::new();
+    crate::present::fx::extract_particles(world, rs, &mut h, tick, &mut systems);
+    crate::present::vfx::extract_particles(world, rs, &mut h, tick, rate, &mut systems);
     rs.hierarchy = h;
-    // The rate a frame's extraction gives the scene (`extract/frame.rs`).
-    let rate = world.time().rate as f32;
     let RenderState {
         scene,
         particle_history,
         ..
     } = rs;
     let mut live = og_core::IdMap::new();
-    for sys in &scene.effects.particles {
+    for sys in &systems {
         let Some(e) = scene.emitter(sys.emitter) else {
             continue;
         };

@@ -13,12 +13,11 @@
 //! never names it has neither the system nor the state block, and its
 //! particle systems are the renderer's alone, as before.
 
-use crate::host::codec::{Layout, RecordKind};
-use crate::host::wire::record;
-use glam::{Mat4, Vec3};
+use crate::host::codec::{Layout, Rec, RecordKind, Row, Slot};
+use glam::{Mat4, Quat, Vec3};
 use og_core::block_form as bf;
 use og_core::bytes::ByteReader;
-use og_core::{Error, ErrorKind};
+use og_core::{Error, ErrorKind, IdMap};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_render::{
     CpuParticles, ParticleClock, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleState,
@@ -86,12 +85,35 @@ fn layout(world: &World, name: &str, kind: RecordKind) -> og_core::Result<(Schem
     Ok((id, Layout::from_schema(world.schema(id)?, kind)))
 }
 
-/// The records the system reads.
+struct SystemSlots {
+    visible: Slot,
+    emitter: Slot,
+    seed: Slot,
+    start_tick: Slot,
+    stop_tick: Slot,
+}
+
+struct TransformSlots {
+    position: Slot,
+    quaternion: Slot,
+    scale: Slot,
+}
+
+struct ColliderSlots {
+    shape: Slot,
+    size: Slot,
+    radius: Slot,
+    height: Slot,
+    offset: Slot,
+    quaternion: Slot,
+}
+
+/// The records the system reads, with field slots pre-resolved once at enable.
 struct Records {
-    systems: (SchemaId, Layout),
-    transform: (SchemaId, Layout),
-    parent: Option<(SchemaId, Layout)>,
-    collider: Option<(SchemaId, Layout)>,
+    systems: (SchemaId, Layout, SystemSlots),
+    transform: (SchemaId, Layout, TransformSlots),
+    parent: Option<(SchemaId, Layout, Slot)>,
+    collider: Option<(SchemaId, Layout, ColliderSlots)>,
     event: (SchemaId, Layout),
 }
 
@@ -102,11 +124,44 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     if world.systems().contains(&SYSTEM) {
         return Ok(());
     }
+    let (sys_id, sys_l) = layout(world, SYSTEMS, RecordKind::Component)?;
+    let sys_slots = SystemSlots {
+        visible: Slot::of(&sys_l, "visible"),
+        emitter: Slot::of(&sys_l, "emitter"),
+        seed: Slot::of(&sys_l, "seed"),
+        start_tick: Slot::of(&sys_l, "startTick"),
+        stop_tick: Slot::of(&sys_l, "stopTick"),
+    };
+    let (tr_id, tr_l) = layout(world, "og.Transform", RecordKind::Component)?;
+    let tr_slots = TransformSlots {
+        position: Slot::of(&tr_l, "position"),
+        quaternion: Slot::of(&tr_l, "quaternion"),
+        scale: Slot::of(&tr_l, "scale"),
+    };
+    let parent = layout(world, "og.Parent", RecordKind::Component)
+        .ok()
+        .map(|(id, l)| {
+            let slot = Slot::of(&l, "entity");
+            (id, l, slot)
+        });
+    let collider = layout(world, "og.Collider", RecordKind::Component)
+        .ok()
+        .map(|(id, l)| {
+            let slots = ColliderSlots {
+                shape: Slot::of(&l, "shape"),
+                size: Slot::of(&l, "size"),
+                radius: Slot::of(&l, "radius"),
+                height: Slot::of(&l, "height"),
+                offset: Slot::of(&l, "offset"),
+                quaternion: Slot::of(&l, "quaternion"),
+            };
+            (id, l, slots)
+        });
     let r = Records {
-        systems: layout(world, SYSTEMS, RecordKind::Component)?,
-        transform: layout(world, "og.Transform", RecordKind::Component)?,
-        parent: layout(world, "og.Parent", RecordKind::Component).ok(),
-        collider: layout(world, "og.Collider", RecordKind::Component).ok(),
+        systems: (sys_id, sys_l, sys_slots),
+        transform: (tr_id, tr_l, tr_slots),
+        parent,
+        collider,
         event: layout(world, EVENT, RecordKind::Event)?,
     };
     let mut reads = vec![SYSTEMS.to_string(), "og.Transform".to_string()];
@@ -144,21 +199,42 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     world.add_state_block(SYSTEM, Box::new(Block(state)))
 }
 
+#[inline]
+fn row_vec3(v: &Row<'_>, s: &Slot, d: Vec3) -> Vec3 {
+    Vec3::new(
+        v.lane(s, "x").map_or(d.x, |x| x as f32),
+        v.lane(s, "y").map_or(d.y, |x| x as f32),
+        v.lane(s, "z").map_or(d.z, |x| x as f32),
+    )
+}
+
+#[inline]
+fn row_quat(v: &Row<'_>, s: &Slot) -> Quat {
+    Quat::from_xyzw(
+        v.lane(s, "x").map_or(0.0, |x| x as f32),
+        v.lane(s, "y").map_or(0.0, |x| x as f32),
+        v.lane(s, "z").map_or(0.0, |x| x as f32),
+        v.lane(s, "w").map_or(1.0, |x| x as f32),
+    )
+    .normalize()
+}
+
 /// Where entities are this tick: og.Transform composed down og.Parent.
 struct Places<'a> {
     r: &'a Records,
-    parents: BTreeMap<u64, Entity>,
+    parents: IdMap<u64, Entity>,
 }
 
 impl Places<'_> {
     fn pose(&self, ctx: &SystemContext<'_>, e: Entity) -> Option<og_core::math::Pose> {
-        let t: record::Transform = self
-            .r
-            .transform
-            .1
-            .read(&ctx.get_bytes(e, self.r.transform.0).ok()?)
-            .ok()?;
-        Some((t.position, t.quaternion.normalize(), t.scale))
+        let bytes = ctx.get_bytes(e, self.r.transform.0).ok()?;
+        let row = Row::new(&self.r.transform.1, &bytes);
+        let s = &self.r.transform.2;
+        Some((
+            row_vec3(&row, &s.position, Vec3::ZERO),
+            row_quat(&row, &s.quaternion),
+            row_vec3(&row, &s.scale, Vec3::ONE),
+        ))
     }
 
     fn world(&self, ctx: &SystemContext<'_>, e: Entity) -> Mat4 {
@@ -175,7 +251,7 @@ impl Places<'_> {
     }
 }
 
-/// The boxes and spheres of og.Collider, as the renderer's CPU path
+/// The boxes, spheres and capsules of og.Collider, as the renderer's CPU path
 /// places them (`extract::frame::colliders`; a terrain's height
 /// field is the renderer's alone).
 fn colliders(
@@ -183,26 +259,64 @@ fn colliders(
     places: &Places<'_>,
     query: usize,
 ) -> og_core::Result<Vec<SceneCollider>> {
-    let Some((id, l)) = &places.r.collider else {
+    let Some((id, l, s)) = &places.r.collider else {
         return Ok(Vec::new());
     };
     let mut out = Vec::new();
     for a in ctx.query(query)? {
         for &e in a.entities() {
-            let v: record::Collider = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
+            let bytes = ctx.get_bytes(e, *id)?;
+            let row = Row::new(l, &bytes);
             let world = places.world(ctx, e);
-            let m = world * Mat4::from_rotation_translation(v.quaternion.normalize(), v.offset);
-            out.push(match v.shape as u32 {
-                0 => SceneCollider::Box {
+            let m = world
+                * Mat4::from_rotation_translation(
+                    row_quat(&row, &s.quaternion),
+                    row_vec3(&row, &s.offset, Vec3::ZERO),
+                );
+            let shape_name = row.text(&s.shape);
+            let collider = match shape_name.as_deref() {
+                Some("box") => SceneCollider::Box {
                     transform: m,
-                    half_extents: v.size * 0.5,
+                    half_extents: row_vec3(&row, &s.size, Vec3::ONE) * 0.5,
                 },
-                1 => SceneCollider::Sphere {
+                Some("sphere") => SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
-                    radius: v.radius * world.to_scale_rotation_translation().0.max_element(),
+                    radius: row.num(&s.radius).map_or(0.5, |x| x as f32)
+                        * world.to_scale_rotation_translation().0.max_element(),
                 },
-                _ => continue,
-            });
+                Some("capsule") => {
+                    let scale = world.to_scale_rotation_translation().0.max_element();
+                    let half = row.num(&s.height).map_or(1.0, |x| x as f32) * 0.5;
+                    SceneCollider::Capsule {
+                        a: m.transform_point3(Vec3::new(0.0, -half, 0.0)),
+                        b: m.transform_point3(Vec3::new(0.0, half, 0.0)),
+                        radius: row.num(&s.radius).map_or(0.5, |x| x as f32) * scale,
+                    }
+                }
+                None => match row.uint(&s.shape) {
+                    None | Some(0) => SceneCollider::Box {
+                        transform: m,
+                        half_extents: row_vec3(&row, &s.size, Vec3::ONE) * 0.5,
+                    },
+                    Some(1) => SceneCollider::Sphere {
+                        center: m.transform_point3(Vec3::ZERO),
+                        radius: row.num(&s.radius).map_or(0.5, |x| x as f32)
+                            * world.to_scale_rotation_translation().0.max_element(),
+                    },
+                    Some(2) => {
+                        let scale = world.to_scale_rotation_translation().0.max_element();
+                        let half = row.num(&s.height).map_or(1.0, |x| x as f32) * 0.5;
+                        SceneCollider::Capsule {
+                            a: m.transform_point3(Vec3::new(0.0, -half, 0.0)),
+                            b: m.transform_point3(Vec3::new(0.0, half, 0.0)),
+                            radius: row.num(&s.radius).map_or(0.5, |x| x as f32) * scale,
+                        }
+                    }
+                    _ => continue,
+                },
+                Some(_) => continue,
+            };
+            out.push(collider);
         }
     }
     Ok(out)
@@ -223,22 +337,26 @@ fn system(
     fields: &crate::bind::forces::ModuleState,
     r: &Records,
 ) -> og_core::Result<()> {
+    let mut rows = Vec::new();
+    for a in ctx.query(0)? {
+        rows.extend_from_slice(a.entities());
+    }
+    if rows.is_empty() {
+        lock(state).systems.clear();
+        return Ok(());
+    }
     let time = ctx.time();
     let tick_rate = time.rate as f32;
     // The tick this one completes: what a frame drawn after it shows.
     let tick = time.tick + 1;
     let groups = ctx.time_groups();
-    let mut rows = Vec::new();
-    for a in ctx.query(0)? {
-        rows.extend_from_slice(a.entities());
-    }
     let mut next = 1;
-    let mut parents = BTreeMap::new();
-    if let Some((id, l)) = &r.parent {
+    let mut parents = IdMap::new();
+    if let Some((id, l, slot)) = &r.parent {
         for a in ctx.query(next)? {
             for &e in a.entities() {
-                let v: record::Parent = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
-                let p = v.entity;
+                let bytes = ctx.get_bytes(e, *id)?;
+                let p = Row::new(l, &bytes).uint(slot).unwrap_or(0);
                 if p != 0 {
                     parents.insert(e.to_bits(), Entity::from_bits(p));
                 }
@@ -254,33 +372,33 @@ fn system(
     let mut events = Vec::new();
     // The tick's force fields (`forces::before_tick`), read once.
     let mut forces = None;
+    let (sys_id, sys_l, sys_s) = &r.systems;
     for e in rows {
-        let v: record::ParticleSystem = r
-            .systems
-            .1
-            .read(&ctx.get_bytes(e, r.systems.0)?)
-            .map_err(invalid)?;
-        if !v.visible {
+        let bytes = ctx.get_bytes(e, *sys_id)?;
+        let row = Row::new(sys_l, &bytes);
+        if !row.flag(&sys_s.visible).unwrap_or(true) {
             continue;
         }
+        let emitter_bits = row.uint(&sys_s.emitter).unwrap_or(0);
         let Some(def) =
-            crate::world::assets::index_of(v.emitter as f64).and_then(|i| emitters.get(&i))
+            crate::world::assets::index_of(emitter_bits as f64).and_then(|i| emitters.get(&i))
         else {
             continue;
         };
         let em = &def.emitter;
-        let start = match u64::from(v.start_tick) {
+        let start = match row.uint(&sys_s.start_tick).unwrap_or(ARMED) {
             ARMED if !em.looping => continue,
             ARMED => 0,
             t => t,
         };
-        let stop = u64::from(v.stop_tick);
+        let stop = row.uint(&sys_s.stop_tick).unwrap_or(0);
+        let seed = row.uint(&sys_s.seed).unwrap_or(0);
         let transform = places.world(ctx, e);
         let sys = ParticleSystem {
             id: e.to_bits(),
             emitter: def.handle,
             transform,
-            seed: u64::from(v.seed),
+            seed,
             start_tick: start,
             stop_tick: (stop > 0).then_some(stop),
             tick,

@@ -160,18 +160,28 @@ fn spawn(
     } else {
         dir
     };
-    let mut vel = dir * speed;
-    if e.space == SimulationSpace::World {
-        pos = step.transform.transform_point3(pos);
-        vel = step.transform.transform_vector3(vel) + step.velocity * e.inherit_velocity;
-    }
     // Continuous spawns spread over the tick; bursts start at age 0.
-    let age = if k < step.bursts {
-        0.0
+    let (age, frac) = if k < step.bursts {
+        (0.0, 1.0)
     } else {
         let c = (step.count - step.bursts).max(1) as f32;
-        ((k - step.bursts) as f32 + 0.5) / c * dt
+        let u = ((k - step.bursts) as f32 + 0.5) / c;
+        (u * dt, 1.0 - u)
     };
+    let mut vel = dir * speed;
+    if e.space == SimulationSpace::World {
+        if let Some(pm) = step.prev_transform.filter(|_| k >= step.bursts) {
+            let p0 = pm.transform_point3(pos);
+            let p1 = step.transform.transform_point3(pos);
+            let v0 = pm.transform_vector3(vel);
+            let v1 = step.transform.transform_vector3(vel);
+            pos = p0.lerp(p1, frac);
+            vel = v0.lerp(v1, frac) + step.velocity * e.inherit_velocity;
+        } else {
+            pos = step.transform.transform_point3(pos);
+            vel = step.transform.transform_vector3(vel) + step.velocity * e.inherit_velocity;
+        }
+    }
     pos += vel * age;
     // What the emission leaves out takes its slot unborn (its age its life).
     let age = if r(EMISSION_STREAM) < e.emission {
@@ -230,28 +240,102 @@ pub enum SceneCollider {
     },
 }
 
-impl SceneCollider {
-    /// Whether `p` is inside, and the outward normal there (for a box, of
-    /// the face nearest `from`, where the particle came from).
-    fn hit(&self, from: Vec3, p: Vec3) -> Option<Vec3> {
-        match self {
+/// A [`SceneCollider`] with its inverse transform and unit normal precomputed
+/// once per step batch instead of inverting per particle per tick.
+enum PreparedCollider<'a> {
+    Plane {
+        normal: Vec3,
+        offset: f32,
+    },
+    Sphere {
+        center: Vec3,
+        radius_sq: f32,
+    },
+    Capsule {
+        a: Vec3,
+        b: Vec3,
+        radius_sq: f32,
+    },
+    Box {
+        inv: Mat4,
+        inv_t: Mat4,
+        half_extents: Vec3,
+    },
+    HeightField {
+        data: &'a crate::TerrainData,
+        inv: Mat4,
+        inv_t: Mat4,
+    },
+}
+
+impl<'a> PreparedCollider<'a> {
+    fn of(c: &'a SceneCollider) -> Self {
+        match c {
             SceneCollider::Plane { normal, offset } => {
-                let n = normal.normalize_or_zero();
-                (n != Vec3::ZERO && n.dot(p) < *offset / normal.length()).then_some(n)
+                let len = normal.length();
+                if len > 0.0 {
+                    PreparedCollider::Plane {
+                        normal: *normal / len,
+                        offset: *offset / len,
+                    }
+                } else {
+                    PreparedCollider::Plane {
+                        normal: Vec3::ZERO,
+                        offset: 0.0,
+                    }
+                }
             }
-            SceneCollider::Sphere { center, radius } => {
-                let d = p - *center;
-                (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
-            }
-            SceneCollider::Capsule { a, b, radius } => {
-                let d = p - og_core::math::closest_on_segment(p, *a, *b);
-                (d.length_squared() < radius * radius).then(|| d.normalize_or(Vec3::Y))
-            }
+            SceneCollider::Sphere { center, radius } => PreparedCollider::Sphere {
+                center: *center,
+                radius_sq: radius * radius,
+            },
+            SceneCollider::Capsule { a, b, radius } => PreparedCollider::Capsule {
+                a: *a,
+                b: *b,
+                radius_sq: radius * radius,
+            },
             SceneCollider::Box {
                 transform,
                 half_extents,
             } => {
                 let inv = transform.inverse();
+                PreparedCollider::Box {
+                    inv,
+                    inv_t: inv.transpose(),
+                    half_extents: *half_extents,
+                }
+            }
+            SceneCollider::HeightField { data, transform } => {
+                let inv = transform.inverse();
+                PreparedCollider::HeightField {
+                    data,
+                    inv,
+                    inv_t: inv.transpose(),
+                }
+            }
+        }
+    }
+
+    /// Whether `p` is inside, and the outward normal there (for a box, of
+    /// the face nearest `from`, where the particle came from).
+    fn hit(&self, from: Vec3, p: Vec3) -> Option<Vec3> {
+        match self {
+            PreparedCollider::Plane { normal, offset } => {
+                (*normal != Vec3::ZERO && normal.dot(p) < *offset).then_some(*normal)
+            }
+            PreparedCollider::Sphere { center, radius_sq } => {
+                let d = p - *center;
+                (d.length_squared() < *radius_sq).then(|| d.normalize_or(Vec3::Y))
+            }
+            PreparedCollider::Capsule { a, b, radius_sq } => {
+                let d = p - og_core::math::closest_on_segment(p, *a, *b);
+                (d.length_squared() < *radius_sq).then(|| d.normalize_or(Vec3::Y))
+            }
+            PreparedCollider::Box {
+                inv,
+                inv_t,
+                half_extents,
+            } => {
                 let l = inv.transform_point3(p);
                 if l.abs().cmpge(*half_extents).any() {
                     return None;
@@ -266,14 +350,9 @@ impl SceneCollider {
                 } else {
                     Vec3::Z * f.z.signum()
                 };
-                Some(
-                    inv.transpose()
-                        .transform_vector3(axis)
-                        .normalize_or(Vec3::Y),
-                )
+                Some(inv_t.transform_vector3(axis).normalize_or(Vec3::Y))
             }
-            SceneCollider::HeightField { data, transform } => {
-                let inv = transform.inverse();
+            PreparedCollider::HeightField { data, inv, inv_t } => {
                 let l = inv.transform_point3(p);
                 let half = data.size * 0.5;
                 if l.x.abs() > half.x || l.z.abs() > half.y {
@@ -282,25 +361,25 @@ impl SceneCollider {
                 let at = glam::Vec2::new(l.x, l.z);
                 (l.y < data.height(at)).then(|| {
                     let n = data.normal(at);
-                    inv.transpose().transform_vector3(n).normalize_or(Vec3::Y)
+                    inv_t.transform_vector3(n).normalize_or(Vec3::Y)
                 })
             }
         }
     }
 }
 
-/// The CPU path's collision response, as the compute shader's: the normal
-/// part of the velocity reflected by `bounce`, the tangential part reduced
-/// by `friction`, and the step taken again from `before`. Whether it
-/// bounced.
+/// The CPU path's collision response, matching `particles_sim.wgsl`:
+/// returns `(touched, impact)` where `touched` is any inward contact (`vn < 0`,
+/// used for `collision die`) and `impact` exceeds `IMPACT_SPEED` (used for
+/// collision events and sub-emitters so settling particles do not spam events).
 fn collide(
-    colliders: &[SceneCollider],
+    colliders: &[PreparedCollider<'_>],
     c: ParticleCollision,
     before: Vec3,
     pos: &mut Vec3,
     vel: &mut Vec3,
     dt: f32,
-) -> bool {
+) -> (bool, bool) {
     for collider in colliders {
         if collider.hit(before, before).is_some() {
             continue;
@@ -313,13 +392,11 @@ fn collide(
             let normal_part = n * vn;
             *vel = (*vel - normal_part) * (1.0 - c.friction) - normal_part * c.bounce;
             *pos = before + *vel * dt;
-            // A particle settling on a surface touches it every tick: only
-            // an impact is a collision event.
-            return -vn > IMPACT_SPEED;
+            return (true, -vn > IMPACT_SPEED);
         }
-        return false;
+        return (false, false);
     }
-    false
+    (false, false)
 }
 
 /// The turbulence's lattice at the render origin `origin` for noise of
@@ -431,23 +508,44 @@ pub fn force_scale(e: &ParticleEmitter, transform: Mat4) -> f32 {
     }
 }
 
+/// Stack-allocated slice of at most [`MAX_ATTRACTORS`] attractors transformed
+/// into simulation space (avoids per-step `Vec` allocations).
+#[derive(Clone, Copy, Debug)]
+pub struct PlacedAttractors {
+    items: [Attractor; MAX_ATTRACTORS],
+    len: usize,
+}
+
+impl std::ops::Deref for PlacedAttractors {
+    type Target = [Attractor];
+    fn deref(&self) -> &[Attractor] {
+        &self.items[..self.len]
+    }
+}
+
 /// An emitter's attractors in its simulation space at a tick placed by
 /// `transform`: carried into the world for a world-space system, their
 /// pull scaled with it.
-pub fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> Vec<Attractor> {
+pub fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> PlacedAttractors {
     let s = force_scale(e, transform);
-    e.attractors
-        .iter()
-        .take(MAX_ATTRACTORS)
-        .map(|a| match e.space {
+    let mut items = [Attractor {
+        position: Vec3::ZERO,
+        strength: 0.0,
+        radius: 0.0,
+    }; MAX_ATTRACTORS];
+    let mut len = 0;
+    for a in e.attractors.iter().take(MAX_ATTRACTORS) {
+        items[len] = match e.space {
             SimulationSpace::World => Attractor {
                 position: transform.transform_point3(a.position),
                 strength: a.strength * s,
                 ..*a
             },
             SimulationSpace::Local => *a,
-        })
-        .collect()
+        };
+        len += 1;
+    }
+    PlacedAttractors { items, len }
 }
 
 /// The acceleration of `pulls` (attractors in the simulation space) and
@@ -574,8 +672,8 @@ pub fn carrying_air(e: &ParticleEmitter, air: Vec3, local: Option<Mat4>) -> Vec3
 
 /// One fixed step of a live particle at `time` seconds; `origin`: the
 /// render origin a world-space system is simulated relative to; `air`:
-/// what its drag closes on ([`carrying_air`]). Whether it bounced off a
-/// collider.
+/// what its drag closes on ([`carrying_air`]). Returns whether it had an
+/// impact exceeding [`IMPACT_SPEED`].
 #[allow(clippy::too_many_arguments)]
 fn integrate(
     e: &ParticleEmitter,
@@ -584,7 +682,7 @@ fn integrate(
     dt: f32,
     time: f32,
     seed: u32,
-    colliders: &[SceneCollider],
+    colliders: &[PreparedCollider<'_>],
     origin: Vec3,
     air: Vec3,
     fields: &Forces,
@@ -619,19 +717,20 @@ fn integrate(
     let before = pos;
     let t = (p.pos_age[3] / p.vel_life[3].max(1e-6)).clamp(0.0, 1.0);
     pos += vel * (dt * e.speed_over_life.as_ref().map_or(1.0, |c| c.eval(t)));
-    let hit = match e.collision {
+    let (touched, impact) = match e.collision {
         Some(c) => collide(colliders, c, before, &mut pos, &mut vel, dt),
-        None => false,
+        None => (false, false),
     };
-    // One that dies on a hit is as old as its life.
-    let age = if hit && e.collision.is_some_and(|c| c.die) {
+    // One that dies on a hit dies on ANY inward contact (matching GPU `hit`),
+    // even below IMPACT_SPEED; only impacts fire collision events/sub-emitters.
+    let age = if touched && e.collision.is_some_and(|c| c.die) {
         p.vel_life[3]
     } else {
         p.pos_age[3] + dt
     };
     p.pos_age = pos.extend(age).to_array();
     p.vel_life = vel.extend(p.vel_life[3]).to_array();
-    hit
+    impact
 }
 
 /// For a slot, the particle index spawned into it by `step` (the newest of
@@ -845,6 +944,13 @@ impl CpuParticles {
             want(ParticleEventKind::Collision),
         );
         let local = e.space == SimulationSpace::Local;
+        let needs_colliders =
+            e.collision.is_some() || firing.iter().any(|&(_, _, ce)| ce.collision.is_some());
+        let prepared_colliders: Vec<PreparedCollider<'_>> = if needs_colliders {
+            colliders.iter().map(PreparedCollider::of).collect()
+        } else {
+            Vec::new()
+        };
         let mut fired: Vec<ParticleEvent> = Vec::new();
         for step in &steps {
             let dt = step.dt;
@@ -899,7 +1005,7 @@ impl CpuParticles {
                             dt,
                             step.time,
                             seed,
-                            colliders,
+                            &prepared_colliders,
                             self.origin,
                             air,
                             fields,
@@ -945,7 +1051,7 @@ impl CpuParticles {
                         dt,
                         step.time,
                         cseed,
-                        colliders,
+                        &prepared_colliders,
                         self.origin,
                         carrying_air(ce, sys.air, None),
                         fields,

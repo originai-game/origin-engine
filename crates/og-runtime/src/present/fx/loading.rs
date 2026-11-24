@@ -65,12 +65,14 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     if eng.render.borrow().fx.loading.contains(&id) {
         return Err(format!("{id}: a sub-emitter cycle ({id} fires itself)"));
     }
-    let text = {
+    let (text, owner) = {
         let assets = eng.assets.borrow();
+        let owner = assets.source(&id, None).ok();
         let (bytes, bundle) = assets.blob(&id)?;
-        bundle
+        let text = bundle
             .emitter_text(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?
+            .map_err(|e| e.to_string())?;
+        (text, owner)
     };
     eng.render.borrow_mut().fx.loading.push(id.clone());
     let parsed = parse_linked(eng, &text);
@@ -109,6 +111,9 @@ pub(crate) fn load_emitter(eng: &crate::engine::Engine, path: &str) -> Result<us
     }
     if let Some(a) = array {
         rs.fx.emitter_arrays.insert(i, a);
+    }
+    if let Some(owner) = owner {
+        rs.fx.emitter_bundles.insert(i, owner);
     }
     rs.fx.by_path.insert(key, i);
     Ok(i)
