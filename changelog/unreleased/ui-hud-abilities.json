@@ -1,0 +1,27 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "HeroButton",
+      "summary": "Takes charge, 0 to 1 (a super or a focus meter): a bar fills along its foot, and the button lights and breathes when it is full. Negative, the default, shows none."
+    },
+    {
+      "member": "og.ui",
+      "summary": "Pack slots for a hero action (Hero.frame with .premium, .secondary, .danger and .ready; Hero.label; Hero.charge and .fill), a hold's progress (Hold.fill with .danger and .primary) and more of an ability's parts (Ability.icon and .disabled, Ability.tint, Ability.slash, Ability.pip and .on, Ability.chip.cost, .short and .count)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "AbilitySlot",
+      "summary": "Draws every part from the theme's Ability slots, as ShooterAbilities does: the theme's slot art, size, ring and sweep. An ultimate shows its charge in figures on its own chip and Ready when full. A disabled or locked slot greys only its art, so its seconds stay readable. Ranks are pips."
+    },
+    {
+      "member": "Cooldown",
+      "summary": "Draws the theme's Ability slots (its art, size and sweep) and nudges when it comes ready."
+    },
+    {
+      "member": "ShooterAbilities",
+      "summary": "A round theme's ready ultimate glows round instead of in a square, the charge in figures sits on its own chip so it reads over a light scene, and a disabled slot's seconds keep their ink."
+    }
+  ]
+}

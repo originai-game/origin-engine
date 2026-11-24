@@ -27,13 +27,6 @@ const VARIANT: Record<string, "danger" | "primary" | undefined> = {
   secondary: undefined,
 };
 
-/** The hold's progress fill, in the variant's ink. */
-const FILL: Record<string, string> = {
-  danger: "bg-danger",
-  primary: "bg-boon-fg",
-  secondary: "bg-fg",
-};
-
 /**
  * A confirm that must be held (Delete save): its icon and words, what it
  * says while it is held, and a line under it saying what to do. Holding
@@ -66,7 +59,7 @@ export function HoldButton(props: HoldButtonProps) {
           <Text class="text-center">{props.holding}</Text>
         </Show>
         <Show when={held()}>
-          <View class={`absolute bottom-0 left-0 h-0.5 ${FILL[variant] ?? FILL.secondary}`} style={{ width: `${progress() * 100}%` }} />
+          <View class={`absolute bottom-0 left-0 ${packClass("Hold", "fill")} ${variant === "danger" || variant === "primary" ? packClass("Hold", "fill", variant) : ""}`} style={{ width: `${progress() * 100}%` }} />
         </Show>
       </Button>
       <Show when={props.hint}>

@@ -1,4 +1,5 @@
-import { Icon, Show, Text, View, formatDuration, formatNumber, packClass, type UiEvent } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
+import "./ability-slot.en.ogt";
 
 export interface CooldownProps {
   /** Seconds left; 0 is ready. */
@@ -15,39 +16,40 @@ export interface CooldownProps {
 
 /**
  * A scene cell a game lays in a strip: its icon, the share still to run
- * darkened over it and the seconds reading on their halo, popping when it
- * comes ready. The sweep is a nine-disc wipe running counterclockwise
- * from the top, as the .svelte's conic mask did.
+ * swept dark over it and the seconds over that, nudging when it comes
+ * ready. It draws the Ability component's pack slots, so it takes the
+ * theme's size, shape, art and sweep.
  */
 export function Cooldown(props: CooldownProps) {
   const cooling = () => props.remaining > 0;
   return (
     <View
-      class={`flex-row items-center justify-center gap-1 group/cooldown size-12 overflow-hidden rounded-button border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep active:bg-none active:bg-tile-pressed data-ready:animate-pop ${packClass("Slot", "frame")}`}
+      class={`relative ${packClass("Ability", "box")} ${packClass("Ability", "frame")} data-ready:animate-nudge`}
       role="button"
       onPress={(e) => props.onUse?.(e)}
       label={props.label}
-      valueText={cooling() ? formatNumber(props.remaining) : "Ready"}
+      valueText={cooling() ? formatNumber(props.remaining) : t("component.ability-slot.ready")}
       disabled={cooling()}
       data-ready={!cooling()}
     >
-      <View class="relative size-full">
-        <View class="absolute inset-0 flex-row items-center justify-center">
-          <Icon class="size-8 text-fg" name={props.icon} />
-        </View>
+      <View class={`absolute items-center justify-center ${packClass("Ability", "face")}`}>
+        <Icon class={packClass("Ability", "icon")} name={props.icon} />
         <Show when={cooling()}>
-          <View class="absolute inset-0 nine-disc bg-shade-deep" wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
-          <View class="absolute inset-0 flex-row items-center justify-center">
-            <Text class="text-xl tabular-nums text-center text-fg text-shadow-xs">
-              {props.remaining < 10 ? formatNumber(props.remaining) : formatDuration(props.remaining)}
-            </Text>
-          </View>
+          <View class={`absolute inset-0 ${packClass("Ability", "sweep")}`} wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
         </Show>
       </View>
+      <Show when={cooling()}>
+        <View class="absolute inset-0 items-center justify-center pointer-events-none">
+          <Text class={`whitespace-nowrap ${packClass("Ability", "count")}`}>
+            {props.remaining < 10 ? formatNumber(props.remaining) : formatDuration(props.remaining)}
+          </Text>
+        </View>
+      </Show>
     </View>
   );
 }
 
 export const fixtures: Record<string, Partial<CooldownProps>> = {
   default: {"remaining":3.2,"total":8,"icon":"bolt","label":"Dash"},
+  ready: {"remaining":0,"total":8,"icon":"bolt","label":"Dash"},
 };

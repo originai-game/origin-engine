@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, formatDuration, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import "./ability-slot.en.ogt";
 
 export interface AbilitySlotProps {
@@ -36,7 +36,7 @@ export interface AbilitySlotProps {
   ultimate?: number;
   /** Ranks learnt (pips right under it). */
   level: number;
-  /** It fills the place it is given (a strip's), rather than standing --ability-slot-size wide. */
+  /** It fills the place it is given (a strip's), rather than standing at the theme's ability size. */
   fit?: boolean;
   /** Ranks it has; 0 draws no pips. */
   maxLevel: number;
@@ -45,81 +45,82 @@ export interface AbilitySlotProps {
 }
 
 /**
- * One ability or quick item: its icon on a gradient, the hotkey's cap, a
+ * One ability or quick item: its icon on its face, the hotkey's cap, a
  * cooldown sweep, charges, a count, its cost, ranks as pips and its states
  * (unaffordable, out of range, active, locked, disabled, an ultimate's
- * charge ring). It reports onUse; the game decides whether it fires.
+ * charge ring with its percent, then Ready). Every part is a pack slot of
+ * the Ability component, so a theme sets its size, shape, art, ring, glow,
+ * sweep and type. It reports onUse; the game decides whether it fires.
  */
 export function AbilitySlot(props: AbilitySlotProps) {
+  const ult = () => (props.ultimate ?? -1) >= 0;
+  const charge = () => Math.min(Math.max(props.ultimate ?? 0, 0), 1);
+  const full = () => ult() && charge() >= 1;
+  const cooling = () => props.cooldown > 0;
+  const off = () => props.locked || props.disabled;
   return (
-    <View class={`group/abilityslot w-12 max-w-full items-center p-0 gap-0.5 data-fit:w-full`} data-ultimate={(props.ultimate ?? -1) >= 0} data-fit={props.fit}>
-      <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep transition duration-control w-full aspect-square p-0 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success data-active:border-accent data-active:shadow-glow data-active:shadow-accent data-full:border-gold data-shape-round:rounded-capsule data-shape-square:rounded-button active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-hairline hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk data-down:opacity-dim data-play-pulse:animate-pulse ${packClass("Slot", "frame")}`} role="button" onPress={(e) => props.onUse?.(e)} label={props.name} valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : props.cooldown > 0 ? formatNumber(props.cooldown) : t("component.ability-slot.ready")} disabled={props.locked || props.disabled} data-play-pulse={(props.active || (props.ultimate ?? -1) >= 1 ? 'pulse' : null) === "pulse"} data-cooling={props.cooldown > 0} data-tinted={props.unaffordable || props.outOfRange} data-full={(props.ultimate ?? -1) >= 1} data-active={props.active || (props.ultimate ?? -1) >= 1} data-locked={props.locked} data-shape-round={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "round"} data-shape-square={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "square"}>
-        <View class="gap-2 size-full">
-          <View class={`absolute bg-tile shadow-sunk justify-center items-center inset-0.5 gap-2 rounded-field group-data-ultimate/abilityslot:rounded-capsule group-data-tinted/slot:bg-linear-to-t group-data-tinted/slot:from-danger group-data-tinted/slot:to-transparent group-data-tinted/slot:to-75% group-data-tinted/slot:bg-tile`}>
-            <Icon class="text-fg text-shadow-tag size-33/50 group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
+    <View class="max-w-full items-center gap-0.5 data-fit:w-full data-ultimate:gap-y-3" data-fit={props.fit} data-ultimate={ult()}>
+      <View
+        class={`relative ${packClass("Ability", "box")} ${ult() ? packClass("Ability", "box", "ultimate") : ""} ${ult() ? packClass("Ability", "frame", "ultimate") : packClass("Ability", "frame")} ${props.active && !ult() ? packClass("Ability", "frame", "ready") : ""} ${off() ? packClass("Ability", "frame", "disabled") : ""} data-fit:w-full data-fit:h-auto data-fit:aspect-square`}
+        role="button"
+        onPress={(e) => props.onUse?.(e)}
+        label={props.name}
+        valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : cooling() ? formatNumber(props.cooldown) : t("component.ability-slot.ready")}
+        disabled={off()}
+        data-fit={props.fit}
+      >
+        <Show when={ult()}>
+          <View class={`absolute inset-0 ${packClass("Ability", "ring")} ${full() || props.active ? packClass("Ability", "ring", "ready") : ""}`} role="meter" valueMin={0} valueMax={100} valueNow={charge() * 100}>
+            <View class={`absolute inset-0 ${packClass("Ability", "ring", "fill")}`} wipe={charge()} />
           </View>
-          <Show when={(props.ultimate ?? -1) >= 0}>
-            <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(props.ultimate ?? 0, 0), 1)} />
+        </Show>
+        <View class={`absolute items-center justify-center ${packClass("Ability", "face")} ${ult() ? packClass("Ability", "face", "ultimate") : ""}`}>
+          <Icon class={`${packClass("Ability", "icon")} ${off() || props.unaffordable || props.outOfRange ? packClass("Ability", "icon", "disabled") : ""}`} name={props.locked ? "lock" : props.icon} />
+          <Show when={props.unaffordable || props.outOfRange}>
+            <View class={`absolute inset-0 ${packClass("Ability", "tint")}`} />
           </Show>
-          <Show when={props.cooldown > 0}>
-            <View class="absolute inset-0 nine-disc bg-scrim" wipe={Math.min(props.cooldown / (props.cooldownMax ?? 1), 1)} wipeCcw />
-            <View class="items-center justify-center max-w-105 absolute mx-auto inset-0 gap-2">
-              <Text class={`tabular-nums text-fg text-shadow-tag text-xl`}>
-                {props.cooldown < 10 ? formatNumber(props.cooldown) : formatDuration(props.cooldown)}
-              </Text>
-            </View>
+          <Show when={cooling()}>
+            <View class={`absolute inset-0 ${packClass("Ability", "sweep")} ${ult() ? packClass("Ability", "sweep", "ultimate") : ""}`} wipe={Math.min(props.cooldown / (props.cooldownMax ?? 1), 1)} wipeCcw />
           </Show>
-          <Show when={(props.ultimate ?? -1) >= 0 && (props.ultimate ?? -1) < 1}>
-            <View class="flex-row items-center absolute bottom-0 justify-center inset-x-0 gap-2">
-              <Text class={`text-caption tabular-nums bg-raised-pressed inset-ring-hairline inset-ring-rim text-gold transition duration-control text-shadow-tag py-0 px-2 rounded-capsule shrink`}>
-                {`${formatNumber((props.ultimate ?? 0) * 100, { decimals: 0 })}%`}
-              </Text>
-            </View>
-          </Show>
-          <Show when={props.disabled}>
+          <Show when={props.disabled && !props.locked}>
             <View class="absolute inset-0 items-center justify-center">
-              <View class="w-11/10 h-1.25 shrink-0 bg-danger rounded-capsule -rotate-45" />
+              <View class={`shrink-0 ${packClass("Ability", "slash")}`} />
             </View>
-          </Show>
-          <Show when={props.locked}>
-            <View class="items-center justify-center max-w-105 absolute mx-auto inset-0 gap-2">
-              <Icon class="text-fg text-shadow-tag size-1/2 group-disabled/slot:text-fg-subtle" name="lock" />
-            </View>
-          </Show>
-          <Show when={props.cost && props.cooldown <= 0 && !props.locked}>
-            <Show when={(props.ultimate ?? -1) >= 0} fallback={
-                <View class="flex-row items-center absolute bottom-0.5 left-0.5 gap-2">
-                  <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana transition duration-control text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
-                    {props.cost}
-                  </Text>
-                </View>
-            }>
-              <View class="flex-row items-center absolute top-0 justify-center inset-x-0 gap-2">
-                <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana transition duration-control text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
-                  {props.cost}
-                </Text>
-              </View>
-            </Show>
-          </Show>
-          <Show when={props.count > 0}>
-            <Text class={`absolute right-1.5 bottom-1.5 tabular-nums text-fg text-shadow-tag text-reading`}>
-              {formatNumber(props.count)}
-            </Text>
-          </Show>
-          <Show when={props.maxCharges > 1 && props.cooldown <= 0 && !props.locked}>
-            <Text class={`absolute top-0.5 right-0.5 text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control min-w-4 text-shadow-tag py-0 px-2 rounded-capsule`}>
-              {formatNumber(props.charges)}
-            </Text>
           </Show>
         </View>
+        <Show when={cooling()}>
+          <View class="absolute inset-0 items-center justify-center pointer-events-none">
+            <Text class={`whitespace-nowrap ${packClass("Ability", "count")}`}>
+              {props.cooldown < 10 ? formatNumber(props.cooldown) : formatDuration(props.cooldown)}
+            </Text>
+          </View>
+        </Show>
+        <Show when={ult() && !cooling() && !off()}>
+          <View class="absolute inset-x-0 -bottom-2 flex-row justify-center pointer-events-none">
+            <Show when={!full()} fallback={<Text class={`whitespace-nowrap ${packClass("Ability", "chip", "ready")}`}>{t("component.ability-slot.ready")}</Text>}>
+              <Text class={`whitespace-nowrap ${packClass("Ability", "chip", "ult")}`}>{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
+            </Show>
+          </View>
+        </Show>
+        <Show when={props.cost && !cooling() && !props.locked && !ult()}>
+          <Text class={`absolute bottom-0.5 left-0.5 whitespace-nowrap ${packClass("Ability", "chip", "cost")} ${props.unaffordable ? packClass("Ability", "chip", "short") : ""}`}>{props.cost}</Text>
+        </Show>
+        <Show when={props.count > 0}>
+          <Text class={`absolute right-1.5 bottom-1.5 ${packClass("Ability", "chip", "count")}`}>{formatNumber(props.count)}</Text>
+        </Show>
+        <Show when={props.maxCharges > 1 && !cooling() && !props.locked}>
+          <Text class={`absolute -top-1.5 -right-1.5 whitespace-nowrap ${packClass("Ability", "chip", "charges")}`}>{formatNumber(props.charges)}</Text>
+        </Show>
       </View>
       <Show when={props.maxLevel > 0}>
-        <View class={`bg-track shadow-sunk h-1 rounded-capsule`} style={{ width: `${((12 * (props.maxLevel)) + -4)}px` }}>
-          <View class={`bg-gold h-1`} style={{ width: `${((12 * (props.level)) + -4)}px` }} />
+        <View class="flex-row gap-0.5" role="meter" valueMin={0} valueMax={props.maxLevel} valueNow={props.level}>
+          <For each={Array.from({ length: props.maxLevel }, (_, i) => i)}>
+            {(i) => <View class={`${packClass("Ability", "pip")} ${i() < props.level ? packClass("Ability", "pip", "on") : ""}`} />}
+          </For>
         </View>
       </Show>
       <Show when={props.hotkey || props.action}>
-        <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-fg transition duration-control max-w-full whitespace-nowrap text-shadow-tag py-0 px-2 rounded-capsule overflow-hidden`} glyph={props.hotkey ? undefined : props.action}>
+        <Text class={`max-w-full whitespace-nowrap overflow-hidden ${packClass("Ability", "chip", "key")}`} glyph={props.hotkey ? undefined : props.action}>
           {props.hotkey}
         </Text>
       </Show>
@@ -129,4 +130,6 @@ export function AbilitySlot(props: AbilitySlotProps) {
 
 export const fixtures: Record<string, Partial<AbilitySlotProps>> = {
   default: {"icon":"fire","name":"Fireball","action":"","hotkey":"Q","cooldown":4.2,"cooldownMax":8,"charges":2,"maxCharges":3,"count":0,"cost":"40","unaffordable":false,"outOfRange":false,"active":false,"locked":false,"disabled":false,"ultimate":-1,"level":2,"maxLevel":3},
+  ultimate: {"icon":"star","name":"Overdrive","action":"","hotkey":"R","cooldown":0,"charges":0,"maxCharges":0,"count":0,"cost":"","ultimate":0.62,"level":0,"maxLevel":0},
+  ready: {"icon":"star","name":"Overdrive","action":"","hotkey":"R","cooldown":0,"charges":0,"maxCharges":0,"count":0,"cost":"","ultimate":1,"level":0,"maxLevel":0},
 };

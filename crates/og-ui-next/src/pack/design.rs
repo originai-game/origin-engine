@@ -713,8 +713,8 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "Ability.frame.disabled",
-        "a slot that cannot be used now",
-        "opacity-dim",
+        "a slot that cannot be used now: its art greyed (its figures keep their ink)",
+        "grayscale",
     ),
     (
         "Ability.face",
@@ -729,7 +729,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Ability.ring",
         "the track an ultimate's charge fills round",
-        "nine-disc bg-track",
+        "nine-disc bg-track rounded-full",
     ),
     (
         "Ability.ring.ready",
@@ -759,7 +759,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Ability.chip.ult",
         "an ultimate's charge in figures while it charges (42%): its type and place",
-        "text-base leading-none font-bold tabular-nums text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-caption",
+        "text-caption leading-none font-bold tabular-nums text-fg bg-raised-pressed inset-ring-hairline inset-ring-rim px-1.5 py-0.5 rounded-capsule",
     ),
     (
         "Ability.chip.ready",
@@ -770,6 +770,102 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Ability.chip.key",
         "the key cap under an ability",
         "py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key",
+    ),
+    (
+        "Ability.icon",
+        "an ability's glyph on its face",
+        "size-1/2 text-fg text-shadow-tag",
+    ),
+    (
+        "Ability.icon.disabled",
+        "the glyph of a slot that cannot be used, locked or out of reach",
+        "opacity-dim",
+    ),
+    (
+        "Ability.tint",
+        "the wash over an ability's art when it costs more than the player has or its target is out of range",
+        "bg-linear-to-t from-danger to-transparent",
+    ),
+    (
+        "Ability.slash",
+        "the bar struck across a slot that cannot be used now",
+        "w-11/10 h-1.25 bg-danger rounded-capsule -rotate-45",
+    ),
+    (
+        "Ability.pip",
+        "one rank of an ability under it, unlearnt",
+        "w-2 h-1 rounded-capsule bg-track",
+    ),
+    ("Ability.pip.on", "a rank learnt", "bg-gold"),
+    (
+        "Ability.chip.cost",
+        "an ability's cost at its foot while it is ready",
+        "text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana text-shadow-tag px-2 rounded-capsule",
+    ),
+    (
+        "Ability.chip.short",
+        "a cost the player cannot pay",
+        "text-danger",
+    ),
+    (
+        "Ability.chip.count",
+        "how many of a quick item are left, at the slot's foot",
+        "tabular-nums text-fg text-shadow-tag text-reading",
+    ),
+    (
+        "Hero.frame",
+        "a hero action's large button (End turn, Ultimate): its face, edge and the lift it stands on",
+        "min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-panel border-regular border-rim bg-accent shadow-key transition duration-fast hover:-translate-y-px active:translate-y-0.5 disabled:translate-y-0 disabled:opacity-dim",
+    ),
+    (
+        "Hero.frame.premium",
+        "a premium hero action",
+        "bg-none bg-gold",
+    ),
+    (
+        "Hero.frame.secondary",
+        "a secondary hero action",
+        "bg-none bg-fg-subtle",
+    ),
+    (
+        "Hero.frame.danger",
+        "a destructive hero action",
+        "bg-none bg-danger",
+    ),
+    (
+        "Hero.frame.ready",
+        "a hero action whose charge is full: lit, and breathing while it waits",
+        "shadow-glow animate-breathe",
+    ),
+    (
+        "Hero.label",
+        "a hero action's words",
+        "text-lg uppercase text-center",
+    ),
+    (
+        "Hero.charge",
+        "the track a hero action's charge fills along its foot",
+        "absolute inset-x-2 bottom-1 h-1 rounded-capsule bg-scrim overflow-hidden",
+    ),
+    (
+        "Hero.charge.fill",
+        "the charge filling it",
+        "h-full rounded-capsule bg-fg-inverse",
+    ),
+    (
+        "Hold.fill",
+        "a hold-to-confirm button's progress along its foot",
+        "h-0.5 bg-fg",
+    ),
+    (
+        "Hold.fill.danger",
+        "a destructive hold's progress",
+        "bg-danger",
+    ),
+    (
+        "Hold.fill.primary",
+        "a primary hold's progress",
+        "bg-boon-fg",
     ),
     (
         "Ability.chip.charges",

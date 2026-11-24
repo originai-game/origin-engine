@@ -735,7 +735,7 @@ Fixtures: `default`.
 <a id="guide-components-28"></a>
 ### `components §28` AbilitySlot
 
-One ability or quick item: its icon on a gradient, the hotkey's cap, a cooldown sweep, charges, a count, its cost, ranks as pips and its states (unaffordable, out of range, active, locked, disabled, an ultimate's charge ring). It reports onUse; the game decides whether it fires.
+One ability or quick item: its icon on its face, the hotkey's cap, a cooldown sweep, charges, a count, its cost, ranks as pips and its states (unaffordable, out of range, active, locked, disabled, an ultimate's charge ring with its percent, then Ready). Every part is a pack slot of the Ability component, so a theme sets its size, shape, art, ring, glow, sweep and type. It reports onUse; the game decides whether it fires.
 
 `import { AbilitySlot } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/ability-slot.tsx`).
 
@@ -758,13 +758,13 @@ One ability or quick item: its icon on a gradient, the hotkey's cap, a cooldown 
 | `disabled?` | `boolean` | Cannot be used now: the art washed out under a red slash. |
 | `ultimate?` | `number` | An ultimate's charge 0 to 1: larger, a gold ring filling round it and a percent; negative is a plain slot. Default -1. |
 | `level` | `number` | Ranks learnt (pips right under it). |
-| `fit?` | `boolean` | It fills the place it is given (a strip's), rather than standing --ability-slot-size wide. |
+| `fit?` | `boolean` | It fills the place it is given (a strip's), rather than standing at the theme's ability size. |
 | `maxLevel` | `number` | Ranks it has; 0 draws no pips. |
 | `onUse?` | `(e: UiEvent) => void` | Use. |
 
-Pack slots: `Slot.frame`.
+Pack slots: `Ability.box`, `Ability.box.ultimate`, `Ability.chip.charges`, `Ability.chip.cost`, `Ability.chip.count`, `Ability.chip.key`, `Ability.chip.ready`, `Ability.chip.short`, `Ability.chip.ult`, `Ability.count`, `Ability.face`, `Ability.face.ultimate`, `Ability.frame`, `Ability.frame.disabled`, `Ability.frame.ready`, `Ability.frame.ultimate`, `Ability.icon`, `Ability.icon.disabled`, `Ability.pip`, `Ability.pip.on`, `Ability.ring`, `Ability.ring.fill`, `Ability.ring.ready`, `Ability.slash`, `Ability.sweep`, `Ability.sweep.ultimate`, `Ability.tint`.
 
-Fixtures: `default`.
+Fixtures: `default`, `ultimate`, `ready`.
 
 <a id="guide-components-29"></a>
 ### `components §29` ActionButton
@@ -948,7 +948,7 @@ Fixtures: `default`, `idle`, `broken`, `overflow`.
 <a id="guide-components-37"></a>
 ### `components §37` Cooldown
 
-A scene cell a game lays in a strip: its icon, the share still to run darkened over it and the seconds reading on their halo, popping when it comes ready. The sweep is a nine-disc wipe running counterclockwise from the top, as the .svelte's conic mask did.
+A scene cell a game lays in a strip: its icon, the share still to run swept dark over it and the seconds over that, nudging when it comes ready. It draws the Ability component's pack slots, so it takes the theme's size, shape, art and sweep.
 
 `import { Cooldown } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/cooldown.tsx`).
 
@@ -960,9 +960,9 @@ A scene cell a game lays in a strip: its icon, the share still to run darkened o
 | `label` | `string` | Its accessible name (Dash). |
 | `onUse?` | `(e: UiEvent) => void` | Use. |
 
-Pack slots: `Slot.frame`.
+Pack slots: `Ability.box`, `Ability.count`, `Ability.face`, `Ability.frame`, `Ability.icon`, `Ability.sweep`.
 
-Fixtures: `default`.
+Fixtures: `default`, `ready`.
 
 <a id="guide-components-38"></a>
 ### `components §38` Crosshair
@@ -1068,7 +1068,7 @@ Fixtures: `reward`, `levelUp`, `purchase`, `reveal`, `collect`, `revealLegendary
 <a id="guide-components-43"></a>
 ### `components §43` HeroButton
 
-A hero action's button: its words in capitals and a keycap beside them, on a face that stands on its shadow (primary's primary, premium's gold, secondary's glass, danger's danger); it lifts under a pointer and sinks while held, and shows inert when disabled. The disabled face's greying filter has no TSX surface: it shows dimmed instead.
+A hero action's button: its words in capitals and a keycap beside them, on a face that stands on its shadow (primary's primary, premium's gold, secondary's glass, danger's danger); it lifts under a pointer and sinks while held, and shows inert when disabled. With a charge, a bar fills along its foot and the button lights when it is full. Its face, words and charge are the Hero component's pack slots.
 
 `import { HeroButton } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/hero-button.tsx`).
 
@@ -1078,9 +1078,12 @@ A hero action's button: its words in capitals and a keycap beside them, on a fac
 | `tone?` | `string` | primary (empty), premium, secondary or danger. |
 | `disabled?` | `boolean` | Shown but inert (Waiting). |
 | `key?` | `string` | A keycap beside the words (E); empty is none. |
+| `charge?` | `number` | A charge filling along its foot, 0 to 1 (a super, a focus), lit and breathing when full; negative is none. Default -1. |
 | `onPress?` | `(e: UiEvent) => void` | Press. |
 
-Fixtures: `default`, `premium`, `secondary`, `danger`, `disabled`.
+Pack slots: `Hero.charge`, `Hero.charge.fill`, `Hero.frame`, `Hero.frame.ready`, `Hero.frame.…`, `Hero.label`.
+
+Fixtures: `default`, `premium`, `secondary`, `danger`, `charging`, `charged`, `disabled`.
 
 <a id="guide-components-44"></a>
 ### `components §44` HudHint
@@ -1116,7 +1119,7 @@ A confirm that must be held (Delete save): its icon and words, what it says whil
 | `disabled?` | `boolean` | Shown but inert. |
 | `onConfirm?` | `(e: UiEvent) => void` | Confirmed, by holding it 1.2 s or the input action it names. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Hold.fill`, `Hold.fill.…`, `Plate.frame`.
 
 Fixtures: `default`, `label-only`, `disabled`, `overflow`.
 

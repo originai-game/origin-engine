@@ -876,7 +876,12 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
         for (slot, dress) in [
             (
                 "Ability.frame",
-                "nine-slot bg-transparent rounded-none transition duration-control".to_owned(),
+                if round {
+                    "nine-slot bg-transparent rounded-card transition duration-control"
+                } else {
+                    "nine-slot bg-transparent rounded-none transition duration-control"
+                }
+                .to_owned(),
             ),
             (
                 "Ability.frame.ultimate",
@@ -903,7 +908,17 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                     "inset-1.5 rounded-none nine-slot".to_owned()
                 },
             ),
-            ("Ability.ring", format!("{ring} bg-track")),
+            (
+                "Ability.ring",
+                format!(
+                    "{ring} bg-track {}",
+                    if round {
+                        "rounded-full"
+                    } else {
+                        "rounded-none"
+                    }
+                ),
+            ),
             ("Ability.ring.fill", format!("{ring} bg-hud-accent")),
         ] {
             variants.insert(slot.into(), json!(dress));

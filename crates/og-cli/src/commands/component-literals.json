@@ -11,7 +11,6 @@
   "components/hud/damage-direction.tsx": 1,
   "components/hud/damage-numbers.tsx": 1,
   "components/hud/flourish.tsx": 1,
-  "components/hud/hero-button.tsx": 2,
   "components/hud/hud-timer.tsx": 1,
   "components/hud/loot-entry.tsx": 1,
   "components/hud/overlay-bar.tsx": 5,
