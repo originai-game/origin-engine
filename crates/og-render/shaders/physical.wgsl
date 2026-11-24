@@ -217,7 +217,7 @@ fn eval_iridescence(film_ior_in: f32, cos1: f32, thickness: f32, base_f0: vec3<f
 fn schlick_to_f0(f: vec3<f32>, cos_theta: f32) -> vec3<f32> {
   let x = clamp(1.0 - cos_theta, 0.0, 1.0);
   let x5 = clamp(x * x * x * x * x, 0.0, 0.9999);
-  return (f - vec3<f32>(x5)) / (1.0 - x5);
+  return clamp((f - vec3<f32>(x5)) / (1.0 - x5), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 // One light's shading: the GGX lobe (anisotropic, with the film's Fresnel)
@@ -392,7 +392,9 @@ fn fs_volume_exit(in: PhysicalOut) -> @location(0) vec4<u32> {
   let base = surface_color(hook, shader_params(), look_tint(material.base_color * base_texel(at, dpdxFine(at), dpdyFine(at)) * in.color, in.look));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || (EFFECTS && dissolve_at(uv, in.local_pos).w > 0.5) || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) { discard; }
   var n = normalize(in.normal);
-  if ((u32(material.flags.w) & 1u) != 0u) { n = -normalize(cross(dpdxFine(in.world_pos), dpdyFine(in.world_pos))); }
+  // Backface pass (`front = -1.0`): cross(dx, dy) points inward for back faces,
+  // so negate with `hook.front` (leaving +cross(dx, dy) pointing outward).
+  if ((u32(material.flags.w) & 1u) != 0u) { n = normalize(cross(dpdxFine(in.world_pos), dpdyFine(in.world_pos))); }
   let depth = dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz);
   return vec4<u32>(pack2x16snorm(oct_encode(n)), bitcast<u32>(depth), in.volume_id, 0u);
 }
@@ -819,10 +821,16 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   if (physical.transmission.x > 0.0) {
     let amount = physical.transmission.x * coat_maps.b;
     let thickness = physical.transmission.y * coat_maps.a;
-    let direction = normalize(refract(-v, n, 1.0 / ior));
+    let refr_in = refract(-v, n, 1.0 / ior);
+    let direction = safe_normalize(refr_in, reflect(-v, n));
     let ray = direction * thickness * in.scale;
     let exit = frame.view_proj * vec4<f32>(in.world_pos + ray, 1.0);
-    let uv = clamp(vec2<f32>(exit.x, -exit.y) / exit.w * 0.5 + 0.5, vec2<f32>(0.0), vec2<f32>(1.0));
+    let exit_ok = exit.w > 1e-4;
+    let uv = select(
+      in.clip.xy / max(vec2<f32>(textureDimensions(transmission_tex)), vec2<f32>(1.0)),
+      clamp(vec2<f32>(exit.x, -exit.y) / max(exit.w, 1e-4) * 0.5 + 0.5, vec2<f32>(0.0), vec2<f32>(1.0)),
+      exit_ok,
+    );
     let width = f32(textureDimensions(transmission_tex).x);
     let lod = log2(width) * s.roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
     var path = length(ray);
@@ -831,6 +839,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     var confidence = 0.0;
     var opaque_uv = uv;
     var opaque_confidence = 0.0;
+    var tir = false;
+    var tir_dir = reflect(-v, n);
     // thicknessFactor decides thin-wall versus volume even when a map is
     // black. A captured exit replaces both baked bending and absorption.
     if (physical.transmission.y > 0.0) {
@@ -839,13 +849,18 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
         confidence = back.confidence;
         path = length(back.point - in.world_pos);
         let outgoing = refract(direction, -back.normal, ior);
-        if (dot(outgoing, outgoing) > 0.0) {
-          let opaque_hit = transmission_hit(back.point, outgoing, back.point, 0u);
+        if (dot(outgoing, outgoing) > 1e-6) {
+          let opaque_hit = transmission_hit(back.point, normalize(outgoing), back.point, 0u);
           confidence *= opaque_hit.confidence;
           if (opaque_hit.confidence > 0.0) {
             opaque_uv = opaque_hit.uv;
             opaque_confidence = opaque_hit.confidence;
           }
+        } else {
+          // Total internal reflection at the exit face: bounce internally into
+          // the prefiltered environment rather than returning black.
+          tir = true;
+          tir_dir = reflect(direction, -back.normal);
         }
       }
     }
@@ -853,8 +868,12 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     // its absorption path, rather than retaining a frayed geometric sliver.
     confidence = smoothstep(0.5, 0.9, confidence);
     var radiance = vec3<f32>(0.0);
-    if (confidence > 0.0 && opaque_confidence > 0.0) {
-      radiance = scene_behind(opaque_uv, lod);
+    if (confidence > 0.0 && (opaque_confidence > 0.0 || tir)) {
+      if (tir) {
+        radiance = reflected_light(tir_dir, in.world_pos, s.roughness * frame.params.y) * frame.params.x;
+      } else {
+        radiance = scene_behind(opaque_uv, lod);
+      }
       if (physical.transmission.w > 0.0) {
         radiance *= pow(absorption, vec3<f32>(path / physical.transmission.w));
       }

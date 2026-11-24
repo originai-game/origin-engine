@@ -42,7 +42,7 @@ fn cs_reduce(
     let luma = textureLoad(current_luma_tex, c, 0).r;
     depth_sum += textureLoad(farthest_depth_tex, c, 0).r;
     if (all(q < size)) {
-      log_sum += max(EPSILON, log(luma));
+      log_sum += log(max(EPSILON, luma));
       luma_sum += luma;
     }
   }
@@ -84,7 +84,7 @@ fn cs_finish(@builtin(local_invocation_index) li: u32) {
     workgroupBarrier();
   }
   if (li == 0u) {
-    let pixels = f32(render_size().x * render_size().y);
+    let pixels = max(f32(render_size().x * render_size().y), 1.0);
     let scene_average_luma = partial_luma[0] / pixels;
     var log_luma = partial_log[0] / pixels;
     // A reset clears the frame info to (-1, 1, 0, 0) (fsr3upscalerDispatch).
@@ -92,7 +92,6 @@ fn cs_finish(@builtin(local_invocation_index) li: u32) {
     let prev_log_luma = info.y;
     if (prev_log_luma < RESET_AUTO_EXPOSURE_AVERAGE_SMOOTHING) {
       log_luma = prev_log_luma + (log_luma - prev_log_luma) * (1.0 - exp(-delta_time()));
-      log_luma = max(0.0, log_luma);
     }
     info.x = compute_auto_exposure_from_lavg(log_luma);
     info.y = log_luma;

@@ -86,7 +86,7 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     var range = Range(d - threshold, d + threshold);
     for (var k = 1; k <= SQUARE; k++) {
       for (var i = 0; i < 2 * k; i++) {
-        let g = exp((-f32(k * k) + f32((k - i) * (k - i))) * inv);
+        let g = exp(-(f32(k * k) + f32((k - i) * (k - i))) * inv);
         let a = take(load(px - vec2<i32>(k, k - i)), &range, threshold, behind);
         let b = take(load(px + vec2<i32>(k, k - i)), &range, threshold, behind);
         let c = take(load(px - vec2<i32>(k - i, k)), &range, threshold, behind);

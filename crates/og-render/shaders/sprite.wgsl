@@ -712,7 +712,7 @@ fn clean_edge(uv: vec2<f32>, region: vec4<f32>) -> vec4<f32> {
   let size = vec2<i32>(floor(region.zw * tex + 0.5) - lo);
   let p = uv * tex - lo;
   let local = p - floor(p);
-  let px = ceil(p) - 0.5;
+  let px = floor(p) + 0.5;
   let pd = floor(local + 0.5) * 2.0 - 1.0;
   let l = vec2<i32>(lo);
   let uub = ce_read(l, size, px, pd, vec2<f32>(-1.0, -2.0));

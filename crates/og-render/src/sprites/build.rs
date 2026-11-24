@@ -523,7 +523,7 @@ pub(crate) fn build(
             };
             if facing == SpriteFacing::None {
                 keyed.push((text.layer, 0.0, source, false, inst));
-            } else {
+            } else if size[0].abs() > 1e-6 && size[1].abs() > 1e-6 {
                 inst.position_rotation[0] = origin.x;
                 inst.position_rotation[1] = origin.y;
                 inst.size_anchor[2] = -corner.x / size[0];

@@ -266,9 +266,12 @@ fn lit_vertex(model: mat4x4<f32>, v: VertexIn) -> VertexOut {
   o.local_pos = v.position;
   o.look = vec4<f32>(0.0);
   if (OIT_KEY) { o.oit_key = oit_key(model, v.position); }
-  // A tangent follows the surface: through the model itself.
+  // A tangent follows the surface: through the model itself; mirrored
+  // transforms invert handedness so bitangent = cross(N, T) * w stays right.
+  let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
+  let hand = select(-1.0, 1.0, determinant(m3) >= 0.0);
   let t = (model * vec4<f32>(v.tangent.xyz, 0.0)).xyz;
-  o.tangent = vec4<f32>(select(vec3<f32>(0.0), normalize(t), dot(t, t) > 1e-20), v.tangent.w);
+  o.tangent = vec4<f32>(select(vec3<f32>(0.0), normalize(t), dot(t, t) > 1e-20), v.tangent.w * hand);
   return o;
 }
 

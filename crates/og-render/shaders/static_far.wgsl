@@ -17,11 +17,12 @@ const FAR_COUNTS: vec3<u32> = vec3<u32>(32u, 12u, 32u);
 fn static_far_irradiance(p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   let h0 = probe_data.v[FAR_HEADER_AT];
   let spacing = probe_data.v[FAR_HEADER_AT + 1u].x;
+  if (h0.w < 0.0 || spacing <= 0.0) { return vec3<f32>(0.0); }
   let cmax = vec3<f32>(FAR_COUNTS - vec3<u32>(1u));
   let g = (p - h0.xyz) / spacing;
   let edge = min(g, cmax - g);
   let w = clamp(min(edge.x, min(edge.y, edge.z)), 0.0, 1.0);
-  if (w <= 0.0 || h0.w < 0.0) { return vec3<f32>(0.0); }
+  if (w <= 0.0) { return vec3<f32>(0.0); }
   let g0 = min(vec3<u32>(floor(g)), FAR_COUNTS - vec3<u32>(2u));
   let f = g - vec3<f32>(g0);
   var irr = vec3<f32>(0.0);

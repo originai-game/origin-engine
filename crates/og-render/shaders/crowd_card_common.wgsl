@@ -156,7 +156,7 @@ fn card_sample(local: vec3<f32>, cols: vec2<f32>, col_w: f32, rows: vec2<f32>, r
 // Part `part`'s colour and roughness (a fraction between two parts, where
 // a coarse level of the atlas averaged them, blends theirs).
 fn card_part(part: f32) -> vec4<f32> {
-  let last = max(material.custom[4].x - 1.0, 0.0);
+  let last = clamp(material.flags.w - 1.0, 0.0, 7.0);
   let p = clamp(part, 0.0, last);
   let lo = u32(floor(p));
   let hi = min(lo + 1u, u32(last));

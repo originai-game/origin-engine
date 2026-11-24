@@ -136,19 +136,22 @@ impl Renderer {
                 &parts,
                 &palette,
             );
-            // Each part's colour (linear) and roughness, then the parts' count.
+            // Each part's colour (linear) and roughness (up to MAX_SHADER_PARAMS parts);
+            // the parts' count goes in `material.flags.w` so slot 4 is never clobbered.
             let mut custom = [[0.0f32; 4]; crate::MAX_SHADER_PARAMS];
             for (slot, p) in custom.iter_mut().zip(&crowd.parts) {
                 if let Some(m) = scene.standard_material(p.material) {
                     *slot = [m.color.x, m.color.y, m.color.z, m.roughness];
                 }
             }
-            custom[4][0] = crowd.parts.len() as f32;
-            let bits: Vec<u32> = custom.iter().flatten().map(|f| f.to_bits()).collect();
+            let part_count = crowd.parts.len().min(crate::MAX_SHADER_PARAMS) as f32;
+            let mut bits: Vec<u32> = custom.iter().flatten().map(|f| f.to_bits()).collect();
+            bits.push(part_count.to_bits());
             let group = atlas.groups.entry(bits).or_insert_with(|| {
                 let mut uniform = material::uniform(&StandardMaterial::default(), false);
                 uniform.custom = custom;
                 uniform.previous_custom = custom;
+                uniform.flags[3] = part_count;
                 let factors = crate::buffer_init(
                     &self.device,
                     &self.queue,

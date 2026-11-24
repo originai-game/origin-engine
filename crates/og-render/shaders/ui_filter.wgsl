@@ -243,12 +243,12 @@ fn turbulence(k: i32, point: vec2<f32>) -> f32 {
     if (base.x != 0.0) {
       let lo = floor(t.z * base.x) / t.z;
       let hi = ceil(t.z * base.x) / t.z;
-      base.x = select(hi, lo, base.x / lo < hi / base.x);
+      base.x = select(hi, lo, lo > 0.0 && base.x / lo < hi / base.x);
     }
     if (base.y != 0.0) {
       let lo = floor(t.w * base.y) / t.w;
       let hi = ceil(t.w * base.y) / t.w;
-      base.y = select(hi, lo, base.y / lo < hi / base.y);
+      base.y = select(hi, lo, lo > 0.0 && base.y / lo < hi / base.y);
     }
     let w = floor(t.z * base.x + 0.5);
     let h = floor(t.w * base.y + 0.5);
@@ -317,9 +317,13 @@ fn lighting(p: vec2<f32>, q: vec2<f32>, specular: bool) -> vec4<f32> {
   if (kind == 0) {
     l = vec3<f32>(cos(f.b.x) * cos(f.b.y), sin(f.b.x) * cos(f.b.y), sin(f.b.y));
   } else {
-    l = normalize(f.b.xyz - vec3<f32>(local(q), z));
+    let lv = f.b.xyz - vec3<f32>(local(q), z);
+    let ll = dot(lv, lv);
+    l = select(vec3<f32>(0.0, 0.0, 1.0), lv * inverseSqrt(max(ll, 1e-30)), ll > 1e-20);
     if (kind == 2) {
-      let s = normalize(f.c.xyz - f.b.xyz);
+      let sv = f.c.xyz - f.b.xyz;
+      let sl = dot(sv, sv);
+      let s = select(vec3<f32>(0.0, 0.0, -1.0), sv * inverseSqrt(max(sl, 1e-30)), sl > 1e-20);
       let minus_l_dot_s = -dot(l, s);
       let cone = f.m[1].x;
       if (minus_l_dot_s <= 0.0 || (cone > -1.5 && minus_l_dot_s < cone)) {

@@ -59,12 +59,13 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
     n = -normalize(cross(world_dx(in.world_pos), world_dy(in.world_pos))) * hook_front;
   }
   n *= material_face(hook_front);
-  let cur = in.cur_clip.xy / in.cur_clip.w;
-  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
-  let velocity = (cur - prev) * vec2<f32>(0.5, -0.5);
+  let cur = in.cur_clip.xy / max(in.cur_clip.w, 1e-4);
+  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-4);
+  let valid_vel = in.cur_clip.w > 1e-4 && in.prev_clip.w > 1e-4;
+  let velocity = select(vec2<f32>(0.0), (cur - prev) * vec2<f32>(0.5, -0.5), valid_vel);
   var o: PrepassTargets;
   o.gbuffer = vec4<f32>(oct_encode(n), velocity);
-  o.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
+  o.motion_depth = select(in.cur_clip.z / max(in.cur_clip.w, 1e-4), in.prev_clip.z / max(in.prev_clip.w, 1e-4), valid_vel);
   // y: the reflectivity screen-space reflections read (ssr.rs): the gloss
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).

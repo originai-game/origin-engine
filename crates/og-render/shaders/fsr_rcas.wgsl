@@ -13,9 +13,23 @@ const RCAS_LIMIT: f32 = 0.25 - 1.0 / 16.0;
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
 
+fn rcas_luma(c: vec3<f32>) -> f32 {
+  return max(c.b * 0.25 + c.r * 0.25 + c.g * 0.5, 0.0);
+}
+
+fn rcas_tonemap(c: vec3<f32>) -> vec3<f32> {
+  let p = max(c, vec3<f32>(0.0));
+  return p / (1.0 + rcas_luma(p));
+}
+
+fn rcas_untonemap(c: vec3<f32>) -> vec3<f32> {
+  let p = max(c, vec3<f32>(0.0));
+  return p / max(1.0 - rcas_luma(p), 1e-4);
+}
+
 fn load(p: vec2<i32>) -> vec4<f32> {
   let c = textureLoad(rcas_input, clamp(p, vec2<i32>(0), upscale_size() - 1), 0);
-  return vec4<f32>(c.rgb * exposure(), c.a);
+  return vec4<f32>(rcas_tonemap(c.rgb * exposure()), c.a);
 }
 
 fn max3(a: f32, b: f32, c: f32) -> f32 { return max(a, max(b, c)); }
@@ -43,19 +57,20 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   // Noise detection.
   var nz = 0.25 * bl + 0.25 * dl + 0.25 * fl + 0.25 * hl - el;
   let range = max3(max3(bl, dl, el), fl, hl) - min3(min3(bl, dl, el), fl, hl);
-  nz = saturate(abs(nz) / max(range, 1e-30));
+  nz = saturate(abs(nz) / max(range, 1e-6));
   nz = -0.5 * nz + 1.0;
-  // Min and max of the ring.
+  // Min and max of the ring (in reversible-tonemapped [0, 1) space).
   let mn4 = min(min(min(b, d), f), h);
   let mx4 = max(max(max(b, d), f), h);
   let peak = vec2<f32>(1.0, -4.0);
-  let lower = saturate(el / max(min(min3(bl, dl, fl), hl), 1e-30));
-  let hit_min = mn4 / (4.0 * mx4) * lower;
-  let hit_max = (peak.x - mx4) / (4.0 * mn4 + peak.y);
+  let lower = saturate(el / max(min(min3(bl, dl, fl), hl), 1e-6));
+  let hit_min = mn4 / max(4.0 * mx4, vec3<f32>(1e-6)) * lower;
+  let hit_max = (peak.x - mx4) / min(4.0 * mn4 + peak.y, vec3<f32>(-1e-6));
   let lobe_rgb = max(-hit_min, hit_max);
   var lobe = max(-RCAS_LIMIT, min(max3(lobe_rgb.r, lobe_rgb.g, lobe_rgb.b), 0.0)) * fsr.extra.w;
   lobe *= nz;
-  let rcp_l = 1.0 / (4.0 * lobe + 1.0);
+  let rcp_l = 1.0 / max(4.0 * lobe + 1.0, 1e-6);
   let pix = (lobe * b + lobe * d + lobe * h + lobe * f + e) * rcp_l;
-  textureStore(rcas_output, sp, vec4<f32>(pix / exposure(), ee.a));
+  let exp_v = max(exposure(), 1e-6);
+  textureStore(rcas_output, sp, vec4<f32>(rcas_untonemap(pix) / exp_v, ee.a));
 }

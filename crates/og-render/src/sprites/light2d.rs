@@ -141,6 +141,7 @@ pub(crate) fn shadow_edges(lights: &[Light2d], occluders: &[Occluder2d]) -> Shad
 
 /// The polar shadow map and its pass.
 struct Shadows {
+    format: wgpu::TextureFormat,
     pipeline: Deferred<wgpu::RenderPipeline>,
     uniform: wgpu::Buffer,
     edges: wgpu::Buffer,
@@ -270,7 +271,12 @@ impl Light2dRenderer {
             || (dir && crate::deferred::warm_one(&[&self.pipeline_dir]))
     }
 
-    pub fn new(device: &wgpu::Device) -> Light2dRenderer {
+    pub fn new(device: &wgpu::Device, rg32_renderable: bool) -> Light2dRenderer {
+        let shadow_format = if rg32_renderable {
+            SHADOW_FORMAT
+        } else {
+            wgpu::TextureFormat::Rgba16Float
+        };
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("lights 2d"),
             entries: &[
@@ -315,7 +321,7 @@ impl Light2dRenderer {
                 mapped_at_creation: false,
             },
         );
-        let shadows = Shadows::new(device);
+        let shadows = Shadows::new(device, shadow_format);
         let group = light_group(device, &layout, &uniform, &shadows.map.2);
         // Made when a frame first draws 2D lights (deferred.rs).
         let module = crate::deferred::module(device, "lights 2d", LIGHT2D_WGSL.into());
@@ -407,7 +413,7 @@ impl Light2dRenderer {
     ) -> (u32, u32) {
         let angles = angles.clamp(64, 4096);
         if self.shadows.map.0 != angles {
-            self.shadows.map = shadow_map(device, angles);
+            self.shadows.map = shadow_map(device, angles, self.shadows.format);
             self.group = light_group(device, &self.layout, &self.uniform, &self.shadows.map.2);
             // The views' groups name the old map: made again by write_view.
             self.views.clear();
@@ -637,7 +643,11 @@ fn light_group(
 }
 
 /// A polar shadow map `angles` wide, a row per light.
-fn shadow_map(device: &wgpu::Device, angles: u32) -> (u32, wgpu::Texture, wgpu::TextureView) {
+fn shadow_map(
+    device: &wgpu::Device,
+    angles: u32,
+    format: wgpu::TextureFormat,
+) -> (u32, wgpu::Texture, wgpu::TextureView) {
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("lights 2d shadows"),
         size: wgpu::Extent3d {
@@ -648,7 +658,7 @@ fn shadow_map(device: &wgpu::Device, angles: u32) -> (u32, wgpu::Texture, wgpu::
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: SHADOW_FORMAT,
+        format,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
         texture_binding_view_dimension: None,
@@ -658,7 +668,7 @@ fn shadow_map(device: &wgpu::Device, angles: u32) -> (u32, wgpu::Texture, wgpu::
 }
 
 impl Shadows {
-    fn new(device: &wgpu::Device) -> Shadows {
+    fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Shadows {
         let buffer = |binding: u32, ty: wgpu::BufferBindingType| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::FRAGMENT,
@@ -738,7 +748,7 @@ impl Shadows {
                             entry_point: Some("fs"),
                             compilation_options: Default::default(),
                             targets: &[Some(wgpu::ColorTargetState {
-                                format: SHADOW_FORMAT,
+                                format,
                                 blend: None,
                                 write_mask: wgpu::ColorWrites::ALL,
                             })],
@@ -750,11 +760,12 @@ impl Shadows {
             })
         };
         Shadows {
+            format,
             pipeline,
             uniform,
             edges,
             group,
-            map: shadow_map(device, 1024),
+            map: shadow_map(device, 1024, format),
             rows: 0,
             traced: Cell::new(true),
         }

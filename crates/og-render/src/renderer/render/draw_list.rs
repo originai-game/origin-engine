@@ -162,7 +162,13 @@ impl Renderer {
                     shadow_key = Some(key);
                 }
                 if batch.dissolve || batch.shader.is_some() {
-                    pass.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
+                    let m = &self.cache.materials[batch.material];
+                    let bg = if batch.array {
+                        m.array.as_ref().unwrap_or(&m.bind_group)
+                    } else {
+                        &m.bind_group
+                    };
+                    pass.set_bind_group(1, bg, &[]);
                 }
             }
             let mesh = &self.cache.meshes[batch.mesh];

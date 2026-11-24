@@ -124,8 +124,20 @@ impl ColorLut {
             return Ok(ColorLut { size: n, rgba: out });
         }
         Ok(ColorLut::from_fn(|c| {
-            let p = (c * (n - 1) as f32).round();
-            at(p.x as u32, p.y as u32, p.z as u32)
+            let p = c.clamp(Vec3::ZERO, Vec3::ONE) * (n - 1) as f32;
+            let lo = p.floor();
+            let f = p - lo;
+            let x0 = (lo.x as u32).min(n - 1);
+            let y0 = (lo.y as u32).min(n - 1);
+            let z0 = (lo.z as u32).min(n - 1);
+            let x1 = (x0 + 1).min(n - 1);
+            let y1 = (y0 + 1).min(n - 1);
+            let z1 = (z0 + 1).min(n - 1);
+            let c00 = at(x0, y0, z0).lerp(at(x1, y0, z0), f.x);
+            let c10 = at(x0, y1, z0).lerp(at(x1, y1, z0), f.x);
+            let c01 = at(x0, y0, z1).lerp(at(x1, y0, z1), f.x);
+            let c11 = at(x0, y1, z1).lerp(at(x1, y1, z1), f.x);
+            c00.lerp(c10, f.y).lerp(c01.lerp(c11, f.y), f.z)
         }))
     }
 }

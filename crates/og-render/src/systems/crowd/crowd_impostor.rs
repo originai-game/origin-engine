@@ -243,8 +243,11 @@ impl CrowdImpostors {
         parts: &[BakePart<'_>],
         palette: &wgpu::BindGroup,
     ) -> Atlas {
-        let [views, frames, size, _] = bake.tiles;
-        let extent = (views * size, frames * size);
+        let [views, frames, raw_size, _] = bake.tiles;
+        let max_dim = device.limits().max_texture_dimension_2d.max(64);
+        let max_tile = (max_dim / views.max(1)).min(max_dim / frames.max(1)).max(4);
+        let size = raw_size.clamp(4, max_tile);
+        let extent = ((views * size).min(max_dim), (frames * size).min(max_dim));
         // Down to 4 texels a tile: each level's tiles stay whole.
         let levels = (size.max(4).ilog2() - 1).max(1);
         let texture = |label, format| {

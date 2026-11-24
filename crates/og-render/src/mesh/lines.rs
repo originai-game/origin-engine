@@ -418,9 +418,9 @@ pub(crate) struct LineRenderer {
     /// Overlay pipelines: in the output's format and its sRGB view's.
     output: Sampled<wgpu::RenderPipeline>,
     linear: Option<Sampled<wgpu::RenderPipeline>>,
-    /// Per mesh index and feature angle (its bits): the mesh's revision
-    /// and its edges (wireframe).
-    edges: HashMap<(usize, u32), (u64, Edges)>,
+    /// Per scene id, mesh index and feature angle (its bits): the mesh's
+    /// revision and its edges (wireframe).
+    edges: HashMap<(u64, usize, u32), (u64, Edges)>,
 }
 
 /// The lines module (`crate::shaders` validates it), after the standard
@@ -667,13 +667,15 @@ impl LineRenderer {
         let mut wires: Vec<WireInstance> = Vec::new();
         let mut wire_sets: Vec<(u32, u32, u32, u32)> = Vec::new();
         if any_wire {
+            let scene_id = scene.id();
             let live: std::collections::HashSet<usize> = scene
                 .objects
                 .instances
                 .iter()
                 .map(|i| i.mesh.index())
                 .collect();
-            self.edges.retain(|(m, _), _| live.contains(m));
+            self.edges
+                .retain(|(sid, m, _), _| *sid == scene_id && live.contains(m));
             for (i, inst) in scene.objects.instances.iter().enumerate() {
                 let Some((w, outlined)) = wire(inst.material.index()) else {
                     continue;
@@ -684,7 +686,7 @@ impl LineRenderer {
                     continue;
                 };
                 let revision = scene.mesh_revision(inst.mesh.index());
-                let key = (inst.mesh.index(), angle.to_bits());
+                let key = (scene_id, inst.mesh.index(), angle.to_bits());
                 let edges = match self.edges.get(&key) {
                     Some((r, e)) if *r == revision => e.clone(),
                     _ => {

@@ -562,7 +562,8 @@ impl Renderer {
             desc.particles,
             samples,
         );
-        let lights_2d = light2d::Light2dRenderer::new(&device);
+        let lights_2d =
+            light2d::Light2dRenderer::new(&device, caps.contains(Caps::RG32_RENDERABLE));
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ribbon"),
             address_mode_u: wgpu::AddressMode::Repeat,

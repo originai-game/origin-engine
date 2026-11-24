@@ -130,21 +130,21 @@ fn blockers(row: i32, x: f32, d: f32, source: f32, w: f32) -> vec2<f32> {
   var ca = i32(floor(x - w));
   var ta = texel(row, ca);
   var va = reach(ta, d);
-  if (va == 0.0 && apart(ca, x) <= source * (1.0 / ta.x - 1.0 / d) * per_radian) {
+  if (va == 0.0 && apart(ca, x) <= source * (1.0 / max(ta.x, 1e-4) - 1.0 / d) * per_radian) {
     s += vec2<f32>(ta.x, 1.0);
   }
   for (var k = 1; k <= 8; k++) {
     let cb = i32(floor(x - w + 2.0 * w * f32(k) / 8.0));
     let tb = texel(row, cb);
     let vb = reach(tb, d);
-    if (vb == 0.0 && apart(cb, x) <= source * (1.0 / tb.x - 1.0 / d) * per_radian) {
+    if (vb == 0.0 && apart(cb, x) <= source * (1.0 / max(tb.x, 1e-4) - 1.0 / d) * per_radian) {
       s += vec2<f32>(tb.x, 1.0);
     }
     // A transition: its blocked texel, unless the span is too far for a
     // blocker even at half its blocked end's depth (a far edge costs no
     // bisection).
     let te = select(tb, ta, va == 0.0);
-    if (vb != va && min(apart(ca, x), apart(cb, x)) <= source * (2.0 / te.x - 1.0 / d) * per_radian) {
+    if (vb != va && min(apart(ca, x), apart(cb, x)) <= source * (2.0 / max(te.x, 1e-4) - 1.0 / d) * per_radian) {
       var lo = ca;
       var hi = cb;
       var tl = ta;
@@ -158,7 +158,7 @@ fn blockers(row: i32, x: f32, d: f32, source: f32, w: f32) -> vec2<f32> {
       // The blocked side's end was counted already.
       let c = select(hi, lo, va == 0.0);
       let t = select(th, tl, va == 0.0);
-      if (c != select(cb, ca, va == 0.0) && apart(c, x) <= source * (1.0 / t.x - 1.0 / d) * per_radian) {
+      if (c != select(cb, ca, va == 0.0) && apart(c, x) <= source * (1.0 / max(t.x, 1e-4) - 1.0 / d) * per_radian) {
         s += vec2<f32>(t.x, 1.0);
       }
     }
@@ -237,7 +237,8 @@ struct LightDirOut {
 @fragment
 fn fs_dir(in: LightOut) -> LightDirOut {
   let c = light_of(in);
-  var to_light = in.direction.xy;
+  // Global light `direction` points along light travel; negate to point toward light.
+  var to_light = -in.direction.xy;
   if (in.flags.y < 1.5) { to_light = in.light.xy - in.world; }
   let d = normalize(vec3<f32>(to_light, in.direction.z) + vec3<f32>(0.0, 0.0, 1e-6));
   let w = luma(c);

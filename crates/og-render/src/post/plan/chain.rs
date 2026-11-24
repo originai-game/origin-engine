@@ -86,7 +86,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             }
             if matches!(
                 p,
-                FramePass::Paint | FramePass::Watercolor | FramePass::Lines
+                FramePass::Paint | FramePass::Watercolor | FramePass::Lines | FramePass::Quantize
             ) && prepass
             {
                 reads.extend(["lindepth", "gbuffer", "outline-id"]);

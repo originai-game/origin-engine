@@ -39,11 +39,13 @@ fn fs(in: CustomOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f3
 // The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
 @fragment
 fn fs_oit(in: CustomOut, @builtin(front_facing) front: bool) -> OitOutput {
+  oit_pass = true;
   return oit_weighted(custom_fragment(in, front), in.clip.z);
 }
 
 @fragment
 fn fs_oit_list(in: CustomOut, @builtin(front_facing) front: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  oit_pass = true;
   let c = custom_fragment(in, front);
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
@@ -51,12 +53,14 @@ fn fs_oit_list(in: CustomOut, @builtin(front_facing) front: bool, @builtin(sampl
 
 @fragment
 fn fs_oit_front(in: CustomOut, @builtin(front_facing) front: bool) -> OitOutput {
+  oit_pass = true;
   let c = custom_fragment(in, front);
   return oit_hybrid(c, in.clip);
 }
 
 @fragment
 fn fs_oit_mark(in: CustomOut, @builtin(front_facing) front: bool) {
+  oit_pass = true;
   let c = custom_fragment(in, front);
   oit_front_mark(in.clip, c.a);
 }
@@ -106,7 +110,7 @@ fn custom_fragment(in: CustomOut, front: bool) -> vec4<f32> {
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n, n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n_geo, max(dot(n_geo, l), 0.0)); }
   let sun = StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0);
   // The caustics, the local lights and the light around the surface, as
   // every lit surface's (surface_shade.wgsl), without the frame's material
@@ -166,7 +170,29 @@ fn vs_prepass(v: CustomVertexIn, i: CustomInstanceIn, prev: CustomPrevIn) -> Cus
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomPrepassOut {
   let o = custom_skinned(vi, v, i, s);
-  return custom_prepass(o, o.world);
+  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
+  let now_pos = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y).position;
+  var prev_model = model;
+  var prev_pos = now_pos;
+  let section = fx.decal_info.w;
+  if (i.palette.w < -0.5) {
+    if (i.morph1.x > 0.5) {
+      let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
+      prev_model = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
+    }
+  } else if (section > 0.5) {
+    if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
+      prev_model = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
+    }
+    if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
+      let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);
+      let deformed = select(0.0, i.morph0.y + section, i.morph0.y > 0.5);
+      prev_pos = morphed(v.position, v.normal, vi, i.palette, weights, deformed).position;
+    }
+  }
+  let now_w = (model * vec4<f32>(now_pos, 1.0)).xyz;
+  let prev_w = (prev_model * vec4<f32>(prev_pos, 1.0)).xyz;
+  return custom_prepass(o, o.world + prev_w - now_w);
 }
 
 struct CustomPrepassTargets {
@@ -203,11 +229,12 @@ fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> Custo
     n = g.n;
     reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
   }
-  let cur = in.cur_clip.xy / in.cur_clip.w;
-  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
+  let cur = in.cur_clip.xy / max(in.cur_clip.w, 1e-4);
+  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-4);
+  let valid_vel = in.cur_clip.w > 1e-4 && in.prev_clip.w > 1e-4;
   var t: CustomPrepassTargets;
-  t.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  t.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
+  t.gbuffer = vec4<f32>(oct_encode(n), select(vec2<f32>(0.0), (cur - prev) * vec2<f32>(0.5, -0.5), valid_vel));
+  t.motion_depth = select(in.cur_clip.z / max(in.cur_clip.w, 1e-4), in.prev_clip.z / max(in.prev_clip.w, 1e-4), valid_vel);
   t.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // No outline of its own (the scene's outline still lines it).
   t.outline = vec4<f32>(0.0);

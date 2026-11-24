@@ -173,10 +173,7 @@ fn fs_lean(in: LeanVsOut, @builtin(front_facing) front: bool) -> @location(0) ve
   return shadow_depth(in.world, in.clip, dx, dy, front);
 }
 
-// Dissolving and alpha-tested casters: the dissolved pixels, and those under
-// the material's alpha cutoff (leaf and grass cards), cast no shadow.
-@fragment
-fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+fn shadow_dissolve(in: VsOut, front: bool) -> vec4<f32> {
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
@@ -185,6 +182,13 @@ fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) ve
     || dither_cut(in.hidden, in.clip.xy, shadow_pass.dither.x)
     || (material.emissive.w >= 0.0 && alpha < material.emissive.w);
   return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
+}
+
+// Dissolving and alpha-tested casters: the dissolved pixels, and those under
+// the material's alpha cutoff (leaf and grass cards), cast no shadow.
+@fragment
+fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+  return shadow_dissolve(in, front);
 }
 
 // Casters with a material shader: what its surface_color cuts below the

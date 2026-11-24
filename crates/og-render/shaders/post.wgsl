@@ -71,16 +71,17 @@ fn starburst_row(u: f32) -> f32 {
 // Filament's acosFastPositive (common_math.glsl), which its starburst
 // reads the angle with.
 fn acos_fast_positive(x: f32) -> f32 {
-  let p = -0.1565827 * x + 1.570796;
-  return p * sqrt(1.0 - x);
+  let c = clamp(x, 0.0, 1.0);
+  let p = -0.1565827 * c + 1.570796;
+  return p * sqrt(1.0 - c);
 }
 
 fn starburst(uv: vec2<f32>) -> f32 {
   if (post.flare.y < 0.5) { return 1.0; }
   let offset = post.flare.z;
   let center = uv - vec2<f32>(0.5001);
-  let d = length(center);
-  let radial = acos_fast_positive(center.x / d);
+  let d = max(length(center), 1e-6);
+  let radial = acos_fast_positive(abs(center.x) / d);
   let mask = starburst_row(fract(radial + offset)) * starburst_row(fract(radial - offset * 0.5));
   return clamp(mask + (1.0 - smoothstep(0.0, 0.3, d)), 0.0, 1.0);
 }

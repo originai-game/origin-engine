@@ -54,6 +54,7 @@ fn depth(uv: vec2<f32>) -> f32 {
 
 // The world normal (zero: the sky).
 fn normal(uv: vec2<f32>) -> vec3<f32> {
+  if (is_sky_depth(depth(uv))) { return vec3<f32>(0.0); }
   let e = textureLoad(gbuffer_tex, texel_of(uv), 0).xy;
   return oct_decode(e);
 }

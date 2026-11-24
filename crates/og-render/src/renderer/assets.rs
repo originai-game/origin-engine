@@ -561,7 +561,12 @@ impl Renderer {
                 self.lit.array_maps = Some(material::ArrayMaps::new(
                     &self.device,
                     &self.queue,
-                    [&self.frame_layout, &self.fx_layout, &self.palette_layout],
+                    [
+                        &self.frame_layout,
+                        &self.fx_layout,
+                        &self.palette_layout,
+                        &self.shadow_bind_layout,
+                    ],
                     self.info
                         .without
                         .features()

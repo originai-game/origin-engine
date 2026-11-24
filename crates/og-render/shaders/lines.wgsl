@@ -64,7 +64,7 @@ fn corner(vi: u32) -> vec2<f32> {
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32, l: LineIn) -> LineOut {
-  return expand(vi, l);
+  return expand(vi, l, vec4<f32>(0.0), 0.0);
 }
 
 // A wireframe edge: a line with the surface's uv at each end (xy, zw) and
@@ -74,12 +74,10 @@ fn vs(@builtin(vertex_index) vi: u32, l: LineIn) -> LineOut {
 fn vs_wire(@builtin(vertex_index) vi: u32, l: LineIn, @location(5) uv: vec4<f32>) -> LineOut {
   var plain = l;
   plain.params.z = 0.0;
-  var o = expand(vi, plain);
-  o.surface = vec3<f32>(mix(uv.xy, uv.zw, corner(vi).x), l.params.z);
-  return o;
+  return expand(vi, plain, uv, l.params.z);
 }
 
-fn expand(vi: u32, l: LineIn) -> LineOut {
+fn expand(vi: u32, l: LineIn, uv: vec4<f32>, use_surface: f32) -> LineOut {
   let c = corner(vi);
   let flags = u32(l.params.y + 0.5);
   let screen = (flags & 4u) != 0u;
@@ -89,8 +87,12 @@ fn expand(vi: u32, l: LineIn) -> LineOut {
   var cb = to_clip(l.b.xyz, screen);
   var da = l.a.w;
   var db = l.b.w;
+  var col_a = l.color_a;
+  var col_b = l.color_b;
+  var uv_a = uv.xy;
+  var uv_b = uv.zw;
   // Cut the segment at the near plane (w > 0): a line through the camera
-  // keeps its part in front.
+  // keeps its part in front, with color, dash distance, and UV clipped consistently.
   let near = 1e-4;
   if (ca.w < near && cb.w < near) {
     o.position = vec4<f32>(2.0, 2.0, 2.0, 1.0);
@@ -100,10 +102,14 @@ fn expand(vi: u32, l: LineIn) -> LineOut {
     let t = (near - ca.w) / (cb.w - ca.w);
     ca = mix(ca, cb, t);
     da = mix(da, db, t);
+    col_a = mix(col_a, col_b, t);
+    uv_a = mix(uv_a, uv_b, t);
   } else if (cb.w < near) {
     let t = (near - cb.w) / (ca.w - cb.w);
     cb = mix(cb, ca, t);
     db = mix(db, da, t);
+    col_b = mix(col_b, col_a, t);
+    uv_b = mix(uv_b, uv_a, t);
   }
   let half_view = lf.viewport.xy * 0.5;
   let sa = ca.xy / ca.w * half_view;
@@ -130,10 +136,10 @@ fn expand(vi: u32, l: LineIn) -> LineOut {
     o.across = vec4<f32>(c.y * half, 0.0, 0.5 * width, 0.0);
   }
   o.position = vec4<f32>(at / half_view * clip.w, clip.z, clip.w);
-  o.color = mix(l.color_a, l.color_b, c.x);
+  o.color = mix(col_a, col_b, c.x);
   o.dist = mix(da, db, c.x);
   o.dash = l.params.zw;
-  o.surface = vec3<f32>(0.0);
+  o.surface = vec3<f32>(mix(uv_a, uv_b, c.x), use_surface);
   return o;
 }
 

@@ -95,8 +95,8 @@ fn push_out(p_in: vec3<f32>, radius: f32, list: u32) -> Hit {
       let l = vec3<f32>(dot(m0, p4), dot(m1, p4), dot(m2, p4));
       let side = bitcast<u32>(info.w) & 0xffffu;
       let rows_n = bitcast<u32>(info.w) >> 16u;
-      let g = (vec2<f32>(l.x, l.z) - info.xy) / info.z;
-      if (g.x >= 0.0 && g.y >= 0.0 && g.x <= f32(side - 1u) && g.y <= f32(rows_n - 1u)) {
+      let g = (vec2<f32>(l.x, l.z) - info.xy) / max(info.z, 1e-6);
+      if (side >= 2u && rows_n >= 2u && info.z > 0.0 && g.x >= 0.0 && g.y >= 0.0 && g.x <= f32(side - 1u) && g.y <= f32(rows_n - 1u)) {
         let cell = min(floor(g), vec2<f32>(f32(side - 2u), f32(rows_n - 2u)));
         let f = g - cell;
         let first = bitcast<u32>(head.y) + u32(cell.y) * side + u32(cell.x);

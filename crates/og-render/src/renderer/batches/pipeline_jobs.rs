@@ -127,7 +127,7 @@ impl Renderer {
                     add_job!(jobs, Slot::ArrayShadow(key), a.shadow.contains_key(&key), {
                         let (d, layouts, module) = (
                             device.clone(),
-                            shadow_layouts.clone(),
+                            a.shadow_layouts.clone(),
                             a.shadow_module.clone(),
                         );
                         let (side, dissolve) = key;

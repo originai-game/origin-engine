@@ -25,9 +25,14 @@ fn fog_amount(p: vec3<f32>) -> vec4<f32> {
     let k = fh.y;
     let y0 = origin.y - fh.x;
     let dy = to.y;
-    var column = fh.z * exp(-k * y0) * d;
-    if (abs(k * dy) > 1e-4) { column = fh.z * exp(-k * y0) * (1.0 - exp(-k * dy)) / (k * dy) * d; }
-    clear *= exp(-max(column, 0.0));
+    let base_exp = exp(clamp(-k * y0, -80.0, 80.0));
+    let k_dy = k * dy;
+    var column = fh.z * base_exp * d;
+    if (abs(k_dy) > 1e-4) {
+      let factor = (1.0 - exp(clamp(-k_dy, -80.0, 80.0))) / k_dy;
+      column = fh.z * base_exp * factor * d;
+    }
+    clear *= exp(-clamp(column, 0.0, 80.0));
   }
   let amount = min(1.0 - clear, fd.w);
   if (frame.fog_color.w > 1.5) { return vec4<f32>(underwater_light(origin, dir, d, amount), amount); }

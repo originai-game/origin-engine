@@ -266,6 +266,10 @@ pub(crate) struct ContactPasses {
     /// 255; at 1 the masks are cleared first, so no key of a frame 255
     /// tags back outranks the frame's own.
     frame: u32,
+    /// Set whenever `frame` wraps to 1 (or masks are newly allocated) and
+    /// cleared only when `encode` actually executes `clear_buffer`, so a
+    /// skipped/COVERED frame on wrap never leaves stale masks behind.
+    needs_clear: std::cell::Cell<bool>,
     /// The masks ([`mask_buffer`]) and the screen they are for: made once
     /// per size, whatever rebinds the graph.
     masks: std::cell::RefCell<Option<((u32, u32), wgpu::Buffer)>>,
@@ -365,6 +369,7 @@ impl ContactPasses {
             lights: Vec::new(),
             size: (0, 0),
             frame: 0,
+            needs_clear: std::cell::Cell::new(true),
             masks: Default::default(),
         }
     }
@@ -375,7 +380,10 @@ impl ContactPasses {
         let mut held = self.masks.borrow_mut();
         match &*held {
             Some((at, masks)) if *at == size => masks.clone(),
-            _ => held.insert((size, mask_buffer(device, size))).1.clone(),
+            _ => {
+                self.needs_clear.set(true);
+                held.insert((size, mask_buffer(device, size))).1.clone()
+            }
         }
     }
 
@@ -397,6 +405,9 @@ impl ContactPasses {
         self.lights.clear();
         self.size = size;
         self.frame = self.frame % 255 + 1;
+        if self.frame == 1 {
+            self.needs_clear.set(true);
+        }
         let mut uniforms = Vec::with_capacity(CONTACT_LIGHTS * MAX_DISPATCHES);
         for (index, row) in rows.iter_mut().take(CONTACT_LIGHTS).enumerate() {
             if row[3] < 0.5 {
@@ -446,7 +457,7 @@ impl ContactPasses {
         masks: &wgpu::Buffer,
     ) -> u32 {
         let mut dispatches = 0;
-        if self.frame == 1 {
+        if self.needs_clear.replace(false) {
             encoder.clear_buffer(masks, 0, None);
         }
         if !self.lights.is_empty() {

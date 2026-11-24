@@ -378,19 +378,46 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
 }
 
 /// The shadow module's source (`shadow_source`, the built-in hooks) as its
-/// array-map variant: `vs` and `vs_lean` zero the layer an array-map
-/// instance carries in its transform (`shadow_array.wgsl`).
+/// array-map variant: binding 1 (`base_color_tex`) and binding 4 (`normal_tex`)
+/// become 2D arrays matching `ArrayMaps::layout`, `VsOut` carries the instance
+/// layer, and `vs`, `vs_lean`, `fs_dissolve` are wrapped by `shadow_array.wgsl`.
 pub(crate) fn array_shadow_source(standard: &str) -> String {
     let mut s = standard.to_string();
-    for signature in [
-        "vs(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {",
-        "vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {",
+    for (binding, name) in [(1, "base_color_tex"), (4, "normal_tex")] {
+        s = replace_once(
+            &s,
+            &format!("@group(1) @binding({binding}) var {name}: texture_2d<f32>;"),
+            &format!("@group(1) @binding({binding}) var {name}: texture_2d_array<f32>;"),
+            name,
+        );
+    }
+    s = sample_layer(&s, "base_color_tex", "map_layer");
+    s = sample_layer(&s, "normal_tex", "normal_layer");
+    s = replace_once(
+        &s,
+        "struct VsOut {\n  @builtin(position) clip: vec4<f32>,\n",
+        "struct VsOut {\n  @builtin(position) clip: vec4<f32>,\n  @location(6) @interpolate(flat, either) layer: u32,\n",
+        "VsOut",
+    );
+    for (stage, signature) in [
+        (
+            "@vertex",
+            "vs(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {",
+        ),
+        (
+            "@vertex",
+            "vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {",
+        ),
+        (
+            "@fragment",
+            "fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {",
+        ),
     ] {
         let (name, rest) = signature.split_once('(').expect("a signature");
         s = replace_once(
             &s,
-            &format!("@vertex\nfn {signature}"),
-            &format!("@vertex\nfn {name}_standard({rest}"),
+            &format!("{stage}\nfn {signature}"),
+            &format!("{stage}\nfn {name}_standard({rest}"),
             name,
         );
     }
@@ -452,6 +479,7 @@ pub(crate) struct ArrayMaps {
         (crate::Faces, bool),
         crate::deferred::Deferred<crate::ShadowSet>,
     >,
+    pub shadow_layouts: [wgpu::PipelineLayout; 3],
     /// One-layer stand-ins for a missing array: white, and the flat normal.
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,
@@ -461,11 +489,11 @@ impl ArrayMaps {
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        groups: [&wgpu::BindGroupLayout; 3],
+        groups: [&wgpu::BindGroupLayout; 4],
         lit_source: String,
         shadow_source: String,
     ) -> ArrayMaps {
-        let [frame_layout, fx_layout, palette_layout] = groups;
+        let [frame_layout, fx_layout, palette_layout, shadow_bind_layout] = groups;
         let array =
             |binding| crate::texture_entry(binding, true, wgpu::TextureViewDimension::D2Array);
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -499,6 +527,17 @@ impl ArrayMaps {
                 &[frame_layout, &layout, fx_layout, palette_layout],
             ),
         );
+        let shadow_layouts = [
+            pipeline_layout("shadow (array maps)", &[shadow_bind_layout]),
+            pipeline_layout(
+                "shadow dissolve (array maps)",
+                &[shadow_bind_layout, &layout],
+            ),
+            pipeline_layout(
+                "shadow skinned (array maps)",
+                &[shadow_bind_layout, &layout, palette_layout],
+            ),
+        ];
         let solid = |label, rgba: [u8; 4]| {
             wgpu::util::DeviceExt::create_texture_with_data(
                 device,
@@ -530,6 +569,7 @@ impl ArrayMaps {
         ArrayMaps {
             layout,
             layouts,
+            shadow_layouts,
             module: crate::shader(device, "pbr (array maps)", array_lit_source(&lit_source)),
             shadow_module: crate::shader(
                 device,
