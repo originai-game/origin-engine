@@ -91,6 +91,7 @@ impl Renderer {
                         attachment(self.graph.view("gbuffer"), 0.0),
                         attachment(self.graph.view("lindepth"), post::FAR_DEPTH as f64),
                         attachment(self.graph.view("outline-id"), 0.0),
+                        attachment(self.graph.view("motion-depth"), 1.0),
                     ],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: self.graph.view(post::prepass_depth(self.samples)),
@@ -152,6 +153,7 @@ impl Renderer {
                 Some(self.graph.view("gbuffer")),
                 Some(self.graph.view("lindepth")),
                 Some(self.graph.view("outline-id")),
+                Some(self.graph.view("motion-depth")),
             ],
             Some((self.graph.view(post::prepass_depth(self.samples)), false)),
         );

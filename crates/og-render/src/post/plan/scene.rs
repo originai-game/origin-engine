@@ -45,6 +45,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
                 "gbuffer",
                 "lindepth",
                 "outline-id",
+                "motion-depth",
             ];
             if cfg.object_space {
                 writes.push("object-space");

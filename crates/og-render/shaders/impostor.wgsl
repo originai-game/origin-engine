@@ -388,6 +388,7 @@ struct ImpostorPrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
   @builtin(frag_depth) frag_depth: f32,
 };
 
@@ -402,8 +403,13 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   let v = toward_eye(surface.world);
   var n = surface.normal;
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
-  let cur = in.cur_clip.xy / in.cur_clip.w;
-  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
+  // The marched surface, not the card plane whose depth it replaces.
+  // Its offset follows the same sway/terrain translation as the card.
+  let offset = vec4<f32>(surface.world - in.world, 0.0);
+  let cur_clip = in.cur_clip + mul_point(scatter.view_proj, offset);
+  let prev_clip = in.prev_clip + mul_point(scatter.prev_view_proj, offset);
+  let cur = cur_clip.xy / cur_clip.w;
+  let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
   var o: ImpostorPrepass;
   let unlit = (u32(material.flags.w) & 2u) != 0u;
   var roughness = clamp(material.mr.y, 0.04, 1.0);
@@ -413,6 +419,7 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
     roughness = wet.w;
   }
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.motion_depth = prev_clip.z / max(prev_clip.w, 1e-6);
   let reflectivity = select(reflectivity_bits(roughness, material.mr.x), 0.0, unlit);
   o.depth = vec4<f32>(dot(surface.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // The copy's outline as its mesh writes it (scatter.wgsl fs_prepass).

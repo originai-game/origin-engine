@@ -258,6 +258,7 @@ struct ScatterPrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
 };
 
 @fragment
@@ -277,6 +278,7 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: ScatterPrepass;
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
   // The reflectivity screen-space reflections read, as the lit pass shades
   // the copy (none unlit).
   var metalness = clamp(surface_metalness(h, params, material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b), 0.0, 1.0);

@@ -181,10 +181,9 @@ mod web {
         Err(err("scatter capture did not land in 10000 polls"))
     }
 
-    /// Two-output-pixel bars must keep their foreground colour under a
-    /// camera pan, not take sky history when a jittered scene sample misses
-    /// the bar. Integer pans isolate frame selection; a fractional pan
-    /// also exercises the history filter at surface edges.
+    /// Foreground geometry must not borrow background history under
+    /// camera or object motion. Integer/fractional pans exercise thin
+    /// bars; a rotating sphere also changes the previous surface depth.
     #[wasm_bindgen]
     pub async fn og_gfx_check_taau_motion() -> Result<u32, JsValue> {
         use og_render::{
@@ -223,8 +222,10 @@ mod web {
                 14,
                 false,
             ),
+            ("moving sphere half with prepass", 0.5, 0.0, true, 0, false),
         ] {
             let uncover = uncover_pixels > 0;
+            let sphere = name == "moving sphere half with prepass";
             let mut scene = RenderScene::new();
             scene.frame.quality.upscaler = Upscaler::Taau;
             // At z=0, one world step of 6/64 projects to exactly one
@@ -240,18 +241,30 @@ mod web {
             };
             scene.lighting.environment.background = Background::Color([1.0; 3].into());
             scene.lighting.light.cast_shadows = false;
+            if sphere {
+                // Isolate background leakage from the sphere's specular light.
+                scene.lighting.light.intensity = 0.0;
+                scene.lighting.environment.intensity = 0.0;
+                scene.lighting.hemisphere.2 = 0.0;
+            }
             scene.look.post.tonemap = Tonemap::None;
             // AO requests the real depth/velocity prepass. The emissive
             // bars do not take ambient lighting or its occlusion.
             scene.look.post.ao = prepass.then(AmbientOcclusion::default);
             scene.atmosphere.fog = None;
-            let mesh = scene.add_mesh(shapes::plane_xy(0.1875, if corners { 0.1875 } else { 4.0 }));
+            let mesh = scene.add_mesh(if sphere {
+                shapes::sphere(64, 32)
+            } else {
+                shapes::plane_xy(0.1875, if corners { 0.1875 } else { 4.0 })
+            });
             let red = scene.add_material(Material {
                 base_color: [0.0, 0.0, 0.0, 1.0],
                 emissive: [1.0, 0.0, 0.0],
                 ..Default::default()
             });
-            let centers: Vec<i32> = if uncover {
+            let centers: Vec<i32> = if sphere {
+                vec![128]
+            } else if uncover {
                 (0..64).map(|i| 3 + 4 * i).collect()
             } else {
                 vec![48, 80, 112, 144, 176, 208]
@@ -336,14 +349,21 @@ mod web {
                 let x = step as f32 * 0.09375 * pan;
                 scene.frame.camera.position.x = x;
                 scene.frame.camera.target.x = x;
-                if uncover {
+                if uncover || sphere {
                     scene.objects.previous_transforms = scene
                         .objects
                         .instances
                         .iter()
                         .map(|i| i.transform)
                         .collect();
-                    if frame == 87 {
+                    if sphere {
+                        let (s, c) = (-0.12 * step as f32).sin_cos();
+                        let transform = &mut scene.objects.instances[0].transform;
+                        transform.x_axis = [8.0 * c, 0.0, -8.0 * s, 0.0].into();
+                        transform.y_axis = [0.0, 8.0, 0.0, 0.0].into();
+                        transform.z_axis = [8.0 * s, 0.0, 8.0 * c, 0.0].into();
+                        transform.w_axis = [step as f32 * 0.08, 0.0, 0.0, 1.0].into();
+                    } else if frame == 87 {
                         scene
                             .objects
                             .instances
@@ -372,6 +392,31 @@ mod web {
             let errors = GPU_ERRORS.with(|errors| std::mem::take(&mut *errors.borrow_mut()));
             if !errors.is_empty() {
                 return Err(err(format!("TAAU {name}: {}", errors.join("\n"))));
+            }
+            if sphere {
+                // A radius-four sphere at x=23*.08, z=0, viewed from z=6.
+                // The tangent rays bound its silhouette independently of
+                // the renderer. These pixels are wholly inside it, not
+                // half-covered edge pixels: at most 1/4 white (sRGB 137)
+                // is a generous allowance for the red surface's resolve.
+                let cx = 23.0_f32 * 0.08;
+                let root = 4.0 * (cx * cx + 20.0).sqrt();
+                for side in [-1.0, 1.0] {
+                    let edge = 128.0 + 64.0 * (6.0 * cx + side * root) / 20.0;
+                    let x = if side < 0.0 {
+                        edge.ceil() + 1.0
+                    } else {
+                        edge.floor() - 2.0
+                    } as usize;
+                    let pixel = &image.pixels[(64 * 256 + x) * 4..][..4];
+                    if !(pixel[0] > 188 && pixel[1] < 137 && pixel[2] < 137) {
+                        return Err(err(format!(
+                            "TAAU {name}: fully covered sphere mixed background at ({x},64): {pixel:?}"
+                        )));
+                    }
+                    checked += 1;
+                }
+                continue;
             }
             if uncover {
                 if pan > 0.0 {

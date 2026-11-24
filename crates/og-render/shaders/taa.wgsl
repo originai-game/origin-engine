@@ -39,6 +39,8 @@
 // The previous frame's scene depth. Unlike colour clipping, visibility
 // can distinguish an uncovered surface from the occluder in its history.
 @group(0) @binding(9) var previous_depth: texture_2d<f32>;
+// The previous clip depth of the same surface as the prepass's XY motion.
+@group(0) @binding(10) var motion_depth: texture_2d<f32>;
 
 fn to_ycocg(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(
@@ -256,9 +258,11 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     let v = textureLoad(velocity_tex, at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
+    if (own_motion) { history_depth = textureLoad(motion_depth, at, 0).r; }
   }
-  // Only a camera-reprojected surface has a known previous depth: the
-  // prepass's two-component object vectors do not carry depth motion.
+  // Test the camera-reprojected background before borrowing a nearby
+  // foreground's motion. Moving surfaces are tested per tap below with
+  // the previous depth their prepass wrote beside that motion.
   // A foreground surface that covered this point last frame invalidates
   // its history even when that colour lies inside the current box.
   // Test the colour sample before borrowing a neighbour's motion: a
@@ -279,6 +283,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       let v = textureLoad(velocity_tex, motion_at, 0).zw;
       own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
       motion = v;
+      if (own_motion) { history_depth = textureLoad(motion_depth, motion_at, 0).r; }
     }
   }
   var hist4: vec4<f32>;
@@ -293,7 +298,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       // Disoccluded off the frame: no history.
       return fresh(in);
     }
-    if (upscale && !smaa && !own_motion) {
+    if (upscale && !smaa) {
       let sample_uv = (vec2<f32>(motion_at) + 0.5 - jitter) / vec2<f32>(size);
       hist4 = history_on_surface(prev_uv, sample_uv - motion, history_depth, catmull_rom, cur4);
     } else if (catmull_rom) {

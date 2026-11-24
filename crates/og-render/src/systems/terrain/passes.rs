@@ -168,6 +168,7 @@ pub(super) fn terrain_passes(
                                 target(crate::post::GBUFFER_FORMAT),
                                 target(crate::post::LINDEPTH_FORMAT),
                                 target(crate::post::OUTLINE_FORMAT),
+                                target(crate::post::MOTION_DEPTH_FORMAT),
                             ],
                         }),
                         multiview_mask: None,

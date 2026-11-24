@@ -63,7 +63,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::Taa => {
             let mut reads = vec![names.main, "depth", "history-read", "history-depth-read"];
             if prepass {
-                reads.extend(["gbuffer", "lindepth"]);
+                reads.extend(["gbuffer", "lindepth", "motion-depth"]);
             }
             if cfg.oit.is_some() {
                 reads.push("oit.reveal");
@@ -72,7 +72,13 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         }
         FramePass::TaaSharpen if prepass => g.pass(
             name,
-            &["history-write", "depth", "gbuffer", "lindepth"],
+            &[
+                "history-write",
+                "depth",
+                "gbuffer",
+                "lindepth",
+                "motion-depth",
+            ],
             &["hdr.sharp"],
         ),
         FramePass::TaaSharpen => g.pass(name, &["history-write", "depth"], &["hdr.sharp"]),

@@ -245,6 +245,7 @@ struct GrassPrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
 };
 
 @fragment
@@ -256,6 +257,7 @@ fn fs_prepass(in: GrassPrepassIn, @builtin(front_facing) front: bool) -> GrassPr
   let roughness = clamp(grass.dry_color.w * (1.0 - 0.45 * in.sheen), 0.04, 1.0);
   let wet = wet_decal_gloss(in.clip.xy, in.world, n, vec3<f32>(0.0, 1.0, 0.0), roughness);
   o.gbuffer = vec4<f32>(oct_encode(wet.xyz), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(wet.w, 0.0), 0.0, 1.0);
   // No line of its own; a clump with the ground (id 0), so a line filter
   // draws no blade against it.

@@ -35,6 +35,10 @@ impl BindCx<'_> {
                     .taa_depth
                     .as_ref()
                     .map_or(&self.passes.far_depth, |(_, view)| view)),
+                tex(self
+                    .graph
+                    .try_view("motion-depth")
+                    .unwrap_or(&self.passes.far_depth)),
             ],
         )
     }

@@ -448,6 +448,7 @@ impl<'f> DrawCtx<'f> {
                 attachment(&pre.gbuffer, 0.0),
                 attachment(&pre.lindepth, post::FAR_DEPTH as f64),
                 attachment(&pre.outline, 0.0),
+                attachment(&pre.motion_depth, 1.0),
             ],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &pre.depth,

@@ -51,7 +51,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::SmaaResolve => {
             let mut reads = vec!["smaa-write", "smaa-read", "depth"];
             if prepass {
-                reads.extend(["gbuffer", "lindepth"]);
+                reads.extend(["gbuffer", "lindepth", "motion-depth"]);
             }
             let write = if chain.len() == 1 { "output" } else { "ldr.1" };
             g.pass(name, &reads, &[write])

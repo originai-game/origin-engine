@@ -23,8 +23,6 @@ struct CardOut {
   @location(8) @interpolate(flat, either) m2: vec3<f32>,
   @location(9) @interpolate(flat, either) centre: vec3<f32>,
   @location(10) @interpolate(flat, either) look: vec4<f32>,
-  @location(11) cur_clip: vec4<f32>,
-  @location(12) prev_clip: vec4<f32>,
 };
 
 @vertex
@@ -44,9 +42,6 @@ fn vs_crowd_card(@builtin(vertex_index) vertex: u32, i: CardIn) -> CardOut {
   o.m2 = normalize(i.m2);
   o.centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   o.look = i.look;
-  // The camera's motion alone: a far member walks well under a pixel a frame.
-  o.cur_clip = mul_point(scatter.view_proj, card.world);
-  o.prev_clip = mul_point(scatter.prev_view_proj, card.world);
   return o;
 }
 
@@ -129,6 +124,7 @@ struct CardPrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
   @builtin(frag_depth) frag_depth: f32,
 };
 
@@ -144,12 +140,17 @@ fn fs_crowd_card_prepass(in: CardOut) -> CardPrepass {
   let v = toward_eye(world);
   var n = normalize(m3 * s.normal);
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
-  let cur = in.cur_clip.xy / in.cur_clip.w;
-  let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
+  // Camera-only motion (a far member walks subpixel), at the atlas
+  // surface's actual depth rather than its card plane's.
+  let cur_clip = mul_point(scatter.view_proj, vec4<f32>(world, 1.0));
+  let prev_clip = mul_point(scatter.prev_view_proj, vec4<f32>(world, 1.0));
+  let cur = cur_clip.xy / cur_clip.w;
+  let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
   var o: CardPrepass;
   let part = card_part(s.part);
   let wet = wet_decal_gloss(in.clip.xy, world, n, n, clamp(part.a, 0.04, 1.0));
   o.gbuffer = vec4<f32>(oct_encode(wet.xyz), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.motion_depth = prev_clip.z / max(prev_clip.w, 1e-6);
   o.depth = vec4<f32>(dot(world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(wet.w, 0.0), 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   o.frag_depth = card_depth(world);

@@ -8,6 +8,7 @@ struct PrepassTargets {
   // Bytes (`outline_bytes`): the outline colour and clump bit over r and g, the
   // width in eighths of a pixel (0: the scene's outline), the object's id.
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
 };
 
 @fragment
@@ -61,6 +62,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   let velocity = (cur - prev) * vec2<f32>(0.5, -0.5);
   var o: PrepassTargets;
   o.gbuffer = vec4<f32>(oct_encode(n), velocity);
+  o.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
   // y: the reflectivity screen-space reflections read (ssr.rs): the gloss
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).

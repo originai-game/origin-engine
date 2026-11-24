@@ -275,6 +275,7 @@ struct MeshletResolvePrepass {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
   @builtin(frag_depth) frag_depth: f32,
 };
 
@@ -299,6 +300,7 @@ fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
   o.gbuffer = t.gbuffer;
   o.depth = t.depth;
   o.outline = t.outline;
+  o.motion_depth = t.motion_depth;
   o.frag_depth = r.depth;
   return o;
 }

@@ -79,6 +79,8 @@ pub(crate) const GBUFFER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 /// reflections (`ssr.rs`; the prepass's own, 0 elsewhere).
 pub(crate) const LINDEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
 pub(crate) const OUTLINE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The motion sample's previous window depth, before this frame's depth copy.
+pub(crate) const MOTION_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
 /// The outline jump flood's field (fxpost.wgsl `fs_outline_seed`): the
 /// nearest seed's packed offset, its line, its depth and the pixel's own.
 pub(crate) const JFA_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;

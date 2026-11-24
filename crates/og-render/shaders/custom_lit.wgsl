@@ -173,6 +173,7 @@ struct CustomPrepassTargets {
   @location(0) gbuffer: vec4<f32>,
   @location(1) depth: vec4<f32>,
   @location(2) outline: vec4<f32>,
+  @location(3) motion_depth: f32,
 };
 
 @fragment
@@ -206,6 +207,7 @@ fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> Custo
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var t: CustomPrepassTargets;
   t.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  t.motion_depth = in.prev_clip.z / max(in.prev_clip.w, 1e-6);
   t.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // No outline of its own (the scene's outline still lines it).
   t.outline = vec4<f32>(0.0);

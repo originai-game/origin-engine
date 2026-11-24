@@ -45,6 +45,7 @@ pub(crate) struct DepthPrepass {
     pub gbuffer: wgpu::TextureView,
     pub lindepth: wgpu::TextureView,
     pub outline: wgpu::TextureView,
+    pub motion_depth: wgpu::TextureView,
     pub depth: wgpu::TextureView,
 }
 
@@ -76,6 +77,7 @@ impl DepthPrepass {
             gbuffer: make("normals", crate::post::GBUFFER_FORMAT, attach),
             lindepth: make("depth", crate::post::LINDEPTH_FORMAT, attach | bind),
             outline: make("outline", crate::post::OUTLINE_FORMAT, attach),
+            motion_depth: make("motion depth", crate::post::MOTION_DEPTH_FORMAT, attach),
             depth: make("depth buffer", crate::DEPTH_FORMAT, attach),
         }
     }

@@ -609,6 +609,7 @@ fn prepass_variant(
                     target(post::GBUFFER_FORMAT),
                     target(post::LINDEPTH_FORMAT),
                     target(post::OUTLINE_FORMAT),
+                    target(post::MOTION_DEPTH_FORMAT),
                 ],
             }),
             multiview_mask: None,
