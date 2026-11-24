@@ -5,8 +5,8 @@
 
 use super::{
     DIM, PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, chunk_cache, field_chunk, flat,
-    from_heightfield, from_mesh, gyroscopic_builder, pose, primitive, principal_inertia, rp,
-    set_gyroscopic, unangvel, unpose, unv, v,
+    from_heightfield, from_mesh, from_polyline, gyroscopic_builder, pose, primitive,
+    principal_inertia, rp, set_gyroscopic, unangvel, unpose, unv, v,
 };
 use super::{
     VehicleState, ext, platformers, ragdoll_readout, ragdolls, vehicle_readback, vehicles,

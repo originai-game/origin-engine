@@ -44,7 +44,7 @@ pub fn blast_push(
     let dir = (at - falloff.point).normalize_or(Vec3::Y);
     let near = falloff.at(at) / impulse;
     let dv = dir * (j / m) * (1.0 + near * SHARE * (u(40) - 0.5));
-    let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
+    let size = crate::destruction::cube_root(m / density).max(0.02);
     let dw = axis * (near * SPIN * dv.length() / size).min(TURN_MAX);
     Some((dv, dw))
 }
@@ -55,11 +55,19 @@ pub fn blast_push(
 /// times (a blast pushes on surfaces: its momentum to a piece grows with
 /// the piece's face, not as one shove per body however small).
 pub fn face(volume: f32) -> f32 {
-    og_core::math::pow(volume.max(0.0), 2.0 / 3.0)
+    let r = crate::destruction::cube_root(volume);
+    r * r
 }
 
-/// An explosion: its point, inner radius, radius and impulse.
-pub type Explosion = (Vec3, f32, f32, f32);
+/// An explosion and the chunks shielded from its pressure wave.
+pub struct Explosion {
+    pub point: Vec3,
+    pub inner: f32,
+    pub radius: f32,
+    pub impulse: f32,
+    pub hidden: std::collections::BTreeSet<(u64, u32)>,
+    pub hidden_bonds: std::collections::BTreeSet<(u64, u32)>,
+}
 
 /// The blasts' push on the fine pieces broken off this tick, as on a body
 /// (the pieces already on the GPU are the renderer's), and on the grit,
@@ -70,7 +78,8 @@ pub fn push_blasted_pieces(
     debris: &mut [(Debris, f32)],
     crumbs: &mut [(Crumb, f32)],
 ) {
-    for &(point, inner, radius, impulse) in explosions {
+    for e in explosions {
+        let (point, inner, radius, impulse) = (e.point, e.inner, e.radius, e.impulse);
         if impulse <= 0.0 {
             continue;
         }
@@ -81,6 +90,9 @@ pub fn push_blasted_pieces(
             amount: impulse,
         };
         for (d, m) in debris.iter_mut() {
+            if e.hidden.contains(&(d.prop, d.chunk)) {
+                continue;
+            }
             let density = settings.get(&d.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::new(d.pose[0], d.pose[1], d.pose[2]);
             if let Some((dv, dw)) =
@@ -92,6 +104,9 @@ pub fn push_blasted_pieces(
         }
         // Grit goes with the piece beside its joint.
         for (c, m) in crumbs.iter_mut() {
+            if e.hidden_bonds.contains(&(c.prop, c.bond)) {
+                continue;
+            }
             let density = settings.get(&c.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::from(c.point);
             if let Some((dv, _)) = blast_push(&falloff, impulse, at, *m, density, u64::from(c.bond))

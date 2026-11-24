@@ -26970,6 +26970,7 @@ impl ToJson for DamageDesc {
 /// `ExplosionDesc`: packages/knowledge/wiki/destruction.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExplosionDesc {
+    pub occlusion: bool,
     pub point: Vec3,
     pub radius: f32,
     pub inner_radius: f32,
@@ -26980,6 +26981,7 @@ pub struct ExplosionDesc {
 impl Default for ExplosionDesc {
     fn default() -> Self {
         Self {
+            occlusion: Default::default(),
             point: Default::default(),
             radius: 3.0_f32,
             inner_radius: 0.5_f32,
@@ -26996,6 +26998,7 @@ impl FromJson for ExplosionDesc {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
+            occlusion: field(o, "occlusion", d.occlusion)?,
             point: field(o, "point", d.point)?,
             radius: field(o, "radius", d.radius)?,
             inner_radius: field(o, "innerRadius", d.inner_radius)?,
@@ -27008,6 +27011,7 @@ impl FromJson for ExplosionDesc {
 impl ToJson for ExplosionDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
+        o.insert("occlusion".into(), self.occlusion.to_json());
         o.insert("point".into(), self.point.to_json());
         o.insert("radius".into(), self.radius.to_json());
         o.insert("innerRadius".into(), self.inner_radius.to_json());

@@ -79,12 +79,7 @@ pub(crate) fn cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedSh
 }
 
 /// No shape is baked for the 2D profile (its meshes are outlines).
-pub(crate) fn baked(
-    _shared: &Shared,
-    _c: &Collider,
-    _s: Vec3,
-    _mesh: &crate::MeshDesc,
-) -> Option<rp::SharedShape> {
+pub(crate) fn baked(_shared: &Shared, _c: &Collider, _s: Vec3) -> Option<rp::SharedShape> {
     None
 }
 
@@ -167,6 +162,13 @@ pub(crate) fn field_chunk(_f: &crate::HeightfieldDesc, _s: Vec3, _k: u32) -> rp:
 
 pub(crate) fn chunk_cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedShape> {
     &mut shared.chunks2
+}
+
+pub(crate) fn from_polyline(line: &crate::PolylineDesc, s: Vec3) -> rp::SharedShape {
+    rp::SharedShape::polyline(
+        line.positions.iter().map(|p| v(*p * s)).collect(),
+        Some(line.segments.clone()),
+    )
 }
 
 pub(crate) fn from_mesh(

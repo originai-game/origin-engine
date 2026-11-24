@@ -10,9 +10,16 @@ pub(super) struct Ls {
     pub(super) rigid: (SchemaId, Layout),
     pub(super) velocity: (SchemaId, Layout),
     pub(super) collider: (SchemaId, Layout),
+    pub(super) parent: (SchemaId, Layout),
 }
 
-pub(super) const WRITES: [&str; 4] = ["og.Transform", "og.RigidBody", "og.Velocity", "og.Collider"];
+pub(super) const WRITES: [&str; 5] = [
+    "og.Transform",
+    "og.RigidBody",
+    "og.Velocity",
+    "og.Collider",
+    "og.Parent",
+];
 
 /// Registers the `og.destruction2d` system and its state block once every
 /// one of [`RECORDS`] is (crate::engine::lazy registers them one after another).
@@ -42,11 +49,14 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()>
         rigid: layout("og.RigidBody", C)?,
         velocity: layout("og.Velocity", C)?,
         collider: layout("og.Collider", C)?,
+        parent: layout("og.Parent", C)?,
     };
     let sh = mount.modules.destruction2d.0.clone();
     lock(&sh).state = State::default();
     let state = sh.clone();
-    let destruction = mount.modules.destruction.clone();
+    // Capture only the shared physics link, not the 3D prop state. Cloning
+    // and dropping that state would load destruction3d for a pixel game.
+    let physics = mount.modules.destruction.physics.clone();
     let s = |v: &[&str]| v.iter().map(|n| n.to_string()).collect::<Vec<_>>();
     world.add_system(
         SystemDesc {
@@ -59,11 +69,16 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()>
             }],
             ..Default::default()
         },
-        move |ctx| run(ctx, &destruction, &state, &ls),
+        move |ctx| run(ctx, &physics, &state, &ls),
     )?;
     if world.systems().contains(&"og.physics") {
         world.move_system_before(SYSTEM, "og.physics")?;
     }
+    mount
+        .modules
+        .destruction2d
+        .1
+        .store(true, std::sync::atomic::Ordering::Relaxed);
     world.add_state_block(SYSTEM, Box::new(Block(sh)))
 }
 
@@ -98,11 +113,11 @@ pub(super) fn quat_of(t: &record::Transform) -> Quat {
 
 pub(super) fn run(
     ctx: &mut SystemContext<'_>,
-    destruction: &crate::bind::destruction::ModuleState,
+    physics: &Mutex<Option<og_physics::PhysicsSystem>>,
     sh: &Mutex<Shared>,
     l: &Ls,
 ) -> og_core::Result<()> {
-    let physics = crate::bind::destruction::physics(destruction);
+    let physics = lock(physics).clone();
     let tick = ctx.time().tick;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
@@ -129,6 +144,12 @@ pub(super) fn run(
             st.terrains.insert(key, s.filled(origin));
         }
         let t = st.terrains.get_mut(&key).expect("inserted above");
+        if t.look != s.look {
+            t.revision += 1;
+            t.updates.clear();
+            t.updates
+                .push((t.revision, [0, 0, t.grid.width(), t.grid.height()]));
+        }
         t.look = s.look;
         if t.origin != origin || t.built != s.built() {
             t.origin = origin;
@@ -150,7 +171,13 @@ pub(super) fn run(
         gone.extend(t.colliders.values().map(|c| c.0));
     }
     let before = st.pieces.len();
-    st.pieces.retain(|k, _| ctx.is_alive(Entity::from_bits(*k)));
+    st.pieces.retain(|k, p| {
+        let live = ctx.is_alive(Entity::from_bits(*k));
+        if !live {
+            gone.extend_from_slice(&p.colliders);
+        }
+        live
+    });
     let mut any = before != st.pieces.len() || !gone.is_empty();
 
     // The queued changes, in the order they were made.
@@ -240,12 +267,11 @@ pub(super) fn run(
                     let n = (ring.len() as u32).div_ceil(cells.max(1));
                     let seed = op_seed ^ u64::from(t.look.seed) ^ k;
                     for sub in voronoi(&ring, n, seed) {
-                        let at = corner_of(t, sub.origin).truncate() + sub.centre() * t.look.cell;
                         cuts.push(Cut {
                             terrain: k,
                             grain: sub.origin,
                             pose: (corner_of(t, sub.origin), Quat::IDENTITY),
-                            velocity: (pushed(&blasts[blasts.len() - 1..], at), 0.0),
+                            velocity: (Vec2::ZERO, 0.0),
                             look: t.look,
                             body: s.body,
                             cause: CAUSE_EXPLOSION,
@@ -253,29 +279,6 @@ pub(super) fn run(
                             sub,
                         });
                     }
-                }
-                // The pieces already loose in reach.
-                for (&k, p) in &st.pieces {
-                    let e = Entity::from_bits(k);
-                    let (Ok(tb), Ok(vb)) = (
-                        ctx.get_bytes(e, l.transform.0),
-                        ctx.get_bytes(e, l.velocity.0),
-                    ) else {
-                        continue;
-                    };
-                    let tr: record::Transform = row(&l.transform.1, &tb)?;
-                    let half =
-                        Vec3::new(p.width as f32, p.height as f32, 0.0) * (0.5 * p.look.cell);
-                    let at = (tr.position + quat_of(&tr) * half).truncate();
-                    let push = pushed(&blasts[blasts.len() - 1..], at);
-                    if push == Vec2::ZERO {
-                        continue;
-                    }
-                    let mut vel = l.velocity.1.decode(&vb);
-                    let now = record::Velocity::from_json(&vel).map_err(invalid)?;
-                    let lin = now.linear + push.extend(0.0);
-                    vel["linear"] = jv(lin);
-                    ctx.set_bytes(e, l.velocity.0, &l.velocity.1.enc(&vel)?)?;
                 }
             }
             Op::Fracture { entity, pieces } => {
@@ -332,13 +335,16 @@ pub(super) fn run(
                         }
                     }
                     let cell = p.look.cell;
-                    let whole = Vec3::new(p.width as f32, p.height as f32, 0.0) * (0.5 * cell);
+                    let whole = physics
+                        .as_ref()
+                        .and_then(|ph| ph.mass_properties(e))
+                        .map_or(pos, |mp| mp.center_of_mass);
                     let seed = op_seed ^ u64::from(p.look.seed) ^ entity;
                     let min = settings.get(&p.terrain).map_or(1, |s| s.min_piece);
                     for sub in voronoi(&all, pieces, seed) {
                         let local =
                             Vec3::new(sub.origin[0] as f32, sub.origin[1] as f32, 0.0) * cell;
-                        let r = rot * (local + sub.centre().extend(0.0) * cell - whole);
+                        let r = pos + rot * (local + sub.centre().extend(0.0) * cell) - whole;
                         // v + ω × r, in the plane.
                         let v = lin + Vec2::new(-r.y, r.x) * spin;
                         cuts.push(Cut {
@@ -353,7 +359,9 @@ pub(super) fn run(
                             sub,
                         });
                     }
-                    st.pieces.remove(&entity);
+                    if let Some(p) = st.pieces.remove(&entity) {
+                        gone.extend(p.colliders);
+                    }
                     ctx.despawn(e)?;
                     queued_structural();
                     any = true;
@@ -375,12 +383,11 @@ pub(super) fn run(
                 cells: island.cells,
                 count,
             };
-            let at = corner_of(t, sub.origin).truncate() + sub.centre() * t.look.cell;
             cuts.push(Cut {
                 terrain: k,
                 grain: sub.origin,
                 pose: (corner_of(t, sub.origin), Quat::IDENTITY),
-                velocity: (pushed(&blasts, at), 0.0),
+                velocity: (Vec2::ZERO, 0.0),
                 look: t.look,
                 body: s.body,
                 cause: if exploded.contains(&k) {
@@ -393,14 +400,41 @@ pub(super) fn run(
             });
         }
     }
+    // Read and write each surviving body's velocity once: ECS writes are
+    // deferred, so updating it once per explosion loses earlier impulses.
+    for &k in st.pieces.keys() {
+        let e = Entity::from_bits(k);
+        let (Ok(tb), Ok(vb)) = (
+            ctx.get_bytes(e, l.transform.0),
+            ctx.get_bytes(e, l.velocity.0),
+        ) else {
+            continue;
+        };
+        let tr: record::Transform = row(&l.transform.1, &tb)?;
+        let at = physics
+            .as_ref()
+            .and_then(|ph| ph.mass_properties(e))
+            .map_or(tr.position, |mp| mp.center_of_mass)
+            .truncate();
+        let push = pushed(&blasts, at);
+        if push == Vec2::ZERO {
+            continue;
+        }
+        let mut vel = l.velocity.1.decode(&vb);
+        let now = record::Velocity::from_json(&vel).map_err(invalid)?;
+        vel["linear"] = jv(now.linear + push.extend(0.0));
+        ctx.set_bytes(e, l.velocity.0, &l.velocity.1.enc(&vel)?)?;
+    }
     any |= !cuts.is_empty();
-    for cut in cuts {
+    for mut cut in cuts {
         let centre = cut.pose.0 + cut.pose.1 * (cut.sub.centre().extend(0.0) * cut.look.cell);
+        cut.velocity.0 += pushed(&blasts, centre.truncate());
         let (terrain, count, cause) = (cut.terrain, cut.sub.count, cut.cause);
         let piece = if count < cut.min.max(1) {
             0
         } else {
-            spawn_piece(ctx, l, physics.as_ref(), st, cut, tick)?
+            let max_pieces = settings.get(&cut.terrain).map_or(0, |s| s.max_pieces);
+            spawn_piece(ctx, l, st, cut, tick, max_pieces)?
         };
         let ev = json!({
             "terrain": terrain as f64, "piece": piece as f64, "cells": count,
@@ -420,16 +454,42 @@ pub(super) fn run(
         let s = &settings[&k];
         let c = t.grid.chunk_size();
         let (cx, _) = t.grid.chunks();
+        let rect = dirty
+            .iter()
+            .map(|&k| {
+                let (x, y) = ((k % cx) * c, (k / cx) * c);
+                [
+                    x,
+                    y,
+                    (x + c).min(t.grid.width()),
+                    (y + c).min(t.grid.height()),
+                ]
+            })
+            .reduce(|a, b| {
+                [
+                    a[0].min(b[0]),
+                    a[1].min(b[1]),
+                    a[2].max(b[2]),
+                    a[3].max(b[3]),
+                ]
+            });
+        if let Some([x, y, x1, y1]) = rect {
+            if t.updates.len() == 64 {
+                t.updates.remove(0);
+            }
+            t.updates.push((t.revision, [x, y, x1 - x, y1 - y]));
+        }
         for chunk in dirty {
             if let Some((e, _)) = t.colliders.remove(&chunk) {
                 gone.push(e);
             }
-            let Some(mesh) = chunk_mesh(&t.grid, chunk, s.tolerance, t.look.cell) else {
+            let Some(mesh) = chunk_polyline(&t.grid, chunk, s.tolerance, t.look.cell) else {
                 continue;
             };
-            let handle = mesh_handle(&mesh);
+            let handle = og_physics::GENERATED_MESH
+                | (mesh.content_hash() & (og_physics::GENERATED_MESH - 1));
             if let Some(p) = &physics {
-                p.set_mesh(handle, mesh)?;
+                p.set_polyline(handle, mesh)?;
             }
             let at = Vec3::new(
                 t.origin[0] + ((chunk % cx) * c) as f32 * t.look.cell,
@@ -437,7 +497,7 @@ pub(super) fn run(
                 t.origin[2],
             );
             let collider = json!({
-                "shape": og_physics::SHAPE_TRIMESH, "mesh": handle as f64,
+                "shape": og_physics::SHAPE_POLYLINE, "mesh": handle as f64,
                 "friction": s.body.friction, "layers": s.body.layers, "mask": s.body.mask,
             });
             let e = ctx.spawn_bytes(vec![
@@ -450,7 +510,7 @@ pub(super) fn run(
             queued_structural();
             t.colliders.insert(chunk, (e.to_bits(), handle));
         }
-        let solid = t.grid.cells().iter().filter(|&&c| c != 0).count() as u32;
+        let solid = t.grid.solid();
         let e = Entity::from_bits(k);
         let mut v = l.terrain.1.decode(&ctx.get_bytes(e, l.terrain.0)?);
         if record::PixelTerrain::from_json(&v).map_err(invalid)?.solid != solid {
@@ -460,19 +520,33 @@ pub(super) fn run(
     }
 
     // Past a terrain's maxPieces, its oldest pieces go.
-    for (&k, s) in &settings {
+    let caps: BTreeMap<_, _> = st
+        .pieces
+        .values()
+        .map(|p| {
+            (
+                p.terrain,
+                settings
+                    .get(&p.terrain)
+                    .map_or(p.max_pieces, |s| s.max_pieces),
+            )
+        })
+        .collect();
+    for (&k, &max_pieces) in &caps {
         let mut mine: Vec<(u64, u64)> = st
             .pieces
             .iter()
             .filter(|(_, p)| p.terrain == k)
             .map(|(&e, p)| (p.tick, e))
             .collect();
-        if mine.len() <= s.max_pieces as usize {
+        if mine.len() <= max_pieces as usize {
             continue;
         }
         mine.sort();
-        for &(_, e) in &mine[..mine.len() - s.max_pieces as usize] {
-            st.pieces.remove(&e);
+        for &(_, e) in &mine[..mine.len() - max_pieces as usize] {
+            if let Some(p) = st.pieces.remove(&e) {
+                gone.extend(p.colliders);
+            }
             ctx.despawn(Entity::from_bits(e))?;
             queued_structural();
             any = true;
@@ -491,7 +565,6 @@ pub(super) fn run(
             .terrains
             .values()
             .flat_map(|t| t.colliders.values().map(|c| c.1))
-            .chain(st.pieces.values().map(|p| p.mesh))
             .collect();
         if let Some(p) = &physics {
             for unused in st.meshes.difference(&named) {
@@ -504,14 +577,14 @@ pub(super) fn run(
 }
 
 /// Spawns a cut as an og.PixelPiece: a dynamic body whose collider is the
-/// convex hull of its cells.
+/// exact rectangle decomposition of its cells, as compound children.
 pub(super) fn spawn_piece(
     ctx: &mut SystemContext<'_>,
     l: &Ls,
-    physics: Option<&og_physics::PhysicsSystem>,
     st: &mut State,
     cut: Cut,
     tick: u64,
+    max_pieces: u32,
 ) -> og_core::Result<u64> {
     let Cut {
         terrain,
@@ -523,17 +596,7 @@ pub(super) fn spawn_piece(
         velocity: (linear, angular),
         ..
     } = cut;
-    let mesh = piece_mesh(sub.width, sub.height, &sub.cells, look.cell);
-    let handle = mesh_handle(&mesh);
-    if let Some(p) = physics {
-        p.set_mesh(handle, mesh)?;
-    }
     let q = json!({ "x": rotation.x, "y": rotation.y, "z": rotation.z, "w": rotation.w });
-    let collider = json!({
-        "shape": og_physics::SHAPE_CONVEX, "mesh": handle as f64,
-        "friction": body.friction, "density": body.density,
-        "layers": body.layers, "mask": body.mask,
-    });
     let velocity = json!({
         "linear": jv(linear.extend(0.0)),
         "angular": { "x": 0.0, "y": 0.0, "z": angular },
@@ -551,9 +614,30 @@ pub(super) fn spawn_piece(
         ),
         (l.rigid.0, l.rigid.1.enc(&json!({ "kind": "dynamic" }))?),
         (l.velocity.0, l.velocity.1.enc(&velocity)?),
-        (l.collider.0, l.collider.1.enc(&collider)?),
         (l.piece.0, l.piece.1.enc(&piece)?),
     ])?;
+    let mut colliders = Vec::new();
+    for [x, y, w, h] in piece_rectangles(sub.width, sub.height, &sub.cells) {
+        let collider = json!({
+            "shape": og_physics::SHAPE_BOX,
+            "size": jv(Vec3::new(w as f32 * look.cell, h as f32 * look.cell, 1.0)),
+            "friction": body.friction, "density": body.density,
+            "layers": body.layers, "mask": body.mask,
+        });
+        let at = Vec3::new(x as f32 + 0.5 * w as f32, y as f32 + 0.5 * h as f32, 0.0) * look.cell;
+        let child = ctx.spawn_bytes(vec![
+            (
+                l.transform.0,
+                l.transform.1.enc(&json!({"position": jv(at)}))?,
+            ),
+            (
+                l.parent.0,
+                l.parent.1.enc(&json!({"entity": e.to_bits() as f64}))?,
+            ),
+            (l.collider.0, l.collider.1.enc(&collider)?),
+        ])?;
+        colliders.push(child.to_bits());
+    }
     queued_structural();
     st.pieces.insert(
         e.to_bits(),
@@ -565,7 +649,8 @@ pub(super) fn spawn_piece(
             grain,
             look,
             body,
-            mesh: handle,
+            colliders,
+            max_pieces,
             tick,
         },
     );

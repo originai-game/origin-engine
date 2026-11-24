@@ -808,7 +808,7 @@ impl Reloader for RuntimeReloader {
             for (&handle, bytes) in &st.physics_baked {
                 a.mounted
                     .physics
-                    .set_baked_trimesh(handle, bytes)
+                    .set_baked_collider(handle, bytes)
                     .map_err(|e| e.reason().to_string())?;
             }
             for (&handle, field) in &st.physics_heightfields {

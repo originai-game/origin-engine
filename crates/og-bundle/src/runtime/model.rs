@@ -58,8 +58,8 @@ pub struct CookedPrimitive {
     /// [`CookedPrimitive::mesh`]`(0)` by [`CookedPrimitive::bvh`].
     pub bvh_parts: Option<(Vec<og_render_data::geometry::BvhNode>, Vec<u32>)>,
     /// The triangle-mesh collider the cook baked over [`Self::mesh`]`(0)`
-    /// (`model { collider true }`): og-physics' `bake_trimesh` bytes, for
-    /// `PhysicsSystem::set_baked_trimesh`. `None`: none was baked.
+    /// (`model { collider true|convex|vhacd }`): og-physics' `bake_collider` bytes, for
+    /// `PhysicsSystem::set_baked_collider`. `None`: none was baked.
     pub collider: Option<Vec<u8>>,
     /// Its vertices' foliage (glTF `_OG_PIVOT`, `_OG_ANCHOR`), one per
     /// vertex in [`Self::vertices`]' order, and whether its triangles are

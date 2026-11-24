@@ -35,9 +35,13 @@
       "^og_anim::motion",
       "^og_runtime::bind::motion"
     ],
-    "destruction": [
+    "destruction2d": [
+      "^og_physics::destruction::terrain2d",
+      "^og_runtime::bind::destruction2d"
+    ],
+    "destruction3d": [
       "^og_physics::destruction",
-      "^og_runtime::bind::destruction"
+      "^og_runtime::bind::destruction::"
     ],
     "physics2d": [
       "^rapier2d::",
@@ -72,6 +76,11 @@
   "entries": [
     "^og_runtime::bind::motion::present::tick::catch_up$",
     "^og_runtime::bind::modules::set_mesh$",
+    "^og_runtime::bind::destruction::draw::drawn$",
+    "^og_runtime::bind::destruction2d::draw::extract$",
+    "^og_runtime::bind::destruction::asset::load_asset$",
+    "^og_runtime::bind::destruction::draw::debug_lines$",
+    "^og_runtime::bind::destruction2d::draw::debug_lines$",
     "^(<og_physics::PhysicsSystem>::debug_lines|og_physics::dim[23]::debug_lines::lines)$",
     "^<og_runtime::bind::video::StreamSource>::poll$",
     "^og_runtime::bind::terrain::(draw::)?(extract|seabed_grid)$",

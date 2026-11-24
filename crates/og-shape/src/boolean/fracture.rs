@@ -44,7 +44,7 @@ pub struct Piece {
 }
 
 /// The surface two pieces share.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Bond {
     /// Indices into the pieces, `a < b`.
     pub a: u32,
@@ -53,6 +53,9 @@ pub struct Bond {
     /// From a towards b.
     pub normal: DVec3,
     pub area: f64,
+    /// The actual overlap, triangulated in model space, not the AABBs of
+    /// opposing cut faces. Used to cook contact section moments.
+    pub section: Vec<[DVec3; 3]>,
 }
 
 /// The pieces of a fracture and the bonds between them.
@@ -560,7 +563,7 @@ fn split(m: &Mesh) -> Vec<Vec<usize>> {
 
 /// Each piece's cut faces towards each neighbouring cell: (area,
 /// Per-triangle cut face summary: `(area, centroid, weighted normal, aabb min, aabb max)`.
-type CutFace = (f64, DVec3, DVec3, DVec3, DVec3);
+type CutFace = (DVec3, [DVec3; 3]);
 
 fn cut_faces_by_neighbour(p: &Piece) -> BTreeMap<u32, Vec<CutFace>> {
     let mut out: BTreeMap<u32, Vec<CutFace>> = BTreeMap::new();
@@ -571,27 +574,46 @@ fn cut_faces_by_neighbour(p: &Piece) -> BTreeMap<u32, Vec<CutFace>> {
         if j == BOUNDS {
             continue;
         }
-        let (a, c, n) = tri_area(&p.mesh, tri);
+        let (a, _, n) = tri_area(&p.mesh, tri);
         if a <= 0.0 {
             continue;
         }
         let p0 = DVec3::from_array(p.mesh.positions[tri[0] as usize].map(f64::from));
         let p1 = DVec3::from_array(p.mesh.positions[tri[1] as usize].map(f64::from));
         let p2 = DVec3::from_array(p.mesh.positions[tri[2] as usize].map(f64::from));
-        let lo = p0.min(p1).min(p2);
-        let hi = p0.max(p1).max(p2);
-        out.entry(j).or_default().push((a, c, n, lo, hi));
+        out.entry(j)
+            .or_default()
+            .push((n.normalize_or_zero(), [p0, p1, p2]));
     }
     out
 }
 
-fn aabb_overlaps(lo0: DVec3, hi0: DVec3, lo1: DVec3, hi1: DVec3, eps: f64) -> bool {
-    lo0.x <= hi1.x + eps
-        && hi0.x + eps >= lo1.x
-        && lo0.y <= hi1.y + eps
-        && hi0.y + eps >= lo1.y
-        && lo0.z <= hi1.z + eps
-        && hi0.z + eps >= lo1.z
+/// Sutherland–Hodgman clipping in the common contact plane. Opposing
+/// meshes may triangulate the same non-convex section differently.
+fn overlap(a: [DVec3; 3], b: [DVec3; 3], normal: DVec3) -> Vec<[DVec3; 3]> {
+    let mut polygon = a.to_vec();
+    let winding = (b[1] - b[0]).cross(b[2] - b[0]).dot(normal).signum();
+    for i in 0..3 {
+        let (p, q) = (b[i], b[(i + 1) % 3]);
+        let side = |x: DVec3| (q - p).cross(x - p).dot(normal) * winding;
+        let mut next = Vec::new();
+        for (&x, &y) in polygon.iter().zip(polygon.iter().cycle().skip(1)) {
+            let (sx, sy) = (side(x), side(y));
+            if sx >= 0.0 {
+                next.push(x);
+            }
+            if (sx >= 0.0) != (sy >= 0.0) {
+                next.push(x + (y - x) * (sx / (sx - sy)));
+            }
+        }
+        polygon = next;
+        if polygon.len() < 3 {
+            return Vec::new();
+        }
+    }
+    (1..polygon.len() - 1)
+        .map(|i| [polygon[0], polygon[i], polygon[i + 1]])
+        .collect()
 }
 
 /// The bonds between pieces of neighbouring cells: every pair of pieces
@@ -623,24 +645,25 @@ fn bonds(pieces: &[Piece]) -> Vec<Bond> {
                 if tris_b.is_empty() {
                     continue;
                 }
-                let (mut b_lo, mut b_hi) =
-                    (DVec3::splat(f64::INFINITY), DVec3::splat(f64::NEG_INFINITY));
-                for &(_, _, _, lo, hi) in tris_b {
-                    b_lo = b_lo.min(lo);
-                    b_hi = b_hi.max(hi);
-                }
                 let (mut area, mut csum, mut nsum) = (0.0, DVec3::ZERO, DVec3::ZERO);
-                for &(ta, tc, tn, tlo, thi) in tris_a {
-                    if !aabb_overlaps(tlo, thi, b_lo, b_hi, CONTACT_EPS) {
-                        continue;
-                    }
-                    let touches = tris_b
-                        .iter()
-                        .any(|&(_, _, _, blo, bhi)| aabb_overlaps(tlo, thi, blo, bhi, CONTACT_EPS));
-                    if touches {
-                        area += ta;
-                        csum += tc * ta;
-                        nsum += tn;
+                let mut section = Vec::new();
+                for &(tn, ta) in tris_a {
+                    for &(bn, tb) in tris_b {
+                        if tn.dot(bn) > -0.99
+                            || tb.iter().any(|q| (*q - ta[0]).dot(tn).abs() > CONTACT_EPS)
+                        {
+                            continue;
+                        }
+                        for tri in overlap(ta, tb, tn) {
+                            let a = (tri[1] - tri[0]).cross(tri[2] - tri[0]).length() * 0.5;
+                            if a <= 1e-12 {
+                                continue;
+                            }
+                            area += a;
+                            csum += (tri[0] + tri[1] + tri[2]) * (a / 3.0);
+                            nsum += tn * a;
+                            section.push(tri);
+                        }
                     }
                 }
                 if area <= 0.0 {
@@ -659,6 +682,7 @@ fn bonds(pieces: &[Piece]) -> Vec<Bond> {
                     centroid,
                     normal,
                     area,
+                    section,
                 });
             }
         }
@@ -722,8 +746,9 @@ pub fn merge(f: &Fracture, groups: &[Vec<u32>]) -> Fracture {
         };
         pieces.push(out);
     }
-    // Bonds between groups: (area, centroid sum, normal sum) per pair.
-    let mut by: BTreeMap<(u32, u32), (f64, DVec3, DVec3)> = BTreeMap::new();
+    // Bonds between groups; centroid and normal accumulate area-weighted
+    // sums until all contact sections of the pair have been collected.
+    let mut by = BTreeMap::<_, Bond>::new();
     for b in &f.bonds {
         let (ga, gb) = (group_of[b.a as usize], group_of[b.b as usize]);
         if ga == gb || ga == u32::MAX || gb == u32::MAX {
@@ -734,20 +759,26 @@ pub fn merge(f: &Fracture, groups: &[Vec<u32>]) -> Fracture {
         } else {
             ((gb, ga), -b.normal)
         };
-        let e = by.entry(key).or_default();
-        e.0 += b.area;
-        e.1 += b.centroid * b.area;
-        e.2 += n * b.area;
+        let e = by.entry(key).or_insert_with(|| Bond {
+            a: key.0,
+            b: key.1,
+            centroid: DVec3::ZERO,
+            normal: DVec3::ZERO,
+            area: 0.0,
+            section: Vec::new(),
+        });
+        e.area += b.area;
+        e.centroid += b.centroid * b.area;
+        e.normal += n * b.area;
+        e.section.extend_from_slice(&b.section);
     }
     let bonds = by
-        .into_iter()
-        .filter(|(_, (area, _, _))| *area > 0.0)
-        .map(|((a, b), (area, c, n))| Bond {
-            a,
-            b,
-            centroid: c / area,
-            normal: n.normalize_or_zero(),
-            area,
+        .into_values()
+        .filter(|b| b.area > 0.0)
+        .map(|mut b| {
+            b.centroid /= b.area;
+            b.normal = b.normal.normalize_or_zero();
+            b
         })
         .collect();
     Fracture { pieces, bonds }

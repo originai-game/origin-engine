@@ -709,7 +709,9 @@ fn tile_layers(
         let Some(asset) = tiles.maps.get(&map) else {
             continue;
         };
-        let origin = h.world_of(e).w_axis.truncate();
+        let matrix = h.world_of(e);
+        let axes = [matrix.x_axis.truncate(), matrix.y_axis.truncate()];
+        let origin = matrix.w_axis.truncate();
         let tint = rgb_of(&v, &r.slots.tilemap.color, Vec3::ONE);
         let opacity = f(&v, &r.slots.tilemap.opacity, 1.0);
         let base = v.int(&r.slots.tilemap.layer).unwrap_or(-10) as i32;
@@ -785,11 +787,10 @@ fn tile_layers(
             }
             let chunks = fr.tiles[&(e, li)].2.clone();
             let p = layer.parallax;
-            let at = Vec3::new(
-                origin.x + layer.offset.x + cam.x * (1.0 - p.x),
-                origin.y + layer.offset.y + cam.y * (1.0 - p.y),
-                origin.z,
-            );
+            let at = origin
+                + axes[0] * layer.offset.x
+                + axes[1] * layer.offset.y
+                + Vec3::new(cam.x * (1.0 - p.x), cam.y * (1.0 - p.y), 0.0);
             let texture = match palette {
                 Some(p) => super::art::paletted(scene, (&mut *art, &mut *notes), texture, p, row),
                 None => texture,
@@ -798,6 +799,7 @@ fn tile_layers(
                 texture,
                 chunks,
                 origin: at,
+                axes,
                 layer: base + layer.z,
                 color: [tint.x, tint.y, tint.z, opacity * layer.opacity],
                 repeat: [

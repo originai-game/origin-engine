@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub const NONE: u32 = u32::MAX;
 
 /// The format version of [`FractureAsset::to_bytes`].
-pub const ASSET_VERSION: u32 = 2;
+pub const ASSET_VERSION: u32 = 3;
 /// [`FractureAsset::mortar`] when there is none.
 pub const NO_MATERIAL: u32 = u32::MAX;
 
@@ -23,6 +23,8 @@ pub struct Chunk {
     pub volume: f32,
     /// Its vertices relative to its centroid (its collider is their hull).
     pub hull: Vec<Vec3>,
+    /// Cooked collision samples for visual debris (at most sixteen).
+    pub debris_points: Vec<Vec3>,
     /// The glTF node that draws it, at its centroid.
     pub node: u32,
     /// The chunk it is part of ([`NONE`] for a support chunk).
@@ -33,6 +35,8 @@ pub struct Chunk {
     /// faces, `anchor` in the source's `fracture` block); 0 when none.
     pub anchor_area: f32,
     pub anchor_centroid: Vec3,
+    /// From the foundation into the chunk (area-weighted face normals).
+    pub anchor_normal: Vec3,
 }
 
 /// The surface two support chunks share (Blast's bond).
@@ -44,6 +48,12 @@ pub struct Bond {
     /// From a towards b.
     pub normal: Vec3,
     pub area: f32,
+    /// Smallest principal second moment of the cooked contact section (m⁴).
+    pub section_inertia: f32,
+    /// Polar second moment of the section (m⁴).
+    pub polar_inertia: f32,
+    /// Furthest contact vertex from its centroid (m).
+    pub section_radius: f32,
 }
 
 /// What the cook makes of a source with a `fracture` block: chunks (the
@@ -119,4 +129,28 @@ impl FractureAsset {
         }
         out
     }
+}
+
+/// Farthest-point hull sampling, done once by the cook rather than on
+/// every rendered frame. Ties retain the first vertex in canonical order.
+pub fn sample_hull(hull: &[Vec3], n: usize) -> Vec<Vec3> {
+    if n == 0 {
+        return Vec::new();
+    }
+    if hull.len() <= n {
+        return hull.to_vec();
+    }
+    let mut out = vec![hull[0]];
+    let mut near: Vec<f32> = hull.iter().map(|p| p.distance_squared(hull[0])).collect();
+    while out.len() < n {
+        let (far, _) = near
+            .iter()
+            .enumerate()
+            .fold((0, -1.0f32), |b, (i, &d)| if d > b.1 { (i, d) } else { b });
+        out.push(hull[far]);
+        for (d, p) in near.iter_mut().zip(hull) {
+            *d = d.min(p.distance_squared(hull[far]));
+        }
+    }
+    out
 }

@@ -186,7 +186,9 @@ pub(crate) struct MapAsset {
 pub(crate) struct LiveMap {
     pub map: u64,
     pub state: MapState,
-    pub colliders: Vec<u64>,
+    /// Collider entity and owning layer/chunk, in every orientation and host.
+    pub colliders: Vec<(u64, u32)>,
+    pub dirty_chunks: BTreeSet<u32>,
     pub origin: Vec3,
     pub collision: bool,
     pub layers: u32,

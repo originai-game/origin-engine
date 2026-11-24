@@ -12,8 +12,8 @@ Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its v
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `x` | `number` | `0` | — | — | — | Horizontal position in CSS pixels. |
-| `y` | `number` | `0` | — | — | — | Vertical position in CSS pixels. |
+| `x` | `number` | `0` | — | `cssPx` | — | Horizontal position in CSS pixels. |
+| `y` | `number` | `0` | — | `cssPx` | — | Vertical position in CSS pixels. |
 | `button` | `PointerButton` | `"none"` | — | — | — | The button. |
 | `id` | `number` | `0` | — | — | — | Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers). |
 | `at` | `number` | `0` | -1 … 1 | — | — | When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it. See `input §6`. |
@@ -21,8 +21,12 @@ Token `og.PointerDown`, registered under the schema name `og.PointerDown`; its v
 ```ogt
 event PointerDown {
   doc "A pointer button went down (or a touch landed)."
-  field x f32 "Horizontal position in CSS pixels."
-  field y f32 "Vertical position in CSS pixels."
+  field x f32 "Horizontal position in CSS pixels." {
+    unit cssPx
+  }
+  field y f32 "Vertical position in CSS pixels." {
+    unit cssPx
+  }
   field button PointerButton "The button."
   field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
   field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {

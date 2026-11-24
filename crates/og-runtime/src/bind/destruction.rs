@@ -41,7 +41,7 @@ use og_physics::destruction::prop::breaking::{
     islands_of, place_chunk, shed_crumbs, wear,
 };
 use og_physics::destruction::prop::budget::loose_islands;
-use og_physics::destruction::prop::debris::{Crumb, Debris, spread};
+use og_physics::destruction::prop::debris::{Crumb, Debris};
 use og_physics::destruction::prop::materials::MATERIALS;
 use og_physics::destruction::prop::pose::{
     Pose, frame_of_pose, place_on, pose_of_frame, relative, uniform,
@@ -97,12 +97,12 @@ const MAX_BURSTS: usize = 8;
 #[derive(Clone, Default)]
 pub(crate) struct ModuleState {
     state: Arc<Mutex<State>>,
-    assets: Arc<Mutex<Assets>>,
-    physics: Arc<Mutex<Option<og_physics::PhysicsSystem>>>,
+    pub(crate) assets: Arc<Mutex<Assets>>,
+    pub(super) physics: Arc<Mutex<Option<og_physics::PhysicsSystem>>>,
     /// Whether the world runs the og.destruction system: what an explosion
     /// asks before it queues, from inside a system too (where the world's
     /// system list is out of reach).
-    enabled: Arc<AtomicBool>,
+    pub(crate) enabled: Arc<AtomicBool>,
 }
 
 /// The physics an engine's destruction queries (made with its world).
@@ -320,6 +320,10 @@ impl StateBlock for Block {
         for (&e, p) in &s.props {
             out.entities
                 .push(Record::new(e, "prop").members(p, &["entities", "body"]));
+        }
+        for (&e, p) in &s.orphan_chunks {
+            out.entities
+                .push(Record::new(e, "orphan").members(p, &["entities", "body"]));
         }
         let mut explosions = Vec::new();
         for (i, op) in s.ops.iter().enumerate() {

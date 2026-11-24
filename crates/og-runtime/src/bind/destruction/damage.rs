@@ -20,10 +20,12 @@ pub(super) struct Gathered {
 /// The hits: impacts, then the calls in the order made.
 pub(super) fn gather_hits(
     ctx: &SystemContext<'_>,
+    m: &ModuleState,
     l: &Ls,
     st: &mut State,
     assets: &Assets,
     settings: &BTreeMap<u64, Settings>,
+    poses: &Poses,
 ) -> og_core::Result<Gathered> {
     let mut hits: BTreeMap<u64, Hits> = BTreeMap::new();
     let mut bursts: Vec<(u64, Vec3)> = Vec::new();
@@ -91,6 +93,7 @@ pub(super) fn gather_hits(
                         amount,
                     },
                     CAUSE_IMPACT,
+                    Vec::new(),
                 ));
                 bursts.extend(
                     [s.hit_fx, s.hit_vfx]
@@ -129,6 +132,7 @@ pub(super) fn gather_hits(
                             amount,
                         },
                         CAUSE_DAMAGE,
+                        Vec::new(),
                     ));
                     bursts.extend(
                         [s.hit_fx, s.hit_vfx]
@@ -144,9 +148,74 @@ pub(super) fn gather_hits(
                 inner,
                 damage,
                 impulse,
+                occlusion,
             } => {
                 let point = Vec3::from(point);
-                for &k in st.props.keys() {
+                let q = if occlusion {
+                    physics(m).and_then(|p| p.tick_query().ok())
+                } else {
+                    None
+                };
+                let mut hidden = std::collections::BTreeSet::new();
+                let mut hidden_bonds = std::collections::BTreeSet::new();
+                for (&k, p) in &st.props {
+                    let a = &assets[&p.asset];
+                    // World-space bounds include every live chunk, not just
+                    // the model's original frame after it has fractured.
+                    let mut lo = Vec3::splat(f32::MAX);
+                    let mut hi = Vec3::splat(f32::MIN);
+                    for (c, ps) in a.chunks.iter().zip(&poses[&k]) {
+                        if let Some(ps) = ps {
+                            for &v in &c.hull {
+                                let v = ps.0 + ps.1 * (ps.2 * v);
+                                lo = lo.min(v);
+                                hi = hi.max(v);
+                            }
+                        }
+                    }
+                    if lo.cmpgt(hi).any()
+                        || (point.clamp(lo, hi) - point).length_squared() > radius * radius
+                    {
+                        continue;
+                    }
+                    let mut exposed = vec![true; a.chunks.len()];
+                    if let Some(q) = &q {
+                        for (c, ps) in poses[&k].iter().enumerate() {
+                            let Some(ps) = ps else {
+                                continue;
+                            };
+                            let delta = ps.0 - point;
+                            let distance = delta.length();
+                            if distance <= 1e-5 {
+                                continue;
+                            }
+                            let hit = q.raycast(&og_physics::RaycastDesc {
+                                origin: point,
+                                direction: delta / distance,
+                                max_distance: distance,
+                                ..Default::default()
+                            })?;
+                            if hit.is_some_and(|h| {
+                                h.entity.to_bits() != p.entities[c]
+                                    && h.entity.to_bits() != k
+                                    && (p.body[c] == 0 || h.body.to_bits() != p.body[c])
+                            }) {
+                                exposed[c] = false;
+                                hidden.insert((k, c as u32));
+                                // A child born during this blast inherits its
+                                // parent's cover, not an untested open ray.
+                                let (first, count) = a.chunks[c].children;
+                                for child in first..first + count {
+                                    hidden.insert((k, child));
+                                }
+                            }
+                        }
+                    }
+                    for (b, bond) in a.bonds.iter().enumerate() {
+                        if hidden.contains(&(k, bond.a)) && hidden.contains(&(k, bond.b)) {
+                            hidden_bonds.insert((k, b as u32));
+                        }
+                    }
                     hits.entry(k).or_default().damage.push((
                         Damage {
                             point,
@@ -155,9 +224,17 @@ pub(super) fn gather_hits(
                             amount: damage,
                         },
                         CAUSE_EXPLOSION,
+                        exposed,
                     ));
                 }
-                explosions.push((point, inner, radius, impulse));
+                explosions.push(Explosion {
+                    point,
+                    inner,
+                    radius,
+                    impulse,
+                    hidden,
+                    hidden_bonds,
+                });
             }
             Op::Fracture { entity } => {
                 if st.props.contains_key(&entity) {
@@ -182,6 +259,8 @@ pub(super) struct Broken {
     /// Bodies made this run and their velocity, inserted at the end (after
     /// the explosions' push).
     pub(super) made: BTreeMap<u64, (Vec3, Vec3)>,
+    pub(super) made_poses: BTreeMap<u64, Pose>,
+    pub(super) body_com: BTreeMap<u64, Vec3>,
     pub(super) fresh_bodies: Vec<u64>,
     /// Fine pieces broken off this tick, and their mass.
     pub(super) debris: Vec<(Debris, f32)>,
@@ -252,9 +331,13 @@ pub(super) fn break_prop(
         let e = Entity::from_bits(k);
         if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
             let v: record::Velocity = row(&l.velocity.1, &vb)?;
-            inherit = (v.linear, v.angular, frame.0);
+            inherit = (
+                v.linear,
+                v.angular,
+                out.body_com.get(&k).copied().unwrap_or(frame.0),
+            );
         }
-        place(ctx, l, k, p, a)?;
+        place(ctx, l, k, p, a, s.mat.density)?;
     }
     p.fractured = true;
     free_islands(
@@ -270,7 +353,7 @@ pub(super) fn break_prop(
         cause,
         out,
     )?;
-    shatter_chunks(ctx, l, t, at, p, scale, &shatter, out)
+    shatter_chunks(ctx, l, t, at, p, scale, inherit, &shatter, out)
 }
 
 /// The stress solver on what stands (when something changed) and, every
@@ -293,6 +376,7 @@ pub(super) fn solve_stress(
     let (tick, gravity) = (t.tick, t.gravity);
     let iterations = t.res.stress_iterations;
     let anchors = p.anchors;
+    let dirty = p.inst.dirty;
     if anchors && p.inst.dirty {
         let islands = islands_of(&p.inst, a, anchors);
         let down = frame.1.inverse() * gravity;
@@ -318,7 +402,7 @@ pub(super) fn solve_stress(
     // with nothing under it is wedged by its sides (blocks jammed
     // between piers into a flat arch, which loose masonry never holds:
     // its corners crush): it crumbles, into its pieces.
-    if tick.is_multiple_of(REST_EVERY)
+    if (dirty || tick.is_multiple_of(REST_EVERY))
         && let Some(q) = physics(m).and_then(|ph| ph.tick_query().ok())
     {
         let held = p.inst.dirty;

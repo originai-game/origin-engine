@@ -26,6 +26,7 @@
     }
     field inheritedVelocity Vector3 "Written: retained inertia from airborne vertical motion, knockback and platforms." {
       readonly true
+      unit mps
     }
     field groundBody Entity "Written: supporting collider parent body, including compound platforms." {
       readonly true

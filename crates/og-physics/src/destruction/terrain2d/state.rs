@@ -40,6 +40,10 @@ pub struct Ground {
     pub colliders: BTreeMap<u32, (u64, u64)>,
     /// Counts changes to its cells (what drawing repaints on).
     pub revision: u64,
+    /// Presentation-only dirty rectangles by revision, in bottom-up cell
+    /// coordinates. Restores repaint fully; no simulation reads this cache.
+    #[serde(skip)]
+    pub updates: Vec<(u64, [u32; 4])>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,7 +56,9 @@ pub struct Piece {
     pub grain: [i32; 2],
     pub look: Look,
     pub body: Body,
-    pub mesh: u64,
+    pub colliders: Vec<u64>,
+    /// The terrain's piece cap when detached; remains enforced after its removal.
+    pub max_pieces: u32,
     pub tick: u64,
 }
 

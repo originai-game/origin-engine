@@ -12,6 +12,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
+| `occlusion` | `boolean` | `false` | — | — | — | Ray-test each chunk against live physics; intervening colliders shield it from damage and push. Off by default. |
 | `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Its centre, in world space. |
 | `radius` | `number` | `3` | ≥ 0 | `m` | — | How far it reaches. |
 | `innerRadius` | `number` | `0.5` | ≥ 0 | `m` | — | Within this everything takes the whole damage and push. |
@@ -22,6 +23,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct ExplosionDesc {
   doc "An explosion for og.destruction.explode."
   desc true
+  field occlusion bool "Ray-test each chunk against live physics; intervening colliders shield it from damage and push. Off by default."
   field point Vector3 "Its centre, in world space." {
     unit m
   }

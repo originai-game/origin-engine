@@ -64,6 +64,62 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
         ));
         return;
     };
+    for native in &module.fields {
+        let Some(idl) = decl.fields.iter().find(|f| f.name == native.name) else {
+            continue;
+        };
+        if let Some(default) = &native.default {
+            let json: serde_json::Value =
+                serde_json::from_str(idl.default).expect("IDL default JSON");
+            let value: Vec<f64> = match json {
+                serde_json::Value::Number(n) => vec![n.as_f64().unwrap()],
+                serde_json::Value::Bool(b) => vec![f64::from(b)],
+                serde_json::Value::String(s) => vec![
+                    idl.variants
+                        .iter()
+                        .position(|v| *v == s)
+                        .expect("enum variant") as f64,
+                ],
+                serde_json::Value::Object(m) => {
+                    let keys: &[&str] = match native.ty {
+                        FieldType::Quat => &["x", "y", "z", "w"],
+                        FieldType::Vec2 => &["x", "y"],
+                        _ if idl.column == "Color" => &["r", "g", "b"],
+                        _ => &["x", "y", "z"],
+                    };
+                    keys.iter().map(|k| m[*k].as_f64().unwrap()).collect()
+                }
+                serde_json::Value::Array(a) => a.iter().map(|v| v.as_f64().unwrap()).collect(),
+                _ => continue,
+            };
+            if *default != value {
+                failures.push(format!(
+                    "{}.{} default: Reflection {default:?}, IDL {value:?}",
+                    module.name, native.name
+                ));
+            }
+        }
+        if let Some(unit) = &native.unit {
+            // Reflection uses SI symbols; the IDL names units from its table.
+            let unit = match unit.as_str() {
+                "1/s" => "perSecond",
+                "kg/m3" => "kgPerM3",
+                "m/s" => "mps",
+                "m/s2" => "mps2",
+                "rad/s" => "radps",
+                "N*s" => "newtonSecond",
+                "N" => "newton",
+                "N*m" => "newtonMetre",
+                other => other,
+            };
+            if unit != idl.unit {
+                failures.push(format!(
+                    "{}.{} unit: Reflection {unit:?}, IDL {:?}",
+                    module.name, native.name, idl.unit
+                ));
+            }
+        }
+    }
     let version = module.version;
     let idl = idl_schema(decl, version);
     if idl.layout_hash() != module.layout_hash() {
@@ -104,6 +160,7 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::ContactHook>(&mut failures);
     check::<og_physics::Vehicle>(&mut failures);
     check::<og_physics::VehicleWheel>(&mut failures);
+    check::<og_physics::CharacterController>(&mut failures);
     check::<og_physics::SoftBody>(&mut failures);
     check::<og_physics::Garment>(&mut failures);
     check::<og_physics::Rope>(&mut failures);

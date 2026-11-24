@@ -36,6 +36,9 @@ pub struct TileAnim {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TileDef {
     pub collision: Option<Collision>,
+    /// Additional closed collision polygons, in pixels from the top-left.
+    /// Curves are tessellated by the cook, never by the simulation.
+    pub polygons: Vec<Vec<[f32; 2]>>,
     pub anim: Option<TileAnim>,
 }
 
@@ -158,6 +161,24 @@ pub(crate) fn num(e: &Entry, i: usize) -> Result<f32> {
 }
 
 impl Tileset {
+    /// Collision overhang in cells, including diagonal flips. Used both
+    /// for union halos and edit invalidation, so a distant overhang cannot
+    /// leave a stale neighbouring collider.
+    pub fn collision_halo(&self) -> u32 {
+        let mut extent = self.tile_width.max(self.tile_height) as f32;
+        for d in self.tiles.values() {
+            for &[x, y] in d.polygons.iter().flatten() {
+                extent = extent.max(x.abs()).max(y.abs());
+            }
+            if let Some(Collision::Rect { x, y, w, h }) = d.collision {
+                for v in [x, y, x + w, y + h] {
+                    extent = extent.max(v.abs());
+                }
+            }
+        }
+        ((extent * 2.0) / self.tile_width.min(self.tile_height).max(1) as f32).ceil() as u32 + 1
+    }
+
     /// Tiles in the grid.
     pub fn count(&self) -> u32 {
         self.columns * self.rows
@@ -264,6 +285,7 @@ impl Tileset {
                     if def.collision.is_some() {
                         slot.collision = def.collision;
                     }
+                    slot.polygons.extend(def.polygons);
                     if def.anim.is_some() {
                         slot.anim = def.anim;
                     }
@@ -333,6 +355,15 @@ impl Tileset {
         };
         for (&id, d) in &self.tiles {
             check(id, "a tile entry")?;
+            if d.polygons
+                .iter()
+                .any(|p| p.len() < 3 || p.iter().flatten().any(|x| !x.is_finite()))
+            {
+                return Err(err(
+                    0,
+                    format!("tile {id}: a collision polygon needs at least three finite points"),
+                ));
+            }
             if let Some(a) = &d.anim {
                 if a.frames.is_empty() || a.frames.len() != a.durations.len() {
                     return Err(err(
@@ -405,6 +436,13 @@ impl Tileset {
         }
         for (&id, def) in &self.tiles {
             let mut inner = Block::new();
+            for polygon in &def.polygons {
+                let mut e = Entry::new("polygon");
+                for &[x, y] in polygon {
+                    e = e.with(n(x)).with(n(y));
+                }
+                inner.push(e);
+            }
             if let Some(Collision::Rect { x, y, w, h }) = def.collision {
                 inner.push(
                     Entry::new("collide")
@@ -466,6 +504,17 @@ fn parse_tile(block: &Block, t: &Tileset) -> Result<TileDef> {
     let _ = t;
     for e in &block.entries {
         match e.key.as_str() {
+            "polygon" => {
+                if e.values.len() < 6 || e.values.len() % 2 != 0 {
+                    return Err(err(e.line, "polygon needs at least three x y pairs"));
+                }
+                def.polygons.push(
+                    (0..e.values.len())
+                        .step_by(2)
+                        .map(|i| Ok([num(e, i)?, num(e, i + 1)?]))
+                        .collect::<Result<_>>()?,
+                );
+            }
             "collide" => {
                 let (x, y, w, h) = (num(e, 0)?, num(e, 1)?, num(e, 2)?, num(e, 3)?);
                 if !(w > 0.0 && h > 0.0) {

@@ -292,7 +292,9 @@ fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, Str
             rs.terrain.streamer.forget(i);
         }
         // A replay registers the final heights once (`replay_if_restored`).
-        if collision && log {
+        let paint =
+            b.get("stamp").is_none() && wire::value::<TerrainBrush>(b, "brush")?.mode as usize == 4;
+        if collision && log && !paint {
             match region {
                 // Physics rebuilds only the chunks of its colliders under it.
                 Some((lo, hi)) => edit_heightfield(eng, GEOMETRY_BASE + i as u64, &data, lo, hi)?,

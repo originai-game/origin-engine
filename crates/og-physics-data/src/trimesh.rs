@@ -5,7 +5,7 @@ use og_core::{Error, ErrorKind, Result};
 use rapier3d::prelude as rp;
 
 /// The triangle mesh (rapier's, with its BVH) over `mesh` scaled by `s`:
-/// a SHAPE_TRIMESH collider's shape, and what [`bake`] bakes.
+/// a SHAPE_TRIMESH collider's shape, and what [`bake_collider`] bakes.
 pub fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     let points: Vec<rp::Vector> = mesh
         .positions
@@ -28,30 +28,84 @@ pub fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     })
 }
 
-/// What starts a baked triangle mesh's bytes: the format and its version,
-/// moved with any rapier or parry update that changes `TriMesh`'s
-/// serialisation (`a_baked_trimesh_is_the_build_bit_for_bit` pins a bake).
-pub const BAKED: &[u8; 8] = b"OGTM\x02\x00\x00\x00";
+/// Baked collider format; change it with a Parry serialization change.
+pub const BAKED: &[u8; 8] = b"OGPC\x01\x00\x00\x00";
 
-/// [`crate::bake_trimesh`].
-pub fn bake(mesh: &crate::MeshDesc) -> Result<Vec<u8>> {
-    let shape = trimesh(mesh, Vec3::ONE)?;
-    let mesh = shape.as_trimesh().expect("a triangle mesh");
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum BakeKind {
+    #[default]
+    Trimesh,
+    Convex,
+    Vhacd,
+}
+
+pub struct BakedCollider {
+    pub hash: u64,
+    pub convex: bool,
+    pub shape: rp::SharedShape,
+}
+
+/// Build the collider between ticks, in the cook. A convex decomposition
+/// is serialized as its compound of real convex hulls, not voxel samples.
+pub fn bake_collider(mesh: &crate::MeshDesc, kind: BakeKind) -> Result<Vec<u8>> {
+    mesh.check(0)?;
+    let hash = mesh.content_hash();
+    let points: Vec<_> = mesh
+        .positions
+        .iter()
+        .map(|p| rp::Vector::new(p.x, p.y, p.z))
+        .collect();
+    let shape = match kind {
+        BakeKind::Trimesh => trimesh(mesh, Vec3::ONE)?,
+        BakeKind::Convex => rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+            Error::new(
+                ErrorKind::Invalid,
+                "the collider's convex hull is degenerate",
+            )
+        })?,
+        BakeKind::Vhacd => {
+            if mesh.indices.is_empty() {
+                return Err(Error::new(
+                    ErrorKind::Invalid,
+                    "VHACD needs a closed triangle mesh",
+                ));
+            }
+            rp::SharedShape::convex_decomposition(&points, &mesh.indices)
+        }
+    };
     let mut out = BAKED.to_vec();
-    crate::encode(&mut out, mesh)
+    out.extend_from_slice(&hash.to_le_bytes());
+    out.push(u8::from(kind != BakeKind::Trimesh));
+    crate::encode(&mut out, &shape)
         .map_err(|e| Error::new(ErrorKind::Invalid, format!("baking a triangle mesh: {e}")))?;
     Ok(out)
 }
 
-/// A [`bake`]'s shape.
-pub fn unbake(bytes: &[u8]) -> Result<rp::SharedShape> {
+/// A [`bake_collider`]'s shape.
+pub fn unbake(bytes: &[u8]) -> Result<BakedCollider> {
     let body = bytes.strip_prefix(BAKED.as_slice()).ok_or_else(|| {
         Error::new(
             ErrorKind::Invalid,
             "not a baked triangle mesh of this engine's format (cook the model again)",
         )
     })?;
-    let mesh: rp::TriMesh = crate::decode(body)
+    let (hash, body) = body
+        .split_first_chunk::<8>()
+        .ok_or_else(|| Error::new(ErrorKind::Invalid, "a baked triangle mesh is cut short"))?;
+    let (convex, body) = body
+        .split_first()
+        .ok_or_else(|| Error::new(ErrorKind::Invalid, "a baked collider is cut short"))?;
+    if *convex > 1 {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "invalid baked collider kind",
+        ));
+    }
+    let shape: rp::SharedShape = crate::decode(body)
         .map_err(|e| Error::new(ErrorKind::Invalid, format!("a baked triangle mesh: {e}")))?;
-    Ok(rp::SharedShape::new(mesh))
+    Ok(BakedCollider {
+        hash: u64::from_le_bytes(*hash),
+        convex: *convex != 0,
+        shape,
+    })
 }

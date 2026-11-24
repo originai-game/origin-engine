@@ -119,7 +119,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     let draws: Vec<Lines> = rs.geo.draws.iter().map(|(_, l)| l.clone()).collect();
     rs.scene.effects.lines.extend(draws);
     match VIEWS[rs.geo.view_index(&rs.options)] {
-        "physics" => physics_view(rs),
+        "physics" => physics_view(rs, h),
         "nav" => nav_view(rs),
         "bounds" => bounds_view(rs),
         _ => {}

@@ -102,6 +102,7 @@ pub fn tilemap_256() -> RenderScene {
             texture,
             chunks: Arc::new(chunks),
             origin: Vec3::new(0.0, 256.0, 0.0),
+            axes: [Vec3::X, Vec3::Y],
             layer: l as i32 - 10,
             color: [1.0; 4],
             repeat: [None, None],

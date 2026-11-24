@@ -3507,7 +3507,6 @@ dependencies = [
  "og-env",
  "og-lanes",
  "og-physics-data",
- "og-shape",
  "rapier2d",
  "rapier3d",
  "serde",

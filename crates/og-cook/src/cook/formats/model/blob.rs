@@ -865,7 +865,7 @@ pub fn cook(
             .into()
     });
     let bytes = if opts.collider {
-        let (section, baked) = colliders(&w.clone().finish())?;
+        let (section, baked) = colliders(&w.clone().finish(), opts.collider_kind)?;
         notes.push(format!(
             "collider: {baked} triangle mesh(es) baked, {} bytes (`model {{ collider false }}` leaves them out)",
             section.len()
@@ -894,7 +894,10 @@ pub fn cook(
 /// physics takes it where a build would make the same shape. The section
 /// is the primitive count, each one's offset and length after the header
 /// (0: none), then the bytes.
-fn colliders(blob: &[u8]) -> Result<(Vec<u8>, usize), CookError> {
+fn colliders(
+    blob: &[u8],
+    kind: og_physics_data::trimesh::BakeKind,
+) -> Result<(Vec<u8>, usize), CookError> {
     let words = og_blob::AlignedBytes::from_slice(blob);
     let model = crate::runtime::Bundle::decode_model("model", words.as_slice())
         .map_err(|e| CookError(format!("collider: {e}")))?;
@@ -906,7 +909,7 @@ fn colliders(blob: &[u8]) -> Result<(Vec<u8>, usize), CookError> {
             indices: m.indices.chunks(3).map(|t| [t[0], t[1], t[2]]).collect(),
         };
         baked.push(
-            og_physics_data::bake_trimesh(&mesh)
+            og_physics_data::trimesh::bake_collider(&mesh, kind)
                 .map_err(|e| CookError(format!("primitive {i}: collider: {}", e.reason())))?,
         );
     }

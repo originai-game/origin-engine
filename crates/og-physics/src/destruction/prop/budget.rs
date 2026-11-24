@@ -17,7 +17,7 @@ pub struct Loose {
 /// The loose islands, the oldest first (then the smallest, then by body).
 pub fn loose_islands(st: &State, assets: &Assets) -> Vec<Loose> {
     let mut loose: BTreeMap<u64, Loose> = BTreeMap::new();
-    for (&k, p) in &st.props {
+    for (&k, p) in st.props.iter().chain(&st.orphan_chunks) {
         let a = &assets[&p.asset];
         let scale = uniform(pose_of_frame(&p.frame).2);
         for c in 0..a.chunks.len() {

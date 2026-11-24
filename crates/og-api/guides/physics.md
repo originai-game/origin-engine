@@ -260,6 +260,10 @@ numbers measured off the model.
 - Collide with what is drawn: give the model an og.Collider of shape
   `trimesh` with one of the glTF's geometries as its `mesh` (loaded
   geometries are registered), or cook it with `model { collider true }`.
+  For a moving concave model, `model { collider vhacd }` bakes a compound
+  of convex hulls; `collider convex` bakes a single hull. Both use a
+  `convex` collider at runtime. Bakes are keyed by geometry content and
+  reused at any scale; recook after changing the model.
   A moving model is a `kinematic` og.RigidBody moved by og.Velocity.
 - Each tick, cast down onto it with og.physics.castRay from above the
   rider and stand the rider at the hit point. castRay is the gameplay
@@ -588,6 +592,9 @@ Fracture is cooked, never computed at run time (`determinism §4`):
    import settings, with a `style` (brick, concrete, wood, glass). The cook
    cuts the model into Voronoi chunks bonded where they touch, and anchors
    the chunks resting on its floor to the world.
+   An inclined foundation can instead use `anchor plane nx ny nz distance`:
+   the unit normal points into the model, and points on the plane satisfy
+   `normal.dot(point) = distance`. Anchors carry compression, never tension.
 2. Give the entity that draws it an og.Destructible tuned by material:
 
 ```ts
@@ -606,6 +613,12 @@ The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its
 velocity; a prop without a body, or with a static one, stands on its
 anchors. A damage or explosion called this tick splits the prop before this
 tick's physics step.
+
+Explosion `occlusion: true` ray-tests cover before damaging or pushing
+chunks; leave it false when a blast should ignore cover. Damage radii must
+satisfy `0 <= innerRadius <= radius`; radius zero does nothing. Loose chunks
+keep drawing after their destructible is removed and remain under the
+world's chunk count and debris lifetime budgets.
 
 | Material | toughness (N·s/m²) | Behaves |
 |---|---|---|

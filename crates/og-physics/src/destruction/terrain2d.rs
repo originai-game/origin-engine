@@ -37,7 +37,18 @@ pub struct PixelTerrain {
     height: u32,
     chunk: u32,
     cells: Vec<Cell>,
+    solid: u32,
     dirty: Vec<bool>,
+    /// Derived connectivity, invalidated independently of drawing's dirty flags.
+    #[serde(skip)]
+    components: Vec<Option<Components>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Components {
+    labels: Vec<usize>,
+    members: Vec<Vec<[u32; 2]>>,
+    anchored: Vec<bool>,
 }
 
 /// One chain of a chunk's outline in cell units (x right, y up, a cell
@@ -66,13 +77,16 @@ impl PixelTerrain {
             height,
             chunk,
             cells: vec![0; (width * height) as usize],
+            solid: 0,
             dirty: vec![true; n],
+            components: vec![None; n],
         }
     }
 
     /// A terrain from cells row by row, bottom row first.
     pub fn from_cells(width: u32, height: u32, chunk: u32, cells: Vec<Cell>) -> Option<Self> {
         (cells.len() == (width * height) as usize).then(|| PixelTerrain {
+            solid: cells.iter().filter(|&&c| c != 0).count() as u32,
             cells,
             ..PixelTerrain::new(width, height, chunk)
         })
@@ -89,6 +103,9 @@ impl PixelTerrain {
     }
     pub fn cells(&self) -> &[Cell] {
         &self.cells
+    }
+    pub fn solid(&self) -> u32 {
+        self.solid
     }
     /// Chunks across and up.
     pub fn chunks(&self) -> (u32, u32) {
@@ -117,16 +134,18 @@ impl PixelTerrain {
         if self.cells[i] == value || (self.cells[i] == BEDROCK && value != BEDROCK) {
             return false;
         }
-        let solid_changed = (self.cells[i] != 0) != (value != 0);
+        self.solid = self.solid - u32::from(self.cells[i] != 0) + u32::from(value != 0);
         self.cells[i] = value;
-        if solid_changed {
-            self.touch(x, y);
-        }
+        self.touch(x, y);
         true
     }
 
     fn touch(&mut self, x: u32, y: u32) {
         let (cx, cy) = self.chunks();
+        let k = (y / self.chunk * cx + x / self.chunk) as usize;
+        if let Some(c) = self.components.get_mut(k) {
+            *c = None;
+        }
         for (dx, dy) in [(0i64, 0i64), (-1, 0), (1, 0), (0, -1), (0, 1)] {
             let (nx, ny) = (x as i64 + dx, y as i64 + dy);
             if nx < 0 || ny < 0 || nx >= self.width as i64 || ny >= self.height as i64 {
@@ -199,10 +218,23 @@ impl PixelTerrain {
                 }
             }
         }
-        link(edges)
-            .into_iter()
-            .map(|c| simplify(&c, tolerance))
-            .collect()
+        let chains = link(edges);
+        let simplified: Vec<_> = chains.iter().map(|c| simplify(c, tolerance)).collect();
+        let segments: Vec<_> = simplified.iter().flat_map(|c| c.windows(2)).collect();
+        let degenerate = simplified
+            .iter()
+            .zip(&chains)
+            .any(|(s, c)| c.first() == c.last() && (s.len() < 4 || polygon_area(s) == 0.0));
+        let crossing = segments.iter().enumerate().any(|(i, a)| {
+            segments[i + 1..]
+                .iter()
+                .any(|b| intersects(a[0], a[1], b[0], b[1]))
+        });
+        if crossing || degenerate {
+            chains.iter().map(|c| simplify(c, 0.0)).collect()
+        } else {
+            simplified
+        }
     }
 
     /// Takes out every solid island not connected (through its four
@@ -211,35 +243,114 @@ impl PixelTerrain {
     /// a carve cut loose, to fall as bodies.
     pub fn detach(&mut self) -> Vec<Island> {
         let (w, h) = (self.width as usize, self.height as usize);
-        let mut seen = vec![false; w * h];
-        let mut stack = Vec::new();
-        let solid = |c: &Vec<Cell>, i: usize| c[i] != 0;
-        for i in 0..w * h {
-            if solid(&self.cells, i) && (i < w || self.cells[i] == BEDROCK) && !seen[i] {
-                seen[i] = true;
-                stack.push(i);
-            }
-        }
-        flood(&self.cells, w, h, &mut seen, &mut stack);
-        let mut islands = Vec::new();
-        for start in 0..w * h {
-            if !solid(&self.cells, start) || seen[start] {
+        let (cx, cy) = self.chunks();
+        let c = self.chunk;
+        self.components.resize((cx * cy) as usize, None);
+        for k in 0..cx * cy {
+            if self.components[k as usize].is_some() {
                 continue;
             }
-            seen[start] = true;
-            let mut members = vec![start];
-            stack.push(start);
-            while let Some(i) = stack.pop() {
-                let (x, y) = (i % w, i / w);
-                for (nx, ny) in neighbours(x, y, w, h) {
-                    let j = ny * w + nx;
-                    if solid(&self.cells, j) && !seen[j] {
-                        seen[j] = true;
-                        members.push(j);
-                        stack.push(j);
+            let (x0, y0) = (k % cx * c, k / cx * c);
+            let (x1, y1) = ((x0 + c).min(self.width), (y0 + c).min(self.height));
+            let mut comp = Components {
+                labels: vec![usize::MAX; (c * c) as usize],
+                members: Vec::new(),
+                anchored: Vec::new(),
+            };
+            let at = |x: u32, y: u32| ((y - y0) * c + x - x0) as usize;
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    if self.get(x as i64, y as i64) == 0 || comp.labels[at(x, y)] != usize::MAX {
+                        continue;
                     }
+                    let id = comp.members.len();
+                    let mut members = Vec::new();
+                    let mut anchored = false;
+                    let mut stack = vec![(x, y)];
+                    comp.labels[at(x, y)] = id;
+                    while let Some((x, y)) = stack.pop() {
+                        members.push([x, y]);
+                        anchored |= y == 0 || self.get(x as i64, y as i64) == BEDROCK;
+                        for (nx, ny) in neighbours(x as usize, y as usize, w, h) {
+                            let (nx, ny) = (nx as u32, ny as u32);
+                            if nx < x0 || nx >= x1 || ny < y0 || ny >= y1 {
+                                continue;
+                            }
+                            let j = at(nx, ny);
+                            if comp.labels[j] == usize::MAX && self.get(nx as i64, ny as i64) != 0 {
+                                comp.labels[j] = id;
+                                stack.push((nx, ny));
+                            }
+                        }
+                    }
+                    comp.members.push(members);
+                    comp.anchored.push(anchored);
                 }
             }
+            self.components[k as usize] = Some(comp);
+        }
+        let mut offsets = Vec::new();
+        let mut anchors = Vec::new();
+        for comp in &self.components {
+            offsets.push(anchors.len());
+            anchors.extend_from_slice(&comp.as_ref().expect("built").anchored);
+        }
+        let mut parent: Vec<usize> = (0..anchors.len()).collect();
+        fn root(p: &mut [usize], mut x: usize) -> usize {
+            while p[x] != x {
+                p[x] = p[p[x]];
+                x = p[x];
+            }
+            x
+        }
+        let label = |x: u32, y: u32| {
+            let k = (y / c * cx + x / c) as usize;
+            let l =
+                self.components[k].as_ref().expect("built").labels[((y % c) * c + x % c) as usize];
+            (l != usize::MAX).then(|| offsets[k] + l)
+        };
+        for k in 0..cx * cy {
+            let (x0, y0) = (k % cx * c, k / cx * c);
+            let (x1, y1) = ((x0 + c).min(self.width), (y0 + c).min(self.height));
+            let mut join = |a: Option<usize>, b: Option<usize>| {
+                if let (Some(a), Some(b)) = (a, b) {
+                    let (a, b) = (root(&mut parent, a), root(&mut parent, b));
+                    parent[a.max(b)] = a.min(b);
+                }
+            };
+            if x1 < self.width {
+                for y in y0..y1 {
+                    join(label(x1 - 1, y), label(x1, y));
+                }
+            }
+            if y1 < self.height {
+                for x in x0..x1 {
+                    join(label(x, y1 - 1), label(x, y1));
+                }
+            }
+        }
+        let mut held = vec![false; anchors.len()];
+        for (i, &a) in anchors.iter().enumerate() {
+            if a {
+                held[root(&mut parent, i)] = true;
+            }
+        }
+        let mut loose: std::collections::BTreeMap<usize, Vec<usize>> =
+            std::collections::BTreeMap::new();
+        for (k, comp) in self.components.iter().enumerate() {
+            for (i, members) in comp.as_ref().expect("built").members.iter().enumerate() {
+                let r = root(&mut parent, offsets[k] + i);
+                if !held[r] {
+                    loose
+                        .entry(r)
+                        .or_default()
+                        .extend(members.iter().map(|&[x, y]| (y as usize * w) + x as usize));
+                }
+            }
+        }
+        let mut islands = Vec::new();
+        for members in loose.into_values() {
+            let start = *members.iter().min().expect("a component is nonempty");
             let (mut lx, mut ly, mut hx, mut hy) = (w, h, 0, 0);
             for &i in &members {
                 let (x, y) = (i % w, i / w);
@@ -279,18 +390,6 @@ fn neighbours(x: usize, y: usize, w: usize, h: usize) -> impl Iterator<Item = (u
     ]
     .into_iter()
     .filter(move |&(nx, ny)| nx < w && ny < h)
-}
-
-fn flood(cells: &[Cell], w: usize, h: usize, seen: &mut [bool], stack: &mut Vec<usize>) {
-    while let Some(i) = stack.pop() {
-        for (nx, ny) in neighbours(i % w, i / w, w, h) {
-            let j = ny * w + nx;
-            if cells[j] != 0 && !seen[j] {
-                seen[j] = true;
-                stack.push(j);
-            }
-        }
-    }
 }
 
 /// Links directed unit edges into chains. Where two edges leave one point
@@ -382,6 +481,29 @@ fn d2(a: [f32; 2], b: [f32; 2]) -> f32 {
     dx * dx + dy * dy
 }
 
+/// Proper intersections and collinear overlaps, excluding shared endpoints
+/// (diagonal pixel neighbours legitimately meet there).
+fn intersects(a: [f32; 2], b: [f32; 2], c: [f32; 2], d: [f32; 2]) -> bool {
+    let side = |p: [f32; 2], q: [f32; 2], r: [f32; 2]| {
+        (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    };
+    let (ac, ad, ca, cb) = (side(a, b, c), side(a, b, d), side(c, d, a), side(c, d, b));
+    if a == c || a == d || b == c || b == d {
+        // A single shared endpoint is legal; coincident edges extending
+        // from that endpoint are not, including adjacent backtracking.
+        return ac == 0.0
+            && ad == 0.0
+            && ((a[0].max(b[0]).min(c[0].max(d[0])) > a[0].min(b[0]).max(c[0].min(d[0])))
+                || (a[1].max(b[1]).min(c[1].max(d[1])) > a[1].min(b[1]).max(c[1].min(d[1]))));
+    }
+    ac * ad <= 0.0
+        && ca * cb <= 0.0
+        && a[0].min(b[0]) <= c[0].max(d[0])
+        && c[0].min(d[0]) <= a[0].max(b[0])
+        && a[1].min(b[1]) <= c[1].max(d[1])
+        && c[1].min(d[1]) <= a[1].max(b[1])
+}
+
 fn dp(p: &[[f32; 2]], i: usize, j: usize, tol: f32, keep: &mut [bool]) {
     if j <= i + 1 {
         return;
@@ -395,8 +517,8 @@ fn dp(p: &[[f32; 2]], i: usize, j: usize, tol: f32, keep: &mut [bool]) {
         let d = if len2 == 0.0 {
             d2(a, *q)
         } else {
-            let cross = dx * (q[1] - a[1]) - dy * (q[0] - a[0]);
-            cross * cross / len2
+            let t = (((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / len2).clamp(0.0, 1.0);
+            d2(*q, [a[0] + t * dx, a[1] + t * dy])
         };
         if d > best.0 {
             best = (d, k);

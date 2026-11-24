@@ -121,7 +121,7 @@ impl Tiles {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: true,
-                        min_binding_size: std::num::NonZeroU64::new(48),
+                        min_binding_size: std::num::NonZeroU64::new(80),
                     },
                     count: None,
                 },
@@ -225,11 +225,13 @@ impl Tiles {
             };
             self.draws.push((index, draw.chunk));
             self.textures.push(layer.texture);
-            let at = layer.origin.truncate() + draw.offset;
+            let at = layer.origin + layer.axes[0] * draw.offset.x + layer.axes[1] * draw.offset.y;
             let data = [
-                [at.x, at.y, layer.origin.z, layer.time],
+                [at.x, at.y, at.z, layer.time],
                 layer.color,
                 [draw.lit, 0.0, 0.0, 0.0],
+                layer.axes[0].extend(0.0).to_array(),
+                layer.axes[1].extend(0.0).to_array(),
             ];
             params.extend_from_slice(bytemuck::cast_slice(&data));
             params.resize(self.draws.len() * 256, 0);
@@ -263,7 +265,7 @@ impl Tiles {
                                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                                     buffer: &self.params,
                                     offset: 0,
-                                    size: std::num::NonZeroU64::new(48),
+                                    size: std::num::NonZeroU64::new(80),
                                 }),
                             },
                         ],

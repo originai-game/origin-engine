@@ -552,11 +552,12 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
         if tiled_props(tile).get("solid").and_then(Value::as_bool) == Some(true) {
             def.collision = Some(Collision::Full);
         }
-        if let Some(o) = tile
+        for o in tile
             .get("objectgroup")
             .and_then(|g| g.get("objects"))
             .and_then(Value::as_array)
-            .and_then(|a| a.first())
+            .into_iter()
+            .flatten()
         {
             let (x, y, w, h) = (
                 f(o, "x", 0.0) as f32,
@@ -564,19 +565,37 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
                 f(o, "width", 0.0) as f32,
                 f(o, "height", 0.0) as f32,
             );
-            if w > 0.0 && h > 0.0 {
-                def.collision = Some(
-                    if x <= 0.0
-                        && y <= 0.0
-                        && w >= ts.tile_width as f32
-                        && h >= ts.tile_height as f32
-                    {
-                        Collision::Full
-                    } else {
-                        Collision::Rect { x, y, w, h }
-                    },
-                );
-            }
+            let points: Vec<[f32; 2]> = if let Some(polygon) =
+                o.get("polygon").and_then(Value::as_array)
+            {
+                polygon
+                    .iter()
+                    .map(|p| [f(p, "x", 0.0) as f32, f(p, "y", 0.0) as f32])
+                    .collect()
+            } else if o.get("ellipse").and_then(Value::as_bool) == Some(true) && w > 0.0 && h > 0.0
+            {
+                // Cook-only tessellation; the runtime receives just edges.
+                (0..64)
+                    .map(|i| {
+                        let a = i as f32 * std::f32::consts::TAU / 64.0;
+                        [(1.0 + a.cos()) * w * 0.5, (1.0 + a.sin()) * h * 0.5]
+                    })
+                    .collect()
+            } else if w > 0.0 && h > 0.0 {
+                vec![[0.0, 0.0], [w, 0.0], [w, h], [0.0, h]]
+            } else {
+                return Err(format!(
+                    "{what}: collision objects must be closed polygons, ellipses or boxes"
+                ));
+            };
+            let angle = (f(o, "rotation", 0.0) as f32).to_radians();
+            let (sin, cos) = angle.sin_cos();
+            def.polygons.push(
+                points
+                    .into_iter()
+                    .map(|[px, py]| [x + cos * px - sin * py, y + sin * px + cos * py])
+                    .collect(),
+            );
         }
         if let Some(frames) = tile.get("animation").and_then(Value::as_array) {
             let mut a = TileAnim {
@@ -1300,6 +1319,7 @@ pub fn import_ldtk(
                             0,
                             TileDef {
                                 collision: Some(Collision::Full),
+                                polygons: Vec::new(),
                                 anim: None,
                             },
                         );

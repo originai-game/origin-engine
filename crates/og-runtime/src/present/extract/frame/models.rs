@@ -183,10 +183,19 @@ pub(super) fn models(
     // A fractured destructible's model is drawn by its chunks (og.Chunk):
     // each its node of the model at its own transform, with the model's look.
     let fractured: IdMap<u64, crate::bind::destruction::Drawn> =
-        crate::bind::destruction::drawn(layouts.engine)
-            .into_iter()
-            .map(|d| (d.entity, d))
-            .collect();
+        if crate::engine::engine(layouts.engine).is_ok_and(|e| {
+            e.modules
+                .destruction
+                .enabled
+                .load(std::sync::atomic::Ordering::Relaxed)
+        }) {
+            crate::bind::destruction::drawn(layouts.engine)
+        } else {
+            Vec::new()
+        }
+        .into_iter()
+        .map(|d| (d.entity, d))
+        .collect();
     let (chunked, model_parts): (Vec<_>, Vec<_>) = model_parts
         .into_iter()
         .partition(|m| fractured.contains_key(&m.1.entity));

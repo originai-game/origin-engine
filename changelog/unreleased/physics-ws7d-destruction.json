@@ -1,0 +1,25 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.destruction and og.PixelTerrain",
+      "change": "Chunks use material density and true body COM velocities; foundations and zero-tension masonry carry compression only. Capped stress solves persist their warm starts. Removed destructibles retain budgeted visible orphan chunks. Pixel outlines are native seamless polylines, detached pieces preserve concavities with compound convex colliders, and same-tick blasts accumulate symmetrically.",
+      "fix": "Retune destructible impulses and stress strengths for real masses and unilateral support. Recreate saves: destruction, pixel terrain and tilemap state formats changed; old snapshots are not accepted."
+    },
+    {
+      "member": "og.destruction.explode and og.destruction.damage",
+      "change": "innerRadius greater than radius is rejected, radius zero does nothing, and ExplosionDesc.occlusion optionally shields chunks behind live colliders. Explosions cull props outside their world bounds.",
+      "fix": "Pass 0 <= innerRadius <= radius; set occlusion true when cover should block a blast. Leave occlusion false to disable ray testing."
+    },
+    {
+      "member": "model collider and fracture cook",
+      "change": "Baked colliders use content hashes, reuse trimesh BVHs at arbitrary scale and support collider convex or collider vhacd. Fracture format 3 stores real hulls, contact section inertia, anchor normals and debris samples. Tiled imports retain all closed shapes and orthogonal maps collide through seamless chunk-local union outlines respecting parent transforms.",
+      "fix": "Cook assets again. Use collider true for trimeshes, collider convex for a hull, or collider vhacd for a convex compound with a convex collider. Custom fracture anchors use anchor plane nx ny nz distance with the normal pointing into the model. Rust hosts use bake_collider(mesh, BakeKind) and set_baked_collider instead of the removed trimesh-only methods."
+    },
+    {
+      "member": "web destruction modules",
+      "change": "The destruction module is split into independently guarded destruction3d and destruction2d modules; texture edits upload dirty rectangles without replacing texture bindings. debug:physics displays destruction load, anchors, supports and pixel edit boundaries.",
+      "fix": "Rebuild web exports and deploy their generated wasm module manifest as a unit. Do not reuse an old destruction module or cooked assets."
+    }
+  ]
+}

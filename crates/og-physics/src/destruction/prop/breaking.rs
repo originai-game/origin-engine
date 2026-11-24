@@ -41,7 +41,7 @@ pub struct Settings {
 /// What one run does to a prop besides its bonds.
 #[derive(Default)]
 pub struct Hits {
-    pub damage: Vec<(Damage, u32)>,
+    pub damage: Vec<(Damage, u32, Vec<bool>)>,
     pub fracture: bool,
 }
 
@@ -86,8 +86,8 @@ pub fn wear(
     let (a, s) = (at.a, at.s);
     let mut cause = None;
     let place_fn = |c: u32, x: Vec3| place_chunk(at, frame, c, x);
-    for (d, c) in &h.damage {
-        if p.inst.damage(a, d, scale, &s.mat, &place_fn) && cause.is_none() {
+    for (d, c, exposed) in &h.damage {
+        if p.inst.damage(a, d, scale, &s.mat, &place_fn, exposed) && cause.is_none() {
             cause = Some(*c);
         }
     }

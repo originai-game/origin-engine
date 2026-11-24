@@ -54,7 +54,7 @@ module destruction {
 | [`og.destruction.material`](destruction/fn-material.md) | function | `(world: World, kind: number): Result<DestructibleMaterial>` | A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the destruction-yard test fixtur… |
 | [`og.destruction.capabilities`](destruction/fn-capabilities.md) | function | `(world: World): DestructionCapabilities` | What destruction does on this device. |
 | [`og.PixelTerrain`](destruction/record-PixelTerrain.md) | component |  | Destructible 2D ground of square cells: ground, bedrock or empty. |
-| [`og.PixelPiece`](destruction/record-PixelPiece.md) | component |  | A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the con… |
+| [`og.PixelPiece`](destruction/record-PixelPiece.md) | component |  | A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex collide… |
 | [`og.PixelDetached`](destruction/record-PixelDetached.md) | event |  | Cells of an og.PixelTerrain (or of an og.PixelPiece fracture2d broke) broke loose during the tick, read the tick after: one for each piece, in the order they were cut, for its sound, its dust, its sc… |
 | [`Carve2dDesc`](destruction/type-Carve2dDesc.md) | desc struct |  | A round hole for og.destruction.carve2d. |
 | [`Fill2dDesc`](destruction/type-Fill2dDesc.md) | desc struct |  | A round patch of ground for og.destruction.fill2d. |

@@ -781,11 +781,11 @@ pub(crate) fn note_mesh(eng: &Engine, handle: u64, mesh: MeshDesc) -> Result<(),
 /// Gives the engine's physics a triangle-mesh collider the cook baked for
 /// geometry `handle`, and remembers it, so a hot reload's new physics gets
 /// it too.
-pub(crate) fn set_baked_trimesh(eng: &Engine, handle: u64, bytes: Vec<u8>) -> Result<(), String> {
+pub(crate) fn set_baked_collider(eng: &Engine, handle: u64, bytes: Vec<u8>) -> Result<(), String> {
     let Some(physics) = eng.state.borrow().physics.clone() else {
         return Ok(());
     };
-    physics.set_baked_trimesh(handle, &bytes).map_err(err)?;
+    physics.set_baked_collider(handle, &bytes).map_err(err)?;
     eng.state.borrow_mut().physics_baked.insert(handle, bytes);
     Ok(())
 }

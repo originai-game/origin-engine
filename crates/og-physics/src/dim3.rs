@@ -206,6 +206,13 @@ pub(crate) fn polyline_segments(mesh: &crate::MeshDesc) -> Option<Vec<[u32; 2]>>
 }
 
 /// A shape built from a registered mesh, scaled.
+pub(crate) fn from_polyline(line: &crate::PolylineDesc, s: Vec3) -> rp::SharedShape {
+    rp::SharedShape::polyline(
+        line.positions.iter().map(|p| v(*p * s)).collect(),
+        Some(line.segments.clone()),
+    )
+}
+
 pub(crate) fn from_mesh(
     shape: u32,
     mesh: &crate::MeshDesc,
@@ -295,26 +302,31 @@ pub(crate) fn principal_inertia(rb: &rp::RigidBody) -> Vec3 {
 
 pub(crate) use og_physics_data::trimesh::{trimesh, unbake};
 
-/// The baked shape of a SHAPE_TRIMESH collider at scale 1 whose mesh is
-/// exactly the one baked (else `None`: it is built as before).
-pub(crate) fn baked(
-    shared: &Shared,
-    c: &Collider,
-    s: Vec3,
-    mesh: &crate::MeshDesc,
-) -> Option<rp::SharedShape> {
-    if c.shape != SHAPE_TRIMESH || s != Vec3::ONE {
+/// Reuse a cooked BVH when its asset hash matches, transforming its bounds
+/// and vertices without rerunning construction at a different scale.
+pub(crate) fn baked(shared: &Shared, c: &Collider, s: Vec3) -> Option<rp::SharedShape> {
+    if ![SHAPE_TRIMESH, SHAPE_CONVEX].contains(&c.shape) || c.round_radius > 0.0 {
         return None;
     }
-    let shape = shared.baked3.get(&c.mesh)?;
-    let tri = shape.as_trimesh()?;
-    let same =
-        tri.indices() == mesh.indices.as_slice()
-            && tri.vertices().len() == mesh.positions.len()
-            && tri.vertices().iter().zip(&mesh.positions).all(|(a, b)| {
-                unv(*a).to_array().map(f32::to_bits) == b.to_array().map(f32::to_bits)
-            });
-    same.then(|| shape.clone())
+    let baked = shared.baked3.get(&c.mesh)?;
+    if shared.mesh_hashes.get(&c.mesh) != Some(&baked.hash)
+        || baked.convex != (c.shape == SHAPE_CONVEX)
+    {
+        return None;
+    }
+    let shape = &baked.shape;
+    if s == Vec3::ONE {
+        return Some(shape.clone());
+    }
+    if let Some(tri) = shape.as_trimesh() {
+        let mut tri = tri.clone().scaled(v(s));
+        if s.x * s.y * s.z < 0.0 {
+            tri.reverse();
+        }
+        Some(rp::SharedShape::new(tri))
+    } else {
+        shape.scale_dyn(v(s), 0).map(|s| rp::SharedShape(s.into()))
+    }
 }
 
 /// The profile's dimensions.

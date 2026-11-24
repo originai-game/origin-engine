@@ -13,12 +13,10 @@
 //!   changes in order, cuts loose what no longer stands
 //!   (`PixelTerrain::detach`) into dynamic pieces, then rebuilds the
 //!   collider of every chunk a change touched: its outline
-//!   (`PixelTerrain::chunk_chains`), closed along the chunk's border and
-//!   triangulated with og_shape's earcut, registered with physics under a
-//!   generated handle ([`og_physics::GENERATED_MESH`], so a save carries
-//!   the shape) and named by a static SHAPE_TRIMESH og.Collider, which
-//!   collides as the outline in 2D. A piece collides as the convex hull of
-//!   its cells (SHAPE_CONVEX). Meshes no collider names any more leave
+//!   (`PixelTerrain::chunk_chains`), registered directly as native polyline
+//!   segments under a generated handle. Chunk boundaries inside solid
+//!   ground add no edges. Detached pieces use exact convex rectangle
+//!   compounds, preserving their holes and concavities. Unused meshes leave
 //!   physics. Integer and f32 `+ - * /` arithmetic in fixed orders only.
 //! - **Drawing** ([`extract`]): each terrain and piece is one sprite of a
 //!   texture painted from its cells, repainted only when its cells changed
@@ -38,11 +36,10 @@ use og_core::block_form::{self as bf, BlockForm, Field, Record};
 use og_core::hash::splitmix64 as splitmix;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_physics::destruction::terrain2d::collider::{chunk_mesh, piece_mesh};
+use og_physics::destruction::terrain2d::collider::{chunk_polyline, piece_rectangles};
 use og_physics::destruction::terrain2d::cut::{Sub, pushed, voronoi};
 use og_physics::destruction::terrain2d::state::{Body, Ground, Look, Op, Piece, State};
 use og_physics::destruction::terrain2d::{BEDROCK, Cell, PixelTerrain};
-use og_physics::generated_mesh_handle as mesh_handle;
 use serde_json::{Value, json};
 use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};
@@ -82,7 +79,10 @@ struct Shared {
 /// og.destruction2d on one engine: the state its world's block saves,
 /// shared with its system, its calls and extraction.
 #[derive(Clone, Default)]
-pub(crate) struct ModuleState(Arc<Mutex<Shared>>);
+pub(crate) struct ModuleState(
+    Arc<Mutex<Shared>>,
+    pub(crate) Arc<std::sync::atomic::AtomicBool>,
+);
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
@@ -183,6 +183,7 @@ impl Settings {
             look: self.look,
             colliders: BTreeMap::new(),
             revision: 0,
+            updates: Vec::new(),
         }
     }
 }
@@ -191,7 +192,7 @@ impl Settings {
 
 struct Block(Arc<Mutex<Shared>>);
 
-const MAGIC: &[u8; 8] = b"DESTR2D1";
+const MAGIC: &[u8; 8] = b"DESTR2D2";
 
 impl StateBlock for Block {
     fn save(&self, out: &mut Vec<u8>) {
@@ -249,7 +250,7 @@ impl StateBlock for Block {
         }
         for (&e, p) in &s.pieces {
             out.entities
-                .push(Record::new(e, "piece").members(p, &["terrain"]));
+                .push(Record::new(e, "piece").members(p, &["terrain", "colliders"]));
         }
         let mut explosions = Vec::new();
         for (i, op) in s.ops.iter().enumerate() {
