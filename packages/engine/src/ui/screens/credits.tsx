@@ -4,6 +4,7 @@ import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { engineCredits } from "./engine-credits";
 import "./credits.en.ogt";
+import { InputGlyph } from "../controls/input-glyph";
 
 export interface CreditsScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
@@ -81,9 +82,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
         </View>
       </View>
       <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted pointer-coarse:hidden compact:hidden">
-        <Text class="text-xs leading-loose font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control shrink">
-          {t("screen.credits.fasterKey")}
-        </Text>
+        <InputGlyph keyLabel={t("screen.credits.fasterKey")} size="sm" />
         <Text class="shrink">{t("screen.credits.faster")}</Text>
       </View>
     </View>

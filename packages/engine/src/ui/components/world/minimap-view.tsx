@@ -12,6 +12,10 @@ export interface MinimapViewMarker {
   y: number;
   /** For a reader. */
   label?: string;
+  /** Out of view, it stays pinned to the rim, dimmed, with a tick pointing its way (an objective, a party member); false drops it. */
+  pinned?: boolean;
+  /** above or below the player (another floor): a small chevron on the pip; empty is level. */
+  elevation?: string;
 }
 
 export interface MinimapViewProps {
@@ -55,12 +59,38 @@ const SIDE = 192; // px, the glass (size-5xl); the map math is in px.
 const PIP = 12 / 14; // rem, a marker pip (12 font steps).
 const PIP_BIG = 17 / 14; // rem, an objective pip.
 
-function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: () => number; zoom: () => number }) {
+const RIM = 10; // px kept between a pinned pip's centre and the glass's edge.
+
+function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: () => number; zoom: () => number; round: () => boolean }) {
   const m = props.marker;
   const pip = () => (m().kind === "objective" ? PIP_BIG : m().kind === "loot" ? PIP * 0.85 : m().kind === "ping" ? PIP * 1.5 : PIP);
-  const offset = () => (kind: "x" | "y") => SIDE / 2 + ((kind === "x" ? m().x : m().y) - (kind === "x" ? props.cx() : props.cy())) * (SIDE / props.zoom());
-  const left = () => `calc(${offset()("x")}px - ${pip() / 2}rem)`;
-  const top = () => `calc(${offset()("y")}px - ${pip() / 2}rem)`;
+  const raw = () => ({
+    x: (m().x - props.cx()) * (SIDE / props.zoom()),
+    y: (m().y - props.cy()) * (SIDE / props.zoom()),
+  });
+  const limit = SIDE / 2 - RIM;
+  // Where it is drawn, relative to the centre: as is inside the glass, on the rim when pinned
+  // and out of view (round glass: along its ray; square: on the box).
+  const placed = () => {
+    const { x, y } = raw();
+    if (props.round()) {
+      const d = Math.hypot(x, y);
+      if (d <= limit) return { x, y, edge: false };
+      return { x: (x / d) * limit, y: (y / d) * limit, edge: true };
+    }
+    const k = Math.max(Math.abs(x), Math.abs(y));
+    if (k <= limit) return { x, y, edge: false };
+    return { x: (x / k) * limit, y: (y / k) * limit, edge: true };
+  };
+  const outside = () => {
+    const { x, y } = raw();
+    return props.round() ? Math.hypot(x, y) > SIDE / 2 : Math.max(Math.abs(x), Math.abs(y)) > SIDE / 2;
+  };
+  const visible = () => !outside() || m().pinned === true;
+  const edge = () => m().pinned === true && placed().edge;
+  const bearing = () => (Math.atan2(raw().x, -raw().y) * 180) / Math.PI;
+  const left = () => `calc(${SIDE / 2 + placed().x}px - ${pip() / 2}rem)`;
+  const top = () => `calc(${SIDE / 2 + placed().y}px - ${pip() / 2}rem)`;
   const shape = () => {
     if (m().kind === "enemy" || m().kind === "objective") return "rotate-45";
     if (m().kind === "ally" || m().kind === "poi" || m().kind === "ping") return "rounded-full";
@@ -76,17 +106,44 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
     if (m().kind === "loot") return "bg-epic";
     return "";
   };
+  const ink = () => {
+    if (m().kind === "ally" || m().kind === "poi") return "bg-ally-ink";
+    if (m().kind === "enemy") return "bg-foe-ink";
+    if (m().kind === "objective") return "bg-gold";
+    if (m().kind === "loot") return "bg-epic";
+    return "bg-warn";
+  };
   const ring = () => (m().kind === "ping" ? "ring-heavy ring-fill inset-ring-regular inset-ring-warn" : "ring-regular ring-raised-lo");
   return (
-    <View
-      class={`absolute ${shape()} ${fill()} ${ring()}`}
-      label={m().label}
-      style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top() }}
-    >
-      <Show when={m().kind === "ping"}>
-        <View class="absolute inset-0 rounded-full ring-heavy ring-fill inset-ring-regular inset-ring-warn animate-ping" />
-      </Show>
-    </View>
+    <Show when={visible()}>
+      <View
+        class="absolute"
+        label={m().label}
+        data-edge={edge()}
+        style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top() }}
+      >
+        <View class={`absolute inset-0 ${shape()} ${fill()} ${ring()} ${edge() ? "opacity-soft scale-press" : ""}`}>
+          <Show when={m().kind === "ping"}>
+            <View class="absolute inset-0 rounded-full ring-heavy ring-fill inset-ring-regular inset-ring-warn animate-ping" />
+          </Show>
+        </View>
+        <Show when={edge()}>
+          <View class="absolute inset-0 pointer-events-none" style={{ transform: `rotate(${bearing()}deg)` }}>
+            <View class={`absolute left-1/2 -top-1.5 w-0.75 h-1.25 -translate-x-1/2 rounded-capsule ${ink()}`} />
+          </View>
+        </Show>
+        <Show when={m().elevation === "above" || m().elevation === "below"}>
+          <View class="absolute -right-1.5 -top-1 w-2 h-1.75">
+            <Line
+              class="size-full stroke-fg stroke-[1.5]"
+              points={m().elevation === "above" ? [1, 5, 4, 2, 7, 5] : [1, 2, 4, 5, 7, 2]}
+              viewBox={[8, 7]}
+              label={m().elevation === "above" ? t("component.minimap-view.above") : t("component.minimap-view.below")}
+            />
+          </View>
+        </Show>
+      </View>
+    </Show>
   );
 }
 
@@ -146,7 +203,7 @@ export function MinimapView(props: MinimapViewProps) {
               />
             </Show>
             <For each={props.markers ?? []} key={(m) => m.id}>
-              {(m) => <Marker marker={m} cx={cx} cy={cy} zoom={zoom} />}
+              {(m) => <Marker marker={m} cx={cx} cy={cy} zoom={zoom} round={() => round() || props.rotate === true} />}
             </For>
           </View>
           <Show when={round()}>
@@ -197,5 +254,6 @@ export function MinimapView(props: MinimapViewProps) {
 }
 
 export const fixtures: Record<string, Partial<MinimapViewProps>> = {
+  pinned: {"centerX":0.5,"centerY":0.5,"zoom":0.2,"heading":0,"zone":"Drowned Abbey","markers":[{"id":"quest","kind":"objective","x":0.9,"y":0.2,"label":"Quest","pinned":true},{"id":"mira","kind":"ally","x":0.1,"y":0.7,"label":"Mira","pinned":true},{"id":"far","kind":"enemy","x":0.95,"y":0.95,"label":"Enemy"},{"id":"up","kind":"poi","x":0.53,"y":0.45,"label":"Stairs","elevation":"above"},{"id":"down","kind":"enemy","x":0.45,"y":0.55,"label":"Enemy","elevation":"below"}]},
   default: {"texture":0,"centerX":0.5,"centerY":0.5,"zoom":0.3,"heading":30,"rotate":false,"square":false,"zone":"Ashen Vale","markers":[{"id":"ally","kind":"ally","x":0.45,"y":0.42,"label":"Mira"},{"id":"foe","kind":"enemy","x":0.58,"y":0.55,"label":"Enemy"},{"id":"quest","kind":"objective","x":0.6,"y":0.38,"label":"Quest"},{"id":"ping","kind":"ping","x":0.42,"y":0.6,"label":"Ping"},{"id":"chest","kind":"loot","x":0.53,"y":0.47,"label":"Chest"}]},
 };

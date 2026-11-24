@@ -48,6 +48,8 @@ export interface HudEditorScreenProps {
   onDone?: ((e: UiEvent) => void) | undefined;
   /** Content the caller supplies (was the editorEditor snippet). */
   editorEditor?: (() => JSX.Element) | undefined;
+  /** Draws the live HUD element inside each region's tile, so the player places what they will see. */
+  renderRegion?: ((region: HudRegion) => JSX.Element) | undefined;
 }
 
 function parseBox(value: string): [number, number, number, number] {
@@ -185,6 +187,9 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
                     onPress={(e) => select(e, r().id)}
                     onKey={(e) => nudge(e, r())}
                   >
+                    <Show when={props.renderRegion}>
+                      <View class="pointer-events-none flex-col items-center">{props.renderRegion?.(r())}</View>
+                    </Show>
                     <View class="flex-row items-center gap-1.5 min-w-0">
                       <Show when={r().hidden}>
                         <Icon name="eyeOff" class="size-3.5 text-fg-muted shrink-0" />

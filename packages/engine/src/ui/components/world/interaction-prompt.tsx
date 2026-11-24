@@ -1,6 +1,7 @@
 import { Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
+import { InputGlyph } from "../../controls/input-glyph";
 
 export interface InteractionPromptProps {
   /** What it is over, by its bits (0: use at). */
@@ -88,14 +89,7 @@ export function InteractionPrompt(props: InteractionPromptProps) {
           <View class="absolute inset-0 rounded-full bg-scrim" />
           <View class="absolute inset-0 nine-ring bg-hud-accent transition-layout duration-fast ease-out" wipe={Math.min(Math.max(hold(), 0), 1)} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={Math.min(Math.max(hold(), 0), 1)} />
         </Show>
-        <Show
-          when={key() !== "" || action() === ""}
-          fallback={
-            <Text class="z-1 text-xl leading-none text-fg text-shadow-tag group-data-disabled:opacity-dim" glyph={action()} />
-          }
-        >
-          <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong">{key()}</Text>
-        </Show>
+        <InputGlyph class="z-1" action={key() !== "" ? undefined : action() || undefined} keyLabel={key()} pad={props.pad} pressed={lit()} disabled={props.disabled} />
       </View>
       <View class={`flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 ${packClass("Plate", "frame")}`}>
         <Text class="text-reading leading-tight font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>

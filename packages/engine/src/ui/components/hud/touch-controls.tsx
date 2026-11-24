@@ -29,6 +29,8 @@ export interface TouchControlsProps {
   always?: boolean;
   /** Every control feeds nothing and shows faded (a cutscene, a menu over the HUD). */
   disabled?: boolean;
+  /** Mirror the layout: the stick at the end side, the buttons and the look stick at the start side (a left-handed player's setting). */
+  leftHanded?: boolean;
 }
 
 /**
@@ -99,7 +101,8 @@ export function TouchControls(props: TouchControlsProps) {
   return (
     <View class={`w-full pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)] ${props.always ? "flex" : "hidden pointer-coarse:flex"}`}>
     <View
-      class={`flex-row items-end justify-between w-full ${packClass("Touch", "bar")}`}
+      class={`${props.leftHanded ? "flex-row-reverse" : "flex-row"} items-end justify-between w-full ${packClass("Touch", "bar")}`}
+      data-left-handed={props.leftHanded === true}
       role="group"
       label={t("component.touch-controls.name")}
     >
@@ -110,9 +113,9 @@ export function TouchControls(props: TouchControlsProps) {
           <Pad action={props.move ?? ""} disabled={props.disabled === true} label={t("component.touch-controls.move")} />
         </Show>
       </Show>
-      <View class="flex-row items-end justify-end gap-4 min-w-0">
+      <View class={`${props.leftHanded ? "flex-row-reverse" : "flex-row"} items-end justify-end gap-4 min-w-0`}>
         <Show when={actions().length > 0}>
-          <View class={`flex-row-reverse flex-wrap-reverse content-end justify-end min-w-0 ${packClass("Touch", "actions")}`}>
+          <View class={`${props.leftHanded ? "flex-row" : "flex-row-reverse"} flex-wrap-reverse content-end justify-end min-w-0 ${packClass("Touch", "actions")}`}>
             <For each={actions()} key={(a) => a.id}>
               {(a) => (
                 <ActionButton
@@ -137,6 +140,7 @@ export function TouchControls(props: TouchControlsProps) {
 }
 
 export const fixtures: Record<string, Partial<TouchControlsProps>> = {
+  leftHanded: {"move":"move","look":"look","always":true,"leftHanded":true,"actions":[{"id":"jump","action":"jump","label":"Jump","icon":"bolt","primary":true},{"id":"dash","action":"dash","label":"Dash","icon":"fire"}]},
   default: {"move":"move","pad":false,"look":"","deadZone":0,"always":true,"disabled":false,"actions":[{"id":"jump","action":"jump","label":"Jump","icon":"bolt","primary":true,"charge":-1,"disabled":false},{"id":"dash","action":"dash","label":"Dash","icon":"fire","primary":false,"charge":-1,"disabled":false},{"id":"use","action":"use","label":"Use","icon":"key","primary":false,"charge":-1,"disabled":false}]},
   pad: {"move":"move","pad":true,"look":"","deadZone":0,"always":true,"disabled":false,"actions":[{"id":"a","action":"confirm","label":"A","icon":"","primary":true,"charge":-1,"disabled":false},{"id":"b","action":"back","label":"B","icon":"","primary":false,"charge":-1,"disabled":false}]},
   twin: {"move":"move","pad":false,"look":"look","deadZone":0.2,"always":true,"disabled":false,"actions":[{"id":"fire","action":"fire","label":"Fire","icon":"bomb","primary":true,"charge":-1,"disabled":false},{"id":"ult","action":"ultimate","label":"Ultimate","icon":"star","primary":false,"charge":0.6,"disabled":true}]},

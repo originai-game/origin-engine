@@ -24,6 +24,7 @@ export function Switch(props: SwitchProps) {
   return (
     <View
       role="switch"
+      haptic="tick"
       class={`group/switch flex-row items-center justify-between gap-3 min-h-11 ${props.class ?? ""}`}
       checked={props.checked === true}
       disabled={props.disabled}

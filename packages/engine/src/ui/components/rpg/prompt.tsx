@@ -1,5 +1,6 @@
 import { Show, Text, View, packClass } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
+import { InputGlyph } from "../../controls/input-glyph";
 
 export interface RpgPromptProps {
   /** The input that does it as the game names it (F, Hold E); empty hides the key cap. */
@@ -22,9 +23,7 @@ export function RpgPrompt(props: RpgPromptProps) {
     <View class={`group/prompt self-center flex-row items-center justify-center max-w-full gap-1 py-1 px-2 ${packClass("Plate", "frame")}`} role="status" disabled={props.disabled} data-disabled={props.disabled}>
       <Show when={props.text !== ""}>
         <Show when={props.key !== ""}>
-          <View class={`shrink min-w-6 max-w-2/5 py-0 px-1 leading-loose text-xs font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden group-data-disabled/prompt:opacity-dim pointer-coarse:hidden`}>
-            <Text>{props.key}</Text>
-          </View>
+          <InputGlyph class="max-w-2/5 pointer-coarse:hidden" keyLabel={props.key} size="sm" disabled={props.disabled} />
         </Show>
         <Text class={`min-w-0 text-base font-semibold whitespace-nowrap overflow-hidden group-data-disabled/prompt:opacity-dim compact:text-base`}>
           {props.text}

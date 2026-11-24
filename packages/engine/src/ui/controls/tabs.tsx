@@ -47,6 +47,7 @@ export function Tab(props: TabProps) {
   return (
     <View
       role="tab"
+      haptic="tick"
       class={`relative group/tab ${packClass("Tab", "item")} ${props.class ?? ""}`}
       selected={props.selected === true}
       disabled={props.disabled}

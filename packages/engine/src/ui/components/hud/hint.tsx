@@ -1,4 +1,5 @@
 import { Show, Text, View, packClass } from "@origingame/engine/ui";
+import { InputGlyph } from "../../controls/input-glyph";
 
 export interface HudHintProps {
   /** The input as the game names it (Tab, Space), on a key cap; empty is none. */
@@ -17,9 +18,7 @@ export function HudHint(props: HudHintProps) {
   return (
     <View class={`flex-row items-center gap-1 w-fit min-w-0 max-w-full pointer-coarse:hidden`}>
       <Show when={props.key}>
-        <Text class={`shrink max-w-30 min-w-6 py-0 px-1 text-xs leading-loose font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate`}>
-          {props.key}
-        </Text>
+        <InputGlyph class="max-w-30" keyLabel={props.key} size="sm" />
       </Show>
       <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted`}>{props.label}</Text>
     </View>

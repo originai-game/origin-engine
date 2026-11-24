@@ -1,5 +1,6 @@
 import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./ammo-counter.en.ogt";
+import { InputGlyph } from "../../controls/input-glyph";
 
 export interface AmmoCounterProps {
   /** The weapon's name. */
@@ -54,9 +55,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
             <Text class="shrink-0 text-base font-bold tabular-nums whitespace-nowrap text-fg compact:text-caption">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
           </Show>
           <Show when={(props.secondaryKey ?? "") != ""}>
-            <Text class={`shrink max-w-1/2 min-w-5 py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate pointer-coarse:hidden`}>
-              {props.secondaryKey}
-            </Text>
+            <InputGlyph class="max-w-1/2 pointer-coarse:hidden" keyLabel={props.secondaryKey} size="sm" />
           </Show>
         </View>
       </Show>

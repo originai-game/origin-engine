@@ -3,6 +3,7 @@ import { For, Show, Text, type UiEvent, View, packClass, t } from "@origingame/e
 import { Art } from "../controls/art";
 import { Counter } from "../controls/counter";
 import "./splash.en.ogt";
+import { InputGlyph } from "../controls/input-glyph";
 
 export interface SplashScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
@@ -68,9 +69,7 @@ export function SplashScreen(props: SplashScreenProps) {
         </View>
       </Show>
       <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted compact:bottom-4 compact:justify-center compact:inset-x-4`}>
-        <Text class="text-xs leading-loose font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden shrink">
-          {t("screen.splash.skipKey")}
-        </Text>
+        <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.splash.skipKey")} size="sm" />
         <Text class="pointer-coarse:hidden shrink">{t("screen.splash.skip")}</Text>
         <Text class="hidden pointer-coarse:flex shrink">{t("screen.splash.tap")}</Text>
       </View>

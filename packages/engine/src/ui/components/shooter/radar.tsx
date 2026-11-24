@@ -12,6 +12,8 @@ export interface RadarBlip {
   y: number;
   /** Names it for a reader. */
   label?: string;
+  /** Off the radar, it stays pinned on the inner rim, dimmed (the objective, a squadmate); false clips it. */
+  pinned?: boolean;
 }
 
 export interface ShooterRadarProps {
@@ -25,7 +27,7 @@ export interface ShooterRadarProps {
   zoom?: number;
   /** The player's heading in degrees clockwise from north: north stays up and the player's arrow turns. */
   heading?: number;
-  /** What the radar shows. A blip off the radar's edge is clipped. Read only. */
+  /** What the radar shows. A blip off the radar's edge is clipped unless it is pinned. Read only. */
   blips?: ReadonlyArray<RadarBlip>;
 }
 
@@ -50,6 +52,15 @@ export function ShooterRadar(props: ShooterRadarProps) {
   // Percentages of the radar's side, so the large and compact radars
   // place the map and the blips alike.
   const at = (v: number, c: number) => `${(0.5 + (v - c) / zoom()) * 100}%`;
+  // A blip's offset from the centre in radar sides; a pinned blip out of range rides the rim.
+  const place = (b: RadarBlip) => {
+    const x = (b.x - cx()) / zoom();
+    const y = (b.y - cy()) / zoom();
+    const d = Math.hypot(x, y);
+    const rim = 0.44;
+    if (!b.pinned || d <= rim) return { x, y, edge: false };
+    return { x: (x / d) * rim, y: (y / d) * rim, edge: true };
+  };
   return (
     <View
       class="relative size-38.5 compact:size-20 max-w-full text-fg"
@@ -73,9 +84,11 @@ export function ShooterRadar(props: ShooterRadarProps) {
               class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:ring-regular data-ally:ring-material-thick data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-glow-sm data-foe:shadow-foe data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
-                left: at(b().x, cx()),
-                top: at(b().y, cy()),
+                left: `${(0.5 + place(b()).x) * 100}%`,
+                top: `${(0.5 + place(b()).y) * 100}%`,
+                opacity: place(b()).edge ? 0.7 : undefined,
               }}
+              data-edge={place(b()).edge}
               data-ally={b().kind == "ally"}
               data-foe={b().kind == "foe"}
               data-objective={b().kind == "objective"}

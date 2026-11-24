@@ -1,5 +1,6 @@
 import { Show, Text, View, packClass } from "@origingame/engine/ui";
 import "./shooter.en.ogt";
+import { InputGlyph } from "../../controls/input-glyph";
 
 export interface ShooterPromptProps {
   /** The input that does it as the game names it (E, X, Hold F); empty hides the key cap. */
@@ -27,11 +28,7 @@ export function ShooterPrompt(props: ShooterPromptProps) {
     >
       <Show when={props.text != ""}>
         <Show when={props.key != ""}>
-          <Text
-            class={`shrink basis-auto max-w-2/5 min-w-5.5 py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate`}
-          >
-            {props.key}
-          </Text>
+          <InputGlyph class="max-w-2/5" keyLabel={props.key} size="sm" />
         </Show>
         <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate compact:text-caption py-0.25 px-1.5 ${packClass("Plate", "frame")}`}>{props.text}</Text>
         <Show when={props.disabled && props.reason != ""}>

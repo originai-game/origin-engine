@@ -934,6 +934,117 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-hairline inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-regular aria-invalid:inset-ring-danger focus:inset-ring-regular focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
     ),
     (
+        "Field.label",
+        "a labelled field's label (TextField, TextArea)",
+        "text-sm font-semibold text-fg",
+    ),
+    (
+        "Field.hint",
+        "the description or character count under a field",
+        "text-xs text-fg-muted",
+    ),
+    (
+        "Field.error",
+        "what is wrong with a field's value, under it",
+        "text-xs font-semibold text-danger",
+    ),
+    (
+        "Badge.frame",
+        "a status tag: words or a count (Badge)",
+        "min-w-5 h-5 px-1.5 rounded-capsule text-2xs font-bold uppercase tracking-label whitespace-nowrap bg-layer-3 text-fg inset-ring-hairline inset-ring-border",
+    ),
+    (
+        "Badge.frame.accent",
+        "an accent badge",
+        "bg-accent text-accent-fg inset-ring-0",
+    ),
+    (
+        "Badge.frame.success",
+        "a success badge",
+        "bg-success text-success-fg inset-ring-0",
+    ),
+    (
+        "Badge.frame.warn",
+        "a warning badge",
+        "bg-warn text-warn-fg inset-ring-0",
+    ),
+    (
+        "Badge.frame.danger",
+        "a danger badge (unread, alert)",
+        "bg-danger text-danger-fg inset-ring-0",
+    ),
+    (
+        "Badge.frame.info",
+        "an informational badge",
+        "bg-info text-info-fg inset-ring-0",
+    ),
+    (
+        "Badge.frame.gold",
+        "a gold badge (a sale, a premium)",
+        "bg-gold text-gold-fg inset-ring-0",
+    ),
+    (
+        "Badge.dot",
+        "a badge that is only a dot",
+        "size-2.5 rounded-capsule bg-fg-muted ring-regular ring-bg",
+    ),
+    ("Badge.dot.accent", "an accent dot", "bg-accent"),
+    ("Badge.dot.success", "a success dot", "bg-success"),
+    ("Badge.dot.warn", "a warning dot", "bg-warn"),
+    ("Badge.dot.danger", "a danger dot", "bg-danger"),
+    ("Badge.dot.info", "an informational dot", "bg-info"),
+    ("Badge.dot.gold", "a gold dot", "bg-gold"),
+    (
+        "Divider.line",
+        "a divider's hairline",
+        "bg-border",
+    ),
+    (
+        "Divider.label",
+        "the words centred on a divider",
+        "text-xs font-semibold uppercase tracking-label text-fg-muted",
+    ),
+    (
+        "IconButton.frame",
+        "what an icon-only button adds to its Button plate: the square and its radius",
+        "rounded-button",
+    ),
+    (
+        "RichText.keyword",
+        "a glossary keyword inside rich text: its underline and focus",
+        "rounded-control underline decoration-dotted underline-offset-2 transition duration-instant hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:inset-ring-regular focus-visible:inset-ring-accent",
+    ),
+    (
+        "RichText.gloss",
+        "the tooltip that explains a keyword",
+        "flex-col gap-0.5 py-2 px-3 rounded-block bg-surface-overlay text-sm text-fg shadow-overlay inset-ring-hairline inset-ring-border",
+    ),
+    (
+        "CastBar.frame",
+        "a cast or channel bar's plate",
+        "flex-col gap-1 py-1.5 px-2 rounded-card bg-glass backdrop-blur-regular text-fg inset-ring-hairline inset-ring-border",
+    ),
+    (
+        "CastBar.track",
+        "a cast bar's track",
+        "relative h-2 rounded-capsule overflow-hidden bg-track shadow-sunk",
+    ),
+    (
+        "CastBar.fill",
+        "a cast bar's fill; data-locked: an uninterruptible cast, data-interrupted: a cast broken off",
+        "absolute inset-y-0 left-0 rounded-capsule bg-linear-to-r from-hud-accent to-hud-accent-hi transition-[width] duration-instant data-locked:from-fg-muted data-locked:to-fg data-interrupted:from-danger data-interrupted:to-danger",
+    ),
+    (
+        "BannerQueue.item",
+        "a non-blocking banner (an achievement, a milestone, a quest unlocked)",
+        "flex-row items-center gap-3 py-2.5 pl-2.5 pr-4 min-w-72 max-w-120 rounded-panel bg-glass backdrop-blur-regular text-fg shadow-overlay inset-ring-hairline inset-ring-border transition duration-base ease-out starting:opacity-0 starting:-translate-y-3 data-leaving:opacity-0 data-leaving:-translate-y-3",
+    ),
+    (
+        "HudLayout.region",
+        "one placed HUD region inside a HudLayout",
+        "",
+    ),
+    (
         "Row.frame",
         "a row of a list, table or feed",
         "rounded-control bg-layer-3 text-fg",

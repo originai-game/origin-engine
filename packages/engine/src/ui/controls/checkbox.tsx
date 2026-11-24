@@ -31,6 +31,7 @@ export function Checkbox(props: CheckboxProps) {
   return (
     <View
       role="checkbox"
+      haptic="tick"
       class={`group/checkbox flex-row items-center gap-3 min-h-11 ${props.class ?? ""}`}
       checked={state()}
       disabled={props.disabled}

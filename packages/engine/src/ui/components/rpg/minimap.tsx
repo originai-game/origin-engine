@@ -13,8 +13,8 @@ export interface RpgMinimapProps {
   zoom?: number;
   /** The player's heading in degrees clockwise from north: north stays up and the player's arrow turns. */
   heading: number;
-  /** What the minimap shows, keyed rows of { id, kind, x, y, label }: kind ally, foe, boss or objective (on data-kind, each its own shape and colour); x and y on the map, 0 to 1; label names it for a reader. A blip off the minimap's edge is clipped. */
-  blips?: ReadonlyArray<{ id: string; kind: string; x: number; y: number; label: string }>;
+  /** What the minimap shows, keyed rows of { id, kind, x, y, label }: kind ally, foe, boss or objective (on data-kind, each its own shape and colour); x and y on the map, 0 to 1; label names it for a reader; pinned keeps it on the rim, dimmed, when it is out of range. A blip off the minimap's edge is otherwise clipped. */
+  blips?: ReadonlyArray<{ id: string; kind: string; x: number; y: number; label: string; pinned?: boolean }>;
   /** Where the player is as the game words it (Ashen Vale), under the map; empty hides it. */
   place: string;
   /** The world's time of day as the game words it (06:40), on a tag beside the place; empty hides it. */
@@ -29,6 +29,15 @@ export interface RpgMinimapProps {
  */
 export function RpgMinimap(props: RpgMinimapProps) {
   const zoom = () => ((props.zoom ?? 0.5) > 0 ? (props.zoom ?? 0.5) : 1);
+  // A blip's offset from the centre in map-well sides; a pinned blip out of range rides the rim.
+  const place = (b: { x: number; y: number; pinned?: boolean }) => {
+    const x = (b.x - (props.centerX ?? 0.5)) / zoom();
+    const y = (b.y - (props.centerY ?? 0.5)) / zoom();
+    const d = Math.hypot(x, y);
+    const rim = 0.44;
+    if (!b.pinned || d <= rim) return { x, y, edge: false };
+    return { x: (x / d) * rim, y: (y / d) * rim, edge: true };
+  };
   return (
     <View class={`flex-col items-center gap-y-2 max-w-full shrink-0 text-fg compact:gap-y-1.5`} role="group" label={props.place !== "" ? props.place : t("rpg.map.name")}>
       <View class="relative size-38.5 compact:size-25.5">
@@ -38,7 +47,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           </Show>
           <For each={props.blips ?? []} key={(b) => b.id}>
             {(b) => (
-            <View class="absolute" style={{ left: `${50 + (b().x - (props.centerX ?? 0.5)) * 100 / zoom()}%`, top: `${50 + (b().y - (props.centerY ?? 0.5)) * 100 / zoom()}%` }}>
+            <View class="absolute data-edge:opacity-soft" data-edge={place(b()).edge} style={{ left: `${50 + place(b()).x * 100}%`, top: `${50 + place(b()).y * 100}%` }}>
               <View class={`-translate-x-1/2 -translate-y-1/2 size-2 rounded-full ring-regular ring-shade-deep data-ally:bg-info data-foe:rounded-none data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-glow-sm data-foe:shadow-foe data-foe:ring-regular data-foe:ring-shade-deep data-boss:size-2.75 data-boss:rounded-none data-boss:rotate-45 data-boss:bg-danger data-boss:shadow-glow-sm data-boss:shadow-foe data-boss:ring-regular data-boss:ring-shade-deep data-objective:size-2.75 data-objective:rounded-none data-objective:rotate-45 data-objective:bg-gold compact:size-2 compact:data-boss:size-2.5 compact:data-objective:size-2.5`}
                 role="image" label={b().label}
                 data-ally={b().kind === "ally"} data-foe={b().kind === "foe"} data-boss={b().kind === "boss"} data-objective={b().kind === "objective"} />

@@ -4,6 +4,7 @@ import { Spinner } from "../components/base/spinner";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import "./loading.en.ogt";
+import { InputGlyph } from "../controls/input-glyph";
 
 export interface LoadingScreenProps {
   /** Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. */
@@ -65,9 +66,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
                 {t("screen.loading.tip")}
               </Text>
               <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-xs font-semibold tracking-label px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
-                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden">
-                  {t("screen.loading.nextKey")}
-                </Text>
+                <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.nextKey")} size="sm" />
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
@@ -95,9 +94,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
             </Show>
             <Show when={props.ready && props.waits}>
               <Button variant="primary" class={`gap-x-2 min-h-11 font-bold px-5.5 compact:grow compact:shrink compact:basis-auto animate-pop`} onPress={(e) => props.onContinue?.(e)} onAction={{ confirm: (e) => props.onContinue?.(e) }} autofocus>
-                <Text class="min-w-5.5 text-xs leading-loose font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key uppercase tracking-label whitespace-normal py-0 px-1 rounded-control pointer-coarse:hidden">
-                  {t("screen.loading.continueKey")}
-                </Text>
+                <InputGlyph class="pointer-coarse:hidden" keyLabel={t("screen.loading.continueKey")} size="sm" />
                 <Text class="uppercase tracking-label whitespace-normal pointer-coarse:hidden">
                   {t("screen.loading.continue")}
                 </Text>
