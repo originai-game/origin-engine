@@ -3035,7 +3035,8 @@ impl Tree {
     /// Writes each `<Glyph action>`: the action's binding on the current
     /// device, as `glyph` answers it: its text, and the texture slot of
     /// the pack's art for it (0 none). Art shows in the text's place, an
-    /// ink mask one em square (the text leaf holds an em space for it);
+    /// ink mask one em square (the text leaf is empty and holds that
+    /// square, whatever the font);
     /// without art the text shows; with neither, nothing. The host calls
     /// it when the device, the bindings or the pack's art change, or
     /// [`Tree::glyphs_wanted`].
@@ -3047,10 +3048,12 @@ impl Tree {
                 continue;
             }
             let (text, art) = glyph(&p.glyph).unwrap_or_default();
-            let text = if art != 0 { "\u{2003}" } else { text.as_str() };
+            let text = if art != 0 { "" } else { text.as_str() };
             if art != p.art {
                 self.input.per[e as usize].art = art;
                 self.paint = true;
+                // Its leaf holds the art's em square ([`Tree::inherit`]).
+                self.inherit(e);
             }
             if text != self.els[e as usize].text {
                 self.set_text(e, text);

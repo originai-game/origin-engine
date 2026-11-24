@@ -1239,6 +1239,22 @@ impl Tree {
             Tree::member_style(el.kind, &mut s);
             layout = rune_taffy::CompactStyle::from(&s);
         }
+        // A glyph's art is one em square: its element holds that square,
+        // whatever the font (its text is empty under the art).
+        if self
+            .input
+            .per(e)
+            .is_some_and(|p| p.art != 0 && !p.glyph.is_empty())
+        {
+            let mut s = taffy::Style::from(&layout);
+            let em = taffy::LengthPercentageAuto::length(eff.size * self.text_scale);
+            s.min_size = taffy::Size {
+                width: em,
+                height: em,
+            };
+            s.flex_shrink = 0.0;
+            layout = rune_taffy::CompactStyle::from(&s);
+        }
         let in_para = el.inline != NONE || el.para.is_some();
         let (node, leaf, space) = (el.node, el.leaf, r.space);
         self.arena.set_style(node, layout);
@@ -2305,22 +2321,16 @@ impl Tree {
                 }
             }
             // A glyph with the pack's art for its binding draws it in its
-            // text's place: an ink mask one em square, centred on the leaf
-            // (which holds an em space, so it lays out as one).
+            // text's place: an ink mask one em square, centred on the
+            // glyph's box (which holds that square, so it lays out as one).
             if let Some(t) = self
                 .input
                 .per(e as u32)
+                .filter(|g| !g.glyph.is_empty())
                 .and_then(|g| og_draw::TextureHandle::from_slot(g.art))
-                && let Some(leaf) = el.leaf
             {
-                let lb = self.arena.box_of(leaf);
-                let size = el.eff.size;
-                let square = [
-                    x + lb.x + (lb.w - size) / 2.0,
-                    y + lb.y + (lb.h - size) / 2.0,
-                    size,
-                    size,
-                ];
+                let size = el.eff.size * self.text_scale;
+                let square = [x + (b.w - size) / 2.0, y + (b.h - size) / 2.0, size, size];
                 p.quads.push(PaintQuad {
                     uv: [0.0, 0.0, 1.0, 1.0],
                     ..quad(

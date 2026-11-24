@@ -4337,10 +4337,13 @@ mod tests {
         // The keyboard's art, then a pad's in its place.
         t.set_glyphs(&|_| Some(("E".to_string(), 7)));
         assert_eq!(art(&mut t), [bits(7)]);
-        assert_eq!(
-            t.els[e as usize].text, "\u{2003}",
-            "an em space under the art"
-        );
+        // The glyph holds the art's em square itself, not through a font's
+        // em space (many fonts have none): the art never runs over what
+        // follows it.
+        assert_eq!(t.els[e as usize].text, "");
+        let em = t.els[e as usize].eff.size;
+        let nb = t.arena.box_of(t.els[e as usize].node);
+        assert!(nb.w >= em && nb.h >= em, "{nb:?} under a {em} px em");
         t.set_glyphs(&|_| Some(("A".to_string(), 5)));
         assert_eq!(art(&mut t), [bits(5)], "the pad's art, not the key's");
         // A binding without art shows its text again.
