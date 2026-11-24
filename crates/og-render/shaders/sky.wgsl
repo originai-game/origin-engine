@@ -573,7 +573,7 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
 }
 
 // The fine steps to a stride inside a cloud (clouds_march).
-const CLOUD_FINE: u32 = 6u;
+const CLOUD_FINE: u32 = 5u;
 // cloud_sunlit's light scattered many times, at a cloud's sunlit skin; and
 // how fast it and the sky's and the ground's light fall with the optical
 // depth of cloud they cross (cloud_skylit: 0.75 (1 - g), g 0.85).
@@ -729,12 +729,12 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // the profile does not pass them), and a cloud in fine steps: a cumulus takes most of the light within some
   // tens of metres, and its billows are some tens of metres across, so a
   // stride that finds a cloud's column goes back to the last clear sample
-  // and crosses it in steps a sixth as long, until a stride's length of
+  // and crosses it in steps a fifth as long, until a stride's length of
   // them is clear again (Schneider 2015, the cheap and the full sample).
   // Both lengthen with the distance, as what a pixel resolves does
   // (Schneider 2022): a stride is the distance over Clouds.steps, never
   // less than the layer's thickness over 0.6 of them (48: 62 m to 3 km,
-  // 2 % of the distance past it; its fine steps 10 m, then 0.35 %, some
+  // 2 % of the distance past it; its fine steps 12 m, then 0.42 %, some
   // two pixels of a 1080p frame's cloud target).
   let steps = c[3].z;
   let grow = 1.0 / steps;
