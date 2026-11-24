@@ -27,7 +27,14 @@ impl DataTexture {
         texels: u32,
         usage: wgpu::TextureUsages,
     ) -> Self {
-        let rows = texels.div_ceil(DATA_WIDTH).max(1);
+        let max_rows = device.limits().max_texture_dimension_2d.max(1);
+        let wanted_rows = texels.div_ceil(DATA_WIDTH).max(1);
+        if wanted_rows > max_rows {
+            log::error!(
+                "DataTexture `{label}` requested {wanted_rows} rows ({texels} texels), clamping to device max_texture_dimension_2d={max_rows}"
+            );
+        }
+        let rows = wanted_rows.min(max_rows);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
             size: wgpu::Extent3d {
@@ -61,14 +68,23 @@ impl DataTexture {
         label: &str,
         bytes: &[u8],
     ) -> bool {
-        let texels = (bytes.len() / 16) as u32;
+        let max_texels = device
+            .limits()
+            .max_texture_dimension_2d
+            .max(1)
+            .saturating_mul(DATA_WIDTH);
+        let texels = ((bytes.len() / 16) as u32).min(max_texels);
         let grew = texels > self.texels;
         if grew {
+            let target = texels
+                .checked_next_power_of_two()
+                .unwrap_or(max_texels)
+                .min(max_texels);
             *self = DataTexture::new(
                 device,
                 label,
                 self.texture.format(),
-                texels.next_power_of_two(),
+                target,
                 self.texture.usage(),
             );
         }
@@ -83,6 +99,11 @@ impl DataTexture {
     /// `COPY_DST`.
     pub fn write(&self, queue: &wgpu::Queue, first: u32, data: &[u8]) {
         debug_assert!(data.len().is_multiple_of(16));
+        if first >= self.texels {
+            return;
+        }
+        let max_write = (self.texels - first) as usize * 16;
+        let data = &data[..data.len().min(max_write)];
         let put = |at: u32, width: u32, height: u32, bytes: &[u8]| {
             if width == 0 || height == 0 {
                 return;

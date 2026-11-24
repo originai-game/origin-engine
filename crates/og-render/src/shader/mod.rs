@@ -2,4 +2,5 @@
 
 pub(crate) mod blue_noise;
 pub(crate) mod pipeline_features;
+pub(crate) mod preprocess;
 pub(crate) mod shaders;

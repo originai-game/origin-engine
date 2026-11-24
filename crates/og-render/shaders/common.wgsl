@@ -17,6 +17,17 @@ fn data_at(i: u32) -> vec2<u32> {
   return vec2<u32>(i % DATA_WIDTH, i / DATA_WIDTH);
 }
 
+// Safe normalization that returns `fallback` instead of NaN on degenerate vectors.
+fn safe_normalize(v: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
+  let l2 = dot(v, v);
+  return select(fallback, v * inverseSqrt(max(l2, 1e-30)), l2 > 1e-20);
+}
+
+// Median of three scalars (MSDF text/icon distance evaluation).
+fn median3(r: f32, g: f32, b: f32) -> f32 {
+  return max(min(r, g), min(max(r, g), b));
+}
+
 // Octahedral encoding of a unit vector into -1..1 (two channels): the
 // G-buffer's normals, the probes' maps, a compact vertex's normal
 // (compact.rs `oct_encode` is the same map).

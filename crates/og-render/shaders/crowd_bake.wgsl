@@ -100,11 +100,12 @@ struct BakeTargets {
 
 @fragment
 fn fs_bake(in: BakeOut) -> BakeTargets {
-  // Nothing spills into the next tile.
-  if (any(abs(in.tile.xy) > vec2<f32>(1.0))) { discard; }
   let tex = textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv));
   let alpha = tex.a * in.color.a * material.base_color.a;
-  if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
+  // Nothing spills into the next tile; alpha-tested pixels stay clear.
+  if (any(abs(in.tile.xy) > vec2<f32>(1.0)) || (material.emissive.w >= 0.0 && alpha < material.emissive.w)) {
+    discard;
+  }
   var o: BakeTargets;
   o.albedo = vec4<f32>(tex.rgb * in.color.rgb, 1.0);
   o.data = vec4<f32>(oct_encode(normalize(in.normal)), in.tile.z, f32(bake.clip.w));

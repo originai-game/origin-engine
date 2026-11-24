@@ -22,11 +22,10 @@ fn vs_shadow(@builtin(vertex_index) vi: u32) -> TerrainShadowOut {
 
 @fragment
 fn fs_shadow(in: TerrainShadowOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-  // Light falls through the holes.
-  if (terrain_hole_at(in.local)) { discard; }
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
-  return shadow_depth(in.world, in.clip, dx, dy, front);
+  // Light falls through the holes.
+  return shadow_depth_cut(in.world, in.clip, dx, dy, front, terrain_hole_at(in.local));
 }
 
 // A terrain stamp's shadow (terrain_lit.wgsl's stamps): its mesh, never

@@ -1002,3 +1002,116 @@ fn every_module_keeps_the_compatibility_rules() {
         "refused by a WebGPU compatibility adapter: {failures:#?}"
     );
 }
+
+/// Returns `true` when `expr` is statically guaranteed to be `false` after
+/// pipeline-override constant resolution (e.g., `DISCARD && ...` when
+/// `DISCARD = false`).
+fn is_const_false(
+    module: &naga::Module,
+    f: &naga::Function,
+    expr: naga::Handle<naga::Expression>,
+) -> bool {
+    use naga::{BinaryOperator as Bin, Expression as E, Literal as L};
+    match f.expressions[expr] {
+        E::Literal(L::Bool(false)) => true,
+        E::Constant(c) => matches!(
+            module.global_expressions[module.constants[c].init],
+            E::Literal(L::Bool(false))
+        ),
+        E::Binary {
+            op: Bin::LogicalAnd,
+            left,
+            right,
+        } => is_const_false(module, f, left) || is_const_false(module, f, right),
+        _ => false,
+    }
+}
+
+/// Counts `discard` (`Statement::Kill`) reachable from `block` across all
+/// transitive function calls in `module`, ignoring statically dead `if` arms.
+fn count_kills(
+    module: &naga::Module,
+    f: &naga::Function,
+    block: &naga::Block,
+    visiting: &mut Vec<naga::Handle<naga::Function>>,
+) -> usize {
+    use naga::Statement as S;
+    let mut total = 0;
+    for s in block.iter() {
+        match s {
+            S::Kill => total += 1,
+            S::Block(b) => total += count_kills(module, f, b, visiting),
+            S::If {
+                condition,
+                accept,
+                reject,
+            } => {
+                if !is_const_false(module, f, *condition) {
+                    total += count_kills(module, f, accept, visiting);
+                }
+                total += count_kills(module, f, reject, visiting);
+            }
+            S::Switch { cases, .. } => {
+                for c in cases {
+                    total += count_kills(module, f, &c.body, visiting);
+                }
+            }
+            S::Loop {
+                body, continuing, ..
+            } => {
+                total += count_kills(module, f, body, visiting);
+                total += count_kills(module, f, continuing, visiting);
+            }
+            S::Call { function, .. } => {
+                if !visiting.contains(function) {
+                    visiting.push(*function);
+                    let callee = &module.functions[*function];
+                    total += count_kills(module, callee, &callee.body, visiting);
+                    visiting.pop();
+                }
+            }
+            _ => {}
+        }
+    }
+    total
+}
+
+/// Apple Silicon / Metal drivers have historically miscompiled fragment stages
+/// with multiple `discard` statements along control-flow paths; keep at most
+/// one `discard` per fragment entry point (including its transitive callees).
+#[test]
+fn every_fragment_entry_has_at_most_one_discard() {
+    let mut failures = Vec::new();
+    for s in og_render::shader_sources() {
+        let (module, _) = crate::shaders::checked(
+            &s.label,
+            &s.wgsl,
+            &s.constants,
+            crate::shaders::full_capabilities(),
+        )
+        .unwrap_or_else(|e| panic!("{e}"));
+        for ep in &module.entry_points {
+            if ep.stage != naga::ShaderStage::Fragment {
+                continue;
+            }
+            let is_resolve_ep =
+                ep.name == "fs_meshlet_resolve" || ep.name == "fs_prepass_meshlet_resolve";
+            let is_resolve_variant = s.constants.iter().any(|(k, v)| k == "DISCARD" && *v == 0.0);
+            if is_resolve_ep && !is_resolve_variant {
+                continue;
+            }
+            let mut visiting = Vec::new();
+            let kills = count_kills(&module, &ep.function, &ep.function.body, &mut visiting);
+            if kills > 1 {
+                failures.push(format!(
+                    "{}: @fragment {} has {kills} discards",
+                    s.label, ep.name
+                ));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "fragment entry points with >1 discard: {failures:#?}"
+    );
+}

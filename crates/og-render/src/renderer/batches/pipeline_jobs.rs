@@ -337,8 +337,10 @@ impl Renderer {
                     );
                 }
             }
-            let key = (b.faces, b.blend, is_skinned, b.effects);
-            if !(b.lean && !is_skinned) {
+            let uses_standard_lit =
+                !(b.lean && !is_skinned) && !(b.array && !b.physical) && b.shader.is_none();
+            if uses_standard_lit {
+                let key = (b.faces, b.blend, is_skinned, b.effects);
                 add_job!(
                     jobs,
                     Slot::Pbr(key),
@@ -360,23 +362,35 @@ impl Renderer {
                     }
                 );
             }
-            let key = (b.faces, is_skinned, b.dissolve);
-            add_job!(
-                jobs,
-                Slot::Shadow(key),
-                self.shadows.shadow_pipelines.contains_key(&key),
-                {
-                    let (d, layouts, module) = (
-                        device.clone(),
-                        shadow_layouts.clone(),
-                        shadow_shader.clone(),
-                    );
-                    Work::Once(Box::new(move || {
-                        Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
-                    }))
-                }
-            );
-            if prepass && !b.transparent && !(b.lean && !is_skinned) {
+            let uses_standard_shadow = b.cast
+                && b.shader.is_none()
+                && !(b.array && !is_skinned)
+                && !(b.lean && !is_skinned && b.compact);
+            if uses_standard_shadow {
+                let key = (b.faces, is_skinned, b.dissolve);
+                add_job!(
+                    jobs,
+                    Slot::Shadow(key),
+                    self.shadows.shadow_pipelines.contains_key(&key),
+                    {
+                        let (d, layouts, module) = (
+                            device.clone(),
+                            shadow_layouts.clone(),
+                            shadow_shader.clone(),
+                        );
+                        Work::Once(Box::new(move || {
+                            Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
+                        }))
+                    }
+                );
+            }
+            let uses_standard_prepass = prepass
+                && !b.transparent
+                && b.shader.is_none()
+                && !b.array
+                && !(b.lean && !is_skinned)
+                && !(!is_skinned && b.simulated && self.cache.meshes[b.mesh].surface.is_some());
+            if uses_standard_prepass {
                 let key = (b.faces, is_skinned);
                 add_job!(
                     jobs,
@@ -497,8 +511,6 @@ pub(crate) fn variants(
         })
     });
     v.start(features);
-    #[cfg(target_arch = "wasm32")]
-    v.get(features);
     v
 }
 
@@ -508,9 +520,6 @@ pub(super) fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     make: impl Fn() -> T + crate::deferred::AnywhereOnce + 'static,
 ) -> Deferred<T> {
     let d = Deferred::anywhere(make);
-    #[cfg(not(target_arch = "wasm32"))]
     crate::deferred::Start::start(&d);
-    #[cfg(target_arch = "wasm32")]
-    d.get();
     d
 }

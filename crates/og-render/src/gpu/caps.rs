@@ -48,10 +48,19 @@ impl Caps {
     /// which every core device has and compatibility mode's lack: the
     /// scatter cards' lit stage reads the prepass's view depth through one.
     pub const RG32_STORAGE: Caps = Caps(1 << 9);
+    /// Render-attachment support for `rg32float` textures (2D shadow maps
+    /// and dual-channel float depth targets); devices lacking it fall back
+    /// to `rgba16float`.
+    pub const RG32_RENDERABLE: Caps = Caps(1 << 10);
+    /// Extended per-stage binding budgets beyond WebGPU's 16-texture
+    /// compatibility floor (`max_sampled_textures_per_shader_stage >= 24`
+    /// and `max_storage_buffers_per_shader_stage >= 8`), allowing unpacked
+    /// screen-space AO/contact/SSGI/bent-normal channels on `Tier::Full`.
+    pub const HIGH_BINDING_SLOTS: Caps = Caps(1 << 11);
     /// Every capability above: the full tier.
-    pub const FULL: Caps = Caps((1 << 10) - 1);
+    pub const FULL: Caps = Caps((1 << 12) - 1);
 
-    const NAMES: [(Caps, &'static str); 10] = [
+    const NAMES: [(Caps, &'static str); 12] = [
         (Caps::COMPUTE, "compute"),
         (Caps::MRT, "mrt"),
         (Caps::ASYNC_PIPELINES, "asyncPipelines"),
@@ -62,20 +71,23 @@ impl Caps {
         (Caps::VERTEX_STORAGE, "vertexStorage"),
         (Caps::INDEPENDENT_BLEND, "independentBlend"),
         (Caps::RG32_STORAGE, "rg32Storage"),
+        (Caps::RG32_RENDERABLE, "rg32Renderable"),
+        (Caps::HIGH_BINDING_SLOTS, "highBindingSlots"),
     ];
 
     /// What an adapter with `features` (already less the caller's
     /// `without_features`), `flags` and `limits` can do, before any tier's
     /// ceiling. Timestamps count here when the adapter has them; the device
     /// takes them away again when it is made without the feature.
-    /// [`Caps::RG32_STORAGE`] counts as every core device has it; the
-    /// renderer takes it away where the adapter's format says otherwise.
+    /// [`Caps::RG32_STORAGE`] and [`Caps::RG32_RENDERABLE`] count as every
+    /// core device has them; the renderer takes them away where the adapter's
+    /// format says otherwise.
     pub fn of(
         features: wgpu::Features,
         flags: wgpu::DownlevelFlags,
         limits: &wgpu::Limits,
     ) -> Caps {
-        let mut caps = Caps::ASYNC_PIPELINES | Caps::RG32_STORAGE;
+        let mut caps = Caps::ASYNC_PIPELINES | Caps::RG32_STORAGE | Caps::RG32_RENDERABLE;
         let flag =
             |f: wgpu::DownlevelFlags, c: Caps| if flags.contains(f) { c } else { Caps::NONE };
         let feature =
@@ -98,6 +110,11 @@ impl Caps {
         );
         if limits.max_color_attachments > 1 {
             caps |= Caps::MRT;
+        }
+        if limits.max_sampled_textures_per_shader_stage >= 24
+            && limits.max_storage_buffers_per_shader_stage >= 8
+        {
+            caps |= Caps::HIGH_BINDING_SLOTS;
         }
         caps
     }
@@ -252,7 +269,7 @@ impl Tier {
     /// The capabilities a device may have on this tier.
     pub const fn ceiling(self) -> Caps {
         let mini_game = Caps::FULL.without(Caps(
-            Caps::MRT.0 | Caps::ASYNC_PIPELINES.0 | Caps::TIMESTAMPS.0,
+            Caps::MRT.0 | Caps::ASYNC_PIPELINES.0 | Caps::TIMESTAMPS.0 | Caps::HIGH_BINDING_SLOTS.0,
         ));
         match self {
             Tier::Full => Caps::FULL,
@@ -264,10 +281,15 @@ impl Tier {
                     | Caps::FRAGMENT_STORAGE.0
                     | Caps::VERTEX_STORAGE.0
                     | Caps::INDEPENDENT_BLEND.0
-                    | Caps::RG32_STORAGE.0,
+                    | Caps::RG32_STORAGE.0
+                    | Caps::RG32_RENDERABLE.0,
             )),
             Tier::Compat => Caps::FULL.without(Caps(
-                Caps::VERTEX_STORAGE.0 | Caps::INDEPENDENT_BLEND.0 | Caps::RG32_STORAGE.0,
+                Caps::VERTEX_STORAGE.0
+                    | Caps::INDEPENDENT_BLEND.0
+                    | Caps::RG32_STORAGE.0
+                    | Caps::RG32_RENDERABLE.0
+                    | Caps::HIGH_BINDING_SLOTS.0,
             )),
         }
     }

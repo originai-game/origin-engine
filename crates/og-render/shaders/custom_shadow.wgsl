@@ -34,6 +34,5 @@ fn fs_hooked(in: CustomOut, @builtin(front_facing) front: bool) -> @location(0) 
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let cut = custom_cut(custom_surface(in, vec3<f32>(0.0)));
-  if (cut) { discard; }
-  return shadow_depth(in.world, in.clip, dx, dy, front);
+  return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
 }

@@ -252,3 +252,57 @@ fn a_mechanisms_shader_code_is_written_once() {
     }
     assert!(copies.is_empty(), "{}", copies.join("\n"));
 }
+
+/// Every non-empty `.wgsl` file built into `OG_RENDER_SHADERS` must appear in
+/// at least one validated module returned by `og_render::shader_sources()`
+/// (or be an explicitly documented standalone fragment). Prevents new runtime
+/// shaders from bypassing build-time validation and backend translation.
+#[test]
+fn every_wgsl_file_is_validated() {
+    let sources = og_render::shader_sources();
+    let built = std::path::Path::new(env!("OG_RENDER_SHADERS"));
+    // Fragments whose text is only used in `og-cook` or standalone stubs
+    // rewritten before compile.
+    const EXEMPT: &[&str] = &[
+        "foliage.wgsl", // validated in `every_module_validates_and_translates_to_msl_spirv_and_hlsl`
+    ];
+    let mut uncovered = Vec::new();
+    for entry in std::fs::read_dir(built).expect("the built shaders") {
+        let path = entry.expect("an entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("wgsl") {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        if EXEMPT.contains(&name.as_str()) {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).expect("a WGSL file");
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        // Check either full text match or first significant non-directive line
+        // (some fragments undergo string substitution such as array-map
+        // rewriting or stub substitution).
+        let covered = sources.iter().any(|s| s.wgsl.contains(trimmed))
+            || trimmed
+                .lines()
+                .map(str::trim)
+                .filter(|l| {
+                    l.starts_with("fn ")
+                        || l.starts_with("struct ")
+                        || l.starts_with("@compute")
+                        || l.starts_with("@vertex")
+                        || l.starts_with("@fragment")
+                })
+                .any(|sig| sources.iter().any(|s| s.wgsl.contains(sig)));
+        if !covered {
+            uncovered.push(name);
+        }
+    }
+    uncovered.sort();
+    assert!(
+        uncovered.is_empty(),
+        "WGSL files not covered by shader_sources(): {uncovered:#?}"
+    );
+}

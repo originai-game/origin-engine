@@ -16,6 +16,11 @@ pub(crate) fn features(scene: &crate::RenderScene) -> crate::pipeline_features::
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("scatter cull", crate::scatter_cull::source());
+    add("scatter place", crate::scatter_place::source(false));
+    add(
+        "scatter place (layer arrays)",
+        crate::scatter_place::source(true),
+    );
     // Wind on placed models (R6): the lit and shadow modules with its hook.
     let wind = crate::wind_shader().hooks_wgsl();
     add("wind", crate::lit_source_with(&wind, false));

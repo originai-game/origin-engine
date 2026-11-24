@@ -53,19 +53,26 @@ fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
   return vec4<f32>(xy, clamp(d / shadow_pass.light.w, 0.0, 1.0), 1.0);
 }
 
+// Whether `world` lies behind the active paraboloid hemisphere and should be
+// cut. Folded into each shadow fragment entry's single discard for Metal.
+fn shadow_paraboloid_cut(world: vec3<f32>) -> bool {
+  if (shadow_pass.light.w <= 0.0 || shadow_pass.paraboloid.x <= 0.5) { return false; }
+  let to = world - shadow_pass.light.xyz;
+  let dist = length(to);
+  return paraboloid_local(to, shadow_pass.paraboloid.y).z < -PARABOLOID_MARGIN * dist;
+}
+
 // What a local light's pass stores: distance / range. In a paraboloid
 // hemisphere a triangle's interpolated points are not where the curved
 // projection puts them (its edges stay straight), so the distance is
 // measured along the texel's own ray to the triangle's plane (`dx`, `dy`:
 // the world position's screen derivatives, taken before any discard),
-// which is exact for flat triangles of any size. Fragments behind the
-// hemisphere are discarded.
+// which is exact for flat triangles of any size.
 fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>) -> f32 {
   let to = world - shadow_pass.light.xyz;
   var dist = length(to);
   if (shadow_pass.paraboloid.x > 0.5) {
     let sigma = shadow_pass.paraboloid.y;
-    if (paraboloid_local(to, sigma).z < -PARABOLOID_MARGIN * dist) { discard; }
     let size = shadow_pass.paraboloid.z;
     let ndc = vec2<f32>(1.0 - frag.x / size * 2.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
     let r2 = dot(ndc, ndc);
@@ -102,13 +109,18 @@ fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, 
 
 // What a caster's fragment at `world` stores (`frag`: its position
 // builtin, `front`: its front_facing; `dx`, `dy`: the world position's
-// derivatives, taken before any discard): a cascade's depth, or a local
-// light's `local_value`. Every caster's fragment stage ends here.
-fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
+// derivatives, taken before any discard), folding `cut` and the paraboloid
+// hemisphere clip into a single discard.
+fn shadow_depth_cut(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool, cut: bool) -> vec4<f32> {
+  if (cut || shadow_paraboloid_cut(world)) { discard; }
   if (shadow_pass.light.w > 0.0) {
     return local_value(world, frag, dx, dy, front);
   }
   return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
+}
+
+fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
+  return shadow_depth_cut(world, frag, dx, dy, front, false);
 }
 
 // A card's fragment, which stands for a surface off its own plane: the
@@ -118,10 +130,11 @@ struct CardShadow {
   value: vec4<f32>,
 };
 
-// `shadow_depth` for a card: `surface` is the point the fragment stands
+// `shadow_depth_cut` for a card: `surface` is the point the fragment stands
 // for and `flat` that point through the pass's view projection (as
 // `shadow_project` takes it).
-fn shadow_card(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> CardShadow {
+fn shadow_card_cut(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool, cut: bool) -> CardShadow {
+  if (cut || shadow_paraboloid_cut(surface)) { discard; }
   var o: CardShadow;
   if (shadow_pass.paraboloid.x > 0.5) {
     o.depth = clamp(length(surface - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 1.0);
@@ -134,4 +147,8 @@ fn shadow_card(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f3
     o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
   }
   return o;
+}
+
+fn shadow_card(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> CardShadow {
+  return shadow_card_cut(surface, flat, frag, dx, dy, front, false);
 }

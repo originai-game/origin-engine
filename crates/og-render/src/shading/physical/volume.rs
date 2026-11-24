@@ -17,6 +17,33 @@ pub(crate) struct Volume {
     depth_pipeline: wgpu::RenderPipeline,
 }
 
+/// WGSL module that seeds the transmission exit buffer from opaque scene depth.
+pub(crate) fn depth_source(msaa: bool) -> String {
+    let depth_read = if msaa {
+        "@group(1) @binding(0) var opaque_depth: texture_multisampled_2d<f32>;
+         fn opaque_depth_at(px: vec2<i32>) -> f32 {
+           var z = 1.0;
+           for (var i = 0u; i < textureNumSamples(opaque_depth); i++) {
+             z = min(z, textureLoad(opaque_depth, px, i32(i)).r);
+           }
+           return z;
+         }"
+    } else {
+        // An unfilterable float texture: compatibility mode loads no
+        // texture_depth_2d.
+        "@group(1) @binding(0) var opaque_depth: texture_2d<f32>;
+         fn opaque_depth_at(px: vec2<i32>) -> f32 {
+           return textureLoad(opaque_depth, px, 0).r;
+         }"
+    };
+    [
+        crate::FRAME_WGSL,
+        depth_read,
+        wgsl!("transmission_depth.wgsl"),
+    ]
+    .concat()
+}
+
 impl Volume {
     pub fn new(
         device: &wgpu::Device,
@@ -63,33 +90,7 @@ impl Volume {
             bind_group_layouts: &[Some(frame_layout), Some(&depth_layout)],
             immediate_size: 0,
         });
-        let depth_source = if samples > 1 {
-            "@group(1) @binding(0) var opaque_depth: texture_multisampled_2d<f32>;
-             fn opaque_depth_at(px: vec2<i32>) -> f32 {
-               var z = 1.0;
-               for (var i = 0u; i < textureNumSamples(opaque_depth); i++) {
-                 z = min(z, textureLoad(opaque_depth, px, i32(i)).r);
-               }
-               return z;
-             }"
-        } else {
-            // An unfilterable float texture: compatibility mode loads no
-            // texture_depth_2d.
-            "@group(1) @binding(0) var opaque_depth: texture_2d<f32>;
-             fn opaque_depth_at(px: vec2<i32>) -> f32 {
-               return textureLoad(opaque_depth, px, 0).r;
-             }"
-        };
-        let module = crate::shader(
-            device,
-            "transmission depth",
-            [
-                crate::FRAME_WGSL,
-                depth_source,
-                wgsl!("transmission_depth.wgsl"),
-            ]
-            .concat(),
-        );
+        let module = crate::shader(device, "transmission depth", depth_source(samples > 1));
         let depth_pipeline = crate::traffic::create_render_pipeline(
             device,
             &wgpu::RenderPipelineDescriptor {

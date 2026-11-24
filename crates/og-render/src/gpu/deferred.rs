@@ -1123,10 +1123,10 @@ pub(crate) enum Priority {
     /// For a frame that is waiting or will wait for it: before any
     /// background work.
     Frame,
-    /// Ahead of a need that may come (a pipeline variant with every
-    /// feature, [`crate::pipeline_features::Variants`]): held until the
-    /// renderer's second frame has been submitted ([`release_background`]),
-    /// then compiled while no frame's work is queued.
+    /// Ahead of a need that may come: held until the renderer's second frame
+    /// has been submitted ([`release_background`]), then compiled while no
+    /// frame's work is queued.
+    #[allow(dead_code)]
     Background,
 }
 

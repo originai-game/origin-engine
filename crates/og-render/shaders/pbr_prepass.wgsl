@@ -49,8 +49,10 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // An instance fading in: the pixels the lit pass cuts (instance.wgsl
   // `dither_cut`), from the bits `outline_object` put above its id.
   let hidden = dither_cut(hidden_share((in.object >> 16u) & 511u), in.clip.xy, frame.drawn.w);
-  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved || hidden)) {
-    discard;
+  if (DISCARD) {
+    if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved || hidden) {
+      discard;
+    }
   }
   var n = normalize(in.normal);
   if ((u32(material.flags.w) & 1u) != 0u) {

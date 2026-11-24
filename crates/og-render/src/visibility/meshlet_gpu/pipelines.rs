@@ -3,6 +3,13 @@
 use super::*;
 
 impl MeshletGpu {
+    /// Drops lit and visibility-buffer resolve pipelines so they rebuild at a
+    /// new MSAA sample count (`Renderer::set_samples`).
+    pub(crate) fn clear_lit_pipelines(&mut self) {
+        self.lit.clear();
+        self.vis_buffer.clear_pipelines();
+    }
+
     /// The lit and prepass pipelines for the frame's clustered batches;
     /// `off`: the lit features the renderer is made without
     /// (pipeline_features.rs), out of the lit module.

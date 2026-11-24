@@ -189,10 +189,10 @@ impl Renderer {
                     self.cache.meshes[batch.mesh].surface.is_some(),
                 );
                 if current != Some(key) {
-                    p.set_pipeline(
-                        self.prepass_pipeline_of(batch, false)
-                            .expect("prepared prepass"),
-                    );
+                    let Some(pipe) = self.prepass_pipeline_of(batch, false) else {
+                        continue;
+                    };
+                    p.set_pipeline(pipe);
                     current = Some(key);
                 }
                 let m = &self.cache.materials[batch.material];

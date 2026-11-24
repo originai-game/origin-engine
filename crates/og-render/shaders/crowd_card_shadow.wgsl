@@ -44,11 +44,8 @@ fn fs_crowd_card_shadow(in: CardShadowOut, @builtin(front_facing) front: bool) -
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let s = card_sample(in.local, in.cols, in.blend.x, in.rows, in.blend.y);
-  if (s.coverage < 0.5) {
-    discard;
-  }
   let surface = in.world + in.toward * s.depth * in.blend.z;
-  let c = shadow_card(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front);
+  let c = shadow_card_cut(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front, s.coverage < 0.5);
   var o: CardShadowFrag;
   o.depth = c.depth;
   o.value = c.value;

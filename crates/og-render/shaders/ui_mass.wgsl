@@ -474,20 +474,14 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
   return o;
 }
 
-fn median3(r: f32, g: f32, b: f32) -> f32 {
-  return max(min(r, g), min(max(r, g), b));
-}
-
 @fragment
 fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
   let tp = mass_template(in.batch);
   let kind = tp.head.x;
   let css = css_of(in.position.xy);
+  var cut = css.x < tp.clip.x || css.y < tp.clip.y || css.x >= tp.clip.z || css.y >= tp.clip.w;
   var cover = 1.0;
-  if (css.x < tp.clip.x || css.y < tp.clip.y || css.x >= tp.clip.z || css.y >= tp.clip.w) {
-    discard;
-  }
-  if (tp.clip_head.w != 0u) {
+  if (!cut && tp.clip_head.w != 0u) {
     cover = clip_coverage(tp.clip_head.w, css);
   }
   var rgb = in.color.rgb;
@@ -537,7 +531,7 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
     if ((in.bar.x == 1.0 || in.bar.x == 2.0) && count >= 2.0 && (width - (count - 1.0)) / count >= 3.0) {
       let x = in.local.x + in.half.x;
       let boundary = round(x * count / width);
-      if (boundary >= 1.0 && boundary < count && abs(x - boundary * width / count) < 0.5) { discard; }
+      if (boundary >= 1.0 && boundary < count && abs(x - boundary * width / count) < 0.5) { cut = true; }
     }
     a *= max(coverage, 0.0);
   } else if (kind == KIND_PARTICLE) {
@@ -559,7 +553,7 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
     a *= sample.a;
   }
   a *= cover;
-  if (a <= 0.0) {
+  if (cut || a <= 0.0) {
     discard;
   }
   return finish_color(rgb, a);

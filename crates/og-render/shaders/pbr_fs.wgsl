@@ -176,8 +176,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   // An instance fading in is cut by the dither (common.wgsl `dither_cut`).
   let hidden = dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w);
-  if (DISCARD && ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || hidden)) {
-    discard;
+  if (DISCARD) {
+    if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || hidden) {
+      discard;
+    }
   }
   let dissolve_edge = dissolve.rgb;
   // Blended materials keep their alpha; opaque ones write 1 (alpha-to-coverage ones their coverage).

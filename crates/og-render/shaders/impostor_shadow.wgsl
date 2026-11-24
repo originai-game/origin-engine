@@ -80,10 +80,8 @@ fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool)
   }
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, uvs.weights);
   let surface = in.world + in.toward * imp_blended_step(cover, dd) * in.extent;
-  if (cover.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, shadow_pass.dither.x)) {
-    discard;
-  }
-  let c = shadow_card(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front);
+  let cut = cover.alpha < imp_cutoff() || dither_cut(in.fade, in.clip.xy, shadow_pass.dither.x);
+  let c = shadow_card_cut(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front, cut);
   var o: ImpostorShadowFrag;
   o.depth = c.depth;
   o.value = c.value;

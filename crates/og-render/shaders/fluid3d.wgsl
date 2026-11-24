@@ -65,12 +65,12 @@ struct DepthOut {
 @fragment
 fn fs_depth(in: SphereOut) -> DepthOut {
   let rr = dot(in.corner, in.corner);
-  if (rr > 1.0) { discard; }
-  let z = sqrt(1.0 - rr);
+  let z = sqrt(max(1.0 - rr, 0.0));
   let on_quad = in.center + (fluid.right.xyz * in.corner.x + fluid.up.xyz * in.corner.y) * in.radius;
   let front = on_quad - frame.view_forward.xyz * (in.radius * z);
   let d = view_depth(front);
-  if (d > textureLoad(scene_depth, vec2<i32>(in.clip.xy), 0).r) { discard; }
+  let scene = textureLoad(scene_depth, vec2<i32>(in.clip.xy), 0).r;
+  if (rr > 1.0 || d > scene) { discard; }
   let c = frame.view_proj * vec4<f32>(front, 1.0);
   var o: DepthOut;
   o.depth = vec4<f32>(d, 0.0, 0.0, 0.0);
@@ -84,13 +84,12 @@ fn fs_depth(in: SphereOut) -> DepthOut {
 @fragment
 fn fs_thick(in: SphereOut) -> @location(0) vec4<f32> {
   let rr = dot(in.corner, in.corner);
-  if (rr > 1.0) { discard; }
-  let z = sqrt(1.0 - rr);
+  let z = sqrt(max(1.0 - rr, 0.0));
   let center_depth = view_depth(in.center);
   let front = center_depth - in.radius * z;
   let scene = textureLoad(scene_depth, vec2<i32>(in.clip.xy), 0).r;
   let chord = clamp(scene - front, 0.0, 2.0 * in.radius * z);
-  if (chord <= 0.0) { discard; }
+  if (rr > 1.0 || chord <= 0.0) { discard; }
   let w = chord * in.color_k.w;
   return vec4<f32>(in.color_k.rgb * w, w);
 }

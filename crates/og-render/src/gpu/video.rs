@@ -20,6 +20,17 @@ use crate::scene::{RenderScene, TextureFilter, TextureHandle, TextureSource};
 use crate::targets::{TargetKind, TargetTexture};
 use std::sync::Arc;
 
+/// WGSL module that folds a browser's packed-alpha video frame (colour above,
+/// matte below) into an RGBA8 sRGB stream texture.
+pub(crate) fn fold_source() -> String {
+    concat!(
+        wgsl!("common.wgsl"),
+        wgsl!("color.wgsl"),
+        wgsl!("video_fold.wgsl")
+    )
+    .to_string()
+}
+
 impl RenderScene {
     /// Adds a streamed video's texture, `width` x `height` 8-bit sRGB,
     /// sampled as any texture; `nearest` samples it texel by texel.

@@ -141,6 +141,15 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     add("probe grid", crate::probe_grid::PROBE_GRID_WGSL.to_string());
     add("particle sprites", crate::particles_gpu::sprites_source());
     add("pack", crate::physical::PACK_WGSL.to_string());
+    add(
+        "transmission depth",
+        crate::shading::physical::volume::depth_source(false),
+    );
+    add(
+        "transmission depth (msaa)",
+        crate::shading::physical::volume::depth_source(true),
+    );
+    add("video fold", crate::gpu::video::fold_source());
     // Compute: GPU particles and GPU culling.
     add("particle sim", crate::particles_gpu::sim_source());
     add("particle compact", crate::particles_gpu::compact_source());
@@ -176,6 +185,13 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
             constants: vec![("VOL_WATER".to_string(), 1.0)],
         });
     }
+    // Visibility-buffer resolve pipelines (meshlet_gpu/vis.rs): analytic
+    // derivatives and no alpha-test discard.
+    out.push(ShaderSource {
+        label: "meshlet resolve".to_string(),
+        wgsl: crate::meshlet_gpu::lit_source(false),
+        constants: vec![("ANALYTIC".to_string(), 1.0), ("DISCARD".to_string(), 0.0)],
+    });
 }
 
 /// `out` and its modules' variants.

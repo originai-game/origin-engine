@@ -385,13 +385,17 @@ type MakeCell<C> = std::sync::Arc<dyn Fn(Features) -> C + Send + Sync>;
 #[cfg(target_arch = "wasm32")]
 type MakeCell<C> = std::rc::Rc<dyn Fn(Features) -> C>;
 
-/// A lit pipeline as the variant for a frame's features and the full one
-/// (see the module's documentation).
+/// Maximum distinct specialized lean variants kept per pipeline before
+/// falling back to the full uber-variant.
+const MAX_LEAN_VARIANTS: usize = 4;
+
+/// A lit pipeline as specialized lean variants for active feature masks plus
+/// the deterministic full uber-variant (see the module's documentation).
 pub(crate) struct Variants<C> {
     declared: Features,
     make: MakeCell<C>,
     full: C,
-    lean: OnceCell<(Features, C)>,
+    lean: [OnceCell<(Features, C)>; MAX_LEAN_VARIANTS],
     /// The full variant with the static lights' far field, once a frame
     /// draws it.
     far: OnceCell<C>,
@@ -418,7 +422,7 @@ impl<C: Cell> Variants<C> {
             declared,
             full: make(Features::ALL),
             make,
-            lean: OnceCell::new(),
+            lean: std::array::from_fn(|_| OnceCell::new()),
             far: OnceCell::new(),
         }
     }
@@ -449,9 +453,52 @@ impl<C: Cell> Variants<C> {
         }
     }
 
+    /// Finds an existing lean variant matching `wanted` (exact match first,
+    /// otherwise the leanest superset), or returns `None`.
+    fn find_lean(&self, wanted: Features) -> Option<(Features, &C)> {
+        let mut best: Option<(Features, &C)> = None;
+        for slot in &self.lean {
+            let Some((have, cell)) = slot.get() else {
+                continue;
+            };
+            if *have == wanted {
+                return Some((*have, cell));
+            }
+            if have.contains(wanted)
+                && best.is_none_or(|(b, _)| have.0.count_ones() < b.0.count_ones())
+            {
+                best = Some((*have, cell));
+            }
+        }
+        best
+    }
+
+    /// Allocates a new lean variant slot for `wanted` if capacity remains.
+    fn insert_lean(&self, wanted: Features) -> Option<&C> {
+        for slot in &self.lean {
+            if slot.get().is_none() {
+                let lean = (self.make)(wanted);
+                lean.follow(&self.full);
+                lean.start_at(Priority::Frame);
+                let _ = slot.set((wanted, lean));
+                return slot.get().map(|(_, c)| c);
+            }
+        }
+        None
+    }
+
+    /// Any already-ready lean variant to draw a display frame without
+    /// stalling while a newly requested variant compiles.
+    fn any_ready_lean(&self) -> Option<&C> {
+        self.lean
+            .iter()
+            .filter_map(|s| s.get().map(|(_, c)| c))
+            .find(|c| c.poll().is_some())
+    }
+
     /// Asks for what a frame with `features` will draw with: the full
-    /// variant if that is what it needs, else the variant for them, and
-    /// the full one behind it in the background.
+    /// variant if that is what it needs (or if the specialized lean cache is
+    /// full), else a specialized lean variant for `features`.
     pub(crate) fn start(&self, features: Features) {
         if self.wants_far(features) {
             let far = self.far();
@@ -460,32 +507,26 @@ impl<C: Cell> Variants<C> {
             }
             far.start_at(Priority::Frame);
         }
-        if self.full.poll().is_some() {
-            return;
-        }
-        let features = self.wanted(features & Features::ALL);
-        if features == Features::ALL {
+        let wanted = self.wanted(features & Features::ALL);
+        if wanted == Features::ALL {
             self.full.start_at(Priority::Frame);
             return;
         }
-        if self.lean.get().is_none() {
-            let lean = (self.make)(features);
-            lean.follow(&self.full);
+        if let Some((_, lean)) = self.find_lean(wanted) {
             lean.start_at(Priority::Frame);
-            let _ = self.lean.set((features, lean));
+            return;
         }
-        self.full.start_at(Priority::Background);
+        if self.insert_lean(wanted).is_some() {
+            return;
+        }
+        // All specialized lean slots are occupied: fall back to full.
+        self.full.start_at(Priority::Frame);
     }
 
-    /// What a frame with `features` draws with: the full variant once it
-    /// is ready; else the variant for the features (a variant with more
-    /// than the frame uses draws what it draws), by the frame's policy. A
-    /// display frame draws without a feature it lacks until the full one
-    /// is ready; a frame that waits never omits it. With diagnostics or
-    /// every feature (a capture's, `Renderer::capturing`) it is the full
-    /// variant, so what it draws never depends on what has compiled. With
-    /// the far field it is the far variant once ready, and asked for where
-    /// the full one would be; until then only display frames omit it.
+    /// What a frame with `features` draws with: specialized lean variants
+    /// stay active for interactive frames (avoiding unnecessary compilation
+    /// and register pressure of the 17-feature full shader), while captures
+    /// (`Features::ALL`) and diagnostics always use `full` for determinism.
     pub(crate) fn get(&self, features: Features) -> Option<&C::Value> {
         if self.wants_far(features) {
             let far = self.far();
@@ -497,29 +538,48 @@ impl<C: Cell> Variants<C> {
             }
             far.start_at(Priority::Frame);
         }
-        let features = features & Features::ALL;
-        if let Some(v) = self.full.poll() {
-            return Some(v);
-        }
-        let wanted = self.wanted(features);
+        let wanted = self.wanted(features & Features::ALL);
         if wanted == Features::ALL {
             return self.full.get();
         }
-        match self.lean.get() {
-            Some((have, lean)) if have.contains(wanted) => lean.get(),
-            // A feature turned on: only display frames may draw without it.
-            Some((_, lean)) => {
-                self.full.start_at(Priority::Frame);
-                if crate::deferred::waits() {
-                    self.full.get()
-                } else {
-                    lean.get()
-                }
+        if let Some((_, lean)) = self.find_lean(wanted) {
+            if let Some(v) = lean.poll() {
+                return Some(v);
             }
-            None => {
-                self.start(features);
-                self.lean.get().expect("asked for above").1.get()
+            if crate::deferred::waits() {
+                return lean.get();
             }
+            lean.start_at(Priority::Frame);
+            if let Some(v) = self.full.poll() {
+                return Some(v);
+            }
+            return self
+                .any_ready_lean()
+                .and_then(Cell::poll)
+                .or_else(|| lean.get());
+        }
+        if let Some(lean) = self.insert_lean(wanted) {
+            if crate::deferred::waits() {
+                return lean.get();
+            }
+            if let Some(v) = self.full.poll() {
+                return Some(v);
+            }
+            return self
+                .any_ready_lean()
+                .and_then(Cell::poll)
+                .or_else(|| lean.get());
+        }
+        if let Some(v) = self.full.poll() {
+            return Some(v);
+        }
+        self.full.start_at(Priority::Frame);
+        if crate::deferred::waits() {
+            self.full.get()
+        } else {
+            self.any_ready_lean()
+                .and_then(Cell::poll)
+                .or_else(|| self.full.get())
         }
     }
 
@@ -534,13 +594,15 @@ impl<C: Cell> Variants<C> {
                 return false;
             }
         }
-        let features = features & Features::ALL;
-        self.full.poll().is_some()
-            || (self.wanted(features) != Features::ALL
-                && self.lean.get().is_some_and(|(have, c)| {
-                    (!crate::deferred::waits() || have.contains(self.wanted(features)))
-                        && c.poll().is_some()
-                }))
+        let wanted = self.wanted(features & Features::ALL);
+        if wanted == Features::ALL {
+            return self.full.poll().is_some();
+        }
+        if let Some((_, lean)) = self.find_lean(wanted) {
+            return lean.poll().is_some()
+                || (!crate::deferred::waits() && self.full.poll().is_some());
+        }
+        self.full.poll().is_some() || (!crate::deferred::waits() && self.any_ready_lean().is_some())
     }
 
     /// The full variant (what [`Renderer::warm`](crate::Renderer::warm)
@@ -552,7 +614,7 @@ impl<C: Cell> Variants<C> {
     /// Every variant made so far.
     pub(crate) fn each(&self) -> impl Iterator<Item = &C> {
         std::iter::once(&self.full)
-            .chain(self.lean.get().map(|(_, c)| c))
+            .chain(self.lean.iter().filter_map(|s| s.get().map(|(_, c)| c)))
             .chain(self.far.get())
     }
 }

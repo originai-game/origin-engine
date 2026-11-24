@@ -65,6 +65,7 @@ pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("ui builtin materials", crate::ui::pass::builtin_source());
     add("ui mass", crate::ui::pass::mass_source());
     add("ui paint", crate::ui::paint::source());
+    add("ui filter", crate::ui::filter::source());
     add(
         "ui material (duotone)",
         crate::ui::ui_material_module_source(&crate::ui::example_ui_material()),

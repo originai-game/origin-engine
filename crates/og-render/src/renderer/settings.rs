@@ -244,6 +244,7 @@ impl Renderer {
         self.forget_lit_pipelines();
         self.sprite.sprite_meshes = None;
         self.sprite.sprite_normals = None;
+        self.sprite.sprite_hooks = None;
         self.sprite.tiles_gpu = None;
     }
 
@@ -259,6 +260,9 @@ impl Renderer {
         }
         if let Some(p) = &mut self.lit.physical {
             p.pipelines.clear();
+        }
+        if let Some(m) = &mut self.visibility.meshlet {
+            m.clear_lit_pipelines();
         }
         self.lights.lightmaps.forget_pipelines();
     }

@@ -319,9 +319,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   let local_dy = dpdy(in.local);
   let q = paint_quad(in.index);
   let css = (in.position.xy + frame.extra.zw) / frame.output.z;
-  if (css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w) {
-    discard;
-  }
+  var cut = css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w;
   let scale = in.aa;
   let half = 0.5 * q.rect.zw;
   var rgb = q.color.rgb;
@@ -451,12 +449,13 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       // (premultiplied, sRGB-encoded), at its opacity; a backdrop cut to
       // its element's rounded box.
       if (m.a <= 0.0) {
-        discard;
-      }
-      rgb = srgb_decode(m.rgb / m.a);
-      a *= m.a;
-      if ((q.k.z & 1u) != 0u) {
-        a *= edge(sd_round_box(in.local, half, q.r), scale);
+        cut = true;
+      } else {
+        rgb = srgb_decode(m.rgb / m.a);
+        a *= m.a;
+        if ((q.k.z & 1u) != 0u) {
+          a *= edge(sd_round_box(in.local, half, q.r), scale);
+        }
       }
     }
     case 8u: {
@@ -469,13 +468,13 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
       if ((flags & 1u) != 0u) {
         let dp = segment_distance(at, q.r.xy, q.uv.xy);
         if (dp < d || ((flags & 4u) != 0u && dp == d)) {
-          discard;
+          cut = true;
         }
       }
       if ((flags & 2u) != 0u) {
         let dn = segment_distance(at, q.uv.zw, q.r.zw);
         if (dn < d || ((flags & 8u) != 0u && dn == d)) {
-          discard;
+          cut = true;
         }
       }
       a *= edge(d - 0.5 * q.p.x, scale);
@@ -486,7 +485,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   }
   // Its mask's alpha where it falls in the mask's box (CSS's mask-image:
   // drawn where the mask is opaque, not where it is transparent).
-  if (q.w.w > 0.5) {
+  if (!cut && q.w.w > 0.5) {
     let mi = u32(q.w.w) - 1u;
     let box = gradients[3u * mi + 2u];
     let mh = 0.5 * box.zw;
@@ -496,7 +495,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
   // (through the inverse of its transform), whatever the quad's kind or
   // transform: so an image or a glyph crossing a rounded corner is cut
   // round, antialiased, and a spotlight's shade spares its round hole.
-  if (q.f.y != 0u) {
+  if (!cut && q.f.y != 0u) {
     let ri = q.f.y - 1u;
     let box = gradients[ri];
     let inv = gradients[ri + 2u];
@@ -510,12 +509,12 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     a *= c;
   }
   if (a <= 0.0) {
-    discard;
+    cut = true;
   }
   rgb = srgb_encode(rgb);
   // Its colour filters (CSS's brightness(), grayscale() and the rest, on
   // the encoded, unpremultiplied colour), composed into one matrix.
-  if (q.f.x != 0u) {
+  if (!cut && q.f.x != 0u) {
     let fi = q.f.x - 1u;
     let c = vec4<f32>(rgb, a);
     let o = clamp(
@@ -531,13 +530,16 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     rgb = o.rgb;
     a = o.a;
     if (a <= 0.0) {
-      discard;
+      cut = true;
     }
+  }
+  if (cut) {
+    discard;
   }
   if (dither) {
     // A pixel's worth of noise before the target's code values: a shallow
     // ramp shows no bands.
-    let n = fract(52.9829189 * fract(dot(in.position.xy, vec2<f32>(0.06711056, 0.00583715))));
+    let n = ign(in.position.xy);
     rgb += vec3<f32>((n - 0.5) * frame.extra.x);
   }
   // Blend mode adaptation (`q.f.z`: 0 normal, 1 add, 2 screen, 3 multiply).
@@ -558,8 +560,7 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
 // output's light.
 @vertex
 fn vs_layer(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
-  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
-  return vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+  return fullscreen_clip(vi);
 }
 
 @fragment

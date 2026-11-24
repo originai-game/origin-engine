@@ -755,19 +755,13 @@ impl Renderer {
         tall: u32,
     ) -> &(wgpu::Texture, wgpu::BindGroup) {
         if self.cache.stream_fold.is_none() {
-            let module = self
-                .device
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
+            let module = crate::gpu::shader_module(
+                &self.device,
+                wgpu::ShaderModuleDescriptor {
                     label: Some("video fold"),
-                    source: wgpu::ShaderSource::Wgsl(
-                        concat!(
-                            wgsl!("common.wgsl"),
-                            wgsl!("color.wgsl"),
-                            wgsl!("video_fold.wgsl")
-                        )
-                        .into(),
-                    ),
-                });
+                    source: wgpu::ShaderSource::Wgsl(crate::gpu::video::fold_source().into()),
+                },
+            );
             let layout = self
                 .device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -815,7 +809,7 @@ impl Renderer {
                         })],
                     }),
                     multiview_mask: None,
-                    cache: None,
+                    cache: crate::pipeline_cache::of(&self.device).as_ref(),
                 },
             );
             self.cache.stream_fold = Some((pipeline, layout));

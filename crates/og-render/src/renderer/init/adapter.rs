@@ -44,13 +44,88 @@ impl Renderer {
         // the device reads these.
         let adapter_features = adapter.features() - desc.without_features;
         let adapter_flags = adapter.get_downlevel_capabilities().flags - desc.without_downlevel;
-        let mut caps = Caps::of(adapter_features, adapter_flags, &adapter.limits());
-        if !adapter
+        let per_stage = adapter.limits();
+        let rg32_usages = adapter
             .get_texture_format_features(wgpu::TextureFormat::Rg32Float)
-            .allowed_usages
-            .contains(wgpu::TextureUsages::STORAGE_BINDING)
-        {
+            .allowed_usages;
+        // Request extended limits on Tier::Full (capped at safe ceilings so
+        // drivers never fail device creation), while constrained tiers stay
+        // at downlevel/compatibility defaults.
+        let mut limits = wgpu::Limits::downlevel_defaults().using_resolution(per_stage.clone());
+        if tier == Tier::Full {
+            limits.max_sampled_textures_per_shader_stage = limits
+                .max_sampled_textures_per_shader_stage
+                .max(32)
+                .min(per_stage.max_sampled_textures_per_shader_stage);
+            limits.max_storage_buffers_per_shader_stage = limits
+                .max_storage_buffers_per_shader_stage
+                .max(16)
+                .min(per_stage.max_storage_buffers_per_shader_stage);
+            limits.max_storage_buffer_binding_size = limits
+                .max_storage_buffer_binding_size
+                .max(512 * 1024 * 1024)
+                .min(per_stage.max_storage_buffer_binding_size);
+            limits.max_buffer_size = limits
+                .max_buffer_size
+                .max(1024 * 1024 * 1024)
+                .min(per_stage.max_buffer_size);
+            limits.max_color_attachments = limits
+                .max_color_attachments
+                .max(8)
+                .min(per_stage.max_color_attachments);
+            limits.max_texture_array_layers = limits
+                .max_texture_array_layers
+                .max(2048)
+                .min(per_stage.max_texture_array_layers);
+            limits.max_uniform_buffer_binding_size = limits
+                .max_uniform_buffer_binding_size
+                .max(65536)
+                .min(per_stage.max_uniform_buffer_binding_size);
+            limits.max_compute_invocations_per_workgroup = limits
+                .max_compute_invocations_per_workgroup
+                .max(256)
+                .min(per_stage.max_compute_invocations_per_workgroup);
+            limits.max_compute_workgroup_size_x = limits
+                .max_compute_workgroup_size_x
+                .max(256)
+                .min(per_stage.max_compute_workgroup_size_x);
+            limits.max_compute_workgroup_size_y = limits
+                .max_compute_workgroup_size_y
+                .max(256)
+                .min(per_stage.max_compute_workgroup_size_y);
+        } else {
+            // Compute and storage buffers at downlevel defaults' counts, with
+            // WebGPU's eight storage buffers a stage (og.motion's kernels bind
+            // up to seven).
+            limits.max_storage_buffers_per_shader_stage = limits
+                .max_storage_buffers_per_shader_stage
+                .max(8)
+                .min(per_stage.max_storage_buffers_per_shader_stage);
+        }
+        // The same counts in the vertex and fragment stages, under what the
+        // adapter has there: a core device sets them from the per-stage ones
+        // itself, while a compatibility device keeps what is asked for (its
+        // defaults allow none in the vertex stage, and UI paint reads five).
+        limits.max_storage_buffers_in_vertex_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .min(per_stage.max_storage_buffers_in_vertex_stage);
+        limits.max_storage_buffers_in_fragment_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .min(per_stage.max_storage_buffers_in_fragment_stage);
+        limits.max_storage_textures_in_vertex_stage = limits
+            .max_storage_textures_per_shader_stage
+            .min(per_stage.max_storage_textures_in_vertex_stage);
+        limits.max_storage_textures_in_fragment_stage = limits
+            .max_storage_textures_per_shader_stage
+            .min(per_stage.max_storage_textures_in_fragment_stage);
+        let limits = tier.compat_limits(limits);
+
+        let mut caps = Caps::of(adapter_features, adapter_flags, &limits);
+        if !rg32_usages.contains(wgpu::TextureUsages::STORAGE_BINDING) {
             caps = caps.without(Caps::RG32_STORAGE);
+        }
+        if !rg32_usages.contains(wgpu::TextureUsages::RENDER_ATTACHMENT) {
+            caps = caps.without(Caps::RG32_RENDERABLE);
         }
         let caps = caps & tier.ceiling();
         let adapter_features = caps.features(adapter_features);
@@ -76,35 +151,6 @@ impl Renderer {
         } else {
             1
         };
-        // Compute and storage buffers (particles, culling, the skinning
-        // palette, the light tables) at the downlevel defaults' counts, but
-        // WebGPU's own eight storage buffers a stage (every WebGPU device has
-        // them; the engine has no other tier): og.motion's kernels, which run
-        // on this device (og.motion's `Gpu::new`, og-anim), bind up to seven.
-        let mut limits = wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
-        limits.max_storage_buffers_per_shader_stage = limits
-            .max_storage_buffers_per_shader_stage
-            .max(8)
-            .min(adapter.limits().max_storage_buffers_per_shader_stage);
-        // The same counts in the vertex and fragment stages, under what the
-        // adapter has there: a core device (wgpu-core, a browser's core
-        // device) sets them from the per-stage ones itself, a compatibility
-        // device keeps what is asked for, its defaults allow none in the
-        // vertex stage, and the UI's paint reads five there.
-        let per_stage = adapter.limits();
-        limits.max_storage_buffers_in_vertex_stage = limits
-            .max_storage_buffers_per_shader_stage
-            .min(per_stage.max_storage_buffers_in_vertex_stage);
-        limits.max_storage_buffers_in_fragment_stage = limits
-            .max_storage_buffers_per_shader_stage
-            .min(per_stage.max_storage_buffers_in_fragment_stage);
-        limits.max_storage_textures_in_vertex_stage = limits
-            .max_storage_textures_per_shader_stage
-            .min(per_stage.max_storage_textures_in_vertex_stage);
-        limits.max_storage_textures_in_fragment_stage = limits
-            .max_storage_textures_per_shader_stage
-            .min(per_stage.max_storage_textures_in_fragment_stage);
-        let limits = tier.compat_limits(limits);
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));

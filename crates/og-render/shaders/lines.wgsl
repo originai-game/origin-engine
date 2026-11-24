@@ -158,10 +158,11 @@ fn fs_wire(in: LineOut) -> @location(0) vec4<f32> {
 
 // The line's coverage, dashes and encoding over its colour `color`.
 fn shade(in: LineOut, color: vec4<f32>) -> vec4<f32> {
+  var cut = false;
   if (in.dash.y > 0.0) {
     let period = in.dash.x + in.dash.y;
     if (in.dist - floor(in.dist / period) * period > in.dash.x) {
-      discard;
+      cut = true;
     }
   }
   var d = abs(in.across.x);
@@ -170,7 +171,7 @@ fn shade(in: LineOut, color: vec4<f32>) -> vec4<f32> {
   }
   var c = color;
   c.a *= clamp(in.across.z + 0.5 - d, 0.0, 1.0);
-  if (c.a <= 0.0) {
+  if (cut || c.a <= 0.0) {
     discard;
   }
   if (lf.viewport.w > 0.5) {

@@ -204,16 +204,19 @@ fn light_of(in: LightOut) -> vec3<f32> {
   let to_light = in.light.xy - in.world;
   let dist = length(to_light);
   let r = in.light.z;
-  if (dist >= r) { discard; }
   // Faded to zero slope over the last tenth of the radius: a falloff
   // below 1 would otherwise end on a hard rim (light2d_at.rs does the same).
-  var atten = pow(1.0 - dist / r, max(in.light.w, 0.01)) * (1.0 - smoothstep(0.9, 1.0, dist / r));
-  if (in.flags.y > 0.5) {
+  var atten = select(
+    0.0,
+    pow(max(1.0 - dist / max(r, 1e-6), 0.0), max(in.light.w, 0.01)) * (1.0 - smoothstep(0.9, 1.0, dist / max(r, 1e-6))),
+    dist < r,
+  );
+  if (atten > 0.0 && in.flags.y > 0.5) {
     // A spot: the cosine of the pixel's angle off the axis.
     let c = select(1.0, dot(-to_light / dist, in.direction.xy), dist > 1e-4);
     atten *= smoothstep(in.flags.z, max(in.flags.w, in.flags.z + 1e-4), c);
-    if (atten <= 0.0) { discard; }
   }
+  if (dist >= r || atten <= 0.0) { discard; }
   if (in.flags.x > 0.5 && in.direction.w >= 0.0 && dist > 1e-4) {
     let theta = atan2(-to_light.y, -to_light.x);
     atten *= visibility(i32(in.direction.w), theta, dist, max(in.color_source.w, 1e-3), in.shadow.x);
