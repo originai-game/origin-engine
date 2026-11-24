@@ -26,8 +26,8 @@ import { View, Text, Icon } from "@origingame/engine/ui";
 
 export function AbilitySlot(props: { icon: string; cooldown: number; ready: boolean }) {
   return (
-    <View class="relative size-14 rounded-lg bg-surface-2 ring-1 ring-edge" data-ready={props.ready}>
-      <Icon name={props.icon} class="size-8 text-ink" />
+    <View class="relative size-14 rounded-card bg-well text-fg inset-ring-1 inset-ring-rim" data-ready={props.ready}>
+      <Icon name={props.icon} class="size-8" />
       <Text class="absolute bottom-1 right-1 text-xs tabular-nums">{props.cooldown}</Text>
     </View>
   );
@@ -81,11 +81,24 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 - **Mounting**: `mount(world, Component, props, { layer })` from
   `@origingame/engine/ui` returns the unmount; layers are `hud`, `menu`,
   `modal`, `popover`, `toast`, `tooltip`, `system` (the mount's root
-  carries `setProp("layer", …)`).
+  carries `setProp("layer", …)`). The mount creates a surface-sized grid
+  wrapper; a screen normally fills it with `absolute inset-0`. Layer names
+  do not infer gameplay pause or a screen manager. Apply content safe
+  insets once through `env(hud-inset-top|right|bottom|left)`; a built-in
+  screen already applies its own.
 - **Strings** go through `t(key, params)` (and `formatNumber`,
   `formatCompact`, `formatDuration`, `formatCurrency`), which read the
   mount's world; text in JSX is literal or bound, never concatenated from
   translated pieces.
+
+Components are explicit imports, not names looked up from `<meta>`
+headers. Props and function-valued content replace document bindings and
+snippets; `value` / `onChange` replace two-way directives. `og ui eject
+screens/<name>`, `controls/<name>` or a component path copies TSX and
+locale tables and rewrites game imports, not imports inside engine code.
+The `svelte/store` comparison applies only to named presentation stores:
+`useStore` bridges one to a signal accessor. Local component signals are
+not automatically checkpointed sources.
 
 ## JSX compile (head 2)
 
@@ -292,8 +305,8 @@ machines do (ported as logic).
   target, Escape or `back` puts it back. An assistive technology's
   activate does the same. Sounds: the pack's `select` on pick-up,
   `confirm` on a drop, `cancel` when put back.
-- **On-screen controls**: a node with `touchStick`, `touchPad` or
-  `touchButton` is an input source of the og-input action it names
+- **On-screen controls**: a node with `touchStick`, `touchPad`,
+  `touchLook` or `touchButton` is an input source of the og-input action it names
   (`TouchControls` is built on them): after each layout its box, in
   surface px, goes to the action map as a control zone
   (`Tree::take_zones`), which samples the touches that started on it in
@@ -305,6 +318,16 @@ machines do (ported as logic).
   `data-dir-up|right|down|left` (two on a diagonal, none in its dead
   middle), which its classes read (`group-data-dir-up/pad:` lights an
   arm). A control that stops being a zone while held reads as let go.
+  `floatingStick={true}` on a `touchStick` centres it where its finger
+  lands inside the activation rect: the ring and subtree shift at paint,
+  not layout, and the activation rect stays put.
+  `touchLook` is a drag pad, not a deflected stick: it sends the
+  drag since the prior fixed tick in CSS px, x right and y up, zero when
+  stationary or released. The action map checkpoints prior pointer
+  positions for restore/replay and applies device sensitivity/inversion.
+  The `TouchControls` component's `floatingStick` affects only move (and
+  is ignored for `pad`); its `lookPad` selects drag look instead of the
+  second stick.
 - **Gestures** (NSH's recognisers, every pointer og-input tracks): each
   pointer keeps the node that hears `pinch`, `rotate` or `swipe` it went
   down on. A second finger down on the same node starts events 17 `pinch`
@@ -318,7 +341,7 @@ machines do (ported as logic).
 | Prop | Value | Means |
 |---|---|---|
 | `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
-| `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
+| `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Text glyph="interact" />`; the library's `InputGlyph` wraps this) |
 | `sound` | a pack event: `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`, `tick`, `step`, `swipe`, `notify`, `unlock` (or an input one) | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
@@ -330,6 +353,8 @@ machines do (ported as logic).
 | `draggable` | data | it can be picked up and dragged, carrying this data |
 | `dropTarget` | an id | a carried node can be dropped on it |
 | `touchStick` | an action's name | its box is a stick of that action (x, y from its centre) |
+| `floatingStick` | bool | with `touchStick`, its ring/subtree centre on touch-down at paint; its activation box does not move |
+| `touchLook` | an action's name | its box is a drag pad: per-fixed-tick CSS-pixel deltas, x right/y up, zero stationary or released |
 | `touchPad` | an action's name | its box is a d-pad of that action (eight directions); held, it carries `data-dir-<way>` |
 | `touchButton` | an action's name | its box is a button of that action (1 while held) |
 | `deadZone` | 0 to 0.95 | a stick's dead zone, of its radius (0: og-input's 0.15) |
@@ -405,7 +430,12 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
 - It is out of its parent's flow (absolute) and laid out at its own size;
   its box's top left sits at the point the tick's camera (og.Camera) sees,
   in the surface's CSS px. Offset and pivot are classes (`translate-*`).
-  No scaling with distance.
+  `scaleAt` opts into distance scaling: at that world distance it is 1×,
+  bounded by `scaleMin` (0.5) and `scaleMax` (1.5); 0 disables it.
+  `maxDistance` hides it beyond that view-axis distance (0 unlimited).
+  `lod={[near, far]}` sets `data-lod-near`, `data-lod-mid` or
+  `data-lod-far` for class-controlled detail. These are presentation props,
+  not the former document anchor attributes or mass-element templates.
 - Its target off the surface, behind the camera, or a dead entity hides it
   (and a hidden parent): it paints nothing, takes no press, and leaves the
   accessibility tree and the probe's elements, so autoplay never presses
@@ -569,7 +599,8 @@ Classes are Tailwind v4.1's vocabulary as NSH resolves it
 (`third_party/nsh-tailwind`, vendored): later utilities win, variants
 (`hover:`, `active:`, `focus-visible:`, `disabled:`, `data-*:`, `group-*:`,
 `dark:`, breakpoints) apply after plain utilities, inline style last.
-There is no cascade: only `group` states and `focus-within` cross nodes.
+There is no selector cascade. Text properties inherit, named `group`
+states and `focus-within` cross nodes, and scheme classes affect subtrees.
 Breakpoints read the UI's own box; `touch:` reads the input.
 
 Alignment takes Tailwind's `-safe` forms (`justify-center-safe`,
@@ -605,6 +636,14 @@ rune-taffy style, and these paint fields (fixed size, no allocation):
 A class the record has no field for is reported by `og check` as unknown,
 not dropped silently.
 
+Inline `style` (an object or declaration string) overrides supported
+record fields for computed geometry/data. It does not enable stylesheet
+selectors, at-rules, arbitrary CSS properties or `-og-*` document
+extensions. Images are texture handles or pack art; `Line` is typed
+polyline geometry, not an inline SVG host. `HostProps` and `Record` have
+no custom-material attachment: a loadable `UiMaterial` is not by itself
+a compositing effect on a TSX node.
+
 ## Theme and packs
 
 Owner: the looks thread. The theme is NSH's Tailwind theme: Tailwind
@@ -613,7 +652,7 @@ extends it is a stack of **packs**, each one `pack.json`, laid in order:
 
 1. the engine's default pack, `crates/og-ui-next/default/pack.json`,
    generated from `packages/design/tokens/*.css` by
-   `crates/og-ui-next/scripts/gen-pack.sh` (never edited by hand; a test
+   `scripts/gen-pack.sh` (never edited by hand; a test
    holds it equal to the generator);
 2. the pack the game's look names (`ui "<name>"`: `assets/styles/<name>/`
    over `@styles/<name>/`);
@@ -633,15 +672,15 @@ entry, a variant, an icon, an event's sound. Fonts add faces.
     "shadow": { "plate": { "light": "0 4px 0 #2a1a10", "dark": "0 4px 0 #000" } }
   },
   "variants": {
-    "Panel.frame": "border-2 border-border-strong shadow-panel",
-    "Panel.frame.hud": "bg-plate-hi/80 backdrop-blur-md"
+    "Panel.frame": "rounded-panel bg-glass text-fg inset-ring-1 inset-ring-border-strong shadow-panel",
+    "Panel.frame.hud": "bg-plate-hi text-fg backdrop-blur-regular"
   },
   "fonts": ["LilitaOne-Regular.ttf", "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"],
   "images": { "plate": { "src": "art/plate.png", "slice": [12, 16, 12, 16], "width": 8 } },
   "icons": { "star": "art/star.svg" },
   "sounds": {
     "press": { "clips": ["@styles/shared/sfx-tap.ogt"], "volume": [0.24, 0.3], "pitch": [1.04, 1.16] },
-    "Button.base": { "hover": { "clips": ["@styles/shared/sfx-tap2.ogt"], "volume": 0.08 } }
+    "Button.plate": { "hover": { "clips": ["@styles/shared/sfx-tap2.ogt"], "volume": 0.08 } }
   }
 }
 ```
@@ -760,7 +799,16 @@ is an error naming where it is, never ignored):
   default one, so an event it leaves out sounds the default clip; it
   mutes one with `"volume": 0`.
 
-Motion is classes in `variants` until the motion thread's ease form lands.
+Motion is classes in `variants`: transitions, named `animate-*`
+keyframes, presence and layout motion share the typed record path.
+There are no document `@keyframes` or Svelte transition directives.
+
+**`haptics`** follows the sound scopes (pack event or
+`Component.slot[.variant]` → event map), with preset values `tick`, `tap`,
+`thud`, `double`, `buzz`, `success`, `warning`, `error`, `none`. A node's
+`haptic` prop overrides its interaction/cue feedback; `none` silences it.
+`exitSound` plays a pack event when the node is removed, complementing
+`sound` on entry. These are props/pack data, not CSS declarations.
 
 ### Theme recipes
 
@@ -996,6 +1044,7 @@ carries it as `fix`, with `exact` false where it is the nearest step or
 role and moves the value. A class that also breaks the grounds rule is
 reported once, as OG9108.
 
-`spacing` stays Tailwind's 4 pt step. The cook compiles the merged theme
-into the theme the runtime loads and every variant string into records,
-like any literal class string.
+`spacing` stays Tailwind's 4 pt step. The cook writes the merged pack/theme
+data; class and variant strings resolve to records at runtime, cached per
+distinct string and environment. They are not cooked into immutable
+records: pack, scheme and state changes must still restyle them.

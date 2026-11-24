@@ -28,20 +28,26 @@ and dressed is `../README.md`.
 | `SpeechBubble` | `world/speech-bubble` | A line spoken over a head. |
 | `Waypoint` | `world/waypoint` | A place to go. |
 
-## Waiting on the placement
+## Placement and current limits
 
 The anchor clamps to the screen's edge (`clamp`, marking the side as
 `data-edge-*`), stacks or hides overlapping anchors (`declutter`,
 `priority`) and fades or hides them behind drawn geometry (`occlusion`).
-It does not yet tell a component its distance scale, its clamp angle or
-its LOD, keep an on-screen label inside the screen (`contain`), reserve
-rects or danger areas, bound a loot stack, lay mass
-bars apart from the labels or carry a shield track on a mass bar (UI Sol's
-placement items). Until it does the game passes `range`, `edge`,
-`compact` and `more`; a clamped bubble's tail points down; a label whose
-point lies near the screen's edge can run past it; a prompt keeps off a
-plate by priority but not off a telegraph; loot folds into a `+n` chip
-the game counts; overhead bars draw no shield track and can cross a label.
+Host props `scaleAt`, `scaleMin`, `scaleMax` opt into distance scale;
+`maxDistance` limits range and `lod={[near, far]}` sets
+`data-lod-near|mid|far`. These capabilities do not automatically change
+every component: use the props each component actually forwards, or
+compose an anchored `View` directly.
+
+The current host model has no `contain` clamp, clamp-angle output,
+HUD/player/danger reservations, bounded loot-stack solver or mass-bar
+template. Where a component accepts `range`, `edge`, `compact` or `more`,
+the game still supplies that presentation data. A clamped bubble's tail
+is not automatically aimed at the target; an unclamped label can extend
+past an edge; a prompt's priority does not reserve a telegraph. Loot's
+overflow count is game-provided. Overhead bars are TSX rows, not the old
+GPU mass-anchor markup. Do not copy document-era anchor attributes or CSS
+custom properties into these props. Ground effects remain decals/lines.
 
 ## Gallery
 

@@ -2,88 +2,83 @@
 
 # The `screens` guide: UI and the UI packs
 
-Screens and HUDs for an Origin Engine game. The built-in screens and components and how to use, customise and review them, style packs and how to install and change them, documents versus code, the thresholds for text, contrast and touch, og ui check and preview, and languages with their fonts.
+Build screens and HUDs from TypeScript TSX components, dress them with
+typed utility classes and style-pack slots, and review them at the sizes,
+languages and input modes the game supports. The named stores follow the
+`svelte/store` data model; the UI does not use Svelte markup or CSS sheets.
 
-The API: `og api show ui` (elements, components, layers, motion, styles)
-and `og api show i18n` (string tables, plurals, fonts, line breaking,
-right to left). `og ui eject --list` names every built-in screen and
-component; `og ui list` names the bundled and installed packs.
+The API: `og api show ui` (configuration, stores and readback),
+`og api show components --guide` (the current exported library) and
+`og api show i18n` (translations, fonts, numbers and plurals).
+`og ui eject --list` lists components, controls and screens available to
+copy; `og ui list` lists resource packs and `og style list` lists styles.
 
 <a id="guide-screens-1"></a>
 ### `screens §1` Order of work
 
-1. List the screens the game needs from the brief: title, the HUD, pause,
-   settings, results, and the genre's own (inventory, shop, deck).
-2. Start from a built-in screen and the built-in components (§2,
-   `og ui eject --list` names them), or compose core controls in a
-   screen document of the game's own.
-3. Fill it with the game's named data inputs; never edit text
-   into a document that the game should bind.
-4. Dress it with the look's style (§3), then preview and check (§5)
-   at every breakpoint the create block's `platform` implies.
+1. List the screens the game needs: title, HUD, pause, settings, results,
+   and domain pages such as inventory, shop or deck.
+2. Import a built-in screen/component (§2), or compose core controls in a
+   `.tsx` screen. No installation or document loading is required.
+3. Pass typed props and handlers from the game's presentation stores;
+   keep domain decisions in gameplay systems.
+4. Dress the shared slots through the look's style (§3), then preview and
+   check (§5) at every supported size, text scale, locale and input mode.
 
 <a id="guide-screens-2"></a>
 ### `screens §2` Built-in screens and components
 
-The engine has screen and component documents built in under the `@ui/`
-root: generic screens (pause, settings, results…), generic components
-(§7) and genre groups of components (`rpg/`, `shooter/`, each documented
-in its README under the engine package's `src/ui/components/<group>/`).
-Nothing is installed or copied to use them.
+Import components from `@origingame/engine/ui/components` or their
+individual paths, and screens from `@origingame/engine/ui/screens/…`.
+Their exported `<Name>Props` interfaces describe inputs and callbacks;
+`fixtures` in the same `.tsx` file supply named presentation examples.
+The bundler follows imports and their string tables/assets transitively.
+There is no `<ui:name>` syntax, implicit component registry,
+`og.load.document` or screen-name push operation.
 
-- A component is used by the name its `<meta name="component">` declares,
-  with props from named stores: `<RpgBackpack items={$items}
-  selected={$selected} />`. The explicit form `<ui:name>` accepts any
-  declared component name, case-sensitively: `<ui:star-rating stars={$stars}
-  label={$label}/>`, `<ui:key-values rows={$rows}/>` and `<ui:banner
-  title={$title} subtitle={$subtitle}/>` use the lowercase library names.
-  The prefix is not part of the manifest key or document name. `<table>`
-  remains HTML; `<ui:table>` uses the component named `table`. `<Card>` and
-  `<ui:Card>` are equivalent, but `StarRating` is not an alias for `star-rating`.
-  Its header (`<meta name="prop:…">`) names its
-  props, and its group's README its intents and parts. The cook bundles
-  every built-in component the game's documents use, with the components
-  those use, and they load with the screen that uses them.
-- A built-in screen is a TSX component, mounted on a layer:
+```tsx
+import { mount } from "@origingame/engine/ui";
+import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
 
-  ```tsx
-  import { mount } from "@origingame/engine/ui";
-  import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
-  const unmount = mount(world, () => <PauseScreen open />, {}, { layer: "menu" });
-  ```
+// In the game's UI registration, with world supplied by the engine:
+const unmount = mount(world, PauseScreen, {
+  objective: "",
+  played: 0,
+  onResume: () => { /* Resume through the game's own state/intent. */ },
+}, { layer: "menu" });
+// Call unmount() when the game closes this screen.
+```
 
-  Its props are its exported interface (`PauseScreenProps`), which
-  `og check` checks.
-- A built-in screen draws an action row only for a handler the game
-  passes: `<PauseScreen onResume={resume} onSettings={settings}
-  onQuitToMenu={quit} … />` has those three rows and no Controls, Save,
-  Load or Quit game. Leave a handler out (or pass `undefined`) to drop
-  its row; a row that may not be taken now stays grey by its own prop
-  (Save by `canSave`). The pause menu takes the game's own rows,
-  `rows={[{ key: "restart", label: "Restart stage", after: "resume" }]}`
-  with `onRow={(e, key) => …}`, drawn as the built-in ones.
-- To change one, run `og ui eject <name>` (`og ui eject pause`,
-  `og ui eject panels/backpack`). It copies the document and its strings into
-  `assets/ui/`, where the game owns it. The game's document of the same
-  name then wins everywhere: screens using the component get the copy,
-  and loading the `@ui/` id loads `ui/<file>`. Keep the component's
-  named parts and states intact when changing its layout, so styles still
-  dress it. An existing copy is not replaced without `--force`.
-- Components draw what the game passes and report intents with stable
-  item IDs; the game decides whether to apply them and keeps every
-  domain rule. UI state lives in named scope sources and core interaction
-  state, not module globals (determinism §1).
-- A component of the game's own is a component document in `assets/ui/`,
-  used the same way and dressed by styles through its parts like the
-  built-in ones.
+The `menu` layer orders presentation; the game owns simulation pause and
+which screen is open. Mounting a screen does not infer pause behavior from
+its file name or its exported preview metadata.
+
+Built-in action rows are generally conditional on callback props:
+`PauseScreen` with `onResume`, `onSettings`, `onQuitToMenu` has those
+three built-in rows. Omit a handler (or pass `undefined`) to omit its row;
+an action unavailable only now stays drawn but disabled by its state prop
+(Save uses `canSave` with `onSave`). Pause also accepts game rows:
+`rows={[{ key: "restart", label: "Restart stage", after: "resume" }]}`
+and `onRow={(event, key) => …}`. Data lists are not hidden just because a
+handler is absent; inspect each component's props for its exact contract.
+
+To customize, `og ui eject screens/pause`, `og ui eject panels/backpack`
+or `og ui eject controls/button` copies TSX to `assets/ui/<name>.tsx`,
+copies imported locale tables with keys prefixed by `game.`, and rewrites
+matching game imports to the copy. Engine components that import the
+original keep doing so: this is import rewriting, not a global name
+override. New uses import the copy explicitly. Existing files are refused
+unless `--force` is given. Preserve pack slots and accessibility semantics
+when changing layout.
+
+Components draw data and report callbacks with stable IDs; they do not
+decide purchases, rewards, legality, damage or timing rules. A game's own
+component is an ordinary TSX function imported the same way.
 
 ### A weapon level from Pips, Counter and Bar
 
-The engine has no weapon level: it is a game's rule, so a game composes it
-from three themeable parts. Pips counts the level (one bolt a level, in a
-tone), Counter writes it and HudBar times the power-up that holds it. Each
-reads its pack slots (`Pips.pip`, `Pips.fill`, `Counter.value`, `Bar.*`),
-so a theme dresses the composition with no code; `class` restyles one use.
+The engine has no weapon-level rule. Compose the discrete level, number
+and remaining power-up time from reusable themeable pieces:
 
 ```ts recipe ticks=10
 import { og } from "@origingame/engine";
@@ -118,625 +113,252 @@ export default og.game({
 });
 ```
 
-Change the look in the style (§3), never in a component: no literal
-colours, spacing, font paths or durations in a document's `<style>`.
-Structural ratios and data values are not visual tokens. Use the core
-fallback when a part has no custom dressing.
-
-Before shipping a screen built on a group, check it with fixtures for
-empty, populated, overflow, disabled, selected, focused, loading and
-error states, keyboard, gamepad families, touch, live input-prompt
-switching, large text, reduced motion, high contrast and right-to-left
-text (§5). The materials resource pack is documented in ui-materials §1.
+This recipe mounts fixed props. For changing data use reactive JSX/getters
+as described in §4; a component body runs once.
 
 <a id="guide-screens-3"></a>
 ### `screens §3` Style packs
 
-A style pack is a directory with a `pack.json` (its theme, variants,
-fonts, images, icons and sounds) and the assets it names. Structure stays
-in TSX components. Haptics stay in `og.*`.
+A style is a directory with a `pack.json` or `theme.json` and its assets,
+not CSS files. A theme recipe compiles its dimensions, colour choices,
+mixins and overrides into a pack and generated art (the themes guide).
+A handwritten pack sets only what it changes over the default pack.
 
-The engine ships the default pack, which dresses every core control,
-component and screen in plain tokens, and the themes: recipes the cook
-compiles into a pack with drawn art, which a look names (`ui "fantasy"`)
-and a game derives its own from (the themes guide). A game's own pack lies over it:
-name its directory in the look (`ui "my-style"`), which makes the cook
-bundle it, and write in its `pack.json` its seeds, the theme values it
-sets over the default pack, its art and the classes of the slots it
-dresses. The palette is
-derived from seed colours. A pack or a game that only wants its own
-colours sets those (`"seeds": { "primary": "#c8102e", "neutral":
-"#3a3226" }` in its pack.json, or `og.ui.configure(engine, { seeds: {
-primary: color.fromHex(0xc8102e) } })`), and every ground, ink, state, status and
-team colour follows in both schemes with its contrast kept. Configuring
-new seeds at run time restyles the whole UI. Art that is one picture in
-both schemes, such as a dark plate, names its scheme on its slot with
-`scheme-dark` (or `scheme-light`): the roles inside it, `text-fg` and the
-rest, then resolve in that scheme whatever the page's is, down to a nearer
-`scheme-*`. `og style list`
-names the built-in and installed packs.
+The layers are default pack, the look's chosen style, then
+`assets/styles/game/pack.json` if present. Named theme entries, variants,
+images, icons and sounds in a later layer replace earlier entries; fonts
+add faces. Palette seeds derive the grounds, inks and state colours in
+both schemes. A pack can set `"seeds": { "primary": "#c8102e" }` without
+rewriting each role. Theme leaves can be `{ "light": …, "dark": … }`.
 
-1. Make `assets/styles/my-style/` with a `pack.json`. A pack holds only
-   what it changes: what it does not set keeps the default pack's value.
-2. Write its `seeds` and, where the derived palette is not what you want,
-   the `theme` colours, radii and font families; its `fonts`; its
-   nine-slice art under `images`; and under `variants` the classes of
-   each slot it dresses (`Button.plate`, `Panel.frame`). The cook checks
-   every class against the theme in both schemes and every file it names.
-3. Name it in the game's look (`ui "my-style"`) and capture the game's
-   screens with `og ui preview` (desktop and phone, 100% and 150% text;
-   `--locales game,pseudo,zh,ar` for locale coverage). Review frames
-   before recording references.
+For example, the following `pack.json` dresses a shared slot using theme
+steps and roles; the same slot is used by every imported Button:
 
-Load and select the directory in your game's startup function:
+```json
+{
+  "seeds": { "primary": "#14675f" },
+  "variants": {
+    "Button.plate.primary": "bg-accent text-accent-fg hover:bg-accent-hover active:bg-accent-active rounded-button"
+  }
+}
+```
+
+Components append `packClass("Button", "plate", variant)` to their class
+list. The token resolves against the active pack at runtime. A slot
+painting its ground also supplies the paired ink in every state. Common
+slots include `Panel.frame`, `Plate.frame`, `Slot.frame`, `Chip.frame`,
+`Field.frame`, `Row.frame`, `Head.frame`. There are no part selectors.
+
+1. Create `assets/styles/my-style/pack.json` (or derive a theme recipe).
+2. Set seeds, theme roles/type/radii, variant classes, fonts, nine-slice
+   `images`, icons and sounds. Asset paths are relative to the pack;
+   shared engine resources can use `@styles/shared/…`. Fonts travel with
+   licences and name their own families; `theme.fontFamily` lists them.
+3. Select the style in the look and capture the game's screens (§5).
+
+To select a loaded style explicitly:
 
 ```ts
-const style = og.load.style(engine, "styles/my-style");
+const style = og.load.style(world, "styles/my-style");
 if (!style.ok) throw new Error(style.reason);
-og.ui.configure(engine, { style: style.value });
+og.ui.configure(world, { style: style.value });
 ```
 
-Select the style before loading documents: a document is read once,
-against the style in effect. Changing the style later reads every loaded
-document again.
+Style, seed and scheme changes resolve class records again; there is no
+document reload or CSS parse-order requirement. `scheme-dark` or
+`scheme-light` fixes a subtree's palette for artwork that stays the same
+in both schemes. `nine-<name>` selects pack images, optionally tinted by
+`bg-*`; `nine-none` removes art for a state with its own fill. A frame
+owns its edge; do not draw a second border over it.
 
-Every literal value (colours, lengths, durations, art and sound URLs)
-goes in a `:root` rule as a token; every other rule reads tokens with
-`var()`. Set the engine's own tokens (`--primary`, `--radius-md`,
-`--button-radius`…) to restyle every control and built-in component at
-once, and add the pack's own for its dressings. Write lowercase markup
-hosts before `::part(name)` and states after it:
-
-```css
-:root {
-  --my-accent: #72e8dc;
-  --my-accent-hover: #a9fff2;
-  --my-edge: #184d55;
-  --my-edge-width: 2px;
-  --my-sheen: inset 0 1px 0 #ffffff60, 0 3px 6px #00000040;
-  --my-quick: 140ms;
-  -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.3);
-}
-:root[data-scheme=light] { --my-accent: #14675f; }
-button.primary::part(base) {
-  background: var(--my-accent);
-  border: var(--my-edge-width) solid var(--my-edge);
-  box-shadow: var(--my-sheen);
-  transition: background var(--my-quick) ease-out;
-}
-button.primary::part(base):hover { background: var(--my-accent-hover); }
-@media (prefers-reduced-motion: reduce) {
-  button::part(base) { transition: none; }
-}
-```
-
-A built-in component's parts are dressed the same way, by its part name
-and its states or `data-*` attributes:
-`RpgBackpack::cell[data-rarity=epic] { border-color: var(--my-epic); }`.
-
-Use `@font-face` for fonts, `mask-image` for icons, `border-image` for
-painted frames, and `@keyframes` for animation. An image is a `:root`
-token too (`--my-frame: url(art/frame.svg)`, then
-`border-image-source: var(--my-frame)`). Asset URLs resolve beside the
-CSS file that contains them. `/@styles/shared/` addresses shared
-assets. Copy fonts with their licences. `og style add ./my-style` installs
-a local pack without overwriting an installed one.
-
-Direct-child CSS files load in lexical filename order. Put sheets that
-need explicit ordering in a subdirectory and use `@import`. Normal
-declarations increase in priority from `og-default` through
-`og-components` (the built-in components' own rules), `og-pack`,
-`og-game`, then unlayered CSS. Important declarations reverse
-layer priority. Custom properties belong to authors, not a second token
-language. The only appearance extensions are `-og-material` and
-`-og-sound`; unknown `-og-*` declarations are errors.
-
-Style a core widget through its exposed parts. The game's art-contract
-measurements are `og style check-project`.
-
-### Images on a CDN
-
-A `url()` may name an `http://` or `https://` image instead of a file of
-the package: PNG, JPEG, WebP or SVG, in a document, an inline `style`
-or a style pack, anywhere a package image goes (`background-image`,
-`mask-image`, `border-image-source`, `image-set()`). The engine fetches
-it when the document or pack loads, once per URL and modifiers, and the
-layer draws nothing until it arrives, so give the element a
-`background-color` or another layer to show meanwhile. An executor
-(`og test`, `og render`, captures) waits for every image a document named
-before it draws, so its frames do not depend on the network's speed.
-
-The server must allow the game's origin: in a browser a remote image is
-read in CORS mode, so a response without `Access-Control-Allow-Origin`
-(`*` or the game's origin) is refused. Native runs (`og test`, `og
-render`) do not check this header, so check it on the published page.
-The engine sends no cookies, credentials or referrer. Pin the bytes with
-`integrity()` after the quoted URL:
-
-```css
-.event-banner {
-  background: #20232b url("https://cdn.example.com/art/banner.webp"
-              integrity("sha384-…"));
-}
-```
-
-The bytes must match (Subresource Integrity), or the image is refused.
-Use it for art you publish alongside a game version. `cross-origin()` and
-`referrer-policy()` are refused: with no cookies or referrer sent, there
-is nothing for them to choose.
-
-A photo turned by its EXIF orientation draws upright, as a package image
-does, and `image-orientation: none` draws it as stored, on both hosts.
-
-A refused or failed image is one warning in the log naming the URL and
-the reason (integrity, HTTP status, decoding, and in a browser CORS); the element keeps
-its other layers. A package file takes no modifiers. `og.loading.idle`
-stays false while a remote image is still being fetched, so a loading
-screen can wait for it.
+Use theme utilities for type, spacing, radii, gradients, shadows and
+motion. Inline `style` is for computed data/structure, not visual tokens.
+Images in TSX take loaded texture handles; icons take names. CSS
+`url()`, `@font-face`, `@keyframes`, `::part`, `-og-material` and
+`-og-sound` declarations are not supported TSX authoring forms. Shader
+resource presets and the current attachment boundary are in ui-materials.
 
 <a id="guide-screens-4"></a>
 ### `screens §4` Structure and data
 
-- Write one `.tsx` file per screen or component: a function that returns
-  its tree, with its props an exported interface and its look in class
-  strings. State and logic live in a TS system that writes stores; the
-  component reads them.
-- Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
-  `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
-  never write. `onclick={buy}` names an action supplied by the game.
-- Normal-flow pages already sit inside the engine root's hardware safe
-  area. Use ordinary padding there; adding `env(safe-area-inset-top)`
-  adds the top inset a second time. For a page whose background reaches
-  the viewport edges, use `position: fixed; inset: 0` and apply the
-  safe-area `env()` values once in its padding. These viewport-relative
-  values also account for the host's covered Back control.
-- Controls are HTML's, with a few `-og-` properties where HTML has none:
-  - `<button data-hold="1200" onhold={confirm}>` fires after a held press
-    (Enter, Space, a pad's A, or its `data-action`'s input hold it too) and
-    draws a fill across it as it is held: `button::-og-hold { background }`.
-  - `<div id="Tip" popover>` opens against the control whose
-    `popovertarget="Tip"` (or `interestfor`) names it. Place it with CSS
-    anchor positioning against that control: `position-area: right`, an
-    inset such as `left: 8px` for the gap, `position-try-fallbacks:
-    flip-inline`. `#Tip::-og-arrow { width: 10px }` draws an arrow on the
-    side facing the control. `contextmenu="Menu"` on an element opens
-    popover `Menu` at the pointer on a right-click or long press.
-  - `<input type="checkbox" switch data-on="On" data-off="Off">` is a
-    switch whose on and off words a screen reader reads.
-  - `<input type="number" step="1" data-format="{value, number} m">` keeps
-    editable text with spinner buttons; `data-wrap` wraps at the bounds and
-    `data-large-step="10"` sets Shift adjustment and held-button repeats.
-    `data-format` is an ICU message over `value`, shown only while unfocused.
-  - A field's icon, suffix and count are markup round an input with
-    `appearance` set to `none`, in a row styled with `:focus-within`:
-    `<og-icon>`, `<span>gold</span>`, `<small>{$name.length}/20</small>`.
-    `<input type="search">` draws a clear button while it has text.
-  - `<input list="Maps" placeholder="Find a map">` with a
-    `<datalist id="Maps">` filters suggestions by value or translated
-    option label. Choosing an option writes its value, not its label.
-  - `<tabs items icons badges>` draws an icon and a count badge per tab;
-    the tabPrev and tabNext actions (Q and E, LB and RB) step it.
-  - `<details name="faq">` is an exclusive accordion: one of a name open
-    at once.
-- Use `{#if expression}…{:else}…{/if}` and
-  `{#each $items as item (item.id)}…{:else}…{/each}`. Every collection row
-  needs a stable string key. `{#each $items as item, i (item.id)}` names the
-  row's position `i` (from 0, following a reorder) for display; it cannot be
-  the key. Index keys and executable JavaScript fail cooking.
-- Compose content with `{#snippet name()}…{/snippet}` and
-  `{@render name()}`. Use `{@render name?.()}` for optional content.
-- `{#key $round}` remakes its content when the value changes, `{@const n =
-  item.count}` names an expression in a block, and `{#await $load}…{:then
-  v}…{:catch e}{/await}` reads a store holding `{ status, value, reason }`.
-- Motion: `transition:fly={{ y: 20, easing: quintOut }}`, `in:`, `out:`
-  (fade, fly, slide, scale, blur, crossfade by key) and `animate:flip` in a
-  keyed each, or CSS. `style:width={$w + 'px'}` and `style="…"` win over
-  rules. `bind:this={panel}` names an element; `use:tooltip={params}` sends
-  `use` events (create, update, destroy) to the game.
-- Expressions allow property access, an index (`items[i]`), comparisons,
-  arithmetic, ternaries, pure number formatters, `numbers(text)` (a number
-  list as SVG writes one: `numbers(view)[2]` is a viewBox's width), and
-  `t(key, { named: expression })`. Assignments,
-  arbitrary calls, `$state`, `$effect`, and raw HTML are errors.
-- Style reactive state with `class:active={$step == 'brightness'}` and
-  `.active` rules. Selectors are standard CSS (Selectors 4: combinators,
-  attribute operators, `:not()`, `:is()`, `:where()`, `:has()`, the
-  structural, form and state pseudo-classes), plus `:state(name)` from
-  `state:name={…}`. Structural selectors read the instantiated rows after
-  `{#if}` and keyed `{#each}`, so `.row:nth-child(odd)` and `.item + .item`
-  follow reorders, inserts and removals; rows of a `list` restyle when they
-  scroll into view. An ancestor selector reads that ancestor's own state,
-  not the styled child's.
-- Rules nest, and stylesheets take `@layer`, `@supports`, `@scope`,
-  `@import`, `@starting-style` and `@property`, with the CSS-wide keywords
-  on every property.
-- Use CSS media conditions, for example `@media (width < 600px), (height <
-  600px) { ... }`. `prefers-reduced-motion`, `prefers-color-scheme`,
-  `prefers-contrast` and `prefers-reduced-transparency` follow the theme;
-  `pointer` and `hover` (and their `any-` forms) follow a touch screen, and
-  `(-og-input: pad)` matches while a pad is in use. `(color-gamut: p3)`
-  and `(dynamic-range: high)` match where the renderer's surface presents
-  Display P3 and extended range (`og.render.capabilities()`'s
-  `wideGamut` and `hdr`); `rec2020` never does. The other display features
-  (`display-mode`, `display-state`, `update`…) answer fixed values for the play surface. `screen` and `all` are the media types; square
-  viewports are portrait; `em`/`rem` in a condition are the initial 16px.
-  Unsupported features, zero-denominator ratios, viewport units and
-  `calc()` in a condition fail cooking, as do names such as `@media phone`.
-- Layout is CSS's: block, flex and grid as a browser lays them out. To
-  have a box take the room its siblings leave on a row or column, give it
-  `flex: 1`, with `min-width: 0` (in a row) or `min-height: 0` (in a
-  column) so long content can shrink and cut instead of widening the row.
-  `width: stretch` and `height: stretch` are CSS's stretch-fit size: the
-  whole containing block less the box's margins. That suits a box that
-  fills its parent alone, or fills across a flex line (as `align-self:
-  stretch` does). On a row shared with siblings, a `stretch` box is the
-  row's full width and overflows, and in a block a `stretch` height is
-  the block's height, not what the boxes above leave.
-- Size a component to its slot with container queries: give the slot
-  `container-type: inline-size` (or `size` for height conditions),
-  optionally `container: card / inline-size`, then write `@container card
-  (width < 320px) { ... }`. Conditions read the nearest matching ancestor,
-  never the element itself, and settle before the first frame paints and on
-  every resize. Do not let a query resize its own container: that fails as
-  a settlement cycle. `style(--tone: warm)` reads a container's custom
-  property (unnamed: the parent's); `scroll-state(scrollable: top)`,
-  `snapped`, `stuck` and `scrolled` need `container-type: scroll-state`.
-  Container units (`cqw`…) size against the nearest size container.
-- Custom properties (`.card { --spacing: 12px; gap: var(--spacing); }`)
-  inherit through component mounts and substitute on the declaring
-  element: changing `--a` in a child does not recompute an inherited
-  `--b: var(--a)`. Cycles report their names. Unshadowed engine tokens
-  resolve from the active style.
-- A `<button>`'s own `background`, `border`, `padding`, `border-radius`
-  and `box-shadow` (`button.buy { background: #ff7a2e; border-radius: 30px; }`)
-  restyle its plate, replacing the style's fill and painted frame, as CSS
-  on an HTML button does: the plate is the button's whole box, its padding
-  inside it. A `background: transparent` leaves the button unfilled until
-  a state rule fills it. A rule for the plate itself
-  (`button.buy::part(base):hover { background: … }`) wins over them and is
-  where its states go.
-- Transition and animate with standard CSS `transition`, `@keyframes` and
-  `animation` (and their longhands); `all` covers every animatable value.
-  The timing slot also takes `-og-spring(300ms, 0.2)` and
-  `var(--motion-ui)`. Rules choose animations like any property, so
-  `#Card.open { animation: … }` or `:hover` starts one and losing the
-  match ends it. `@keyframes` may sit inside `@media` or `@container` (a
-  shorter entrance on phones); switching definitions restarts the
-  animation. Under reduced motion a finite animation shows its end and an
-  endless one stops; a transition written in a `prefers-reduced-motion`
-  block plays as written, any other jumps (opacity and colour fade).
-  A keyframe's `-og-sound: error` emits the active style's named sound once
-  when playback crosses that frame, at the recorded playback rate.
-- Move, turn and scale with `translate`, `rotate`, `scale` and
-  `transform-origin` (or `transform`); layout keeps the box where it was
-  laid out, and hits, the probe and the accessibility bounds follow the
-  moved box. A turn is clockwise on the screen (`.tilt { rotate: 15deg }`
-  turns the top to the right), and the origin is measured from the box's
-  top-left corner: `transform-origin: 0% 0%` turns about that corner, `50% 100%`
-  about the bottom centre, the centre when unset (conventions §2, §5). An
-  animated `rotate` (a state, a timeline key) turns the same way.
-- Bind structured rich text with `<text spans={$spans}>{$body}</text>`.
-  Each `TextSpan` has `name`, `position`, `length`, and scalar `properties`.
-  Offsets count Unicode scalars, not bytes or UTF-16 units. Style spans with
-  `text::part(name)` and property selectors such as
-  `text::part(name)[rarity="rare"]`. Later overlapping declarations win per
-  property. Unknown span names remain metadata; the text is never markup.
-- Generate text with `::before`/`::after { content: … }`: strings,
-  `attr(name)`, `counter(name, style)`, `counters(name, ".")` and quotes,
-  with `counter-reset`/`counter-increment`/`counter-set` on any element and
-  `@counter-style` for your own styles. On a box element each is a box
-  of its own that takes every property a `<div>` does (`inline` by
-  default); on a text element it is a run of the text and takes text
-  properties. `dialog::backdrop` and `select::picker(select)` take a
-  box's properties too.
-  `li::marker { content: …; color: … }` and `list-style-image: url(name)`
-  restyle list markers. `::first-letter`, `::first-line`, `::placeholder
-  { color }` and `::selection { background-color; color; text-decoration }`
-  style text. A text's shadow is a theme shadow class (`text-shadow-xs`,
-  `text-shadow-tag`); there is no arbitrary `text-shadow-[…]`. A class
-  draws every layer of its theme entry, as CSS draws a `text-shadow` list
-  (the first on top), and a layer in `currentColor` or
-  `contrast-color(currentColor)` takes each text's own ink.
-- A link `<a href="#rules">` makes `#rules` `:target` and scrolls it to
-  the start of its scroller (its `scroll-margin` above it, inside the
-  scroller's `scroll-padding`). To point at a passage, put an id on its
-  element and link to it.
-- Use `<meta name="screen" content="pause" data-layer="menu"
-  data-focus="Menu/Resume" data-pause="true">` for a screen.
-  Components use `name="component"`. Props use `name="prop:volume"`,
-  `content="number"`, `data-doc="…"` and, where its zero value (`0`,
-  `""`, `false`, `[]`) is not what a user who leaves it out should read,
-  `data-default="0.8"` (`data-required` for one that must be passed);
-  actions use `name="action:back"`;
-  fixtures use `name="fixture:default"` with JSON content.
-  UI state the game has no stake in (a panel open, the tab shown) is
-  `name="state:open" content="bool"` (`number`, `string` or `bool`): each
-  instance has its own, read as `open` and written with `bind:`
-  (`<details bind:open={open}>`), and a save carries it.
-- Draw rings, bars, charts and badges with inline SVG, binding attributes
-  to stores: `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18"
-  fill="none" stroke="var(--accent)" pathLength="1" stroke-dasharray="1 1"
-  stroke-dashoffset={1 - $ready}/></svg>`. Size the `<svg>` with CSS; its
-  view box scales to fit, strokes with it. Gradients are
-  `<linearGradient id>` and `fill="url(#id)"`. Icons reuse a `<symbol
-  id="Coin" viewBox>` with `<use href="#Coin" x y width height/>`; cut with
-  `clip-path="url(#id)"` (any shapes or paths) or a gradient
-  `mask="url(#id)"`, hatch with a `<pattern>`, and name the graphic
-  with `<title>{$label}</title>`. Label it with `<text x="50" y="20"
-  text-anchor="middle" dominant-baseline="central"
-  font-size="10">{$hp}</text>`: placed and scaled with the view box, with
-  `<tspan font-weight="bold" fill="#f0b429">` runs inside.
-- Drag and drop: `<li draggable="true" data-drag-type="gem"
-  ondragstart={lift}>` and `<div data-accept="gem" ondrop={stash}>`; the
-  event's value is `{ dragged, target, x, y }` (row keys and the point).
-  `onpointerdown`, `onpointermove`, `onpointerup` and `onwheel` work on any
-  element and bubble to the nearest handler.
-- A 3D preview is `<viewport src={$target} camera-orbit={`${$yaw}deg 75deg 3m`}
-  bind:clientWidth={$w} bind:clientHeight={$h} onpointermove={orbit}
-  onpointerdown={pick}>`: size the render target from `$w`×`$h` times the
-  pixel ratio; the events carry `ray` for picking.
-- Touch controls feed og-input actions directly: `<joystick action="move">`,
-  `<dpad action="move">` and `<button data-og-touch="jump">` (a document
-  button CSS sizes and places). Game code reads `og.input.action("move")` as for
-  keys and pads; no handler is needed. Size them with CSS `width`, place
-  them with `position: absolute` and insets, and hide them with
-  `@media (pointer: fine) { #Stick { display: none } }`. A stick's dead zone is `data-dead-zone="0.2"`.
-- Name a box over an entity with `<anchor entity={u.entity} offset="0 2 0">`,
-  and put a working screen on a mesh with `<panel id="Terminal" world
-  entity={$console} size="3 2" src={$screen}>`: the game shows the render
-  target `src` on a plane `size` world units across, and pointer rays
-  that meet it press its buttons. Lay a selection ring under a unit with
-  `<ground entity={u.entity} size="2 2"><svg viewBox="0 0 40 40">…</svg></ground>`:
-  drawn flat on the ground in perspective, inert. For many at once (damage
-  numbers, overhead bars) write `<anchor entity={h.entity} mass="damage"
-  value={h.amount}>` in a keyed each: with a CSS animation (`rise 1s`) each row
-  spawns one number that plays `@keyframes rise`; with `max="100"` and no
-  animation it is a bar that stays with its row.
-- Celebrate with CSS: `@keyframes land { 60% { -og-burst: 24 48px #ffd166
-  600ms; -og-sound: success; } }`. Sparkle a rare item with
-  `<Particles emitter={sparkle} class="size-2 text-gold" />`: `sparkle` is
-  an `og.load.emitter` handle, the same `type particles` file an
-  og.ParticleSystem runs, here in CSS px with +y up at the centre of the
-  node's box and coloured by the node's ink. Give `restart` a new value to
-  play it again, `delay` seconds to hold it, and each ink its own node and
-  `seed`. Lines that need the scene (collision, fields, light, trails,
-  meshes) do not draw. The `celebration` component is confetti,
-  a burst, a level-up flourish or fireworks, built this way. Flash damage with `<og-overlay
-  id="Hurt" effect="vignette #a00">` and `#Hurt { opacity: var(--hit); }`.
-- Turn a model on a turntable with `<viewport src={$target} camera-controls
-  camera-orbit="30deg 75deg 3m" max-camera-orbit="auto 100deg 6m"
-  bind:cameraOrbit={$orbit}>`: a drag orbits it and a fling keeps it
-  turning, the wheel and a pinch zoom it, the arrows turn it once focused.
-  Any element takes `onpinch={zoom}` (its event has `scale` and the centre
-  `x`, `y`); the `node-graph` component zooms by it.
-- A carousel snaps with `scroll-snap-type: x mandatory` on its box and
-  `scroll-snap-align: center` on each card. A bottom sheet is
-  `<dialog modal data-detents="40% 90%" bind:open={$bag}>`;
-  `data-edge="inline-end"` makes it a side sheet (the right, the left
-  right to left) whose detents are widths.
-- Keep a centred screen reachable with `data-layout="cover"`: it centres
-  content that fits, starts oversized content at the safe edge and scrolls
-  overflow. `data-layout="center"` safely centres across the column. Use
-  `cluster` for wrapping action groups, or `switcher` when actions should
-  stack at a threshold; `row` deliberately stays one line.
-- A modal panel is bounded to the safe surface after author sizing; its
-  whole content scrolls when needed. For a fixed title and actions, make
-  the `<dialog modal>` a `data-layout="shell"`, place the body inside
-  `<div data-layout="scroll" data-fill>`, and keep the title and actions
-  as siblings. No heading or footer is inferred. An author width can stay;
-  the safe ceiling still wins. Generic `data-layout="overlay"` is not a
-  modal and does not impose this ceiling.
-- Paint with standard CSS: `background: linear-gradient(160deg,
-  var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
-  transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,
-  `backdrop-filter: blur(12px)`, `filter: grayscale(1)` for a locked item,
-  a theme shadow class such as `text-shadow-xs` on text. A shader look is
-  `-og-material: shine(-0.5 0.2 0.6 1)`.
-- A declared input action also exposes a named event: after declaring
-  `action:confirm`, use `onconfirm={start}` to handle it independently of
-  pointer clicks. The handler names a mounted game action, just like `onclick`.
-- Visible words use translation keys. Declare the base string table with
-  `<meta name="strings" content="./pause.en.ogt">`; the cook tracks it as
-  a dependency, and the loader preserves game translations when merging it.
-- Probe edits preserve surrounding markup and save style edits as scoped
-  rules. Diagnostics name the source file, line, column, and correction.
+- Import PascalCase primitives: `View`, `Text`, `Image`, `Icon`, `Scroll`,
+  `Input`, `Line`, `Particles`. Reusable controls (`Button`, `Checkbox`,
+  `Slider`, `Select`, `Switch`, `Tabs`, `Dialog`, `Sheet`, `Popover`,
+  `DropdownMenu`, `ContextMenu`, `NumberInput`, `TextField` and others) come from
+  `@origingame/engine/ui/components`. Lowercase HTML/SVG tags are errors.
+- Create checkpointed presentation values with `og.ui.scope(world, id)`
+  in `og.game`'s `ui(world)` callback and bridge stores with `useStore`.
+  Call the returned accessor in JSX (`{gold()}`), not `{$gold}`. Local
+  `createSignal` values are reactive but not named checkpointed sources.
+- Read props inside JSX or an accessor/`createMemo`: a plain
+  `const ready = props.value > 0` in the component body is a snapshot.
+  Controlled fields use `<Input value={name()} onChange={e =>
+  nameStore.set(e.value)} />`, not two-way directives. Event handlers
+  receive `UiEvent`, not browser DOM events.
+- `Show` conditionally renders; `For` retains keyed rows and gives its
+  children `(item, index)` accessors. Use `item().id`, not `item.id`.
+  Objects default to their `id`; `key={item => item.slot}` chooses another
+  stable identity. Never key reorderable data by its index. `Switch` /
+  `Match` chooses the first matching case. Optional content is a prop
+  returning JSX, invoked where it belongs, not a Svelte snippet.
+- Layout uses block/flex/grid semantics through classes. On a shared row
+  use `flex-1 min-w-0` to take remaining width and allow truncation; in a
+  column use `flex-1 min-h-0`. `w-full` is a full parent width, not the
+  remainder after siblings. `Scroll` supplies scrolling and a draggable
+  pack scrollbar (`scrollbar={false}` hides it). Safe alignment classes
+  (`justify-center-safe`, `items-center-safe`) keep oversized content's
+  start reachable.
+- Screen roots fill their layer with `absolute inset-0`. Apply safe-area
+  padding once to the content with `env(hud-inset-top|right|bottom|left)`
+  (for example `pt-[env(hud-inset-top)]`); the mount itself is the surface,
+  not an automatically inset content document. Backgrounds can fill the
+  surface while content stays safe. Built-in screens supply their own
+  insets; do not add the same inset around them twice.
+- Responsive variants read the UI surface: `compact:` is under 600 px
+  wide or 500 px tall, `narrow:` and `short:` cover individual axes.
+  `pointer-coarse:` / `touch:` follow touch input; `motion-reduce:` handles
+  reduced motion. There are no document media/container query sheets.
+- States use boolean `data-*` flags and variants, including named groups:
+  `data-ready={ready()}`, `data-ready:bg-success`,
+  `group/slot` and `group-data-ready/slot:…`. Use one flag per enum state
+  (`data-rarity-rare`), not a CSS attribute-value selector.
+- `role`, `label`, `description`, checked/pressed/selected/expanded,
+  ranges, `live`, `modal`, `tabIndex`, focus groups and focus memory supply
+  accessibility semantics. `hidden` the prop affects accessibility;
+  `hidden` the class removes display. Name icon-only controls.
+- Motion uses `transition-*`, `duration-*`, `ease-*`, `animate-*`,
+  `starting:` and `exit:` classes, plus pack slots. `transition-layout`
+  and `glide-*` move retained elements (§8). Reduced motion suppresses or
+  shortens movement; do not pace gameplay from an animation finishing.
+- Paragraphs use nested `Text`, inline `Icon`/`Image`, `ruby`, selectable
+  text and supported font classes. `RichText` accepts explicit rich runs;
+  it does not parse dialogue attribute spans or arbitrary HTML.
+- Geometry is typed: `Line` takes numeric x/y `points`, optional `closed`,
+  `viewBox` and `fit`; `Image` takes a texture. `wipe`, `wipeStart`,
+  `wipeCcw` reveal a box image radially. Shapes that can be images are
+  pack artwork, not inline SVG hosts or SVG path strings.
+- Drag/drop uses `draggable={id}`, `dropTarget={id}` and
+  `onDragStart/Move/End`, `onDrop`. Keyboard and gamepad can pick up and
+  drop too. `onContextMenu` handles a right click or keyboard request;
+  `onPinch`, `onRotate`, `onSwipe` expose gesture phases/data. Read
+  `HostProps` for each event's string payload, not DOM event fields.
+- Touch controls feed actions through `touchStick`, `touchPad`,
+  `touchButton`, `touchLook`, `deadZone`, `knob`; `floatingStick` centres
+  a stick at touch-down without moving its activation box. `touchLook`
+  sends drag deltas in CSS px per fixed tick (x right, y up), zero while
+  stationary/released, with input sensitivity/inversion applied.
+  `TouchControls` composes these (`floatingStick` for move, `lookPad` for
+  drag look). The game reads the same input actions as keys/pads.
+  World labels use `anchor`
+  and `lift`, occlusion, declutter and edge clamping. `scaleAt` and bounds
+  set distance scale; `maxDistance` and `lod` control distance presentation.
+  Ground marks use decals/lines, not UI hosts.
+- `Particles` takes a loaded emitter, seed, delay and restart key, in CSS
+  px (+y up). `Celebration` and `Flourish` compose emitters and pack cues.
+  Camera views are loaded render targets in `Image`; orbit/picking is
+  game code, not `<viewport>` attributes. UI world panels and custom
+  shader attachment are not exposed by the TSX host props.
+- Visible words use `t` with imported `.ogt` string tables, and locale
+  formatters for numbers/durations/currency. Use named actions through
+  `onAction` and `glyph` for device-adaptive input hints, not baked key
+  letters. `sound`, `exitSound` and `haptic` request pack feedback.
 
 <a id="guide-screens-5"></a>
 ### `screens §5` Thresholds, preview and check
 
-`og ui check` lays out every screen per style, breakpoint and locale and
-reports findings and measures; it never passes or fails a screen. The
-bars it does not hold, this guide does:
+`og ui check` runs game screens through styles, breakpoints, locales and
+text scales, reports findings and measurements, and does not score taste.
+Use game command scripts to show each screen (`--screen name=commands`,
+or project screen declarations); exporting `fixtures` alone is not how
+a game's screen is selected. Check command help for the matrix options.
+The bars for author review are:
 
-- **Text size**: at least 18 px at 1080p for menus, body and controls. A
-  dense HUD readout may go to 12 px if its group is marked dense
-  (og-ui's `Props::dense`) and it still grows with the player's text scale.
-- **Text scale**: every screen usable at 150 % text, nothing cut or
-  overlapping.
-- **Contrast**: live text at least 4.5:1 against what it is drawn on,
-  3:1 for text over 24 px and for icons and control outlines; 7:1 in the
-  high-contrast mode. No meaning by colour alone. APCA's Lc reads light
-  text on dark more fairly: body text at |Lc| 75 or more (60 for text over 24 px or
-  bold over 18 px, 45 for a large heading, 30 for a disabled control's
-  text and placeholders, which WCAG exempts). Hold both bars; a pair that
-  meets one only is an ink to move. An image under the text (a
-  nine-slice, a border image, a pattern, a fitted picture) is read where
-  it is drawn under the glyphs, as the renderer places it.
-- **Text over the scene**: inspect a ground the UI covers
-  only partly (a translucent plate, a HUD label on nothing) over black and
-  over white, keeping the worse. Such text holds 4.5:1
-  either on its plate over a bright scene (a sky, snow, a muzzle flash)
-  or on its halo (a `text-shadow-*` theme shadow, a text stroke; read a pixel out
-  from the glyphs' edge on their weakest side): a round timer's caption on a translucent plate over a bright sky
-  fell to 3.3:1. A nearly opaque plate, or a halo that rings the glyphs,
-  is what holds it. A blurred shadow covers at most half at the glyphs'
-  edge and an offset one lies on one side only (it reads as a second,
-  embossed copy), so `0 0 2px, 0 1px 2px` reads as no halo at all; eight
-  unblurred copies 1–1.5 px round the glyphs, in `contrast-color()` of the
-  ink, read 12:1 over a white sky (the default `--tag-halo`). The engine
-  draws a text as its CSS says and adds nothing over the scene: give text
-  that sits on nothing a ground, or the tag treatment: the theme halo
-  class `text-shadow-tag` (the style's `--tag-halo`, every layer of it,
-  in TSX as in CSS) and, where the pack sets one, a plate. A pack sets its
-  own halo as `textShadow.tag` in its theme. `text-shadow-2xs` is
-  Tailwind's faint drop, not a halo.
-  A text shadow inherits, so a HUD writes the class once on its root and
-  each text takes it in its own ink; a title or a figure whose pack gives
-  it a shadow of its own draws that instead. The built-in HUD components do
-  this.
-- **`contrast-color()`** is white or black, whichever reads more on its
-  ground: at least 4.58:1 on any opaque ground. Use it for ink on a
-  colour the game or the player picks (a team colour, a dye). The default
-  style's on-primary is `contrast-color()` of its primary, and an accented
-  control (`accent-color`, taken as the style's `--seed-primary`) inks its
-  check mark the same way.
-- **Colour vision**: colours that mean different things (the teams, the
-  states success, warn, danger and info) stay 0.1 or more apart in OKLab
-  (ΔEOK) under protanopia, deuteranopia and tritanopia;
-  under 0.05 they read as one colour.
-  Where a set cannot, the meaning also takes a shape, an icon or a label.
-  The default teams 1 to 6 hold 0.1 for any team seed; past six teams
-  colour alone cannot (teams 7 and 8 hold only 0.05), so a game with more than
-  six sides gives each a second cue: a shape, a pattern or an icon.
-- **Steps and roles in a class string**: a TSX component writes the
-  theme's words, never a value of its own, so a style pack moves it.
-  `og check` warns at the class and names what to write instead: OG9108
-  for a ground or an ink written by hand (text sits on a pack slot or an
-  opaque theme ground, in that ground's ink), OG9109 for any other
-  hand-written value (`w-[17.143rem]` is `w-60`, `text-[1.714rem]` is
-  `text-title`, `size-[40%]` is `size-2/5`, `border-white/8` is
-  `border-rim-soft`, `bg-well/79` is `bg-well`, a written
-  `shadow-[…]` is the named shadows such as `shadow-glow shadow-gold`).
-  One rem is the theme's body step (14 px in the default pack) and one
-  spacing step 4 px. Grid tracks of `auto` and `fr`, flex factors and an
-  inline `style` that carries data (a bar's `width`) are structure and
-  stay written.
-- **Touch**: a control's shorter side at least 44 CSS px on a coarse
-  pointer, and 8 px between neighbouring targets; primary actions in the
-  bottom half on a phone held in portrait.
-- **Pad**: every interactive element reachable from the default focus,
-  Back on every layer, no focus trap.
-- **Primary actions**: one filled primary button per layer.
-- **Cost**: a dense menu (300 elements, 40 animating) within 0.5 ms of
-  CPU a tick, a HUD within 1 ms; the element count `og ui check` reports
-  is where to look first.
+- **Text:** at least 18 px at 1080p for menus/body/controls. Dense HUD
+  readouts may reach 12 px if still readable and text-scalable. Do not use
+  an old document `dense` prop as an exemption: it is not a TSX host prop.
+- **Scale:** usable at 150% text, with no lost actions or cut content.
+- **Contrast:** 4.5:1 for live text; 3:1 for text over 24 px, icons and
+  outlines; 7:1 in high contrast. APCA additionally asks |Lc| 75 for body,
+  60 for text over 24 px or bold over 18 px, 45 for large headings, 30
+  for disabled text/placeholders. Review actual ink on actual art.
+- **HUD grounds:** inspect translucent/scene-backed UI over black and
+  white and keep the worse contrast. Small text needs a readable plate;
+  a faint offset shadow is no halo. The theme's `text-shadow-tag` is the
+  explicit multi-layer halo, not `text-shadow-2xs`. A shadow inherits in
+  each text's own ink unless that text supplies another shadow.
+- **Colour vision:** semantic colours should stay ΔEOK 0.1 apart under
+  protanopia, deuteranopia and tritanopia; below 0.05 they read as one.
+  Where they cannot, add a shape, icon or label. More than six teams need
+  a second cue, not colour alone.
+- **Steps and roles:** OG9108 flags invalid grounds/inks; OG9109 flags
+  handwritten values and names a replacement. Use `text-title`, `w-60`,
+  `border-rim-soft`, named shadows and whole colour roles, not bracket
+  colours/lengths or arbitrary opacity modifiers. A rem is the theme's
+  body step (14 px in the default pack); spacing steps are 4 px. Grid
+  tracks, flex factors, safe insets and computed inline geometry remain
+  structural, not visual literals.
+- **Touch:** shorter side at least 44 CSS px, 8 px between targets;
+  primary phone actions in the lower half in portrait.
+- **Navigation:** every control reachable; Back on each layer; no
+  unintended focus trap. Focus is distinct from selection.
+- **Actions:** one filled primary action per layer.
+- **Cost:** aim for a 300-element menu with 40 animating elements within
+  0.5 ms CPU/tick and a HUD within 1 ms; measure, do not infer from tests.
 
-Every finding is fixed (cut text, the safe area, missing names, missing
-feedback, placeholder art). An overlap finding is fixed unless the design
-means it (a badge on its icon, a ribbon across a card's corner): keep that
-one and say why in the report, never move a design to silence a finding.
+Fix cut text, safe areas, missing names/feedback/art and accidental
+overlap. Keep intentional overlaps (badge on icon, corner ribbon) and
+explain them; do not redesign merely to silence a finding.
 
-`og ui preview` renders the contact sheet (a row per breakpoint, a column
-per locale) and, with `--film`, a motion's filmstrip: read it before
-saying a screen is done. Review UI frames over the style's plain ground,
-not a busy scene; a HUD over the scene is judged by the scene's frames.
-Read a phone layout at 390×844 and a desktop one at 1920×1080.
+`og ui preview` writes a contact sheet; `--film` captures motion at chosen
+times. Read the frames before calling the screen finished: 390×844 phone,
+1920×1080 desktop, bright/dark HUD scenes, empty/overflow/disabled,
+keyboard/gamepad/touch, large text, reduced motion, high contrast and RTL.
+GPU quality review requires a real supported GPU; missing GPU is unchecked.
 
 <a id="guide-screens-6"></a>
 ### `screens §6` Languages and fonts
 
-- Every create-block language needs its string table
-  (`assets/strings/<lang>.ogt`) and a font that covers its script. Fonts
-  ship as one pack per script (`og font list`): `og create --lang`
-  installs the packs of its languages, `og font add <pack>` adds one
-  later, and og.i18n chains them with no code: the locale's own pack
-  first, another pack loaded the first frame its characters are drawn
-  (a player's name in another script). `og check` warns while a
-  language has neither a pack nor a table with its own fonts line.
-- A pack's glyphs are drawn from its outlines when first shown and the
-  web fetches its face only when needed, so installing a pack costs the
-  download of a language in use, not the boot.
-- `og i18n extract --check` lists missing keys per table; run it before
-  each build.
-- Size boxes for the pseudo-locale (40 % longer) and check a CJK and a
-  right-to-left locale with `og ui check --locales`; a box sized to its
-  English text overflows in German and mirrors wrongly in Arabic.
-- Numbers, plurals and dates go through og.i18n; never concatenate
-  translated fragments.
+- Each create-block language needs a string table and script coverage.
+  `og font list`, `og font add <pack>`, `og create --lang` manage packs;
+  locale and fallback chaining select faces without handwritten font CSS.
+- Faces and script dictionaries ship/load on demand, not as a fixed boot
+  cost. A font addition must not change other fonts' cooked output.
+- Run `og i18n extract --check` before builds; use locale formatters, never
+  concatenate translated pieces. Import companion base tables beside TSX.
+- Check pseudo-locale (+40%), CJK and RTL with the preview/check locale
+  matrix. English-sized boxes and fixed physical-side layout are not
+  proof of localized layout.
 
 <a id="guide-screens-7"></a>
-### `screens §7` Component documents
+### `screens §7` Component catalogue
 
-Health bars, ability bars and cooldowns, a round countdown timer, a minimap
-and compass, a radial weapon wheel chosen with the stick, nameplates and
-damage numbers are built-in component documents, not `og.ui` builders:
-use one in a screen by its declared name with props from named stores, and
-loading the screen loads it (§2). To change one, copy it with `og ui eject
-<name>` (`--list` names them with the screens) and edit
-`assets/ui/<name>.tsx`; the game's copy then replaces the built-in one
-in every screen, with no load of its own. Each declares its props, actions
-and a `fixture:default`, so `og ui preview` shows it at once.
+Use the generated components guide for the complete exports and props.
+The source directories are organized by function, not markup tag names:
 
-- Bars and meters: `stat-bar` (a health or resource bar with a ghost and a
-  shield), `orb-meter`, `radial-meter` (a stamina wheel), `progress-bar`,
-  `progress-ring`, `skeleton-group` (a loading placeholder).
-- Abilities: `ability-bar`, `ability-slot` and `cooldown` (a cooldown
-  sweep over the icon, the seconds left, charges and cost, the hotkey as
-  `<kbd data-action>`), `status-grid` (buffs and debuffs with their time).
-- Time and score: `hud-timer` (a round countdown that turns warn and
-  critical), `star-bar` (a score bar with star thresholds), `celebration`
-  (confetti, a burst, a level-up flourish or fireworks, played again by a
-  new `shots` id). A number that
-  counts is `<og-counter value={$score} duration="900" decimals="0">`;
-  `from="0"` counts it up as the screen opens and `format="compact"` (or
-  `percent`, `clock` …) writes it short.
-- Navigation: `minimap` and `minimap-view` (a map in the corner with
-  markers for allies, enemies, objectives and pings, a uv region by
-  `object-view-box: inset(…)`), `compass` (a heading strip with points of interest).
-- Menus and layout: `radial-menu` (a radial weapon wheel whose slice is
-  chosen with the right stick or the pointer: SVG wedges, the aim from its
-  events), `split-view` (two panes and a dragged
-  divider), `carousel` (`scroll-snap-type`), `breadcrumbs`
-  (`<nav><ol>` with `aria-current`), `chart` (bars and a line),
-  `node-graph` (a skill tree or run map: nodes over SVG links, zoomed and
-  panned from its wheel, pinch and pointer events).
-- Buttons: `hero-button` (the main call to action with its keycap),
-  `action-button` (a touch button feeding an og-input action through
-  `data-og-touch`), `touch-controls` (the on-screen pad: a stick or d-pad
-  and action buttons feeding og-input actions, shown where the pointer is
-  a finger), `hold-button` (hold to confirm, filling as it is held),
-  `action-hints` (the action bar: each action's `<kbd data-action>` glyph
-  and hint), `ribbon` (a corner ribbon on a card).
-- World: `nameplate`, `waypoint`, `loot-label`, `speech-bubble` and
-  `interaction-prompt` are `<anchor>`s over an entity or point;
-  `selection-ring`, `telegraph`, `path-line` and `placement-ghost` are
-  `<ground>` marks; `overhead-bars` and `damage-numbers` are
-  `<anchor mass>` rows drawn on the GPU by the thousand.
-- Filed by function, named by their path: `base/` (item slot, avatar,
-  currency, spinner, skeleton, ribbon), `hud/` (bars, meters, buttons,
-  timers, ability bar, crosshair, ammunition, damage direction, killfeed,
-  combat log, quest tracker), `world/` (tags, ground marks, minimap,
-  compass), `panels/` (data grid, chart, node graph, menu, tooltip card,
-  `RpgBackpack`, `RpgItemCard`, `RpgQuestLog`, `RpgConversation`,
-  crafting, trade, loot) and `meta/` (`Shop`, `ShopConfirm`,
-  `Achievements`, `DailyQuests`, `DailyRewards`, `Chat`, `Friends`). A piece
-  any genre uses is filed by function, whatever its name.
-- Genre kits, a genre's own screens: `rpg/` (`RpgCharacter`,
-  `RpgWorldMap`, `RpgParty`, `RpgTurnOrder` and the rest), `shooter/`
-  (combat HUD, loadout), `strategy/` (selection, queue, wave, tower),
-  `racing/` (telemetry, lap HUD, standings, banner, garage, results),
-  `card/` (hand, piles, collection, deck list, reward, run map),
-  `puzzle/` (goals, boosters, level path, summary), `idle/` (resources,
-  generators, purchases, prestige, offline summary), `rhythm/` (song
-  select, difficulty, score HUD, judgement, results) and `arena/` (roster,
-  draft, versus, lobby, round HUD, scoreboard). Each folder's README lists
-  its members with their props, intents and parts; eject one by its path,
-  as `og ui eject panels/backpack`.
+| Need | Library area |
+| --- | --- |
+| Controls, fields, dialogs, sheets, menus, rich text | `controls/` (also re-exported by `components`) |
+| Slots, avatars, currencies, pips, spinners, empty/error states | `components/base/` |
+| Bars, meters, cooldowns, abilities, timers, feedback, touch controls | `components/hud/` |
+| Nameplates, waypoints, prompts, overhead bars, maps/compass | `components/world/` |
+| Inventory, quests, conversation, tables, graphs, layout patterns | `components/panels/` |
+| Shop, achievements, rewards, social | `components/meta/` |
+| Genre-specific pieces | `rpg/`, `shooter/`, `strategy/`, `racing/`, `card/`, `puzzle/`, `idle/`, `rhythm/`, `arena/` |
+| Generic game screens and data/feedback pieces | `screens/` |
 
-Expressions compute no geometry: the game passes a chart's line and a path
-line's route as SVG path data, a radial menu's slice positions and a split
-view's ratio.
+These are TSX components, not `og.ui` tree builders or component documents.
+Geometry is passed as numbers/points, stable IDs accompany data, and the
+game retains every domain rule. A theme dresses their shared slots without
+copying their structure.
 
 <a id="guide-screens-8"></a>
 ### `screens §8` Moving elements between layouts
 
 Give an element `transition-layout` (with `duration-*` and `ease-*`) and
-change the state that places it: when its box moves or resizes between
-frames, it slides from the old box to the new one instead of jumping. Use
-this for a reordered inventory or a card opening its detail. Render lists
-with a keyed `<For>` so a reordered item stays the same element and
-moves; an item without a stable key is replaced, not moved.
+change the state that places it. A moved/resized box slides from its old
+layout rather than jumping. Use keyed `For` rows so reordered items retain
+their element identity. `glide-<name>` lets a new indicator start from a
+nearby indicator of the same name, as a shared layout ID would.
 
-A change that arrives mid-move retargets from where the box is. Under
-reduced motion the box jumps to its new place, so the new layout does not
-depend on animation being enabled.
+A change mid-move retargets from the drawn box. Reduced motion jumps to
+the new layout; animation never determines whether that layout is valid.

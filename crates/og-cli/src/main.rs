@@ -256,12 +256,14 @@ commands:
                       <out>/<effect>.json; --together plays them all at once on a grid and
                       reports the frame's and each pass's GPU milliseconds (together.json)
   style list [project] [--json]
-                      list bundled and installed CSS style directories
+                      list bundled and installed style directories
   style add <directory> [project]
-                      install a CSS pack under assets/styles/<name>, without overwriting it
-  style new <name> [--look <preset>] [--scheme dark|light] [--finish <treatment>] [--out DIR]
-                      write editable CSS with both palettes, core-control states and shared sounds;
-                      finishes: flat, gradient, glass, hologram, neon, paper, bevel, brush
+                      install a theme.json or pack.json style under assets/styles/<name>
+  style init <name> [project] [--from <theme>]
+                      copy a theme recipe into assets/styles/<name>/theme.json (default: minimal);
+                      never overwrites an existing style
+  style validate <directory>
+                      compile a theme recipe, parse its pack and report grounds without paired inks
   style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
                       cook, then measure every cooked asset against the art contract of the look

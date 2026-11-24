@@ -1,36 +1,38 @@
 # UI materials
 
-Per-element shader finishes for a game's UI: the foil, holo, burn and rarity presets of the `materials` resource pack, how to put one on a styled part or an element, how to tune it, and how to write a new one.
+Shader resource presets for UI finishes: foil, holo, burn and rarity.
+The assets remain cookable and loadable, but the TSX UI currently exposes
+no custom-material attachment prop or pack slot field. Loading a material
+does not apply it to a component. Do not use the former document CSS
+`-og-material` or `<og-overlay>` syntax: neither is a TSX API.
 
 ## Backdrop glass is optional
 
-The default UI does not sample the scene behind glass. Keep its near-opaque
-fills for readable chrome without a backdrop pass. To use blur, opt in once
-in the style pack and put thinner fills under the effective on-state query:
+Backdrop filtering is separate from custom material presets. A TSX
+element or pack variant uses supported classes such as
+`backdrop-blur-regular`, with a theme ground and paired ink. For example,
+an existing pack's `Panel.frame` slot can supply its fill, blur and ink;
+the component only names the slot:
 
-```css
-:root { --glass-backdrop: auto; }
-@media (-og-glass-backdrop: auto) {
-  :root { --hud-fill: rgb(20 25 30 / 0.65); }
-}
+```tsx
+import { Text, View, packClass } from "@origingame/engine/ui";
+
+<View class={`p-4 ${packClass("Panel", "frame")}`}>
+  <Text>Readable content on the pack's panel ground</Text>
+</View>
 ```
 
-The same condition can override glass colours in design-token files; keep
-scheme-specific overrides under `:root[data-scheme=dark]` when needed.
-Keep the opt-in itself unconditional. The game can override a pack's choice
-through UI configuration, and reduced transparency always wins, so the
-off-state fills must stand on their own. Review both states over a busy
-scene on desktop and phone; a blur hidden behind an opaque fill still costs
-the pass. This setting does not disable foreground finishes such as foil
-or shine.
+There is no `:root` glass opt-in, `-og-glass-backdrop` media query or
+stylesheet cascade in the TSX authoring model. Keep the ground readable
+without blur, and review it over bright and dark scenes on desktop and
+phone. A blur hidden behind an opaque fill still costs work. Backdrop
+classes do not enable the custom foreground finishes below.
 
 `og ui add materials` installs the presets into
 `assets/materials/materials/` as ordinary `type ui-material` assets (an
 `.ogt` with `param` lines beside its WGSL), the game's own to edit, named
 `materials/materials/<preset>.ogt`. An installed copy is not replaced
-silently. The built-in `dissolve`, `shine` and
-`hologram` materials need no install (`material shine -0.4 0.2 0.8 0.6` in
-a dressing).
+silently. These are resource assets, not executable components or styles.
 
 ## 1. The presets
 
@@ -41,49 +43,41 @@ a dressing).
 | `burn.ogt` | the element burns away from noise inside its own shape: char, ember, a white-hot rim, a glow into the hole | `progress` 0–1, `edge` CSS px (3–8), `scale` CSS px a noise cell, `glow` linear RGB |
 | `rarity.ogt` | a tier-coloured glow in from the edge, a bright rim, a breath | `color` linear RGB, `size` CSS px, `pulse` breaths/s, `strength` 0–2 |
 
-## 2. On a part, in the style
+## 2. Loading a preset
 
-A dressing names the preset by its asset path (relative to the style file
-first, then from `assets/`) and, optionally, numbers that replace its
-defaults in `param` order, four per parameter vector:
+Use the installed asset path with the material loader:
 
-```text
-Slot::frame[rarity=legendary] {
-  -og-material: "materials/materials/rarity.ogt" 1.0 0.5 0.05 0  12 0 0 0  0.6 0 0 0  1.2
-}
+```ts
+const material = og.load.uiMaterial(world, "materials/materials/rarity.ogt");
+if (!material.ok) throw new Error(material.reason);
 ```
 
-## 3. On an element, in a document
+The result is a material handle, not a class, texture or TSX child.
+`HostProps` and the typed style record have no material attachment field;
+pack `variants` expand class strings and cannot attach one either.
 
-An element takes the same preset with `-og-material` in its document's
-`<style>`: the asset path in quotes, then numbers over its defaults in
-`param` order, four per parameter vector. Any number may be a custom
-property, so a store drives it through `style:`:
+## 3. Finishes available to TSX
 
-```svelte
-<div id="Card" style:--burn={$burn}>…</div>
-<style>
-#Card { -og-material: "materials/materials/burn.ogt" var(--burn) 0 0 0 6; }
-</style>
-```
-
-The element and its children are drawn offscreen and composited through it.
-`<og-overlay effect="material …">` composites the whole frame under it
-through one the same way.
-
-- Animate a parameter from a store each tick (a burn's `progress` from 0
-  to 1 over the exit) or with a CSS `@keyframes` of the custom property.
-- A foil reads as metal when its band follows the player: set `sweep` to
-  `0 var(--tilt)` and drive the tilt from −1 to 1 with the pointer over the
-  card or the device's tilt. Keep the clock sweep for cards nobody touches.
+Use pack artwork (`nine-*`), gradients, supported filters/backdrop classes
+and class-based motion for component finishes. Use `Particles` or the
+library's `Flourish` for emitter effects. Those mechanisms do not claim to
+reproduce a custom shader's foil or burn: per-subtree material compositing
+needs an explicit supported attachment API before a game can use these
+presets that way. Do not substitute arbitrary inline CSS or cast an
+unsupported `material` prop past TypeScript.
 
 ## 4. Tuning and review
 
-`og dev` reloads a preset when its WGSL or `param` defaults change, and
-`ui:material:<path>.<param>=<value>` on the command channel sets a default
-live without a cook; write the value kept into the `param` line. Judge a
-material on a plain ground by the card it finishes (screens §5), not over
-a busy backdrop.
+Edit defaults in the asset's `param` lines and shader code in its WGSL,
+then cook to validate the resource. `og dev` reloads changed material
+resources. A loaded material's defaults can also be tuned through
+`ui:material:<path>.<param>=<numbers>` on the command channel; the dump
+lists the loaded declarations and current values. Save chosen defaults in
+the asset's `param` lines. This tunes the resource, not a TSX attachment:
+there is no store/custom-property binding to per-element parameter vectors.
+Loading/cooking alone proves no visual finish; review actual compositing
+once an attachment path is available. Judge a finish on a plain ground by
+the card it decorates (screens §5), then check it over the game's scene.
 
 ## 5. A new material
 
@@ -92,5 +86,6 @@ Params) -> vec4<f32>`: `layer(uv)` reads the element's pixels (linear,
 straight alpha), `layer_texel()` is one CSS px in uv, `m.pixel` and
 `m.size` are CSS px, `m.time` is the UI clock (deterministic), and
 `value_noise(p)` and `hash12(p)` are lattice noise. At most four `param`
-lines; the cook validates the WGSL for Metal, Vulkan and DX12. A new
-preset adds its card to the pack's sheet.
+lines; the cook validates the WGSL for Metal, Vulkan and DX12. Keep
+shader-resource validation distinct from TSX integration and visual
+acceptance; a new preset still needs a review card when it can be drawn.

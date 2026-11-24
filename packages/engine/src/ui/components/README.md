@@ -14,8 +14,11 @@ needed it.
 A game imports one by name from `@origingame/engine/ui/components`
 (`index.tsx` exports them all) or by path
 (`@origingame/engine/ui/components/hud/stat-bar`), and mounts it or calls it
-inside its own component. To change one, copy its `.tsx` (and its string
-table) into the game and import the copy.
+inside its own component. To change one, `og ui eject hud/stat-bar` (or
+another component path) copies its TSX and locale tables into `assets/ui/`
+and rewrites matching game imports. Engine-internal imports still use the
+original; new uses import the copy explicitly. An existing copy is refused
+without `--force`.
 
 ## A component file
 
@@ -46,7 +49,7 @@ costs, legality, rewards or rules.
 - **Classes only, theme roles only.** Colours, radii, shadows, type and
   spacing are Tailwind classes over the theme
   (CONVENTIONS.md §Theme and packs, "The default pack's names"). A literal
-  colour class (`bg-[#…]`) is refused by `bun run typecheck`: name its role,
+  colour class (`bg-[#…]`) is reported by `og check` (OG9108/OG9109): name its role,
   or add the role to `packages/design/tokens/color.css`. An inline `style`
   carries only what a prop computes (a fill's width, a node's position).
 - **Packs dress slots.** The surface a pack restyles ends its class with
@@ -103,7 +106,7 @@ throws at mount, a raw string key drawn, or a word broken inside.
 | Celebrations (confetti, a burst, a level up, fireworks) | `hud/celebration` |
 | Navigation (minimap, compass) | `world/minimap`, `world/minimap-view`, `world/compass` |
 | Menus and layout (radial menu, split view, carousel, breadcrumbs) | `hud/radial-menu`, `panels/split-view`, `panels/carousel`, `panels/breadcrumbs` |
-| Menus and tooltip cards (in a `popover` or `contextmenu` popover) | `panels/menu`, `panels/tooltip-card` |
+| Menus and tooltip cards (composed with the `Popover` / `ContextMenu` controls) | `panels/menu`, `panels/tooltip-card` |
 | Charts and map overlays | `panels/chart`, `hud/overlay-bar` |
 | Skill trees and run maps | `panels/node-graph` |
 | Data views (inventories, level selects) | `panels/data-grid` |
@@ -137,9 +140,21 @@ A chip, a tag or a filter toggle has no component: it is a `View` with
 
 `hud/touch-controls` is the whole on-screen pad: a stick or d-pad at the
 start side (`touchStick`, `touchPad`), action buttons at the end side
-(`touchButton`) and an optional second stick, each feeding the og-input
-action it names, so the game reads the same actions as from a pad. It
-reports no events and shows only where the primary pointer is a finger.
+(`touchButton`) and an optional second stick or drag look pad, each
+feeding the og-input action it names, so the game reads the same actions
+as from a pad. It reports no events and shows only where the primary
+pointer is a finger, unless `always` is set.
+
+- `floatingStick={true}` centres the move stick where its finger lands
+  inside the zone; it is ignored when `pad` selects a d-pad. The ring and
+  subtree shift at paint, while the activation rect stays fixed.
+- `lookPad={true}` uses a drag pad for the `look` action instead of the
+  second stick. It feeds CSS-pixel deltas since the previous fixed tick,
+  x right and y up, zero while stationary or released, not stick
+  deflection. The action map applies device sensitivity/inversion and
+  checkpoints prior pointer positions for deterministic restore/replay.
+- The low-level host props are `floatingStick` on `touchStick` and
+  `touchLook={action}` for drag look.
 
 Adding, renaming or removing a component adds or removes its line in
 `index.tsx` in the same head.

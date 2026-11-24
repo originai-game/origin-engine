@@ -1,146 +1,114 @@
-# Screen documents
+# Built-in screens
 
-Generic screen documents built from og-ui's public elements and built into
-the engine. A game loads one by its id without a copy,
-`og.load.document(world, "@ui/screens/pause.svelte")`, and shows it by its
-name, `og.ui.push(world, "pause")`; the cook bundles each one the game's
-code names, with the components it uses. Copy one with
-`og ui eject <screen>` and edit it in `assets/ui/<screen>.svelte`; the
-game's copy then replaces the built-in one, and loading the `@ui/` id loads
-it. The catalogue and acceptance contract are in `docs/ui.md` §4 and §6.
+TSX screen components and generic data/feedback pieces built from the
+public UI primitives. Import a screen by its module path and mount it on
+a layer; nothing is installed or loaded as a document:
 
-Each document declares its name, layer, props, actions, and fixtures with
-standard `<meta>` elements. Structure belongs in scriptless Svelte markup,
-look in scoped CSS and tokens, and data in named sources. A screen reads
-its declared props bare (`{title}`, `bind:open={open}`), from a pushed
-screen's viewmodel or a mount's stores of those names; `$toasts` and
-`$captions` are the engine's stores. Name actions with `onclick={action}`,
-and pass named content with
-`{#snippet name()}…{/snippet}` and `{@render name?.()}`. TypeScript builds no
-UI trees. The generated API describes the mount and store signatures.
+```tsx
+import { mount } from "@origingame/engine/ui";
+import { PauseScreen } from "@origingame/engine/ui/screens/pause.tsx";
 
-Visible words use `t("screen.name.key", { argument: expression })`.
-Each document names a companion English string table with
-`<meta name="strings" content="./screen.en.ogt">`. Eject copies both files.
-Game translations override those base messages. Each screen declares a
-`<meta name="fixture:default" content="…">` JSON fixture for previews.
+// In the game's UI registration, with world supplied by the engine:
+const close = mount(world, PauseScreen, {
+  objective: "",
+  played: 0,
+  onResume: () => { /* Request resume through game state. */ },
+}, { layer: "menu" });
+```
 
-The component documents here (`card`, `confirm` and the lists, tables and
-HUD feedback rows) use the explicit component form with the exact name
-they declare: `<ui:card>…</ui:card>`, `<ui:star-rating stars={$stars}
-label={$label}/>`, `<ui:key-values rows={$rows}/>` and `<ui:banner
-title={$title} subtitle={$subtitle}/>`; the prefix is not part of the name
-or manifest key. This keeps `<ui:table>` separate from native `<table>`.
-Capitalised component names also keep their unprefixed form (`<StatBar/>`).
-They can also be ejected and edited. Lists are keyed
-collections; a nested list is flattened, as a retained `{#each}` reads a
-named collection (a table's `cells` row by row, a tree's visible `rows`).
+Call the returned disposer to close the screen. The layer sets draw/input
+ordering; the game still owns pause and screen state. `mount` does not
+read the screen's exported `screen` metadata as a gameplay instruction.
+The contract and acceptance rules are in `docs/ui.md`.
 
-The tutorial points at an element with `target`, the element's id in
-any document under it (a HUD button): the screen dims around the element,
-which stays lit and takes its presses while the dimmed rest takes none,
-and the card stands against it. Without a target nothing is dimmed and
-the card stands at `x` and `y`. Its input mode is `all`, so the player
-can do what a waiting step asks for; a game that wants a step read
-before play goes on holds its own input until `next`.
+## A screen module
+
+- An exported `<Name>Props` interface documents inputs and callbacks.
+  The component body runs once; reactive values are read in JSX/accessors.
+- Props and function-valued content (`side`, `hint`, `children`, as the
+  component declares) replace named stores/snippets in document markup.
+  Use callback props (`onResume`, `onChoose`) rather than named actions in
+  string attributes. Controlled values use value/change callbacks.
+- Visible words use `t(key, params)` and companion string tables imported
+  beside TSX (`import "./pause.en.ogt"`), not `<meta>` headers. Locale
+  formatters handle numbers and durations.
+- `fixtures` exports named prop sets, merged over `default`, for the
+  gallery. Screens can also export `screen` metadata describing their
+  preview identity; it is not an implicit document registry.
+- Look is class strings and `packClass` slots. There are no HTML hosts,
+  scoped CSS rules, `::part` selectors or `.svelte` loading paths.
+
+`og ui eject screens/pause` copies the TSX and its locale tables to
+`assets/ui/screens/`, prefixes copied message keys with `game.`, and
+rewrites matching imports in the game's code. New imports must name the
+copy. It does not globally override engine-internal imports. Existing
+files are refused without `--force`.
 
 ## Rows
 
-A screen draws an action row or button only when the game passes its
-handler: `PauseScreen` without `onLoad` has no Load row, `MainMenuScreen`
-without `onModes` no Modes, `TitleScreen` without `onStart` no prompt. A
-row a game gives no handler would do nothing when pressed, so it is never
-drawn; a game hides one by leaving its handler out (or passing
-`undefined`). A row that may not be taken now stays drawn and grey by its
-own prop: Save by `canSave` (with `onSave`), Apply and Revert by `pending`.
-Data a screen lists (slots, modes, tabs, settings) is drawn whatever the
-handlers; only the actions follow this rule. The pause menu also takes
-the game's own rows (`rows`, each `{ key, label, after?, minor?, danger?,
-disabled? }`), drawn as the built-in ones in their place and reported by
-`onRow` with their key. `ui-tsx.test.ts` presses every button of these
-screens with one handler left out and fails on a press that does nothing.
+Built-in action rows/buttons generally appear only when the corresponding
+callback is passed: Pause without `onLoad` has no Load row, MainMenu
+without `onModes` has no Modes row, Title without `onStart` no prompt.
+A temporarily unavailable action stays drawn but grey through its state
+prop: `canSave` for Save, `pending` for Apply/Revert. Data lists remain
+visible without handlers. Check the specific component for its contract.
 
-## Placement
+Pause accepts game rows (`rows`, each `{ key, label, after?, minor?,
+danger?, disabled? }`) and reports `onRow(event, key)`. Supply that
+handler when passing custom actions. Stable keys identify rows across
+reorders; `For` item/index arguments are accessors, not plain objects.
 
-A full-screen screen (title, main menu, mode select, splash, loading,
-pause, settings, HUD editor, save and load, results, game over,
-leaderboard, calibration, credits, creator tools and the film's chapter,
-chart and gallery screens) fills the layer it is mounted in: its root is
-`absolute inset-0`, so it covers a game's own column or a centred portrait
-frame as well as the mount's surface, whatever that parent's layout.
-Each takes a `class`, applied after its own classes, for a placement or
-inset of the game's (`top-[env(safe-area-inset-top)]`). A screen whose
-content is taller than its layer scrolls it: Results never cuts its grade,
-stats or rewards. `ui-tsx.test.ts` mounts every one in a 390×844 column
-and fails on a root of any other size.
+## Placement and tutorial targets
 
-`og ui eject --list` prints these generic screens. og-ui's
-`tests/component_documents.rs` builds each from its fixtures, and
-og-tests-ui's `tests/document_frames.rs` draws its `fixture:default` in
-the default style against its reference frames (`references/vulkan/`); the fantasy, scifi and cartoon packs dress them through the role parts and
-the core controls.
+Full-screen screens use `absolute inset-0` to fill their layer or the
+parent a game composes them inside. A supported `class` prop follows the
+screen's own classes for placement/insets. Content taller than the layer
+must scroll without losing its title or actions. Built-in screens apply
+their own `env(hud-inset-*)` safe-area padding; do not wrap them in the
+same inset again. Backgrounds may extend to the surface edges.
 
-| Purpose | Documents |
-|---|---|
-| Boot, splash, title, main menu, mode select | `splash`, `title`, `main-menu`, `mode-select` |
-| Settings (graphics, audio, controls and remapping, accessibility, language, HUD layout editor) | `settings`, `hud-editor` |
-| Pause and system menu | `pause` |
-| Save and load with thumbnails | `save-load` |
-| Loading with tips, lore and progress | `loading` |
-| Results and post-match (grades, XP cascades, graphs) | `results` |
-| Leaderboards (global, friends, leagues) | `leaderboard` |
-| Calibration (audio offset, brightness, controller) | `calibration` |
-| Tutorial and onboarding overlays | `tutorial` |
-| Death, retry, revive offer, game over | `game-over` |
-| Creator tools (inspector, hierarchy, catalogues) | `creator-tools` |
-| Credits | `credits` |
-| Interactive film (og.flow: the picture with its dissolve, captions and choices the engine mounts for project.ogt's `flow`; the window's choices with the time left, hotspots on the picture and quick-time progress; the story-so-far flowchart; chapter select; the ending gallery) | `flow-screen`, `flow-choices`, `flow-chart`, `flow-chapters`, `flow-gallery` |
-| Card, confirm dialog | `card`, `confirm` |
-| Lists and tables (data list, key-value and stat compare, table, tree, calendar, pagination) | `data-list`, `key-values`, `table`, `tree`, `calendar`, `pagination` |
-| HUD feedback (objectives, rating, banner, subtitles, notifications) | `objective-tracker`, `star-rating`, `banner`, `subtitles`, `notifications` |
+Tutorial's `target` is a UI node's `name`, not an HTML/document id. The
+spotlight dims and intercepts presses outside that node, leaving it lit
+and interactive. The card stands below it; while no target shows it
+falls back to the supplied `x`, `y`. The game owns any pause/input rule
+while waiting for the requested action.
 
-## Parts
+## Catalogue
 
-Each document's parts as its `<meta name="parts">` declares them
-(`pause.frame` in a selector). A part's role name (`frame`, `band`,
-`title`, `row`, `cell`…) takes the default style's role dressing
-(docs/ui.md §3.1). Each part's state qualifiers are listed after it: a
-class (`.selection-on`), an attribute (`[aria-selected]`) or `:disabled`.
-A part that is a button also has the control's own hover, pressed,
-focus-visible and disabled states (docs/ui.md §3.2).
+Every path below is a `.tsx` module under this directory; its exported
+props and fixtures are authoritative. Use `og ui eject --list` for the
+current copyable paths and the gallery for rendered fixtures:
+`bun packages/engine/src/node/gallery.ts --only screens/`.
 
-| Document | Parts |
+| Purpose | Modules and exports |
 | --- | --- |
-| `banner` (`banner.svelte`) | `frame`, `title`, `subtitle` |
-| `calendar` (`calendar.svelte`) | `frame`, `band`, `title`, `heading`, `cell` (a button: `.marked` `.outside` `[aria-current]`) |
-| `calibration` (`calibration.svelte`) | `frame`, `label`, `step` (`.on` `.done`), `test` |
-| `card` (`card.svelte`) | `frame`, `image`, `title`, `body` |
-| `confirm` (`confirm.svelte`) | `title`, `body`, `actions`, `kicker` |
-| `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
-| `credits` (`credits.svelte`) | `frame`, `heading`, `name`, `shade`, `rule` (`.end`), `role` |
-| `data-list` (`data-list.svelte`) | `frame`, `row` (a button), `label`, `figure`, `note` |
-| `flow-chapters` (`flow-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock` |
-| `flow-choices` (`flow-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte`, `shade` |
-| `flow-chart` (`flow-chart.svelte`) | `frame`, `band`, `title`, `detail`, `shade`, `kicker` |
-| `flow-gallery` (`flow-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock`, `mark` |
-| `game-over` (`game-over.svelte`) | `frame`, `title`, `figure`, `label`, `offer` |
-| `hud-editor` (`hud-editor.svelte`) | `hint`, `dock` |
-| `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up` `.down`) |
-| `leaderboard` (`leaderboard.svelte`) | `frame`, `band`, `title`, `league`, `row` (`.mine-other` `.mine-you`), `rank`, `figure`, `me` |
-| `loading` (`loading.svelte`) | `scrim`, `frame` (the tip plate), `title`, `eyebrow`, `label`, `next` (a button), `bar` (`[data-ready]`), `fill`, `figure` (`[data-ready]`), `status` |
-| `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version`, `shade`, `entry` (a button: `.minor`), `news`, `name` |
-| `mode-select` (`mode-select.svelte`) | `frame`, `band`, `title`, `cell` (`.lock-locked` `.lock-open` `.selection-off` `.selection-on`), `plate`, `name`, `shade`, `foot`, `tag` (`.fresh`), `lock` |
-| `notifications` (`notifications.svelte`) | `frame` (`.danger` `.leaving` `.success` `.warn`), `body` |
-| `objective-tracker` (`objective-tracker.svelte`) | `frame`, `title`, `row` (`.done`), `well`, `fill` |
-| `pagination` (`pagination.svelte`) | `frame`, `gap` |
-| `pause` (`pause.svelte`) | `frame`, `title`, `objective`, `shade`, `status`, `entry` (a button: `.minor` `.danger`) |
-| `results` (`results.svelte`) | `frame`, `title` (`.outcome-lost` `.outcome-won`), `grade`, `row`, `label`, `figure`, `cell` |
-| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name`, `shade`, `tag`, `preview`, `actions`, `detail`, `shot` |
-| `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` (`:focus-within`), `shade`, `tabs`, `tab`, `description` |
-| `splash` (`splash.svelte`) | `frame`, `mark`, `dots`, `dot` (`.on`), `boot`, `track`, `fill`, `skip` |
-| `star-rating` (`star-rating.svelte`) | `frame` |
-| `subtitles` (`subtitles.svelte`) | `frame`, `line`, `speaker` |
-| `table` (`table.svelte`) | `frame`, `band`, `heading`, `entry` (a button) |
-| `title` (`title.svelte`) | `frame`, `logo`, `prompt`, `shade`, `rule` (`.end`), `name` |
-| `tree` (`tree.svelte`) | `row` (`[aria-expanded]` `[aria-selected]`) |
-| `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step`, `track`, `fill` |
+| Boot, splash, title, main menu, mode select | `splash` → `SplashScreen`, `title` → `TitleScreen`, `main-menu` → `MainMenuScreen`, `mode-select` → `ModeSelectScreen` |
+| Settings, controls/remapping, HUD layout | `settings` → `SettingsScreen`, `controls` → `ControlsScreen`, `hud-editor` → `HudEditorScreen` |
+| Pause/system menu | `pause` → `PauseScreen` |
+| Save/load with thumbnails | `save-load` → `SaveLoadScreen` |
+| Loading tips and progress | `loading` → `LoadingScreen` |
+| Results/post-match | `results` → `ResultsScreen` |
+| Leaderboards | `leaderboard` → `LeaderboardScreen` |
+| Calibration | `calibration` → `CalibrationScreen` |
+| Tutorial/onboarding | `tutorial` → `TutorialScreen` |
+| Death/retry/revive/game over | `game-over` → `GameOverScreen` |
+| Creator tools | `creator-tools` → `CreatorToolsScreen` |
+| Credits | `credits` → `CreditsScreen` |
+| Interactive film picture, captions and choices | `flow-screen` → `FlowPicture`, `FlowScreen`; `flow-choices` → `FlowChoices` |
+| Film chapters, flowchart and ending gallery | `flow-chapters` → `FlowChaptersScreen`, `flow-chart` → `FlowChartScreen`, `flow-gallery` → `FlowGalleryScreen` |
+| Card/confirmation | `card` → `Card`, `confirm` → `Confirm` |
+| Lists, key-values, tables and trees | `data-list` → `DataList`, `key-values` → `KeyValues`, `table` → `Table`, `tree` → `Tree` |
+| Calendar/pagination | `calendar` → `Calendar`, `pagination` → `Pagination` |
+| Objectives/rating/banner | `objective-tracker` → `ObjectiveTracker`, `star-rating` → `StarRating`, `banner` → `Banner` |
+| Subtitles/notifications | `subtitles` → `Subtitles`, `notifications` → `NotificationsScreen` |
+
+## Styling surfaces
+
+Customize the shared `Screen.frame`, `Panel.frame`, `Plate.frame`,
+`Row.frame`, `Head.frame`, `Button.plate`, `Bar.*` and other slots actually
+named by the source. States are props and boolean `data-*` variants;
+focus/hover/active/disabled styles come from the same controls used by
+components elsewhere. A source's `name` prop is a probe/anchor identity,
+not a CSS selector or a declaration of an externally addressable part.
+Change private layout by ejecting the component, not by targeting its
+descendants with selectors.
