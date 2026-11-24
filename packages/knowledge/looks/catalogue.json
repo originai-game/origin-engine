@@ -11,7 +11,18 @@
     "realistic": "Realistic"
   },
   "ui": [
-    "default"
+    "default",
+    "anime",
+    "candy",
+    "cartoon",
+    "fantasy",
+    "ink",
+    "minimal",
+    "pixel",
+    "scifi",
+    "storybook",
+    "tactical",
+    "tactical-arctic"
   ],
   "artBibleTemplate": "Art bible for {title}. Premise: {premise}. Camera: {camera}; platform and display size: {platform}. Style: {name} ({descriptor}) Direction: {direction} Palette: {palette}. Asset specs: {assets}. UI: the {ui} style the preset names (a `ui` line in the game's look picks another, or the game's own styles/<name>/style.ogt), re-coloured to this palette. Avoid: {avoid}. Proof: the game's look is assets/looks/{game}.ogt, extending \"{slug}\"; capture the title, play and results screens with og run and check each against: {checks}. Every later asset is made inside this bible; a request for one asset never redesigns the style.",
   "styles": [
@@ -60,7 +71,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "minimal",
       "palette": {
         "size": "free, graded",
         "rules": "One grade per area; avoid oversaturation; skin tones protected."
@@ -165,7 +176,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "anime",
       "palette": {
         "size": "24 to 48 colours",
         "rules": "Two tones per material (lit, shadow) with hue-shifted shadows; highlights as shapes."
@@ -230,7 +241,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "ink",
       "palette": {
         "size": "free, saturated",
         "rules": "Bold local colours, black ink for all shadow edges."
@@ -388,7 +399,7 @@
           }
         ]
       },
-      "ui": "default",
+      "ui": "fantasy",
       "palette": {
         "size": "free, harmonised by a LUT",
         "rules": "Two or three dominant hues per area; graded towards them."
@@ -590,7 +601,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "minimal",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Colour per material, gradients only from lighting and fog."
@@ -656,7 +667,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "pixel",
       "palette": {
         "size": "free, but posterised to 32 levels per channel",
         "rules": "Fog colour equals the clear colour; dithered gradients."
@@ -759,7 +770,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "pixel",
       "palette": {
         "size": "32 to 64 colours",
         "rules": "Ramps of 4 to 6 steps; hue-shifted shadows (cooler) and highlights (warmer); saturated accents on characters, calmer backgrounds."
@@ -1050,7 +1061,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "minimal",
       "palette": {
         "size": "3 to 6 colours",
         "rules": "One ground, one figure colour, one accent; contrast by hue and value."
@@ -1169,7 +1180,7 @@
           }
         ]
       },
-      "ui": "default",
+      "ui": "scifi",
       "palette": {
         "size": "black plus 2 to 4 saturated hues",
         "rules": "Each hue one meaning (player, enemy, pickup); white only for the hottest centres."
@@ -1233,7 +1244,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "candy",
       "palette": {
         "size": "24 to 48 bright colours",
         "rules": "Clean saturated primaries and pastels, one colour per piece; shadows from light, not from dark paint."
@@ -1490,7 +1501,7 @@
           }
         ]
       },
-      "ui": "default",
+      "ui": "cartoon",
       "palette": {
         "size": "16 to 32 colours",
         "rules": "Ramps of three tones a material; saturated characters, softer backgrounds; contour a dark warm brown."
@@ -1689,7 +1700,7 @@
         ],
         "missing": []
       },
-      "ui": "default",
+      "ui": "pixel",
       "palette": {
         "size": "sprites 32 to 64 colours; the set is unconstrained but graded to match",
         "rules": "Grade the 3D set with a LUT towards the sprites' palette so the two read as one world."

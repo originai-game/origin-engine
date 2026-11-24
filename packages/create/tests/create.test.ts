@@ -55,11 +55,11 @@ test("no-prompt creation uses source choices even with an outdated packed catalo
   cpSync(join(pkg, "../knowledge/scripts"), join(checkout, "packages/knowledge/scripts"), { recursive: true });
   const catalogue = readFileSync(join(pkg, "../knowledge/looks/catalogue.json"), "utf8");
   writeFileSync(join(checkout, "packages/knowledge/looks/catalogue.json"), catalogue);
-  writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll('"ui": "default"', '"ui": "elsewhere"'));
+  writeFileSync(join(source, "looks/catalogue.json"), catalogue.replaceAll(/"ui": "[a-z-]+"/g, '"ui": "elsewhere"'));
   const r = Bun.spawnSync(["bun", join(source, "bin/create.ts"), "game", "--no-prompt"], { cwd: checkout });
   expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
-  expect(read("checkout/game/project.ogt")).toContain('ui "default"');
-  expect(read("checkout/game/assets/looks/game.ogt")).toContain('ui "default"');
+  expect(read("checkout/game/project.ogt")).toContain('ui "minimal"');
+  expect(read("checkout/game/assets/looks/game.ogt")).toContain('ui "minimal"');
 });
 
 test("packing and creating leave the source skeleton unchanged", () => {
@@ -132,7 +132,7 @@ test("names are escaped, defaults are stable, and refusal leaves the destination
 
 test("creation choices infer a premise, preserve overrides, and serialize every choice", () => {
   const c = resolveCreationChoices("温暖的手机横屏平台跳跃", { music: "folk", look: "pixel" });
-  expect(c).toEqual({ form: "2d", genre: "action-platformer", view: "side-2d", look: "pixel", ui: "default", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
+  expect(c).toEqual({ form: "2d", genre: "action-platformer", view: "side-2d", look: "pixel", ui: "pixel", platform: "phone-landscape", input: "touch", players: "single", lang: ["zh"], music: "folk" });
   expect(inferCreationChoices("isometric online shooter", { platform: "desktop", input: "gamepad" })).toMatchObject({ genre: "shooter", view: "isometric-2.5d", players: "online-lockstep", input: "gamepad" });
   expect(resolveCreationChoices("", { look: "pixel", ui: "default" }).ui).toBe("default");
   expect(() => parseCreationInput({ players: "mmo" })).toThrow("players");
@@ -142,8 +142,8 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   expect(() => resolveCreationChoices("", { look: "missing" })).toThrow("no look preset");
   // A style folded into a look's variant, or deleted, is no look: it fails as any unknown name.
   for (const gone of ["watercolor-wash", "16bit-pixel", "illuminated-manuscript"]) expect(() => resolveCreationChoices("", { look: gone })).toThrow(`no look preset '${gone}'; pick one of cinematic-realism,`);
-  // A look's own UI pack is the default UI choice; an explicit one wins.
-  expect(resolveCreationChoices("", { look: "cartoon-2d" }).ui).toBe("default");
+  // A look's own UI theme is the default UI choice; an explicit one wins.
+  expect(resolveCreationChoices("", { look: "cartoon-2d" }).ui).toBe("cartoon");
   expect(resolveCreationChoices("", { look: "painterly-3d", ui: "default" }).ui).toBe("default");
 });
 
@@ -295,7 +295,7 @@ test("genre interactive-film writes the flow skeleton over the one skeleton, run
   expect(read("film/src/main.ts")).not.toContain("og.flow");
   expect(read("film/project.ogt")).toMatch(/^flow "story\/film.yarn"$/m);
   expect(read("film-genre/project.ogt")).toMatch(/^flow "story\/film.yarn"$/m);
-  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "default"\n');
+  expect(read("film/assets/looks/film.ogt")).toBe('type look\nversion 1\n---\nextends "painterly-3d"\nvariant "lush"\nui "fantasy"\n');
   // A game of another genre has neither.
   const plain = cli("plain-game", "--genre", "rpg", "--lang", "en", "--no-prompt");
   expect(plain.code, plain.err).toBe(0);

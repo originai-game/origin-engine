@@ -86,7 +86,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -178,7 +178,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -284,7 +284,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -390,7 +390,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -493,7 +493,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -594,7 +594,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -692,7 +692,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": null
       },
@@ -809,7 +809,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -941,7 +941,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1072,7 +1072,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1189,7 +1189,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1317,7 +1317,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1443,7 +1443,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1566,7 +1566,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "clay"
       },
@@ -1658,7 +1658,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -1750,7 +1750,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -1856,7 +1856,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -1962,7 +1962,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -2065,7 +2065,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -2166,7 +2166,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -2264,7 +2264,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "diorama"
       },
@@ -2373,7 +2373,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -2497,7 +2497,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -2620,7 +2620,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -2743,7 +2743,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -2863,7 +2863,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -2972,7 +2972,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -3087,7 +3087,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "paper"
       },
@@ -3191,7 +3191,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3295,7 +3295,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3413,7 +3413,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3531,7 +3531,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3646,7 +3646,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3759,7 +3759,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },
@@ -3869,7 +3869,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "candy",
         "uiSeeds": {},
         "variant": "voxel"
       },

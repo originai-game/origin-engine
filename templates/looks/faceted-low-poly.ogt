@@ -4,7 +4,7 @@ version 1
 # Visible facets, broad colour fields, a soft vignette and AgX.
 name "Faceted low-poly"
 mood "soft"
-ui "default"
+ui "minimal"
 # The UI's seed colours (UiSeeds), so the default style matches the
 # scene: a soft teal over warm stone.
 uiSeeds {

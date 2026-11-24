@@ -10,7 +10,7 @@ version 1
 # voxels, clay, card or a tabletop diorama.
 name "Toy 3D"
 mood "bright"
-ui "default"
+ui "candy"
 MaterialStyle {
   surface plastic
 }

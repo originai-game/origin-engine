@@ -176,12 +176,12 @@ summary as warnings and never refuses a build.
 - `variants` (§2.11): the preset drawn other ways, each with its own text.
 
 Twelve looks, every one offered to a new game (`creationLooks`), with the
-UI pack their `ui` line names: cinematic-realism, anime-cel-3d,
-inked-comic-3d, faceted-low-poly, low-resolution-3d, pixel,
-minimal-geometric, painterly-3d, pixel-3d-hybrid, neon-vector, toy-3d and
-cartoon-2d (default). Every look names the default pack until the theme
-recipes land. The validator keeps a
-look for every creation view. The default-style looks also set `uiSeeds`, the
+UI theme their `ui` line names: anime-cel-3d (anime); toy-3d (candy);
+cartoon-2d (cartoon); painterly-3d (fantasy); inked-comic-3d (ink);
+cinematic-realism, minimal-geometric and faceted-low-poly (minimal); pixel,
+pixel-3d-hybrid and low-resolution-3d (pixel); neon-vector (scifi). A
+theme is a recipe in `templates/themes/<name>/` (`crates/og-api/guides/themes.md`).
+The validator keeps a look for every creation view. The default-style looks also set `uiSeeds`, the
 UI's seed colours taken from their scenes, so the default style matches
 each one.
 

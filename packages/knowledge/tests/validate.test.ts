@@ -271,12 +271,16 @@ test("docs/art.md's looks list, moods and variants table are the catalogue's and
   };
   expect(problems(original)).toEqual([]);
   // A look the catalogue has that the list does not name, and one it names that the catalogue has no style for.
-  expect(problems(original.replace("neon-vector, ", ""))).toEqual([
+  expect(problems(original.replace("; neon-vector (scifi).", "."))).toEqual([
     "docs/art.md §2.6's looks list does not name neon-vector",
   ]);
-  expect(problems(original.replace("toy-3d and\ncartoon-2d (default)", "toy-3d and\ncomic-2d (default)"))).toEqual([
+  expect(problems(original.replace("cartoon-2d (cartoon)", "comic-2d (cartoon)"))).toEqual([
     "docs/art.md §2.6's looks list names comic-2d, which the catalogue has no style for",
     "docs/art.md §2.6's looks list does not name cartoon-2d",
+  ]);
+  // A look named under another theme than its preset's ui line.
+  expect(problems(original.replace("toy-3d (candy)", "toy-3d (cartoon)"))).toEqual([
+    "docs/art.md §2.6's looks list names toy-3d under the cartoon UI pack; the catalogue says ui \"candy\"",
   ]);
   // A variant the table left out, and one it names that the catalogue has no variant for.
   expect(problems(original.replace("| pixel | 8bit, monochrome, detailed, luminous, coarse, topdown |", "| pixel | 8bit, monochrome, detailed |"))).toEqual([

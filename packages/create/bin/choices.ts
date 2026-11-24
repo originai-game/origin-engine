@@ -8,7 +8,7 @@ export const CREATION_CHOICES = {
   form: ["2d", "2.5d", "3d"],
   genre: ["interactive-film", "action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"],
   view: ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"],
-  ui: ["default"],
+  ui: ["default", "anime", "candy", "cartoon", "fantasy", "ink", "minimal", "pixel", "scifi", "storybook", "tactical"],
   platform: ["phone-portrait", "phone-landscape", "desktop", "multi"],
   input: ["touch", "keyboard-mouse", "gamepad"],
   players: ["single", "local-multiplayer", "online-lockstep"],

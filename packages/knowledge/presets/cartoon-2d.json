@@ -48,7 +48,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -102,7 +102,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -178,7 +178,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -251,7 +251,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -321,7 +321,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -392,7 +392,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -460,7 +460,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": null
       },
@@ -550,7 +550,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -661,7 +661,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -771,7 +771,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -878,7 +878,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -982,7 +982,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -1087,7 +1087,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -1177,7 +1177,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "rubber-hose"
       },
@@ -1244,7 +1244,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1334,7 +1334,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1423,7 +1423,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1509,7 +1509,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1592,7 +1592,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1659,7 +1659,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1740,7 +1740,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "storybook"
       },
@@ -1847,7 +1847,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -1972,7 +1972,7 @@
         },
         "mood": "bright",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -2096,7 +2096,7 @@
         },
         "mood": "dark",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -2217,7 +2217,7 @@
         },
         "mood": "warm",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -2335,7 +2335,7 @@
         },
         "mood": "cold",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -2442,7 +2442,7 @@
         },
         "mood": "soft",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },
@@ -2561,7 +2561,7 @@
         },
         "mood": "high-contrast",
         "name": null,
-        "ui": "default",
+        "ui": "cartoon",
         "uiSeeds": {},
         "variant": "watercolor"
       },

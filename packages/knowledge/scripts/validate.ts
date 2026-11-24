@@ -545,7 +545,8 @@ function looks(roots: Roots, problems: string[]): void {
   const categories = Object.keys(cat.categories ?? {});
   const packs = cat.ui ?? [];
   for (const p of packs) {
-    if (p !== "default" && existsSync(join(roots.pkg, "..", "..", "templates")) && !existsSync(join(roots.pkg, "..", "..", "templates", "styles", p, "pack.json"))) problems.push(`${at}: ui names ${p}, which is not a built-in style pack (templates/styles/${p}/)`);
+    const templates = join(roots.pkg, "..", "..", "templates");
+    if (p !== "default" && existsSync(templates) && !existsSync(join(templates, "themes", p, "theme.json")) && !existsSync(join(templates, "styles", p, "pack.json"))) problems.push(`${at}: ui names ${p}, which is no engine theme (templates/themes/${p}/theme.json) or built-in style (templates/styles/${p}/)`);
   }
   for (const m of (cat.artBibleTemplate ?? "").matchAll(/\{(\w+)\}/g)) {
     if (!(BIBLE_FIELDS as readonly string[]).includes(m[1]!)) problems.push(`${at}: artBibleTemplate uses {${m[1]}}, which is none of ${BIBLE_FIELDS.join(", ")}`);

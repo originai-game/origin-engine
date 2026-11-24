@@ -34,6 +34,16 @@ export const CHOICE_LABELS = {
   },
   ui: {
     default: ["Core default", "核心默认", "The engine core UI with its built-in components.", "引擎核心界面及其内置组件。"],
+    anime: ["Anime", "二次元", "Dark translucent glass, soft corners and clean sans type.", "深色半透明玻璃、柔和圆角与简洁无衬线字体。"],
+    candy: ["Candy", "糖果", "Glossy plastic with a deep lip, round shapes and bouncy motion.", "带厚底边的光泽塑料、圆润造型与弹性动效。"],
+    cartoon: ["Cartoon", "卡通", "Flat panels under coloured headers, thick outlines and bouncy motion.", "带彩色标题栏的平面面板、粗描边与弹性动效。"],
+    fantasy: ["Fantasy", "奇幻", "Bevelled wood, round corners and a classic serif.", "带倒角的木质面板、圆角与经典衬线字体。"],
+    ink: ["Ink", "水墨", "Ink on rice paper, brushed edges and Song type.", "宣纸上的水墨、笔刷边缘与宋体。"],
+    minimal: ["Minimal", "极简", "Matte faces with a hairline, soft corners and calm motion.", "带细线的哑光面、柔和圆角与沉静动效。"],
+    pixel: ["Pixel", "像素", "Stepped pixel edges, a pixel face and stepped motion.", "阶梯像素边缘、像素字体与逐帧动效。"],
+    scifi: ["Sci-fi", "科幻", "Dark glass, four cut corners and condensed technical type.", "深色玻璃、四角切角与窄体技术字。"],
+    storybook: ["Storybook", "绘本", "Illustrated paper, quiet ornament and serif type.", "插画纸面、克制装饰与衬线字体。"],
+    tactical: ["Tactical", "战术", "Brushed metal, cut corners and stencil type.", "拉丝金属、切角与模版字。"],
   },
   platform: {
     "phone-portrait": ["Phone portrait", "手机竖屏", "A tall mobile screen with touch by default.", "纵向手机画面，默认触控。"],
