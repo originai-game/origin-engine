@@ -44,19 +44,19 @@ impl Trs {
         }
     }
 
-    /// The inverse (exact for uniform scale).
-    pub fn inverse(&self) -> Trs {
-        let r = self.rotation.conjugate();
-        let s = Vec3::new(
-            recip(self.scale.x),
-            recip(self.scale.y),
-            recip(self.scale.z),
-        );
-        Trs {
-            translation: s * (r * -self.translation),
-            rotation: r,
-            scale: s,
-        }
+    /// Exact inverse point transform: inverse rotation precedes inverse scale.
+    pub fn inverse_transform_point(&self, p: Vec3) -> Vec3 {
+        (self.rotation.conjugate() * (p - self.translation))
+            * Vec3::new(
+                recip(self.scale.x),
+                recip(self.scale.y),
+                recip(self.scale.z),
+            )
+    }
+
+    /// An inverse with rotation and non-uniform scale cannot be a TRS.
+    pub fn inverse(&self) -> Mat4 {
+        self.to_mat4().inverse()
     }
 
     pub fn transform_point(&self, p: Vec3) -> Vec3 {

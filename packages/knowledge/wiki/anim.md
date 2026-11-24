@@ -12,7 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 54 more are advanced (`og api show anim --all`).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 56 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -37,6 +37,8 @@ module anim {
 | [`GraphAsset()`](#column-GraphAsset) | column kind |  | A GraphAsset handle field. |
 | [`RootMotion`](anim/type-RootMotion.md) | enum |  | What the root joint's motion does to the entity. |
 | [`RootMotion()`](#column-RootMotion) | column kind |  | A RootMotion field: the variant's index. |
+| [`RootMotionMode`](anim/type-RootMotionMode.md) | enum |  | Where extracted root motion is applied. |
+| [`RootMotionMode()`](#column-RootMotionMode) | column kind |  | A RootMotionMode field. |
 | [`BlendshapeSource`](anim/type-BlendshapeSource.md) | enum |  | Who decides blendshape weights. |
 | [`BlendshapeSource()`](#column-BlendshapeSource) | column kind |  | A BlendshapeSource field: the variant's index. |
 | [`IkSolver`](anim/type-IkSolver.md) | enum |  | How an IK chain is solved. |
@@ -56,10 +58,10 @@ module anim {
 | [`og.Hang`](anim/record-Hang.md) | component |  | A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its … |
 | [`SpringSpace`](anim/type-SpringSpace.md) | enum |  | Where a spring bone's tails move. |
 | [`SpringSpace()`](#column-SpringSpace) | column kind |  | A SpringSpace field: the variant's index. |
-| [`og.SpringBone`](anim/record-SpringBone.md) | component |  | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. |
+| [`og.SpringBone`](anim/record-SpringBone.md) | component |  | A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. |
 | [`SpringColliderShape`](anim/type-SpringColliderShape.md) | enum |  | The shape of a spring collider. |
 | [`SpringColliderShape()`](#column-SpringColliderShape) | column kind |  | A SpringColliderShape field: the variant's index. |
-| [`og.SpringCollider`](anim/record-SpringCollider.md) | component |  | A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. |
+| [`og.SpringCollider`](anim/record-SpringCollider.md) | component |  | A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. |
 | [`og.AnimationEvent`](anim/record-AnimationEvent.md) | event |  | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). |
 | [`ClipInfo`](anim/type-ClipInfo.md) | struct |  | One clip of a loaded animation. |
 | [`Animation`](anim/type-Animation.md) | struct |  | What og.load.animation registered from a model's `#anim` blob. |
@@ -107,6 +109,7 @@ Each is a factory, `SkeletonAsset(value?, options?)`, that makes one field of a 
 | <a id="column-ClipAsset"></a>`ClipAsset` | `ClipAsset` | `Uint32Array` | 2 | A ClipAsset handle field. |
 | <a id="column-GraphAsset"></a>`GraphAsset` | `GraphAsset` | `Uint32Array` | 2 | A GraphAsset handle field. |
 | <a id="column-RootMotion"></a>`RootMotion` | `RootMotion` | `Uint32Array` | 1 | A RootMotion field: the variant's index. |
+| <a id="column-RootMotionMode"></a>`RootMotionMode` | `RootMotionMode` | `Uint32Array` | 1 | A RootMotionMode field. |
 | <a id="column-BlendshapeSource"></a>`BlendshapeSource` | `BlendshapeSource` | `Uint32Array` | 1 | A BlendshapeSource field: the variant's index. |
 | <a id="column-IkSolver"></a>`IkSolver` | `IkSolver` | `Uint32Array` | 1 | An IkSolver field: the variant's index. |
 | <a id="column-IkSpace"></a>`IkSpace` | `IkSpace` | `Uint32Array` | 1 | An IkSpace field: the variant's index. |
@@ -161,6 +164,17 @@ column RootMotion {
 <sub>Module `anim` line 40</sub>
 
 ```ogt
+column RootMotionMode {
+  doc "A RootMotionMode field."
+  array Uint32Array
+  stride 1
+  value RootMotionMode
+}
+```
+
+<sub>Module `anim` line 53</sub>
+
+```ogt
 column BlendshapeSource {
   doc "A BlendshapeSource field: the variant's index."
   array Uint32Array
@@ -169,7 +183,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>Module `anim` line 53</sub>
+<sub>Module `anim` line 66</sub>
 
 ```ogt
 column IkSolver {
@@ -180,7 +194,7 @@ column IkSolver {
 }
 ```
 
-<sub>Module `anim` line 66</sub>
+<sub>Module `anim` line 79</sub>
 
 ```ogt
 column IkSpace {
@@ -191,7 +205,7 @@ column IkSpace {
 }
 ```
 
-<sub>Module `anim` line 79</sub>
+<sub>Module `anim` line 92</sub>
 
 ```ogt
 column SpringSpace {
@@ -202,7 +216,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 488</sub>
+<sub>Module `anim` line 528</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -213,7 +227,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 562</sub>
+<sub>Module `anim` line 603</sub>
 
 ```ogt
 column Rig {
@@ -224,7 +238,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 657</sub>
+<sub>Module `anim` line 698</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -235,7 +249,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 728</sub>
+<sub>Module `anim` line 769</sub>
 
 ```ogt
 column Rig2D {
@@ -246,4 +260,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 831</sub>
+<sub>Module `anim` line 872</sub>

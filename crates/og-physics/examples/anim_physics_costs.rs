@@ -194,6 +194,7 @@ fn main() {
             rest: (Vec3::new(x, y, 0.0), rotation),
             length,
             axis: Vec3::Y,
+            ..Default::default()
         };
         RagdollRig {
             bones: vec![
@@ -229,6 +230,9 @@ fn main() {
                         ),
                         Ragdoll {
                             weight: 1.0,
+                            bone_mask: og_core::List::from_slice(&[0, 1, 2, 3, 4, 5]).unwrap(),
+                            layers: 1,
+                            mask: u32::MAX,
                             impulse: Vec3::new(20.0, 5.0, 0.0),
                             ..Ragdoll::default()
                         },

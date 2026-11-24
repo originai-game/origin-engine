@@ -16,10 +16,14 @@ pub(crate) fn force_fields(
     if forces.is_empty() {
         return;
     }
-    for b in &scene.bodies {
-        let Some(&h) = handles.get(&b.entity.to_bits()) else {
-            continue;
-        };
+    let bones = sim.ragdolls.values().flat_map(|s| s.bones.iter().copied());
+    let all: Vec<_> = scene
+        .bodies
+        .iter()
+        .filter_map(|b| handles.get(&b.entity.to_bits()).copied())
+        .chain(bones)
+        .collect();
+    for h in all {
         let rb = &mut sim.world.bodies[h];
         if !rb.is_dynamic() {
             continue;

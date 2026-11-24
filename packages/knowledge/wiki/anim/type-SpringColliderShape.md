@@ -14,13 +14,15 @@ A string: one of the variants below. The zero value is `"sphere"`.
 |---|---|
 | `"sphere"` | A ball of `radius` about `offset`. |
 | `"capsule"` | A capsule of `radius` about the segment from `offset` to `tail`. |
+| `"plane"` | A plane through offset with tail as its local normal. |
 
 ```ogt
 enum SpringColliderShape {
   doc "The shape of a spring collider."
   variant sphere "A ball of `radius` about `offset`."
   variant capsule "A capsule of `radius` about the segment from `offset` to `tail`."
+  variant plane "A plane through offset with tail as its local normal."
 }
 ```
 
-<sub>Module `anim` line 556</sub>
+<sub>Module `anim` line 596</sub>

@@ -224,3 +224,83 @@ fn a_3600_tick_walk_gives_the_same_hash_twice_and_after_a_restore_at_1800() {
     );
     std::fs::write(dir.join("anim-walk-determinism.json"), report).unwrap();
 }
+
+/// The animation/physics boundary: desired root travel must be reported,
+/// swept, consumed once, and replayed exactly after a restore.
+#[test]
+fn controller_root_motion_stops_at_a_wall_and_restores() {
+    use og_core::glam::Vec3;
+    use og_ecs::WorldDesc;
+    use og_physics::{CharacterController, Collider, Physics};
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 8,
+    })
+    .unwrap();
+    let anim = install(&mut w).unwrap();
+    let physics = og_physics::install(
+        &mut w,
+        Physics {
+            gravity: Vec3::ZERO,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    anim.set_physics(physics.clone());
+    support::register(&anim);
+    let wall = w
+        .spawn((
+            Transform::at(Vec3::new(0.0, 1.0, 1.5)),
+            Collider::cuboid(Vec3::new(4.0, 4.0, 0.2)),
+        ))
+        .unwrap();
+    let actor = w
+        .spawn((
+            Transform::default(),
+            Skeleton {
+                asset: support::SKELETON,
+                root_motion: ROOT_MOTION_PLANAR,
+                root_motion_mode: 1,
+                ..Default::default()
+            },
+            AnimationPlayer::new(support::WALK),
+            Collider::capsule(0.3, 0.8),
+            CharacterController {
+                gravity_scale: 0.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    let mut requested = 0.0;
+    for _ in 0..120 {
+        w.step().unwrap();
+        requested += w.get::<Skeleton>(actor).unwrap().root_delta.z;
+        assert_eq!(
+            w.get::<CharacterController>(actor).unwrap().root_delta,
+            Vec3::ZERO
+        );
+    }
+    let stopped = w.get::<Transform>(actor).unwrap().position.z;
+    assert!(
+        requested > 2.0 && stopped > 0.9 && stopped < 1.12,
+        "requested {requested}, swept to {stopped}"
+    );
+    let checkpoint = w.snapshot();
+    for _ in 0..30 {
+        w.step().unwrap();
+    }
+    let end = w.snapshot();
+    w.restore(&checkpoint).unwrap();
+    for _ in 0..30 {
+        w.step().unwrap();
+    }
+    assert_eq!(w.snapshot(), end);
+    w.despawn(wall).unwrap();
+    for _ in 0..60 {
+        w.step().unwrap();
+    }
+    assert!(
+        w.get::<Transform>(actor).unwrap().position.z > stopped + 0.8,
+        "motion resumes after the obstruction is removed"
+    );
+}

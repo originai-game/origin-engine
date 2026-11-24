@@ -26,6 +26,8 @@ Token `og.LookAt`, registered under the schema name `og.LookAt`; its value type 
 | `maxPitch` | `number` | `1.5708` | 0 … 1.5708 | `rad` | tunable | The largest turn towards or away from `upAxis`, from the animated forward. |
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the turn is applied (0 = the animated pose, 1 = aimed). |
 | `clamped` | `boolean` | `false` | — | — | read only | Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them. |
+| `flipHysteresis` | `number` | `0` | ≥ 0 | `rad` | tunable | Rear seam dead band in radians; zero disables hysteresis. |
+| `yawSide` | `number` | `0` | — | — | read only | Written: retained rear seam side, -1 or 1; zero uninitialised. |
 
 ```ogt
 component LookAt {
@@ -77,7 +79,15 @@ component LookAt {
   field clamped bool "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them." {
     readonly true
   }
+  field flipHysteresis f32 "Rear seam dead band in radians; zero disables hysteresis." {
+    min 0
+    unit rad
+    tunable true
+  }
+  field yawSide f32 "Written: retained rear seam side, -1 or 1; zero uninitialised." {
+    readonly true
+  }
 }
 ```
 
-<sub>Module `anim` line 327</sub>
+<sub>Module `anim` line 349</sub>

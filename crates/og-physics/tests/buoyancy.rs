@@ -56,6 +56,7 @@ fn rig() -> RagdollRig {
         rest: (Vec3::new(0.0, y, 0.0), Quat::IDENTITY),
         length,
         axis: Vec3::Y,
+        ..Default::default()
     };
     RagdollRig {
         bones: vec![
@@ -70,6 +71,9 @@ fn rig() -> RagdollRig {
 fn limp(w: &mut World, p: &PhysicsSystem, x: f32, y: f32) -> Entity {
     let ragdoll = Ragdoll {
         weight: 1.0,
+        bone_mask: og_core::List::from_slice(&[0, 1, 2]).unwrap(),
+        layers: 1,
+        mask: u32::MAX,
         ..Ragdoll::default()
     };
     let e = w.spawn((at(x, y, 0.0), ragdoll)).unwrap();

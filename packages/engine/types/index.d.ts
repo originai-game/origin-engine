@@ -307,6 +307,8 @@ export interface ColumnKinds {
   GraphAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: GraphAsset };
   /** A RootMotion field: the variant's index. */
   RootMotion: { readonly array: Uint32Array; readonly stride: 1; readonly value: RootMotion };
+  /** A RootMotionMode field. */
+  RootMotionMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: RootMotionMode };
   /** A BlendshapeSource field: the variant's index. */
   BlendshapeSource: { readonly array: Uint32Array; readonly stride: 1; readonly value: BlendshapeSource };
   /** An IkSolver field: the variant's index. */
@@ -16201,6 +16203,12 @@ export interface CharacterController {
    */
   addVelocity: Vector3;
   /**
+   * Animation displacement consumed once by the character sweep, including vertical travel; cleared after the move.
+   *
+   * @unit m (metres)
+   */
+  rootDelta: Vector3;
+  /**
    * Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up.
    */
   up: Vector3;
@@ -18433,11 +18441,37 @@ export interface Fluid3D {
 }
 
 /**
- * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
+ * An explicit rest-pose rig of shaped bones and limited joints. Selected boneMask indices become dynamic with weight, inheriting animation COM velocities; other bones follow animation. Local rotations blend with FK over blendTime. Optional PD motors track animation and driveTransform follows the root. Owner and adjacent contacts are excluded pairwise; other ragdolls can collide. Bodies and motors are saved state, not entities.
  *
  * The value of the `Ragdoll` component (token `og.Ragdoll`).
  */
 export interface Ragdoll {
+  /**
+   * Rig indices of dynamic bones; an empty list enables none.
+   *
+   * @capacity 64 elements (List.u32.64): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  boneMask: readonly number[];
+  /**
+   * PD joint restoring stiffness; zero disables position drive.
+   *
+   * @range 0..
+   * @tunable
+   */
+  motorStiffness: number;
+  /**
+   * PD joint velocity damping; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  motorDamping: number;
+  /** Move the entity with the simulated root bone. */
+  driveTransform: boolean;
+  /** Collision membership bits; zero disables contacts. */
+  layers: number;
+  /** Collision filter bits; zero disables contacts. */
+  mask: number;
   /**
    * 0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.
    *
@@ -18455,7 +18489,7 @@ export interface Ragdoll {
    */
   blendTime: number;
   /**
-   * The whole body's mass, shared by the bones by length.
+   * Mass shared by length among bones without a per-bone mass override.
    *
    * @default 60
    * @range 0.1..
@@ -18489,7 +18523,7 @@ export interface Ragdoll {
    * @tunable
    */
   damping: number;
-  /** An impulse given to every bone when weight first goes up (a hit). */
+  /** Total activation impulse distributed among newly dynamic bones in proportion to mass. */
   impulse: Vector3;
   /**
    * Written: the blend in use (0 animation .. 1 physics).
@@ -19297,7 +19331,22 @@ export interface WheelPose {
 }
 
 /**
- * One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`.
+ * The collider fitted along a ragdoll bone.
+ * - `"capsule"`: Capsule along the bone axis.
+ * - `"box"`: Box along the bone axis.
+ * - `"sphere"`: Sphere at the bone's midpoint.
+ */
+export type RagdollBoneShape = "capsule" | "box" | "sphere";
+
+/**
+ * A ragdoll joint's angular degrees of freedom.
+ * - `"coneTwist"`: Swing cone and twist about the bone axis.
+ * - `"hinge"`: One angular degree of freedom about hingeAxis.
+ */
+export type RagdollJointKind = "coneTwist" | "hinge";
+
+/**
+ * A rest-pose bone: a shaped collider along axis for length, with explicit mass and joint constraints.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -19340,6 +19389,54 @@ export interface RagdollBoneDesc {
    * @default -1
    */
   readonly joint?: number;
+  /**
+   * Per-bone mass in kg; zero disables the override and uses Ragdoll.mass distributed by length.
+   *
+   * @default 0
+   * @range 0..
+   * @unit kg (kilograms)
+   */
+  readonly mass?: number;
+  /**
+   * Collider shape along the bone.
+   *
+   * @default "capsule"
+   */
+  readonly shape?: RagdollBoneShape;
+  /**
+   * Cone/twist about axis, or hinge about hingeAxis.
+   *
+   * @default "coneTwist"
+   */
+  readonly jointKind?: RagdollJointKind;
+  /**
+   * Hinge axis in the bone's rest-local frame; required for a hinge.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   */
+  readonly hingeAxis?: Vector3;
+  /**
+   * Per-bone swing half-angle; zero disables the override and uses Ragdoll.jointLimit.
+   *
+   * @default 0
+   * @range 0..
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly swing?: number;
+  /**
+   * Least twist or hinge angle; both bounds zero disables the override.
+   *
+   * @default 0
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly twistMin?: number;
+  /**
+   * Greatest twist or hinge angle; both bounds zero disables the override.
+   *
+   * @default 0
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly twistMax?: number;
 }
 
 /**
@@ -19388,6 +19485,7 @@ export interface SoftBodyPoints {
    */
   readonly indices: readonly number[];
 }
+
 
 
 
@@ -21185,6 +21283,22 @@ export type RootMotion = "off" | "planar" | "full";
 export declare function RootMotion(value?: RootMotion, options?: FieldOptions): FieldSpec<"RootMotion">;
 
 /**
+ * Where extracted root motion is applied.
+ * - `"transform"`: Write the entity Transform directly.
+ * - `"controller"`: Pass world displacement to CharacterController for collision-safe sweeping.
+ */
+export type RootMotionMode = "transform" | "controller";
+
+/**
+ * A RootMotionMode field.
+ *
+ * A `RootMotionMode` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function RootMotionMode(value?: RootMotionMode, options?: FieldOptions): FieldSpec<"RootMotionMode">;
+
+/**
  * Who decides blendshape weights.
  * - `"component"`: Game code writes w0...w7.
  * - `"clips"`: The playing clips' weight channels write them.
@@ -21250,6 +21364,24 @@ export interface Skeleton {
    * Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full.
    */
   rootMotion: RootMotion;
+  /**
+   * Apply extracted motion to Transform or to the CharacterController sweep. Controller mode requires that component.
+   */
+  rootMotionMode: RootMotionMode;
+  /**
+   * Written: extracted world-space displacement this tick.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly rootDelta: Vector3;
+  /**
+   * Written: extracted yaw this tick.
+   *
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   * @readonly written by the engine
+   */
+  readonly rootYawDelta: number;
   /**
    * The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).
    *
@@ -21721,6 +21853,20 @@ export interface LookAt {
    * @readonly written by the engine
    */
   readonly clamped: boolean;
+  /**
+   * Rear seam dead band in radians; zero disables hysteresis.
+   *
+   * @range 0..
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   * @tunable
+   */
+  flipHysteresis: number;
+  /**
+   * Written: retained rear seam side, -1 or 1; zero uninitialised.
+   *
+   * @readonly written by the engine
+   */
+  readonly yawSide: number;
 }
 
 /**
@@ -21813,6 +21959,22 @@ export interface FootLock {
    * @tunable
    */
   maxDistance: number;
+  /**
+   * Ground ray reach above and below the foot; zero disables grounding. Uses physics colliders, excluding the skeleton owner.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  groundReach: number;
+  /**
+   * Maximum pelvis lowering towards the ground; zero disables it.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  pelvisDrop: number;
   /**
    * Written: the playing clips plant the foot this tick.
    *
@@ -21914,7 +22076,7 @@ export type SpringSpace = "world" | "model";
 export declare function SpringSpace(value?: SpringSpace, options?: FieldOptions): FieldSpec<"SpringSpace">;
 
 /**
- * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.
+ * A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
  * See `animation §8`.
  *
  * The value of the `SpringBone` component (token `og.SpringBone`).
@@ -21936,38 +22098,47 @@ export interface SpringBone {
    */
   bones: number;
   /**
-   * How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).
+   * Restoring acceleration per metre of displacement; zero disables restoring force.
    *
-   * @default 3
-   * @range 0..30
-   * @unit hz (ticks or cycles per second)
+   * @range 0..
    * @tunable
    */
-  frequency: number;
+  stiffness: number;
   /**
-   * The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
+   * Linear velocity decay per second, independent of stiffness; zero disables drag.
    *
-   * @default 0.3
-   * @range 0..2
+   * @range 0..
    * @tunable
    */
-  damping: number;
+  drag: number;
   /**
-   * The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).
+   * Explicit last joint tail in its local frame; zero uses its child.
    *
-   * @default 1
-   * @range 0..4
-   * @tunable
+   * @unit m (metres)
    */
-  tipFrequency: number;
+  tailOffset: Vector3;
   /**
-   * The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).
+   * Root displacement that resets the chain; zero disables teleport detection.
    *
-   * @default 1
-   * @range 0..4
+   * @range 0..
+   * @unit m (metres)
+   */
+  teleportDistance: number;
+  /**
+   * Maximum tail velocity; zero disables the cap.
+   *
+   * @range 0..
+   * @unit mps (metres per second)
    * @tunable
    */
-  tipDamping: number;
+  maxSpeed: number;
+  /**
+   * Coupling to world wind velocity; zero disables wind.
+   *
+   * @range 0..
+   * @tunable
+   */
+  wind: number;
   /**
    * An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
    *
@@ -21975,7 +22146,7 @@ export interface SpringBone {
    */
   gravity: Vector3;
   /**
-   * Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).
+   * World (including all Parent transforms, so the chain lags behind entity and parent motion) or model (only animation moves it).
    */
   space: SpringSpace;
   /**
@@ -21987,7 +22158,7 @@ export interface SpringBone {
    */
   weight: number;
   /**
-   * The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point).
+   * Bone segment radius in joint-local metres, scaled with the joint and skeleton for spring and world collisions (0: a line).
    *
    * @range 0..
    * @unit m (metres)
@@ -22000,6 +22171,8 @@ export interface SpringBone {
    * @default 4294967295
    */
   colliders: number;
+  /** World collider layers tested against each bone segment; zero disables world collision. */
+  worldColliders: number;
   /**
    * Written: the farthest a tail is from its animated place this tick.
    *
@@ -22013,8 +22186,9 @@ export interface SpringBone {
  * The shape of a spring collider.
  * - `"sphere"`: A ball of `radius` about `offset`.
  * - `"capsule"`: A capsule of `radius` about the segment from `offset` to `tail`.
+ * - `"plane"`: A plane through offset with tail as its local normal.
  */
-export type SpringColliderShape = "sphere" | "capsule";
+export type SpringColliderShape = "sphere" | "capsule" | "plane";
 
 /**
  * A SpringColliderShape field: the variant's index.
@@ -22026,7 +22200,7 @@ export type SpringColliderShape = "sphere" | "capsule";
 export declare function SpringColliderShape(value?: SpringColliderShape, options?: FieldOptions): FieldSpec<"SpringColliderShape">;
 
 /**
- * A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing.
+ * A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
  * See `animation §8`.
  *
  * The value of the `SpringCollider` component (token `og.SpringCollider`).
@@ -22040,7 +22214,7 @@ export interface SpringCollider {
    * @range 0..
    */
   joint: number;
-  /** A sphere about `offset`, or a capsule from `offset` to `tail`. */
+  /** Sphere about offset, capsule from offset to tail, or plane through offset. */
   shape: SpringColliderShape;
   /**
    * The sphere's centre, or the capsule's first end, in the joint's frame.
@@ -22049,13 +22223,13 @@ export interface SpringCollider {
    */
   offset: Vector3;
   /**
-   * The capsule's other end, in the joint's frame (a sphere ignores it).
+   * Capsule endpoint or plane normal in the joint's frame; ignored by a sphere.
    *
    * @unit m (metres)
    */
   tail: Vector3;
   /**
-   * The radius, in metres of the skeleton's model space (the joint's own scale does not apply).
+   * The radius in the joint's local frame, scaled with the joint and skeleton.
    *
    * @default 0.1
    * @range 0..
@@ -39194,7 +39368,7 @@ export declare namespace og {
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
    */
-  const CharacterController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly addVelocity: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly jumpBuffer: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly inheritedVelocity: FieldSpec<"Vector3">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
+  const CharacterController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly addVelocity: FieldSpec<"Vector3">; readonly rootDelta: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly jumpBuffer: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly inheritedVelocity: FieldSpec<"Vector3">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
    * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
@@ -39243,9 +39417,9 @@ export declare namespace og {
    */
   const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly vorticity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Fluid3D>;
   /**
-   * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
+   * An explicit rest-pose rig of shaped bones and limited joints. Selected boneMask indices become dynamic with weight, inheriting animation COM velocities; other bones follow animation. Local rotations blend with FK over blendTime. Optional PD motors track animation and driveTransform follows the root. Owner and adjacent contacts are excluded pairwise; other ragdolls can collide. Bodies and motors are saved state, not entities.
    */
-  const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
+  const Ragdoll: ComponentType<{ readonly boneMask: ListSpec<"u32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly driveTransform: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
   /**
    * 3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights.
    */
@@ -39483,13 +39657,14 @@ export declare namespace og {
      */
     function vehicleWheels(world: World, entity: Entity): Result<readonly WheelPose[]>;
     /**
-     * A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not.
+     * Build a rest-pose rig from explicitly selected joints of the first skin, parents first. No name-based humanoid inference. Edit per-bone mass, shape and joint limits before setRagdollRig.
      *
      * @param world The world.
      * @param skeleton The skeleton.
+     * @param bones Explicit nonempty whitelist of skin joint indices.
      * @returns Refused for a skeleton that is not loaded or has no skin.
      */
-    function ragdollRigFromSkeleton(world: World, skeleton: SkeletonAsset): Result<RagdollRigDesc>;
+    function ragdollRigFromSkeleton(world: World, skeleton: SkeletonAsset, bones: readonly number[]): Result<RagdollRigDesc>;
     /**
      * Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world.
      *
@@ -39507,6 +39682,17 @@ export declare namespace og {
      * @returns Refused for an entity without a ragdoll.
      */
     function ragdollPose(world: World, entity: Entity): Result<readonly BonePose[]>;
+    /**
+     * Apply a world-space impulse at a world-space point to one dynamic ragdoll bone.
+     *
+     * @param world The world.
+     * @param entity The ragdoll owner.
+     * @param boneIndex The bone in rig order.
+     * @param impulse Impulse in N*s.
+     * @param point World-space application point.
+     * @returns Refused for an absent or non-dynamic bone or nonfinite input.
+     */
+    function applyRagdollImpulse(world: World, entity: Entity, boneIndex: number, impulse: Vector3, point: Vector3): Result<void>;
     /**
      * What the last physics step cost: each phase's time and whether it ran on the lanes pool. All zero before the first step.
      *
@@ -39609,7 +39795,7 @@ export declare namespace og {
   /**
    * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.
    */
-  const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
+  const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootMotionMode: FieldSpec<"RootMotionMode">; readonly rootDelta: FieldSpec<"Vector3">; readonly rootYawDelta: FieldSpec<"f32">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
   /**
    * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
    * Game systems read the previous completed tick's final FootLock/IK/LookAt/spring pose, not the interpolated draw. Before tick 1: rest bone frame, but no MatrixWorld; use getNodeMatrix.
@@ -39643,7 +39829,7 @@ export declare namespace og {
   /**
    * An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns.
    */
-  const LookAt: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly target: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly axis: FieldSpec<"Vector3">; readonly upAxis: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly maxYaw: FieldSpec<"f32">; readonly maxPitch: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly clamped: FieldSpec<"bool"> }, LookAt>;
+  const LookAt: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly target: FieldSpec<"Vector3">; readonly space: FieldSpec<"IkSpace">; readonly axis: FieldSpec<"Vector3">; readonly upAxis: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly maxYaw: FieldSpec<"f32">; readonly maxPitch: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly clamped: FieldSpec<"bool">; readonly flipHysteresis: FieldSpec<"f32">; readonly yawSide: FieldSpec<"f32"> }, LookAt>;
   /**
    * How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped.
    */
@@ -39652,19 +39838,19 @@ export declare namespace og {
    * Foot locking: while the playing clips plant `foot`, it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot. World state (the `og.anim` state block).
    * See `animation §8`.
    */
-  const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
+  const FootLock: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly foot: FieldSpec<"u32">; readonly weight: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly groundReach: FieldSpec<"f32">; readonly pelvisDrop: FieldSpec<"f32">; readonly planted: FieldSpec<"bool">; readonly locked: FieldSpec<"bool"> }, FootLock>;
   /**
    * A hang on a rope: og.anim places the skeleton entity's og.Transform so the `grip` joint, as this tick's clips pose it, sits at `point`, its +Y running from the grip towards `anchor` by `lay` and its front (+Z) towards `facing`; then each of `limbs` (og.IkChain entities) gets its target on the rope, `reach` metres from the grip. After root motion, before og.FootLock and og.IkChain. One entity per hang; the game copies the rope's points in each tick.
    * See `animation §8`.
    */
   const Hang: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly grip: FieldSpec<"u32">; readonly point: FieldSpec<"Vector3">; readonly anchor: FieldSpec<"Vector3">; readonly facing: FieldSpec<"Vector3">; readonly lay: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly limbs: ListSpec<"Entity">; readonly reach: ListSpec<"f32">; readonly held: FieldSpec<"bool"> }, Hang>;
   /**
-   * A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.
+   * A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
    * See `animation §8`.
    */
-  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly frequency: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly tipFrequency: FieldSpec<"f32">; readonly tipDamping: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly colliders: FieldSpec<"u32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
+  const SpringBone: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly bones: FieldSpec<"u32">; readonly stiffness: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly tailOffset: FieldSpec<"Vector3">; readonly teleportDistance: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly wind: FieldSpec<"f32">; readonly gravity: FieldSpec<"Vector3">; readonly space: FieldSpec<"SpringSpace">; readonly weight: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly colliders: FieldSpec<"u32">; readonly worldColliders: FieldSpec<"u32">; readonly lag: FieldSpec<"f32"> }, SpringBone>;
   /**
-   * A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing.
+   * A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
    * See `animation §8`.
    */
   const SpringCollider: ComponentType<{ readonly skeleton: FieldSpec<"Entity">; readonly joint: FieldSpec<"u32">; readonly shape: FieldSpec<"SpringColliderShape">; readonly offset: FieldSpec<"Vector3">; readonly tail: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, SpringCollider>;

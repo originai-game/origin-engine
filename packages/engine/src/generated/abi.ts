@@ -708,11 +708,13 @@ export interface HostAbi<A, V> {
   /** `og.physics.vehicleWheels` */
   og_physics_vehicle_wheels(world: number, entity: number): string;
   /** `og.physics.ragdollRigFromSkeleton` */
-  og_physics_ragdoll_rig_from_skeleton(world: number, skeleton: number): string;
+  og_physics_ragdoll_rig_from_skeleton(world: number, skeleton: number, bones: string): string;
   /** `og.physics.setRagdollRig` */
   og_physics_set_ragdoll_rig(world: number, entity: number, desc: string | undefined): string;
   /** `og.physics.ragdollPose` */
   og_physics_ragdoll_pose(world: number, entity: number): string;
+  /** `og.physics.applyRagdollImpulse` */
+  og_physics_apply_ragdoll_impulse(world: number, entity: number, bone_index: number, impulse: string, point: string): string;
   /** `og.physics.stats` */
   og_physics_stats(world: number): string;
   /** `og.atmosphere.timeOfDay` */
@@ -1690,6 +1692,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_rig_from_skeleton",
   "og_physics_set_ragdoll_rig",
   "og_physics_ragdoll_pose",
+  "og_physics_apply_ragdoll_impulse",
   "og_physics_stats",
   "og_atmosphere_time_of_day",
   "og_atmosphere_season",
@@ -2215,6 +2218,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_ragdoll_pose(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.ragdollPose", "entity", entity);
       return abi.og_physics_ragdoll_pose(world, entity);
+    },
+    og_physics_apply_ragdoll_impulse(world: number, entity: number, bone_index: number, impulse: string, point: string) {
+      if (typeof entity !== "number") notEntity("og.physics.applyRagdollImpulse", "entity", entity);
+      return abi.og_physics_apply_ragdoll_impulse(world, entity, bone_index, impulse, point);
     },
     og_anim_get_node_matrix(world: number, entity: number, node: number) {
       if (typeof entity !== "number") notEntity("og.anim.getNodeMatrix", "entity", entity);

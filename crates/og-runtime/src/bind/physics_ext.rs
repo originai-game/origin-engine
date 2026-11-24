@@ -753,6 +753,29 @@ pub(crate) struct KeptRig {
     pub rig: RagdollRig,
     pub skeleton: u64,
     pub joints: Vec<i32>,
+    stretch: Option<Mat4>,
+}
+
+impl KeptRig {
+    pub(crate) fn physics_rig(&self) -> RagdollRig {
+        let mut rig = self.rig.clone();
+        if let Some(stretch) = self.stretch {
+            for b in &mut rig.bones {
+                let direction = stretch.transform_vector3(b.rest.1 * b.axis * b.length);
+                let hinge = stretch.transform_vector3(b.rest.1 * b.hinge_axis);
+                let (_, rotation, position) = (stretch
+                    * Mat4::from_rotation_translation(b.rest.1, b.rest.0))
+                .to_scale_rotation_translation();
+                b.rest = (position, unit(rotation));
+                b.length = direction.length();
+                b.axis = b.rest.1.conjugate() * direction.normalize_or(Vec3::Y);
+                if b.joint_kind == 1 {
+                    b.hinge_axis = b.rest.1.conjugate() * hinge.normalize();
+                }
+            }
+        }
+        rig
+    }
 }
 
 /// A rotation as a rig keeps it: a zero quaternion is the identity.
@@ -784,6 +807,13 @@ fn rig_of(d: RagdollRigDesc) -> Result<KeptRig, String> {
             rest: (b.position, unit(b.quaternion)),
             length: b.length,
             axis: b.axis,
+            mass: b.mass,
+            shape: b.shape as u32,
+            joint_kind: b.joint_kind as u32,
+            hinge_axis: b.hinge_axis,
+            swing: b.swing,
+            twist_min: b.twist_min,
+            twist_max: b.twist_max,
         });
         joints.push(b.joint);
     }
@@ -791,6 +821,7 @@ fn rig_of(d: RagdollRigDesc) -> Result<KeptRig, String> {
         rig,
         skeleton: d.skeleton,
         joints,
+        stretch: None,
     })
 }
 
@@ -814,15 +845,21 @@ pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> R
 /// A rig from a skeleton's first skin: a bone per joint, parents first,
 /// each from its joint's rest pose in model space to its first child joint
 /// (a leaf gets 60% of its parent's length, pointing on).
-pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<RagdollRigDesc, String> {
+pub(crate) fn rig_from_skeleton(
+    s: &og_anim::SkeletonAsset,
+    selected: &[u32],
+) -> Result<RagdollRigDesc, String> {
     let skin = s.skins.first().ok_or("the skeleton has no skin")?;
-    let model = s.model_space(&s.rest_pose());
+    if selected.is_empty() || selected.iter().any(|&j| j as usize >= skin.joints.len()) {
+        return Err("bones must explicitly select valid skin joints".into());
+    }
+    let model = s.model_matrices(&s.rest_pose());
     let joint_of = |node: u32| skin.joints.iter().position(|&n| n == node);
     // The nearest ancestor that is a joint.
     let parent_joint = |node: u32| {
         let mut n = s.nodes[node as usize].parent;
         while n != og_anim::NONE {
-            if let Some(j) = joint_of(n) {
+            if let Some(j) = joint_of(n).filter(|j| selected.contains(&(*j as u32))) {
                 return Some(j);
             }
             n = s.nodes[n as usize].parent;
@@ -841,27 +878,32 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<RagdollRig
         }
         d
     };
-    let mut order: Vec<usize> = (0..skin.joints.len()).collect();
+    let mut order: Vec<usize> = selected.iter().map(|&j| j as usize).collect();
     og_core::sort::sort_by_key(&mut order, |&j| (depth(j), j));
+    order.dedup();
     let bone_of = |j: usize| order.iter().position(|&o| o == j);
     let mut bones: Vec<RagdollBoneDesc> = Vec::with_capacity(order.len());
     let mut lengths: Vec<f32> = Vec::with_capacity(order.len());
     for &j in &order {
         let node = skin.joints[j];
-        let at = model[node as usize];
-        let child = (0..skin.joints.len()).find(|&c| parent_joint(skin.joints[c]) == Some(j));
+        let (_, rotation, position) = model[node as usize].to_scale_rotation_translation();
+        let rotation = unit(rotation);
+        let child = order
+            .iter()
+            .copied()
+            .find(|&c| parent_joint(skin.joints[c]) == Some(j));
         let parent = parent_joint(node).and_then(bone_of);
         let (length, axis) = match child {
             Some(c) => {
-                let d = model[skin.joints[c] as usize].translation - at.translation;
-                (d.length(), at.rotation.inverse() * d)
+                let d = model[skin.joints[c] as usize].w_axis.truncate() - position;
+                (d.length(), rotation.conjugate() * d)
             }
             None => {
                 let pl = parent.map_or(0.2, |p| lengths[p] * 0.6);
                 let dir = parent_joint(node)
-                    .map(|p| at.translation - model[skin.joints[p] as usize].translation)
+                    .map(|p| position - model[skin.joints[p] as usize].w_axis.truncate())
                     .unwrap_or(Vec3::Y);
-                (pl, at.rotation.inverse() * dir)
+                (pl, rotation.conjugate() * dir)
             }
         };
         let length = length.max(0.02);
@@ -869,11 +911,18 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<RagdollRig
         let axis = axis.normalize_or(Vec3::Y);
         bones.push(RagdollBoneDesc {
             parent: parent.map_or(-1, |p| p as i32),
-            position: at.translation,
-            quaternion: at.rotation,
+            position,
+            quaternion: rotation,
             length,
             axis,
             joint: j as i32,
+            mass: 0.0,
+            shape: Default::default(),
+            joint_kind: Default::default(),
+            hinge_axis: Vec3::ZERO,
+            swing: 0.0,
+            twist_min: 0.0,
+            twist_max: 0.0,
         });
     }
     Ok(RagdollRigDesc { bones, skeleton: 0 })
@@ -911,55 +960,67 @@ pub(crate) fn schedule_ragdoll_targets(
                 let Ok(eng) = engine(engine_id) else {
                     return Ok(());
                 };
-                let Some(anim) = eng.state.try_borrow().ok().and_then(|s| s.anim.clone()) else {
+                let anim = eng.state.try_borrow().ok().and_then(|s| s.anim.clone());
+                let Ok(mut render) = eng.render.try_borrow_mut() else {
                     return Ok(());
                 };
-                let Ok(render) = eng.render.try_borrow() else {
-                    return Ok(());
-                };
-                let rigs = &render.atmo.rigs;
+                let rigs = &mut render.atmo.rigs;
+                rigs.retain(|&e, _| ctx.is_alive(Entity::from_bits(e)));
                 if rigs.is_empty() {
                     return Ok(());
                 }
+                let frames = ctx.parent_frames()?;
                 for a in ctx.query(0)? {
                     for &e in a.entities() {
-                        let Some(kept) = rigs.get(&e.to_bits()) else {
+                        let Some(kept) = rigs.get_mut(&e.to_bits()) else {
                             continue;
                         };
-                        let (Some(skeleton), Some(pose)) =
-                            (anim.skeleton(kept.skeleton), anim.pose(e))
-                        else {
-                            continue;
-                        };
-                        let Some(skin) = skeleton.skins.first() else {
-                            continue;
-                        };
-                        // At the entity's world pose, as og.physics places the ragdoll (#10).
-                        let t = ctx.get::<Transform>(e)?;
-                        let (position, quaternion) = og_physics::world_pose(
+                        let skeleton = anim.as_ref().and_then(|a| a.skeleton(kept.skeleton));
+                        let model = skeleton.as_ref().and_then(|s| {
+                            anim.as_ref()?.pose(e).map(|pose| s.model_matrices(&pose))
+                        });
+                        let skin = skeleton.as_ref().and_then(|s| s.skins.first());
+                        let matrix = og_ecs::transform::world_matrix(
                             e,
-                            (t.position, t.quaternion),
-                            |c| {
-                                ctx.get::<Parent>(c)
+                            &frames,
+                            |p| {
+                                ctx.get::<Parent>(p)
                                     .ok()
                                     .filter(|p| p.entity != 0)
                                     .map(|p| Entity::from_bits(p.entity))
                             },
                             |p| ctx.get::<Transform>(p).ok(),
                         );
-                        let model = skeleton.model_space(&pose);
+                        // Scale the rest geometry exactly once. Targets use the same
+                        // complete world matrix, including all entity ancestors.
+                        let (_, local_rotation, _) = matrix.to_scale_rotation_translation();
+                        let stretch = Mat4::from_quat(local_rotation.conjugate())
+                            * Mat4::from_cols(
+                                matrix.x_axis,
+                                matrix.y_axis,
+                                matrix.z_axis,
+                                glam::Vec4::W,
+                            );
+                        if kept.stretch.is_none_or(|s| !s.abs_diff_eq(stretch, 1e-5)) {
+                            kept.stretch = Some(stretch);
+                            physics.set_ragdoll_rig(e, kept.physics_rig())?;
+                        }
                         let targets = kept
                             .rig
                             .bones
                             .iter()
                             .zip(&kept.joints)
                             .map(|(b, &j)| {
-                                let (p, q) = usize::try_from(j)
+                                let local = usize::try_from(j)
                                     .ok()
-                                    .and_then(|j| skin.joints.get(j))
-                                    .and_then(|&n| model.get(n as usize))
-                                    .map_or(b.rest, |m| (m.translation, m.rotation));
-                                (position + quaternion * p, (quaternion * q).normalize())
+                                    .and_then(|j| skin?.joints.get(j))
+                                    .and_then(|&n| model.as_ref()?.get(n as usize))
+                                    .copied()
+                                    .unwrap_or_else(|| {
+                                        Mat4::from_rotation_translation(b.rest.1, b.rest.0)
+                                    });
+                                let (_, q, p) = (matrix * local).to_scale_rotation_translation();
+                                (p, unit(q))
                             })
                             .collect();
                         physics.set_ragdoll_targets(e, targets);
@@ -978,6 +1039,7 @@ pub(crate) const RAGDOLL_TARGETS: &str = "og.ragdollTargets";
 pub fn og_physics_ragdoll_rig_from_skeleton(
     world: u32,
     skeleton: f64,
+    bones: String,
 ) -> Result<RagdollRigDesc, String> {
     (|| {
         let eng = engine(world)?;
@@ -993,10 +1055,29 @@ pub fn og_physics_ragdoll_rig_from_skeleton(
         let s = anim
             .skeleton(skeleton as u64)
             .ok_or_else(|| format!("{skeleton} is not a loaded skeleton (og.load.animation)"))?;
-        let mut rig = rig_from_skeleton(&s)?;
+        let selected: Vec<u32> = wire::arg(Some(&bones), "bones")?;
+        let mut rig = rig_from_skeleton(&s, &selected)?;
         rig.skeleton = skeleton as u64;
         Ok(rig)
     })()
+}
+
+pub fn og_physics_apply_ragdoll_impulse(
+    world: u32,
+    e: f64,
+    bone_index: u32,
+    impulse: String,
+    point: String,
+) -> Result<(), String> {
+    let eng = engine(world)?;
+    physics(&eng)?
+        .apply_ragdoll_impulse(
+            entity(e)?,
+            bone_index,
+            wire::arg(Some(&impulse), "impulse")?,
+            wire::arg(Some(&point), "point")?,
+        )
+        .map_err(|e| e.reason().to_string())
 }
 
 /// The ragdolls' drawing: each posed model (palette `palettes[e]`) whose
@@ -1056,11 +1137,22 @@ pub(crate) fn draw_ragdolls(
             .and_then(|_| interp.ragdoll_prev(e))
             .filter(|prev| prev.len() == bodies.len());
         let to_model = world_mat.inverse();
+        let Some(animated_pose) = anim.pose(Entity::from_bits(e)) else {
+            continue;
+        };
+        let mut animated = skeleton.model_matrices(&animated_pose);
+        // Use the renderer's interpolated animation, including non-joint ancestors.
+        for (j, &node) in skin.joints.iter().enumerate() {
+            if let (Some(m), Some(ib)) = (matrices.get(j), skin.inverse_bind.get(j)) {
+                animated[node as usize] = *m * ib.inverse();
+            }
+        }
+        let mut simulated = vec![None; skeleton.nodes.len()];
         for (bone, &(p, q)) in bodies.iter().enumerate() {
             let Some(j) = kept.joints.get(bone).and_then(|&j| usize::try_from(j).ok()) else {
                 continue;
             };
-            let (Some(m), Some(ib)) = (matrices.get_mut(j), skin.inverse_bind.get(j)) else {
+            let Some(&node) = skin.joints.get(j) else {
                 continue;
             };
             let (p, q) = match (alpha, prev) {
@@ -1071,13 +1163,47 @@ pub(crate) fn draw_ragdolls(
                 }
                 _ => (p, q),
             };
-            let animated = *m * ib.inverse();
-            let simulated = to_model * Mat4::from_rotation_translation(q, p);
-            let (sa, ra, ta) = animated.to_scale_rotation_translation();
-            let (_, rb, tb) = simulated.to_scale_rotation_translation();
-            let blended =
-                Mat4::from_scale_rotation_translation(sa, ra.slerp(rb, blend), ta.lerp(tb, blend));
-            *m = blended * *ib;
+            if v.bone_mask.contains(&(bone as u32)) {
+                simulated[node as usize] = Some(to_model * Mat4::from_rotation_translation(q, p));
+            }
+        }
+        let mut physical = vec![Mat4::IDENTITY; skeleton.nodes.len()];
+        let mut blended = physical.clone();
+        for (n, node) in skeleton.nodes.iter().enumerate() {
+            let (ap, pp, bp) = if node.parent == og_anim::NONE {
+                (Mat4::IDENTITY, Mat4::IDENTITY, Mat4::IDENTITY)
+            } else {
+                let p = node.parent as usize;
+                (animated[p], physical[p], blended[p])
+            };
+            let local = ap.inverse() * animated[n];
+            physical[n] = simulated[n].unwrap_or(pp * local);
+            let (scale, rotation, translation) = local.to_scale_rotation_translation();
+            let (_, target_rotation, target_translation) =
+                (pp.inverse() * physical[n]).to_scale_rotation_translation();
+            // Local translation stays animated for child bones: blending
+            // their world positions shortens limbs. Only rig roots translate.
+            let root = kept.joints.iter().enumerate().any(|(b, &j)| {
+                kept.rig.bones[b].parent.is_none()
+                    && j >= 0
+                    && skin.joints.get(j as usize) == Some(&(n as u32))
+            });
+            let position = if root {
+                translation.lerp(target_translation, blend)
+            } else {
+                translation
+            };
+            blended[n] = bp
+                * Mat4::from_scale_rotation_translation(
+                    scale,
+                    rotation.slerp(target_rotation, blend),
+                    position,
+                );
+        }
+        for (j, &node) in skin.joints.iter().enumerate() {
+            if let (Some(m), Some(ib)) = (matrices.get_mut(j), skin.inverse_bind.get(j)) {
+                *m = blended[node as usize] * *ib;
+            }
         }
     }
 }

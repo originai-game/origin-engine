@@ -172,7 +172,7 @@ impl Performance {
             let chain = look_chain(skeleton, map).expect("lookAt validated spine and head");
             let head = *chain.last().expect("head in look chain") as usize;
             let rest = skeleton.model_space(&skeleton.rest_pose())[head].rotation;
-            let constraint = og_anim::LookAt {
+            let mut constraint = og_anim::LookAt {
                 axis: rest.inverse() * facing::FORWARD,
                 up_axis: rest.inverse() * facing::UP,
                 max_yaw: look.max_yaw,
@@ -184,10 +184,9 @@ impl Performance {
                 skeleton,
                 nodes,
                 &chain,
-                root.inverse()
-                    .transform_point(Vec3::from_array(look.target)),
+                root.inverse_transform_point(Vec3::from_array(look.target)),
                 Some(Vec3::Y),
-                &constraint,
+                &mut constraint,
                 &[],
             );
         }

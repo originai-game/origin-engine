@@ -44,6 +44,19 @@ module anim {
     value RootMotion
   }
 
+  enum RootMotionMode {
+    doc "Where extracted root motion is applied."
+    variant transform "Write the entity Transform directly."
+    variant controller "Pass world displacement to CharacterController for collision-safe sweeping."
+  }
+
+  column RootMotionMode {
+    doc "A RootMotionMode field."
+    array Uint32Array
+    stride 1
+    value RootMotionMode
+  }
+
   enum BlendshapeSource {
     doc "Who decides blendshape weights."
     variant component "Game code writes w0...w7."
@@ -90,6 +103,15 @@ module anim {
       min 0
     }
     field rootMotion RootMotion "Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full."
+    field rootMotionMode RootMotionMode "Apply extracted motion to Transform or to the CharacterController sweep. Controller mode requires that component."
+    field rootDelta Vector3 "Written: extracted world-space displacement this tick." {
+      readonly true
+      unit m
+    }
+    field rootYawDelta f32 "Written: extracted yaw this tick." {
+      readonly true
+      unit rad
+    }
     field rootJoint u32 "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips)." {
       min 0
     }
@@ -373,6 +395,14 @@ module anim {
     field clamped bool "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them." {
       readonly true
     }
+    field flipHysteresis f32 "Rear seam dead band in radians; zero disables hysteresis." {
+      min 0
+      unit rad
+      tunable true
+    }
+    field yawSide f32 "Written: retained rear seam side, -1 or 1; zero uninitialised." {
+      readonly true
+    }
   }
 
   component JointLimit {
@@ -429,6 +459,16 @@ module anim {
     }
     field maxDistance f32 "Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch)." {
       default 0.5
+      min 0
+      unit m
+      tunable true
+    }
+    field groundReach f32 "Ground ray reach above and below the foot; zero disables grounding. Uses physics colliders, excluding the skeleton owner." {
+      min 0
+      unit m
+      tunable true
+    }
+    field pelvisDrop f32 "Maximum pelvis lowering towards the ground; zero disables it." {
       min 0
       unit m
       tunable true
@@ -493,7 +533,7 @@ module anim {
   }
 
   component SpringBone {
-    doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose."
+    doc "A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them."
     guide "animation §8"
     field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
     field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
@@ -504,42 +544,41 @@ module anim {
       min 1
       max 16
     }
-    field frequency f32 "How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings)." {
-      default 3
+    field stiffness f32 "Restoring acceleration per metre of displacement; zero disables restoring force." {
       min 0
-      max 30
-      unit hz
       tunable true
     }
-    field damping f32 "The damping ratio: 0 swings on, 1 settles without overshooting (critical damping)." {
-      default 0.3
+    field drag f32 "Linear velocity decay per second, independent of stiffness; zero disables drag." {
       min 0
-      max 2
       tunable true
     }
-    field tipFrequency f32 "The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root)." {
-      default 1
+    field tailOffset Vector3 "Explicit last joint tail in its local frame; zero uses its child." {
+      unit m
+    }
+    field teleportDistance f32 "Root displacement that resets the chain; zero disables teleport detection." {
       min 0
-      max 4
+      unit m
+    }
+    field maxSpeed f32 "Maximum tail velocity; zero disables the cap." {
+      min 0
+      unit mps
       tunable true
     }
-    field tipDamping f32 "The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike)." {
-      default 1
+    field wind f32 "Coupling to world wind velocity; zero disables wind." {
       min 0
-      max 4
       tunable true
     }
     field gravity Vector3 "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop." {
       unit mps2
     }
-    field space SpringSpace "Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it)."
+    field space SpringSpace "World (including all Parent transforms, so the chain lags behind entity and parent motion) or model (only animation moves it)."
     field weight f32 "How much of the swing is applied (0 = the animated pose, 1 = the spring's)." {
       default 1
       min 0
       max 1
       tunable true
     }
-    field radius f32 "The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point)." {
+    field radius f32 "Bone segment radius in joint-local metres, scaled with the joint and skeleton for spring and world collisions (0: a line)." {
       min 0
       unit m
       tunable true
@@ -547,6 +586,7 @@ module anim {
     field colliders u32 "The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these." {
       default 4294967295
     }
+    field worldColliders u32 "World collider layers tested against each bone segment; zero disables world collision."
     field lag f32 "Written: the farthest a tail is from its animated place this tick." {
       readonly true
       unit m
@@ -557,6 +597,7 @@ module anim {
     doc "The shape of a spring collider."
     variant sphere "A ball of `radius` about `offset`."
     variant capsule "A capsule of `radius` about the segment from `offset` to `tail`."
+    variant plane "A plane through offset with tail as its local normal."
   }
 
   column SpringColliderShape {
@@ -567,20 +608,20 @@ module anim {
   }
 
   component SpringCollider {
-    doc "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing."
+    doc "A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings."
     guide "animation §8"
     field skeleton Entity "The entity with the og.Skeleton whose spring bones this keeps out."
     field joint u32 "The joint the collider rides on (an index into the skin's joints)." {
       min 0
     }
-    field shape SpringColliderShape "A sphere about `offset`, or a capsule from `offset` to `tail`."
+    field shape SpringColliderShape "Sphere about offset, capsule from offset to tail, or plane through offset."
     field offset Vector3 "The sphere's centre, or the capsule's first end, in the joint's frame." {
       unit m
     }
-    field tail Vector3 "The capsule's other end, in the joint's frame (a sphere ignores it)." {
+    field tail Vector3 "Capsule endpoint or plane normal in the joint's frame; ignored by a sphere." {
       unit m
     }
-    field radius f32 "The radius, in metres of the skeleton's model space (the joint's own scale does not apply)." {
+    field radius f32 "The radius in the joint's local frame, scaled with the joint and skeleton." {
       default 0.1
       min 0
       unit m

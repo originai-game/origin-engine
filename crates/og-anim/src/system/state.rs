@@ -49,7 +49,7 @@ fn encode(
     out: &mut Vec<u8>,
 ) {
     let mut w = ByteWriter::new(out);
-    w.u32(1); // format
+    w.u32(2); // format
     w.u32(states.len() as u32);
     for (&e, s) in states {
         w.u64(e);
@@ -138,6 +138,7 @@ fn encode(
             w.u64(e);
             w.u64(s.skeleton);
             w.u32(s.space);
+            w.vec3(s.root);
             w.u32(s.tails.len() as u32);
             for &(x, v) in &s.tails {
                 w.vec3(x);
@@ -193,10 +194,10 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
         return Ok(saved);
     }
     let format = r.u32()?;
-    if format != 1 {
+    if format != 2 {
         return Err(Error::new(
             ErrorKind::Parse,
-            format!("og.anim state format {format}; this engine reads 1"),
+            format!("og.anim state format {format}; this engine reads 2"),
         ));
     }
     let n = r.count(8)?;
@@ -340,6 +341,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                 let n = r.count(24)?;
                 for _ in 0..n {
                     let (e, skeleton, space) = (r.u64()?, r.u64()?, r.u32()?);
+                    let root = r.vec3()?;
                     let joints = r.count(24)?;
                     let mut tails = Vec::with_capacity(joints);
                     for _ in 0..joints {
@@ -350,6 +352,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                         SpringState {
                             skeleton,
                             space,
+                            root,
                             tails,
                         },
                     );
@@ -433,8 +436,8 @@ impl StateBlock for AnimState {
         sh.recompute_outputs();
     }
 
-    /// Foot locks and world-space spring tails are in the frame their
-    /// skeleton entity's Transform is written in: they move with a root.
+    /// Foot locks and world-space spring tails move with the world's zero,
+    /// including skeletons beneath a Parent whose local Transform stays put.
     fn shift(&mut self, s: &og_ecs::Shift) {
         let mut sh = lock(&self.0);
         sh.shift(s);
@@ -510,6 +513,7 @@ impl StateBlock for AnimState {
                 Record::new(e, "spring")
                     .field("skeleton", Field::Entity(s.skeleton))
                     .field("space", Field::of(&s.space))
+                    .field("root", Field::of(&s.root.to_array()))
                     .field("tails", Field::of(&tails)),
             );
         }

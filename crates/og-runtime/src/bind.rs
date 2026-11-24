@@ -92,12 +92,12 @@ pub mod exports {
         world_snapshot_bytes,
     };
     pub use super::physics_ext::{
-        og_physics_apply_force, og_physics_apply_impulse, og_physics_apply_torque,
-        og_physics_apply_torque_impulse, og_physics_cloth_points, og_physics_fluid_particles,
-        og_physics_fluid3d_particles, og_physics_garment_points, og_physics_ragdoll_pose,
-        og_physics_ragdoll_rig_from_skeleton, og_physics_resize_character, og_physics_rope_points,
-        og_physics_set_ragdoll_rig, og_physics_soft_body_points, og_physics_stats,
-        og_physics_vehicle_wheels, og_physics_water, og_physics_water_height,
+        og_physics_apply_force, og_physics_apply_impulse, og_physics_apply_ragdoll_impulse,
+        og_physics_apply_torque, og_physics_apply_torque_impulse, og_physics_cloth_points,
+        og_physics_fluid_particles, og_physics_fluid3d_particles, og_physics_garment_points,
+        og_physics_ragdoll_pose, og_physics_ragdoll_rig_from_skeleton, og_physics_resize_character,
+        og_physics_rope_points, og_physics_set_ragdoll_rig, og_physics_soft_body_points,
+        og_physics_stats, og_physics_vehicle_wheels, og_physics_water, og_physics_water_height,
     };
     pub use super::play::og_play_candidates;
     pub use super::procgen::{

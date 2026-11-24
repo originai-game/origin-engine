@@ -50,6 +50,7 @@ pub fn rig() -> RagdollRig {
         rest: (Vec3::new(0.0, y, 0.0), Quat::IDENTITY),
         length,
         axis: Vec3::Y,
+        ..Default::default()
     };
     RagdollRig {
         bones: vec![
@@ -69,6 +70,7 @@ pub fn rig_2d() -> RagdollRig {
         rest: (Vec3::new(x, y, 0.0), rotation),
         length,
         axis: Vec3::Y,
+        ..Default::default()
     };
     RagdollRig {
         bones: vec![
@@ -245,7 +247,18 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
             ),
         );
     }
-    let ragdoll = spawn(w, (at(10.0, 0.0, 10.0), Ragdoll::default()));
+    let ragdoll = spawn(
+        w,
+        (
+            at(10.0, 0.0, 10.0),
+            Ragdoll {
+                bone_mask: og_core::List::from_slice(&[0, 1, 2]).unwrap(),
+                layers: 1,
+                mask: u32::MAX,
+                ..Ragdoll::default()
+            },
+        ),
+    );
     physics.set_ragdoll_rig(ragdoll, rig()).unwrap();
     // A cloth lowered onto the floor, folding on itself.
     let folding = spawn(
@@ -522,6 +535,9 @@ pub fn scene2d(w: &mut World, physics: &PhysicsSystem) -> Cast {
             at(50.0, 1.5, 0.0),
             Ragdoll {
                 impulse: Vec3::new(8.0, 3.0, 0.0),
+                bone_mask: og_core::List::from_slice(&[0, 1, 2, 3, 4]).unwrap(),
+                layers: 1,
+                mask: u32::MAX,
                 ..Ragdoll::default()
             },
         ),

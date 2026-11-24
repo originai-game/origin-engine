@@ -231,6 +231,203 @@ fn a_restore_into_a_world_that_ran_on_continues_from_the_snapshot() {
     );
 }
 
+/// The public ragdoll path: COM activation, owner filtering, dynamic
+/// stacking, point impulses, in-place tuning, a partial PD hinge, saves and despawn.
+#[test]
+fn ragdolls_activate_drive_tune_and_restore_in_both_profiles() {
+    use og_core::List;
+    use og_core::glam::Quat;
+    for profile in [PROFILE_3D, PROFILE_2D] {
+        let (mut w, p) = world(
+            Physics {
+                profile,
+                gravity: Vec3::ZERO,
+                ..Default::default()
+            },
+            73,
+        );
+        enable_lazy(&mut w);
+        let bone = RagdollBone {
+            rest: (Vec3::ZERO, Quat::IDENTITY),
+            length: 2.0,
+            axis: Vec3::Y,
+            mass: 2.0,
+            shape: 2,
+            ..Default::default()
+        };
+        let r = Ragdoll {
+            bone_mask: List::from_slice(&[0]).unwrap(),
+            layers: 1,
+            mask: 1,
+            blend_time: 0.0,
+            damping: 0.0,
+            thickness: 0.1,
+            drive_transform: true,
+            ..Default::default()
+        };
+        let e = w
+            .spawn((
+                at(0.0, 0.0, 0.0),
+                RigidBody::kinematic(),
+                Collider::capsule(0.6, 2.0),
+                r,
+            ))
+            .unwrap();
+        p.set_ragdoll_rig(
+            e,
+            RagdollRig {
+                bones: vec![bone.clone()],
+            },
+        )
+        .unwrap();
+        p.query(&w).unwrap();
+        w.step().unwrap();
+        let (position, rotation) = (
+            Vec3::new(0.1, 0.2, 0.0),
+            og_core::math::quat_from_axis_angle(Vec3::Z, 0.1),
+        );
+        let com = position + rotation * Vec3::Y;
+        p.set_ragdoll_targets(e, vec![(position, rotation)]);
+        w.insert(
+            e,
+            Ragdoll {
+                weight: 1.0,
+                impulse: Vec3::X * 6.0,
+                ..r
+            },
+        )
+        .unwrap();
+        w.step().unwrap();
+        let (at, q) = p.ragdoll_pose(e).unwrap()[0];
+        // dt = 1/60, mass = 2; the TOTAL impulse contributes 0.05 m.
+        let expected = com + (com - Vec3::Y) + Vec3::X * 0.05;
+        assert!(
+            (at + q * Vec3::Y - expected).length() < 1e-4,
+            "profile {profile}: activation COM {:?}, expected {expected:?}",
+            at + q * Vec3::Y
+        );
+        assert!((transform(&w, e).position - at).length() < 1e-5);
+        w.despawn(e).unwrap();
+        w.step().unwrap();
+        assert!(p.ragdoll_pose(e).is_none() && !p.has_ragdoll_rig(e));
+
+        // Two unrelated ragdolls must collide, unlike the removed global bit.
+        let mut pair = Vec::new();
+        for x in [10.0, 10.1] {
+            let e = w
+                .spawn((
+                    Transform::at(Vec3::X * x),
+                    Ragdoll {
+                        weight: 1.0,
+                        drive_transform: false,
+                        ..r
+                    },
+                ))
+                .unwrap();
+            p.set_ragdoll_rig(
+                e,
+                RagdollRig {
+                    bones: vec![bone.clone()],
+                },
+            )
+            .unwrap();
+            pair.push(e);
+        }
+        run(&mut w, 30);
+        let a = p.ragdoll_pose(pair[0]).unwrap()[0].0;
+        let b = p.ragdoll_pose(pair[1]).unwrap()[0].0;
+        assert!(
+            a.distance(b) > 0.38,
+            "different ragdolls separate their 0.2 m spheres"
+        );
+        p.apply_ragdoll_impulse(pair[1], 0, Vec3::X * 12.0, b + Vec3::Y)
+            .unwrap();
+        run(&mut w, 10);
+        let before = p.ragdoll_pose(pair[1]).unwrap()[0].0;
+        let mut tuned = w.get::<Ragdoll>(pair[1]).unwrap();
+        tuned.mass *= 2.0;
+        tuned.thickness *= 0.8;
+        tuned.joint_limit = 0.5;
+        w.insert(pair[1], tuned).unwrap();
+        w.step().unwrap();
+        assert!(
+            p.ragdoll_pose(pair[1]).unwrap()[0].0.x > before.x,
+            "tuning must not rebuild from stale animation targets"
+        );
+
+        // A kinematic root, a hinged dynamic child, and a PD drive. No
+        // collision layers here: this isolates drive from contact impulses.
+        let h = w
+            .spawn((
+                Transform::at(Vec3::X * 20.0),
+                Ragdoll {
+                    bone_mask: List::from_slice(&[1]).unwrap(),
+                    weight: 1.0,
+                    motor_stiffness: 50.0,
+                    motor_damping: 10.0,
+                    layers: 0,
+                    mask: 0,
+                    drive_transform: false,
+                    ..r
+                },
+            ))
+            .unwrap();
+        let mut child = bone.clone();
+        child.parent = Some(0);
+        child.rest.0 = Vec3::Y * 2.0;
+        child.joint_kind = 1;
+        child.hinge_axis = Vec3::Z;
+        child.twist_min = -1.0;
+        child.twist_max = 1.0;
+        p.set_ragdoll_rig(
+            h,
+            RagdollRig {
+                bones: vec![bone, child],
+            },
+        )
+        .unwrap();
+        w.step().unwrap();
+        let anchor = p.ragdoll_pose(h).unwrap()[0];
+        let checkpoint = w.snapshot();
+        let kick = |w: &mut og_ecs::World| {
+            p.apply_ragdoll_impulse(h, 1, Vec3::X * 4.0, Vec3::new(20.0, 4.0, 0.0))
+                .unwrap();
+            run(w, 120);
+        };
+        kick(&mut w);
+        let driven = p.ragdoll_pose(h).unwrap()[1].1;
+        assert!(
+            driven.dot(Quat::IDENTITY).abs() > 0.999,
+            "profile {profile}: the PD motor restores the target after a point hit: {driven:?}"
+        );
+        assert_eq!(
+            p.ragdoll_pose(h).unwrap()[0],
+            anchor,
+            "boneMask leaves the root animated"
+        );
+        let end = w.snapshot();
+        w.restore(&checkpoint).unwrap();
+        kick(&mut w);
+        assert_eq!(
+            w.snapshot(),
+            end,
+            "ragdoll motors and filtering restore bit for bit"
+        );
+        let mut off = w.get::<Ragdoll>(h).unwrap();
+        off.motor_stiffness = 0.0;
+        off.motor_damping = 0.0;
+        w.insert(h, off).unwrap();
+        w.step().unwrap();
+        p.apply_ragdoll_impulse(h, 1, Vec3::X * 4.0, Vec3::new(20.0, 4.0, 0.0))
+            .unwrap();
+        run(&mut w, 30);
+        assert!(
+            p.ragdoll_pose(h).unwrap()[1].1.dot(Quat::IDENTITY).abs() < 0.995,
+            "zero PD coefficients must disable an existing motor"
+        );
+    }
+}
+
 /// One public controller path in both profiles: land, crouch under a roof,
 /// restore, stand, jump at large world coordinates, then push a body with
 /// finite mass. This also guards sequential controller/sensor publication.

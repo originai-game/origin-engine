@@ -18,7 +18,7 @@ const CONTRACTS: [&str; 2] = ["probe.ogt", "platform.ogt"];
 
 /// Members that break a rule for a reason that stands, as (`Owner.field`,
 /// the rule, why).
-const EXCEPTIONS: [(&str, &str, &str); 9] = [
+const EXCEPTIONS: [(&str, &str, &str); 8] = [
     // A tick stamp, not a duration: the tick something happened at.
     (
         "LockstepSeat.since",
@@ -47,12 +47,7 @@ const EXCEPTIONS: [(&str, &str, &str); 9] = [
         "rad",
         "an angle of the art contract, which is in degrees",
     ),
-    // `damping` that is not a decay rate: a spring's and a reverb's.
-    (
-        "SpringBone.damping",
-        "damping",
-        "a spring's damping ratio (1: critical), not a rate",
-    ),
+    // `damping` that is not a decay rate: a joint's and a reverb's.
     (
         "Joint.damping",
         "damping",

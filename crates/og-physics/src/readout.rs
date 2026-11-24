@@ -4,7 +4,7 @@
 use super::*;
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct RagdollBone {
     /// The parent bone's index in [`RagdollRig::bones`] (it comes earlier); `None` for the root.
     pub parent: Option<u32>,
@@ -14,6 +14,19 @@ pub struct RagdollBone {
     pub length: f32,
     /// The direction the bone points in its own frame (towards its child).
     pub axis: Vec3,
+    /// Per-bone mass in kg; zero disables the override (uses the rig's mass distribution).
+    pub mass: f32,
+    /// Capsule (0), box (1), or sphere (2).
+    pub shape: u32,
+    /// Cone/twist (0) or hinge (1), about the bone's axis.
+    pub joint_kind: u32,
+    /// Hinge axis in the bone's rest-local frame; required for a hinge.
+    pub hinge_axis: Vec3,
+    /// Swing half-angle; zero disables the per-bone cone limit.
+    pub swing: f32,
+    /// Asymmetric twist/hinge range. Both zero disables the per-bone limit.
+    pub twist_min: f32,
+    pub twist_max: f32,
 }
 
 /// The bones a ragdoll is made of: registered by the host for an entity
@@ -434,6 +447,12 @@ impl PhysicsSystem {
     /// Registers the rig an og.Ragdoll on `entity` is built from. Every
     /// bone's parent comes before it. A new rig rebuilds the ragdoll.
     pub fn set_ragdoll_rig(&self, entity: Entity, rig: RagdollRig) -> Result<()> {
+        if rig.bones.is_empty() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "a ragdoll needs explicit bones",
+            ));
+        }
         for (i, b) in rig.bones.iter().enumerate() {
             if b.parent.is_some_and(|p| p as usize >= i) {
                 return Err(Error::new(
@@ -441,7 +460,25 @@ impl PhysicsSystem {
                     format!("ragdoll rig bone {i}: its parent must come before it"),
                 ));
             }
-            if !(b.length.is_finite() && b.rest.0.is_finite() && b.rest.1.is_finite()) {
+            if !(b.length.is_finite()
+                && b.length > 0.0
+                && b.rest.0.is_finite()
+                && b.rest.1.is_finite()
+                && b.rest.1.length_squared() > 0.0
+                && b.axis.is_finite()
+                && b.axis.length_squared() > 0.0
+                && b.mass.is_finite()
+                && b.mass >= 0.0
+                && b.shape <= 2
+                && b.joint_kind <= 1
+                && b.hinge_axis.is_finite()
+                && (b.joint_kind != 1 || b.hinge_axis.length_squared() > 0.0)
+                && b.swing.is_finite()
+                && b.swing >= 0.0
+                && b.twist_min.is_finite()
+                && b.twist_max.is_finite()
+                && b.twist_min <= b.twist_max)
+            {
                 return Err(Error::new(
                     ErrorKind::Invalid,
                     format!("ragdoll rig bone {i} is not finite"),
@@ -503,6 +540,30 @@ impl PhysicsSystem {
         lock(&self.shared)
             .ragdoll_targets
             .insert(entity.to_bits(), targets);
+    }
+
+    /// Apply an impulse at a world-space point to one dynamic bone in rig order.
+    pub fn apply_ragdoll_impulse(
+        &self,
+        entity: Entity,
+        bone: u32,
+        impulse: Vec3,
+        point: Vec3,
+    ) -> Result<()> {
+        if !impulse.is_finite() || !point.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "ragdoll impulse and point must be finite",
+            ));
+        }
+        let mut shared = lock(&self.shared);
+        if let Some(s) = shared.sim3.as_mut() {
+            return dim3::ragdoll_impulse(&mut lock(s), entity.to_bits(), bone, impulse, point);
+        }
+        if let Some(s) = shared.sim2.as_mut() {
+            return dim2::ragdoll_impulse(&mut lock(s), entity.to_bits(), bone, impulse, point);
+        }
+        Err(Error::new(ErrorKind::Invalid, "ragdoll has not stepped"))
     }
 
     /// The og.Water bodies the next steps float og.Buoyancy bodies on (the

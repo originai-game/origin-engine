@@ -190,6 +190,12 @@ fn many_ragdolls_split_and_off_the_lanes_end_in_the_same_world() {
                         at(x, 0.0, z),
                         Ragdoll {
                             blend_time: 0.1 + 0.05 * (i % 3) as f32,
+                            bone_mask: og_core::List::from_slice(
+                                &(0..rig.bones.len() as u32).collect::<Vec<_>>(),
+                            )
+                            .unwrap(),
+                            layers: 1,
+                            mask: u32::MAX,
                             ..Ragdoll::default()
                         },
                     ))

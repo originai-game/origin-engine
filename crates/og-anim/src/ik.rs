@@ -181,7 +181,88 @@ pub fn two_bone(
     let reach_max = l1 + l2;
     let reach_min = (l1 - l2).abs();
     let reachable = dist <= reach_max && dist >= reach_min;
-    let d = dist.clamp(reach_min + 1e-6, reach_max - 1e-6).max(1e-6);
+    let eps = (reach_max * 1e-5).min(l1.min(l2) * 0.5);
+    let d = dist.clamp(reach_min + eps, reach_max - eps);
+    if let Some(hinge) =
+        limit_at(limits, 1).filter(|l| l.swing == 0.0 && l.axis.length_squared() > 0.0)
+    {
+        // Solve the middle joint in its hinge plane FIRST. The squared
+        // reach is base + ac*cos(theta) + as*sin(theta), including a
+        // non-straight rest pose and a hinge not perpendicular to the bone.
+        let (root, middle, tip) = (chain[0] as usize, chain[1] as usize, chain[2] as usize);
+        let rest = skeleton.nodes[middle].rest.rotation;
+        let axis = hinge.axis.normalize();
+        let axis_root = rest * axis;
+        let upper = model[root].rotation.conjugate() * (b - a);
+        let lower = rest * (model[middle].scale * pose[tip].translation);
+        let parallel = axis_root * axis_root.dot(lower);
+        let perpendicular = lower - parallel;
+        let tangent = axis_root.cross(perpendicular);
+        let centre = upper + parallel;
+        let base = centre.length_squared() + perpendicular.length_squared();
+        let ac = 2.0 * centre.dot(perpendicular);
+        let as_ = 2.0 * centre.dot(tangent);
+        let radius = (ac * ac + as_ * as_).sqrt();
+        let phase = atan2(as_, ac);
+        let cosine = if radius > 0.0 {
+            ((dist * dist - base) / radius).clamp(-1.0, 1.0)
+        } else {
+            1.0
+        };
+        let angle = atan2((1.0 - cosine * cosine).max(0.0).sqrt(), cosine);
+        let lo = hinge.twist_min.min(hinge.twist_max);
+        let hi = hinge.twist_min.max(hinge.twist_max);
+        let vector = |theta: f32| {
+            let (s, c) = sin_cos(theta);
+            centre + perpendicular * c + tangent * s
+        };
+        let mut theta = lo;
+        let mut error = (vector(theta).length() - dist).abs();
+        for candidate in [
+            hi,
+            (phase + angle).clamp(lo, hi),
+            (phase - angle).clamp(lo, hi),
+        ] {
+            let e = (vector(candidate).length() - dist).abs();
+            if e < error {
+                theta = candidate;
+                error = e;
+            }
+        }
+        let mut rotation = unit(
+            rotation_arc(model[root].rotation * vector(theta), to_target) * model[root].rotation,
+        );
+        // Roll the whole solution about the target to follow the pole,
+        // without changing the selected hinge angle or its reachable length.
+        let hint = pole.map_or(b - a, |p| p - a);
+        let hint = hint - dir * hint.dot(dir);
+        let knee = rotation * upper;
+        let knee = knee - dir * knee.dot(dir);
+        if hint.length_squared() > 1e-12 && knee.length_squared() > 1e-12 {
+            rotation = unit(arc_about(dir, knee, hint) * rotation);
+        }
+        let parent = skeleton.nodes[root].parent;
+        let parent_rotation = if parent == NONE {
+            Quat::IDENTITY
+        } else {
+            model[parent as usize].rotation
+        };
+        let mut root_rotation = unit(parent_rotation.conjugate() * rotation);
+        if let Some(limit) = limit_at(limits, 0) {
+            root_rotation = limit.clamp(skeleton.nodes[root].rest.rotation, root_rotation);
+        }
+        let (s, c) = sin_cos(theta * 0.5);
+        pose[root].rotation = nlerp(pose[root].rotation, root_rotation, weight);
+        pose[middle].rotation = nlerp(
+            pose[middle].rotation,
+            unit(rest * Quat::from_xyzw(axis.x * s, axis.y * s, axis.z * s, c)),
+            weight,
+        );
+        return IkResult {
+            error: tip_error(skeleton, pose, chain[2], target),
+            reachable: error <= eps,
+        };
+    }
     // The bend direction: towards the pole, else the current knee.
     let hint = pole.map_or(b - a, |p| p - a);
     let mut bend = hint - dir * hint.dot(dir);
@@ -402,7 +483,7 @@ pub fn look_at(
     chain: &[u32],
     target: Vec3,
     up: Option<Vec3>,
-    look: &LookAt,
+    look: &mut LookAt,
     limits: &[Option<JointLimit>],
 ) -> bool {
     let Some(&tip) = chain.last() else {
@@ -423,7 +504,8 @@ pub fn look_at(
         });
     let right = up_axis.cross(forward);
     let animated: Vec<Quat> = chain.iter().map(|&n| pose[n as usize].rotation).collect();
-    let m = skeleton.model_space(pose)[j];
+    let mut model = skeleton.model_space(pose);
+    let m = model[j];
     let d = target - m.translation;
     if direction(d).is_none() {
         return false;
@@ -431,7 +513,16 @@ pub fn look_at(
     // The direction in the animated joint's frame, held within the angles.
     let dl = m.rotation.conjugate() * d;
     let (x, y, z) = (dl.dot(right), dl.dot(up_axis), dl.dot(forward));
-    let yaw = atan2(x, z);
+    let mut yaw = atan2(x, z);
+    if look.flip_hysteresis > 0.0
+        && z < 0.0
+        && yaw.abs() > std::f32::consts::PI - look.flip_hysteresis.min(std::f32::consts::PI)
+        && look.yaw_side != 0.0
+    {
+        yaw = yaw.abs() * look.yaw_side;
+    } else if x != 0.0 {
+        look.yaw_side = x.signum();
+    }
     let pitch = atan2(y, (x * x + z * z).sqrt());
     let max_yaw = look.max_yaw.max(0.0);
     let max_pitch = look.max_pitch.max(0.0);
@@ -449,7 +540,6 @@ pub fn look_at(
     });
     let n = chain.len();
     for (i, &k) in chain.iter().enumerate() {
-        let model = skeleton.model_space(pose);
         let Some(aim) = held.or_else(|| direction(target - model[j].translation)) else {
             break;
         };
@@ -470,6 +560,15 @@ pub fn look_at(
             local = l.clamp(skeleton.nodes[k].rest.rotation, local);
         }
         pose[k].rotation = local;
+        // Rebuild descendants only; the full model allocation lives outside the loop.
+        for node in 0..skeleton.nodes.len() {
+            let p = skeleton.nodes[node].parent;
+            model[node] = if p == NONE {
+                pose[node]
+            } else {
+                model[p as usize].mul(&pose[node])
+            };
+        }
     }
     let weight = look.weight.clamp(0.0, 1.0);
     if weight < 1.0 {

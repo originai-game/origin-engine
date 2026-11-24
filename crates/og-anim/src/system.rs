@@ -183,6 +183,7 @@ struct SpringState {
     /// another space, or given another length, restarts at rest).
     skeleton: u64,
     space: u32,
+    root: Vec3,
     /// Per chain joint, top first: the tail's position and velocity.
     tails: Vec<(Vec3, Vec3)>,
 }
@@ -198,6 +199,7 @@ struct Saved {
 /// The registered assets and the world state.
 #[derive(Default)]
 pub(crate) struct Shared {
+    physics: Option<og_physics::PhysicsSystem>,
     skeletons: IdMap<u64, Arc<SkeletonAsset>>,
     clips: IdMap<u64, Arc<ClipAsset>>,
     graphs: IdMap<u64, Arc<GraphAsset>>,
@@ -374,11 +376,12 @@ impl Shared {
     /// og.WorldOrigin moved the world's zero ([`og_ecs::StateBlock::shift`]).
     fn shift(&mut self, s: &og_ecs::Shift) {
         for l in self.locks.values_mut() {
-            l.lock.shift(s.of(l.skeleton));
+            l.lock.shift(s.d);
         }
         for sp in self.springs.values_mut() {
             if sp.space == 0 {
-                let d = s.of(sp.skeleton);
+                let d = s.d;
+                sp.root = (sp.root.as_dvec3() + d).as_vec3();
                 for (p, _) in &mut sp.tails {
                     *p = (p.as_dvec3() + d).as_vec3();
                 }
@@ -514,6 +517,7 @@ pub struct StepDefault {
 /// smooth, as [`install`]).
 pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<AnimationSystem> {
     world.register::<Transform>()?;
+    world.register::<og_physics::CharacterController>()?;
     world.register::<og_ecs::transform::Parent>()?;
     world.register::<og_ecs::transform::MatrixWorld>()?;
     world.register::<BoneAttachment>()?;
@@ -543,6 +547,8 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
         .write::<SpringBone>()
         .read::<SpringCollider>()
         .write::<Transform>()
+        .read::<og_ecs::transform::Parent>()
+        .write::<og_physics::CharacterController>()
         .write::<AnimationEvent>()
         .query(QueryDesc::new().read::<Skeleton>())
         .query(
@@ -623,6 +629,10 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
 }
 
 impl AnimationSystem {
+    /// Physics queries and wind used by opt-in ground adaptation and springs.
+    pub fn set_physics(&self, physics: og_physics::PhysicsSystem) {
+        lock(&self.shared).physics = Some(physics);
+    }
     /// Model-space node frames for bone children, from the final pose
     /// after IK, or the asset's rest pose before its first tick. Matrices
     /// are computed once per skeleton with attachments, not per child.
@@ -809,6 +819,7 @@ struct Work {
     graph: Option<AnimationGraph>,
     blend: Option<Blendshapes>,
     transform: Option<Transform>,
+    parent_world: Mat4,
     state: EntityState,
     pose: Pose,
     /// The clips posing the legs this tick, for foot locks.
@@ -816,6 +827,12 @@ struct Work {
     /// This tick's scaled length for the entity: the global scaled dt
     /// times its time group's scale (og.TimeGroup).
     dt: f32,
+}
+
+impl Work {
+    fn world_matrix(&self) -> Mat4 {
+        self.parent_world * self.transform.map_or(Mat4::IDENTITY, Transform::matrix)
+    }
 }
 
 /// One skeleton entity on its way through the tick: what was read (serially,
@@ -853,6 +870,7 @@ fn gather(
     graphs: &BTreeSet<u64>,
     blends: &BTreeSet<u64>,
     transforms: &BTreeSet<u64>,
+    frames: &IdMap<u64, Mat4>,
 ) -> Result<Eval> {
     let key = e.to_bits();
     let skeleton: Skeleton = ctx.get(e)?;
@@ -918,6 +936,22 @@ fn gather(
             graph,
             blend,
             transform,
+            parent_world: ctx
+                .get::<og_ecs::transform::Parent>(e)
+                .ok()
+                .filter(|p| p.entity != 0)
+                .map_or(Mat4::IDENTITY, |p| {
+                    og_ecs::transform::world_matrix(
+                        Entity::from_bits(p.entity),
+                        frames,
+                        |p| {
+                            ctx.get::<og_ecs::transform::Parent>(p)
+                                .ok()
+                                .map(|p| Entity::from_bits(p.entity))
+                        },
+                        |p| ctx.get::<Transform>(p).ok(),
+                    )
+                }),
             state,
             pose,
             stance: Vec::new(),
@@ -1027,7 +1061,7 @@ fn run(
     let spring_bones = entities(ctx, 9)?;
     let spring_colliders = entities(ctx, 10)?;
     let hangs = entities(ctx, 11)?;
-
+    let frames = ctx.parent_frames()?;
     let mut sh = lock(shared);
     // Read every skeleton entity in entity order, up to the first one that
     // fails; evaluate them in lanes; then take the results in entity order,
@@ -1036,7 +1070,16 @@ fn run(
     let mut evals: Vec<Eval> = Vec::with_capacity(skeletons.len());
     let mut unread = None;
     for &e in &skeletons {
-        match gather(ctx, &sh, e, &players, &graphs, &blends, &transforms) {
+        match gather(
+            ctx,
+            &sh,
+            e,
+            &players,
+            &graphs,
+            &blends,
+            &transforms,
+            &frames,
+        ) {
             Ok(mut ev) => {
                 ev.step_default = step_default;
                 ev.work.dt = ctx.group_dt(groups.as_ref(), e, dt);
@@ -1060,11 +1103,31 @@ fn run(
     for ev in evals {
         let (delta, events) = ev.out?;
         let mut w = ev.work;
+        w.skeleton.root_delta = Vec3::ZERO;
+        w.skeleton.root_yaw_delta = 0.0;
         if ev.root.as_ref().is_some_and(|r| r.mode != ROOT_MOTION_OFF)
             && let Some(t) = w.transform.as_mut()
         {
-            t.position += t.quaternion * (t.scale * delta.translation);
-            t.quaternion = unit(t.quaternion * delta.rotation);
+            let local_delta = t.quaternion * (t.scale * delta.translation);
+            w.skeleton.root_delta = w.parent_world.transform_vector3(local_delta);
+            w.skeleton.root_yaw_delta =
+                2.0 * og_core::math::atan2(delta.rotation.y, delta.rotation.w);
+            if w.skeleton.root_motion_mode == 1 {
+                let mut c = ctx
+                    .get::<og_physics::CharacterController>(w.entity)
+                    .map_err(|_| {
+                        invalid("controller root motion needs og.CharacterController".into())
+                    })?;
+                c.root_delta += w.skeleton.root_delta;
+                ctx.insert(w.entity, c)?;
+                t.quaternion = unit(
+                    t.quaternion
+                        * og_core::math::quat_from_axis_angle(Vec3::Y, w.skeleton.root_yaw_delta),
+                );
+            } else {
+                t.position += local_delta;
+                t.quaternion = unit(t.quaternion * delta.rotation);
+            }
         }
         if let Some(b) = w.blend.as_mut() {
             if b.source == BLENDSHAPES_FROM_CLIPS {
@@ -1196,7 +1259,18 @@ fn run(
                 .get(&s.to_bits())
                 .filter(|p| p.skeleton == sb.skeleton && p.space == sb.space);
             let dt = w.dt;
-            springs.insert(s.to_bits(), spring(w, &mut sb, prev, &colliders, dt)?);
+            springs.insert(
+                s.to_bits(),
+                spring(
+                    w,
+                    &mut sb,
+                    prev,
+                    &colliders,
+                    &limits,
+                    sh.physics.as_ref(),
+                    dt,
+                )?,
+            );
         }
         swung.push((s, sb));
     }

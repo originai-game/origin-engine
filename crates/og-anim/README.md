@@ -22,7 +22,8 @@ world.step()?;                                                   // pose, palett
 anim.write_outputs(&mut render_sink);                            // PaletteSink: joint palettes, blendshape weights
 ```
 
-Dependencies: og-core, og-ecs, glam. No serde, no C, builds for
+Dependencies include og-core, og-ecs and og-physics; optional queries and wind use
+`AnimationSystem::set_physics`. No C, builds for
 `wasm32-unknown-unknown`.
 
 ## API map
@@ -62,6 +63,9 @@ the variant names given.
 | `skin` | u32 | 0 | which skin the palette is for |
 | `rootMotion` | enum `off` `planar` `full` | off | off: the root joint's xz travel is held at its rest place (a travelling clip plays on the spot) and the entity stays; planar: the root joint's xz travel and yaw move `og.Transform`; full: all of its translation and rotation |
 | `rootJoint` | u32 | 0 | the joint root motion is extracted from (0, the skin's first joint, is usually the hips) |
+| `rootMotionMode` | enum `transform` `controller` | transform | direct Transform motion or displacement consumed by the CharacterController sweep |
+| `rootDelta` | vec3 m | 0 | written: extracted world displacement this tick |
+| `rootYawDelta` | f32 rad | 0 | written: extracted yaw this tick |
 | `jointCount` | u32 | 0 | written: palette length |
 
 ### `og.AnimationPlayer` (component)
@@ -141,6 +145,8 @@ frame. A pure function of the clip time: nothing in the state block.
 | `maxPitch` | f32 rad, 0…π/2, tunable | π/2 | the largest turn towards or away from `upAxis` |
 | `weight` | f32, 0…1, tunable | 1 | blend of aimed and animated rotations |
 | `clamped` | bool | false | written: the target lay outside the angles |
+| `flipHysteresis` | f32 rad, tunable | 0 | rear-seam dead band; zero disables hysteresis |
+| `yawSide` | f32 | 0 | written: retained rear-seam side |
 
 Applied after the IK chains, in query order (`look_at`): the direction
 from the joint to the target is taken into the joint's animated frame,
@@ -177,9 +183,8 @@ missed, `reached` false); FABRIK with a limited joint turns and clamps
 the chain after every pass and starts the next pass from it (without
 limits it runs unclamped); `og.LookAt` clamps each joint it
 turns. The clip's pose itself is never clamped. A second limit on the same
-joint replaces the first (query order). A hinge from a two-bone solve
-whose bend plane is not exactly the hinge's wants a little `swing` play
-(0.1–0.2), or the tip misses by the off-plane part.
+joint replaces the first (query order). Two-bone IK solves the middle
+hinge's asymmetric range before aligning the root and bend plane to the target.
 
 ### `og.FootLock` (component, on its own entity; one per foot)
 
@@ -190,6 +195,8 @@ whose bend plane is not exactly the hinge's wants a little `swing` play
 | `weight` | f32, 0…1, tunable | 1 | blend of held and animated leg |
 | `release` | f32 s, 0…2, tunable | 0.15 | how long a lifted foot takes to rejoin its animation |
 | `maxDistance` | f32 m, tunable | 0.5 | farther than this from the animated foot, the lock lets go |
+| `groundReach` | f32 m, tunable | 0 | optional ground ray reach above and below the anchor |
+| `pelvisDrop` | f32 m, tunable | 0 | maximum optional pelvis lowering |
 | `planted` | bool | false | written: the clips plant the foot this tick |
 | `locked` | bool | false | written: the foot is held this tick |
 
@@ -207,14 +214,15 @@ that.
 
 After root motion has moved the Transform and before the IK chains, in
 query order, each lock steps: free and planted → held at the animated
-foot's position in the frame the skeleton entity's Transform is written
-in; held and lifted (or farther than `maxDistance` from the animated
-foot) → releasing; releasing → free after `release` seconds, the target
+foot's world position, including all Parent transforms; held and lifted
+→ releasing; a teleport beyond `maxDistance` drops either anchor immediately.
+Releasing → free after `release` seconds, the target
 moving linearly from the lock to the animated foot. While held or
 releasing, the leg is solved by two-bone IK (keeping its bend plane,
 clamped by `og.JointLimit`s) onto the target by `weight`, and the foot
-turned back to its animated model rotation. Because the lock lives in
-the entity frame, root motion and clip blends do not move a held foot.
+turned towards its animated orientation by `weight`. Optional PhysicsQuery
+ground rays exclude the skeleton owner, adapt height and align the ankle
+normal. World-space anchors survive entity and parent movement.
 The `og.anim` state block keeps every lock that is held or releasing
 (its entity, the skeleton it holds, the point, the release time); a
 restored world holds the same feet in the same places. A world without
@@ -227,39 +235,28 @@ foot locks has no lock in its block.
 | `skeleton` | u64 (Entity) | 0 | the entity with the `og.Skeleton` |
 | `joint` | u32 | 0 | the chain's last joint |
 | `bones` | u32, 1…16 | 1 | joints that swing: `joint` and its parents |
-| `frequency` | f32 Hz, 0…30, tunable | 3 | the spring's natural frequency (0: hangs and swings only) |
-| `damping` | f32, 0…2, tunable | 0.3 | damping ratio (1 is critical) |
-| `tipFrequency` | f32, 0…4, tunable | 1 | the last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain |
-| `tipDamping` | f32, 0…4, tunable | 1 | the last joint's damping as a multiple of `damping`, likewise |
+| `stiffness` | f32, tunable | 0 | restoring acceleration per metre; zero disables restoring force |
+| `drag` | f32, tunable | 0 | independent velocity decay per second |
+| `tailOffset` | vec3 m | 0 | explicit leaf tail in joint-local coordinates; zero uses the child/rest offset |
+| `teleportDistance` | f32 m | 0 | root displacement that resets tails; zero disables detection |
+| `maxSpeed` | f32 m/s, tunable | 0 | tail speed cap; zero disables it |
+| `wind` | f32, tunable | 0 | coupling to world wind; zero disables it |
 | `gravity` | vec3 m/s² | 0 | acceleration on every tail, in `space` |
-| `space` | enum `world` `model` | world | world: the skeleton entity's Transform frame (the chain lags behind the entity); model: only the animation moves it |
+| `space` | enum `world` `model` | world | world includes all Parent transforms; model moves only with animation |
 | `weight` | f32, 0…1, tunable | 1 | blend of swung and animated rotations |
-| `radius` | f32 m, tunable | 0 | the tails' radius against `og.SpringCollider` (three-vrm's hitRadius) |
+| `radius` | f32 m, tunable | 0 | whole-segment radius in joint-local metres, scaled with the joint and skeleton |
 | `colliders` | u32 bits | all | the collider layers the tails are kept out of |
+| `worldColliders` | u32 bits | 0 | optional world collider layers tested through PhysicsQuery |
 | `lag` | f32 m | 0 | written: the farthest a tail is from its animated place |
 
-Three-vrm's VRMSpringBone, as a damped spring rather than a Verlet
-stiffness. Applied last (after foot locks, IK chains and look-ats), in
-query order, top joint first: each joint's tail (the next chain joint;
-for the last its first child, else its own rest offset continued) is a
-point with a velocity. Per tick, with the joints above already swung,
-the target is where the pose puts the tail; the velocity steps by
-implicit Euler on `x'' = ω²(target − x) − 2ζω x' + g` (ω = 2π·frequency;
-stable at any frequency and tick), the point is put back at the bone's
-length from the joint, the velocity becomes the distance it actually
-moved over dt, and the joint turns by the shortest arc onto it
-(`weight` blends the local rotation). Joint `i` of `n` (top 0) springs at
-`frequency · (1 + (tipFrequency − 1)·i/(n−1))` with damping
-`damping · (1 + (tipDamping − 1)·i/(n−1))`: at 1 and 1 every joint has the
-chain's own, bit for bit. Before the
-joint turns, the tail is pushed out of each collider (below) whose
-`layers` meet `colliders`, in query order: onto the circle where the
-bone's sphere about its head meets the collider grown by the spring's
-`radius`, the point of that circle nearest the tail (so the bone keeps
-its length); a bone whose head is inside a collider is pushed out from
-the collider's centre and put back at its length. A first tick, or a spring moved to
-another skeleton, space or length, starts at the animated pose at rest.
-The `og.anim` state block keeps every spring's tails (section 3).
+Applied last, top joint first. Implicit integration restores each tail
+towards its animated position with independent stiffness and drag;
+gravity and optional wind accelerate it even at zero stiffness. Four
+projection iterations keep whole bone segments outside matching spheres,
+capsules and planes, preserving bone length. Optional world shape casts
+use the same radius scaling. JointLimit clamps the final local rotation.
+The state block saves the actual constrained tails and velocities;
+teleports reset them, and maxSpeed caps collision-induced velocity.
 
 ### `og.SpringCollider` (component, on its own entity; one per shape)
 
@@ -267,10 +264,10 @@ The `og.anim` state block keeps every spring's tails (section 3).
 |---|---|---|---|
 | `skeleton` | u64 (Entity) | 0 | the entity with the `og.Skeleton` whose springs it keeps out |
 | `joint` | u32 | 0 | the joint it rides on |
-| `shape` | enum `sphere` `capsule` | sphere | a ball about `offset`, or a capsule from `offset` to `tail` |
+| `shape` | enum `sphere` `capsule` `plane` | sphere | a ball about `offset`, a capsule from `offset` to `tail`, or a plane through `offset` with `tail` as its normal |
 | `offset` | vec3 m | 0 | the centre, or the capsule's first end, in the joint's frame |
 | `tail` | vec3 m | 0 | the capsule's other end, in the joint's frame |
-| `radius` | f32 m, tunable | 0.1 | in the skeleton's model space (the joint's scale does not apply; the entity's does, in `world` space) |
+| `radius` | f32 m, tunable | 0.1 | joint-local radius; both joint and skeleton scale apply |
 | `layers` | u32 bits | 1 | the layers a spring's `colliders` picks from |
 
 Three-vrm's VRMSpringBoneCollider. Colliders are read in query order
@@ -472,13 +469,16 @@ sections: 1 the foot locks (per `og.FootLock` entity holding or
 releasing a foot: the skeleton, held or releasing, the point, the release
 time), 2 the interrupt guards of fades in progress (entity, layer, rule),
 3 the spring bones (per `og.SpringBone` entity: the skeleton, the space,
-each tail's position and velocity), 4 the hidden nodes of each skeleton
+the previous root, each tail's position and velocity), 4 the hidden nodes of each skeleton
 entity that has one (§Visibility). `snapshot`, `restore` and `world_hash` therefore cover the
 animation; a restore recomputes the palettes from the restored poses. All
 writes happen after every computation, so a failing tick changes nothing.
 
 Composition in model space (IK, root motion) assumes uniform scale along a
-chain; palettes use exact `Mat4` products.
+chain; palettes and spring Parent frames use exact `Mat4` products.
+`Trs::inverse` returns an exact inverse matrix; `inverse_transform_point`
+undoes rotation before dividing by scale. Animation state format is 2;
+old snapshots are not supported.
 
 ## Tests
 
@@ -495,7 +495,6 @@ chain; palettes use exact `Mat4` products.
 | `graph.rs` (mirroring) | a graph clip with `mirror true` gives, tick after tick, the pose, root motion, foot-lock plants and markers (names, times; reported against the walk) of a graph playing the clip `mirror` made, and differs from the walk; `mirror maybe` refused with its line |
 | `graph.rs` (interruption) | per `interrupt` rule, which of the new state's, the source's and an `any` transition cut a 0.5 s fade at once and which wait for it to complete; a bad rule refused with its line; a guarded fade restored from a snapshot continues to the same hashes and states |
 | `layers.rs` | a masked override layer leaves the nodes outside its branches bit for bit, takes a named node's whole branch and blends a half-weight branch halfway; an additive layer's mask; a bad mask weight refused with its line; a synced upper layer samples its clip at the base's phase (not its own); a transition inside a group continues from the old state's phase |
-| `spring.rs` | a three-joint tail trails a body moving at 2 m/s by over 0.1 m, swings past rest when it stops and settles onto the animated pose, bones keeping their length (without a spring the tip rides rigidly); a model-space spring ignores the entity's motion; gravity droops a 1 Hz tail over 3× a 4 Hz one; a single-joint spring turns only that joint; a bad joint refused with the field; a restore mid-swing continues to the same hashes and pose; a tail drooping into a sphere, or a capsule whose ends are far from it, keeps every tail at least the two radii out on every tick (free, it comes within 9 cm of the centre), bones at their length, and a collider on a layer the spring skips changes nothing bit for bit; `tipFrequency` 0.25 droops the tip 3 cm further with the top joint bit-identical, `tipDamping` 4 cuts the overshoot by a fifth |
 | `retarget.rs` (hands) | finger names of every scheme on their bones; a curled index (0.5 rad per joint) on a T-posed source bends the A-posed Mixamo target's by the same angles (1e-3), its bones keeping their lengths, with the arm not animated; an Unreal arm's forearm twist bone, halfway, takes half the hand's 1.2 rad roll and the upper arm's twist bone half the upper arm's 0.6 against the spine; Unity's legacy thumb names (with spaces or squashed, both sides) start at the metacarpal while VRM 1.0's stay, the rig-file workaround naming all three gives the same map and a rig file still overrides it; the same shares, per tick, when a clip authored for that arm (not retargeted) leaves its twist bones still, a twist bone the clip keys kept as keyed, and the same arm with the nodes named `roll` posed bit for bit as the clip says; a rig lifted 0.2 m with `footHeight 0.1` plants its feet on that ground (2 mm), without it they stay over 0.25 m up; per-side heights and a bad line |
 | `visibility.rs` | a visibility channel is held to its frame's end (hidden at 96 % of the way to a shown frame) and hides the node's descendants; a LINEAR or fractional one is refused; `lerp_to` takes the other pose's flags from 0.5, a masked layer per node by its weight, an additive layer only the flags its clip toggles; a 0.5 s cross-fade in a player swaps once, at its middle (tick 13–17 of 30), never drawing both frames or neither; mirroring moves a channel to the other side and back; retargeting the walk onto the Mixamo rig carries one by bone (the left upper arm) and one by name (a sword); two runs give the same hashes, and a snapshot at tick 20 (a frame folded away) restores to the same hash and outputs (`drawn`) and continues to the same hashes |
 | `retarget.rs` | the schemes detected from the walker's and a Mixamo rig's names, rig files (forced scheme, a bone named and one removed, mistakes by line); the walk retargeted onto longer legs keeps planted feet on the ground and still, without foot IK it misses by over 1 cm; the hips' travel scaled; an A-posed arm waves parallel to the T-posed one; the clip plays on the tall rig; side tokens swap in every scheme's names; a mirrored walk moves each foot as the other did, reflected, within 1e-5 (on the walker and on the tall Mixamo rig), the hips' sway flips, and mirroring twice gives the walk back |

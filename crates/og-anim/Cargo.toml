@@ -10,6 +10,7 @@ autotests = false
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+og-physics = { path = "../og-physics" }
 og-lanes = { path = "../og-lanes" }
 # The cooked animation, flipbook and rig blobs decode into this crate's
 # assets (`cooked`); the blob schemas are og-bundle's.
@@ -48,6 +49,7 @@ naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-
 # The motion tests and examples block on the GPU; the library never does.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 pollster = { workspace = true }
+og-render = { path = "../og-render" }
 
 [[test]]
 name = "tests"

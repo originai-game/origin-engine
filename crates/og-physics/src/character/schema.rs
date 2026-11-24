@@ -25,6 +25,9 @@ pub struct CharacterController {
     /// Velocity added once next tick, then cleared (knockback or a spring).
     #[reflect(name = "addVelocity", unit = "m/s")]
     pub add_velocity: Vec3,
+    /// Animation displacement consumed once by the character sweep, including vertical travel.
+    #[reflect(name = "rootDelta", unit = "m")]
+    pub root_delta: Vec3,
     /// Up axis for walking, jumping and slopes. Zero derives up opposite world gravity.
     pub up: Vec3,
     /// How long a jump press remains buffered; zero disables buffering.
@@ -124,6 +127,7 @@ impl Default for CharacterController {
         CharacterController {
             mass: 0.0,
             add_velocity: Vec3::ZERO,
+            root_delta: Vec3::ZERO,
             up: Vec3::ZERO,
             jump_buffer: 0.0,
             platform_inherit: 0.0,
@@ -453,9 +457,24 @@ pub struct CharacterEvent {
 /// bodies are dynamic, starting with the animation's velocity); the pose
 /// drawn blends between them over `blendTime`, both ways. The bodies are
 /// world state (the og.physics state block), not entities.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.Ragdoll")]
 pub struct Ragdoll {
+    /// Rig indices of dynamic bones; an empty list enables none.
+    #[reflect(name = "boneMask")]
+    pub bone_mask: og_core::List<u32, 64>,
+    /// Joint motor restoring stiffness; zero disables position drive.
+    #[reflect(name = "motorStiffness", min = 0, tunable)]
+    pub motor_stiffness: f32,
+    /// Joint motor velocity damping; zero disables it.
+    #[reflect(name = "motorDamping", min = 0, tunable)]
+    pub motor_damping: f32,
+    /// Move the entity with the first simulated root bone.
+    #[reflect(name = "driveTransform")]
+    pub drive_transform: bool,
+    /// Collision memberships and filters; zero disables contacts.
+    pub layers: u32,
+    pub mask: u32,
     /// 0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.
     #[reflect(min = 0, max = 1, tunable)]
     pub weight: f32,
@@ -491,6 +510,12 @@ pub struct Ragdoll {
 impl Default for Ragdoll {
     fn default() -> Self {
         Ragdoll {
+            bone_mask: Default::default(),
+            motor_stiffness: 0.0,
+            motor_damping: 0.0,
+            drive_transform: false,
+            layers: 0,
+            mask: 0,
             weight: 0.0,
             blend_time: 0.25,
             mass: 60.0,

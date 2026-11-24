@@ -764,11 +764,13 @@ pub trait PhysicsApi: Wire {
     /// `og.physics.vehicleWheels`
     fn og_physics_vehicle_wheels(&self, world: u32, entity: f64) -> String;
     /// `og.physics.ragdollRigFromSkeleton`
-    fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64) -> String;
+    fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64, bones: String) -> String;
     /// `og.physics.setRagdollRig`
     fn og_physics_set_ragdoll_rig(&self, world: u32, entity: f64, desc: Option<String>) -> String;
     /// `og.physics.ragdollPose`
     fn og_physics_ragdoll_pose(&self, world: u32, entity: f64) -> String;
+    /// `og.physics.applyRagdollImpulse`
+    fn og_physics_apply_ragdoll_impulse(&self, world: u32, entity: f64, bone_index: u32, impulse: String, point: String) -> String;
     /// `og.physics.stats`
     fn og_physics_stats(&self, world: u32) -> String;
 }
@@ -1875,6 +1877,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_rig_from_skeleton",
     "og_physics_set_ragdoll_rig",
     "og_physics_ragdoll_pose",
+    "og_physics_apply_ragdoll_impulse",
     "og_physics_stats",
     "og_atmosphere_time_of_day",
     "og_atmosphere_season",

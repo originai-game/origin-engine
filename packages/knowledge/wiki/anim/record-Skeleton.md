@@ -15,6 +15,9 @@ Token `og.Skeleton`, registered under the schema name `og.Skeleton`; its value t
 | `asset` | `SkeletonAsset` | `0` | — | — | — | The skeleton asset (og.load.animation's `skeleton`); 0 is none. |
 | `skin` | `number` | `0` | ≥ 0 | — | — | Which of the asset's skins the joint palette is for (glTF skin index). |
 | `rootMotion` | `RootMotion` | `"off"` | — | — | — | Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full. |
+| `rootMotionMode` | `RootMotionMode` | `"transform"` | — | — | — | Apply extracted motion to Transform or to the CharacterController sweep. Controller mode requires that component. |
+| `rootDelta` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Written: extracted world-space displacement this tick. |
+| `rootYawDelta` | `number` | `0` | — | `rad` | read only | Written: extracted yaw this tick. |
 | `rootJoint` | `number` | `0` | ≥ 0 | — | — | The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips). |
 | `jointCount` | `number` | `0` | — | — | read only | Written: the number of joints in the palette (0 until the first tick). |
 
@@ -26,6 +29,15 @@ component Skeleton {
     min 0
   }
   field rootMotion RootMotion "Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full."
+  field rootMotionMode RootMotionMode "Apply extracted motion to Transform or to the CharacterController sweep. Controller mode requires that component."
+  field rootDelta Vector3 "Written: extracted world-space displacement this tick." {
+    readonly true
+    unit m
+  }
+  field rootYawDelta f32 "Written: extracted yaw this tick." {
+    readonly true
+    unit rad
+  }
   field rootJoint u32 "The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips)." {
     min 0
   }
@@ -35,4 +47,4 @@ component Skeleton {
 }
 ```
 
-<sub>Module `anim` line 86</sub>
+<sub>Module `anim` line 99</sub>

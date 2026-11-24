@@ -150,7 +150,7 @@ fn aligned(
             } else {
                 world[parent as usize]
             };
-            pose[hips].translation = parent.inverse().transform_point(placed.translation);
+            pose[hips].translation = parent.inverse_transform_point(placed.translation);
             pose[hips].rotation = og_anim::unit(parent.rotation.conjugate() * placed.rotation);
             pose
         })
@@ -165,7 +165,7 @@ fn aligned(
         };
         assert_eq!(
             output[t][hips].translation,
-            parent.inverse().transform_point(placed.translation)
+            parent.inverse_transform_point(placed.translation)
         );
         assert_eq!(
             output[t][hips].rotation,
@@ -232,7 +232,7 @@ fn on_flight(
             } else {
                 world[parent as usize]
             };
-            pose[hips].translation = parent.inverse().transform_point(at);
+            pose[hips].translation = parent.inverse_transform_point(at);
             pose
         })
         .collect()
@@ -1125,7 +1125,7 @@ fn correct(
             } else {
                 world[t][parent_of_hips as usize]
             };
-            pose[hips].translation = parent.inverse().transform_point(hips_at[t]);
+            pose[hips].translation = parent.inverse_transform_point(hips_at[t]);
             for &j in &body.order {
                 if j != hips {
                     let p = skeleton.nodes[j].parent as usize;

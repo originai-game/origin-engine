@@ -462,10 +462,20 @@ those contacts are not wanted. With solid collision enabled the character's
 own collider counts, so keep that collider inside the body. The model draws the garment where the simulation leaves
 it, with motion vectors for TAA.
 
-**Ragdolls.** Build the rig once with `og.physics.ragdollRigFromSkeleton`
-and give it with `setRagdollRig`; set `weight` 1 on a hit (with `impulse`)
-and back to 0 to recover; the pose blends over `blendTime` both ways. Rigs
-are assets: give them again after a reload.
+**Ragdolls.** Pass an explicit skin-joint whitelist to
+`og.physics.ragdollRigFromSkeleton`, or author a RagdollRigDesc, then give
+it with `setRagdollRig`. Names never select bones. The rest pose and entity
+world scale place the rig; author per-bone mass, shape and joint kind,
+including a bone-local hingeAxis and asymmetric twist bounds for knees.
+Set boneMask to the rig indices that should simulate (empty enables none),
+and layers/mask to the contacts wanted (zero disables them). The owner's
+capsule and parent-child bones never collide, but different ragdolls can.
+Set weight 1 on a hit and back to 0 to recover; blendTime controls both
+directions. The total activation impulse is shared by mass; use
+applyRagdollImpulse for a point hit on one bone. motorStiffness and
+motorDamping drive joints towards animation; zero disables the drive.
+driveTransform follows the root bone with the entity. Rigs are assets:
+give them again after a reload.
 
 **Buoyancy.** It floats a body on an og.WaterSurface, an og.Water (a flat
 lake, or a sea with a wind) or both. Put `{}` beside the body's og.RigidBody

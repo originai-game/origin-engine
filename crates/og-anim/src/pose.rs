@@ -333,8 +333,9 @@ impl RootMotion {
         let pa = self.planar(&self.sample_model(skeleton, clip, binding, a));
         let pb = self.planar(&self.sample_model(skeleton, clip, binding, b));
         let r = &self.reference;
-        let d = r.mul(&pa.inverse()).mul(&pb).mul(&r.inverse());
-        Trs::new(d.translation, d.rotation, Vec3::ONE)
+        let d = r.to_mat4() * pa.inverse() * pb.to_mat4() * r.inverse();
+        let (_, rotation, translation) = d.to_scale_rotation_translation();
+        Trs::new(translation, rotation, Vec3::ONE)
     }
 
     /// Replaces the root's travel in `pose` by the reference's, so the
@@ -342,12 +343,14 @@ impl RootMotion {
     fn pin(&self, pose: &mut [Trs]) {
         let m = self.model_of(pose);
         let p = self.planar(&m);
-        let pinned = self.reference.mul(&p.inverse()).mul(&m);
+        let pinned = self.reference.to_mat4() * p.inverse() * m.to_mat4();
         let mut parent = Trs::IDENTITY;
         for &n in &self.chain[..self.chain.len() - 1] {
             parent = parent.mul(&pose[n as usize]);
         }
-        pose[self.node as usize] = parent.inverse().mul(&pinned);
+        let (scale, rotation, translation) =
+            (parent.inverse() * pinned).to_scale_rotation_translation();
+        pose[self.node as usize] = Trs::new(translation, rotation, scale);
     }
 }
 

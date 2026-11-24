@@ -610,6 +610,7 @@ fn step_here(
         }
     }
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
+    super::ragdoll_readout(scene, sim, &shared.rigs, &mut out);
     laps.lap(Phase::Readout);
     ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;
     // Deferred soft/fluid reaction impulses can wake a body this tick.

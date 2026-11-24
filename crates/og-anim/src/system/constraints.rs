@@ -37,11 +37,36 @@ pub(super) fn foot_lock(
         }
     }
     let planted = total > 0.0 && on >= 0.5 * total;
-    let frame = w.transform.map_or(Trs::IDENTITY, |t| {
-        Trs::new(t.position, t.quaternion, t.scale)
-    });
+    let frame = w.world_matrix();
     let model = w.asset.model_space(&w.pose.nodes);
-    let animated = frame.transform_point(model[foot as usize].translation);
+    let animated = frame.transform_point3(model[foot as usize].translation);
+    let ray_at = match prev {
+        Lock::Held(at) | Lock::Releasing(at, _) => at,
+        Lock::Free => animated,
+    };
+    let ground = if fl.ground_reach > 0.0 {
+        sh.physics
+            .as_ref()
+            .map(|p| p.tick_query())
+            .transpose()?
+            .map(|q| {
+                q.raycast(&og_physics::RaycastDesc {
+                    origin: ray_at + Vec3::Y * fl.ground_reach,
+                    direction: -Vec3::Y,
+                    max_distance: 2.0 * fl.ground_reach,
+                    filter: og_physics::QueryFilter {
+                        exclude: Some(w.entity),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+            })
+            .transpose()?
+            .flatten()
+    } else {
+        None
+    };
+    let planted_at = ground.as_ref().map_or(animated, |h| h.point);
     let release = fl.release.max(0.0);
     let lifted = |at: Vec3| {
         if release > 0.0 {
@@ -51,9 +76,15 @@ pub(super) fn foot_lock(
         }
     };
     let lock = match prev {
-        Lock::Free if planted => Lock::Held(animated),
+        Lock::Free if planted => Lock::Held(planted_at),
         Lock::Free => Lock::Free,
-        Lock::Held(at) if !planted || (at - animated).length() > fl.max_distance => lifted(at),
+        // A teleport must drop the old anchor, not fade towards it.
+        Lock::Held(at) | Lock::Releasing(at, _)
+            if fl.max_distance > 0.0 && (at - animated).length() > fl.max_distance =>
+        {
+            Lock::Free
+        }
+        Lock::Held(at) if !planted => lifted(at),
         Lock::Held(at) => Lock::Held(at),
         Lock::Releasing(from, t) => {
             let t = t + dt;
@@ -70,8 +101,26 @@ pub(super) fn foot_lock(
         Lock::Releasing(from, t) => Some(from + (animated - from) * (t / release)),
     };
     if let Some(target) = target {
-        let to = frame.inverse().transform_point(target);
+        let target = ground
+            .as_ref()
+            .map_or(target, |h| Vec3::new(target.x, h.point.y, target.z));
+        let to = frame.inverse().transform_point3(target);
         let turned = model[foot as usize].rotation;
+        if fl.pelvis_drop > 0.0 {
+            let pelvis = w.asset.nodes[leg[0] as usize].parent;
+            if pelvis != NONE {
+                let drop =
+                    (animated.y - target.y).clamp(0.0, fl.pelvis_drop) * fl.weight.clamp(0.0, 1.0);
+                let parent = w.asset.nodes[pelvis as usize].parent;
+                let pm = if parent == NONE {
+                    Mat4::IDENTITY
+                } else {
+                    w.asset.model_matrices(&w.pose.nodes)[parent as usize]
+                };
+                w.pose.nodes[pelvis as usize].translation +=
+                    (frame * pm).inverse().transform_vector3(-Vec3::Y * drop);
+            }
+        }
         let lim = chain_limits(w, &leg, limits);
         ik::two_bone(
             &w.asset,
@@ -85,7 +134,19 @@ pub(super) fn foot_lock(
         // The foot keeps its animated orientation.
         let parent = w.asset.nodes[foot as usize].parent as usize;
         let m = w.asset.model_space(&w.pose.nodes);
-        w.pose.nodes[foot as usize].rotation = unit(m[parent].rotation.conjugate() * turned);
+        let turned = ground.as_ref().map_or(turned, |h| {
+            let normal = frame
+                .transpose()
+                .transform_vector3(h.normal)
+                .normalize_or(Vec3::Y);
+            unit(rotation_arc(turned * Vec3::Y, normal) * turned)
+        });
+        let local = unit(m[parent].rotation.conjugate() * turned);
+        w.pose.nodes[foot as usize].rotation = nlerp(
+            w.pose.nodes[foot as usize].rotation,
+            local,
+            fl.weight.clamp(0.0, 1.0),
+        );
     }
     fl.planted = planted;
     fl.locked = matches!(lock, Lock::Held(_));
@@ -170,19 +231,17 @@ fn chain_limits(w: &Work, nodes: &[u32], limits: &Limits) -> Vec<Option<JointLim
 
 /// A point of `space` in the skeleton's model space (world: the inverse
 /// of the entity's Transform).
-fn model_point(space: u32, t: Option<Transform>, p: Vec3) -> Vec3 {
-    match (space, t) {
-        (IK_WORLD, Some(t)) => Trs::new(t.position, t.quaternion, t.scale)
-            .inverse()
-            .transform_point(p),
+fn model_point(space: u32, frame: Mat4, p: Vec3) -> Vec3 {
+    match space {
+        IK_WORLD => frame.inverse().transform_point3(p),
         _ => p,
     }
 }
 
 /// A direction of `space` in the skeleton's model space.
-fn model_direction(space: u32, t: Option<Transform>, v: Vec3) -> Vec3 {
-    match (space, t) {
-        (IK_WORLD, Some(t)) => t.quaternion.conjugate() * v,
+fn model_direction(space: u32, frame: Mat4, v: Vec3) -> Vec3 {
+    match space {
+        IK_WORLD => frame.inverse().transform_vector3(v),
         _ => v,
     }
 }
@@ -220,30 +279,33 @@ struct Placed {
     a: Vec3,
     b: Vec3,
     reach: f32,
+    normal: Option<Vec3>,
 }
 
-/// The point of segment `a`…`b` nearest `x`.
-fn nearest_on_segment(a: Vec3, b: Vec3, x: Vec3) -> Vec3 {
-    og_core::math::closest_on_segment(x, a, b)
-}
-
-/// Where a tail at `x`, `length` from `head`, comes to rest outside a ball
-/// of `reach` about `centre`: the point nearest `x` on the circle where the
-/// bone's sphere about `head` meets the ball's surface. None when the bone
-/// cannot clear the ball (its head too deep) or `x` lies on the axis.
-fn push_out(head: Vec3, length: f32, centre: Vec3, reach: f32, x: Vec3) -> Option<Vec3> {
-    let hc = centre - head;
-    let d = hc.length();
-    if d < 1e-9 || d + length < reach || d > length + reach {
-        return None;
+/// Closest points, including parallel and zero-length collider segments.
+fn closest_segments(a: Vec3, b: Vec3, c: Vec3, d: Vec3) -> (Vec3, Vec3) {
+    let (u, v, r) = (b - a, d - c, a - c);
+    let (uu, vv, uv, ur, vr) = (u.dot(u), v.dot(v), u.dot(v), u.dot(r), v.dot(r));
+    if vv == 0.0 {
+        return (og_core::math::closest_on_segment(c, a, b), c);
     }
-    let n = hc / d;
-    let a = (length * length - reach * reach + d * d) / (2.0 * d);
-    let rho = (length * length - a * a).max(0.0).sqrt();
-    let off = x - head;
-    let side = off - n * off.dot(n);
-    let l = side.length();
-    (l > 1e-9).then(|| head + n * a + side * (rho / l))
+    if uu == 0.0 {
+        return (a, og_core::math::closest_on_segment(a, c, d));
+    }
+    let denom = uu * vv - uv * uv;
+    let mut s = if denom > 0.0 {
+        ((uv * vr - ur * vv) / denom).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let t = (uv * s + vr) / vv;
+    if t < 0.0 {
+        s = (-ur / uu).clamp(0.0, 1.0);
+    }
+    if t > 1.0 {
+        s = ((uv - ur) / uu).clamp(0.0, 1.0);
+    }
+    (a + u * s, c + v * t.clamp(0.0, 1.0))
 }
 
 /// One spring chain this tick: each joint's tail, top first, stepped
@@ -255,6 +317,8 @@ pub(super) fn spring(
     sb: &mut SpringBone,
     prev: Option<&SpringState>,
     colliders: &[(u32, SpringCollider)],
+    limits: &Limits,
+    physics: Option<&og_physics::PhysicsSystem>,
     dt: f32,
 ) -> Result<SpringState> {
     let node = joint(w, sb.joint, "og.SpringBone.joint")?;
@@ -266,63 +330,74 @@ pub(super) fn spring(
             bones - 1
         )));
     };
-    let frame = match (sb.space, w.transform) {
-        (SPRING_WORLD, Some(t)) => Trs::new(t.position, t.quaternion, t.scale),
-        _ => Trs::IDENTITY,
+    let frame = match sb.space {
+        SPRING_WORLD => w.world_matrix(),
+        _ => Mat4::IDENTITY,
     };
     let to_model = frame.inverse();
-    let prev = prev.filter(|p| p.tails.len() == chain.len());
-    // Implicit Euler on x'' = ω²(target − x) − 2ζω x' + g: stable at any
-    // frequency and tick.
-    // Per joint, top to tip, frequency and damping move linearly from
-    // theirs to tipFrequency and tipDamping times theirs (1 and 1: exactly
-    // the chain's own, for every joint).
-    let (tip_f, tip_d) = (sb.tip_frequency.max(0.0), sb.tip_damping.max(0.0));
-    let along = |i: usize| match chain.len() {
-        1 => 0.0,
-        n => i as f32 / (n - 1) as f32,
-    };
-    let coefficients = |i: usize| {
-        let t = along(i);
-        let omega = std::f32::consts::TAU * sb.frequency.max(0.0) * (1.0 + (tip_f - 1.0) * t);
-        let zeta = sb.damping.max(0.0) * (1.0 + (tip_d - 1.0) * t);
-        (omega * omega, 2.0 * zeta * omega)
-    };
+    let matrices = w.asset.model_matrices(&w.pose.nodes);
+    let root = (frame * matrices[chain[0] as usize]).transform_point3(Vec3::ZERO);
+    let prev = prev.filter(|p| {
+        p.tails.len() == chain.len()
+            && (sb.teleport_distance <= 0.0 || p.root.distance(root) <= sb.teleport_distance)
+    });
+    let (k, c) = (sb.stiffness.max(0.0), sb.drag.max(0.0));
     let weight = sb.weight.clamp(0.0, 1.0);
-    let model = w.asset.model_space(&w.pose.nodes);
     // The colliders of this skeleton the chain is kept out of, placed in
     // the spring's frame from the pose as it is when the chain starts.
-    let scale = frame.scale.abs().max_element();
+    let scale = |m: Mat4| {
+        m.x_axis
+            .truncate()
+            .length()
+            .max(m.y_axis.truncate().length())
+            .max(m.z_axis.truncate().length())
+    };
     let radius = sb.radius.max(0.0);
     let placed: Vec<Placed> = colliders
         .iter()
         .filter(|(_, c)| c.skeleton == sb.skeleton && c.layers & sb.colliders != 0)
         .map(|&(node, c)| {
-            let m = frame.mul(&model[node as usize]);
-            let a = m.transform_point(c.offset);
+            let m = frame * matrices[node as usize];
+            let a = m.transform_point3(c.offset);
             let b = if c.shape == SPRING_CAPSULE {
-                m.transform_point(c.tail)
+                m.transform_point3(c.tail)
             } else {
                 a
             };
             Placed {
                 a,
                 b,
-                reach: (c.radius.max(0.0) + radius) * scale,
+                reach: c.radius.max(0.0) * scale(m),
+                normal: (c.shape == SPRING_PLANE).then(|| {
+                    m.inverse()
+                        .transpose()
+                        .transform_vector3(c.tail)
+                        .normalize_or_zero()
+                }),
             }
         })
         .collect();
     let mut parent = match w.asset.nodes[chain[0] as usize].parent {
-        NONE => Trs::IDENTITY,
-        p => model[p as usize],
+        NONE => Mat4::IDENTITY,
+        p => matrices[p as usize],
+    };
+    let world_query = if sb.world_colliders != 0 {
+        physics.map(|p| p.tick_query()).transpose()?
+    } else {
+        None
     };
     let mut tails = Vec::with_capacity(chain.len());
     for (i, &n) in chain.iter().enumerate() {
-        let tail = tail_of(&w.asset, &w.pose.nodes, &chain, i);
+        let tail = if i + 1 == chain.len() && sb.tail_offset != Vec3::ZERO {
+            sb.tail_offset
+        } else {
+            tail_of(&w.asset, &w.pose.nodes, &chain, i)
+        };
         let local = w.pose.nodes[n as usize];
-        let m = parent.mul(&local);
-        let head = frame.transform_point(m.translation);
-        let target = frame.transform_point(m.transform_point(tail));
+        let m = parent * local.to_mat4();
+        let head = frame.transform_point3(m.transform_point3(Vec3::ZERO));
+        let target = frame.transform_point3(m.transform_point3(tail));
+        let segment_radius = radius * scale(frame * m);
         let length = (target - head).length();
         let (mut x, mut v) = prev.map_or((target, Vec3::ZERO), |p| p.tails[i]);
         if length < 1e-6 {
@@ -333,8 +408,24 @@ pub(super) fn spring(
         }
         let x0 = x;
         if dt > 0.0 {
-            let (k, c) = coefficients(i);
-            v = (v + ((target - x) * k + sb.gravity) * dt) / (1.0 + dt * c + dt * dt * k);
+            let wind = physics.map_or(Vec3::ZERO, |p| {
+                let at = if sb.space == SPRING_WORLD {
+                    x
+                } else {
+                    w.world_matrix().transform_point3(x)
+                };
+                let wind = p.air_at(at);
+                if sb.space == SPRING_WORLD {
+                    wind
+                } else {
+                    w.world_matrix().inverse().transform_vector3(wind)
+                }
+            });
+            v = (v + ((target - x) * k + sb.gravity + wind * sb.wind) * dt)
+                / (1.0 + dt * (c + sb.wind.max(0.0)) + dt * dt * k);
+            if sb.max_speed > 0.0 {
+                v = v.clamp_length_max(sb.max_speed);
+            }
             x += v * dt;
         }
         // Held at the bone's length from the head.
@@ -349,32 +440,89 @@ pub(super) fn spring(
         };
         x = hold(x);
         // Out of every collider it meets, in order, still at the length.
-        for p in &placed {
-            let near = nearest_on_segment(p.a, p.b, x);
-            if (x - near).length() < p.reach {
-                x = push_out(head, length, near, p.reach, x).unwrap_or_else(|| {
-                    // The bone cannot clear it (its head is inside): out
-                    // from the centre, then back at the length.
-                    let d = x - near;
-                    hold(near + d.normalize_or((x - head).normalize_or(Vec3::Y)) * p.reach)
-                });
+        for _ in 0..4 {
+            for p in &placed {
+                let reach = p.reach + segment_radius;
+                if let Some(normal) = p.normal {
+                    let distance = (x - p.a).dot(normal);
+                    if distance < reach {
+                        x = hold(x + normal * (reach - distance));
+                    }
+                    continue;
+                }
+                // Closest points of the whole bone and collider segments.
+                let (on_bone, near) = closest_segments(head, x, p.a, p.b);
+                if on_bone.distance(near) < reach {
+                    let fraction = ((on_bone - head).length() / length).max(1e-4);
+                    let normal = (on_bone - near)
+                        .normalize_or((target - head).cross(Vec3::X).normalize_or(Vec3::Z));
+                    x = hold(x + normal * ((reach - on_bone.distance(near)) / fraction));
+                }
+            }
+            if let Some(q) = &world_query {
+                let world = if sb.space == SPRING_WORLD {
+                    Mat4::IDENTITY
+                } else {
+                    w.world_matrix()
+                };
+                let a = world.transform_point3(head);
+                let b = world.transform_point3(x);
+                let reach = radius * scale(w.world_matrix() * m);
+                let hit = q.shape_cast(&og_physics::ShapeCastDesc {
+                    shape: og_physics::ShapeDesc {
+                        shape: og_physics::SHAPE_SPHERE,
+                        radius: reach,
+                        ..Default::default()
+                    },
+                    position: a,
+                    direction: b - a,
+                    max_distance: a.distance(b),
+                    filter: og_physics::QueryFilter {
+                        mask: sb.world_colliders,
+                        exclude: Some(w.entity),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })?;
+                if let Some(hit) = hit {
+                    let penetration = (hit.point + hit.normal * reach - b).dot(hit.normal);
+                    if penetration > 0.0 {
+                        x = hold(
+                            world
+                                .inverse()
+                                .transform_point3(b + hit.normal * penetration),
+                        );
+                    }
+                }
             }
         }
-        if dt > 0.0 {
-            v = (x - x0) / dt;
+        let from = local.rotation * (local.scale * tail);
+        let to = parent
+            .inverse()
+            .transform_point3(to_model.transform_point3(x))
+            - local.translation;
+        let mut swung = unit(rotation_arc(from, to) * local.rotation);
+        if let Some(limit) = limits.get(&(sb.skeleton, n)) {
+            swung = limit.clamp(w.asset.nodes[n as usize].rest.rotation, swung);
         }
-        sb.lag = sb.lag.max((x - target).length());
-        let from = m.rotation * (m.scale * tail);
-        let to = to_model.transform_point(x) - m.translation;
-        let turned = unit(rotation_arc(from, to) * m.rotation);
-        let swung = unit(parent.rotation.conjugate() * turned);
         w.pose.nodes[n as usize].rotation = nlerp(local.rotation, swung, weight);
-        parent = parent.mul(&w.pose.nodes[n as usize]);
-        tails.push((x, v));
+        parent *= w.pose.nodes[n as usize].to_mat4();
+        // Constraints and blend weight can change the actual tail. Persist
+        // that tail rather than integrating from an unreachable position.
+        let actual = frame.transform_point3(parent.transform_point3(tail));
+        sb.lag = sb.lag.max((actual - target).length());
+        if dt > 0.0 {
+            v = (actual - x0) / dt;
+        }
+        if sb.max_speed > 0.0 {
+            v = v.clamp_length_max(sb.max_speed);
+        }
+        tails.push((actual, v));
     }
     Ok(SpringState {
         skeleton: sb.skeleton,
         space: sb.space,
+        root,
         tails,
     })
 }
@@ -389,8 +537,9 @@ pub(super) fn aim(w: &mut Work, look: &mut LookAt, limits: &Limits) -> Result<()
             bones - 1
         )));
     };
-    let target = model_point(look.space, w.transform, look.target);
-    let up = (look.up != Vec3::ZERO).then(|| model_direction(look.space, w.transform, look.up));
+    let frame = w.transform.map_or(Mat4::IDENTITY, |t| t.matrix());
+    let target = model_point(look.space, frame, look.target);
+    let up = (look.up != Vec3::ZERO).then(|| model_direction(look.space, frame, look.up));
     let lim = chain_limits(w, &nodes, limits);
     look.clamped = ik::look_at(&w.asset, &mut w.pose.nodes, &nodes, target, up, look, &lim);
     Ok(())
@@ -409,7 +558,8 @@ pub(super) fn solve(w: &mut Work, chain: &mut IkChain, limits: &Limits) -> Resul
             chain.tip
         )));
     };
-    let to_model = |p: Vec3| model_point(chain.space, w.transform, p);
+    let frame = w.transform.map_or(Mat4::IDENTITY, |t| t.matrix());
+    let to_model = |p: Vec3| model_point(chain.space, frame, p);
     let target = to_model(chain.target);
     let weight = chain.weight.clamp(0.0, 1.0);
     let lim = chain_limits(w, &nodes, limits);

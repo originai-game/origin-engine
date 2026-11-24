@@ -1709,8 +1709,8 @@ pub fn og_physics_vehicle_wheels(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64) -> String {
-    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton)
+pub fn og_physics_ragdoll_rig_from_skeleton(world: u32, skeleton: f64, bones: String) -> String {
+    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton, bones)
 }
 
 #[wasm_bindgen]
@@ -1721,6 +1721,11 @@ pub fn og_physics_set_ragdoll_rig(world: u32, entity: f64, desc: Option<String>)
 #[wasm_bindgen]
 pub fn og_physics_ragdoll_pose(world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_apply_ragdoll_impulse(world: u32, entity: f64, bone_index: u32, impulse: String, point: String) -> String {
+    <Host as PhysicsApi>::og_physics_apply_ragdoll_impulse(&Host, world, entity, bone_index, impulse, point)
 }
 
 #[wasm_bindgen]

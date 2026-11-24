@@ -11907,6 +11907,83 @@ impl ToJson for WheelPose {
     }
 }
 
+/// `RagdollBoneShape`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RagdollBoneShape {
+    #[default]
+    Capsule,
+    Box,
+    Sphere,
+}
+
+impl RagdollBoneShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["capsule", "box", "sphere"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Capsule, Self::Box, Self::Sphere];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RagdollBoneShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RagdollBoneShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RagdollBoneShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RagdollBoneShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `RagdollJointKind`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RagdollJointKind {
+    #[default]
+    ConeTwist,
+    Hinge,
+}
+
+impl RagdollJointKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["coneTwist", "hinge"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::ConeTwist, Self::Hinge];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RagdollJointKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RagdollJointKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RagdollJointKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RagdollJointKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `RagdollBoneDesc`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RagdollBoneDesc {
@@ -11916,6 +11993,13 @@ pub struct RagdollBoneDesc {
     pub length: f32,
     pub axis: Vec3,
     pub joint: i32,
+    pub mass: f32,
+    pub shape: RagdollBoneShape,
+    pub joint_kind: RagdollJointKind,
+    pub hinge_axis: Vec3,
+    pub swing: f32,
+    pub twist_min: f32,
+    pub twist_max: f32,
 }
 
 impl Default for RagdollBoneDesc {
@@ -11927,6 +12011,13 @@ impl Default for RagdollBoneDesc {
             length: 0.25_f32,
             axis: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
             joint: -1,
+            mass: Default::default(),
+            shape: Default::default(),
+            joint_kind: Default::default(),
+            hinge_axis: Default::default(),
+            swing: Default::default(),
+            twist_min: Default::default(),
+            twist_max: Default::default(),
         }
     }
 }
@@ -11944,6 +12035,13 @@ impl FromJson for RagdollBoneDesc {
             length: field(o, "length", d.length)?,
             axis: field(o, "axis", d.axis)?,
             joint: field(o, "joint", d.joint)?,
+            mass: field(o, "mass", d.mass)?,
+            shape: field(o, "shape", d.shape)?,
+            joint_kind: field(o, "jointKind", d.joint_kind)?,
+            hinge_axis: field(o, "hingeAxis", d.hinge_axis)?,
+            swing: field(o, "swing", d.swing)?,
+            twist_min: field(o, "twistMin", d.twist_min)?,
+            twist_max: field(o, "twistMax", d.twist_max)?,
         })
     }
 }
@@ -11957,6 +12055,13 @@ impl ToJson for RagdollBoneDesc {
         o.insert("length".into(), self.length.to_json());
         o.insert("axis".into(), self.axis.to_json());
         o.insert("joint".into(), self.joint.to_json());
+        o.insert("mass".into(), self.mass.to_json());
+        o.insert("shape".into(), self.shape.to_json());
+        o.insert("jointKind".into(), self.joint_kind.to_json());
+        o.insert("hingeAxis".into(), self.hinge_axis.to_json());
+        o.insert("swing".into(), self.swing.to_json());
+        o.insert("twistMin".into(), self.twist_min.to_json());
+        o.insert("twistMax".into(), self.twist_max.to_json());
         Value::Object(o)
     }
 }
@@ -12363,6 +12468,44 @@ impl ToJson for RootMotion {
     }
 }
 
+/// `RootMotionMode`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RootMotionMode {
+    #[default]
+    Transform,
+    Controller,
+}
+
+impl RootMotionMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["transform", "controller"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Transform, Self::Controller];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RootMotionMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RootMotionMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RootMotionMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RootMotionMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `BlendshapeSource`: packages/knowledge/wiki/anim.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BlendshapeSource {
@@ -12521,13 +12664,14 @@ pub enum SpringColliderShape {
     #[default]
     Sphere,
     Capsule,
+    Plane,
 }
 
 impl SpringColliderShape {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["sphere", "capsule"];
+    pub const NAMES: &'static [&'static str] = &["sphere", "capsule", "plane"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Sphere, Self::Capsule];
+    pub const ALL: &'static [Self] = &[Self::Sphere, Self::Capsule, Self::Plane];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -33212,6 +33356,7 @@ pub mod record {
     pub struct CharacterController {
         pub mass: f32,
         pub add_velocity: Vec3,
+        pub root_delta: Vec3,
         pub up: Vec3,
         pub jump_buffer: f32,
         pub platform_inherit: f32,
@@ -33248,6 +33393,7 @@ pub mod record {
             Self {
                 mass: Default::default(),
                 add_velocity: Default::default(),
+                root_delta: Default::default(),
                 up: Default::default(),
                 jump_buffer: Default::default(),
                 platform_inherit: Default::default(),
@@ -33290,6 +33436,7 @@ pub mod record {
             Ok(Self {
                 mass: field(o, "mass", d.mass)?,
                 add_velocity: field(o, "addVelocity", d.add_velocity)?,
+                root_delta: field(o, "rootDelta", d.root_delta)?,
                 up: field(o, "up", d.up)?,
                 jump_buffer: field(o, "jumpBuffer", d.jump_buffer)?,
                 platform_inherit: field(o, "platformInherit", d.platform_inherit)?,
@@ -34327,6 +34474,12 @@ pub mod record {
     /// `Ragdoll`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Ragdoll {
+        pub bone_mask: Vec<u32>,
+        pub motor_stiffness: f32,
+        pub motor_damping: f32,
+        pub drive_transform: bool,
+        pub layers: u32,
+        pub mask: u32,
         pub weight: f32,
         pub blend_time: f32,
         pub mass: f32,
@@ -34340,6 +34493,12 @@ pub mod record {
     impl Default for Ragdoll {
         fn default() -> Self {
             Self {
+                bone_mask: Default::default(),
+                motor_stiffness: Default::default(),
+                motor_damping: Default::default(),
+                drive_transform: Default::default(),
+                layers: Default::default(),
+                mask: Default::default(),
                 weight: Default::default(),
                 blend_time: 0.25_f32,
                 mass: 60.0_f32,
@@ -34359,6 +34518,12 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
+                bone_mask: field(o, "boneMask", d.bone_mask)?,
+                motor_stiffness: field(o, "motorStiffness", d.motor_stiffness)?,
+                motor_damping: field(o, "motorDamping", d.motor_damping)?,
+                drive_transform: field(o, "driveTransform", d.drive_transform)?,
+                layers: field(o, "layers", d.layers)?,
+                mask: field(o, "mask", d.mask)?,
                 weight: field(o, "weight", d.weight)?,
                 blend_time: field(o, "blendTime", d.blend_time)?,
                 mass: field(o, "mass", d.mass)?,
@@ -35459,6 +35624,9 @@ pub mod record {
         pub asset: u64,
         pub skin: u32,
         pub root_motion: RootMotion,
+        pub root_motion_mode: RootMotionMode,
+        pub root_delta: Vec3,
+        pub root_yaw_delta: f32,
         pub root_joint: u32,
         pub joint_count: u32,
     }
@@ -35469,6 +35637,9 @@ pub mod record {
                 asset: Default::default(),
                 skin: Default::default(),
                 root_motion: Default::default(),
+                root_motion_mode: Default::default(),
+                root_delta: Default::default(),
+                root_yaw_delta: Default::default(),
                 root_joint: Default::default(),
                 joint_count: Default::default(),
             }
@@ -35485,6 +35656,9 @@ pub mod record {
                 asset: field(o, "asset", d.asset)?,
                 skin: field(o, "skin", d.skin)?,
                 root_motion: field(o, "rootMotion", d.root_motion)?,
+                root_motion_mode: field(o, "rootMotionMode", d.root_motion_mode)?,
+                root_delta: field(o, "rootDelta", d.root_delta)?,
+                root_yaw_delta: field(o, "rootYawDelta", d.root_yaw_delta)?,
                 root_joint: field(o, "rootJoint", d.root_joint)?,
                 joint_count: field(o, "jointCount", d.joint_count)?,
             })
@@ -35800,6 +35974,8 @@ pub mod record {
         pub max_pitch: f32,
         pub weight: f32,
         pub clamped: bool,
+        pub flip_hysteresis: f32,
+        pub yaw_side: f32,
     }
 
     impl Default for LookAt {
@@ -35817,6 +35993,8 @@ pub mod record {
                 max_pitch: 1.5708_f32,
                 weight: 1.0_f32,
                 clamped: Default::default(),
+                flip_hysteresis: Default::default(),
+                yaw_side: Default::default(),
             }
         }
     }
@@ -35840,6 +36018,8 @@ pub mod record {
                 max_pitch: field(o, "maxPitch", d.max_pitch)?,
                 weight: field(o, "weight", d.weight)?,
                 clamped: field(o, "clamped", d.clamped)?,
+                flip_hysteresis: field(o, "flipHysteresis", d.flip_hysteresis)?,
+                yaw_side: field(o, "yawSide", d.yaw_side)?,
             })
         }
     }
@@ -35893,6 +36073,8 @@ pub mod record {
         pub weight: f32,
         pub release: f32,
         pub max_distance: f32,
+        pub ground_reach: f32,
+        pub pelvis_drop: f32,
         pub planted: bool,
         pub locked: bool,
     }
@@ -35905,6 +36087,8 @@ pub mod record {
                 weight: 1.0_f32,
                 release: 0.15_f32,
                 max_distance: 0.5_f32,
+                ground_reach: Default::default(),
+                pelvis_drop: Default::default(),
                 planted: Default::default(),
                 locked: Default::default(),
             }
@@ -35923,6 +36107,8 @@ pub mod record {
                 weight: field(o, "weight", d.weight)?,
                 release: field(o, "release", d.release)?,
                 max_distance: field(o, "maxDistance", d.max_distance)?,
+                ground_reach: field(o, "groundReach", d.ground_reach)?,
+                pelvis_drop: field(o, "pelvisDrop", d.pelvis_drop)?,
                 planted: field(o, "planted", d.planted)?,
                 locked: field(o, "locked", d.locked)?,
             })
@@ -35988,15 +36174,18 @@ pub mod record {
         pub skeleton: u64,
         pub joint: u32,
         pub bones: u32,
-        pub frequency: f32,
-        pub damping: f32,
-        pub tip_frequency: f32,
-        pub tip_damping: f32,
+        pub stiffness: f32,
+        pub drag: f32,
+        pub tail_offset: Vec3,
+        pub teleport_distance: f32,
+        pub max_speed: f32,
+        pub wind: f32,
         pub gravity: Vec3,
         pub space: SpringSpace,
         pub weight: f32,
         pub radius: f32,
         pub colliders: u32,
+        pub world_colliders: u32,
         pub lag: f32,
     }
 
@@ -36006,15 +36195,18 @@ pub mod record {
                 skeleton: Default::default(),
                 joint: Default::default(),
                 bones: 1,
-                frequency: 3.0_f32,
-                damping: 0.3_f32,
-                tip_frequency: 1.0_f32,
-                tip_damping: 1.0_f32,
+                stiffness: Default::default(),
+                drag: Default::default(),
+                tail_offset: Default::default(),
+                teleport_distance: Default::default(),
+                max_speed: Default::default(),
+                wind: Default::default(),
                 gravity: Default::default(),
                 space: Default::default(),
                 weight: 1.0_f32,
                 radius: Default::default(),
                 colliders: 4294967295,
+                world_colliders: Default::default(),
                 lag: Default::default(),
             }
         }
@@ -36030,15 +36222,18 @@ pub mod record {
                 skeleton: field(o, "skeleton", d.skeleton)?,
                 joint: field(o, "joint", d.joint)?,
                 bones: field(o, "bones", d.bones)?,
-                frequency: field(o, "frequency", d.frequency)?,
-                damping: field(o, "damping", d.damping)?,
-                tip_frequency: field(o, "tipFrequency", d.tip_frequency)?,
-                tip_damping: field(o, "tipDamping", d.tip_damping)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                drag: field(o, "drag", d.drag)?,
+                tail_offset: field(o, "tailOffset", d.tail_offset)?,
+                teleport_distance: field(o, "teleportDistance", d.teleport_distance)?,
+                max_speed: field(o, "maxSpeed", d.max_speed)?,
+                wind: field(o, "wind", d.wind)?,
                 gravity: field(o, "gravity", d.gravity)?,
                 space: field(o, "space", d.space)?,
                 weight: field(o, "weight", d.weight)?,
                 radius: field(o, "radius", d.radius)?,
                 colliders: field(o, "colliders", d.colliders)?,
+                world_colliders: field(o, "worldColliders", d.world_colliders)?,
                 lag: field(o, "lag", d.lag)?,
             })
         }

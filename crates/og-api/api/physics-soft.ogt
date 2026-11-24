@@ -673,8 +673,20 @@
   }
 
   component Ragdoll {
-    doc "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities."
+    doc "An explicit rest-pose rig of shaped bones and limited joints. Selected boneMask indices become dynamic with weight, inheriting animation COM velocities; other bones follow animation. Local rotations blend with FK over blendTime. Optional PD motors track animation and driveTransform follows the root. Owner and adjacent contacts are excluded pairwise; other ragdolls can collide. Bodies and motors are saved state, not entities."
     aliases "physical animation, death fall, limp body, Unreal physics asset, Unity ragdoll wizard"
+    field boneMask List.u32.64 "Rig indices of dynamic bones; an empty list enables none."
+    field motorStiffness f32 "PD joint restoring stiffness; zero disables position drive." {
+      min 0
+      tunable true
+    }
+    field motorDamping f32 "PD joint velocity damping; zero disables it." {
+      min 0
+      tunable true
+    }
+    field driveTransform bool "Move the entity with the simulated root bone."
+    field layers u32 "Collision membership bits; zero disables contacts."
+    field mask u32 "Collision filter bits; zero disables contacts."
     field weight f32 "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover." {
       min 0
       max 1
@@ -686,7 +698,7 @@
       unit s
       tunable true
     }
-    field mass f32 "The whole body's mass, shared by the bones by length." {
+    field mass f32 "Mass shared by length among bones without a per-bone mass override." {
       default 60
       min 0.1
       unit kg
@@ -712,7 +724,7 @@
       unit perSecond
       tunable true
     }
-    field impulse Vector3 "An impulse given to every bone when weight first goes up (a hit)."
+    field impulse Vector3 "Total activation impulse distributed among newly dynamic bones in proportion to mass."
     field blend f32 "Written: the blend in use (0 animation .. 1 physics)." {
       readonly true
     }

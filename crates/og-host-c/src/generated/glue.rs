@@ -1710,7 +1710,7 @@ unsafe extern "C" fn og_physics_vehicle_wheels(args: *const crate::OgValue, out:
 }
 
 unsafe extern "C" fn og_physics_ragdoll_rig_from_skeleton(args: *const crate::OgValue, out: *mut crate::OgValue) {
-    let r = <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    let r = <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -1721,6 +1721,11 @@ unsafe extern "C" fn og_physics_set_ragdoll_rig(args: *const crate::OgValue, out
 
 unsafe extern "C" fn og_physics_ragdoll_pose(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_physics_apply_ragdoll_impulse(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_apply_ragdoll_impulse(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) }, unsafe { crate::arg(args, 4) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3797,9 +3802,10 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_physics_fluid_particles", arity: 2, call: og_physics_fluid_particles },
     crate::Symbol { name: c"og_physics_fluid3d_particles", arity: 2, call: og_physics_fluid3d_particles },
     crate::Symbol { name: c"og_physics_vehicle_wheels", arity: 2, call: og_physics_vehicle_wheels },
-    crate::Symbol { name: c"og_physics_ragdoll_rig_from_skeleton", arity: 2, call: og_physics_ragdoll_rig_from_skeleton },
+    crate::Symbol { name: c"og_physics_ragdoll_rig_from_skeleton", arity: 3, call: og_physics_ragdoll_rig_from_skeleton },
     crate::Symbol { name: c"og_physics_set_ragdoll_rig", arity: 3, call: og_physics_set_ragdoll_rig },
     crate::Symbol { name: c"og_physics_ragdoll_pose", arity: 2, call: og_physics_ragdoll_pose },
+    crate::Symbol { name: c"og_physics_apply_ragdoll_impulse", arity: 5, call: og_physics_apply_ragdoll_impulse },
     crate::Symbol { name: c"og_physics_stats", arity: 1, call: og_physics_stats },
     crate::Symbol { name: c"og_atmosphere_time_of_day", arity: 1, call: og_atmosphere_time_of_day },
     crate::Symbol { name: c"og_atmosphere_season", arity: 1, call: og_atmosphere_season },

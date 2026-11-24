@@ -256,7 +256,13 @@ impl Planter {
     /// [`MAX_DROP`] of the leg's length, easing there and back at
     /// [`DROP_SPEED`] leg lengths a second: a wide or turned stance bends
     /// the knees instead of leaving a foot hanging over the ground.
-    fn lower_hips(&mut self, skeleton: &SkeletonAsset, pose: &mut [Trs], to_model: &Trs, dt: f32) {
+    fn lower_hips(
+        &mut self,
+        skeleton: &SkeletonAsset,
+        pose: &mut [Trs],
+        to_model: &og_core::glam::Mat4,
+        dt: f32,
+    ) {
         let Some(&(first, _)) = self.legs.first() else {
             return;
         };
@@ -279,7 +285,7 @@ impl Planter {
                 continue;
             };
             let reach = l * (1.0 - SOFT_REACH);
-            let to = to_model.transform_point(at) - model[hip].translation;
+            let to = to_model.transform_point3(at) - model[hip].translation;
             let across = GVec3::new(to.x, 0.0, to.z).length_squared();
             // The drop d with |to + d·up| = reach.
             if to.length() > reach && across < reach * reach {
@@ -378,7 +384,7 @@ impl Planter {
                 // (one foot at a time, as a stretch step).
                 let out = floor.is_some()
                     && !stepping
-                    && (to_model.transform_point(at) - a).length() > length;
+                    && (to_model.transform_point3(at) - a).length() > length;
                 let behind = behind || out;
                 if !down || behind {
                     plant.anchor = None;
@@ -467,8 +473,8 @@ impl Planter {
             } else {
                 soft_reach
             };
-            let target = reach(a, to_model.transform_point(target), length);
-            let pole = plant.bend.map(|d| a + to_model.rotation * d);
+            let target = reach(a, to_model.transform_point3(target), length);
+            let pole = plant.bend.map(|d| a + root.rotation.conjugate() * d);
             two_bone(skeleton, pose, &leg.chain, target, pole, 1.0, &[]);
             let shin = skeleton.model_space(pose)[leg.chain[1] as usize].rotation;
             pose[ankle].rotation = (shin.conjugate() * foot).normalize();

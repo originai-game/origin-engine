@@ -9,6 +9,9 @@
     field addVelocity Vector3 "Velocity added once next step, then cleared: knockback or a spring." {
       unit mps
     }
+    field rootDelta Vector3 "Animation displacement consumed once by the character sweep, including vertical travel; cleared after the move." {
+      unit m
+    }
     field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up."
     field jumpBuffer f32 "Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps." {
       min 0

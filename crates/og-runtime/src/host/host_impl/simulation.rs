@@ -80,9 +80,26 @@ macro_rules! __og_host_bindings_simulation {
                     world, entity, torque,
                 ))
             }
-            fn og_physics_ragdoll_rig_from_skeleton(&self, world: u32, skeleton: f64) -> String {
+            fn og_physics_ragdoll_rig_from_skeleton(
+                &self,
+                world: u32,
+                skeleton: f64,
+                bones: String,
+            ) -> String {
                 $crate::host_impl::answer($crate::og_physics_ragdoll_rig_from_skeleton(
-                    world, skeleton,
+                    world, skeleton, bones,
+                ))
+            }
+            fn og_physics_apply_ragdoll_impulse(
+                &self,
+                world: u32,
+                entity: f64,
+                bone_index: u32,
+                impulse: String,
+                point: String,
+            ) -> String {
+                $crate::host_impl::answer($crate::og_physics_apply_ragdoll_impulse(
+                    world, entity, bone_index, impulse, point,
                 ))
             }
             fn og_physics_set_ragdoll_rig(

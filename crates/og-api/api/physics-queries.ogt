@@ -353,8 +353,21 @@
     field angularVelocity f32 "Wheel angular speed in rad/s, positive forwards in either profile."
   }
 
+  enum RagdollBoneShape {
+    doc "The collider fitted along a ragdoll bone."
+    variant capsule "Capsule along the bone axis."
+    variant box "Box along the bone axis."
+    variant sphere "Sphere at the bone's midpoint."
+  }
+
+  enum RagdollJointKind {
+    doc "A ragdoll joint's angular degrees of freedom."
+    variant coneTwist "Swing cone and twist about the bone axis."
+    variant hinge "One angular degree of freedom about hingeAxis."
+  }
+
   struct RagdollBoneDesc {
-    doc "One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`."
+    doc "A rest-pose bone: a shaped collider along axis for length, with explicit mass and joint constraints."
     desc true
     field parent i32 "The parent bone's index (it must come earlier); -1 for the root." {
       default -1
@@ -372,6 +385,23 @@
     }
     field joint i32 "The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none." {
       default -1
+    }
+    field mass f32 "Per-bone mass in kg; zero disables the override and uses Ragdoll.mass distributed by length." {
+      min 0
+      unit kg
+    }
+    field shape RagdollBoneShape "Collider shape along the bone."
+    field jointKind RagdollJointKind "Cone/twist about axis, or hinge about hingeAxis."
+    field hingeAxis Vector3 "Hinge axis in the bone's rest-local frame; required for a hinge."
+    field swing f32 "Per-bone swing half-angle; zero disables the override and uses Ragdoll.jointLimit." {
+      min 0
+      unit rad
+    }
+    field twistMin f32 "Least twist or hinge angle; both bounds zero disables the override." {
+      unit rad
+    }
+    field twistMax f32 "Greatest twist or hinge angle; both bounds zero disables the override." {
+      unit rad
     }
   }
 
@@ -446,9 +476,10 @@
   }
 
   fn ragdollRigFromSkeleton {
-    doc "A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not."
+    doc "Build a rest-pose rig from explicitly selected joints of the first skin, parents first. No name-based humanoid inference. Edit per-bone mass, shape and joint limits before setRagdollRig."
     param world World "The world."
     param skeleton SkeletonAsset "The skeleton."
+    param bones List.u32 "Explicit nonempty whitelist of skin joint indices."
     returns Result.RagdollRigDesc "Refused for a skeleton that is not loaded or has no skin."
   }
 
@@ -465,6 +496,16 @@
     param world World "The world."
     param entity Entity "The ragdoll's entity."
     returns Result.List.BonePose "Refused for an entity without a ragdoll."
+  }
+
+  fn applyRagdollImpulse {
+    doc "Apply a world-space impulse at a world-space point to one dynamic ragdoll bone."
+    param world World "The world."
+    param entity Entity "The ragdoll owner."
+    param boneIndex u32 "The bone in rig order."
+    param impulse Vector3 "Impulse in N*s."
+    param point Vector3 "World-space application point."
+    returns Result.Void "Refused for an absent or non-dynamic bone or nonfinite input."
   }
 
   struct PhysicsPhase {

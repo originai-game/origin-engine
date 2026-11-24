@@ -315,13 +315,48 @@ pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
 
 /// A ragdoll bone's joint to its parent: a hinge about z (contacts off)
 /// bending `limit` either way from the pose it was made in.
-pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
-    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_REVOLUTE_AXES)
+pub(crate) fn ragdoll_joint(
+    frame1: rp::Pose,
+    frame2: rp::Pose,
+    bone: &crate::RagdollBone,
+    limit: f32,
+) -> rp::GenericJoint {
+    let mut j = rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_REVOLUTE_AXES)
         .local_frame1(frame1)
-        .local_frame2(rp::Pose::IDENTITY)
+        .local_frame2(frame2)
         .contacts_enabled(false)
-        .limits(rp::JointAxis::AngX, [-limit, limit])
-        .build()
+        .build();
+    if bone.twist_min != 0.0 || bone.twist_max != 0.0 {
+        j.set_limits(rp::JointAxis::AngX, [bone.twist_min, bone.twist_max]);
+    } else if limit > 0.0 {
+        j.set_limits(rp::JointAxis::AngX, [-limit, limit]);
+    }
+    j
+}
+
+pub(crate) fn ragdoll_shape(kind: u32, length: f32, radius: f32) -> rp::SharedShape {
+    match kind {
+        1 => rp::SharedShape::cuboid(radius, length * 0.5),
+        2 => rp::SharedShape::ball(radius),
+        _ => rp::SharedShape::capsule_y((length * 0.5 - radius).max(0.0), radius),
+    }
+}
+
+pub(crate) fn ragdoll_angvel(rb: &mut rp::RigidBody, angular: Vec3) {
+    rb.set_angvel(angular.z, true);
+}
+
+pub(crate) fn ragdoll_motor(j: &mut rp::GenericJoint, target: rp::Pose, k: f32, d: f32) {
+    j.motor_axes = rp::JointAxesMask::empty();
+    if k > 0.0 || d > 0.0 {
+        j.set_motor_model(rp::JointAxis::AngX, rp::MotorModel::ForceBased);
+        j.set_motor_position(
+            rp::JointAxis::AngX,
+            hinge_angle(&rp::Pose::IDENTITY, &target),
+            k.max(0.0),
+            d.max(0.0),
+        );
+    }
 }
 
 pub(crate) fn ragdolls(
@@ -362,4 +397,6 @@ pub(crate) use vehicle::{VehicleState, readback as vehicle_readback, vehicles, w
 #[allow(clippy::duplicate_mod)]
 #[path = "character/ragdoll.rs"]
 mod ragdoll;
-pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
+pub(crate) use ragdoll::{
+    RagdollState, impulse as ragdoll_impulse, pose_of as ragdoll_pose, readout as ragdoll_readout,
+};

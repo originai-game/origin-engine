@@ -530,6 +530,7 @@ pub(crate) fn assemble(
     }
     let contract = project.is_some_and(|p| p.look.is_some());
     let anim = super::anim::install(&mut world, super::art::step_default(contract, &layouts))?;
+    anim.set_physics(physics.clone());
     let feel_records = super::feel::Records::of(&world, &layouts)?;
     super::feel::install_middle(
         &mut world,

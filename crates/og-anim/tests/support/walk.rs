@@ -210,8 +210,8 @@ pub fn build(seed: u32) -> (World, AnimationSystem) {
                 SpringBone {
                     skeleton: e.to_bits(),
                     joint: J_HAND_L,
-                    frequency: 2.0,
-                    damping: 0.4,
+                    stiffness: 158.0,
+                    drag: 10.0,
                     gravity: Vec3::new(0.0, -9.8, 0.0),
                     ..SpringBone::default()
                 },

@@ -389,15 +389,67 @@ pub(crate) fn rot(q: Quat) -> rp::Rotation {
 
 /// A ragdoll bone's joint to its parent: a ball joint (contacts off) with
 /// `limit` of swing about x and z and half that of twist about y.
-pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
-    rp::GenericJointBuilder::new(rp::JointAxesMask::LOCKED_SPHERICAL_AXES)
+pub(crate) fn ragdoll_joint(
+    frame1: rp::Pose,
+    frame2: rp::Pose,
+    bone: &crate::RagdollBone,
+    limit: f32,
+) -> rp::GenericJoint {
+    let axes = if bone.joint_kind == 1 {
+        rp::JointAxesMask::LOCKED_REVOLUTE_AXES
+    } else {
+        rp::JointAxesMask::LOCKED_SPHERICAL_AXES
+    };
+    let mut j = rp::GenericJointBuilder::new(axes)
         .local_frame1(frame1)
-        .local_frame2(rp::Pose::IDENTITY)
+        .local_frame2(frame2)
         .contacts_enabled(false)
-        .limits(rp::JointAxis::AngX, [-limit, limit])
-        .limits(rp::JointAxis::AngY, [-limit * 0.5, limit * 0.5])
-        .limits(rp::JointAxis::AngZ, [-limit, limit])
-        .build()
+        .build();
+    let swing = if bone.swing > 0.0 { bone.swing } else { limit };
+    if bone.joint_kind == 0 && swing > 0.0 {
+        j.coupled_axes = rp::JointAxesMask::ANG_Y | rp::JointAxesMask::ANG_Z;
+        j.set_limits(rp::JointAxis::AngY, [0.0, swing]);
+    }
+    if bone.twist_min != 0.0 || bone.twist_max != 0.0 {
+        j.set_limits(rp::JointAxis::AngX, [bone.twist_min, bone.twist_max]);
+    } else if limit > 0.0 {
+        j.set_limits(rp::JointAxis::AngX, [-limit, limit]);
+    }
+    j
+}
+
+pub(crate) fn ragdoll_shape(kind: u32, length: f32, radius: f32) -> rp::SharedShape {
+    match kind {
+        1 => rp::SharedShape::cuboid(radius, length * 0.5, radius),
+        2 => rp::SharedShape::ball(radius),
+        _ => rp::SharedShape::capsule_y((length * 0.5 - radius).max(0.0), radius),
+    }
+}
+
+pub(crate) fn ragdoll_angvel(rb: &mut rp::RigidBody, angular: Vec3) {
+    rb.set_angvel(v(angular), true);
+}
+
+pub(crate) fn ragdoll_motor(j: &mut rp::GenericJoint, target: rp::Pose, k: f32, d: f32) {
+    let (_, q) = unpose(&target, Vec3::ZERO);
+    let q = if q.w < 0.0 { -q } else { q };
+    j.motor_axes = rp::JointAxesMask::empty();
+    for (axis, component) in [
+        (rp::JointAxis::AngX, q.x),
+        (rp::JointAxis::AngY, q.y),
+        (rp::JointAxis::AngZ, q.z),
+    ] {
+        if !j.locked_axes.contains(axis.into()) && (k > 0.0 || d > 0.0) {
+            // Match Rapier's independent angular-coordinate error, not Euler
+            // angles. Force-based PD uses the actual inertia about the joint,
+            // including COM offset, rather than the body's bare rotational inertia.
+            let component = component.clamp(-1.0, 1.0);
+            let angle = 2.0
+                * og_core::math::atan2(component, (1.0 - component * component).max(0.0).sqrt());
+            j.set_motor_model(axis, rp::MotorModel::ForceBased);
+            j.set_motor_position(axis, angle, k.max(0.0), d.max(0.0));
+        }
+    }
 }
 
 /// The axes a ball joint locks.
@@ -484,4 +536,6 @@ pub(crate) use vehicle::{VehicleState, readback as vehicle_readback, vehicles, w
 #[allow(clippy::duplicate_mod)]
 #[path = "character/ragdoll.rs"]
 mod ragdoll;
-pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
+pub(crate) use ragdoll::{
+    RagdollState, impulse as ragdoll_impulse, pose_of as ragdoll_pose, readout as ragdoll_readout,
+};

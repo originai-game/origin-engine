@@ -8068,6 +8068,8 @@
         "MassProperties",
         "MeshDesc",
         "WheelPose",
+        "RagdollBoneShape",
+        "RagdollJointKind",
         "RagdollBoneDesc",
         "RagdollRigDesc",
         "BonePose",
@@ -8811,7 +8813,7 @@
         },
         {
           "name": "ragdollRigFromSkeleton",
-          "doc": "A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not.",
+          "doc": "Build a rest-pose rig from explicitly selected joints of the first skin, parents first. No name-based humanoid inference. Edit per-bone mass, shape and joint limits before setRagdollRig.",
           "params": [
             {
               "name": "world",
@@ -8824,6 +8826,12 @@
               "type": "SkeletonAsset",
               "optional": false,
               "doc": "The skeleton."
+            },
+            {
+              "name": "bones",
+              "type": "List<u32>",
+              "optional": false,
+              "doc": "Explicit nonempty whitelist of skin joint indices."
             }
           ],
           "returns": "Result<RagdollRigDesc>",
@@ -8876,6 +8884,45 @@
           ],
           "returns": "Result<List<BonePose>>",
           "returnsDoc": "Refused for an entity without a ragdoll.",
+          "publish": true
+        },
+        {
+          "name": "applyRagdollImpulse",
+          "doc": "Apply a world-space impulse at a world-space point to one dynamic ragdoll bone.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The ragdoll owner."
+            },
+            {
+              "name": "boneIndex",
+              "type": "u32",
+              "optional": false,
+              "doc": "The bone in rig order."
+            },
+            {
+              "name": "impulse",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Impulse in N*s."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "World-space application point."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an absent or non-dynamic bone or nonfinite input.",
           "publish": true
         },
         {
@@ -9027,6 +9074,8 @@
         "GraphAsset",
         "RootMotion",
         "RootMotion",
+        "RootMotionMode",
+        "RootMotionMode",
         "BlendshapeSource",
         "BlendshapeSource",
         "IkSolver",
@@ -35447,6 +35496,16 @@
           },
           "x-og-unit": "mps"
         },
+        "rootDelta": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Animation displacement consumed once by the character sweep, including vertical travel; cleared after the move.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
         "up": {
           "$ref": "#/$defs/Vector3",
           "description": "Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up.",
@@ -37825,9 +37884,53 @@
     "Ragdoll": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.",
+      "description": "An explicit rest-pose rig of shaped bones and limited joints. Selected boneMask indices become dynamic with weight, inheriting animation COM velocities; other bones follow animation. Local rotations blend with FK over blendTime. Optional PD motors track animation and driveTransform follows the root. Owner and adjacent contacts are excluded pairwise; other ragdolls can collide. Bodies and motors are saved state, not entities.",
       "type": "object",
       "properties": {
+        "boneMask": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 64,
+          "description": "Rig indices of dynamic bones; an empty list enables none.",
+          "default": []
+        },
+        "motorStiffness": {
+          "type": "number",
+          "description": "PD joint restoring stiffness; zero disables position drive.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "motorDamping": {
+          "type": "number",
+          "description": "PD joint velocity damping; zero disables it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "driveTransform": {
+          "type": "boolean",
+          "description": "Move the entity with the simulated root bone.",
+          "default": false
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Collision membership bits; zero disables contacts.",
+          "default": 0
+        },
+        "mask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Collision filter bits; zero disables contacts.",
+          "default": 0
+        },
         "weight": {
           "type": "number",
           "description": "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.",
@@ -37846,7 +37949,7 @@
         },
         "mass": {
           "type": "number",
-          "description": "The whole body's mass, shared by the bones by length.",
+          "description": "Mass shared by length among bones without a per-bone mass override.",
           "default": 60,
           "minimum": 0.1,
           "x-og-unit": "kg",
@@ -37880,7 +37983,7 @@
         },
         "impulse": {
           "$ref": "#/$defs/Vector3",
-          "description": "An impulse given to every bone when weight first goes up (a hit).",
+          "description": "Total activation impulse distributed among newly dynamic bones in proportion to mass.",
           "default": {
             "x": 0,
             "y": 0,
@@ -38826,10 +38929,40 @@
       ],
       "additionalProperties": false
     },
+    "RagdollBoneShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "The collider fitted along a ragdoll bone.",
+      "type": "string",
+      "enum": [
+        "capsule",
+        "box",
+        "sphere"
+      ],
+      "x-og-variants": {
+        "capsule": "Capsule along the bone axis.",
+        "box": "Box along the bone axis.",
+        "sphere": "Sphere at the bone's midpoint."
+      }
+    },
+    "RagdollJointKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "A ragdoll joint's angular degrees of freedom.",
+      "type": "string",
+      "enum": [
+        "coneTwist",
+        "hinge"
+      ],
+      "x-og-variants": {
+        "coneTwist": "Swing cone and twist about the bone axis.",
+        "hinge": "One angular degree of freedom about hingeAxis."
+      }
+    },
     "RagdollBoneDesc": {
       "x-og-kind": "desc",
       "x-og-module": "physics",
-      "description": "One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`.",
+      "description": "A rest-pose bone: a shaped collider along axis for length, with explicit mass and joint constraints.",
       "type": "object",
       "properties": {
         "parent": {
@@ -38880,6 +39013,51 @@
           "maximum": 2147483647,
           "description": "The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none.",
           "default": -1
+        },
+        "mass": {
+          "type": "number",
+          "description": "Per-bone mass in kg; zero disables the override and uses Ragdoll.mass distributed by length.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "kg"
+        },
+        "shape": {
+          "$ref": "#/$defs/RagdollBoneShape",
+          "description": "Collider shape along the bone.",
+          "default": "capsule"
+        },
+        "jointKind": {
+          "$ref": "#/$defs/RagdollJointKind",
+          "description": "Cone/twist about axis, or hinge about hingeAxis.",
+          "default": "coneTwist"
+        },
+        "hingeAxis": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Hinge axis in the bone's rest-local frame; required for a hinge.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "swing": {
+          "type": "number",
+          "description": "Per-bone swing half-angle; zero disables the override and uses Ragdoll.jointLimit.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "rad"
+        },
+        "twistMin": {
+          "type": "number",
+          "description": "Least twist or hinge angle; both bounds zero disables the override.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "twistMax": {
+          "type": "number",
+          "description": "Greatest twist or hinge angle; both bounds zero disables the override.",
+          "default": 0,
+          "x-og-unit": "rad"
         }
       },
       "additionalProperties": false
@@ -40833,6 +41011,20 @@
         "full": "The root's whole translation and rotation move og.Transform."
       }
     },
+    "RootMotionMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "anim",
+      "description": "Where extracted root motion is applied.",
+      "type": "string",
+      "enum": [
+        "transform",
+        "controller"
+      ],
+      "x-og-variants": {
+        "transform": "Write the entity Transform directly.",
+        "controller": "Pass world displacement to CharacterController for collision-safe sweeping."
+      }
+    },
     "BlendshapeSource": {
       "x-og-kind": "enum",
       "x-og-module": "anim",
@@ -40898,6 +41090,29 @@
           "$ref": "#/$defs/RootMotion",
           "description": "Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move og.Transform) or full.",
           "default": "off"
+        },
+        "rootMotionMode": {
+          "$ref": "#/$defs/RootMotionMode",
+          "description": "Apply extracted motion to Transform or to the CharacterController sweep. Controller mode requires that component.",
+          "default": "transform"
+        },
+        "rootDelta": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Written: extracted world-space displacement this tick.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "rootYawDelta": {
+          "type": "number",
+          "description": "Written: extracted yaw this tick.",
+          "default": 0,
+          "x-og-unit": "rad",
+          "readOnly": true
         },
         "rootJoint": {
           "type": "integer",
@@ -41444,6 +41659,20 @@
           "description": "Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them.",
           "default": false,
           "readOnly": true
+        },
+        "flipHysteresis": {
+          "type": "number",
+          "description": "Rear seam dead band in radians; zero disables hysteresis.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "yawSide": {
+          "type": "number",
+          "description": "Written: retained rear seam side, -1 or 1; zero uninitialised.",
+          "default": 0,
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -41546,6 +41775,22 @@
           "type": "number",
           "description": "Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).",
           "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "groundReach": {
+          "type": "number",
+          "description": "Ground ray reach above and below the foot; zero disables grounding. Uses physics colliders, excluding the skeleton owner.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "pelvisDrop": {
+          "type": "number",
+          "description": "Maximum pelvis lowering towards the ground; zero disables it.",
+          "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true
@@ -41676,7 +41921,7 @@
     "SpringBone": {
       "x-og-kind": "component",
       "x-og-module": "anim",
-      "description": "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.\nSee `animation §8`.",
+      "description": "A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.\nSee `animation §8`.",
       "type": "object",
       "properties": {
         "skeleton": {
@@ -41701,37 +41946,50 @@
           "minimum": 1,
           "maximum": 16
         },
-        "frequency": {
+        "stiffness": {
           "type": "number",
-          "description": "How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).",
-          "default": 3,
+          "description": "Restoring acceleration per metre of displacement; zero disables restoring force.",
+          "default": 0,
           "minimum": 0,
-          "maximum": 30,
-          "x-og-unit": "hz",
           "x-og-tunable": true
         },
-        "damping": {
+        "drag": {
           "type": "number",
-          "description": "The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).",
-          "default": 0.3,
+          "description": "Linear velocity decay per second, independent of stiffness; zero disables drag.",
+          "default": 0,
           "minimum": 0,
-          "maximum": 2,
           "x-og-tunable": true
         },
-        "tipFrequency": {
+        "tailOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Explicit last joint tail in its local frame; zero uses its child.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "teleportDistance": {
           "type": "number",
-          "description": "The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).",
-          "default": 1,
+          "description": "Root displacement that resets the chain; zero disables teleport detection.",
+          "default": 0,
           "minimum": 0,
-          "maximum": 4,
+          "x-og-unit": "m"
+        },
+        "maxSpeed": {
+          "type": "number",
+          "description": "Maximum tail velocity; zero disables the cap.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "mps",
           "x-og-tunable": true
         },
-        "tipDamping": {
+        "wind": {
           "type": "number",
-          "description": "The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).",
-          "default": 1,
+          "description": "Coupling to world wind velocity; zero disables wind.",
+          "default": 0,
           "minimum": 0,
-          "maximum": 4,
           "x-og-tunable": true
         },
         "gravity": {
@@ -41746,7 +42004,7 @@
         },
         "space": {
           "$ref": "#/$defs/SpringSpace",
-          "description": "Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it).",
+          "description": "World (including all Parent transforms, so the chain lags behind entity and parent motion) or model (only animation moves it).",
           "default": "world"
         },
         "weight": {
@@ -41759,7 +42017,7 @@
         },
         "radius": {
           "type": "number",
-          "description": "The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point).",
+          "description": "Bone segment radius in joint-local metres, scaled with the joint and skeleton for spring and world collisions (0: a line).",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
@@ -41771,6 +42029,13 @@
           "maximum": 4294967295,
           "description": "The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these.",
           "default": 4294967295
+        },
+        "worldColliders": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "World collider layers tested against each bone segment; zero disables world collision.",
+          "default": 0
         },
         "lag": {
           "type": "number",
@@ -41789,17 +42054,19 @@
       "type": "string",
       "enum": [
         "sphere",
-        "capsule"
+        "capsule",
+        "plane"
       ],
       "x-og-variants": {
         "sphere": "A ball of `radius` about `offset`.",
-        "capsule": "A capsule of `radius` about the segment from `offset` to `tail`."
+        "capsule": "A capsule of `radius` about the segment from `offset` to `tail`.",
+        "plane": "A plane through offset with tail as its local normal."
       }
     },
     "SpringCollider": {
       "x-og-kind": "component",
       "x-og-module": "anim",
-      "description": "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing.\nSee `animation §8`.",
+      "description": "A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.\nSee `animation §8`.",
       "type": "object",
       "properties": {
         "skeleton": {
@@ -41817,7 +42084,7 @@
         },
         "shape": {
           "$ref": "#/$defs/SpringColliderShape",
-          "description": "A sphere about `offset`, or a capsule from `offset` to `tail`.",
+          "description": "Sphere about offset, capsule from offset to tail, or plane through offset.",
           "default": "sphere"
         },
         "offset": {
@@ -41832,7 +42099,7 @@
         },
         "tail": {
           "$ref": "#/$defs/Vector3",
-          "description": "The capsule's other end, in the joint's frame (a sphere ignores it).",
+          "description": "Capsule endpoint or plane normal in the joint's frame; ignored by a sphere.",
           "default": {
             "x": 0,
             "y": 0,
@@ -41842,7 +42109,7 @@
         },
         "radius": {
           "type": "number",
-          "description": "The radius, in metres of the skeleton's model space (the joint's own scale does not apply).",
+          "description": "The radius in the joint's local frame, scaled with the joint and skeleton.",
           "default": 0.1,
           "minimum": 0,
           "x-og-unit": "m",

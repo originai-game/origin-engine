@@ -821,7 +821,7 @@ impl Reloader for RuntimeReloader {
         for (&e, kept) in &eng.render.borrow().atmo.rigs {
             a.mounted
                 .physics
-                .set_ragdoll_rig(og_ecs::Entity::from_bits(e), kept.rig.clone())
+                .set_ragdoll_rig(og_ecs::Entity::from_bits(e), kept.physics_rig())
                 .map_err(|e| e.reason().to_string())?;
         }
         a.probe = None;

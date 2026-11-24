@@ -698,9 +698,10 @@ export const og = Object.freeze({
     fluidParticles: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_physics_fluid_particles(world.id, entity)) as unknown,
     fluid3dParticles: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_physics_fluid3d_particles(world.id, entity)) as unknown,
     vehicleWheels: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_physics_vehicle_wheels(world.id, entity)) as unknown,
-    ragdollRigFromSkeleton: (world: { readonly id: number }, skeleton: number): unknown => JSON.parse(abi().og_physics_ragdoll_rig_from_skeleton(world.id, skeleton)) as unknown,
+    ragdollRigFromSkeleton: (world: { readonly id: number }, skeleton: number, bones: unknown): unknown => JSON.parse(abi().og_physics_ragdoll_rig_from_skeleton(world.id, skeleton, JSON.stringify(bones ?? []))) as unknown,
     setRagdollRig: (world: { readonly id: number }, entity: number, desc?: unknown): unknown => JSON.parse(abi().og_physics_set_ragdoll_rig(world.id, entity, json(desc))) as unknown,
     ragdollPose: (world: { readonly id: number }, entity: number): unknown => JSON.parse(abi().og_physics_ragdoll_pose(world.id, entity)) as unknown,
+    applyRagdollImpulse: (world: { readonly id: number }, entity: number, boneIndex: number, impulse: unknown, point: unknown): unknown => JSON.parse(abi().og_physics_apply_ragdoll_impulse(world.id, entity, boneIndex, JSON.stringify(impulse), JSON.stringify(point))) as unknown,
     stats: (world: { readonly id: number }): unknown => JSON.parse(abi().og_physics_stats(world.id)) as unknown,
   }),
   atmosphere: Object.freeze({

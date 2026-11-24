@@ -3149,6 +3149,8 @@ dependencies = [
  "og-core",
  "og-ecs",
  "og-lanes",
+ "og-physics",
+ "og-render",
  "pollster",
  "serde",
  "serde_json",

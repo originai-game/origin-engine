@@ -41,6 +41,7 @@ pub(crate) struct StepOut {
     pub broken: Vec<JointBroken>,
     pub vehicles: Vec<(Entity, Vehicle)>,
     pub ragdolls: Vec<(Entity, Ragdoll)>,
+    pub ragdoll_transforms: Vec<(Entity, Vec3, Quat)>,
     pub events: Vec<CharacterEvent>,
     pub splashes: Vec<Splash>,
     /// The soft volumes' written fields.
@@ -123,6 +124,12 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
     // succeeds: a failed tick leaves none, and the next one rebuilds it.
     let out = {
         let mut shared = lock(shared);
+        shared
+            .rigs
+            .retain(|&e, _| ctx.is_alive(Entity::from_bits(e)));
+        shared
+            .ragdoll_targets
+            .retain(|&e, _| ctx.is_alive(Entity::from_bits(e)));
         // A world with nothing to simulate, and no simulation yet, builds
         // none: a game without physics never runs rapier, so its code stays
         // in the physics modules (docs/web-export.md §Modules). Its first
@@ -167,6 +174,27 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
     }
     for (e, r) in &out.ragdolls {
         ctx.set(*e, *r)?;
+    }
+    for &(e, p, q) in &out.ragdoll_transforms {
+        let mut t = ctx.get::<Transform>(e)?;
+        let parent = ctx.get::<Parent>(e).ok().filter(|p| p.entity != 0);
+        let frame = parent.map_or(og_core::glam::Mat4::IDENTITY, |p| {
+            og_ecs::transform::world_matrix(
+                Entity::from_bits(p.entity),
+                &frames,
+                |e| {
+                    ctx.get::<Parent>(e)
+                        .ok()
+                        .filter(|p| p.entity != 0)
+                        .map(|p| Entity::from_bits(p.entity))
+                },
+                |e| ctx.get::<Transform>(e).ok(),
+            )
+        });
+        let (_, rotation, _) = frame.to_scale_rotation_translation();
+        t.position = frame.inverse().transform_point3(p);
+        t.quaternion = (rotation.conjugate() * q).normalize();
+        ctx.set(e, t)?;
     }
     for ev in &out.events {
         ctx.send(*ev)?;

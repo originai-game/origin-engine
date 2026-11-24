@@ -39,6 +39,15 @@ pub struct Skeleton {
     /// Root motion extraction: off (the root's xz travel is held in place and the entity stays), planar (xz travel and yaw move the Transform) or full.
     #[reflect(name = "rootMotion", variants = ["off", "planar", "full"])]
     pub root_motion: u32,
+    /// Transform writes motion directly; controller hands it to the character sweep.
+    #[reflect(name = "rootMotionMode", variants = ["transform", "controller"])]
+    pub root_motion_mode: u32,
+    /// Written: this tick's extracted world-space displacement.
+    #[reflect(name = "rootDelta")]
+    pub root_delta: Vec3,
+    /// Written: this tick's extracted yaw in radians.
+    #[reflect(name = "rootYawDelta", unit = "rad")]
+    pub root_yaw_delta: f32,
     /// The joint whose motion is extracted (an index into the skin's joints; 0 is its first joint, usually the hips).
     #[reflect(name = "rootJoint", min = 0)]
     pub root_joint: u32,
@@ -421,6 +430,12 @@ pub struct LookAt {
     pub weight: f32,
     /// Written: the target lay outside maxYaw or maxPitch, so the joint aims at the nearest direction inside them.
     pub clamped: bool,
+    /// Rear seam dead band in radians; zero disables hysteresis.
+    #[reflect(name = "flipHysteresis", min = 0, unit = "rad", tunable)]
+    pub flip_hysteresis: f32,
+    /// Written: retained side of the rear seam (-1 or 1; zero uninitialised).
+    #[reflect(name = "yawSide")]
+    pub yaw_side: f32,
 }
 
 impl Default for LookAt {
@@ -438,6 +453,8 @@ impl Default for LookAt {
             max_pitch: 1.5708,
             weight: 1.0,
             clamped: false,
+            flip_hysteresis: 0.0,
+            yaw_side: 0.0,
         }
     }
 }
@@ -506,6 +523,12 @@ pub struct FootLock {
     /// Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch).
     #[reflect(name = "maxDistance", unit = "m", min = 0, default = 0.5, tunable)]
     pub max_distance: f32,
+    /// Ray reach above and below the animated foot; zero disables grounding.
+    #[reflect(name = "groundReach", min = 0, unit = "m", tunable)]
+    pub ground_reach: f32,
+    /// Maximum pelvis lowering to reach the ground; zero disables it.
+    #[reflect(name = "pelvisDrop", min = 0, unit = "m", tunable)]
+    pub pelvis_drop: f32,
     /// Written: the playing clips plant the foot this tick.
     pub planted: bool,
     /// Written: the foot is held at its lock this tick.
@@ -520,6 +543,8 @@ impl Default for FootLock {
             weight: 1.0,
             release: 0.15,
             max_distance: 0.5,
+            ground_reach: 0.0,
+            pelvis_drop: 0.0,
             planted: false,
             locked: false,
         }
@@ -608,18 +633,24 @@ pub struct SpringBone {
     /// How many joints swing: `joint` and its parents (1 is the joint alone).
     #[reflect(min = 1, max = 16, default = 1)]
     pub bones: u32,
-    /// How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings).
-    #[reflect(unit = "hz", min = 0, max = 30, default = 3, tunable)]
-    pub frequency: f32,
-    /// The damping ratio: 0 swings on, 1 settles without overshooting (critical damping).
-    #[reflect(min = 0, max = 2, default = 0.3, tunable)]
-    pub damping: f32,
-    /// The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root).
-    #[reflect(name = "tipFrequency", min = 0, max = 4, default = 1, tunable)]
-    pub tip_frequency: f32,
-    /// The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike).
-    #[reflect(name = "tipDamping", min = 0, max = 4, default = 1, tunable)]
-    pub tip_damping: f32,
+    /// Restoring acceleration per metre of displacement; zero disables it.
+    #[reflect(min = 0, tunable)]
+    pub stiffness: f32,
+    /// Linear velocity decay per second, independent of stiffness.
+    #[reflect(min = 0, tunable)]
+    pub drag: f32,
+    /// Explicit last joint tail in its local frame; zero uses its child.
+    #[reflect(name = "tailOffset", unit = "m")]
+    pub tail_offset: Vec3,
+    /// Root displacement that resets the chain; zero disables teleport detection.
+    #[reflect(name = "teleportDistance", min = 0, unit = "m")]
+    pub teleport_distance: f32,
+    /// Maximum tail velocity; zero disables the cap.
+    #[reflect(name = "maxSpeed", min = 0, unit = "m/s", tunable)]
+    pub max_speed: f32,
+    /// Coupling to the world's wind velocity; zero disables wind.
+    #[reflect(min = 0, tunable)]
+    pub wind: f32,
     /// An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop.
     #[reflect(unit = "m/s2")]
     pub gravity: Vec3,
@@ -635,6 +666,9 @@ pub struct SpringBone {
     /// The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these.
     #[reflect(default = 4294967295)]
     pub colliders: u32,
+    /// World collider layers to test against each bone segment; zero disables world collision.
+    #[reflect(name = "worldColliders")]
+    pub world_colliders: u32,
     /// Written: the farthest a tail is from its animated place this tick.
     #[reflect(unit = "m")]
     pub lag: f32,
@@ -646,15 +680,18 @@ impl Default for SpringBone {
             skeleton: 0,
             joint: 0,
             bones: 1,
-            frequency: 3.0,
-            damping: 0.3,
-            tip_frequency: 1.0,
-            tip_damping: 1.0,
+            stiffness: 0.0,
+            drag: 0.0,
+            tail_offset: Vec3::ZERO,
+            teleport_distance: 0.0,
+            max_speed: 0.0,
+            wind: 0.0,
             gravity: Vec3::ZERO,
             space: SPRING_WORLD,
             weight: 1.0,
             radius: 0.0,
             colliders: u32::MAX,
+            world_colliders: 0,
             lag: 0.0,
         }
     }
@@ -665,6 +702,8 @@ pub const SPRING_SPHERE: u32 = 0;
 /// `SpringCollider.shape`: a capsule of `radius` about the segment from
 /// `offset` to `tail`.
 pub const SPRING_CAPSULE: u32 = 1;
+/// A plane through offset, with tail as its local normal.
+pub const SPRING_PLANE: u32 = 2;
 
 /// A collider spring bones are kept out of (three-vrm's
 /// VRMSpringBoneCollider): a sphere or a capsule riding on a joint of a
@@ -685,7 +724,7 @@ pub struct SpringCollider {
     #[reflect(min = 0)]
     pub joint: u32,
     /// A sphere about `offset`, or a capsule from `offset` to `tail`.
-    #[reflect(variants = ["sphere", "capsule"])]
+    #[reflect(variants = ["sphere", "capsule", "plane"])]
     pub shape: u32,
     /// The sphere's centre, or the capsule's first end, in the joint's frame.
     #[reflect(unit = "m")]
@@ -693,7 +732,7 @@ pub struct SpringCollider {
     /// The capsule's other end, in the joint's frame (a sphere ignores it).
     #[reflect(unit = "m")]
     pub tail: Vec3,
-    /// The radius, in metres of the skeleton's model space (the joint's own scale does not apply).
+    /// The radius in the joint's local frame, scaled with the joint and skeleton.
     #[reflect(unit = "m", min = 0, default = 0.1, tunable)]
     pub radius: f32,
     /// The layers this collider is on, as bits (a spring bone's `colliders` picks them).

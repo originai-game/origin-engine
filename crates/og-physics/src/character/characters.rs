@@ -149,7 +149,9 @@ pub(crate) fn characters(
             let velocity = water.velocity - up * water.velocity.dot(up);
             velocity * under.clamp(0.0, 1.0)
         });
-        let desired_velocity = flat(input * pace + up * vertical + c.inherited_velocity + flow);
+        let desired_velocity =
+            flat(input * pace + up * vertical + c.inherited_velocity + flow + c.root_delta / dt);
+        c.root_delta = Vec3::ZERO;
         let mover = Mover {
             qp: sim.world.query_pipeline_with_filter(filter),
             shape: &*shape,

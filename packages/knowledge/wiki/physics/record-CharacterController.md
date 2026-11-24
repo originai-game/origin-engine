@@ -18,6 +18,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 |---|---|---|---|---|---|---|
 | `mass` | `number` | `0` | ≥ 0 | `kg` | — | Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing. |
 | `addVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | Velocity added once next step, then cleared: knockback or a spring. |
+| `rootDelta` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Animation displacement consumed once by the character sweep, including vertical travel; cleared after the move. |
 | `up` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up. |
 | `jumpBuffer` | `number` | `0` | ≥ 0 | `s` | — | Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps. |
 | `platformInherit` | `number` | `0` | 0 … 1 | — | — | Share of supporting platform velocity retained on leaving it; zero inherits none. |
@@ -59,6 +60,9 @@ component CharacterController {
   }
   field addVelocity Vector3 "Velocity added once next step, then cleared: knockback or a spring." {
     unit mps
+  }
+  field rootDelta Vector3 "Animation displacement consumed once by the character sweep, including vertical travel; cleared after the move." {
+    unit m
   }
   field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up."
   field jumpBuffer f32 "Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps." {

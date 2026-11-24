@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 124 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 127 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -102,7 +102,7 @@ module physics {
 | [`og.SoftBody`](physics/record-SoftBody.md) | component |  | An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). |
 | [`og.Fluid2D`](physics/record-Fluid2D.md) | component |  | Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorti… |
 | [`og.Fluid3D`](physics/record-Fluid3D.md) | component |  | Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confine… |
-| [`og.Ragdoll`](physics/record-Ragdoll.md) | component |  | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy pl… |
+| [`og.Ragdoll`](physics/record-Ragdoll.md) | component |  | An explicit rest-pose rig of shaped bones and limited joints. |
 | [`og.WaterSurface`](physics/record-WaterSurface.md) | component |  | 3D height-field water centred on the entity at its rest level. |
 | [`og.WaterLine`](physics/record-WaterLine.md) | component |  | 2D shallow water: a width × depth pool at the entity's y, centred on its x. |
 | [`og.Buoyancy`](physics/record-Buoyancy.md) | component |  | Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. |
@@ -143,7 +143,9 @@ module physics {
 | [`og.physics.applyTorqueImpulse`](physics/fn-applyTorqueImpulse.md) | function | `(world: World, entity: Entity, torque: Vector3): Result<void>` | Give a dynamic body an angular impulse (N·m·s about each world axis; 2D uses z): its spin changes at once, as applyImpulse. |
 | [`og.physics.setMesh`](physics/fn-setMesh.md) | function | `(world: World, mesh: Geometry, desc?: MeshDesc): Result<void>` | Register (or replace) the geometry a convex or triangle-mesh Collider names by its mesh handle. |
 | [`WheelPose`](physics/type-WheelPose.md) | struct |  | A wheel of an og.Vehicle as the last step left it, for drawing. |
-| [`RagdollBoneDesc`](physics/type-RagdollBoneDesc.md) | desc struct |  | One bone of a ragdoll rig: a capsule from the bone's position along `axis` for `length`. |
+| [`RagdollBoneShape`](physics/type-RagdollBoneShape.md) | enum |  | The collider fitted along a ragdoll bone. |
+| [`RagdollJointKind`](physics/type-RagdollJointKind.md) | enum |  | A ragdoll joint's angular degrees of freedom. |
+| [`RagdollBoneDesc`](physics/type-RagdollBoneDesc.md) | desc struct |  | A rest-pose bone: a shaped collider along axis for length, with explicit mass and joint constraints. |
 | [`RagdollRigDesc`](physics/type-RagdollRigDesc.md) | desc struct |  | The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton. |
 | [`BonePose`](physics/type-BonePose.md) | struct |  | A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight). |
 | [`og.physics.ropePoints`](physics/fn-ropePoints.md) | function | `(world: World, entity: Entity): Result<readonly Vector3[]>` | An og.Rope's points after the last step, from its entity to its end (empty before its first step). |
@@ -154,9 +156,10 @@ module physics {
 | [`og.physics.fluidParticles`](physics/fn-fluidParticles.md) | function | `(world: World, entity: Entity): Result<readonly Vector2[]>` | An og.Fluid2D's particle positions after the last step, in world space. |
 | [`og.physics.fluid3dParticles`](physics/fn-fluid3dParticles.md) | function | `(world: World, entity: Entity): Result<readonly Vector3[]>` | An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared). |
 | [`og.physics.vehicleWheels`](physics/fn-vehicleWheels.md) | function | `(world: World, entity: Entity): Result<readonly WheelPose[]>` | An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models. |
-| [`og.physics.ragdollRigFromSkeleton`](physics/fn-ragdollRigFromSkeleton.md) | function | `(world: World, skeleton: SkeletonAsset): Result<RagdollRigDesc>` | A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming i… |
+| [`og.physics.ragdollRigFromSkeleton`](physics/fn-ragdollRigFromSkeleton.md) | function | `(world: World, skeleton: SkeletonAsset, bones: readonly number[]): Result<RagdollRigDesc>` | Build a rest-pose rig from explicitly selected joints of the first skin, parents first. |
 | [`og.physics.setRagdollRig`](physics/fn-setRagdollRig.md) | function | `(world: World, entity: Entity, desc?: RagdollRigDesc): Result<void>` | Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ra… |
 | [`og.physics.ragdollPose`](physics/fn-ragdollPose.md) | function | `(world: World, entity: Entity): Result<readonly BonePose[]>` | An og.Ragdoll's bones after the last step, in rig order (empty before its first step). |
+| [`og.physics.applyRagdollImpulse`](physics/fn-applyRagdollImpulse.md) | function | `(world: World, entity: Entity, boneIndex: number, impulse: Vector3, point: Vector3): Result<void>` | Apply a world-space impulse at a world-space point to one dynamic ragdoll bone. |
 | [`PhysicsPhase`](physics/type-PhysicsPhase.md) | struct |  | One phase of the last physics step, for og.physics.stats. |
 | [`PhysicsStats`](physics/type-PhysicsStats.md) | struct |  | What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. |
 | [`og.physics.stats`](physics/fn-stats.md) | function | `(world: World): Result<PhysicsStats>` | What the last physics step cost: each phase's time and whether it ran on the lanes pool. |
@@ -267,7 +270,7 @@ column VehicleDrive {
 }
 ```
 
-<sub>Module `physics` line 926</sub>
+<sub>Module `physics` line 929</sub>
 
 ```ogt
 column VehicleModel {
@@ -278,7 +281,7 @@ column VehicleModel {
 }
 ```
 
-<sub>Module `physics` line 939</sub>
+<sub>Module `physics` line 942</sub>
 
 ```ogt
 column VehicleWheelCast {
@@ -289,7 +292,7 @@ column VehicleWheelCast {
 }
 ```
 
-<sub>Module `physics` line 1262</sub>
+<sub>Module `physics` line 1265</sub>
 
 ```ogt
 column VehicleDifferential {
@@ -300,7 +303,7 @@ column VehicleDifferential {
 }
 ```
 
-<sub>Module `physics` line 1274</sub>
+<sub>Module `physics` line 1277</sub>
 
 ```ogt
 column Simulation {
@@ -311,7 +314,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1370</sub>
+<sub>Module `physics` line 1373</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -322,7 +325,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1602</sub>
+<sub>Module `physics` line 1605</sub>
 
 ## Constants
 
@@ -410,82 +413,82 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 889</sub>
+<sub>Module `physics` line 892</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 890</sub>
+<sub>Module `physics` line 893</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 891</sub>
+<sub>Module `physics` line 894</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 892</sub>
+<sub>Module `physics` line 895</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 893</sub>
+<sub>Module `physics` line 896</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 894</sub>
+<sub>Module `physics` line 897</sub>
 
 ```ogt
 const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces crushed the character."
 ```
 
-<sub>Module `physics` line 895</sub>
+<sub>Module `physics` line 898</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1377</sub>
+<sub>Module `physics` line 1380</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1378</sub>
+<sub>Module `physics` line 1381</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1379</sub>
+<sub>Module `physics` line 1382</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1380</sub>
+<sub>Module `physics` line 1383</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2185</sub>
+<sub>Module `physics` line 2200</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2186</sub>
+<sub>Module `physics` line 2201</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2187</sub>
+<sub>Module `physics` line 2202</sub>

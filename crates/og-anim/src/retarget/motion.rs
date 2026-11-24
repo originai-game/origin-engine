@@ -135,7 +135,7 @@ pub fn mirror(skeleton: &SkeletonAsset, clip: &ClipAsset) -> Result<ClipAsset> {
             }
             if pos[j] {
                 let at = rest[j].translation + reflect(ms[k].translation - rest[k].translation);
-                pose[j].translation = parent.inverse().transform_point(at);
+                pose[j].translation = parent.inverse_transform_point(at);
                 samples[j][0].extend_from_slice(&pose[j].translation.to_array());
             }
             if scl[j] {
@@ -393,7 +393,7 @@ pub(crate) fn twist_bones(
         if len2 < 1e-12 {
             continue;
         }
-        let local = rest[a].inverse().transform_point(rest[c].translation);
+        let local = rest[a].inverse_transform_point(rest[c].translation);
         let axis = local / local.length();
         let at = og_core::math::segment_t(
             rest[n].translation,
@@ -699,7 +699,7 @@ pub fn retarget(
                 pt[n].rotation = unit(p.rotation.conjugate() * want);
             }
             if n == th && moves_hips {
-                pt[n].translation = p.inverse().transform_point(hips_at);
+                pt[n].translation = p.inverse_transform_point(hips_at);
             }
             mt.push(p.mul(&pt[n]));
         }
@@ -736,7 +736,7 @@ pub fn retarget(
         }
         if drop < 0.0 {
             let p = parent_model(target, &mt, th);
-            pt[th].translation = p.inverse().transform_point(hips_at + Vec3::Y * drop);
+            pt[th].translation = p.inverse_transform_point(hips_at + Vec3::Y * drop);
             mt = model(target, &pt);
         }
         // The legs: the knee bent in its plane so the foot reaches the

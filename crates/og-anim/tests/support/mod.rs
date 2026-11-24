@@ -363,8 +363,11 @@ pub fn skeleton_from_model(defs: &[NodeDef], scale: f32) -> SkeletonAsset {
             m
         } else {
             let pm = model[parent as usize];
-            let l = pm.inverse().mul(&m);
-            Trs::new(l.translation, l.rotation, Vec3::ONE)
+            Trs::new(
+                pm.inverse_transform_point(m.translation),
+                unit(pm.rotation.conjugate() * m.rotation),
+                Vec3::ONE,
+            )
         };
         model.push(m);
         nodes.push(SkeletonNode {

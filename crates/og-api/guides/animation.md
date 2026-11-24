@@ -276,16 +276,27 @@ are not retroactive on seek unless authored that way.
   planted while the planting clips hold at least half the pose. Put each
   lock on its own entity, one per foot; locks apply in query order, and
   og.JointLimit clamps the leg.
-- A lock point is in the skeleton Transform's frame: the world without a
-  parent, parent-local otherwise. It resists the skeleton's own motion
-  but follows the parent's translation, rotation and scale.
+- A lock point stays in world space, including when a Parent moves.
+  Set groundReach to raycast the ground, aligning the ankle to its normal;
+  pelvisDrop permits lowering the pelvis to reach it. maxDistance releases
+  an old anchor immediately on a teleport rather than pulling the leg back.
 - og.SpringBone swings a tail, an ear, a strand of hair or a single
   jiggling node after the body's motion; put each chain on its own entity.
   It is deterministic under the fixed tick, and a restore continues a
   swing exactly.
+- Author stiffness and drag independently: zero stiffness still permits
+  gravity, wind and damping. tailOffset gives a leaf an explicit local tail.
+  World-space chains include all Parent transforms; teleportDistance resets
+  a displaced root, and maxSpeed caps tail speed. wind couples to the wind
+  field; worldColliders selects optional physics collider layers.
 - og.SpringCollider keeps those chains out of the body: a sphere or
-  capsule on the head, the chest or an upper arm, so hair, ears and tails
-  do not swing through it. One entity per shape.
+  capsule on the head, the chest or an upper arm, or a plane (tail is its
+  normal). Collision tests the full bone segment, not just its tip. Collider
+  radii scale in the joint's frame. One entity per shape.
+- Extracted motion appears in Skeleton.rootDelta and rootYawDelta.
+  For a colliding character choose rootMotionMode controller and supply
+  a CharacterController and Collider: the controller sweeps the displacement
+  instead of animation moving the Transform through obstacles.
 - og.Hang hangs a character from a rope. og.anim places the skeleton's
   og.Transform so the `grip` joint (the hand) sits at `point`, its +Y runs
   from the grip towards `anchor` by `lay`, and its front turns towards

@@ -6,7 +6,7 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.SpringCollider` (component)
 
-A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing.
+A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings.
 
 See `animation §8`.
 
@@ -16,28 +16,28 @@ Token `og.SpringCollider`, registered under the schema name `og.SpringCollider`;
 |---|---|---|---|---|---|---|
 | `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose spring bones this keeps out. |
 | `joint` | `number` | `0` | ≥ 0 | — | — | The joint the collider rides on (an index into the skin's joints). |
-| `shape` | `SpringColliderShape` | `"sphere"` | — | — | — | A sphere about `offset`, or a capsule from `offset` to `tail`. |
+| `shape` | `SpringColliderShape` | `"sphere"` | — | — | — | Sphere about offset, capsule from offset to tail, or plane through offset. |
 | `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The sphere's centre, or the capsule's first end, in the joint's frame. |
-| `tail` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The capsule's other end, in the joint's frame (a sphere ignores it). |
-| `radius` | `number` | `0.1` | ≥ 0 | `m` | tunable | The radius, in metres of the skeleton's model space (the joint's own scale does not apply). |
+| `tail` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Capsule endpoint or plane normal in the joint's frame; ignored by a sphere. |
+| `radius` | `number` | `0.1` | ≥ 0 | `m` | tunable | The radius in the joint's local frame, scaled with the joint and skeleton. |
 | `layers` | `number` | `1` | — | — | — | The layers this collider is on, as bits (a spring bone's `colliders` picks them). |
 
 ```ogt
 component SpringCollider {
-  doc "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing."
+  doc "A joint-local sphere, capsule or plane that keeps whole SpringBone segments out of the body. Matching layers are projected in query order, preserving bone length. Radius follows joint and skeleton scale; a plane uses tail as its normal. One entity per shape, placed from the pose when the chain swings."
   guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose spring bones this keeps out."
   field joint u32 "The joint the collider rides on (an index into the skin's joints)." {
     min 0
   }
-  field shape SpringColliderShape "A sphere about `offset`, or a capsule from `offset` to `tail`."
+  field shape SpringColliderShape "Sphere about offset, capsule from offset to tail, or plane through offset."
   field offset Vector3 "The sphere's centre, or the capsule's first end, in the joint's frame." {
     unit m
   }
-  field tail Vector3 "The capsule's other end, in the joint's frame (a sphere ignores it)." {
+  field tail Vector3 "Capsule endpoint or plane normal in the joint's frame; ignored by a sphere." {
     unit m
   }
-  field radius f32 "The radius, in metres of the skeleton's model space (the joint's own scale does not apply)." {
+  field radius f32 "The radius in the joint's local frame, scaled with the joint and skeleton." {
     default 0.1
     min 0
     unit m
@@ -49,4 +49,4 @@ component SpringCollider {
 }
 ```
 
-<sub>Module `anim` line 569</sub>
+<sub>Module `anim` line 610</sub>

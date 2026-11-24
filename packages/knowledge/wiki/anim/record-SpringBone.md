@@ -6,7 +6,7 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.SpringBone` (component)
 
-A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose.
+A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them.
 
 See `animation §8`.
 
@@ -17,20 +17,23 @@ Token `og.SpringBone`, registered under the schema name `og.SpringBone`; its val
 | `skeleton` | `Entity` | `0` | — | — | — | The entity with the og.Skeleton whose joints this swings. |
 | `joint` | `number` | `0` | ≥ 0 | — | — | The chain's last joint (an index into the skin's joints): the tip of a tail, an ear. |
 | `bones` | `number` | `1` | 1 … 16 | — | — | How many joints swing: `joint` and its parents (1 is the joint alone). |
-| `frequency` | `number` | `3` | 0 … 30 | `hz` | tunable | How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings). |
-| `damping` | `number` | `0.3` | 0 … 2 | — | tunable | The damping ratio: 0 swings on, 1 settles without overshooting (critical damping). |
-| `tipFrequency` | `number` | `1` | 0 … 4 | — | tunable | The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root). |
-| `tipDamping` | `number` | `1` | 0 … 4 | — | tunable | The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike). |
+| `stiffness` | `number` | `0` | ≥ 0 | — | tunable | Restoring acceleration per metre of displacement; zero disables restoring force. |
+| `drag` | `number` | `0` | ≥ 0 | — | tunable | Linear velocity decay per second, independent of stiffness; zero disables drag. |
+| `tailOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Explicit last joint tail in its local frame; zero uses its child. |
+| `teleportDistance` | `number` | `0` | ≥ 0 | `m` | — | Root displacement that resets the chain; zero disables teleport detection. |
+| `maxSpeed` | `number` | `0` | ≥ 0 | `mps` | tunable | Maximum tail velocity; zero disables the cap. |
+| `wind` | `number` | `0` | ≥ 0 | — | tunable | Coupling to world wind velocity; zero disables wind. |
 | `gravity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | — | An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop. |
-| `space` | `SpringSpace` | `"world"` | — | — | — | Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it). |
+| `space` | `SpringSpace` | `"world"` | — | — | — | World (including all Parent transforms, so the chain lags behind entity and parent motion) or model (only animation moves it). |
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the swing is applied (0 = the animated pose, 1 = the spring's). |
-| `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point). |
+| `radius` | `number` | `0` | ≥ 0 | `m` | tunable | Bone segment radius in joint-local metres, scaled with the joint and skeleton for spring and world collisions (0: a line). |
 | `colliders` | `number` | `4294967295` | — | — | — | The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these. |
+| `worldColliders` | `number` | `0` | — | — | — | World collider layers tested against each bone segment; zero disables world collision. |
 | `lag` | `number` | `0` | — | `m` | read only | Written: the farthest a tail is from its animated place this tick. |
 
 ```ogt
 component SpringBone {
-  doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose."
+  doc "A spring chain: joint and its parents swing towards animated tails under independent stiffness, drag, gravity and optional wind. tailOffset defines a leaf tail. Full Parent transforms, segment collision and JointLimit constrain the result. Applied after IK and look-at, top first. Tails and velocities are saved; a changed chain or detected teleport resets them."
   guide "animation §8"
   field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
   field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
@@ -41,42 +44,41 @@ component SpringBone {
     min 1
     max 16
   }
-  field frequency f32 "How fast a tail springs back to its animated place: the spring's natural frequency (0: no spring, it only hangs and swings)." {
-    default 3
+  field stiffness f32 "Restoring acceleration per metre of displacement; zero disables restoring force." {
     min 0
-    max 30
-    unit hz
     tunable true
   }
-  field damping f32 "The damping ratio: 0 swings on, 1 settles without overshooting (critical damping)." {
-    default 0.3
+  field drag f32 "Linear velocity decay per second, independent of stiffness; zero disables drag." {
     min 0
-    max 2
     tunable true
   }
-  field tipFrequency f32 "The last joint's frequency as a multiple of `frequency`, the joints between in proportion along the chain (1: every joint alike; 0.25: the tip springs back four times slower than the top, a soft strand on a stiff root)." {
-    default 1
+  field tailOffset Vector3 "Explicit last joint tail in its local frame; zero uses its child." {
+    unit m
+  }
+  field teleportDistance f32 "Root displacement that resets the chain; zero disables teleport detection." {
     min 0
-    max 4
+    unit m
+  }
+  field maxSpeed f32 "Maximum tail velocity; zero disables the cap." {
+    min 0
+    unit mps
     tunable true
   }
-  field tipDamping f32 "The last joint's damping ratio as a multiple of `damping`, the joints between in proportion along the chain (1: every joint alike)." {
-    default 1
+  field wind f32 "Coupling to world wind velocity; zero disables wind." {
     min 0
-    max 4
     tunable true
   }
   field gravity Vector3 "An acceleration on every tail, in `space` (three-vrm's gravityDir times gravityPower): (0, -9.8, 0) makes a chain droop." {
     unit mps2
   }
-  field space SpringSpace "Where the tails move: world (the frame the skeleton entity's og.Transform is in, so the chain lags behind the entity's motion) or model (only the animation moves it)."
+  field space SpringSpace "World (including all Parent transforms, so the chain lags behind entity and parent motion) or model (only animation moves it)."
   field weight f32 "How much of the swing is applied (0 = the animated pose, 1 = the spring's)." {
     default 1
     min 0
     max 1
     tunable true
   }
-  field radius f32 "The tails' radius against og.SpringCollider (three-vrm's hitRadius): a tail stays this far outside every collider it meets (0: a point)." {
+  field radius f32 "Bone segment radius in joint-local metres, scaled with the joint and skeleton for spring and world collisions (0: a line)." {
     min 0
     unit m
     tunable true
@@ -84,6 +86,7 @@ component SpringBone {
   field colliders u32 "The og.SpringCollider layers the tails are pushed out of, as bits: a collider on the same skeleton counts when its `layers` meet these." {
     default 4294967295
   }
+  field worldColliders u32 "World collider layers tested against each bone segment; zero disables world collision."
   field lag f32 "Written: the farthest a tail is from its animated place this tick." {
     readonly true
     unit m
@@ -91,4 +94,4 @@ component SpringBone {
 }
 ```
 
-<sub>Module `anim` line 495</sub>
+<sub>Module `anim` line 535</sub>

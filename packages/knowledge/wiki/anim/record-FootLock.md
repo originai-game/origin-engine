@@ -19,6 +19,8 @@ Token `og.FootLock`, registered under the schema name `og.FootLock`; its value t
 | `weight` | `number` | `1` | 0 … 1 | — | tunable | How much of the lock is applied (0 = the animated foot, 1 = held). |
 | `release` | `number` | `0.15` | 0 … 2 | `s` | tunable | Seconds the foot takes to rejoin its animation once lifted (0: at once). |
 | `maxDistance` | `number` | `0.5` | ≥ 0 | `m` | tunable | Farther than this from where the animation puts the foot, the lock lets go (a leg cannot stretch). |
+| `groundReach` | `number` | `0` | ≥ 0 | `m` | tunable | Ground ray reach above and below the foot; zero disables grounding. Uses physics colliders, excluding the skeleton owner. |
+| `pelvisDrop` | `number` | `0` | ≥ 0 | `m` | tunable | Maximum pelvis lowering towards the ground; zero disables it. |
 | `planted` | `boolean` | `false` | — | — | read only | Written: the playing clips plant the foot this tick. |
 | `locked` | `boolean` | `false` | — | — | read only | Written: the foot is held at its lock this tick. |
 
@@ -49,6 +51,16 @@ component FootLock {
     unit m
     tunable true
   }
+  field groundReach f32 "Ground ray reach above and below the foot; zero disables grounding. Uses physics colliders, excluding the skeleton owner." {
+    min 0
+    unit m
+    tunable true
+  }
+  field pelvisDrop f32 "Maximum pelvis lowering towards the ground; zero disables it." {
+    min 0
+    unit m
+    tunable true
+  }
   field planted bool "Written: the playing clips plant the foot this tick." {
     readonly true
   }
@@ -58,4 +70,4 @@ component FootLock {
 }
 ```
 
-<sub>Module `anim` line 410</sub>
+<sub>Module `anim` line 440</sub>

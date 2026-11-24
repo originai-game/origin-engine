@@ -2050,9 +2050,9 @@ pub fn og_physics_vehicle_wheels(env: Env, world: u32, entity: f64) -> String {
 }
 
 #[napi(js_name = "og_physics_ragdoll_rig_from_skeleton")]
-pub fn og_physics_ragdoll_rig_from_skeleton(env: Env, world: u32, skeleton: f64) -> String {
+pub fn og_physics_ragdoll_rig_from_skeleton(env: Env, world: u32, skeleton: f64, bones: String) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton)
+    <Host as PhysicsApi>::og_physics_ragdoll_rig_from_skeleton(&Host, world, skeleton, bones)
 }
 
 #[napi(js_name = "og_physics_set_ragdoll_rig")]
@@ -2065,6 +2065,12 @@ pub fn og_physics_set_ragdoll_rig(env: Env, world: u32, entity: f64, desc: Optio
 pub fn og_physics_ragdoll_pose(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PhysicsApi>::og_physics_ragdoll_pose(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_apply_ragdoll_impulse")]
+pub fn og_physics_apply_ragdoll_impulse(env: Env, world: u32, entity: f64, bone_index: u32, impulse: String, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_apply_ragdoll_impulse(&Host, world, entity, bone_index, impulse, point)
 }
 
 #[napi(js_name = "og_physics_stats")]
