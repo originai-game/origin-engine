@@ -11,7 +11,7 @@ impl ParticleRenderer {
     /// Makes one compute pipeline not yet made; false when all are
     /// ([`crate::Renderer::warm`]).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.sim, &self.sprites_pipeline])
+        crate::deferred::warm_one(&[&self.sim, &self.compact_pipeline, &self.sprites_pipeline])
     }
 
     /// Reads what the scene's loaded emitters and effect materials can draw
@@ -32,11 +32,8 @@ impl ParticleRenderer {
     }
 
     /// Makes one draw pipeline a loaded emitter or effect material can
-    /// reach and no frame has made yet; false when none is left
-    /// ([`crate::Renderer::warm`]): a composed effect loaded at start then
-    /// draws its first frame without compiling.
+    /// reach and no frame has made yet; false when none is left.
     pub(crate) fn warm_loaded(&mut self, device: &wgpu::Device, samples: u32) -> bool {
-        // Their simulation too, which a frame without particles never made.
         if !self.reachable.2.is_empty() && self.warm() {
             return true;
         }
@@ -55,10 +52,7 @@ impl ParticleRenderer {
         }
     }
 
-    /// Carries every system across a move of the render origin (`origin.rs`;
-    /// `d`, the old origin minus the new, is added to what is in world
-    /// space): their last emitter transforms now, their world-space
-    /// particles when they next simulate.
+    /// Carries every system across a move of the render origin (`origin.rs`).
     pub(crate) fn shift(&mut self, d: Vec3) {
         let moved = |m: &mut Option<Mat4>| {
             if let Some(m) = m {
@@ -84,8 +78,8 @@ impl ParticleRenderer {
         sprite_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
     ) -> ParticleRenderer {
-        let sim_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("particle sim"),
+        let sim_frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("particle sim frame"),
             entries: &[
                 uniform_entry(0, wgpu::ShaderStages::COMPUTE, true),
                 uniform_entry(1, wgpu::ShaderStages::COMPUTE, false),
@@ -95,19 +89,22 @@ impl ParticleRenderer {
                 storage_entry(5, true),
             ],
         });
-        let sim_system_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("particle sim system"),
+        let sim_pool_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("particle sim pool"),
             entries: &[
-                storage_entry(0, false),
+                storage_entry(0, true),
                 storage_entry(1, true),
-                storage_entry(2, false),
+                storage_entry(2, true),
+                storage_entry(3, false),
+                storage_entry(4, false),
+                storage_entry(5, false),
             ],
         });
         let sim = {
-            let (device, sim_layout, system_layout) = (
+            let (device, frame_l, pool_l) = (
                 device.clone(),
-                sim_layout.clone(),
-                sim_system_layout.clone(),
+                sim_frame_layout.clone(),
+                sim_pool_layout.clone(),
             );
             Deferred::new(move || {
                 let module = crate::gpu::shader_module(
@@ -119,7 +116,7 @@ impl ParticleRenderer {
                 );
                 let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("particle sim"),
-                    bind_group_layouts: &[Some(&sim_layout), Some(&system_layout)],
+                    bind_group_layouts: &[Some(&frame_l), Some(&pool_l)],
                     immediate_size: 0,
                 });
                 let pipeline = |entry: &str| {
@@ -136,6 +133,46 @@ impl ParticleRenderer {
                     )
                 };
                 (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
+            })
+        };
+        let compact_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("particle compact"),
+            entries: &[
+                storage_entry(0, true),
+                storage_entry(1, true),
+                storage_entry(2, true),
+                storage_entry(3, false),
+                storage_entry(4, false),
+                storage_entry(5, false),
+                uniform_entry(6, wgpu::ShaderStages::COMPUTE, false),
+            ],
+        });
+        let compact_pipeline = {
+            let (device, compact_layout) = (device.clone(), compact_layout.clone());
+            Deferred::new(move || {
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("particle compact"),
+                        layout: Some(&device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some("particle compact"),
+                                bind_group_layouts: &[Some(&compact_layout)],
+                                immediate_size: 0,
+                            },
+                        )),
+                        module: &crate::gpu::shader_module(
+                            &device,
+                            wgpu::ShaderModuleDescriptor {
+                                label: Some("particle compact"),
+                                source: wgpu::ShaderSource::Wgsl(compact_source().into()),
+                            },
+                        ),
+                        entry_point: Some("compact"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
             })
         };
         let sprites_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -205,11 +242,11 @@ impl ParticleRenderer {
             ],
             immediate_size: 0,
         });
-        let emitter_buffer = crate::traffic::create_buffer(
+        let emitter_draw_buffer = crate::traffic::create_buffer(
             device,
             &wgpu::BufferDescriptor {
-                label: Some("emitters"),
-                size: EMITTER_STRIDE * 16,
+                label: Some("emitters (draw)"),
+                size: EMITTER_DRAW_STRIDE * 16,
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             },
@@ -227,9 +264,12 @@ impl ParticleRenderer {
             sprites_layout,
             sprites_pipeline,
             sprites_params,
-            sim_layout,
-            sim_system_layout,
+            sprites_params_gen: 1,
+            sim_frame_layout,
+            sim_pool_layout,
             sim,
+            compact_layout,
+            compact_pipeline,
             draw_layout,
             draw: HashMap::new(),
             reachable: (0, 0, Vec::new()),
@@ -238,14 +278,19 @@ impl ParticleRenderer {
             frame_wgsl: frame_wgsl.to_string(),
             draw_pl,
             effects,
-            emitter_buffer,
-            emitter_bytes: Vec::new(),
-            entries: Vec::new(),
+            emitter_draw_buffer,
+            emitter_draw_gen: 1,
+            emitter_draw_bytes: Vec::new(),
+            draw_entries: Vec::new(),
+            pool: ParticlePool::new(device),
+            draw_groups: Mutex::new(Vec::new()),
             cpu_vertices: cpu_vertex_buffer(device, PARTICLE_STRIDE * 256),
             cpu_bytes: Vec::new(),
             view_buffer,
             colliders: collider_buffer(device, 256),
+            colliders_gen: 1,
             fields: collider_buffer(device, 256),
+            fields_gen: 1,
             systems: HashMap::new(),
             scene_id: 0,
             points: HashMap::new(),
@@ -255,7 +300,7 @@ impl ParticleRenderer {
 }
 
 impl ParticleRenderer {
-    /// Records the frame's compute dispatches (one per simulated tick).
+    /// Records the frame's batched simulation waves and alive-compaction pass.
     pub fn simulate(
         &self,
         device: &wgpu::Device,
@@ -264,82 +309,208 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,
     ) {
-        let (simulate, clear, shift) = self.sim.wait();
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("particle sim"),
-            timestamp_writes: None,
-        });
-        // The pass runs only when a system simulates here
-        // (`ParticleFrame::any_gpu`).
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("particle sim"),
-            layout: &self.sim_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &self.emitter_buffer,
-                        offset: 0,
-                        size: wgpu::BufferSize::new(std::mem::size_of::<EmitterGpu>() as u64),
-                    }),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.view_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(depth),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(gbuffer),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.colliders.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: self.fields.as_entire_binding(),
-                },
-            ],
-        });
-        for fs in frame.systems.iter().filter(|s| s.gpu) {
-            let Some((g, max)) = self
-                .systems
-                .get(&fs.id)
-                .and_then(|s| Some((s.gpu.as_ref()?, s.max)))
-            else {
-                continue;
+        // Carry over any grown Mega-Pool buffers before touching them.
+        let pending = {
+            let mut cache = self.pool.cache.lock().expect("particle sim cache");
+            std::mem::take(&mut cache.pending)
+        };
+        if pending.any() {
+            self.pool.encode_copies(encoder, &pending);
+        }
+
+        if !frame.gpu_plan.waves.is_empty() {
+            let (simulate, clear, shift) = self.sim.wait();
+            let (frame_group, pool_group) = {
+                let mut cache = self.pool.cache.lock().expect("particle sim cache");
+                let fkey = (
+                    depth.clone(),
+                    gbuffer.clone(),
+                    self.pool.sim_dispatch_gen,
+                    self.colliders_gen,
+                    self.fields_gen,
+                );
+                let fg = if let Some((k, g)) = &cache.sim_frame
+                    && *k == fkey
+                {
+                    g.clone()
+                } else {
+                    let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("particle sim frame"),
+                        layout: &self.sim_frame_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                                    buffer: &self.pool.sim_dispatch,
+                                    offset: 0,
+                                    size: wgpu::BufferSize::new(
+                                        std::mem::size_of::<SimDispatchGpu>() as u64,
+                                    ),
+                                }),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: self.view_buffer.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: wgpu::BindingResource::TextureView(depth),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: wgpu::BindingResource::TextureView(gbuffer),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 4,
+                                resource: self.colliders.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 5,
+                                resource: self.fields.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    cache.sim_frame = Some((fkey, g.clone()));
+                    g
+                };
+                let pkey = [
+                    self.pool.sim_entries_gen,
+                    self.pool.sim_tiles_gen,
+                    self.pool.points_gen,
+                    self.pool.particles_gen,
+                    self.pool.trails_gen,
+                    self.pool.sub_counters_gen,
+                ];
+                let pg = if let Some((k, g)) = &cache.sim_pool
+                    && *k == pkey
+                {
+                    g.clone()
+                } else {
+                    let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("particle sim pool"),
+                        layout: &self.sim_pool_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: self.pool.sim_entries.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: self.pool.sim_tiles.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: self.pool.points.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: self.pool.particles.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 4,
+                                resource: self.pool.trails.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 5,
+                                resource: self.pool.sub_counters.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    cache.sim_pool = Some((pkey, g.clone()));
+                    g
+                };
+                (fg, pg)
             };
-            pass.set_bind_group(1, &g.group, &[]);
-            let groups = max.div_ceil(64);
-            if let Some(k) = fs.shift {
-                pass.set_pipeline(shift);
-                pass.set_bind_group(0, &group, &[(k as u64 * EMITTER_STRIDE) as u32]);
-                pass.dispatch_workgroups(groups, 1, 1);
-            }
-            if fs.reset {
-                pass.set_pipeline(clear);
+            // Each wave gets its own compute pass so storage-buffer hazards
+            // between dependent waves (shift -> clear -> children -> parents)
+            // synchronize cleanly across all backends including wgpu-flash.
+            for wave in &frame.gpu_plan.waves {
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("particle sim"),
+                    timestamp_writes: None,
+                });
+                let pipeline = match wave.kind {
+                    SimWaveKind::Shift => shift,
+                    SimWaveKind::Clear => clear,
+                    SimWaveKind::Simulate => simulate,
+                };
+                pass.set_pipeline(pipeline);
                 pass.set_bind_group(
                     0,
-                    &group,
-                    &[(fs.first_entry as u64 * EMITTER_STRIDE) as u32],
+                    &frame_group,
+                    &[(u64::from(wave.dispatch_slot) * SIM_DISPATCH_STRIDE) as u32],
                 );
-                pass.dispatch_workgroups(groups, 1, 1);
+                pass.set_bind_group(1, &pool_group, &[]);
+                pass.dispatch_workgroups(wave.tile_count, 1, 1);
             }
-            pass.set_pipeline(simulate);
-            for t in 0..fs.ticks {
-                let offset = ((fs.first_entry + t) as u64 * EMITTER_STRIDE) as u32;
-                pass.set_bind_group(0, &group, &[offset]);
-                pass.dispatch_workgroups(groups, 1, 1);
-            }
+        }
+
+        if frame.gpu_plan.compact_tiles > 0 {
+            let compact = self.compact_pipeline.wait();
+            let group = {
+                let key = [
+                    self.pool.compact_tiles_gen,
+                    self.pool.particles_gen,
+                    self.pool.trails_gen,
+                    self.pool.compact_particles_gen,
+                    self.pool.compact_trails_gen,
+                    self.pool.indirect_args_gen,
+                ];
+                let mut cache = self.pool.cache.lock().expect("particle sim cache");
+                if let Some((k, g)) = &cache.compact
+                    && *k == key
+                {
+                    g.clone()
+                } else {
+                    let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("particle compact"),
+                        layout: &self.compact_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: self.pool.compact_tiles.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: self.pool.particles.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: self.pool.trails.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: self.pool.compact_particles.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 4,
+                                resource: self.pool.compact_trails.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 5,
+                                resource: self.pool.indirect_args.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 6,
+                                resource: self.pool.compact_info.as_entire_binding(),
+                            },
+                        ],
+                    });
+                    cache.compact = Some((key, g.clone()));
+                    g
+                }
+            };
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("particle compact"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(compact);
+            pass.set_bind_group(0, &group, &[]);
+            pass.dispatch_workgroups(frame.gpu_plan.compact_tiles, 1, 1);
         }
     }
 
-    /// The draw bind group (emitter entries, view, scene depth): the main
-    /// camera's view buffer.
+    /// The draw bind group (emitter draw entries, view, scene depth): cached.
     pub fn draw_group(
         &self,
         device: &wgpu::Device,
@@ -349,9 +520,7 @@ impl ParticleRenderer {
         self.draw_group_of(device, &self.view_buffer, depth, scene_color)
     }
 
-    /// The draw bind group of a camera whose [`ParticleViewGpu`] is in
-    /// `view` (a secondary camera's, `views.rs`); `scene_color`: the scene
-    /// copy distortion reads (a placeholder where the pass has none).
+    /// Cached draw bind group for any camera's [`ParticleViewGpu`] buffer.
     pub fn draw_group_of(
         &self,
         device: &wgpu::Device,
@@ -359,16 +528,26 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         scene_color: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
-        device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let key = (
+            view.clone(),
+            depth.clone(),
+            scene_color.clone(),
+            self.emitter_draw_gen,
+        );
+        let mut cache = self.draw_groups.lock().expect("particle draw groups");
+        if let Some((_, g)) = cache.iter().find(|(k, _)| *k == key) {
+            return g.clone();
+        }
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("particle draw"),
             layout: &self.draw_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &self.emitter_buffer,
+                        buffer: &self.emitter_draw_buffer,
                         offset: 0,
-                        size: wgpu::BufferSize::new(std::mem::size_of::<EmitterGpu>() as u64),
+                        size: wgpu::BufferSize::new(std::mem::size_of::<EmitterDrawGpu>() as u64),
                     }),
                 },
                 wgpu::BindGroupEntry {
@@ -384,7 +563,12 @@ impl ParticleRenderer {
                     resource: wgpu::BindingResource::TextureView(scene_color),
                 },
             ],
-        })
+        });
+        if cache.len() >= 16 {
+            cache.remove(0);
+        }
+        cache.push((key, group.clone()));
+        group
     }
 
     /// Makes the draw pipelines the frame needs (by blend and sample count).
@@ -434,14 +618,9 @@ impl ParticleRenderer {
                     dst_factor: wgpu::BlendFactor::One,
                     operation: wgpu::BlendOperation::Add,
                 },
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::Zero,
-                    dst_factor: wgpu::BlendFactor::One,
-                    operation: wgpu::BlendOperation::Add,
-                },
+                alpha: KEEP_ALPHA,
             },
             ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
-            // What is behind less the colour at its alpha.
             ParticleBlend::Subtractive => wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -450,8 +629,6 @@ impl ParticleRenderer {
                 },
                 alpha: KEEP_ALPHA,
             },
-            // What is behind times the colour (`blend_out` mixes it
-            // towards white by its alpha).
             ParticleBlend::Multiply => wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::Dst,
@@ -463,7 +640,6 @@ impl ParticleRenderer {
         };
         let mesh = kind_of == DrawKind::Mesh;
         let trail = kind_of == DrawKind::Trail;
-        // An effect mesh is blended like a billboard: no depth written.
         let solid = mesh && !look.effect_mesh;
         let module = match look.hook {
             Some(h) => self.hook_modules[&h].clone(),
@@ -478,7 +654,6 @@ impl ParticleRenderer {
             vec![Some(PARTICLE_LAYOUT)]
         };
         let (kind, double_sided) = (kind_of, look.double_sided);
-        // An entry of the pipeline cache (gpu/deferred.rs), asked for now.
         let p = crate::deferred::Deferred::anywhere(move || {
             crate::hdr_pipeline(
                 &device,
@@ -500,7 +675,6 @@ impl ParticleRenderer {
                     },
                     buffers: &buffers,
                     cull: (mesh && !double_sided).then_some(wgpu::Face::Back),
-                    // Debris occludes what is behind it, and itself.
                     depth_write: solid,
                     depth_compare: wgpu::CompareFunction::LessEqual,
                     blend: Some(blend),
@@ -513,11 +687,7 @@ impl ParticleRenderer {
     }
 
     /// Draws the frame's 3D systems on a camera's layers (`mask`) that
-    /// `part` selects, far to near. `distort`: the group carries the pass's scene copy, so its
-    /// distortion systems draw (elsewhere they are left out). `view`: the
-    /// camera's frustum, which skips a system whose bound it does not
-    /// touch (None: every system draws). `mesh`: a
-    /// mesh's f32 vertices, indices and index count. Returns the draws.
+    /// `part` selects, far to near, using compacted indirect draws where available.
     #[allow(clippy::too_many_arguments)]
     pub fn draw<'b>(
         &self,
@@ -542,22 +712,6 @@ impl ParticleRenderer {
                     .zip(s.bound)
                     .is_some_and(|(f, (lo, hi))| !f.intersects_box(lo, hi))
         }) {
-            // A CPU-path system's ranges each start where they were packed;
-            // a compute system's are its ring's slots.
-            let (buffer, trails) = match s.packed {
-                Some(_) => (&self.cpu_vertices, &self.cpu_vertices),
-                None => {
-                    let Some(g) = self.systems.get(&s.id).and_then(|st| st.gpu.as_ref()) else {
-                        continue;
-                    };
-                    (&g.buffer, &g.trail)
-                }
-            };
-            let ranges = s.slots.iter().enumerate().filter(|(_, r)| !r.is_empty());
-            let ranges = ranges.map(|(i, r)| match s.packed {
-                Some(p) => (p.particles[i], p.trails[i], 0..r.end - r.start),
-                None => (0, 0, r.clone()),
-            });
             let Some(pipeline) = (match part {
                 ParticlePart::Oit(p) => Some(p),
                 _ => self
@@ -569,10 +723,70 @@ impl ParticleRenderer {
             };
             pass.set_pipeline(pipeline);
             pass.set_bind_group(1, texture_group(s.texture), &[]);
-            let draw_entry = s.first_entry + s.ticks;
-            pass.set_bind_group(2, group, &[(draw_entry as u64 * EMITTER_STRIDE) as u32]);
+            pass.set_bind_group(
+                2,
+                group,
+                &[(u64::from(s.draw_entry) * EMITTER_DRAW_STRIDE) as u32],
+            );
             let (effect, offset) = self.effects.bind(s.effect);
             pass.set_bind_group(3, effect, &[offset]);
+
+            if let VertexSource::Compact(c) = s.source {
+                if s.kind == DrawKind::Trail {
+                    pass.set_vertex_buffer(
+                        0,
+                        self.pool.compact_particles.slice(c.particles_offset..),
+                    );
+                    pass.set_vertex_buffer(1, self.pool.compact_trails.slice(c.trails_offset..));
+                    pass.draw_indirect(&self.pool.indirect_args, c.indirect_offset);
+                    draws += 1;
+                    continue;
+                }
+                match s.mesh.map(&mesh) {
+                    Some(Some((vertices, indices, count))) => {
+                        pass.set_vertex_buffer(
+                            0,
+                            self.pool.compact_particles.slice(c.particles_offset..),
+                        );
+                        pass.set_vertex_buffer(1, vertices);
+                        pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+                        if count == c.index_count {
+                            pass.draw_indexed_indirect(&self.pool.indirect_args, c.indirect_offset);
+                        } else {
+                            let total: u32 = s.slots.iter().map(|r| r.end - r.start).sum();
+                            pass.draw_indexed(0..count, 0, 0..total);
+                        }
+                        draws += 1;
+                    }
+                    Some(None) => continue,
+                    None => {
+                        pass.set_vertex_buffer(
+                            0,
+                            self.pool.compact_particles.slice(c.particles_offset..),
+                        );
+                        pass.draw_indirect(&self.pool.indirect_args, c.indirect_offset);
+                        draws += 1;
+                    }
+                }
+                continue;
+            }
+
+            let (buffer, trails, base_p, base_t) = match s.source {
+                VertexSource::Cpu(_) => (&self.cpu_vertices, &self.cpu_vertices, 0u64, 0u64),
+                VertexSource::Pool(ps) => (
+                    &self.pool.particles,
+                    &self.pool.trails,
+                    ps.particles_offset,
+                    ps.trails_offset,
+                ),
+                VertexSource::Compact(_) => unreachable!(),
+            };
+            let ranges = s.slots.iter().enumerate().filter(|(_, r)| !r.is_empty());
+            let ranges = ranges.map(|(i, r)| match s.source {
+                VertexSource::Cpu(p) => (p.particles[i], p.trails[i], 0..r.end - r.start),
+                VertexSource::Pool(_) => (base_p, base_t, r.clone()),
+                VertexSource::Compact(_) => unreachable!(),
+            });
             if s.kind == DrawKind::Trail {
                 for (at, trail_at, r) in ranges {
                     pass.set_vertex_buffer(0, buffer.slice(at..));
@@ -605,7 +819,7 @@ impl ParticleRenderer {
         draws
     }
 
-    /// A copy of a system's particle slots (the GPU buffer is read back),
+    /// A copy of a system's particle slots (read back from the Mega-Pool),
     /// for tests and tools (native only).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn read(
@@ -618,7 +832,8 @@ impl ParticleRenderer {
         let Some(g) = &state.gpu else {
             return Some(state.cpu.slots.clone());
         };
-        let size = g.buffer.size();
+        let offset = u64::from(g.particle_base) * PARTICLE_STRIDE;
+        let size = u64::from(state.max) * PARTICLE_STRIDE;
         let staging = crate::traffic::create_buffer(
             device,
             &wgpu::BufferDescriptor {
@@ -629,7 +844,7 @@ impl ParticleRenderer {
             },
         );
         let mut encoder = device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(&g.buffer, 0, &staging, 0, size);
+        encoder.copy_buffer_to_buffer(&self.pool.particles, offset, &staging, 0, size);
         queue.submit(Some(encoder.finish()));
         let slice = staging.slice(..);
         crate::traffic::map_async(&slice, wgpu::MapMode::Read, |_| {});

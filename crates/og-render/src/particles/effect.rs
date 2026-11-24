@@ -278,6 +278,9 @@ pub(crate) struct EffectRenderer {
     /// By material index + 1 (0: none), each with the texture views it was
     /// made with: a material whose views are the same keeps its group.
     groups: Vec<([Option<wgpu::TextureView>; 4], wgpu::BindGroup)>,
+    /// Reusable upload scratch buffer and last uploaded entries for dirty tracking.
+    bytes: Vec<u8>,
+    cached: Vec<EffectGpu>,
 }
 
 impl EffectRenderer {
@@ -342,6 +345,8 @@ impl EffectRenderer {
             sampler,
             white,
             groups: Vec::new(),
+            bytes: Vec::new(),
+            cached: Vec::new(),
         };
         let none = r.group(device, [None; 4]);
         r.groups.push((Default::default(), none));
@@ -404,8 +409,7 @@ impl EffectRenderer {
 
     /// Writes the scene's materials and makes the groups of those whose
     /// texture views changed (all of them when the buffer grows), checking
-    /// every texture and hook they name. `view` is a texture's view (`None`:
-    /// not a texture of the scene).
+    /// every texture and hook they name. Only uploads when an entry changed.
     pub(crate) fn prepare<'v>(
         &mut self,
         device: &wgpu::Device,
@@ -416,17 +420,21 @@ impl EffectRenderer {
     ) -> Result<(), crate::RenderError> {
         self.groups.truncate(materials.len() + 1);
         if materials.is_empty() {
+            self.cached.clear();
             return Ok(());
         }
         let size = EFFECT_STRIDE * (materials.len() as u64 + 1);
+        let mut dirty = self.cached.len() != materials.len();
         if size > self.buffer.size() {
             // Every group binds the buffer: none is kept.
             self.buffer = Self::buffer(device, size.next_power_of_two());
             let none = self.group(device, [None; 4]);
             self.groups.clear();
             self.groups.push((Default::default(), none));
+            self.cached.clear();
+            dirty = true;
         }
-        let mut bytes = vec![0u8; size as usize];
+        self.cached.resize(materials.len(), EffectGpu::off());
         for (i, m) in materials.iter().enumerate() {
             let bad = |why: String| {
                 crate::RenderError::InvalidData(format!("effect material {i}: {why}"))
@@ -444,10 +452,11 @@ impl EffectRenderer {
                     }
                 }
             }
-            let at = (i + 1) * EFFECT_STRIDE as usize;
             let g = EffectGpu::of(m);
-            bytes[at..at + std::mem::size_of::<EffectGpu>()]
-                .copy_from_slice(bytemuck::bytes_of(&g));
+            if bytemuck::bytes_of(&self.cached[i]) != bytemuck::bytes_of(&g) {
+                self.cached[i] = g;
+                dirty = true;
+            }
             let mut views = [None; 4];
             let textures = [
                 m.main.texture,
@@ -478,7 +487,16 @@ impl EffectRenderer {
                 }
             }
         }
-        crate::traffic::write_buffer(queue, &self.buffer, 0, &bytes);
+        if dirty {
+            self.bytes.clear();
+            self.bytes.resize(size as usize, 0);
+            for (i, g) in self.cached.iter().enumerate() {
+                let at = (i + 1) * EFFECT_STRIDE as usize;
+                self.bytes[at..at + std::mem::size_of::<EffectGpu>()]
+                    .copy_from_slice(bytemuck::bytes_of(g));
+            }
+            crate::traffic::write_buffer(queue, &self.buffer, 0, &self.bytes);
+        }
         Ok(())
     }
 

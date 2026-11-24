@@ -245,6 +245,10 @@ impl Renderer {
         stages.end("camera, crowd plan, skinned culling");
         // Effects this frame.
         let post_fx = &scene.look.post;
+        let oit_order_free = self.info.caps.contains(Caps::MRT | Caps::INDEPENDENT_BLEND)
+            && scene.frame.debug == DebugView::None
+            && scene.frame.views.is_empty()
+            && scene.lighting.reflection_probes.is_empty();
         let particle_frame = self.particles.gpu.prepare(
             &self.device,
             &self.queue,
@@ -252,6 +256,8 @@ impl Renderer {
             // Without compute every emitter simulates on the CPU.
             self.particles.simulation == ParticleSimulation::Auto
                 && self.runs(FramePass::Particles),
+            self.info.caps.contains(Caps::INDIRECT),
+            oit_order_free,
             self.cache.textures.len(),
             camera.position,
             cam.forward,

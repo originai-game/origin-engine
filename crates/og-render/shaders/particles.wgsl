@@ -20,7 +20,7 @@
 
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
 @group(1) @binding(1) var sprite_sampler: sampler;
-@group(2) @binding(0) var<uniform> emitter: Emitter;
+@group(2) @binding(0) var<uniform> emitter: EmitterDraw;
 @group(2) @binding(1) var<uniform> view: ParticleView;
 @group(2) @binding(2) var scene_depth: texture_2d<f32>;
 // The opaque scene copied before the transparent draws (white where the pass
@@ -110,7 +110,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   let size = particle_size(p.misc.x, t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
-  if (emitter.ranges2.z > 0.5) {
+  if (emitter.sheet2.w > 0.5) {
     center = (emitter.transform * vec4<f32>(center, 1.0)).xyz;
     vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
   }
@@ -270,7 +270,7 @@ fn trail_point(ring: ptr<function, array<vec4<f32>, 8>>, head: vec3<f32>, k: u32
   if (k == 0u) { return vec4<f32>(head, 0.0); }
   let newest = u32(emitter.trail.w + 0.5);
   let i = (newest + TRAIL_POINTS - (k - 1u) % TRAIL_POINTS) % TRAIL_POINTS;
-  return vec4<f32>((*ring)[i].xyz, emitter.counts3.z + f32(k - 1u) * emitter.trail.z);
+  return vec4<f32>((*ring)[i].xyz, emitter.counts2.z + f32(k - 1u) * emitter.trail.z);
 }
 
 // A particle's trail: a camera-facing strip through where it is and its
@@ -305,7 +305,7 @@ fn vs_trail(@builtin(vertex_index) vi: u32, p: ParticleIn, h: TrailIn) -> Partic
   // moves; else the camera's right below.
   if (dot(tangent, tangent) < 1e-12) { tangent = p.vel_life.xyz; }
   var pos = at.xyz;
-  if (emitter.ranges2.z > 0.5) {
+  if (emitter.sheet2.w > 0.5) {
     pos = (emitter.transform * vec4<f32>(pos, 1.0)).xyz;
     tangent = (emitter.transform * vec4<f32>(tangent, 0.0)).xyz;
   }
@@ -389,7 +389,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   let size = particle_size(p.misc.x, t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
-  if (emitter.ranges2.z > 0.5) {
+  if (emitter.sheet2.w > 0.5) {
     center = (emitter.transform * vec4<f32>(center, 1.0)).xyz;
     vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
   }
@@ -478,8 +478,8 @@ fn particle_effect_color(in: ParticleOut, shape: f32, normal: vec3<f32>) -> vec4
 // The system's hue turn (og.Vfx.hue) on the colour it draws, before light
 // and fog; none at 0, so an unturned system draws exactly as it did.
 fn particle_hue(c: vec4<f32>) -> vec4<f32> {
-  if (emitter.counts.w == 0.0) { return c; }
-  return vec4<f32>(hue_rotate(c.rgb, emitter.counts.w), c.a);
+  if (emitter.counts2.y == 0.0) { return c; }
+  return vec4<f32>(hue_rotate(c.rgb, emitter.counts2.y), c.a);
 }
 
 @fragment

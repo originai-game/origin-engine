@@ -138,6 +138,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     add("pack", crate::physical::PACK_WGSL.to_string());
     // Compute: GPU particles and GPU culling.
     add("particle sim", crate::particles_gpu::sim_source());
+    add("particle compact", crate::particles_gpu::compact_source());
     add("cull", crate::cull_gpu::CULL_WGSL.to_string());
     add("depth pyramid", crate::cull_gpu::hiz_source(false));
     add(

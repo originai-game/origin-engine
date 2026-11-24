@@ -1,30 +1,63 @@
-// The particle simulation (compute): one invocation per slot of a
-// system's ring, one dispatch per tick. A slot either receives the newest
-// particle the tick spawns into it or, while alive, integrates one fixed
-// step; then live world-space particles bounce off the depth prepass or,
-// where the emitter names them (emitter.collision.w; its list in
-// emitter.info.z), the scene's colliders. Nothing is read back. The spawn
-// and step formulas are `spawn`, `integrate` and `collide` in
-// particles.rs. Prepended by noise.wgsl, particle_common.wgsl and
-// scene_colliders.wgsl.
+// Batched pooled particle simulation (compute): all active GPU systems share
+// one Mega-Pool (`particles_pool`, `trails_pool`, `points_pool`) and simulate
+// in merged wave dispatches (`sim_tiles`) — one dispatch per wave across every
+// system in the scene. Sub-emitters (`Birth`, `Death`, `Collision`, `Life`)
+// spawn deterministically directly into their child slabs on the GPU.
+// Prepended by noise.wgsl, particle_common.wgsl and scene_colliders.wgsl.
 
-// Group 0 is the frame's, shared by every system; group 1 is the
-// system's own, made with its buffers.
-@group(0) @binding(0) var<uniform> emitter: Emitter;
+struct SimDispatch {
+  tile_offset: u32,
+  tile_count: u32,
+  _pad0: u32,
+  _pad1: u32,
+};
+
+struct EmitterSim {
+  transform: mat4x4<f32>,        // end-of-tick local -> world (or shift translation)
+  prev_transform: mat4x4<f32>,   // start-of-tick local -> world (for sub-tick spawn lerp)
+  shape: vec4<f32>,              // x: kind (0..5), y: a, z: b, w: 1 when prev_transform active
+  shape2: vec4<f32>,             // xyz: box half extents, w: spread (rad)
+  ranges0: vec4<f32>,            // lifetime min, max, speed min, max
+  ranges1: vec4<f32>,            // size min, max, rotation min, max (rad)
+  ranges2: vec4<f32>,            // angular velocity min, max (rad/s), space (0 world, 1 local), dt
+  forces: vec4<f32>,             // gravity xyz, drag
+  noise: vec4<f32>,              // strength, frequency, scroll, time (s)
+  collision: vec4<f32>,          // x: depth on, y: bounce, z: friction, w: colliders on
+  noise_origin: array<vec4<f32>, 2>,
+  speed_t: array<vec4<f32>, 2>,
+  speed_v: array<vec4<f32>, 2>,
+  attract: array<vec4<f32>, 4>,
+  attract_r: vec4<f32>,
+  field: vec4<f32>,              // x: 0 none, 1 curl, 2 grid; y strength; z freq/size; w scroll/cells
+  field_origin: array<vec4<f32>, 2>,
+  motion: vec4<f32>,             // xyz: emitter velocity, w: inherit_velocity
+  air: vec4<f32>,                // xyz: carrying air, w: force_fields share
+  counts: vec4<f32>,             // x: speed keys, y: attractors, z: emission share, w: die on hit
+  trail: vec4<f32>,              // x: lifetime, y: width share, z: interval, w: sample index (-1 none)
+  spawn: vec4<u32>,              // x: first (low 32), y: count, z: first % max, w: bursts
+  info: vec4<u32>,               // x: max particles, y: seed, z: collider list, w: points_base (vec4 offset)
+  pool: vec4<u32>,               // x: particle_base, y: trail_base, z: grid_base (vec4 offset), w: (sub_count << 20) | sub_base_vec4 (or clear counter idx)
+};
+
+// Group 0: frame bindings (2 storage buffers: colliders, force_fields).
+@group(0) @binding(0) var<uniform> dispatch: SimDispatch;
 @group(0) @binding(1) var<uniform> view: ParticleView;
 @group(0) @binding(2) var scene_depth: texture_2d<f32>;
 @group(0) @binding(3) var scene_gbuffer: texture_2d<f32>;
 @group(0) @binding(4) var<storage, read> colliders: array<vec4<f32>>;
-// The og.ForceFields: their count, then six vec4s each (pack_fields).
 @group(0) @binding(5) var<storage, read> force_fields: array<vec4<f32>>;
-@group(1) @binding(0) var<storage, read_write> particles: array<Particle>;
-@group(1) @binding(1) var<storage, read> mesh_points: array<vec4<f32>>;
-// With a trail (emitter.trail.x > 0): each slot's path, TRAIL_POINTS
-// samples from slot * TRAIL_POINTS (CpuParticles::trail); else one unused
-// element.
-@group(1) @binding(2) var<storage, read_write> trail: array<vec4<f32>>;
+
+// Group 1: pooled simulation buffers (6 storage buffers; total = 8, WebGPU Compat limit).
+@group(1) @binding(0) var<storage, read> sim_entries: array<EmitterSim>;
+// Holds SimTile entries (entry_idx, slot_offset, 0, 0) followed by packed 4-vec4 SubEmitDesc records.
+@group(1) @binding(1) var<storage, read> sim_tiles: array<vec4<u32>>;
+@group(1) @binding(2) var<storage, read> points_pool: array<vec4<f32>>;
+@group(1) @binding(3) var<storage, read_write> particles_pool: array<Particle>;
+@group(1) @binding(4) var<storage, read_write> trails_pool: array<vec4<f32>>;
+@group(1) @binding(5) var<storage, read_write> sub_counters: array<atomic<u32>>;
 
 const TRAIL_POINTS: u32 = 8u;
+const IMPACT_SPEED: f32 = 0.5;
 
 fn rand(seed: u32, n: u32, stream: u32) -> f32 {
   return hash_unit(seed ^ pcg(n + stream * 0x9e3779b9u));
@@ -47,61 +80,82 @@ fn cone_dir(axis: vec3<f32>, angle: f32, r0: f32, r1: f32) -> vec3<f32> {
 
 struct Sample { pos: vec3<f32>, dir: vec3<f32> };
 
-fn shape_sample(r: vec4<f32>) -> Sample {
+fn shape_sample(ei: u32, r: vec4<f32>) -> Sample {
   var s: Sample;
   s.pos = vec3<f32>(0.0);
   s.dir = vec3<f32>(0.0, 1.0, 0.0);
-  let kind = u32(emitter.shape.x);
+  let sh = sim_entries[ei].shape;
+  let kind = u32(sh.x);
   if (kind == 1u) {
     let d = cone_dir(vec3<f32>(0.0, 1.0, 0.0), PI, r.x, r.y);
     var k = 1.0;
-    if (emitter.shape.z < 0.5) { k = pow(r.z, 1.0 / 3.0); }
-    s.pos = d * emitter.shape.y * k;
+    if (sh.z < 0.5) { k = pow(r.z, 1.0 / 3.0); }
+    s.pos = d * sh.y * k;
     s.dir = d;
   } else if (kind == 2u) {
-    s.dir = cone_dir(vec3<f32>(0.0, 1.0, 0.0), emitter.shape.y, r.x, r.y);
+    s.dir = cone_dir(vec3<f32>(0.0, 1.0, 0.0), sh.y, r.x, r.y);
     let a = r.z * 2.0 * PI;
-    let rr = sqrt(r.w) * emitter.shape.z;
+    let rr = sqrt(r.w) * sh.z;
     s.pos = vec3<f32>(cos(a) * rr, 0.0, sin(a) * rr);
   } else if (kind == 3u) {
-    s.pos = (vec3<f32>(r.x, r.y, r.z) * 2.0 - vec3<f32>(1.0)) * emitter.shape2.xyz;
+    s.pos = (vec3<f32>(r.x, r.y, r.z) * 2.0 - vec3<f32>(1.0)) * sim_entries[ei].shape2.xyz;
   } else if (kind == 4u || kind == 5u) {
-    let count = u32(emitter.shape.y);
+    let count = u32(sh.y);
     if (count > 0u) {
+      let base = sim_entries[ei].info.w;
       let i = min(u32(r.x * f32(count)), count - 1u);
-      s.pos = mesh_points[i * 2u].xyz;
-      s.dir = mesh_points[i * 2u + 1u].xyz;
+      s.pos = points_pool[base + i * 2u].xyz;
+      s.dir = points_pool[base + i * 2u + 1u].xyz;
     }
   }
   return s;
 }
 
-fn spawn(n: u32, k: u32) -> Particle {
-  let seed = emitter.info.y;
-  let life = max(mix(emitter.ranges0.x, emitter.ranges0.y, rand(seed, n, 0u)), 1e-3);
-  let speed = mix(emitter.ranges0.z, emitter.ranges0.w, rand(seed, n, 1u));
-  let size = mix(emitter.ranges1.x, emitter.ranges1.y, rand(seed, n, 2u));
-  let rot = mix(emitter.ranges1.z, emitter.ranges1.w, rand(seed, n, 3u));
-  let spin = mix(emitter.ranges2.x, emitter.ranges2.y, rand(seed, n, 4u));
-  let s = shape_sample(vec4<f32>(rand(seed, n, 6u), rand(seed, n, 7u), rand(seed, n, 8u), rand(seed, n, 11u)));
+fn spawn(ei: u32, n: u32, k: u32) -> Particle {
+  let seed = sim_entries[ei].info.y;
+  let r0 = sim_entries[ei].ranges0;
+  let r1 = sim_entries[ei].ranges1;
+  let r2 = sim_entries[ei].ranges2;
+  let life = max(mix(r0.x, r0.y, rand(seed, n, 0u)), 1e-3);
+  let speed = mix(r0.z, r0.w, rand(seed, n, 1u));
+  let size = mix(r1.x, r1.y, rand(seed, n, 2u));
+  let rot = mix(r1.z, r1.w, rand(seed, n, 3u));
+  let spin = mix(r2.x, r2.y, rand(seed, n, 4u));
+  let s = shape_sample(ei, vec4<f32>(rand(seed, n, 6u), rand(seed, n, 7u), rand(seed, n, 8u), rand(seed, n, 11u)));
   var dir = s.dir;
-  if (emitter.shape2.w > 0.0) { dir = cone_dir(dir, emitter.shape2.w, rand(seed, n, 9u), rand(seed, n, 10u)); }
+  let spread = sim_entries[ei].shape2.w;
+  if (spread > 0.0) { dir = cone_dir(dir, spread, rand(seed, n, 9u), rand(seed, n, 10u)); }
+  let dt = r2.w;
+  let bursts = sim_entries[ei].spawn.w;
+  var age = 0.0;
+  var frac = 1.0;
+  if (k >= bursts) {
+    let c = f32(max(sim_entries[ei].spawn.y - bursts, 1u));
+    let u = (f32(k - bursts) + 0.5) / c;
+    age = u * dt;
+    frac = 1.0 - u;
+  }
   var pos = s.pos;
   var vel = dir * speed;
-  if (emitter.ranges2.z < 0.5) {
-    pos = (emitter.transform * vec4<f32>(pos, 1.0)).xyz;
-    vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz + emitter.motion.xyz * emitter.motion.w;
-  }
-  let dt = emitter.ranges2.w;
-  let bursts = emitter.spawn.w;
-  var age = 0.0;
-  if (k >= bursts) {
-    let c = f32(max(emitter.spawn.y - bursts, 1u));
-    age = (f32(k - bursts) + 0.5) / c * dt;
+  if (r2.z < 0.5) {
+    // Sub-tick emitter motion interpolation when continuous spawns occur while moving.
+    let m = sim_entries[ei].transform;
+    if (sim_entries[ei].shape.w > 0.5 && k >= bursts) {
+      let pm = sim_entries[ei].prev_transform;
+      let p0 = (pm * vec4<f32>(pos, 1.0)).xyz;
+      let p1 = (m * vec4<f32>(pos, 1.0)).xyz;
+      let v0 = (pm * vec4<f32>(vel, 0.0)).xyz;
+      let v1 = (m * vec4<f32>(vel, 0.0)).xyz;
+      pos = mix(p0, p1, frac);
+      vel = mix(v0, v1, frac) + sim_entries[ei].motion.xyz * sim_entries[ei].motion.w;
+    } else {
+      pos = (m * vec4<f32>(pos, 1.0)).xyz;
+      vel = (m * vec4<f32>(vel, 0.0)).xyz + sim_entries[ei].motion.xyz * sim_entries[ei].motion.w;
+    }
   }
   pos += vel * age;
   // What the emission leaves out takes its slot unborn (cpu.rs `spawn`).
-  if (rand(seed, n, 15u) >= emitter.counts.z) { age = life; }
+  if (rand(seed, n, 15u) >= sim_entries[ei].counts.z) { age = life; }
   var p: Particle;
   p.pos_age = vec4<f32>(pos, age);
   p.vel_life = vec4<f32>(vel, life);
@@ -129,13 +183,13 @@ fn curl_noise(q: vec3<f32>, whole: vec3<i32>, seed: u32) -> vec3<f32> {
 
 fn grid_at(n: i32, base: u32, c: vec3<i32>) -> vec3<f32> {
   let w = ((c % n) + vec3<i32>(n)) % n;
-  return mesh_points[base + u32((w.z * n + w.y) * n + w.x)].xyz;
+  return points_pool[base + u32((w.z * n + w.y) * n + w.x)].xyz;
 }
 
 // A grid field's vector at `g` (cells, tiling), trilinear (grid_sample).
-fn grid_sample(g: vec3<f32>) -> vec3<f32> {
-  let n = max(i32(emitter.field.w), 1);
-  let base = u32(emitter.counts2.w);
+fn grid_sample(ei: u32, g: vec3<f32>) -> vec3<f32> {
+  let n = max(i32(sim_entries[ei].field.w), 1);
+  let base = sim_entries[ei].pool.z;
   let fl = floor(g);
   let f = g - fl;
   let i = vec3<i32>(fl);
@@ -147,25 +201,27 @@ fn grid_sample(g: vec3<f32>) -> vec3<f32> {
 }
 
 // The attractors' pull and the field at `pos` (forces in particles.rs).
-fn forces(pos: vec3<f32>) -> vec3<f32> {
+fn forces(ei: u32, pos: vec3<f32>) -> vec3<f32> {
   var a = vec3<f32>(0.0);
-  for (var i = 0u; i < u32(emitter.counts2.z); i++) {
-    let at = emitter.attract[i];
+  let n_att = u32(sim_entries[ei].counts.y);
+  for (var i = 0u; i < n_att; i++) {
+    let at = sim_entries[ei].attract[i];
     let d = at.xyz - pos;
     let dist = length(d);
     if (dist < 1e-4) { continue; }
-    let r = emitter.attract_r[i];
+    let r = sim_entries[ei].attract_r[i];
     var f = at.w / (1.0 + dist * dist);
     if (r > 0.0) { f = at.w * max(1.0 - dist / r, 0.0); }
     a += d * (f / dist);
   }
-  let kind = u32(emitter.field.x);
+  let fld = sim_entries[ei].field;
+  let kind = u32(fld.x);
   if (kind == 1u) {
-    let q = pos * emitter.field.z + emitter.field_origin[1].xyz + vec3<f32>(emitter.noise.w * emitter.field.w);
-    a += curl_noise(q, vec3<i32>(emitter.field_origin[0].xyz), emitter.info.y) * emitter.field.y;
+    let q = pos * fld.z + sim_entries[ei].field_origin[1].xyz + vec3<f32>(sim_entries[ei].noise.w * fld.w);
+    a += curl_noise(q, vec3<i32>(sim_entries[ei].field_origin[0].xyz), sim_entries[ei].info.y) * fld.y;
   } else if (kind == 2u) {
-    let g = pos / emitter.field.z * emitter.field.w + emitter.field_origin[1].xyz;
-    a += grid_sample(g) * emitter.field.y;
+    let g = pos / fld.z * fld.w + sim_entries[ei].field_origin[1].xyz;
+    a += grid_sample(ei, g) * fld.y;
   }
   return a;
 }
@@ -180,8 +236,7 @@ fn unit_or_zero(v: vec3<f32>) -> vec3<f32> {
   return select(vec3<f32>(0.0), v / l, l > 0.0);
 }
 
-// The og.ForceFields' acceleration at `p` (og-env's `Forces::at`): each
-// field its kind's way, times its region's weight there.
+// The og.ForceFields' acceleration at `p` (og-env's `Forces::at`).
 fn force_field_at(p: vec3<f32>) -> vec3<f32> {
   var a = vec3<f32>(0.0);
   let n = u32(force_fields[0].x);
@@ -222,58 +277,60 @@ fn force_field_at(p: vec3<f32>) -> vec3<f32> {
   return a;
 }
 
-fn integrate(p: Particle) -> Particle {
-  let dt = emitter.ranges2.w;
+struct StepOut {
+  p: Particle,
+  impact: bool,
+};
+
+fn integrate(ei: u32, p: Particle) -> StepOut {
+  let dt = sim_entries[ei].ranges2.w;
   var pos = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
-  vel += emitter.forces.xyz * dt;
-  // The world's force fields (world-space particles; cpu.rs `integrate`).
-  if (emitter.push.x != 0.0) {
-    vel += force_field_at(pos) * (emitter.push.x * dt);
+  vel += sim_entries[ei].forces.xyz * dt;
+  let push = sim_entries[ei].air.w;
+  if (push != 0.0) {
+    vel += force_field_at(pos) * (push * dt);
   }
-  if (emitter.noise.x != 0.0) {
-    let seed = emitter.info.y;
-    // `pos` is from the render origin: the lattice's cells there are added.
-    let w = vec3<i32>(emitter.noise_origin[0].xyz);
-    let q = pos * emitter.noise.y + emitter.noise_origin[1].xyz + vec3<f32>(emitter.noise.w * emitter.noise.z);
+  let ns = sim_entries[ei].noise;
+  if (ns.x != 0.0) {
+    let seed = sim_entries[ei].info.y;
+    let w = vec3<i32>(sim_entries[ei].noise_origin[0].xyz);
+    let q = pos * ns.y + sim_entries[ei].noise_origin[1].xyz + vec3<f32>(ns.w * ns.z);
     let n = vec3<f32>(value_noise3_at(q, w, seed ^ 0x1111u), value_noise3_at(q, w, seed ^ 0x2222u), value_noise3_at(q, w, seed ^ 0x3333u)) * 2.0 - vec3<f32>(1.0);
-    vel += n * emitter.noise.x * dt;
+    vel += n * ns.x * dt;
   }
-  vel += forces(pos) * dt;
-  vel = emitter.air.xyz + (vel - emitter.air.xyz) * (1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt));
+  vel += forces(ei, pos) * dt;
+  let air = sim_entries[ei].air.xyz;
+  vel = air + (vel - air) * (1.0 / (1.0 + max(sim_entries[ei].forces.w, 0.0) * dt));
   let before = pos;
   var speed_scale = 1.0;
-  let speed_keys = u32(emitter.counts2.x);
+  let speed_keys = u32(sim_entries[ei].counts.x);
   if (speed_keys > 0u) {
     let t = clamp(p.pos_age.w / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-    speed_scale = curve_at(emitter.speed_t, emitter.speed_v, speed_keys, t);
+    speed_scale = curve_at(sim_entries[ei].speed_t, sim_entries[ei].speed_v, speed_keys, t);
   }
   pos += vel * (dt * speed_scale);
   var hit = false;
-  if (emitter.collision.w > 0.5) {
-    // The scene's colliders, as the CPU path's `collide` meets them: a
-    // step from outside to inside reflects the normal part of the
-    // velocity by `bounce`, takes `friction` off the rest and is taken
-    // again from before; one that starts inside (born in a brazier's box)
-    // leaves freely.
-    let list = emitter.info.z;
+  var impact = false;
+  let col = sim_entries[ei].collision;
+  if (col.w > 0.5) {
+    let list = sim_entries[ei].info.z;
     if (!push_out(before, 0.0, list).hit) {
       let h = push_out(pos, 0.0, list);
       if (h.hit) {
         let vn = dot(vel, h.n);
         if (vn < 0.0) {
           let normal_part = h.n * vn;
-          vel = (vel - normal_part) * (1.0 - emitter.collision.z) - normal_part * emitter.collision.y;
+          vel = (vel - normal_part) * (1.0 - col.z) - normal_part * col.y;
           pos = before + vel * dt;
           hit = true;
-          // A corner or a second shape the new step still enters: out to its surface.
+          impact = (-vn) > IMPACT_SPEED;
           let again = push_out(pos, 0.0, list);
           if (again.hit) { pos = again.p; }
         }
       }
     }
-  } else if (emitter.collision.x > 0.5 && emitter.ranges2.z < 0.5) {
-    // The prepass depth along the camera's forward axis at the particle's pixel.
+  } else if (col.x > 0.5 && sim_entries[ei].ranges2.z < 0.5) {
     let clip = view.view_proj * vec4<f32>(pos, 1.0);
     if (clip.w > 0.0) {
       let ndc = clip.xy / clip.w;
@@ -290,75 +347,235 @@ fn integrate(p: Particle) -> Particle {
           let vn = dot(vel, nrm);
           if (vn < 0.0) {
             let normal_part = nrm * vn;
-            vel = (vel - normal_part) * (1.0 - emitter.collision.z) - normal_part * emitter.collision.y;
+            vel = (vel - normal_part) * (1.0 - col.z) - normal_part * col.y;
             pos = before + vel * dt;
             hit = true;
+            impact = (-vn) > IMPACT_SPEED;
           }
         }
       }
     }
   }
   var o = p;
-  // One that dies on a hit is as old as its life (cpu.rs `integrate`).
-  o.pos_age = vec4<f32>(pos, select(p.pos_age.w + dt, p.vel_life.w, hit && emitter.counts3.w > 0.5));
+  o.pos_age = vec4<f32>(pos, select(p.pos_age.w + dt, p.vel_life.w, hit && sim_entries[ei].counts.w > 0.5));
   o.vel_life = vec4<f32>(vel, p.vel_life.w);
-  return o;
+  return StepOut(o, impact);
+}
+
+// ---------------------------------------------------------------------------
+// GPU sub-emitters (`Birth`, `Death`, `Collision`, `Life`).
+// Each sub-emitter record occupies 4 vec4<u32> elements in `sim_tiles`:
+//   d0: (child_entry_idx, counter_idx, trigger, count_or_burst_count)
+//   d1: bitcast f32 (inherit_vel, rate, duration, looping)
+//   d2: bitcast f32 burst0 (time, count, cycles, interval)
+//   d3: bitcast f32 burst1 (time, count, cycles, interval)
+// ---------------------------------------------------------------------------
+
+fn child_bursts_in_cycle(b0: vec4<f32>, b1: vec4<f32>, nb: u32, end: f32, dur: f32) -> u32 {
+  var n = 0u;
+  for (var bi = 0u; bi < nb; bi++) {
+    let b = select(b0, b1, bi == 1u);
+    let cycles = max(u32(b.z + 0.5), 1u);
+    let interval = max(b.w, 0.0);
+    let bcount = u32(b.y + 0.5);
+    let btime = max(b.x, 0.0);
+    for (var ci = 0u; ci < cycles; ci++) {
+      let t = btime + f32(ci) * interval;
+      if ((t >= dur && dur > 0.0) || t >= end) { break; }
+      n += bcount;
+    }
+  }
+  return n;
+}
+
+fn child_spawned_before(d1: vec4<f32>, b0: vec4<f32>, b1: vec4<f32>, nb: u32, elapsed: f32) -> u32 {
+  let dur = max(d1.z, 1e-6);
+  let looping = d1.w > 0.5;
+  let end = select(min(elapsed, dur), elapsed, looping);
+  if (end <= 0.0) { return 0u; }
+  let continuous = u32(floor(max(d1.y, 0.0) * end));
+  var bursts = 0u;
+  if (looping) {
+    let full = u32(floor(end / dur));
+    let per_cycle = child_bursts_in_cycle(b0, b1, nb, dur, dur);
+    bursts = full * per_cycle + child_bursts_in_cycle(b0, b1, nb, end - f32(full) * dur, dur);
+  } else {
+    bursts = child_bursts_in_cycle(b0, b1, nb, end, dur);
+  }
+  return continuous + bursts;
+}
+
+fn spawn_child_one(child_ei: u32, counter_idx: u32, at: vec3<f32>, inherited: vec3<f32>, n_hash: u32) {
+  let cmax = max(sim_entries[child_ei].info.x, 1u);
+  let cseed = sim_entries[child_ei].info.y;
+  let cbase = sim_entries[child_ei].pool.x;
+  let r0 = sim_entries[child_ei].ranges0;
+  let r1 = sim_entries[child_ei].ranges1;
+  let r2 = sim_entries[child_ei].ranges2;
+  let life = max(mix(r0.x, r0.y, rand(cseed, n_hash, 0u)), 1e-3);
+  let speed = mix(r0.z, r0.w, rand(cseed, n_hash, 1u));
+  let size = mix(r1.x, r1.y, rand(cseed, n_hash, 2u));
+  let rot = mix(r1.z, r1.w, rand(cseed, n_hash, 3u));
+  let spin = mix(r2.x, r2.y, rand(cseed, n_hash, 4u));
+  let s = shape_sample(child_ei, vec4<f32>(rand(cseed, n_hash, 6u), rand(cseed, n_hash, 7u), rand(cseed, n_hash, 8u), rand(cseed, n_hash, 11u)));
+  var dir = s.dir;
+  let spread = sim_entries[child_ei].shape2.w;
+  if (spread > 0.0) { dir = cone_dir(dir, spread, rand(cseed, n_hash, 9u), rand(cseed, n_hash, 10u)); }
+  var age = 0.0;
+  if (rand(cseed, n_hash, 15u) >= sim_entries[child_ei].counts.z) { age = life; }
+  var cp: Particle;
+  cp.pos_age = vec4<f32>(at + s.pos, age);
+  cp.vel_life = vec4<f32>(dir * speed + inherited, life);
+  cp.misc = vec4<f32>(size, rot, spin, rand(cseed, n_hash, 5u));
+  let ring_n = atomicAdd(&sub_counters[counter_idx], 1u);
+  particles_pool[cbase + (ring_n % cmax)] = cp;
+}
+
+fn emit_sub_events(
+  ei: u32,
+  p: Particle,
+  pid: u32,
+  a0: f32,
+  a1: f32,
+  born: bool,
+  died: bool,
+  collided: bool,
+) {
+  let sub_meta = sim_entries[ei].pool.w;
+  let sub_count = sub_meta >> 20u;
+  if (sub_count == 0u) { return; }
+  let sub_base = sub_meta & 0xfffffu;
+  var at = p.pos_age.xyz;
+  var vel = p.vel_life.xyz;
+  if (sim_entries[ei].ranges2.z > 0.5) {
+    at = (sim_entries[ei].transform * vec4<f32>(at, 1.0)).xyz;
+    vel = (sim_entries[ei].transform * vec4<f32>(vel, 0.0)).xyz;
+  }
+  for (var sk = 0u; sk < sub_count; sk++) {
+    let base = sub_base + sk * 4u;
+    let d0 = sim_tiles[base];
+    let child_ei = d0.x;
+    let counter_idx = d0.y;
+    let trigger = d0.z;
+    let count = d0.w;
+    let d1 = bitcast<vec4<f32>>(sim_tiles[base + 1u]);
+    let inherited = vel * d1.x;
+    let cmax = max(sim_entries[child_ei].info.x, 1u);
+    if (trigger == 3u) {
+      let b0 = bitcast<vec4<f32>>(sim_tiles[base + 2u]);
+      let b1 = bitcast<vec4<f32>>(sim_tiles[base + 3u]);
+      let s0 = child_spawned_before(d1, b0, b1, count, a0);
+      let s1 = child_spawned_before(d1, b0, b1, count, a1);
+      let n_emit = min(s1 - s0, cmax);
+      for (var em = 0u; em < n_emit; em++) {
+        let ord = s0 + em;
+        let n_hash = pcg(pid ^ pcg(ord + 1u) ^ pcg(sk * 0x9e3779b9u + 7u));
+        spawn_child_one(child_ei, counter_idx, at, inherited, n_hash);
+      }
+    } else {
+      let fire = ((trigger == 0u) && born) || ((trigger == 1u) && died) || ((trigger == 2u) && collided);
+      if (fire) {
+        let n_emit = min(count, cmax);
+        let tick_hash = bitcast<u32>(sim_entries[ei].noise.w);
+        for (var em = 0u; em < n_emit; em++) {
+          let n_hash = pcg(pid ^ pcg(tick_hash + em + 1u) ^ pcg(sk * 0x9e3779b9u + trigger * 17u));
+          spawn_child_one(child_ei, counter_idx, at, inherited, n_hash);
+        }
+      }
+    }
+  }
 }
 
 @compute @workgroup_size(64)
-fn simulate(@builtin(global_invocation_id) id: vec3<u32>) {
-  let slot = id.x;
-  let max_particles = emitter.info.x;
+fn simulate(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
+  if (wid.x >= dispatch.tile_count) { return; }
+  let tile = sim_tiles[dispatch.tile_offset + wid.x];
+  let ei = tile.x;
+  let slot = tile.y + lid.x;
+  let max_particles = sim_entries[ei].info.x;
   if (slot >= max_particles) { return; }
-  let count = emitter.spawn.y;
-  let off = (slot + max_particles - emitter.spawn.z) % max_particles;
-  let trails = emitter.trail.x > 0.0;
+  let p_idx = sim_entries[ei].pool.x + slot;
+  let count = sim_entries[ei].spawn.y;
+  let off = (slot + max_particles - sim_entries[ei].spawn.z) % max_particles;
+  let trails = sim_entries[ei].trail.x > 0.0;
+  let t_base = sim_entries[ei].pool.y;
   if (off < count) {
     let k = off + ((count - 1u - off) / max_particles) * max_particles;
-    let p = spawn(emitter.spawn.x + k, k);
-    particles[slot] = p;
-    // Its path starts where it is born.
-    if (trails && p.pos_age.w < p.vel_life.w) {
+    let pid = sim_entries[ei].spawn.x + k;
+    let p = spawn(ei, pid, k);
+    particles_pool[p_idx] = p;
+    let alive = p.pos_age.w < p.vel_life.w;
+    if (trails && alive) {
       for (var i = 0u; i < TRAIL_POINTS; i++) {
-        trail[slot * TRAIL_POINTS + i] = vec4<f32>(p.pos_age.xyz, 0.0);
+        trails_pool[(t_base + slot) * TRAIL_POINTS + i] = vec4<f32>(p.pos_age.xyz, 0.0);
       }
+    }
+    if (alive && ((sim_entries[ei].pool.w >> 20u) != 0u)) {
+      let a1 = min(p.pos_age.w, p.vel_life.w);
+      emit_sub_events(ei, p, pid, 0.0, a1, true, false, false);
     }
     return;
   }
-  let p = particles[slot];
+  let p = particles_pool[p_idx];
   if (p.pos_age.w < p.vel_life.w) {
-    let q = integrate(p);
-    particles[slot] = q;
-    // The tick's sample (trail.w its ring index; -1: none).
-    if (trails && emitter.trail.w >= 0.0 && q.pos_age.w < q.vel_life.w) {
-      trail[slot * TRAIL_POINTS + u32(emitter.trail.w)] = vec4<f32>(q.pos_age.xyz, 0.0);
+    let before_age = p.pos_age.w;
+    let res = integrate(ei, p);
+    let q = res.p;
+    particles_pool[p_idx] = q;
+    let alive = q.pos_age.w < q.vel_life.w;
+    if (trails && (sim_entries[ei].trail.w >= 0.0) && alive) {
+      trails_pool[(t_base + slot) * TRAIL_POINTS + u32(sim_entries[ei].trail.w)] = vec4<f32>(q.pos_age.xyz, 0.0);
+    }
+    if ((sim_entries[ei].pool.w >> 20u) != 0u) {
+      let first_m = sim_entries[ei].spawn.z;
+      let last_m = (first_m + max_particles - 1u) % max_particles;
+      let back = (last_m + max_particles - slot) % max_particles;
+      let pid = sim_entries[ei].spawn.x - 1u - back;
+      let a1 = min(q.pos_age.w, q.vel_life.w);
+      let a0 = min(before_age, a1);
+      emit_sub_events(ei, q, pid, a0, a1, false, !alive, res.impact);
     }
   }
 }
 
-// Empties every slot (a system that restarts).
+// Empties every slot of reset systems (and resets any child's atomic counter).
 @compute @workgroup_size(64)
-fn clear(@builtin(global_invocation_id) id: vec3<u32>) {
-  if (id.x >= emitter.info.x) { return; }
+fn clear(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
+  if (wid.x >= dispatch.tile_count) { return; }
+  let tile = sim_tiles[dispatch.tile_offset + wid.x];
+  let ei = tile.x;
+  let slot = tile.y + lid.x;
+  let max_particles = sim_entries[ei].info.x;
+  if (slot >= max_particles) { return; }
   var p: Particle;
   p.pos_age = vec4<f32>(0.0);
   p.vel_life = vec4<f32>(0.0);
   p.misc = vec4<f32>(0.0);
-  particles[id.x] = p;
+  particles_pool[sim_entries[ei].pool.x + slot] = p;
+  if (slot == 0u && sim_entries[ei].pool.w != 0xffffffffu) {
+    atomicStore(&sub_counters[sim_entries[ei].pool.w], 0u);
+  }
 }
 
-// Moves every slot by the entry's translation (a move of the render
-// origin, origin.rs): world-space particles keep their place in the world.
+// Moves every slot by the entry's translation (a move of the render origin).
 @compute @workgroup_size(64)
-fn shift(@builtin(global_invocation_id) id: vec3<u32>) {
-  if (id.x >= emitter.info.x) { return; }
-  var p = particles[id.x];
-  p.pos_age = vec4<f32>(p.pos_age.xyz + emitter.transform[3].xyz, p.pos_age.w);
-  particles[id.x] = p;
-  if (emitter.trail.x > 0.0) {
+fn shift(@builtin(workgroup_id) wid: vec3<u32>, @builtin(local_invocation_id) lid: vec3<u32>) {
+  if (wid.x >= dispatch.tile_count) { return; }
+  let tile = sim_tiles[dispatch.tile_offset + wid.x];
+  let ei = tile.x;
+  let slot = tile.y + lid.x;
+  let max_particles = sim_entries[ei].info.x;
+  if (slot >= max_particles) { return; }
+  let p_idx = sim_entries[ei].pool.x + slot;
+  let delta = sim_entries[ei].transform[3].xyz;
+  var p = particles_pool[p_idx];
+  p.pos_age = vec4<f32>(p.pos_age.xyz + delta, p.pos_age.w);
+  particles_pool[p_idx] = p;
+  if (sim_entries[ei].trail.x > 0.0) {
+    let t_base = sim_entries[ei].pool.y;
     for (var i = 0u; i < TRAIL_POINTS; i++) {
-      let at = id.x * TRAIL_POINTS + i;
-      trail[at] = vec4<f32>(trail[at].xyz + emitter.transform[3].xyz, 0.0);
+      let at = (t_base + slot) * TRAIL_POINTS + i;
+      trails_pool[at] = vec4<f32>(trails_pool[at].xyz + delta, 0.0);
     }
   }
 }
