@@ -48,6 +48,10 @@
   --stroke-regular: 2px;
   --stroke-thick: 3px;
   --stroke-focus: 2px;
+  /* The combat HUD's (§12): an ultimate's charge ring and the hit
+     direction arc. */
+  --stroke-ability: 4px;
+  --stroke-arc: 12px;
   /* Device safe-area insets (notch, home indicator, rounded corners) as
      --safe-area-*; index.html sets viewport-fit=cover. @origingame/ui turns them
      into pt-safe / pb-safe / px-safe / top-safe / bottom-safe utilities (with

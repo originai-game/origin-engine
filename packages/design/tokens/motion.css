@@ -26,6 +26,20 @@
   --motion-duration-drift: 2400ms;
   --motion-duration-fanfare: 2560ms;
   --motion-duration-orbit: 6000ms;
+  /* The combat HUD's moments (docs: the combat HUD design, §12), each a
+     theme's to set: `ready-pulse` an ability or ultimate waiting full,
+     `flash` the white flash of a use, `damage` a damage number's life and
+     `damage-stagger` the step between numbers that land together,
+     `trail-hold` and `trail` how long a bar's lost share holds and then
+     drains, `hit` the hit vignette's fade and `arc` the direction arc's. */
+  --motion-duration-ready-pulse: 1600ms;
+  --motion-duration-flash: 240ms;
+  --motion-duration-damage: 900ms;
+  --motion-duration-damage-stagger: 60ms;
+  --motion-duration-trail-hold: 300ms;
+  --motion-duration-trail: 550ms;
+  --motion-duration-hit: 450ms;
+  --motion-duration-arc: 700ms;
   --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
   --motion-easing-in-out: cubic-bezier(0.42, 0, 0.58, 1);
@@ -40,6 +54,11 @@
   --motion-scale-pop: 1.4;
   --motion-scale-shrink: 0.9;
   --motion-scale-breathe: 0.45;
+  /* The combat HUD's (§12): an ultimate's breath at its peak, a critical
+     damage number's pop and a combo count's. */
+  --motion-scale-ready-pulse: 1.05;
+  --motion-scale-damage-pop: 1.5;
+  --motion-scale-combo-pop: 1.25;
   /* The timing table: what each moment of a UI moves on, by the duration, easing
      and spring names above (or a number of its own). A style overrides a row in
      its motion block (docs/ui.md §3.1); the default style takes these. hover:

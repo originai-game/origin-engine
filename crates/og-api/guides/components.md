@@ -3189,7 +3189,7 @@ Fixtures: `default`, `places`.
 
 ## 145. ShooterAbilities
 
-The ability bar at the foot of the screen: each ability in an octagon with a lit edge, its cooldown a dark sweep over the art with the seconds left, its charges on a tag and its key cap under it; the ultimate in a larger hexagon inside a ring that fills with its charge. The game owns every cooldown and charge; read only. Approximations: the octagon and hexagon cuts are rounded; the cooldown's conic mask is a top-down veil; the charge ring's SVG arc is a View stand-in that fills from its foot; the ready glow and the grey-out filters are shadows and opacity.
+The ability bar at the foot of the screen: each ability in an octagon with a lit edge, its cooldown a dark sweep over the art with the seconds left, its charges on a tag and its key cap under it; the ultimate in a larger hexagon inside a ring that fills with its charge. The game owns every cooldown and charge; read only. Every part is a pack slot (`Ability.frame`, `.face`, `.ring`, `.sweep`, `.count`, `.chip.*`), so a theme sets its size, shape, ring, glow, sweep and type.
 
 `import { ShooterAbilities } from "@origingame/engine/ui/components"` (kit `shooter`, `packages/engine/src/ui/components/shooter/abilities.tsx`).
 
@@ -3214,7 +3214,7 @@ Each `AbilitySlotData`:
 | `ultimate?` | `boolean` | The ultimate: larger, in a ring that fills with its charge. |
 | `charge?` | `number` | The ultimate's charge, 0 to 1; its share in figures until it is ready. |
 
-Pack slots: `Chip.frame`.
+Pack slots: `Ability.box`, `Ability.box.ultimate`, `Ability.chip.charges`, `Ability.chip.key`, `Ability.chip.ready`, `Ability.chip.ult`, `Ability.count`, `Ability.face`, `Ability.face.ultimate`, `Ability.frame`, `Ability.frame.disabled`, `Ability.frame.ready`, `Ability.frame.ultimate`, `Ability.ring`, `Ability.ring.fill`, `Ability.ring.ready`, `Ability.sweep`, `Ability.sweep.ultimate`.
 
 Fixtures: `default`, `ready`, `cooling`, `overflow`.
 

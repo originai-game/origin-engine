@@ -38,95 +38,84 @@ export interface ShooterAbilitiesProps {
  * with a lit edge, its cooldown a dark sweep over the art with the seconds
  * left, its charges on a tag and its key cap under it; the ultimate in a
  * larger hexagon inside a ring that fills with its charge. The game owns
- * every cooldown and charge; read only. Approximations: the octagon and
- * hexagon cuts are rounded; the cooldown's conic mask is a top-down veil;
- * the charge ring's SVG arc is a View stand-in that fills from its foot;
- * the ready glow and the grey-out filters are shadows and opacity.
+ * every cooldown and charge; read only. Every part is a pack slot
+ * (`Ability.frame`, `.face`, `.ring`, `.sweep`, `.count`, `.chip.*`), so a
+ * theme sets its size, shape, ring, glow, sweep and type.
  */
 export function ShooterAbilities(props: ShooterAbilitiesProps) {
   return (
     <View class="flex-row items-end gap-x-3.5 max-w-full compact:gap-x-2 text-fg" label={t("shooter.abilities.name")}>
       <For each={props.slots ?? []} key={(s) => s.id}>
-        {(s) => (
-          <View
-            class={`flex-col items-center gap-y-1.25 shrink basis-auto min-w-0 group/ability data-ultimate:size-21 compact:data-ultimate:size-11`}
-            label={s().name}
-            data-ultimate={s().ultimate === true}
-            data-ready={s().ready || (s().ultimate && (s().charge ?? 0) >= 1)}
-            data-disabled={s().disabled === true}
-          >
-            <View class="relative size-13 compact:size-9 group-data-ultimate/ability:size-21 compact:group-data-ultimate/ability:size-11">
-              <Show when={s().ultimate}>
-                <View
-                  class="absolute inset-0 rounded-full overflow-hidden border-thick border-rim bg-tile"
-                  role="meter"
-                  label={t("shooter.abilities.charge")}
-                  valueMin={0}
-                  valueMax={100}
-                  valueNow={(s().charge ?? 0) <= 0 ? 0 : (s().charge ?? 0) >= 1 ? 100 : (s().charge ?? 0) * 100}
-                >
-                  <View
-                    class="absolute inset-x-0 bottom-0 bg-hud-accent"
-                    style={{ height: `${Math.min(Math.max(s().charge ?? 0, 0), 1) * 100}%` }}
-                  />
-                </View>
-              </Show>
+        {(s) => {
+          const ult = () => s().ultimate === true;
+          const charge = () => Math.min(Math.max(s().charge ?? 0, 0), 1);
+          const ready = () => (s().ready ?? false) || (ult() && charge() >= 1);
+          const cooling = () => (s().cooldown ?? 0) > 0;
+          return (
+            <View class="flex-col items-center gap-y-1.25 shrink basis-auto min-w-0 data-ultimate:gap-y-3" label={s().name} data-ultimate={ult()}>
               <View
-                class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-11/100`}
+                class={`relative ${packClass("Ability", "box")} ${ult() ? packClass("Ability", "box", "ultimate") : ""} ${ult() ? packClass("Ability", "frame", "ultimate") : packClass("Ability", "frame")} ${ready() && !ult() ? packClass("Ability", "frame", "ready") : ""} ${s().disabled ? packClass("Ability", "frame", "disabled") : ""}`}
               >
-                <View
-                  class={`relative size-full rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft group-data-ready/ability:from-hud-accent-hi group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-glow group-data-disabled/ability:opacity-dim group-data-ultimate/ability:rounded-tl-control group-data-ultimate/ability:rounded-tr-control`}
-                >
-                  <View class="absolute inset-0.5 rounded-block overflow-hidden bg-plate-hi">
-                    <Show when={s().icon} fallback={
-                      <View class="size-full flex-row items-center justify-center">
-                        <Show when={s().glyph}>
-                          <Icon class="size-1/2 text-fg" name={s().glyph} />
-                        </Show>
-                      </View>
+                <Show when={ult()}>
+                  <View
+                    class={`absolute inset-0 ${packClass("Ability", "ring")} ${ready() ? packClass("Ability", "ring", "ready") : ""}`}
+                    role="meter"
+                    label={t("shooter.abilities.charge")}
+                    valueMin={0}
+                    valueMax={100}
+                    valueNow={charge() * 100}
+                  >
+                    <View class={`absolute inset-0 ${packClass("Ability", "ring", "fill")}`} wipe={charge()} />
+                  </View>
+                </Show>
+                <View class={`absolute ${packClass("Ability", "face")} ${ult() ? packClass("Ability", "face", "ultimate") : ""}`}>
+                  <Show when={s().icon} fallback={
+                    <View class="size-full flex-row items-center justify-center">
+                      <Show when={s().glyph}>
+                        <Icon class="size-1/2 text-fg" name={s().glyph} />
+                      </Show>
+                    </View>
+                  }>
+                    <Image class="size-full" src={s().icon ?? 0} />
+                  </Show>
+                  <Show when={cooling()}>
+                    <View
+                      class={`absolute inset-0 ${packClass("Ability", "sweep")} ${ult() ? packClass("Ability", "sweep", "ultimate") : ""}`}
+                      wipe={Math.min(s().cooldown ?? 0, 1)}
+                      wipeCcw
+                    />
+                  </Show>
+                </View>
+                <Show when={cooling() && (s().time ?? "") != ""}>
+                  <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
+                    <Text class={`whitespace-nowrap ${packClass("Ability", "count")}`}>{s().time}</Text>
+                  </View>
+                </Show>
+                <Show when={ult() && !cooling()}>
+                  <View class="absolute inset-x-0 -bottom-2 flex-row justify-center pointer-events-none">
+                    <Show when={charge() < 1} fallback={
+                      <Text class={`whitespace-nowrap ${packClass("Ability", "chip", "ready")}`}>{t("shooter.abilities.ready")}</Text>
                     }>
-                      <Image class="size-full" src={s().icon ?? 0} />
-                    </Show>
-                    <Show when={(s().cooldown ?? 0) > 0}>
-                      <View
-                        class="absolute left-0 right-0 top-0 bg-shade-deep"
-                        style={{ height: `${Math.min(s().cooldown ?? 0, 1) * 100}%` }}
-                      />
+                      <Text class={`whitespace-nowrap ${packClass("Ability", "chip", "ult")}`}>
+                        {`${formatNumber(charge() * 100, { decimals: 0 })}%`}
+                      </Text>
                     </Show>
                   </View>
-                  <Show when={(s().cooldown ?? 0) > 0 && (s().time ?? "") != ""}>
-                    <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
-                        {s().time}
-                      </Text>
-                    </View>
-                  </Show>
-                  <Show when={s().ultimate && (s().charge ?? 0) < 1}>
-                    <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-                      <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base group-data-ultimate/ability:text-base compact:group-data-ultimate/ability:text-caption">
-                        {`${formatNumber(Math.max(s().charge ?? 0, 0) * 100, { decimals: 0 })}%`}
-                      </Text>
-                    </View>
-                  </Show>
-                </View>
+                </Show>
+                <Show when={(s().count ?? 0) > 0}>
+                  <Text class={`absolute -top-1.5 -right-1.5 max-w-15.5 whitespace-nowrap truncate ${packClass("Ability", "chip", "charges")}`}>
+                    {t("shooter.abilities.count", { count: formatNumber(s().count ?? 0) })}
+                  </Text>
+                </Show>
               </View>
-              <Show when={(s().count ?? 0) > 0}>
-                <Text
-                  class={`absolute -top-1.5 -right-1.5 max-w-15.5 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
-                >
-                  {t("shooter.abilities.count", { count: formatNumber(s().count ?? 0) })}
+              <Show when={(s().key ?? "") != ""}>
+                <Text class={`shrink basis-auto max-w-full min-w-5.5 whitespace-nowrap truncate pointer-coarse:hidden ${packClass("Ability", "chip", "key")}`}>
+                  {s().key}
                 </Text>
               </Show>
             </View>
-            <Show when={(s().key ?? "") != ""}>
-              <Text
-                class={`shrink basis-auto max-w-full min-w-5.5 py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap truncate pointer-coarse:hidden`}
-              >
-                {s().key}
-              </Text>
-            </Show>
-          </View>
-        )}
+          );
+        }}
       </For>
     </View>
   );

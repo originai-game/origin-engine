@@ -1,0 +1,17 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui",
+      "summary": "Pack slots for an ability slot on a HUD's ability bar: Ability.box (its side; .ultimate), Ability.frame (shape and rim; .ultimate, .ready, .disabled), Ability.face (.ultimate: its inset is the charge ring's width), Ability.ring and Ability.ring.fill (the ultimate's charge), Ability.sweep (.ultimate), Ability.count and Ability.chip.ult, .ready, .key and .charges. A theme recipe dresses them from its own slot art, and a theme sets their sizes."
+    },
+    {
+      "member": "og.ui",
+      "summary": "Design tokens for the combat HUD, each a theme's to set: duration-ready-pulse, -flash, -damage, -damage-stagger, -trail-hold, -trail, -hit and -arc; scale-ready-pulse, -damage-pop and -combo-pop; opacity-sweep and -flash; and the stroke arc. The scifi, candy, tactical and anime themes set their own."
+    },
+    {
+      "member": "ShooterAbilities",
+      "summary": "Draws every part from the Ability slots, so it takes the theme's shape, art, sizes and glow. The ultimate's charge fills round it clockwise from the top, a cooldown sweeps round the art instead of a veil from the top, and a full ultimate shows Ready (shooter.abilities.ready) under it, its charge in figures while it fills."
+    }
+  ]
+}

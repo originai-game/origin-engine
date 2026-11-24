@@ -865,6 +865,49 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 json!(format!("scheme-{s} nine-{image}{states} bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
             );
         }
+        // The combat HUD's ability slot in the theme's own slot art (combat
+        // HUD design §6): a round shape rings an ultimate with a disc, any
+        // other with its slot's rim, both filled in the accent.
+        let round = matches!(
+            recipe.get("shape").and_then(Value::as_str),
+            Some("round" | "soft" | "brush")
+        );
+        let ring = if round { "nine-disc" } else { "nine-slot-rim" };
+        for (slot, dress) in [
+            (
+                "Ability.frame",
+                "nine-slot bg-transparent rounded-none transition duration-control".to_owned(),
+            ),
+            (
+                "Ability.frame.ultimate",
+                if round {
+                    "nine-none bg-transparent rounded-full"
+                } else {
+                    "nine-none bg-transparent"
+                }
+                .to_owned(),
+            ),
+            (
+                "Ability.frame.ready",
+                "shadow-glow animate-breathe".to_owned(),
+            ),
+            (
+                "Ability.face",
+                "inset-1 rounded-field overflow-hidden bg-transparent".to_owned(),
+            ),
+            (
+                "Ability.face.ultimate",
+                if round {
+                    "inset-1/8 rounded-full nine-slot".to_owned()
+                } else {
+                    "inset-1.5 rounded-none nine-slot".to_owned()
+                },
+            ),
+            ("Ability.ring", format!("{ring} bg-track")),
+            ("Ability.ring.fill", format!("{ring} bg-hud-accent")),
+        ] {
+            variants.insert(slot.into(), json!(dress));
+        }
         // A button variant without art of its own keeps its own plate over
         // the art the theme gives `Button.plate`: no art (a second edge on
         // it), the page's scheme and the variant's own fill and ink.

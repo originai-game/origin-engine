@@ -1033,22 +1033,30 @@
       "xxl": 720.0
     },
     "duration": {
+      "arc": 700.0,
       "base": 240.0,
       "bounce": 640.0,
       "breathe": 1600.0,
       "control": 317.0,
+      "damage": 900.0,
+      "damage-stagger": 60.0,
       "drift": 2400.0,
       "fanfare": 2560.0,
       "fast": 180.0,
       "flare": 1040.0,
+      "flash": 240.0,
+      "hit": 450.0,
       "instant": 120.0,
       "orbit": 6000.0,
       "ping": 1200.0,
       "pulse": 1000.0,
+      "ready-pulse": 1600.0,
       "sheen": 2000.0,
       "slow": 400.0,
       "spring": 520.0,
       "sweep": 1400.0,
+      "trail": 550.0,
+      "trail-hold": 300.0,
       "turn": 800.0
     },
     "ease": {
@@ -1206,8 +1214,10 @@
     "opacity": {
       "dim": 0.45,
       "faint": 0.25,
+      "flash": 0.8,
       "muted": 0.6,
       "soft": 0.85,
+      "sweep": 0.66,
       "wash": 0.25
     },
     "radius": {
@@ -1223,8 +1233,11 @@
     "rem": 14.0,
     "scale": {
       "breathe": 0.45,
+      "combo-pop": 1.25,
+      "damage-pop": 1.5,
       "pop": 1.4,
       "press": 0.94,
+      "ready-pulse": 1.05,
       "shrink": 0.9,
       "swell": 1.15
     },
@@ -1288,6 +1301,8 @@
       "tab-selected": "0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26"
     },
     "stroke": {
+      "ability": 4.0,
+      "arc": 12.0,
       "edge": 0.5,
       "focus": 2.0,
       "hairline": 1.0,
@@ -1323,6 +1338,24 @@
     }
   },
   "variants": {
+    "Ability.box": "size-13 compact:size-9",
+    "Ability.box.ultimate": "size-21 compact:size-11",
+    "Ability.chip.charges": "py-0 px-1.25 text-xs font-bold tabular-nums text-fg nine-chip-cut bg-tile",
+    "Ability.chip.key": "py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key",
+    "Ability.chip.ready": "text-caption leading-none font-bold uppercase tracking-label text-hud-accent-fg bg-hud-accent px-1.5 py-0.5 rounded-capsule",
+    "Ability.chip.ult": "text-base leading-none font-bold tabular-nums text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-caption",
+    "Ability.count": "text-title leading-none font-bold tabular-nums text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base",
+    "Ability.face": "inset-0.5 rounded-block overflow-hidden bg-plate-hi",
+    "Ability.face.ultimate": "inset-1/8 rounded-full",
+    "Ability.frame": "rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft transition duration-control",
+    "Ability.frame.disabled": "opacity-dim",
+    "Ability.frame.ready": "from-hud-accent-hi to-hud-accent shadow-glow animate-breathe",
+    "Ability.frame.ultimate": "rounded-full transition duration-control",
+    "Ability.ring": "nine-disc bg-track",
+    "Ability.ring.fill": "nine-disc bg-hud-accent",
+    "Ability.ring.ready": "shadow-glow animate-breathe",
+    "Ability.sweep": "nine-tile bg-scrim opacity-sweep",
+    "Ability.sweep.ultimate": "nine-disc",
     "Accordion.item": "flex-col border-b border-border-muted",
     "Attention.cue": "animate-nudge",
     "Bar.fill": "transition-layout duration-240 ease-out",

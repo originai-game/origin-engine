@@ -9,5 +9,14 @@
   "effects": "glow",
   "sound": "glass",
   "icons": "glow",
-  "density": "comfortable"
+  "density": "comfortable",
+  "pack": {
+    "variants": {"Ability.box": "size-16 compact:size-11", "Ability.box.ultimate": "size-26 compact:size-15"},
+    "theme": {
+      "duration": {"ready-pulse": 1600, "flash": 260, "damage": 1000, "damage-stagger": 60, "trail-hold": 300, "trail": 600, "hit": 450, "arc": 700},
+      "scale": {"ready-pulse": 1.04, "damage-pop": 1.5, "combo-pop": 1.25, "press": 0.94},
+      "opacity": {"sweep": 0.6, "flash": 0.8},
+      "stroke": {"arc": 10}
+    }
+  }
 }

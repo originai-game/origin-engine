@@ -686,6 +686,96 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "bg-layer-2 text-fg",
     ),
     ("Slot.frame", "an ability or item slot", ""),
+    (
+        "Ability.box",
+        "an ability's side on a HUD's ability bar (combat HUD design §4.1)",
+        "size-13 compact:size-9",
+    ),
+    (
+        "Ability.box.ultimate",
+        "an ultimate's side",
+        "size-21 compact:size-11",
+    ),
+    (
+        "Ability.frame",
+        "an ability's slot: its shape and rim",
+        "rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft transition duration-control",
+    ),
+    (
+        "Ability.frame.ultimate",
+        "an ultimate's slot, in place of Ability.frame: its rim is the charge ring",
+        "rounded-full transition duration-control",
+    ),
+    (
+        "Ability.frame.ready",
+        "a slot ready to use: lit, and breathing while it waits",
+        "from-hud-accent-hi to-hud-accent shadow-glow animate-breathe",
+    ),
+    (
+        "Ability.frame.disabled",
+        "a slot that cannot be used now",
+        "opacity-dim",
+    ),
+    (
+        "Ability.face",
+        "the ground an ability's art sits on, inside its rim",
+        "inset-0.5 rounded-block overflow-hidden bg-plate-hi",
+    ),
+    (
+        "Ability.face.ultimate",
+        "an ultimate's face: its inset is the charge ring's width",
+        "inset-1/8 rounded-full",
+    ),
+    (
+        "Ability.ring",
+        "the track an ultimate's charge fills round",
+        "nine-disc bg-track",
+    ),
+    (
+        "Ability.ring.ready",
+        "an ultimate fully charged: its ring lit, and breathing while it waits",
+        "shadow-glow animate-breathe",
+    ),
+    (
+        "Ability.ring.fill",
+        "the charge filling round an ultimate, clockwise from the top",
+        "nine-disc bg-hud-accent",
+    ),
+    (
+        "Ability.sweep",
+        "the dark sweep over an ability's art while it cools down",
+        "nine-tile bg-scrim opacity-sweep",
+    ),
+    (
+        "Ability.sweep.ultimate",
+        "an ultimate's cooldown sweep, on its round face",
+        "nine-disc",
+    ),
+    (
+        "Ability.count",
+        "the seconds left over a cooldown's sweep",
+        "text-title leading-none font-bold tabular-nums text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-base",
+    ),
+    (
+        "Ability.chip.ult",
+        "an ultimate's charge in figures while it charges (42%): its type and place",
+        "text-base leading-none font-bold tabular-nums text-fg text-shadow-tag text-stroke-3 text-stroke-bg compact:text-caption",
+    ),
+    (
+        "Ability.chip.ready",
+        "the word an ultimate shows when it is full (Ready): its type, ground and place",
+        "text-caption leading-none font-bold uppercase tracking-label text-hud-accent-fg bg-hud-accent px-1.5 py-0.5 rounded-capsule",
+    ),
+    (
+        "Ability.chip.key",
+        "the key cap under an ability",
+        "py-0 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key",
+    ),
+    (
+        "Ability.chip.charges",
+        "the charges or items an ability holds, on a tag at its corner",
+        "py-0 px-1.25 text-xs font-bold tabular-nums text-fg nine-chip-cut bg-tile",
+    ),
     ("Chip.frame", "a tag, badge or chip", ""),
     (
         "Field.frame",

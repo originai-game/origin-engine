@@ -88,6 +88,9 @@
   --opacity-dim: 0.45;
   --opacity-muted: 0.6;
   --opacity-soft: 0.85;
+  /* The combat HUD's (§12): a cooldown's dark sweep and a use's flash. */
+  --opacity-sweep: 0.66;
+  --opacity-flash: 0.8;
   /* What art takes when its subject is out of reach (`--filter-*`): `locked`
      not yet earned, `spent` used up or defeated. */
   --filter-locked: grayscale(1) brightness(0.7);
