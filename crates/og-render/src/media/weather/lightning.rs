@@ -55,6 +55,15 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
 /// (point, width) pairs (the same strike, the same branches).
 pub fn lightning_branches(at: Vec3, top: f32, strike: u32) -> Vec<Vec<(Vec3, f32)>> {
     let main = lightning_bolt(at, top, strike);
+    lightning_branches_from(&main, at, top, strike)
+}
+
+fn lightning_branches_from(
+    main: &[(Vec3, f32)],
+    at: Vec3,
+    top: f32,
+    strike: u32,
+) -> Vec<Vec<(Vec3, f32)>> {
     let mut state = u64::from(strike) ^ 0x4252_4e43;
     let mut unit = move || og_core::hash::unit24_of64(og_core::hash::splitmix64_next(&mut state));
     let height = top - at.y;
@@ -114,9 +123,10 @@ pub fn add_lightning(
     scene.lighting.environment.intensity *= 1.0 + 6.0 * flash;
     // The bolt lights the land like a low sun for the flash's length, with
     // hard shadows away from it: the scene's directional light turns to the
-    // channel's middle (half the cloud base up; the whole channel shines)
+    // channel's middle (half the bolt's height up; the whole channel shines)
     // while the flash outshines it.
-    let channel = at + Vec3::Y * (0.5 * top).max(150.0);
+    let height = (top - at.y).max(1.0);
+    let channel = at + Vec3::Y * (0.5 * height).max(50.0);
     let toward = (channel - scene.frame.camera.position).normalize_or(Vec3::Y);
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
@@ -130,7 +140,7 @@ pub fn add_lightning(
             scene.frame.camera.position.z - at.z,
         )
         .normalize_or(Vec3::ZERO);
-        let root = lightning_bolt(at, top, strike)[0].0;
+        let root = Vec3::new(at.x, top, at.z);
         c.flash = (root + Vec3::Y * 40.0 + toward_eye * 60.0).extend(12.0 * flash);
     }
     let own = scene.lighting.light.intensity * scene.lighting.light.color.max_element();
@@ -219,7 +229,7 @@ pub fn add_lightning(
             });
         };
         let main = lightning_bolt(at, top, strike);
-        let branches = lightning_branches(at, top, strike);
+        let branches = lightning_branches_from(&main, at, top, strike);
         for (pts, gain) in std::iter::once((&main, 1.0)).chain(branches.iter().map(|b| (b, 0.6))) {
             strip(pts, gain, true, halo);
             strip(pts, gain, false, core);

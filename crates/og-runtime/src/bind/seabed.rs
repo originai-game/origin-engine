@@ -54,15 +54,13 @@ pub(crate) fn coast(
     let index = crate::world::assets::index_of(record::Terrain::from_json(&tv).ok()?.data as f64)?;
     let (at, q, scale) = r.pose(e)?;
     let m = Mat4::from_scale_rotation_translation(scale, q, at);
-    let size = w.size;
-    let centre = Vec2::new(position.x, position.z);
-    let grid = crate::bind::terrain::seabed_grid(
-        terrains,
-        index,
-        m,
-        centre - size * 0.5,
-        centre + size * 0.5,
-    )?;
+    let (lo, hi) = if w.endless {
+        (Vec2::splat(-1e9), Vec2::splat(1e9))
+    } else {
+        let centre = Vec2::new(position.x, position.z);
+        (centre - w.size * 0.5, centre + w.size * 0.5)
+    };
+    let grid = crate::bind::terrain::seabed_grid(terrains, index, m, lo, hi)?;
     let shore = shore(terrains, &grid, position.y)?;
     let trains = ShoreTrains::new(sea.significant_height(), w.shore, w.shore_wave_length);
     Some((shore, trains))

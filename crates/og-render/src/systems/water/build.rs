@@ -336,8 +336,7 @@ impl WaterRenderer {
                 format: wgpu::TextureFormat::Rgba16Float,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
-                // Bound as an array however many layers it has (WebGPU compatibility mode infers `2d` for one).
-                texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
+                texture_binding_view_dimension: None,
             })
             .create_view(&Default::default());
         let no_shore = {
@@ -418,7 +417,8 @@ pub(super) fn sea_grid_texture(
                 wgpu::TextureUsages::TEXTURE_BINDING
             },
             view_formats: &[],
-            texture_binding_view_dimension: None,
+            // Always bound as D2Array (even when levels == 1 for no_grid).
+            texture_binding_view_dimension: Some(wgpu::TextureViewDimension::D2Array),
         })
         .create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),

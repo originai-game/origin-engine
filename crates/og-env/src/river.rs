@@ -88,6 +88,16 @@ impl River {
         &self.points
     }
 
+    /// This river shifted in world space by `delta` (for floating-origin rebase).
+    pub fn translated(&self, delta: Vec3) -> River {
+        River {
+            points: self.points.iter().map(|&p| p + delta).collect(),
+            along: self.along.clone(),
+            width: self.width,
+            speed: self.speed,
+        }
+    }
+
     /// The centreline's length (m, along xz).
     pub fn length(&self) -> f64 {
         self.along.last().copied().unwrap_or(0.0)

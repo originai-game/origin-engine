@@ -31,8 +31,8 @@ use spectrum::Spectrum;
 pub const N: u32 = 256;
 /// Layers per cascade in the fields array.
 pub const LAYERS: u32 = 2;
-/// Mip levels of the fields (256 down to 16).
-pub const MIPS: u32 = 5;
+/// Full mip chain of the fields (256 down to 1) so far-field LEAN converges.
+pub const MIPS: u32 = 9;
 /// Layers after the cascades': the foam's two levels, then its
 /// micro-structure ([`foam`]).
 pub const FOAM_LAYERS: u32 = 3;
@@ -88,8 +88,8 @@ pub fn phase(seconds: f64) -> f64 {
     seconds.rem_euclid(spectrum::FOLD_PERIOD) / spectrum::FOLD_PERIOD
 }
 
-/// The GPU half: the spectrum's buffer, the transform's two intermediate
-/// buffers, the fields array and the passes that fill it.
+/// The GPU half: the spectrum's buffer, the transform's intermediate slope
+/// buffer, the fields array and the passes that fill it.
 pub struct FftOcean {
     cascades: u32,
     uniform: wgpu::Buffer,
@@ -114,12 +114,14 @@ pub struct FftOcean {
 /// What [`FftOcean::encode`] records of a frame [`FftOcean::advance`]
 /// planned.
 struct Pending {
-    /// The foam steps, each after the fields at its own time.
+    /// The foam steps to run before computing the frame's FFT + mip chain.
     steps: usize,
     /// The foam's update with this frame's seabed ([`Foam::group`]).
     foam: wgpu::BindGroup,
     /// The foam's micro-structure is made first.
     detail: bool,
+    /// The foam state to commit only once [`FftOcean::encode`] records the pass.
+    next_last: Option<(i64, [[i32; 2]; 2])>,
 }
 
 /// The foam's passes and its history between steps ([`foam`]).
@@ -192,10 +194,11 @@ impl FftOcean {
                 },
             )
         };
-        // A slot per foam step and one for the frame's fields.
+        // One uniform slot: the frame's FFT runs once per frame (foam reads
+        // analytical Gerstner waves, never the ripple FFT cascades).
         let uniform = buffer(
             "ocean fft",
-            ring_stride::<FftGpu>() * (foam::MAX_STEPS as u64 + 1),
+            ring_stride::<FftGpu>(),
             wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         );
         let spectrum = buffer(
@@ -203,8 +206,7 @@ impl FftOcean {
             texels * 16,
             wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         );
-        let row_a = buffer("ocean fft a", texels * 16, wgpu::BufferUsages::STORAGE);
-        let row_b = buffer("ocean fft b", texels * 16, wgpu::BufferUsages::STORAGE);
+        let row_slope = buffer("ocean fft slope", texels * 8, wgpu::BufferUsages::STORAGE);
         let fields = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("ocean fields"),
             size: wgpu::Extent3d {
@@ -251,21 +253,11 @@ impl FftOcean {
         let fft_entry = uniform_entry(std::mem::size_of::<FftGpu>());
         let rows_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ocean fft rows"),
-            entries: &[
-                fft_entry,
-                storage(1, true),
-                storage(2, false),
-                storage(3, false),
-            ],
+            entries: &[fft_entry, storage(1, true), storage(2, false)],
         });
         let columns_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ocean fft columns"),
-            entries: &[
-                fft_entry,
-                storage(4, true),
-                storage(5, true),
-                storage_texture(6),
-            ],
+            entries: &[fft_entry, storage(3, true), storage_texture(4)],
         });
         let mips_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ocean fft mips"),
@@ -339,11 +331,7 @@ impl FftOcean {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: row_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: row_b.as_entire_binding(),
+                    resource: row_slope.as_entire_binding(),
                 },
             ],
         });
@@ -357,15 +345,11 @@ impl FftOcean {
                     resource: ring_binding::<FftGpu>(&uniform),
                 },
                 wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: row_slope.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
                     binding: 4,
-                    resource: row_a.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: row_b.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
                     resource: wgpu::BindingResource::TextureView(&level0),
                 },
             ],
@@ -441,15 +425,9 @@ impl FftOcean {
     }
 
     /// Plans the frame's fields and writes their uniforms: the foam's steps
-    /// up to `seconds` of the scene's clock (its tick over its rate), each
-    /// after the fields at its own time ([`foam`]: the steps since the last
-    /// frame, or the warm-up after a restart), then the fields at
-    /// `seconds`. Each reads its own slot of the uniform rings, so
-    /// [`FftOcean::encode`] records them all in the frame's one encoder.
-    /// `eye` is the camera's absolute world xz (the frame's plus `origin`),
-    /// `swell` og_core's waves at a time (`WaterGpu::swell`), `shore` the
-    /// seabed's texture and its rows at a time (`WaterGpu::shore`). Returns
-    /// the foam steps planned.
+    /// up to `seconds` of the scene's clock (its tick over its rate), then
+    /// the frame's FFT fields and mip chain once. State changes (`last`,
+    /// `detail_made`) are committed only when [`FftOcean::encode`] records.
     #[allow(clippy::too_many_arguments)]
     pub fn advance(
         &mut self,
@@ -467,20 +445,17 @@ impl FftOcean {
         let last = self.foam.last.map(|(k, _)| k);
         let (steps, restart) = foam::schedule(last, now);
         debug_assert!(steps.len() <= foam::MAX_STEPS);
-        if restart {
-            self.foam.last = None;
-        }
+        let mut tracked_last = if restart { None } else { self.foam.last };
         let snaps = foam::snaps(eye);
-        let detail = !std::mem::replace(&mut self.foam.detail_made, true);
+        let detail = !self.foam.detail_made || self.pending.as_ref().is_some_and(|p| p.detail);
         let foam_stride = ring_stride::<foam::FoamGpu>();
-        let mut fft_ring = vec![0u8; (ring_stride::<FftGpu>() as usize) * (steps.len() + 1)];
+        let mut fft_ring = vec![0u8; ring_stride::<FftGpu>() as usize];
         let mut foam_ring = vec![0u8; (foam_stride as usize) * steps.len().max(1)];
         for (i, &(k, span)) in steps.iter().enumerate() {
             let at = k as f64 * foam::STEP;
-            self.fields_at(&mut fft_ring, i, at);
             let u = foam::step_gpu(
                 snaps,
-                self.foam.last.map(|(_, s)| s),
+                tracked_last.map(|(_, s)| s),
                 origin,
                 (span as f64 * foam::STEP) as f32,
                 self.cascades,
@@ -491,19 +466,18 @@ impl FftOcean {
             let o = i * foam_stride as usize;
             foam_ring[o..o + std::mem::size_of::<foam::FoamGpu>()]
                 .copy_from_slice(bytemuck::bytes_of(&u));
-            self.foam.last = Some((k, snaps));
+            tracked_last = Some((k, snaps));
         }
-        self.fields_at(&mut fft_ring, steps.len(), seconds);
+        self.fields_at(&mut fft_ring, 0, seconds);
         crate::traffic::write_buffer(queue, &self.uniform, 0, &fft_ring);
         if !steps.is_empty() {
             crate::traffic::write_buffer(queue, &self.foam.uniform, 0, &foam_ring);
         }
-        // A frame planned and never recorded keeps its first-time work.
-        let detail = detail || self.pending.as_ref().is_some_and(|p| p.detail);
         self.pending = Some(Pending {
             steps: steps.len(),
             foam: group,
             detail,
+            next_last: tracked_last,
         });
         steps.len()
     }
@@ -529,11 +503,11 @@ impl FftOcean {
                 foam_layer(self.cascades) + 2,
                 1,
             );
+            self.foam.detail_made = true;
         }
         let foam_stride = ring_stride::<foam::FoamGpu>();
         let first = foam_layer(self.cascades);
         for i in 0..planned.steps {
-            self.encode_fields(encoder, i);
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("ocean foam"),
@@ -543,7 +517,6 @@ impl FftOcean {
                 pass.set_bind_group(0, &planned.foam, &[(i as u64 * foam_stride) as u32]);
                 pass.dispatch_workgroups(foam::RES / 8, foam::RES / 8, 2);
             }
-            self.copy_foam(encoder, &self.foam.out, first, 2);
             encoder.copy_texture_to_texture(
                 self.foam.out.as_image_copy(),
                 self.foam.history.as_image_copy(),
@@ -554,7 +527,12 @@ impl FftOcean {
                 },
             );
         }
-        self.encode_fields(encoder, planned.steps);
+        if planned.steps > 0 {
+            self.copy_foam(encoder, &self.foam.out, first, 2);
+        }
+        self.foam.last = planned.next_last;
+        // Run the FFT and full mip chain (covering both ripple cascades and foam layers) once.
+        self.encode_fields(encoder, 0);
     }
 
     /// `layers` layers of a foam pass's own texture `from` into the fields'

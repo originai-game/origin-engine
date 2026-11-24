@@ -27,6 +27,22 @@ pub(crate) struct ModuleState {
     meshes: std::cell::RefCell<Vec<(MeshKey, Arc<og_physics::WaterMesh>)>>,
 }
 
+impl ModuleState {
+    /// Moves cached world-space rivers by `d` (og.WorldOrigin shift) and drops
+    /// cached mesh-water triangles whose entity transforms shifted.
+    pub(crate) fn shift(&self, d: glam::DVec3) {
+        let delta = d.as_vec3();
+        if let Ok(mut rivers) = self.rivers.try_borrow_mut() {
+            for (_, r) in rivers.iter_mut() {
+                *r = Arc::new(r.translated(delta));
+            }
+        }
+        if let Ok(mut meshes) = self.meshes.try_borrow_mut() {
+            meshes.clear();
+        }
+    }
+}
+
 /// An og.Water drawn over a mesh (og.Water.geometry), as the tick floats
 /// bodies on it: the geometry's triangles placed by `world` (the entity's
 /// world matrix, scale included, as the renderer draws it). Made once per

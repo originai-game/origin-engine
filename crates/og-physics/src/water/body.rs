@@ -23,6 +23,7 @@ pub struct WaterBody {
     pub entity: u64,
     pub position: Vec3,
     pub size: og_core::glam::Vec2,
+    pub endless: bool,
     pub sea: Option<og_env::ocean::Ocean>,
     pub zero: og_core::glam::DVec3,
     pub shore: Option<(Arc<og_env::ocean::Shore>, og_env::ocean::ShoreTrains)>,
@@ -72,13 +73,15 @@ impl WaterBody {
                 acceleration: Vec3::ZERO,
             });
         }
-        let half = self.size * 0.5;
-        let local = og_core::glam::Vec2::new(
-            (x - f64::from(self.position.x)) as f32,
-            (z - f64::from(self.position.z)) as f32,
-        );
-        if !(local.x.abs() <= half.x && local.y.abs() <= half.y) {
-            return None;
+        if !self.endless {
+            let half = self.size * 0.5;
+            let local = og_core::glam::Vec2::new(
+                (x - f64::from(self.position.x)) as f32,
+                (z - f64::from(self.position.z)) as f32,
+            );
+            if !(local.x.abs() <= half.x && local.y.abs() <= half.y) {
+                return None;
+            }
         }
         let Some(sea) = &self.sea else {
             return Some(og_env::ocean::SurfacePoint::default());

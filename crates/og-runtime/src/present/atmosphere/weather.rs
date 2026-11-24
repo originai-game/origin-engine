@@ -214,10 +214,16 @@ fn lightning_and_surfaces(
     if strikes == 0 {
         return;
     }
-    let since = world
-        .time()
-        .seconds(tick.saturating_sub(u64::from(st.last_strike)));
+    let elapsed = (tick as u32).wrapping_sub(st.last_strike);
+    // Guard against a rewind/restore whose tick lies ahead of the wrapped u32.
+    if tick < u64::from(st.last_strike) && u64::from(st.last_strike) - tick < (1u64 << 31) {
+        return;
+    }
+    let since = world.time().seconds(u64::from(elapsed));
     let at = st.strike_position;
-    let base = scene.atmosphere.clouds.map_or(600.0, |c| c.base.max(50.0));
-    og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);
+    let top = scene
+        .atmosphere
+        .clouds
+        .map_or(at.y + 600.0, |c| c.base.max(at.y + 50.0));
+    og_render::add_lightning(scene, at, top, strikes, since as f32);
 }

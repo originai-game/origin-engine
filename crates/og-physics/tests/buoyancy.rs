@@ -25,6 +25,7 @@ fn lake() -> WaterBody {
         entity: 1 << 40,
         position: Vec3::ZERO,
         size: Vec2::splat(200.0),
+        endless: false,
         sea: None,
         zero: DVec3::ZERO,
         shore: None,

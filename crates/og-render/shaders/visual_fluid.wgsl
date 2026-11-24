@@ -97,7 +97,7 @@ fn hash(a: u32, b: u32, c: u32) -> f32 {
     h ^= h >> 12u;
     h *= 0x297a2d39u;
     h ^= h >> 15u;
-    return f32(h >> 8u) / f32(1u << 23u);
+    return f32(h >> 8u) / f32(1u << 24u);
 }
 
 fn tick_index() -> u32 { return cursor[0]; }

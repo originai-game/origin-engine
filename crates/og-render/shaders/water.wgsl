@@ -399,11 +399,13 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   let reach = select(max(length(dlx), length(dly)), 0.0, is_sea());
   // Its area (m², the glints' cells: lake_glints).
   let foot_area = abs(dlx.x * dly.y - dlx.y * dly.x);
-  var detail = wave_slope(in.local, t, reach);
+  var detail = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
   if (water.normals.w > 0.5) {
     detail = map_slope(in.world.xz, in.uv, t);
-  } else if (OG_FLOW) {
-    if (flows()) { detail = flowed_slope(in.local, in.uv, t, reach); }
+  } else if (OG_FLOW && flows()) {
+    detail = flowed_slope(in.local, in.uv, t, reach);
+  } else if (!is_sea() || water.fft.x < 0.5) {
+    detail = wave_slope(in.local, t, reach);
   }
   var slope = detail.slope;
   let tangent_x = normalize((water.model * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz);
@@ -435,7 +437,7 @@ if (is_sea()) {
     let dsy = dpdyFine(sea.slope);
     let aa = vec3<f32>(dsx.x * dsx.x + dsy.x * dsy.x, dsx.y * dsx.y + dsy.y * dsy.y, dsx.x * dsx.y + dsy.x * dsy.y) * 0.5;
     sea_cov = sea.cov + aa * min(1.0, 0.03 / max(max(aa.x, aa.y), 1e-8));
-    sea_f = sea_foam(in.rest, sea.jac);
+    sea_f = sea_foam(in.rest, in.world.xz, sea.jac, sea.sh);
     // The detail ripples are the sea's own shortest waves: kept only where a pixel holds them (else they alias into
     // stripes towards the horizon).
     slope *= 1.0 - smoothstep(0.25 * PI, 0.5 * PI, water.waves.x * 2.0 * PI * 3.9 * footprint);
@@ -505,12 +507,12 @@ if (rippled() && !is_sea()) {
   // three.js Water / Water2 (below) never turn a ripple's normal to the eye: a wavelet facing away at a grazing view
   // reflects fully (theta = max(dot(V, N), 0), Fresnel 1), its body scatters nothing, the mirror bends by its own N.xz.
   let three_water = water.under.w > 0.0 || (water.normals.w > 0.5 && flows());
-  if (is_sea()) {
+  if (is_sea() && !below_view) {
     // A sea's swell turns its back slopes from the eye past a crest: a flipped normal mirrored the bright sky there
     // at Fresnel 1, a bright line along every crest's silhouette. Bend it to just face the eye instead (its
-    // reflection then points down, into the sea: see below).
+    // reflection then points down, into the sea: see below). Never bend when viewing from underwater (Snell's window).
     n = normalize(n + v * max(0.05 - dot(n, v), 0.0));
-  } else if (dot(n, v) < 0.0 && !three_water) { n = -n; }
+  } else if (dot(n, v) < 0.0 && !three_water && !below_view) { n = -n; }
   // The lake glitter's mean slope and its change across the pixel (below), taken here: every derivative comes before
   // the first return on a per-pixel value (`below_view`), as WGSL's uniformity rules require (Tint refuses the whole
   // module otherwise, and the frame drew black in the browser).

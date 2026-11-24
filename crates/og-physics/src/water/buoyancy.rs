@@ -83,6 +83,7 @@ fn over(
             .at(og_core::glam::Vec2::new(centre.x, centre.z))
             .is_some(),
         None if w.mesh.is_some() => w.surface(centre.x.into(), centre.z.into(), 0.0).is_some(),
+        None if w.endless => true,
         None => {
             local.x.abs() <= w.size.x * 0.5 + extent.x && local.y.abs() <= w.size.y * 0.5 + extent.y
         }
@@ -239,6 +240,10 @@ fn hull_cuts(
     let low = centre.y - (ax.y.abs() * half.x + ay.y.abs() * half.y + az.y.abs() * half.z);
     let level = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
         .map_or(low, |l| l.height);
+    let depth = level - low;
+    if depth <= 0.0 {
+        return;
+    }
     for w in waters {
         let Some(list) = cuts.get_mut(&w.entity) else {
             continue;
@@ -253,7 +258,7 @@ fn hull_cuts(
             centre: local,
             half: foot,
             axis,
-            depth: level - low,
+            depth,
             speed,
         });
     }

@@ -466,6 +466,7 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                     entity: id,
                     position,
                     size: w.size,
+                    endless: false,
                     sea: None,
                     zero,
                     shore: None,
@@ -480,6 +481,7 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 entity: id,
                 position,
                 size: w.size,
+                endless: w.endless,
                 shore: crate::bind::seabed::coast(
                     &eng.render.borrow().terrain,
                     terrain.as_ref(),

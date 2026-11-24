@@ -211,7 +211,6 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   let lo = sn.xy - vec2<i32>(RES / 2);
   let g = vec2<i32>(wrap_index(i32(id.x), lo.x), wrap_index(i32(id.y), lo.y));
   let plo = sn.zw - vec2<i32>(RES / 2);
-  let in_prev = all(g >= plo) && all(g < plo + vec2<i32>(RES));
   let p = foam.base[level].xy + (vec2<f32>(g - sn.xy) + 0.5) * ts;
   let j = jacobian(p, ts);
   let dt = foam.p0.x;
@@ -219,11 +218,16 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
   let drift = foam.p1.yz;
   let wd = drift / max(length(drift), 1e-6);
   let rows = windrows((vec2<f32>(g) + 0.5) * ts, wd, foam.p0.z);
+  let delta = (drift + rows.xy) * dt / ts;
+  let prev_g = vec2<f32>(g) + 0.5 - delta;
+  let plo_f = vec2<f32>(plo);
+  // Require the backtracked source point itself (not only the destination texel)
+  // to lie inside the previous clipmap window so toroidal wrapping never pulls
+  // foam across the opposite 64 m / 512 m boundary.
+  let in_prev = all(prev_g >= plo_f + 0.5) && all(prev_g <= plo_f + f32(RES) - 0.5);
   var last = vec4<f32>(0.0);
   if (in_prev) {
-    // Semi-Lagrangian: the foam drifts downwind and into the windrows. (Texel g lies at index g mod RES in both
-    // steps: id.xy.)
-    let back = (vec2<f32>(id.xy) + 0.5 - (drift + rows.xy) * dt / ts) / f32(RES);
+    let back = (vec2<f32>(id.xy) + 0.5 - delta) / f32(RES);
     last = textureSampleLevel(prev, lin, back, level, 0.0);
   }
   // The level's gain is the open sea's (how close its surface lies under the level, water.rs foam_thresholds), kept

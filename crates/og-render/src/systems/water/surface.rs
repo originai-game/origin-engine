@@ -121,8 +121,7 @@ pub(crate) fn waterline(
             return false;
         }
         let local = w.transform.inverse().transform_point3(eye);
-        local.x.abs() <= w.size.x * 0.5
-            && local.z.abs() <= w.size.y * 0.5
+        (w.endless || (local.x.abs() <= w.size.x * 0.5 && local.z.abs() <= w.size.y * 0.5))
             && (eye.y - surface_height(w, Vec2::new(eye.x, eye.z), seconds, origin)).abs() < reach
     })
 }
@@ -142,8 +141,7 @@ pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3
             sea.surface_near(at, seconds, coast(w, origin).as_ref())
                 .height
         });
-        local.x.abs() <= w.size.x * 0.5
-            && local.z.abs() <= w.size.y * 0.5
+        (w.endless || (local.x.abs() <= w.size.x * 0.5 && local.z.abs() <= w.size.y * 0.5))
             && local.y < local_height(w, Vec2::new(local.x, local.z)) + sea
     })
 }

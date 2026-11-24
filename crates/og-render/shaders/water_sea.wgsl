@@ -71,6 +71,7 @@ struct SeaNormal {
   slope: vec2<f32>,
   jac: f32,
   cov: vec3<f32>,
+  sh: Shoal,
 };
 
 // (gx, gy: how far p moves a pixel across and down the screen, metres.)
@@ -129,11 +130,18 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> Se
       second.z - first.x * first.y) * w * w;
   }
   var o: SeaNormal;
+  // Exact inverse-Jacobian surface slope (rotationally invariant across 45° waves):
+  // T_z x T_x gives slope = adj(I + J) * s / det(I + J).
+  let jxx = 1.0 + j.x;
+  let jzz = 1.0 + j.y;
+  let det = max(jxx * jzz - j.z * j.z, 0.15);
+  let sea_slope = vec2<f32>(s.x * jzz - s.y * j.z, s.y * jxx - s.x * j.z) / det;
   // W3: the hulls' wakes' own slopes on top, where the point is drawn.
-  o.slope = s / vec2<f32>(max(1.0 + j.x, 0.15), max(1.0 + j.y, 0.15)) + water_wake(at).yz;
+  o.slope = sea_slope + water_wake(at).yz;
   o.n = normalize(vec3<f32>(-o.slope.x, 1.0, -o.slope.y));
   o.jac = (1.0 + jf.x) * (1.0 + jf.y) - jf.z * jf.z;
   o.cov = cov;
+  o.sh = sh;
   return o;
 }
 
@@ -195,7 +203,7 @@ fn surf_zone(sh: Shoal) -> f32 {
   return sh.inside * (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(0.0, sh.depth - 1e-3);
 }
 
-fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
+fn sea_foam(p: vec2<f32>, at: vec2<f32>, jac: f32, sh: Shoal) -> SeaFoam {
   let first = 2u * u32(water.fft.x);
   let l0 = water.foam_levels[0];
   let l1 = water.foam_levels[1];
@@ -206,9 +214,6 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let fw0 = textureSample(heights, ripple_sampler, p * l0.x + l0.yz, first);
   let fw1 = textureSample(heights, ripple_sampler, p * l1.x + l1.yz, first + 1u);
   let fwl = mix(fw1, fw0, w0) * w1;
-  // (The seabed's shoaling once for all the foam reads of it: two loops over the sea's waves.)
-  var sh = OPEN_SEA;
-  if (water.shore[0].w > 0.5) { sh = shoaling(p); }
   let surf = sea_surf(sh);
   // The crest's gain is the open sea's (how close its surface lies under the level, water.rs foam_thresholds), kept
   // where the water is deep for the waves that reach the shore (over half their length). Inshore of that the seabed
@@ -217,8 +222,8 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let shoal_half = PI / max(water.shore[1].z, 1e-6);
   let shoals = sh.inside * (1.0 - smoothstep(0.4 * shoal_half, shoal_half, sh.depth));
   let fresh_gain = mix(water.ocean.w, 2.5, shoals);
-  // W3: the wakes' foam (their breaking crests and the hulls' sides) is fresh foam too.
-  let fresh = max(max(clamp((water.ocean.z - jac) * fresh_gain, 0.0, 1.0), surf), water_wake(p).w);
+  // W3: the wakes' foam (their breaking crests and the hulls' sides) is sampled at the displaced world point `at`.
+  let fresh = max(max(clamp((water.ocean.z - jac) * fresh_gain, 0.0, 1.0), surf), water_wake(at).w);
   let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
   // Only the crest breaking now is a solid white (Monahan's stage A, a few tenths of a percent of a gale's sea). The
   // foam it leaves is no longer fed: a sheet of bubbles thinning as they burst, always open between its patches

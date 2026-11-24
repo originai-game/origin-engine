@@ -244,6 +244,7 @@ pub(crate) fn shift(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), Str
     if let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.shift(d);
     }
+    eng.modules.atmosphere.shift(d);
     let l = layout(eng, RESOURCE).ok_or("og.WorldOrigin has no layout")?;
     let id = world.id_by_name(RESOURCE).map_err(err)?;
     let mut v = l.decode(&world.resource_bytes(id).map_err(err)?);

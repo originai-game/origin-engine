@@ -170,18 +170,32 @@ impl PhysicalAtmosphere {
 
 impl PhysicalAtmosphere {
     /// The multiple-scattering table, integrated once per atmosphere (a
-    /// few milliseconds) and kept while the atmosphere stays the same.
+    /// few milliseconds) and kept in a small LRU cache so multiple worlds or
+    /// alternating atmospheres never thrash.
     fn ms_cached(&self) -> MsTable {
-        static CACHE: std::sync::Mutex<Option<(PhysicalAtmosphere, MsTable)>> =
-            std::sync::Mutex::new(None);
+        const CAP: usize = 8;
+        static CACHE: std::sync::Mutex<Vec<(PhysicalAtmosphere, MsTable)>> =
+            std::sync::Mutex::new(Vec::new());
         let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
-        if let Some((a, t)) = cache.as_ref()
-            && a == self
-        {
-            return t.clone();
+        if let Some(i) = cache.iter().position(|(a, _)| a == self) {
+            let entry = cache.remove(i);
+            let t = entry.1.clone();
+            cache.push(entry);
+            return t;
         }
+        drop(cache);
         let t = self.model().ms_table();
-        *cache = Some((*self, t.clone()));
+        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(i) = cache.iter().position(|(a, _)| a == self) {
+            let entry = cache.remove(i);
+            let out = entry.1.clone();
+            cache.push(entry);
+            return out;
+        }
+        if cache.len() >= CAP {
+            cache.remove(0);
+        }
+        cache.push((*self, t.clone()));
         t
     }
 }

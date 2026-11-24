@@ -64,7 +64,8 @@ fn wind_noise(p: vec2<f32>) -> f32 {
 // fine and moves twice as far, so both repeat where the offset wraps.
 fn wind_gust(w: WindField, at: vec2<f32>, previous: bool) -> f32 {
   let offset = select(w.offset.xy, w.offset.zw, previous);
-  let p = at / WIND_GUST_CELL - offset;
+  let cell = select(abs(w.grid.w), WIND_GUST_CELL, abs(w.grid.w) < 0.5);
+  let p = at / cell - offset;
   return 0.65 * wind_noise(p) + 0.35 * wind_noise(p * 2.0 + vec2<f32>(37.0, 11.0));
 }
 

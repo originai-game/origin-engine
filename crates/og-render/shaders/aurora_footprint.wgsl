@@ -229,7 +229,7 @@ fn main(
   let e0 = select(params.curtain[0].x, energy / max(weight, 1e-9), weight > 1e-6);
   let inside = gid.x < n && gid.y < n;
   if (inside) {
-    textureStore(footprint, vec2<i32>(gid.xy), vec4<f32>(flux, max(nearest - hw, 0.0), e0, red));
+    textureStore(footprint, vec2<i32>(gid.xy), vec4<f32>(flux, max(nearest - reach, 0.0), e0, red));
   }
   // The texel's light on the clouds (the file's head), its area that of
   // its extent in the world.

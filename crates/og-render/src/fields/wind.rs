@@ -19,8 +19,7 @@ pub(crate) const WIND_LEAN_WGSL: &str = wgsl!("wind_lean.wgsl");
 
 /// Seconds after which the wind's clock starts again (wind_common.wgsl).
 const TIME_PERIOD: f64 = 3600.0;
-/// The gust noise's cell (m) and period (cells).
-pub(crate) const GUST_CELL: f64 = 14.0;
+/// The gust noise's period (cells).
 pub(crate) const GUST_PERIOD: f64 = 256.0;
 
 /// `WindField` in wind_common.wgsl.
@@ -42,7 +41,8 @@ pub(crate) struct WindFieldGpu {
 fn wind_at(w: &crate::Wind, tick: u64, rate: f32) -> ([f32; 2], [f32; 2], f32) {
     let t = tick as f64 / f64::from(rate.max(1e-3));
     let dir = Vec2::new(w.direction.x, w.direction.z).normalize_or(Vec2::X);
-    let travel = f64::from(w.speed) * t / GUST_CELL;
+    let cell = f64::from(w.gust_size.max(1.0));
+    let travel = f64::from(w.speed) * t / cell;
     let off = |d: f32| (f64::from(d) * travel).rem_euclid(GUST_PERIOD) as f32;
     (
         wind_phases(w, tick, rate),
@@ -75,6 +75,10 @@ pub(crate) fn field_gpu(
         gpu.phase = [p[0], p[1], pp[0], pp[1]];
         gpu.offset = [o[0], o[1], po[0], po[1]];
         gpu.time = [t, pt, origin.x, origin.z];
+        // Carry gust_size (>= 1 m) in grid[3] with sign indicating whether the
+        // simulated field is active (> 0.5) or analytic fallback (< 0.5).
+        let cell = w.gust_size.max(1.0);
+        gpu.grid[3] = if grid[0][3] >= 0.5 { cell } else { -cell };
     }
     gpu
 }
@@ -181,7 +185,7 @@ impl Wind {
         let (phase, offset, _) = wind_at(self, tick, tick_rate);
         let x = std::f32::consts::TAU / WIND_WAVELENGTH * at.dot(dir);
         let wave = ((x - phase[0]).sin() + 0.5 * (2.3 * x + 1.7 - phase[1]).sin()) / 1.5;
-        let p = at / GUST_CELL as f32 - Vec2::from(offset);
+        let p = at / self.gust_size.max(1.0) - Vec2::from(offset);
         let patches = 0.65 * gust_noise(p) + 0.35 * gust_noise(p * 2.0 + Vec2::new(37.0, 11.0));
         let share = (0.5 * wave + 1.4 * (patches - 0.5)).clamp(-1.0, 1.0);
         let lean = dir * self.strength * (1.0 + self.gust.clamp(0.0, 1.0) * share);

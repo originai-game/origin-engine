@@ -190,19 +190,29 @@ pub fn frequency_multiple(k: f64) -> f64 {
 }
 
 /// Where each cascade's band starts and ends; disjoint, so no wavevector is
-/// drawn twice. The first starts at `cut`.
+/// drawn twice. The first starts at `cut`, and every cascade keeps a non-empty
+/// logarithmic band up to half its Nyquist frequency.
 pub fn cascade_bands(cascades: &[Cascade], cut: f64) -> Vec<WaveBand> {
     let nyquist = |c: &Cascade| PI * f64::from(c.resolution) / c.size;
-    let cuts: Vec<f64> = cascades
-        .iter()
-        .skip(1)
-        .enumerate()
-        .map(|(i, fine)| {
-            (FINE_MODES_AT_CUT * 2.0 * PI / fine.size)
-                .min(nyquist(&cascades[i]) / 2.0)
-                .max(cut)
-        })
-        .collect();
+    let mut cuts = Vec::with_capacity(cascades.len().saturating_sub(1));
+    let mut prev_lo = cut;
+    for i in 0..cascades.len().saturating_sub(1) {
+        let coarse = &cascades[i];
+        let fine = &cascades[i + 1];
+        let upper = nyquist(coarse) * 0.5;
+        let fine_floor = FINE_MODES_AT_CUT * 2.0 * PI / fine.size;
+        let split = if prev_lo < upper {
+            // Ensure the coarser cascade always gets at least half its logarithmic
+            // span up to half-Nyquist, while giving the finer cascade at least
+            // FINE_MODES_AT_CUT modes across its tile whenever that fits.
+            let geom = (prev_lo * upper).sqrt();
+            fine_floor.clamp(geom, upper)
+        } else {
+            prev_lo
+        };
+        cuts.push(split);
+        prev_lo = split;
+    }
     cascades
         .iter()
         .enumerate()

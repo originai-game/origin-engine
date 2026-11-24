@@ -33,7 +33,7 @@ struct Cut {
 @group(0) @binding(3) var<storage, read> cuts: array<Cut>;
 @group(0) @binding(4) var coarse: texture_2d<f32>;
 // What the water draws: (the CPU's heights plus the ripples, the ripples alone, their foam, 0).
-@group(0) @binding(5) var heights_out: texture_storage_2d<rgba16float, write>;
+@group(0) @binding(5) var heights_out: texture_storage_2d_array<rgba16float, write>;
 
 // How much of the cell at `p` (m, the surface's frame) a footprint covers: the ellipse inside its box grown by
 // `grow` metres, its edge softened over a cell. An empty box (max < min) covers nothing.
@@ -151,7 +151,7 @@ fn compose(@builtin(global_invocation_id) id: vec3<u32>) {
   let s = textureLoad(state_in, vec2<i32>(id.xy), 0);
   let fade = inside_square(id.xy);
   let ripple = s.x * fade;
-  textureStore(heights_out, vec2<i32>(id.xy), vec4<f32>(base + ripple, ripple, s.z * fade, 0.0));
+  textureStore(heights_out, vec2<i32>(id.xy), 0, vec4<f32>(base + ripple, ripple, s.z * fade, 0.0));
 }
 
 // Calm water: the state written by this group set to zero.

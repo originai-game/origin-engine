@@ -319,10 +319,46 @@ impl Ocean {
             (Some(c), Some(f)) => self.shoaling(c.shore.sample(f + rest), &c.trains, trains_phase),
             _ => Shoaling::OPEN,
         };
+        // 4-step 2x2 Newton-Raphson inversion for rest + D(rest) = 0: converges
+        // quadratically without the Picard oscillation at high choppiness.
         let mut rest = Vec2::ZERO;
-        for _ in 0..8 {
-            let d = self.displaced(rest, &phases, &shoal_at(rest));
-            rest = -Vec2::new(d.x, d.z);
+        for _ in 0..4 {
+            let sh = shoal_at(rest);
+            let mut dx = 0.0f32;
+            let mut dz = 0.0f32;
+            let mut jxx = 1.0f32;
+            let mut jzz = 1.0f32;
+            let mut jxz = 0.0f32;
+            for ((w, &phase), &f) in self.waves.iter().zip(&phases).zip(&sh.open) {
+                let (s, c) = math::sin_cos(w.k * w.direction.dot(rest) + phase);
+                let lf = w.lean * f;
+                dx += w.direction.x * lf * c;
+                dz += w.direction.y * lf * c;
+                let klfs = w.k * lf * s;
+                jxx -= w.direction.x * w.direction.x * klfs;
+                jzz -= w.direction.y * w.direction.y * klfs;
+                jxz -= w.direction.x * w.direction.y * klfs;
+            }
+            if sh.amplitude > 0.0 {
+                let (s, c) = math::sin_cos(sh.phase);
+                dx += sh.inshore.x * sh.lean * c;
+                dz += sh.inshore.y * sh.lean * c;
+                let kl = sh.k * sh.lean * s;
+                jxx -= sh.inshore.x * sh.inshore.x * kl;
+                jzz -= sh.inshore.y * sh.inshore.y * kl;
+                jxz -= sh.inshore.x * sh.inshore.y * kl;
+            }
+            let fx = rest.x + dx;
+            let fz = rest.y + dz;
+            let det = jxx * jzz - jxz * jxz;
+            if det > 0.2 {
+                let inv = 1.0 / det;
+                rest.x -= (jzz * fx - jxz * fz) * inv;
+                rest.y -= (-jxz * fx + jxx * fz) * inv;
+            } else {
+                rest.x -= 0.5 * fx;
+                rest.y -= 0.5 * fz;
+            }
         }
         let shoal = shoal_at(rest);
         let mut point = SurfacePoint {

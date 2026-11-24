@@ -340,6 +340,9 @@ fn effects(
     rs.scene.effects.particle_history = rs.particle_history.clone();
     // The pixel grid's snap: after the sprites and the camera are in.
     super::fx::snap_to_grid(rs);
+    // Extract authored Environment before atmosphere so Clouds/Weather/lightning
+    // dimming modulates environment.intensity rather than being overwritten.
+    super::environment::extract(world, rs);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, h));
     // The fog of war, as this tick's start cast it.
@@ -352,7 +355,6 @@ fn effects(
         rs.scene.frame.tick_rate,
     );
     rs.wind.present(&mut rs.scene, wind, tick, rate);
-    super::environment::extract(world, rs);
     super::probes::extract(world, rs, h);
     super::probes::extract_light_volumes(world, rs, h);
     // Scattered copies are instances too, keyed by their terrain cell. A

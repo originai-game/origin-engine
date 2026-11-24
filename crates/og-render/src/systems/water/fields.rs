@@ -19,6 +19,9 @@ impl WaterRenderer {
         caustic_grid: &wgpu::Buffer,
     ) -> Option<FftSea> {
         use crate::ocean_fft::FftOcean;
+        if !self.compute {
+            return None;
+        }
         let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
         let key = (water.wind, water.swell, water.choppiness, cascades);
         if self.fft.as_ref().is_none_or(|(_, f)| f.key != key) {

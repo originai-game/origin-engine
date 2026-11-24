@@ -48,9 +48,12 @@ pub const COARSE_CELL: f64 = 16.0;
 /// The most motors a frame drives the field with (the nearest first).
 pub const MAX_MOTORS: usize = 16;
 /// Jacobi iterations of the pressure per step (even: it ends in `pressure`).
-const JACOBI: u32 = 20;
-/// Ticks run from the wind's target when the field starts.
-pub const WARM_STEPS: u64 = 90;
+/// Pressure is warm-started and scrolled across camera shifts, so 10
+/// iterations per tick converges cleanly without excess compute cost.
+const JACOBI: u32 = 10;
+/// Ticks run from the wind's target when the field starts (bounded so a
+/// first frame or jump stays well under TDR budgets).
+pub const WARM_STEPS: u64 = 24;
 /// Ticks the field keeps stepping after its last driver (og.Wind or a
 /// motor) went, so vegetation springs back and the air calms rather than
 /// snapping still: 3 s at 60 Hz.

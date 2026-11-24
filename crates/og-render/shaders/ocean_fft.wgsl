@@ -5,11 +5,11 @@
 // Dendura); the spectrum's layout and its time folding (a·e^{∓iωt}, ω = 2π m / 4096 s, m·phase split for float32) from goldflag/blue-water-sea-and-
 // sky's ocean/shaders/fft.wgsl (MIT, Copyright (c) 2026 Bill Yang). Notices: third_party/ocean/.
 //
-// Packed per texel, as web-ocean: A = (Dx + i Dz, h + i ∂Dx/∂z), B = (∂h/∂x + i ∂h/∂z, ∂Dx/∂x + i ∂Dz/∂z), each a real
-// field's Hermitian spectrum plus i times another's, so one inverse transform yields both. Written per cascade c into
-// the fields array: layer 2c (∂h/∂x, ∂h/∂z), 2c + 1 the slopes' moments that the mips average (LEAN mapping:
-// (∂h/∂x)², (∂h/∂z)², ∂h/∂x ∂h/∂z). The ripples shade the surface and never move it, so neither their heights nor
-// their horizontal displacements and its Jacobian are kept: they fold nothing and lay no foam.
+// Packed per texel as one complex signal: (∂h/∂x + i ∂h/∂z), so one inverse
+// transform yields both slopes (re = ∂h/∂x, im = ∂h/∂z) with 4x less workgroup
+// memory, storage bandwidth and butterfly ALU than the unused 4-signal layout.
+// Written per cascade c into the fields array: layer 2c (∂h/∂x, ∂h/∂z), 2c + 1
+// the slopes' moments that the mips average (LEAN mapping: (∂h/∂x)², (∂h/∂z)², ∂h/∂x ∂h/∂z).
 
 struct FftParams {
   // x: N, y: log2 N, z: the cascade count.
@@ -26,45 +26,34 @@ const LOGN: u32 = 8u;
 @group(0) @binding(0) var<uniform> fft: FftParams;
 // Per texel (Re a, Im a, ±m, 0), cascades one after another, rows of x.
 @group(0) @binding(1) var<storage, read> spectrum: array<vec4<f32>>;
-@group(0) @binding(2) var<storage, read_write> row_a: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read_write> row_b: array<vec4<f32>>;
-@group(0) @binding(4) var<storage, read> col_a: array<vec4<f32>>;
-@group(0) @binding(5) var<storage, read> col_b: array<vec4<f32>>;
-@group(0) @binding(6) var fields: texture_storage_2d_array<rgba16float, write>;
+@group(0) @binding(2) var<storage, read_write> row_slope: array<vec2<f32>>;
+@group(0) @binding(3) var<storage, read> col_slope: array<vec2<f32>>;
+@group(0) @binding(4) var fields: texture_storage_2d_array<rgba16float, write>;
 
-var<workgroup> wa: array<vec4<f32>, 256>;
-var<workgroup> wb: array<vec4<f32>, 256>;
+var<workgroup> ws: array<vec2<f32>, 256>;
 
-// The inverse transform of wa and wb in place (their input already bit-reversed): y[j] = Σ x[n] e^{+2πi jn/N}.
+// The inverse transform of ws in place (input already bit-reversed): y[j] = Σ x[n] e^{+2πi jn/N}.
 fn butterflies(t: u32) {
   for (var s = 0u; s < LOGN; s++) {
     let f = butterfly(t, s, 1.0);
-    let a0 = wa[f.i0];
-    let a1 = wa[f.i1];
-    let b0 = wb[f.i0];
-    let b1 = wb[f.i1];
-    let ta = vec4<f32>(cmul(a1.xy, f.w), cmul(a1.zw, f.w));
-    let tb = vec4<f32>(cmul(b1.xy, f.w), cmul(b1.zw, f.w));
-    wa[f.i0] = a0 + ta;
-    wa[f.i1] = a0 - ta;
-    wb[f.i0] = b0 + tb;
-    wb[f.i1] = b0 - tb;
+    let b0 = ws[f.i0];
+    let b1 = ws[f.i1];
+    let tb = cmul(b1, f.w);
+    ws[f.i0] = b0 + tb;
+    ws[f.i1] = b0 - tb;
     workgroupBarrier();
   }
 }
 
-// The packed spectra (A, B) of texel (x, z) of cascade c at the frame's time.
-fn evolve(x: u32, z: u32, c: u32) -> array<vec4<f32>, 2> {
+// The packed slope spectrum (∂h/∂x + i ∂h/∂z) of texel (x, z) of cascade c at the frame's time.
+fn evolve(x: u32, z: u32, c: u32) -> vec2<f32> {
   let a = spectrum[(c * N + z) * N + x];
   let dk = fft.dk[c];
   let kx = signed_index(x) * dk;
   let kz = signed_index(z) * dk;
   let k = sqrt(kx * kx + kz * kz);
-  var out: array<vec4<f32>, 2>;
   if (k < 1e-6 || a.z == 0.0) {
-    out[0] = vec4<f32>(0.0);
-    out[1] = vec4<f32>(0.0);
-    return out;
+    return vec2<f32>(0.0);
   }
   // H = a e^{-2πi m phase}, m phase split as 256 high + low so float32 keeps about 1e-5 of a turn.
   let phase = fft.time.x;
@@ -75,11 +64,7 @@ fn evolve(x: u32, z: u32, c: u32) -> array<vec4<f32>, 2> {
   let s_ = sin(turn);
   let h = vec2<f32>(a.x * c_ + a.y * s_, a.y * c_ - a.x * s_);
   let ih = mul_i(h);
-  // The ripples shade the surface and never move it: their slopes alone (B's first signal); A and B's second
-  // (displacement and its Jacobian) stay zero.
-  out[0] = vec4<f32>(0.0);
-  out[1] = vec4<f32>(ih * kx + mul_i(ih * kz), vec2<f32>(0.0));
-  return out;
+  return ih * kx + mul_i(ih * kz);
 }
 
 // Rows: workgroup (z, 0, c) evolves and transforms row z of cascade c along x.
@@ -90,24 +75,18 @@ fn rows(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) t
   let base = (c * N + z) * N;
   let e0 = t;
   let e1 = t + N / 2u;
-  let v0 = evolve(e0, z, c);
-  let v1 = evolve(e1, z, c);
-  wa[bitrev(e0)] = v0[0];
-  wb[bitrev(e0)] = v0[1];
-  wa[bitrev(e1)] = v1[0];
-  wb[bitrev(e1)] = v1[1];
+  ws[bitrev(e0)] = evolve(e0, z, c);
+  ws[bitrev(e1)] = evolve(e1, z, c);
   workgroupBarrier();
   butterflies(t);
-  row_a[base + e0] = wa[e0];
-  row_a[base + e1] = wa[e1];
-  row_b[base + e0] = wb[e0];
-  row_b[base + e1] = wb[e1];
+  row_slope[base + e0] = ws[e0];
+  row_slope[base + e1] = ws[e1];
 }
 
-fn emit(x: u32, z: u32, c: u32, a: vec4<f32>, b: vec4<f32>) {
+fn emit(x: u32, z: u32, c: u32, s: vec2<f32>) {
   let p = vec2<u32>(x, z);
-  textureStore(fields, p, 2u * c, vec4<f32>(b.xy, 0.0, 0.0));
-  textureStore(fields, p, 2u * c + 1u, vec4<f32>(b.x * b.x, b.y * b.y, b.x * b.y, 0.0));
+  textureStore(fields, p, 2u * c, vec4<f32>(s, 0.0, 0.0));
+  textureStore(fields, p, 2u * c + 1u, vec4<f32>(s.x * s.x, s.y * s.y, s.x * s.y, 0.0));
 }
 
 // Columns: workgroup (x, 0, c) transforms column x of cascade c along z and writes the fields.
@@ -119,12 +98,10 @@ fn columns(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index
   let e1 = t + N / 2u;
   let i0 = (c * N + e0) * N + x;
   let i1 = (c * N + e1) * N + x;
-  wa[bitrev(e0)] = col_a[i0];
-  wa[bitrev(e1)] = col_a[i1];
-  wb[bitrev(e0)] = col_b[i0];
-  wb[bitrev(e1)] = col_b[i1];
+  ws[bitrev(e0)] = col_slope[i0];
+  ws[bitrev(e1)] = col_slope[i1];
   workgroupBarrier();
   butterflies(t);
-  emit(x, e0, c, wa[e0], wb[e0]);
-  emit(x, e1, c, wa[e1], wb[e1]);
+  emit(x, e0, c, ws[e0]);
+  emit(x, e1, c, ws[e1]);
 }

@@ -332,8 +332,11 @@ impl AtmosphereGpu {
         {
             a.aurora = au.gpu(radius * 0.001);
         }
-        // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
-        a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];
+        // Seconds wrap every 3600 s (exact integer period matching
+        // WIND_TIME_PERIOD) in f64 so f32 keeps sub-millisecond precision
+        // without fractional phase jumps on periodic effects.
+        let seconds = (tick as f64 / f64::from(rate)).rem_euclid(3600.0) as f32;
+        a.time = [seconds, tick as f32, rate, 0.0];
         a
     }
 

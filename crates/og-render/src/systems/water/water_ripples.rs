@@ -62,13 +62,13 @@ impl RipplePipelines {
             },
             count: None,
         };
-        let storage = |binding, format| wgpu::BindGroupLayoutEntry {
+        let storage = |binding, format, view_dimension| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
             ty: wgpu::BindingType::StorageTexture {
                 access: wgpu::StorageTextureAccess::WriteOnly,
                 format,
-                view_dimension: wgpu::TextureViewDimension::D2,
+                view_dimension,
             },
             count: None,
         };
@@ -88,7 +88,7 @@ impl RipplePipelines {
                     count: None,
                 },
                 texture(1),
-                storage(2, STATE_FORMAT),
+                storage(2, STATE_FORMAT, wgpu::TextureViewDimension::D2),
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::COMPUTE,
@@ -100,7 +100,7 @@ impl RipplePipelines {
                     count: None,
                 },
                 texture(4),
-                storage(5, OUT_FORMAT),
+                storage(5, OUT_FORMAT, wgpu::TextureViewDimension::D2Array),
             ],
         });
         let module = crate::gpu::shader_module(
@@ -230,14 +230,12 @@ impl Ripples {
             texture("water ripples state", STATE_FORMAT, None),
             texture("water ripples state", STATE_FORMAT, None),
         ];
-        // Bound as a 1-layer array (WebGPU compatibility mode infers `2d`).
+        // Bound as a 1-layer array (both as storage write target and sampled heights).
         let heights = texture(
             "water ripples heights",
             OUT_FORMAT,
             Some(wgpu::TextureViewDimension::D2Array),
         );
-        // Written as a 2D storage texture, read by the water pass as a 1-layer array (water binding 1).
-        let storage_view = heights.create_view(&Default::default());
         let view = heights.create_view(&wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
@@ -292,7 +290,7 @@ impl Ripples {
                     },
                     wgpu::BindGroupEntry {
                         binding: 5,
-                        resource: wgpu::BindingResource::TextureView(&storage_view),
+                        resource: wgpu::BindingResource::TextureView(&view),
                     },
                 ],
             })

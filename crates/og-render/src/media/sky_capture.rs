@@ -55,11 +55,13 @@ pub(crate) fn step(k: Option<usize>, mips: u32) -> Step {
     };
     match k {
         None => s(0..6, 0..all, true),
-        // The faces, half a frame each.
-        Some(0) => s(0..3, 0..0, false),
-        Some(1) => s(3..6, 0..0, false),
-        // The mips (cheap) and the irradiance.
-        Some(2) => s(0..0, 0..p, false),
+        // Capture all six faces in the same frame snapshot so moving sun,
+        // clouds and lightning flashes never leave seams across cube edges.
+        Some(0) => s(0..6, 0..0, false),
+        // Mip chain (6 copies + downsamples).
+        Some(1) => s(0..0, 0..6 * mips as usize, false),
+        // Irradiance convolution (6 faces).
+        Some(2) => s(0..0, 6 * mips as usize..p, false),
         // The sharpest prefiltered level over two frames, the next alone,
         // the three smallest together (each a quarter of the one above).
         Some(3) => s(0..0, p..p + 3, false),

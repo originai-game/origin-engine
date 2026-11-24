@@ -191,6 +191,9 @@ impl RenderScene {
             if let Some(s) = &mut w.shore {
                 s.origin += Vec2::new(d.x, d.z);
             }
+            if let Some(r) = &mut w.river {
+                *r = std::sync::Arc::new(r.translated(d));
+            }
         }
         for t in &mut self.world.terrain_stamps {
             moved(&mut t.transform, d);

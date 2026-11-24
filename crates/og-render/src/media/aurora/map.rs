@@ -12,6 +12,41 @@ pub(crate) struct AuroraMap {
     /// The frame's footprint, planned ([`AuroraMap::update`]) and not yet
     /// recorded ([`AuroraMap::encode`]).
     pending: bool,
+    /// Last inputs already baked into `texture`, so paused/static frames skip
+    /// recomputing and dispatching the 1024² footprint.
+    last_key: Option<FootprintKey>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct FootprintKey {
+    seed: u32,
+    curtains: u32,
+    phase: u64,
+    floats: [u32; 11],
+}
+
+impl FootprintKey {
+    fn of(aurora: &Aurora, seconds: f64, viewer: Vec3, radius_km: f32) -> Self {
+        let phase = (seconds * f64::from(aurora.speed.max(0.0))).to_bits();
+        Self {
+            seed: aurora.seed,
+            curtains: aurora.curtains,
+            phase,
+            floats: [
+                aurora.activity.to_bits(),
+                aurora.direction.to_bits(),
+                aurora.distance.to_bits(),
+                aurora.spread.to_bits(),
+                aurora.energy.to_bits(),
+                aurora.speed.to_bits(),
+                viewer.x.to_bits(),
+                viewer.y.to_bits(),
+                viewer.z.to_bits(),
+                radius_km.to_bits(),
+                0,
+            ],
+        }
+    }
 }
 
 struct FootprintPass {
@@ -99,6 +134,7 @@ impl AuroraMap {
             texture,
             pass: None,
             pending: false,
+            last_key: None,
         }
     }
 
@@ -312,12 +348,22 @@ impl AuroraMap {
         viewer: Vec3,
         radius_km: f32,
     ) {
+        let had_pass = self.pass.is_some();
+        let old_seed = self.pass.as_ref().map(|p| p.seed);
         self.ensure(device, queue, aurora.seed);
+        if !had_pass || old_seed != Some(aurora.seed) {
+            self.last_key = None;
+        }
+        let key = FootprintKey::of(aurora, seconds, viewer, radius_km);
+        if !self.pending && self.last_key == Some(key) {
+            return;
+        }
         let pass = self.pass.as_ref().expect("made above");
         let mut params = aurora.footprint(seconds, Vec2::new(viewer.x, viewer.z) * 0.001);
         params.sky = [radius_km, viewer.y.max(0.0) * 0.001, LIGHT_ROW as f32, 0.0];
         params.columns = pass.columns;
         crate::traffic::write_buffer(queue, &pass.uniform, 0, bytemuck::bytes_of(&params));
+        self.last_key = Some(key);
         self.pending = true;
     }
 

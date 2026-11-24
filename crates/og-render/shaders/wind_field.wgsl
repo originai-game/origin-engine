@@ -89,9 +89,7 @@ fn cell_world(c: vec2<f32>, level: i32) -> vec2<f32> {
 fn target_velocity(at: vec2<f32>) -> vec2<f32> {
   let w = sim.wind;
   if (w.dir.z <= 0.0) { return vec2<f32>(0.0); }
-  // The gust patches at og.Wind.gustSize (wind_gust's cell is WIND_GUST_CELL).
-  let scaled = at * (WIND_GUST_CELL / max(sim.drive.w, 1.0));
-  let g = wind_gust_share(w, scaled, false);
+  let g = wind_gust_share(w, at, false);
   return w.dir.xy * sim.drive.x * (1.0 + w.dir.w * g);
 }
 
@@ -124,8 +122,11 @@ fn sample_velocity(q: vec2<f32>, level: i32, at: vec2<f32>) -> vec2<f32> {
 // fluid flow*, SIGGRAPH 2007), in m/s at the reference speed.
 fn curl_noise(at: vec2<f32>) -> vec2<f32> {
   let w = sim.wind;
-  let size = max(sim.drive.w, 1.0) * 0.5;
-  let p = at / size - w.offset.xy * (WIND_GUST_CELL / size) + vec2<f32>(91.0, 17.0);
+  let gust_cell = max(sim.drive.w, 1.0);
+  let size = gust_cell * 0.5;
+  // w.offset.xy advances in units of `gust_cell`, so * 2.0 advances at
+  // exact wind.speed regardless of gust_size.
+  let p = at / size - w.offset.xy * 2.0 + vec2<f32>(91.0, 17.0);
   let e = 0.25;
   let nx = wind_noise(p + vec2<f32>(e, 0.0)) - wind_noise(p - vec2<f32>(e, 0.0));
   let ny = wind_noise(p + vec2<f32>(0.0, e)) - wind_noise(p - vec2<f32>(0.0, e));
@@ -160,8 +161,8 @@ fn motor_velocity(at: vec2<f32>) -> vec2<f32> {
 
 // Advection and forces: the previous step's velocity carried along itself
 // (from where the grid's scroll put it), relaxed towards og.Wind's, pushed
-// by the motors and stirred; the lean and its rate carried by the scroll
-// alone (vegetation does not move with the air).
+// by the motors and stirred; the lean, its rate and the warm-start
+// pressure carried by the scroll alone.
 @compute @workgroup_size(8, 8, 1)
 fn advect(@builtin(global_invocation_id) id: vec3<u32>) {
   let c = vec2<i32>(id.xy);
@@ -182,6 +183,7 @@ fn advect(@builtin(global_invocation_id) id: vec3<u32>) {
     if (sh.z != 0 && sh.w != 0 && inside_grid(src)) { drawn = vel_a[cell_index(src, level)].zw; }
     vel_b[i] = vec4<f32>(u, l);
     aux_b[i] = vec4<f32>(0.0, 0.0, drawn);
+    pressure_b[i] = 0.0;
     return;
   }
   let j = cell_index(src, level);
@@ -193,6 +195,7 @@ fn advect(@builtin(global_invocation_id) id: vec3<u32>) {
   u += curl_noise(at) * sim.drive.z * sim.drive.x * dt / WIND_RELAX;
   vel_b[i] = vec4<f32>(u, here.zw);
   aux_b[i] = aux_a[j];
+  pressure_b[i] = pressure[j];
 }
 
 // The velocity at cell `c` less the motors' push there: what the
@@ -220,7 +223,7 @@ fn divergence_pass(@builtin(global_invocation_id) id: vec3<u32>) {
   let t = unforced(c + vec2<i32>(0, 1), level).y;
   let i = cell_index(c, level);
   divergence[i] = 0.5 * (r - l + t - b);
-  if (sim.shift[level].z != 0) { pressure[i] = 0.0; }
+  pressure[i] = select(pressure_b[i], 0.0, sim.shift[level].z != 0);
 }
 
 fn jacobi(c: vec2<i32>, level: i32, from_b: bool) -> f32 {
