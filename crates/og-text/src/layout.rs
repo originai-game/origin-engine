@@ -122,6 +122,8 @@ pub struct Span<'a> {
     pub italic: bool,
     /// CSS px.
     pub letter_spacing: f32,
+    /// Its line height: a line it is on is at least this tall.
+    pub line_height: LineHeight,
     /// What paints it, the caller's; 0 is the paragraph's own.
     pub ink: u16,
 }
@@ -698,6 +700,7 @@ fn shape_layout(
             r(),
         );
         b.push(StyleProperty::LetterSpacing(s.letter_spacing), r());
+        b.push(StyleProperty::LineHeight(s.line_height), r());
         b.push(
             StyleProperty::FontVariations(parley::style::FontVariations::List(Cow::Borrowed(
                 optical,
@@ -1479,6 +1482,7 @@ mod tests {
             weight: 600.0,
             italic: false,
             letter_spacing: 0.0,
+            line_height: LineHeight::NORMAL,
             ink: 3,
         }]
     }

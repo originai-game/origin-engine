@@ -480,7 +480,9 @@ as anywhere. A string takes no box, a span stands at the paragraph's
 corner without size and an icon or image is drawn where its inline box
 lies. A span is hit on its glyphs, on each line it runs over
 (`Tree::on_span`), so `onPress` on a span is a link; the probe gives it
-its first line's piece. `select-text` (inherited) makes a text, a
+its first line's piece. `ruby` on a span is its annotation, a leaf of
+its own at half its size centred over its first piece; the lines its
+runs are on grow by it above and below. `select-text` (inherited) makes a text, a
 paragraph or one string, selectable read only: a drag selects, a second
 press selects the word, a third all of it, and Control or Command + C
 copies it through `Tree::take_copy` (+ A selects all).

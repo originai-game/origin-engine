@@ -12,8 +12,11 @@ export declare const View: (props: HostProps) => UiNode;
  * text, wrapping and aligning together. A span draws in its own classes' size, weight, slant, family, colour and
  * decoration; an icon or image is an inline box its px size (an em square without one), centred on the text's
  * middle. A span with `onPress` is pressed on its glyphs (a link). `select-text` lets the player select it and copy.
+ * `ruby` on a span is its annotation (furigana), drawn at half its size centred over it; its line grows to hold it.
  */
-export declare const Text: (props: HostProps) => UiNode;
+export declare const Text: (props: HostProps & {
+    ruby?: string | undefined;
+}) => UiNode;
 /** A texture (`og.load.texture`; 0 none) drawn over its box, stretched; a class's `nine-<name>` slices a pack's. */
 export declare const Image: (props: HostProps & {
     src?: Texture | 0 | undefined;

@@ -771,6 +771,7 @@ impl Tree {
             inline: NONE,
             para: None,
             queued: false,
+            ruby: Box::default(),
         });
         if self.by_js.len() <= id as usize {
             self.by_js.resize(id as usize + 1, NONE);
@@ -1362,6 +1363,13 @@ impl Tree {
                         }
                         "name" if self.els[e as usize].kind == Kind::Icon => {
                             self.set_text(e, value);
+                        }
+                        // `ruby`: a span's annotation (tree/para.rs).
+                        "ruby" if self.els[e as usize].kind == Kind::Text => {
+                            if *self.els[e as usize].ruby != *value {
+                                self.els[e as usize].ruby = value.into();
+                                self.para_touch(e);
+                            }
                         }
                         // `name`: what `anchor` and `spotlight` find it by.
                         "name" => {
@@ -7819,5 +7827,60 @@ mod tests {
         t.pointer(390.0, 290.0, false, true);
         assert!(!t.key("KeyC", false, true, false, false));
         assert_eq!(t.take_copy(), None);
+    }
+
+    /// A span's `ruby` stands centred over it, half its size, inside its
+    /// line, whose box grows by the annotation above and below the base.
+    #[test]
+    fn a_ruby_stands_centred_over_its_span_inside_a_taller_line() {
+        let plain = paragraph("", "", "Tokyo");
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(1);
+        b.op(2).u32(2).str("Gold ");
+        b.op(1).u32(3).u8(1);
+        b.op(6).u32(3).str("ruby").str("toh kyoh");
+        b.op(2).u32(4).str("Tokyo");
+        b.op(2).u32(5).str(" coins");
+        b.op(1).u32(6).u8(5);
+        b.op(4).u32(6).str("ico");
+        b.op(2).u32(7).str("!");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        for c in [2, 3, 5, 6, 7] {
+            b.op(8).u32(1).u32(c).u32(u32::MAX);
+        }
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        frame(&mut t);
+        let g = para_leaf(&t, 1);
+        let base = g.lines[0][1];
+        let plain_base = para_leaf(&plain, 1).lines[0][1];
+        // The line's baseline moved down to make room above it.
+        assert!(base - plain_base >= 5.0, "{base} vs {plain_base}");
+        let [ox, oy, ..] = t.op_box(1).unwrap();
+        let mut piece = None;
+        g.selection(5..10, |r| {
+            piece.get_or_insert(r);
+        });
+        let [px, _, pw, _] = piece.unwrap();
+        let span = t.op(3).unwrap() as usize;
+        let leaf = t.els[span].leaf.expect("its ruby's leaf");
+        let lb = t.arena.box_of(leaf);
+        let &(ax, ay, shown, _) = t.abs.get(span).unwrap();
+        assert!(shown);
+        let (ax, ay) = (ax + lb.x, ay + lb.y);
+        // Centred over "Tokyo", above its glyphs, below the line's top.
+        assert!(
+            ((ax + lb.w / 2.0) - (ox + px + pw / 2.0)).abs() < 0.5,
+            "{ax} {px} {pw}"
+        );
+        assert!(ay + lb.h <= oy + base - 16.0 * 0.6, "{ay} {} {base}", lb.h);
+        assert!(ay >= oy - 0.5, "{ay} {oy}");
+        assert_eq!(t.texts.leaf(leaf).unwrap().size(), 8.0);
+        assert_eq!(t.els[span].text, "toh kyoh");
+        // Every glyph of the base is drawn.
+        let g = para_leaf(&t, 1);
+        assert_eq!(g.fill.len(), "GoldTokyocoins!".len(), "{:?}", g.fill_ink);
     }
 }

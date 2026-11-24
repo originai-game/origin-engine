@@ -110,6 +110,11 @@ fn with_rich<R>(rich: &Rich, f: impl FnOnce(&[Span<'_>], &[Inline]) -> R) -> R {
             weight: f32::from(s.run.weight),
             italic: s.run.italic,
             letter_spacing: s.run.tracking,
+            line_height: if s.run.line < 0.0 {
+                LineHeight::NORMAL
+            } else {
+                LineHeight::Absolute(s.run.line)
+            },
             ink: s.ink,
         })
         .collect();

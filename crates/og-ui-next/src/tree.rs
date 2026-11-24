@@ -205,6 +205,8 @@ struct El {
     para: Option<Box<para::Para>>,
     /// It waits in [`Tree::paras`] to be laid out again.
     queued: bool,
+    /// A span's `ruby`: the annotation drawn over it, its leaf's text.
+    ruby: Box<str>,
 }
 
 /// Theme colour role `role` (`gold`, `icon-outline`) as a toned icon
@@ -1244,6 +1246,20 @@ impl Tree {
                 self.arena
                     .set_style(leaf, rune_taffy::CompactStyle::from(&s));
             }
+            // A span's leaf is its ruby: half its size, on one line, set
+            // solid.
+            let ruby =
+                self.els[e as usize].kind == Kind::Text && self.els[e as usize].inline != NONE;
+            let eff = if ruby {
+                let mut r = eff;
+                r.size *= RUBY;
+                r.text.line = 1.0;
+                r.text.line_px = false;
+                r.text.nowrap = true;
+                r
+            } else {
+                eff
+            };
             self.arena.set_run(
                 leaf,
                 Run {
@@ -1695,6 +1711,9 @@ impl Tree {
             // put it, and not where a cut line dropped it.
             let at = match el.kind {
                 Kind::Icon | Kind::Image if el.inline != NONE => Some(self.inline_box(e as u32)),
+                Kind::Text if el.inline != NONE && !el.ruby.is_empty() => {
+                    Some(self.ruby_at(e as u32))
+                }
                 _ => None,
             };
             // A run in a paragraph is drawn by the paragraph.
@@ -2791,6 +2810,9 @@ impl Tree {
         }
     }
 }
+
+/// A ruby annotation's size, of its base's (CSS Ruby's UA style, 50 %).
+pub(crate) const RUBY: f32 = 0.5;
 
 /// The side, CSS px, a control's box is grown to for a finger on a touch
 /// screen ([`Tree::near_target`]): WCAG 2.5.8's enhanced target, Apple's

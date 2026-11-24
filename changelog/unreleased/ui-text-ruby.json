@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Text",
+      "summary": "`ruby` on a `<Text>` span in a paragraph is its annotation (furigana): `<Text>東京<Text ruby=\"とうきょう\">駅</Text></Text>`. It is drawn at half the span's size, in its ink, centred over the span's first line, and that line grows to hold it."
+    }
+  ]
+}

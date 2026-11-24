@@ -128,6 +128,7 @@ impl Tree {
             &mut text,
             &mut rich,
             &mut blocked,
+            false,
         );
         let one_run =
             para.members.len() == 1 && self.els[para.members[0] as usize].kind == Kind::Label;
@@ -187,6 +188,24 @@ impl Tree {
                     self.els[m as usize].inline = root;
                     self.inherit(m);
                 }
+                // A span's ruby is the text of a leaf of its own.
+                let el = &self.els[m as usize];
+                if el.kind == Kind::Text && (!el.ruby.is_empty() || el.leaf.is_some()) {
+                    let (node, ruby) = (el.node, el.ruby.clone());
+                    let leaf = match el.leaf {
+                        Some(leaf) => leaf,
+                        None => {
+                            let leaf = self.arena.text(node, "", 16.0);
+                            self.els[m as usize].leaf = Some(leaf);
+                            self.inherit(m);
+                            leaf
+                        }
+                    };
+                    self.arena.set_text(leaf, &ruby);
+                    let el = &mut self.els[m as usize];
+                    el.text.clear();
+                    el.text.push_str(&ruby);
+                }
             }
             self.els[root as usize].para = Some(Box::new(para));
         } else {
@@ -215,6 +234,7 @@ impl Tree {
         text: &mut String,
         rich: &mut Rich,
         blocked: &mut u32,
+        ruby: bool,
     ) {
         for &n in self.arena.children(node) {
             let e = self.el_of.get(n as usize).copied().unwrap_or(NONE);
@@ -243,14 +263,32 @@ impl Tree {
                         continue;
                     };
                     text.push_str(drawn);
+                    let mut run = *run;
+                    // Under a ruby its line is taller by the annotation
+                    // above it and as much below, so it sits centred.
+                    if ruby {
+                        let line = if run.line < 0.0 {
+                            run.size * 1.2
+                        } else {
+                            run.line
+                        };
+                        run.line = line + 2.0 * super::RUBY * run.size;
+                    }
                     rich.spans.push(RichSpan {
                         start,
                         end: text.len() as u32,
-                        run: *run,
+                        run,
                         ink,
                     });
                 }
-                Kind::Text => self.gather(el.node, para, text, rich, blocked),
+                Kind::Text => self.gather(
+                    el.node,
+                    para,
+                    text,
+                    rich,
+                    blocked,
+                    ruby || !el.ruby.is_empty(),
+                ),
                 _ => {
                     let [w, h] = self.inline_size(el);
                     rich.boxes.push(RichBox {
@@ -324,6 +362,22 @@ impl Tree {
         let g = self.texts.leaf(leaf)?;
         let &(_, [x, y, ..]) = g.boxes.iter().find(|b| b.0 == e)?;
         Some([ox + x, oy + y])
+    }
+
+    /// Where span member `e`'s ruby is drawn: its box's place, so that
+    /// its leaf stands centred over the span's first piece, its foot just
+    /// over the em above the piece's middle (CJK glyphs fill the em); `None` when the span is not laid
+    /// out.
+    pub(super) fn ruby_at(&self, e: u32) -> Option<[f32; 2]> {
+        let el = &self.els[e as usize];
+        let [x, y, w, h] = self.span_piece(e)?;
+        let leaf = self.arena.box_of(el.leaf?);
+        let base = el.eff.size * self.text_scale;
+        let middle = y + h / 2.0;
+        Some([
+            x + (w - leaf.w) / 2.0 - leaf.x,
+            middle - base * 0.56 - leaf.h - leaf.y,
+        ])
     }
 
     /// Whether (x, y) is on span member `e`'s glyphs (or an icon or image
