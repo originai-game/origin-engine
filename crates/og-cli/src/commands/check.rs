@@ -1641,6 +1641,159 @@ mod tests {
         );
     }
 
+    /// A class that fixes a visual value no theme reaches: a duration,
+    /// delay, opacity, line width or scale given as a number instead of
+    /// the theme's names (`duration-base`, `opacity-dim`, `ring-regular`,
+    /// `scale-press`). `0`, `100` (opacity, scale) and arbitrary values,
+    /// which [`literal_text`] counts, are not.
+    fn literal_class(class: &str) -> bool {
+        let utility = class.rsplit(':').next().unwrap_or(class);
+        let utility = utility.trim_start_matches('-');
+        let Some((name, value)) = utility.rsplit_once('-') else {
+            return false;
+        };
+        if value.is_empty() || !value.chars().all(|c| c.is_ascii_digit() || c == '.') {
+            return false;
+        }
+        let edge = matches!(name, "ring" | "inset-ring" | "outline")
+            || name == "border"
+            || name.strip_prefix("border-").is_some_and(|s| s.len() == 1);
+        match name {
+            "duration" | "delay" => true,
+            "opacity" | "scale" | "scale-x" | "scale-y" => value != "0" && value != "100",
+            _ => edge && value != "0",
+        }
+    }
+
+    /// Visual literals in a component's source outside its classes' names:
+    /// a hex colour in a string and a length or time in px or ms (an
+    /// inline style, an arbitrary class value, a timer).
+    fn literal_text(text: &str) -> usize {
+        let b = text.as_bytes();
+        let mut n = 0;
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'#' && i > 0 && matches!(b[i - 1], b'"' | b'\'' | b'`' | b'[') {
+                let len = b[i + 1..]
+                    .iter()
+                    .take_while(|c| c.is_ascii_hexdigit())
+                    .count();
+                if matches!(len, 3 | 4 | 6 | 8) {
+                    n += 1;
+                }
+            }
+            if b[i].is_ascii_digit() && (i == 0 || !b[i - 1].is_ascii_alphanumeric()) {
+                let mut j = i;
+                while j < b.len() && (b[j].is_ascii_digit() || b[j] == b'.') {
+                    j += 1;
+                }
+                let unit = |u: &[u8]| {
+                    b[j..].starts_with(u)
+                        && b.get(j + u.len())
+                            .is_none_or(|c| !c.is_ascii_alphanumeric())
+                };
+                let zero = b[i..j].iter().all(|&c| c == b'0' || c == b'.');
+                if !zero && (unit(b"px") || unit(b"ms")) {
+                    n += 1;
+                }
+                i = j;
+                continue;
+            }
+            i += 1;
+        }
+        n
+    }
+
+    /// No engine component brings in a visual value no theme can change
+    /// (xiaomao, 2026-11-24): every duration, opacity, line width, scale,
+    /// colour and length is a token or a pack slot a theme sets. The files
+    /// that still have some are listed in `component-literals.json` with
+    /// their count; a count may fall, and then the list is lowered with it
+    /// (`OG_BLESS=1`), but never rise, and a new file has none.
+    #[test]
+    fn no_engine_component_adds_a_visual_literal() {
+        let ui = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui");
+        let list =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("src/commands/component-literals.json");
+        let mut files = Vec::new();
+        crate::lockstep_lint::sources(&ui, &mut files);
+        files.retain(|f| f.extension().is_some_and(|e| e == "tsx"));
+        let mut counts = std::collections::BTreeMap::new();
+        for path in files {
+            let text = std::fs::read_to_string(&path).unwrap();
+            // Doc comments name values (`--ability-slot-size`, `48 px`).
+            let code: String = text
+                .lines()
+                .filter(|l| {
+                    let t = l.trim_start();
+                    !(t.starts_with("//") || t.starts_with("/*") || t.starts_with('*'))
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let classes = nsh_jsx::unknown_classes_with(&path.to_string_lossy(), &code, |s| {
+                s.split_whitespace()
+                    .filter(|c| literal_class(c))
+                    .map(str::to_owned)
+                    .collect()
+            });
+            let n = classes.len() + literal_text(&code);
+            if n > 0 {
+                let file = path.strip_prefix(&ui).unwrap().display().to_string();
+                counts.insert(file, n);
+            }
+        }
+        if std::env::var_os("OG_BLESS").is_some() {
+            let text = serde_json::to_string_pretty(&counts).unwrap();
+            std::fs::write(&list, text + "\n").unwrap();
+            return;
+        }
+        let allowed: std::collections::BTreeMap<String, usize> =
+            serde_json::from_str(&std::fs::read_to_string(&list).unwrap()).unwrap();
+        let mut wrong = Vec::new();
+        for (file, &n) in &counts {
+            let a = allowed.get(file).copied().unwrap_or(0);
+            if n > a {
+                wrong.push(format!(
+                    "{file}: {n} visual literals, {a} allowed: use the theme's tokens"
+                ));
+            }
+        }
+        for (file, &a) in &allowed {
+            let n = counts.get(file).copied().unwrap_or(0);
+            if n < a {
+                wrong.push(format!(
+                    "{file}: {n} visual literals, the list says {a}: lower it (OG_BLESS=1)"
+                ));
+            }
+        }
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
+
+    #[test]
+    fn literals_are_numbers_no_theme_names() {
+        let found: Vec<_> = "duration-317 duration-base hover:opacity-45 opacity-dim opacity-100 \
+             inset-ring-2 ring-regular ring-accent border-l-3 border-0 scale-96 scale-press \
+             rounded-2 p-4 size-12 rotate-45 delay-75"
+            .split(' ')
+            .filter(|c| literal_class(c))
+            .collect();
+        assert_eq!(
+            found,
+            [
+                "duration-317",
+                "hover:opacity-45",
+                "inset-ring-2",
+                "border-l-3",
+                "scale-96",
+                "delay-75"
+            ]
+        );
+        assert_eq!(
+            literal_text(r##"style={{ top: "48px" }} c="#ffd24a" 0px 1.5px 120ms 12 #idx"##),
+            4
+        );
+    }
+
     /// No engine component draws its own border, ring or outline on an
     /// element a nine-sliced frame draws (`nine-*`): the frame is the
     /// element's edge, as CSS `border-image` is, so a rectangle round it
