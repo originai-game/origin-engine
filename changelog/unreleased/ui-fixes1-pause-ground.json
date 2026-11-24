@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PauseScreen (built-in screen)",
+      "summary": "On a wide screen the pause column stands on the glass ground, fading into the scene to its right, so its title and rows read over a bright scene (the title read at 2:1 over a sky); a phone keeps its full-height ground."
+    }
+  ]
+}
