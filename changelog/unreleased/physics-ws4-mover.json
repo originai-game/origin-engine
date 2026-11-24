@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "physics controller stepping",
+      "change": "Controllers move before rigid-body substeps, publish poses sequentially, and exclusively own dynamic pushing. Teleports no longer become kinematic sweeps.",
+      "fix": "Read controller and sensor results on the next game tick as before; set pushBodies and pushStrength explicitly for virtual pushing."
+    }
+  ]
+}

@@ -542,7 +542,16 @@ fn step_here(
         let p = &sim.world.integration_parameters;
         p.dt / p.num_solver_iterations.max(1) as f32
     };
+    let controller_paths = pre_step_controllers(scene, settings, dt, shared, sim, &poses, &mut out)?;
+    laps.lap(Phase::Controllers);
     for k in 0..substeps {
+        for &(h, start, end) in &controller_paths {
+            let rb = &mut sim.world.bodies[h];
+            if k == 0 {
+                rb.set_position(start, false);
+            }
+            rb.set_next_kinematic_position(start.lerp(&end, (k + 1) as f32 / substeps as f32));
+        }
         forced_bodies.clear();
         apply_forces(sim, &handles, &pushes, &mut forced_bodies);
         ext::air_drag(
@@ -607,12 +616,22 @@ fn step_here(
         }
     }
     out.touching = touching;
-    out.moved = moved;
+    for (slot, rigid) in out.moved.iter_mut().zip(moved) {
+        if slot.is_none() {
+            *slot = rigid;
+        }
+    }
+    for (b, movement) in scene.bodies.iter().zip(&out.moved) {
+        if b.control.is_some()
+            && let Some((p, q, _)) = movement
+            && let Some(t) = sim.bodies.get_mut(&b.entity.to_bits())
+        {
+            t.position = *p;
+            t.quaternion = *q;
+        }
+    }
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     laps.lap(Phase::Readout);
-    ext::characters(scene, settings, dt, shared, sim, &poses, &mut out)?;
-    super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
-    laps.lap(Phase::Controllers);
     ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;
     ext::joint_values(sim, &mut out);
     for (e, j) in &out.joints {
@@ -621,6 +640,56 @@ fn step_here(
     laps.lap(Phase::Joints);
     out.laps = Some(laps);
     Ok(out)
+}
+
+/// Refresh queries without consuming Rapier's pending collision changes or
+/// contact events. The solver still observes all of them in its next step.
+pub(crate) fn refresh_controller_queries(w: &mut rp::PhysicsWorld) {
+    w.bodies.propagate_modified_body_positions_to_colliders(&mut w.colliders);
+    for (h, c) in w.colliders.iter() {
+        if c.is_enabled() {
+            w.broad_phase.set_aabb(&w.integration_parameters, h, c.compute_aabb());
+        }
+    }
+}
+
+/// Publish one virtual character immediately, so the next character queries
+/// its new pose. Virtual contacts, not the infinite-mass solver, own pushing.
+pub(crate) fn write_controller_pose(sim: &mut Sim, handle: rp::RigidBodyHandle, at: rp::Pose) {
+    let rb = &mut sim.world.bodies[handle];
+    rb.set_position(at, false);
+    rb.set_next_kinematic_position(at);
+    let colliders = rb.colliders().to_vec();
+    for h in colliders {
+        sim.world.colliders[h].set_solver_groups(rp::InteractionGroups::new(
+            rp::Group::empty(), rp::Group::empty(), rp::InteractionTestMode::And,
+        ));
+    }
+    refresh_controller_queries(&mut sim.world);
+}
+
+type ControllerPath = (rp::RigidBodyHandle, rp::Pose, rp::Pose);
+
+/// The pre-step controller phase: sync has finished; every controller sees
+/// the current broad phase and publishes its pose before the next one moves.
+fn pre_step_controllers(
+    scene: &Scene,
+    settings: &Physics,
+    dt: f32,
+    shared: &Shared,
+    sim: &mut Sim,
+    poses: &BodyPoses,
+    out: &mut StepOut,
+) -> Result<Vec<ControllerPath>> {
+    refresh_controller_queries(&mut sim.world);
+    let starts: Vec<_> = scene.bodies.iter().filter(|b| b.control.is_some()).map(|b| {
+        let h = sim.bodies[&b.entity.to_bits()].handle;
+        (h, *sim.world.bodies[h].position())
+    }).collect();
+    out.moved.resize(scene.bodies.len(), None);
+    ext::characters(scene, settings, dt, shared, sim, poses, out)?;
+    super::platformers(scene, settings, dt, sim, poses, out)?;
+    Ok(starts.into_iter().map(|(h, start)| (h, start, *sim.world.bodies[h].position())).collect())
 }
 
 /// The hooks every collider of a hooked entity runs (og.ContactHook).
