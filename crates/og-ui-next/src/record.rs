@@ -50,6 +50,8 @@ pub struct Text {
     pub variant: u8,
     /// `overflow-wrap`: 0 normal, 1 break-word, 2 anywhere.
     pub wrap: u8,
+    /// `select-text`: it can be selected and copied, read only.
+    pub select: bool,
     /// Which fields its own rules set: bit k for [`Text::WEIGHT`] and on.
     pub set: u16,
     /// Its font size was set by its own rules.
@@ -70,6 +72,7 @@ impl Text {
     pub const ITALIC: u16 = 1024;
     pub const VARIANT: u16 = 2048;
     pub const WRAP: u16 = 4096;
+    pub const SELECT: u16 = 8192;
 
     /// Its letter spacing at `size`, CSS px.
     pub fn tracking(&self, size: f32) -> f32 {
@@ -130,6 +133,9 @@ impl Text {
         if own(Text::WRAP) {
             t.wrap = self.wrap;
         }
+        if own(Text::SELECT) {
+            t.select = self.select;
+        }
         t.set = parent.set | self.set;
         t.sized = self.sized;
         t
@@ -156,6 +162,7 @@ impl Default for Text {
             italic: false,
             variant: 0,
             wrap: 0,
+            select: false,
             set: 0,
             sized: false,
         }

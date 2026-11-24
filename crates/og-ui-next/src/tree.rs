@@ -20,6 +20,8 @@ const NONE: u32 = u32::MAX;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
     Box,
+    /// A `<Text>`: a paragraph of the runs, spans and icons in it ([`para`]).
+    Text,
     Label,
     Image,
     Icon,
@@ -197,6 +199,12 @@ struct El {
     /// `scheme-dark` or `scheme-light`, its own or an ancestor's, names
     /// it ([`crate::classes::OTHER_SCHEME`]).
     other: bool,
+    /// The paragraph it is laid out in ([`para`]), `NONE` for none; and a
+    /// paragraph's own members.
+    inline: u32,
+    para: Option<Box<para::Para>>,
+    /// It waits in [`Tree::paras`] to be laid out again.
+    queued: bool,
 }
 
 /// Theme colour role `role` (`gold`, `icon-outline`) as a toned icon
@@ -490,6 +498,14 @@ pub struct Tree {
     /// `bg-focus`, read with the class resolver).
     vcursor: vcursor::State,
     cursor_colors: [Rgba; 3],
+    /// Paragraphs to lay out again, and whether they are being; the ones
+    /// warned of a box they cannot hold in a line.
+    paras: Vec<u32>,
+    composing: bool,
+    warned_paras: Vec<u32>,
+    /// The selection in a `select-text` text, and the press making it.
+    select: Option<para::Selected>,
+    select_press: Option<para::SelectPress>,
     /// Each element's transform in `drawn.transforms` (its own composed
     /// with its ancestors'; 0 none), what its children compose onto.
     xfs: Vec<u32>,
@@ -582,6 +598,7 @@ struct Shown {
 
 mod input;
 mod ops;
+mod para;
 mod particles;
 mod stacking;
 mod thumb;
@@ -684,6 +701,11 @@ impl Tree {
             cover: None,
             vcursor: Default::default(),
             cursor_colors: [[0.0, 0.0, 0.0, 0.45], [1.0; 4], [0.9, 0.9, 0.95, 1.0]],
+            paras: Vec::new(),
+            composing: false,
+            warned_paras: Vec::new(),
+            select: None,
+            select_press: None,
         }
     }
 
@@ -750,6 +772,7 @@ impl Tree {
                 }
             }
         }
+        self.para_touch(e);
         self.paint = true;
     }
 
@@ -772,6 +795,8 @@ impl Tree {
             if let Some(leaf) = el.leaf {
                 self.arena.set_text(leaf, &text);
             }
+            let e = c.e;
+            self.para_touch(e);
             if done {
                 self.counts.swap_remove(i);
             } else {
@@ -1192,6 +1217,12 @@ impl Tree {
             }
             layout = rune_taffy::CompactStyle::from(&s);
         }
+        if el.inline != NONE {
+            let mut s = taffy::Style::from(&layout);
+            Tree::member_style(el.kind, &mut s);
+            layout = rune_taffy::CompactStyle::from(&s);
+        }
+        let in_para = el.inline != NONE || el.para.is_some();
         let (node, leaf, space) = (el.node, el.leaf, r.space);
         self.arena.set_style(node, layout);
         self.arena.set_space(node, space);
@@ -1237,7 +1268,14 @@ impl Tree {
                 },
             );
         }
+        let el = &self.els[e as usize];
+        // An icon's or an image's size is its inline box's.
+        let changed = el.eff != eff || matches!(el.kind, Kind::Icon | Kind::Image);
         self.els[e as usize].eff = eff;
+        // A member's style is its paragraph's span.
+        if in_para && changed {
+            self.para_touch(e);
+        }
     }
 
     /// Re-applies `e` and every descendant whose inheritance changed.
@@ -1326,6 +1364,10 @@ impl Tree {
         for e in 0..self.els.len() as u32 {
             if !self.els[e as usize].dead && self.els[e as usize].leaf.is_some() {
                 self.inherit(e);
+                // A paragraph's spans are its runs' sizes.
+                if self.els[e as usize].inline != NONE {
+                    self.para_touch(e);
+                }
             }
         }
         self.paint = true;
@@ -1380,6 +1422,7 @@ impl Tree {
             self.arena.remeasure();
             self.paint = true;
         }
+        self.compose_paras();
         let texts = &mut self.texts;
         let laid_out = self.arena.layout(w, h, &mut |id, t, run, avail| {
             texts.measure(fonts, id, t, run, avail)
@@ -1648,7 +1691,20 @@ impl Tree {
                 && !r.hidden
                 && alpha > 0.0
                 && r.layout.display() != taffy::Display::None;
-            let (x, y) = (px + b.x, py + b.y);
+            // An icon or an image in a paragraph is drawn where its line
+            // put it, and not where a cut line dropped it.
+            let at = match el.kind {
+                Kind::Icon | Kind::Image if el.inline != NONE => Some(self.inline_box(e as u32)),
+                _ => None,
+            };
+            // A run in a paragraph is drawn by the paragraph.
+            let visible = visible
+                && at.is_none_or(|a| a.is_some())
+                && !(el.inline != NONE && el.kind == Kind::Label);
+            let (x, y) = match at.flatten() {
+                Some([ix, iy]) => (ix, iy),
+                None => (px + b.x, py + b.y),
+            };
             let clip = pclip;
             let pcut = match el.arena_parent {
                 _ if el.anchor.is_some() => ALL,
@@ -1734,6 +1790,20 @@ impl Tree {
             } else {
                 alpha
             };
+            // A selected text's selection, and a paragraph's members' inks
+            // and decorations, by ink ([`para`]).
+            let selected = self.selected_in(e as u32);
+            let span_looks: Vec<(Rgba, Decoration)> = el.para.as_ref().map_or(Vec::new(), |para| {
+                para.members
+                    .iter()
+                    .map(|&m| {
+                        let m = &self.els[m as usize];
+                        let mut c = m.eff.ink;
+                        c[3] *= alpha;
+                        (c, m.eff.decoration)
+                    })
+                    .collect()
+            });
             let p = &mut self.drawn;
             let start = p.quads.len();
             // Its own mask replaces an ancestor's over its subtree.
@@ -2352,6 +2422,21 @@ impl Tree {
                         });
                     }
                 }
+                if let Some(range) = selected {
+                    let color = faded(s.selection.unwrap_or([0.1, 0.3, 0.8, 0.4]));
+                    g.selection(range, |[sx, sy, w, h]| {
+                        p.quads.push(quad(
+                            PaintKind::Solid,
+                            [lx + sx, ly + sy, w, h],
+                            clip,
+                            color,
+                            [0.; 4],
+                            [0.; 4],
+                            0,
+                            0,
+                        ));
+                    });
+                }
                 let placed = |q: &PaintQuad, dx: f32, dy: f32, color: Rgba| PaintQuad {
                     rect: [
                         q.rect[0] + lx + dx,
@@ -2387,19 +2472,64 @@ impl Tree {
                     p.quads
                         .extend(g.stroke.iter().map(|q| placed(q, 0.0, 0.0, c)));
                 }
-                p.quads
-                    .extend(g.fill.iter().map(|q| placed(q, 0.0, 0.0, text_ink)));
-                let d = el.eff.decoration;
-                if d.line != 0 {
-                    let mut c = if d.color[3] > 0.0 { d.color } else { own_ink };
+                // Each glyph in its span's ink; a text of one run, all in its own.
+                let ink_of = |i: u16| match i {
+                    0 => text_ink,
+                    i => span_looks.get(usize::from(i) - 1).map_or(text_ink, |l| l.0),
+                };
+                p.quads.extend(
+                    g.fill
+                        .iter()
+                        .zip(g.fill_ink.iter().copied().chain(std::iter::repeat(0)))
+                        .map(|(q, i)| placed(q, 0.0, 0.0, ink_of(i))),
+                );
+                // A paragraph's lines are decorated span by span, each as
+                // its run's style says, along the stretches its ink drew.
+                let own = {
+                    let mut c = own_ink;
                     c[3] *= alpha;
+                    c
+                };
+                // A stretch's decoration and ink: a paragraph's span by
+                // span along its inks, any other text's line by line.
+                let rich = !span_looks.is_empty();
+                let look_of = |i: u16| match i {
+                    0 => (el.eff.decoration, own),
+                    i => span_looks
+                        .get(usize::from(i) - 1)
+                        .map_or((el.eff.decoration, own), |&(c, d)| (d, c)),
+                };
+                let decorated = if rich {
+                    g.inks.iter().any(|&(i, _)| look_of(i).0.line != 0)
+                } else {
+                    el.eff.decoration.line != 0
+                };
+                if decorated {
                     // The lines the primary font gives, each a whole
                     // number of device pixels thick, on one.
                     let face = self.texts.decorations(fonts, leaf);
                     let px = |v: f32| (v * scale).round().max(1.0) / scale;
                     use crate::record::Decoration as D;
                     let g = self.texts.leaf(leaf).expect("painted");
-                    for &[x0, base, w] in &g.lines {
+                    let n = if rich { g.inks.len() } else { g.lines.len() };
+                    for k in 0..n {
+                        let (d, ink, [x0, base, w]) = if rich {
+                            let (i, l) = g.inks[k];
+                            let (d, c) = look_of(i);
+                            (d, c, l)
+                        } else {
+                            (el.eff.decoration, own, g.lines[k])
+                        };
+                        if d.line == 0 {
+                            continue;
+                        }
+                        let c = if d.color[3] > 0.0 {
+                            let mut c = d.color;
+                            c[3] *= alpha;
+                            c
+                        } else {
+                            ink
+                        };
                         let at = [
                             (D::UNDERLINE, face.underline),
                             (D::OVERLINE, [face.ascent, face.underline[1]]),
@@ -2628,10 +2758,16 @@ impl Tree {
                 .motion
                 .box_of(el.node)
                 .unwrap_or_else(|| self.arena.box_of(el.node));
-            let inside = x >= bx.max(cx0)
-                && x < (bx + b.w).min(cx1)
-                && y >= by.max(cy0)
-                && y < (by + b.h).min(cy1);
+            // A span in a paragraph is where its glyphs are.
+            let inside = match self.on_span(e as u32, x, y) {
+                Some(on) => on && x >= cx0 && x < cx1 && y >= cy0 && y < cy1,
+                None => {
+                    x >= bx.max(cx0)
+                        && x < (bx + b.w).min(cx1)
+                        && y >= by.max(cy0)
+                        && y < (by + b.h).min(cy1)
+                }
+            };
             if !shown || !inside || !self.reachable(e as u32) {
                 continue;
             }
@@ -2649,7 +2785,9 @@ impl Tree {
     pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool) {
         let was = std::mem::replace(&mut self.last_pointer, (x, y, self.paints));
         if self.has_ops() && (was != self.last_pointer || pressed || released) {
-            self.pointer_ops(x, y, (was.0, was.1) != (x, y), pressed, released);
+            let moved = (was.0, was.1) != (x, y);
+            self.pointer_ops(x, y, moved, pressed, released);
+            self.select_pointer(x, y, moved, pressed, released);
         }
     }
 }

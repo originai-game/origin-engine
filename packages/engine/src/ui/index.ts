@@ -30,6 +30,12 @@ function host<P extends HostProps>(tag: string): (props: P) => UiNode {
 }
 
 export const View = host<HostProps>("view");
+/**
+ * A paragraph: its strings, the `<Text>` spans nested in it and the `<Icon>` and `<Image>` in it are laid out as one
+ * text, wrapping and aligning together. A span draws in its own classes' size, weight, slant, family, colour and
+ * decoration; an icon or image is an inline box its px size (an em square without one), centred on the text's
+ * middle. A span with `onPress` is pressed on its glyphs (a link). `select-text` lets the player select it and copy.
+ */
 export const Text = host<HostProps>("text");
 /** A texture (`og.load.texture`; 0 none) drawn over its box, stretched; a class's `nine-<name>` slices a pack's. */
 export const Image = host<HostProps & { src?: Texture | 0 | undefined }>("image");

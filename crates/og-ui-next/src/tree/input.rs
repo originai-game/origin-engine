@@ -22,7 +22,7 @@ use nsh_input::input as nsh;
 const CLICK_SLOP: f32 = 4.0;
 /// Two presses this close (s) on one element are a double press (Rune's
 /// `double_click_interval`).
-const DOUBLE_PRESS: f64 = 0.5;
+pub(super) const DOUBLE_PRESS: f64 = 0.5;
 /// A hold's progress as text, "0.42", written into `buf` (no allocation).
 fn progress(t: f32, buf: &mut [u8; 8]) -> &str {
     let hundredths = (t.clamp(0.0, 1.0) * 100.0) as u32;
@@ -467,8 +467,9 @@ pub struct Input {
     /// A press `confirm` made: it sounds `confirm`, not `press`.
     confirming: bool,
     drag: Option<Drag>,
-    /// Text copied or cut from the focused `Input` this frame (`Tree::take_copy`).
-    copied: Option<String>,
+    /// Text copied or cut from the focused `Input`, or copied from a
+    /// selected text, this frame (`Tree::take_copy`).
+    pub(super) copied: Option<String>,
     /// The scroll bar thumbs, the one the pointer holds and where on it,
     /// and the scrollers that moved since the events were last taken.
     pub(super) thumbs: Vec<u32>,
@@ -1771,6 +1772,10 @@ impl Tree {
         let Some(&(bx, by, shown, _)) = self.abs.get(e as usize) else {
             return false;
         };
+        // A span in a paragraph is its glyphs.
+        if let Some(on) = self.on_span(e, x, y) {
+            return shown && on;
+        }
         // A spotlight's box is the surface outside its hole.
         if let Some(in_hole) = self.in_hole(e, x, y) {
             let (w, h) = self.size;
@@ -2569,6 +2574,10 @@ impl Tree {
             && !(ctrl || alt || meta)
             && self.context_menu_key()
         {
+            return true;
+        }
+        // A selected text copies, or selects all of itself.
+        if self.editing().is_none() && self.select_key(code, (ctrl || meta) && !alt) {
             return true;
         }
         // The focused `Input` edits with its keys (arrows across its text

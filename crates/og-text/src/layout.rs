@@ -100,6 +100,44 @@ pub struct Style<'a> {
     /// more follow; 0 all.
     pub max_lines: u16,
     pub trim: Trim,
+    /// Ranges drawn in a style of their own (a paragraph's styled runs),
+    /// sorted and apart; the rest is drawn in this one, ink 0.
+    pub spans: &'a [Span<'a>],
+    /// Boxes laid out in the line (an inline icon or image), by the byte
+    /// they stand before, in order.
+    pub boxes: &'a [Inline],
+}
+
+/// A range of a paragraph's text in its own font, size, weight, slant and
+/// spacing; its glyph runs carry its `ink` ([`GlyphRun::ink`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Span<'a> {
+    /// Bytes of the text.
+    pub start: usize,
+    pub end: usize,
+    pub family: &'a str,
+    /// CSS px.
+    pub size: f32,
+    pub weight: f32,
+    pub italic: bool,
+    /// CSS px.
+    pub letter_spacing: f32,
+    /// What paints it, the caller's; 0 is the paragraph's own.
+    pub ink: u16,
+}
+
+/// A box laid out in a paragraph's line like a character (CSS
+/// `display: inline-block`), centred on the text's middle (`vertical-align:
+/// middle`): an icon or an image in a sentence.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Inline {
+    /// The byte of the text it stands before.
+    pub at: usize,
+    /// CSS px.
+    pub width: f32,
+    pub height: f32,
+    /// The caller's, given back with its place ([`Text::boxes`]).
+    pub id: u64,
 }
 
 impl Default for Style<'_> {
@@ -123,6 +161,8 @@ impl Default for Style<'_> {
             ellipsis: false,
             max_lines: 0,
             trim: Trim::default(),
+            spans: &[],
+            boxes: &[],
         }
     }
 }
@@ -147,14 +187,16 @@ pub struct GlyphRun<'a> {
     /// Glyph ids and pen positions, CSS px from the box's top left (y the
     /// glyph's own baseline).
     pub glyphs: &'a [parley::layout::Glyph],
+    /// Its span's ink ([`Span::ink`]); 0 the paragraph's.
+    pub ink: u16,
 }
 
 /// One text: shaped once per text or style, broken at each width asked.
 #[derive(Default)]
 pub struct Text {
-    layout: parley::Layout<()>,
+    layout: parley::Layout<u16>,
     /// A shaped line ending, shared by all taken discretionary breaks.
-    hyphen: Option<parley::Layout<()>>,
+    hyphen: Option<parley::Layout<u16>>,
     /// The width the lines were last broken at.
     width: Option<f32>,
     /// What trim takes off the top and the bottom, CSS px.
@@ -217,9 +259,15 @@ impl Text {
                 self.resegmented = true;
             }
         }
-        if let Some(cut) = ellipsized(fonts, &self.layout, text, style, width) {
+        if let Some((cut, pieces)) = ellipsized(fonts, &self.layout, text, style, width) {
             self.content = Some(self.content_widths());
-            self.hyphen = build(fonts, &mut self.layout, &cut, style).0;
+            let (spans, boxes) = moved(style, &pieces);
+            let style = Style {
+                spans: &spans,
+                boxes: &boxes,
+                ..style.clone()
+            };
+            self.hyphen = build(fonts, &mut self.layout, &cut, &style).0;
             self.cut = Some(cut);
             self.layout.break_all_lines(width);
         }
@@ -261,7 +309,7 @@ impl Text {
     }
 
     /// The layout, for Parley's cursor, selection and hit testing.
-    pub fn layout(&self) -> &parley::Layout<()> {
+    pub fn layout(&self) -> &parley::Layout<u16> {
         &self.layout
     }
 
@@ -371,39 +419,90 @@ impl Text {
         }
     }
 
+    /// Calls `f` with each inline box ([`Style::boxes`]) laid out: its id
+    /// and its rectangle, CSS px from the box's top left. A box a cut
+    /// line dropped is not called.
+    pub fn boxes(&self, mut f: impl FnMut(u64, [f32; 4])) {
+        let top = self.trimmed[0];
+        for line in self.layout.lines() {
+            for item in line.items() {
+                if let PositionedLayoutItem::InlineBox(b) = item {
+                    f(b.id, [b.x, b.y - top, b.width, b.height]);
+                }
+            }
+        }
+    }
+
+    /// Calls `f` with the stretches of each line drawn in one ink, in
+    /// visual order: the ink ([`Span::ink`]) and its start x, baseline and
+    /// width, CSS px. A span's decoration lines lie along them.
+    pub fn inks(&self, mut f: impl FnMut(u16, [f32; 3])) {
+        let top = self.trimmed[0];
+        for line in self.layout.lines() {
+            let mut open: Option<(u16, [f32; 3])> = None;
+            for item in line.items() {
+                let PositionedLayoutItem::GlyphRun(run) = item else {
+                    continue;
+                };
+                let ink = run.style().brush;
+                let (x, w) = (run.offset(), run.advance());
+                let base = run.baseline() - top;
+                match &mut open {
+                    Some((i, a)) if *i == ink && (a[0] + a[2] - x).abs() < 0.01 && a[1] == base => {
+                        a[2] += w
+                    }
+                    _ => {
+                        if let Some((i, a)) = open.take() {
+                            f(i, a);
+                        }
+                        open = Some((ink, [x, base, w]));
+                    }
+                }
+            }
+            if let Some((i, a)) = open {
+                f(i, a);
+            }
+        }
+    }
+
     /// Calls `f` with each glyph run, line by line in visual order.
     pub fn runs(&mut self, fonts: &Collection, mut f: impl FnMut(GlyphRun)) {
         let top = self.trimmed[0];
-        let mut emit = |run: parley::layout::GlyphRun<'_, ()>, x: f32, y: f32| {
-            let r = run.run();
-            let Some(face) = fonts.face_of(r.font()) else {
-                return;
+        let mut emit =
+            |run: parley::layout::GlyphRun<'_, u16>, x: f32, y: f32, ink: Option<u16>| {
+                let r = run.run();
+                let Some(face) = fonts.face_of(r.font()) else {
+                    return;
+                };
+                self.glyphs.clear();
+                self.glyphs.extend(run.positioned_glyphs().map(|mut g| {
+                    g.x += x;
+                    g.y += y - top;
+                    g
+                }));
+                self.coords.clear();
+                self.coords
+                    .extend(r.normalized_coords().iter().map(|c| c.to_bits()));
+                let synthesis = r.synthesis();
+                f(GlyphRun {
+                    face,
+                    index: r.font().index,
+                    size: r.font_size(),
+                    coords: &self.coords,
+                    embolden: synthesis.embolden(),
+                    skew: synthesis.skew(),
+                    baseline: run.baseline() + y - top,
+                    glyphs: &self.glyphs,
+                    ink: ink.unwrap_or(run.style().brush),
+                });
             };
-            self.glyphs.clear();
-            self.glyphs.extend(run.positioned_glyphs().map(|mut g| {
-                g.x += x;
-                g.y += y - top;
-                g
-            }));
-            self.coords.clear();
-            self.coords
-                .extend(r.normalized_coords().iter().map(|c| c.to_bits()));
-            let synthesis = r.synthesis();
-            f(GlyphRun {
-                face,
-                index: r.font().index,
-                size: r.font_size(),
-                coords: &self.coords,
-                embolden: synthesis.embolden(),
-                skew: synthesis.skew(),
-                baseline: run.baseline() + y - top,
-                glyphs: &self.glyphs,
-            });
-        };
         for line in self.layout.lines() {
+            // A hyphen a break adds is drawn in the ink of the text it ends.
+            let mut last = 0;
             for item in line.items() {
                 if let PositionedLayoutItem::GlyphRun(run) = item {
-                    emit(run, 0., 0.);
+                    last = run.style().brush;
+                    emit(run, 0., 0., None);
                 }
             }
             if let (Some(x), Some(hyphen)) = (line.discretionary_offset(), &self.hyphen) {
@@ -411,7 +510,7 @@ impl Text {
                     let y = line.metrics().baseline - ending.metrics().baseline;
                     for item in ending.items() {
                         if let PositionedLayoutItem::GlyphRun(run) = item {
-                            emit(run, x, y);
+                            emit(run, x, y, Some(last));
                         }
                     }
                 }
@@ -423,10 +522,10 @@ impl Text {
 /// Shapes `text` in `style` into `layout`.
 fn build(
     fonts: &mut Collection,
-    layout: &mut parley::Layout<()>,
+    layout: &mut parley::Layout<u16>,
     text: &str,
     style: &Style,
-) -> (Option<parley::Layout<()>>, Option<(f32, f32)>) {
+) -> (Option<parley::Layout<u16>>, Option<(f32, f32)>) {
     shape_layout(fonts, layout, text, style, &[]);
     if style.hyphens == Hyphens::None || !style.wrap {
         return (None, None);
@@ -457,7 +556,7 @@ fn build(
         return (None, None);
     }
     let mut hyphen = parley::Layout::new();
-    shape_layout(fonts, &mut hyphen, "-", style, &[]);
+    shape_layout(fonts, &mut hyphen, "-", &plain(style), &[]);
     hyphen.break_all_lines(None);
     for point in &mut breaks {
         point.1 = hyphen.width();
@@ -484,7 +583,7 @@ fn build(
 /// Discretionary opportunities that shaping joined into a ligature. For
 /// wrapping, only overflowing lines need reshaping; a line that fits keeps
 /// its original glyphs. With no width, find them all for min-content.
-fn ligature_breaks(layout: &parley::Layout<()>, width: Option<f32>) -> Vec<usize> {
+fn ligature_breaks(layout: &parley::Layout<u16>, width: Option<f32>) -> Vec<usize> {
     let mut boundaries = Vec::new();
     if layout.discretionary_breaks().is_empty() {
         return boundaries;
@@ -513,7 +612,7 @@ fn ligature_breaks(layout: &parley::Layout<()>, width: Option<f32>) -> Vec<usize
 
 fn shape_layout(
     fonts: &mut Collection,
-    layout: &mut parley::Layout<()>,
+    layout: &mut parley::Layout<u16>,
     text: &str,
     style: &Style,
     boundaries: &[usize],
@@ -570,7 +669,104 @@ fn shape_layout(
         TextWrapMode::NoWrap
     }));
     b.push_default(StyleProperty::OverflowWrap(style.overflow_wrap));
+    // Each span over the paragraph's style; its `opsz` follows its size.
+    let mut sized = Vec::with_capacity(style.spans.len());
+    for s in style.spans {
+        sized.push([parley::style::FontVariation::new(
+            parley::setting::Tag::new(b"opsz"),
+            s.size,
+        )]);
+    }
+    for (s, optical) in style.spans.iter().zip(&sized) {
+        let range = s.start.min(text.len())..s.end.min(text.len());
+        if range.is_empty() {
+            continue;
+        }
+        let r = || range.clone();
+        b.push(
+            StyleProperty::FontFamily(FontFamily::Source(Cow::Borrowed(s.family))),
+            r(),
+        );
+        b.push(StyleProperty::FontSize(s.size), r());
+        b.push(StyleProperty::FontWeight(FontWeight::new(s.weight)), r());
+        b.push(
+            StyleProperty::FontStyle(if s.italic {
+                FontStyle::Italic
+            } else {
+                FontStyle::Normal
+            }),
+            r(),
+        );
+        b.push(StyleProperty::LetterSpacing(s.letter_spacing), r());
+        b.push(
+            StyleProperty::FontVariations(parley::style::FontVariations::List(Cow::Borrowed(
+                optical,
+            ))),
+            r(),
+        );
+        b.push(StyleProperty::Brush(s.ink), r());
+    }
+    for i in style.boxes {
+        b.push_inline_box(parley::InlineBox {
+            id: i.id,
+            kind: parley::InlineBoxKind::InFlow,
+            index: i.at.min(text.len()),
+            width: i.width,
+            height: i.height,
+            baseline: None,
+            vertical_align: parley::VerticalAlign::MIDDLE,
+        });
+    }
     b.build_into(layout, text);
+}
+
+/// `style` without its spans and boxes: what a hyphen or an ellipsis
+/// added to a line is shaped in.
+fn plain<'a>(style: &Style<'a>) -> Style<'a> {
+    Style {
+        spans: &[],
+        boxes: &[],
+        ..style.clone()
+    }
+}
+
+/// `style`'s spans and boxes moved onto a cut text made of `pieces`:
+/// (where a piece starts in the cut text, where in the source, its
+/// length, and where the cut text's "…" after it ends, if one follows).
+fn moved<'a>(style: &Style<'a>, pieces: &[[usize; 4]]) -> (Vec<Span<'a>>, Vec<Inline>) {
+    let mut spans = Vec::new();
+    for s in style.spans {
+        for &[out, src, len, mark] in pieces {
+            let (lo, hi) = (s.start.max(src), s.end.min(src + len));
+            if lo < hi {
+                // A span the cut ends in draws its "…" too.
+                let end = if hi == src + len {
+                    mark
+                } else {
+                    out + hi - src
+                };
+                spans.push(Span {
+                    start: out + lo - src,
+                    end,
+                    ..*s
+                });
+            }
+        }
+    }
+    let boxes = style
+        .boxes
+        .iter()
+        .filter_map(|i| {
+            let &[out, src, ..] = pieces
+                .iter()
+                .find(|&&[_, src, len, _]| i.at >= src && i.at <= src + len)?;
+            Some(Inline {
+                at: out + i.at - src,
+                ..*i
+            })
+        })
+        .collect();
+    (spans, boxes)
 }
 
 /// `text` as `style` cuts it: under `text-overflow: ellipsis`, each line
@@ -580,11 +776,11 @@ fn shape_layout(
 /// nothing is cut.
 fn ellipsized(
     fonts: &mut Collection,
-    layout: &parley::Layout<()>,
+    layout: &parley::Layout<u16>,
     text: &str,
     style: &Style,
     width: Option<f32>,
-) -> Option<String> {
+) -> Option<(String, Vec<[usize; 4]>)> {
     let shown = match style.max_lines {
         0 => usize::MAX,
         n => usize::from(n),
@@ -599,15 +795,18 @@ fn ellipsized(
     }
     // "…" as this text would draw it.
     let mut mark = parley::Layout::new();
-    build(fonts, &mut mark, "\u{2026}", style);
+    build(fonts, &mut mark, "\u{2026}", &plain(style));
     mark.break_all_lines(None);
     let room = width.map(|w| (w - mark.width()).max(0.0));
     let mut out = String::with_capacity(text.len() + 3);
+    // Where each piece of the source went, for the spans and boxes.
+    let mut pieces: Vec<[usize; 4]> = Vec::new();
     let mut clusters: Vec<(std::ops::Range<usize>, f32)> = Vec::new();
     for (k, line) in layout.lines().take(shown).enumerate() {
         let range = line.text_range();
         let last = clamped && k + 1 == shown;
         if !last && !over(line.metrics().advance) {
+            pieces.push([out.len(), range.start, range.len(), out.len() + range.len()]);
             out.push_str(&text[range]);
             continue;
         }
@@ -624,14 +823,17 @@ fn ellipsized(
             }
             end = r.end;
         }
-        out.push_str(text[range.start..end].trim_end());
+        let kept = text[range.start..end].trim_end();
+        let at = out.len();
+        out.push_str(kept);
         out.push('\u{2026}');
+        pieces.push([at, range.start, kept.len(), out.len()]);
         // A hard break that ended the line stays, unless the text ends here.
         if !last && text[..range.end].ends_with('\n') {
             out.push('\n');
         }
     }
-    Some(out)
+    Some((out, pieces))
 }
 
 /// Where a text's decoration lines lie, from its primary font (CSS Text
@@ -684,7 +886,7 @@ pub fn decorations(fonts: &mut Collection, style: &Style) -> Decorations {
 /// first line's box above the primary font's over edge, the last line's
 /// below its under edge (CSS Inline 3 §5.1; the primary font is
 /// [`Collection::primary`]).
-fn trim(fonts: &mut Collection, style: &Style, layout: &parley::Layout<()>) -> [f32; 2] {
+fn trim(fonts: &mut Collection, style: &Style, layout: &parley::Layout<u16>) -> [f32; 2] {
     if style.trim == Trim::default() {
         return [0.0; 2];
     }
@@ -1261,5 +1463,226 @@ mod tests {
         let mut missing = Vec::new();
         t.missing("a b", |c| missing.push(c));
         assert_eq!(missing, ['a', 'b'], "no face at all");
+    }
+
+    /// "Deal 120 fire damage to every enemy" with "120 fire damage" a
+    /// span at 24 px (the paragraph 16), ink 3.
+    const RICH: &str = "Deal 120 fire damage to every enemy";
+    const BIG: std::ops::Range<usize> = 5..20;
+
+    fn big(size: f32) -> [Span<'static>; 1] {
+        [Span {
+            start: BIG.start,
+            end: BIG.end,
+            family: FAMILY,
+            size,
+            weight: 600.0,
+            italic: false,
+            letter_spacing: 0.0,
+            ink: 3,
+        }]
+    }
+
+    #[test]
+    fn a_span_is_shaped_in_its_own_style_and_breaks_with_its_paragraph() {
+        let mut fonts = fonts();
+        let base = Style {
+            family: FAMILY,
+            ..Default::default()
+        };
+        let spans = big(24.0);
+        let rich = Style {
+            spans: &spans,
+            ..base.clone()
+        };
+        let span_style = Style {
+            size: 24.0,
+            ..base.clone()
+        };
+        // Its width is its pieces' each in its own style.
+        let w = |fonts: &mut Collection, t: &str, s: &Style| laid(fonts, t, s, None).width();
+        let pieces = w(&mut fonts, "Deal ", &base)
+            + w(&mut fonts, "120 fire damage", &span_style)
+            + w(&mut fonts, " to every enemy", &base);
+        let mut t = laid(&mut fonts, RICH, &rich, None);
+        assert!(
+            (t.width() - pieces).abs() < 0.5,
+            "{} vs {pieces}",
+            t.width()
+        );
+        // Its glyphs are drawn in its ink, at its size; the rest in the
+        // paragraph's.
+        let mut seen = Vec::new();
+        t.runs(&fonts, |r| seen.push((r.ink, r.size, r.glyphs.len())));
+        assert!(
+            seen.iter()
+                .any(|&(ink, size, n)| (ink, size) == (3, 24.0) && n >= 13),
+            "{seen:?}"
+        );
+        assert!(
+            seen.iter()
+                .all(|&(ink, size, _)| (ink == 3) == (size == 24.0))
+        );
+        // A width that holds "Deal 120 fire damage" in the span's size and
+        // no more breaks after it, where the paragraph in one style would
+        // still fit "to".
+        let first =
+            w(&mut fonts, "Deal ", &base) + w(&mut fonts, "120 fire damage", &span_style) + 1.0;
+        assert!(w(&mut fonts, "Deal 120 fire damage to", &base) < first);
+        t.break_at(&mut fonts, RICH, &rich, Some(first));
+        let lines: Vec<_> = t.layout().lines().map(|l| l.text_range()).collect();
+        assert_eq!(lines[0], 0..21, "{lines:?}");
+        // The taller span lifts the first line's baseline above the second's
+        // spacing: its line box takes the span's ascent.
+        let mut bases = Vec::new();
+        t.lines(|[_, b, _], _| bases.push(b));
+        let plain = laid(&mut fonts, "Deal", &base, None)
+            .first_baseline()
+            .unwrap();
+        assert!(bases[0] > plain + 3.0, "{bases:?} vs {plain}");
+        // Each line's stretches of one ink: the span's on the first.
+        let mut inks = Vec::new();
+        t.inks(|ink, [x, _, w]| inks.push((ink, x, w)));
+        let span = inks.iter().find(|i| i.0 == 3).expect("the span's stretch");
+        assert!((span.1 - w(&mut fonts, "Deal ", &base)).abs() < 0.5);
+        assert!(
+            (span.2 - w(&mut fonts, "120 fire damage", &span_style)).abs() < 0.5,
+            "{inks:?}"
+        );
+    }
+
+    #[test]
+    fn a_hit_and_a_caret_read_a_span_at_its_own_advances() {
+        let mut fonts = fonts();
+        let base = Style {
+            family: FAMILY,
+            ..Default::default()
+        };
+        let spans = big(24.0);
+        let rich = Style {
+            spans: &spans,
+            ..base.clone()
+        };
+        let t = laid(&mut fonts, RICH, &rich, None);
+        let lead = laid(
+            &mut fonts,
+            "Deal 120 fire ",
+            &Style {
+                size: 24.0,
+                ..base.clone()
+            },
+            None,
+        )
+        .width()
+            - laid(
+                &mut fonts,
+                "Deal ",
+                &Style {
+                    size: 24.0,
+                    ..base.clone()
+                },
+                None,
+            )
+            .width()
+            + laid(&mut fonts, "Deal ", &base, None).width();
+        // The caret before "damage" stands where the span's advances put it,
+        // and a press just past it lands there.
+        let [x, ..] = t.caret(14);
+        assert!((x - lead).abs() < 0.5, "{x} vs {lead}");
+        assert_eq!(t.hit(lead + 1.0, 10.0), 14);
+        assert_eq!(t.word_at(lead + 5.0, 10.0), 14..20);
+    }
+
+    #[test]
+    fn an_inline_box_takes_its_width_in_the_line_and_wraps_whole() {
+        let mut fonts = fonts();
+        let base = Style {
+            family: FAMILY,
+            ..Default::default()
+        };
+        let text = "Gain 30 gold";
+        let boxes = [Inline {
+            at: 5,
+            width: 20.0,
+            height: 20.0,
+            id: 7,
+        }];
+        let rich = Style {
+            boxes: &boxes,
+            ..base.clone()
+        };
+        let gain = laid(&mut fonts, "Gain ", &base, None).width();
+        let plain = laid(&mut fonts, text, &base, None).width();
+        let mut t = laid(&mut fonts, text, &rich, None);
+        assert!((t.width() - plain - 20.0).abs() < 0.5);
+        let mut at = Vec::new();
+        t.boxes(|id, r| at.push((id, r)));
+        assert_eq!(at.len(), 1);
+        let (id, [x, y, w, h]) = at[0];
+        assert_eq!((id, w, h), (7, 20.0, 20.0));
+        assert!((x - gain).abs() < 0.5, "{x} vs {gain}");
+        // `vertical-align: middle`: its middle half an x-height above the
+        // baseline, not its bottom on it.
+        let base_y = t.first_baseline().unwrap();
+        let middle = y + h / 2.0;
+        assert!(
+            middle < base_y - 2.0 && middle > base_y - 8.0,
+            "{middle} vs {base_y}"
+        );
+        // The text after it stands past it, for the caret and a press.
+        let three = laid(&mut fonts, "3", &base, None).width();
+        assert!((t.caret(6)[0] - (gain + 20.0 + three)).abs() < 0.5);
+        assert_eq!(t.hit(gain + 20.0 + three * 0.75, base_y - 4.0), 6);
+        // A line that holds "Gain " but not the box breaks before the box,
+        // which goes down whole with what follows it.
+        t.break_at(&mut fonts, text, &rich, Some(gain + 10.0));
+        at.clear();
+        t.boxes(|id, r| at.push((id, r)));
+        assert!(at[0].1[1] > base_y, "{at:?}");
+        assert!(at[0].1[0].abs() < 0.5, "{at:?}");
+    }
+
+    #[test]
+    fn an_ellipsis_keeps_the_spans_and_draws_in_the_ink_it_cuts() {
+        let mut fonts = fonts();
+        let spans = big(16.0);
+        let boxes = [Inline {
+            at: 30,
+            width: 16.0,
+            height: 16.0,
+            id: 1,
+        }];
+        let rich = Style {
+            family: FAMILY,
+            wrap: false,
+            ellipsis: true,
+            spans: &spans,
+            boxes: &boxes,
+            ..Default::default()
+        };
+        let cut_in_span = laid(
+            &mut fonts,
+            "Deal 120 fire da",
+            &Style {
+                family: FAMILY,
+                ..Default::default()
+            },
+            None,
+        )
+        .width();
+        let t = laid(&mut fonts, RICH, &rich, Some(cut_in_span));
+        let laid_text = t.laid(RICH).to_owned();
+        assert!(laid_text.ends_with('\u{2026}'), "{laid_text}");
+        assert!(laid_text.len() < 20, "{laid_text}");
+        let mut t = t;
+        let mut inks = Vec::new();
+        t.runs(&fonts, |r| inks.push((r.ink, r.glyphs.len())));
+        // "Deal " in the paragraph's ink, the rest of what is kept and "…"
+        // in the span's; the box past the cut is gone.
+        assert_eq!(inks.first().map(|i| i.0), Some(0), "{inks:?}");
+        assert_eq!(inks.last().map(|i| i.0), Some(3), "{inks:?}");
+        let mut any = false;
+        t.boxes(|_, _| any = true);
+        assert!(!any);
     }
 }

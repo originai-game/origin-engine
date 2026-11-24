@@ -247,6 +247,13 @@ impl Arena {
         }
     }
 
+    /// Text leaf `id` measures again at the next layout: what it is laid
+    /// out from beside its text and run changed (a paragraph's spans).
+    pub fn remeasure_one(&mut self, id: Id) {
+        self.nodes[id as usize].memo.set(NO_MEMO);
+        self.touch(id, false);
+    }
+
     pub fn len(&self) -> usize {
         self.nodes.len()
     }

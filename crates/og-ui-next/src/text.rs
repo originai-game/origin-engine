@@ -18,7 +18,8 @@ use og_draw::paint::{PaintKind, PaintQuad};
 use og_i18n::Direction;
 use og_text::fonts::Collection;
 use og_text::layout::{
-    Alignment, Decorations, FontFeature, LineHeight, OverflowWrap, Style, Text, feature,
+    Alignment, Decorations, FontFeature, Inline, LineHeight, OverflowWrap, Span, Style, Text,
+    feature,
 };
 use og_text::strike::{Form, Strikes};
 
@@ -59,6 +60,72 @@ struct Painted {
     atlas: (u64, u64),
 }
 
+/// A paragraph's styled runs and inline boxes, over its leaf's own
+/// [`Run`]: what a `<Text>` holding more than one run lays out as one
+/// text (`crate::tree`'s paragraphs).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Rich {
+    pub spans: Vec<RichSpan>,
+    pub boxes: Vec<RichBox>,
+}
+
+/// Bytes `start..end` of a paragraph's text, run as `run` (its size,
+/// spacing, weight, slant and family), its glyphs drawn in `ink`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RichSpan {
+    pub start: u32,
+    pub end: u32,
+    pub run: Run,
+    pub ink: u16,
+}
+
+/// A box `w` by `h` CSS px laid out before byte `at`, as a character.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RichBox {
+    pub at: u32,
+    pub w: f32,
+    pub h: f32,
+    pub id: u32,
+}
+
+/// Calls `f` with `rich`'s spans and boxes as og-text takes them.
+fn with_rich<R>(rich: &Rich, f: impl FnOnce(&[Span<'_>], &[Inline]) -> R) -> R {
+    if rich.spans.is_empty() && rich.boxes.is_empty() {
+        return f(&[], &[]);
+    }
+    let names: Vec<Option<std::sync::Arc<str>>> = rich
+        .spans
+        .iter()
+        .map(|s| s.run.family.map(|f| f.name()))
+        .collect();
+    let spans: Vec<Span<'_>> = rich
+        .spans
+        .iter()
+        .zip(&names)
+        .map(|(s, name)| Span {
+            start: s.start as usize,
+            end: s.end as usize,
+            family: name.as_deref().unwrap_or(SANS),
+            size: s.run.size,
+            weight: f32::from(s.run.weight),
+            italic: s.run.italic,
+            letter_spacing: s.run.tracking,
+            ink: s.ink,
+        })
+        .collect();
+    let boxes: Vec<Inline> = rich
+        .boxes
+        .iter()
+        .map(|b| Inline {
+            at: b.at as usize,
+            width: b.w,
+            height: b.h,
+            id: u64::from(b.id),
+        })
+        .collect();
+    f(&spans, &boxes)
+}
+
 /// One text leaf: its layout and its quads.
 #[derive(Default)]
 pub struct Leaf {
@@ -72,10 +139,19 @@ pub struct Leaf {
     /// with the ellipsis; `None` after a shape.
     broken: Option<(u32, bool)>,
     painted: Option<Painted>,
+    /// Its styled runs and inline boxes, when it is a paragraph's.
+    rich: Rich,
     /// Its glyph quads from the leaf's top left (clip and colour set as
     /// they are copied): the fill, the outline under it and the shadow
     /// under both.
     pub fill: Vec<PaintQuad>,
+    /// Each fill quad's ink ([`RichSpan::ink`]; 0 the leaf's own).
+    pub fill_ink: Vec<u16>,
+    /// The stretches of each line in one ink (og-text's `Text::inks`): a
+    /// span's decoration lines lie along them.
+    pub inks: Vec<(u16, [f32; 3])>,
+    /// Its inline boxes as painted: id and rectangle from its top left.
+    pub boxes: Vec<(u32, [f32; 4])>,
     pub stroke: Vec<PaintQuad>,
     /// One list per blur of [`Look::blurs`], in its order.
     pub shadow: Vec<Vec<PaintQuad>>,
@@ -121,6 +197,10 @@ impl Leaf {
     }
     pub fn word_at(&self, x: f32, y: f32) -> std::ops::Range<usize> {
         self.layout.word_at(x, y)
+    }
+    /// The text it laid out: its text, or that cut to an ellipsis.
+    pub fn laid(&self) -> &str {
+        self.layout.laid(&self.text)
     }
     pub fn line_step(&self, at: usize, lines: isize) -> usize {
         self.layout.line_step(at, lines)
@@ -246,8 +326,25 @@ impl Texts {
         if let Some(mut leaf) = self.leaves.get_mut(id as usize).and_then(Option::take) {
             leaf.run = None;
             leaf.painted = None;
+            leaf.rich = Rich::default();
             self.spare.push(leaf);
         }
+    }
+
+    /// Sets leaf `id`'s styled runs and inline boxes (none: one style):
+    /// whether they changed, when it is shaped again.
+    pub fn set_rich(&mut self, id: Id, rich: &Rich) -> bool {
+        if self.leaves.len() <= id as usize {
+            self.leaves.resize_with(id as usize + 1, || None);
+        }
+        let spare = &mut self.spare;
+        let leaf = self.leaves[id as usize].get_or_insert_with(|| spare.pop().unwrap_or_default());
+        if leaf.rich == *rich {
+            return false;
+        }
+        leaf.rich.clone_from(rich);
+        leaf.run = None;
+        true
     }
 
     /// Leaf `id` shaped from `text` and `run`, and its style's parts.
@@ -273,7 +370,10 @@ impl Texts {
                 &self.locale,
                 false,
             );
-            leaf.layout.shape(fonts, text, &s);
+            let layout = &mut leaf.layout;
+            with_rich(&leaf.rich, |spans, boxes| {
+                layout.shape(fonts, text, &Style { spans, boxes, ..s })
+            });
             leaf.broken = None;
             leaf.painted = None;
             leaf.decorations = None;
@@ -315,7 +415,10 @@ impl Texts {
                 // keeps its lines, as a flex line keeps its items.
                 Avail::Width(w) => Some(w + taffy::LAYOUT_SLACK),
             };
-            leaf.layout.break_at(fonts, text, &s, width);
+            let layout = &mut leaf.layout;
+            with_rich(&leaf.rich, |spans, boxes| {
+                layout.break_at(fonts, text, &Style { spans, boxes, ..s }, width)
+            });
             leaf.broken = Some(key);
             leaf.painted = None;
         }
@@ -335,7 +438,8 @@ impl Texts {
     ) -> (f32, f32) {
         // An empty text keeps a line, so an empty `Input` keeps its height:
         // its line height, or under `normal` what a space's line takes.
-        if text.is_empty() {
+        let boxed = self.leaf(id).is_some_and(|l| !l.rich.boxes.is_empty());
+        if text.is_empty() && !boxed {
             if run.line >= 0.0 {
                 return (0.0, run.line);
             }
@@ -431,6 +535,9 @@ impl Texts {
         }
         painted.look.ink = look.ink;
         leaf.fill.clear();
+        leaf.fill_ink.clear();
+        leaf.inks.clear();
+        leaf.boxes.clear();
         leaf.stroke.clear();
         leaf.shadow.iter_mut().for_each(Vec::clear);
         leaf.shadow.resize_with(look.blurs().len(), Vec::new);
@@ -439,10 +546,13 @@ impl Texts {
         leaf.line_text.clear();
         leaf.incomplete = false;
         leaf.colored = false;
+        leaf.layout.inks(|ink, at| leaf.inks.push((ink, at)));
+        leaf.layout.boxes(|id, at| leaf.boxes.push((id as u32, at)));
         let Leaf {
             layout,
             text: shaped,
             fill,
+            fill_ink,
             stroke,
             shadow,
             plots,
@@ -575,6 +685,9 @@ impl Texts {
                         filter: 0,
                         round: 0,
                     });
+                    if list == 0 {
+                        fill_ink.push(run.ink);
+                    }
                 }
             }
         });

@@ -888,6 +888,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.wrap = w;
         t.set |= Text::WRAP;
     }
+    if let Some(on) = props.selectable {
+        t.select = on;
+        t.set |= Text::SELECT;
+    }
     r.motion = motion_of(style);
     if let Some(nowrap) = props.no_wrap {
         t.nowrap = nowrap;
@@ -1578,9 +1582,8 @@ mod tests {
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "pointer_events",
                   "number_of_lines", "space", "overflow_wrap",
-                  "placeholder_color", "selection_color", "caret_color"],
-                // Selecting non-input text is not implemented.
-                &["selectable"]),
+                  "placeholder_color", "selection_color", "caret_color", "selectable"],
+                &[]),
         ];
         for (name, debug, read, not_drawn) in structs {
             let mut want: Vec<String> = read

@@ -31,7 +31,7 @@ pub struct FaceId(pub u32);
 pub struct Collection {
     pub context: FontContext,
     /// Parley's layout scratch, kept between texts.
-    layout: LayoutContext<()>,
+    layout: LayoutContext<u16>,
     /// Each file once, by the bytes' address.
     files: Vec<Arc<Vec<u8>>>,
     /// Each file's families (a collection file may hold several).
@@ -191,7 +191,7 @@ impl Collection {
     }
 
     /// The fontique context and Parley's layout context, to build with.
-    pub(crate) fn contexts(&mut self) -> (&mut FontContext, &mut LayoutContext<()>) {
+    pub(crate) fn contexts(&mut self) -> (&mut FontContext, &mut LayoutContext<u16>) {
         (&mut self.context, &mut self.layout)
     }
 

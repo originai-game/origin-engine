@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Text",
+      "summary": "A `<Text>` is one paragraph: its text runs, the `<Text>` spans nested in it and the `<Icon>` and `<Image>` in it are laid out as one text that wraps, aligns, clamps and ellipsizes together. A span draws in its own size, weight, slant, family, spacing, colour and decoration; an icon or image takes its own px size (an em square without one) as an inline box centred on the text's middle. A span with `onPress` is pressed on its glyphs, on every line it runs over, which makes a link; the probe gives it the box of its first line."
+    },
+    {
+      "member": "og.ui select-text",
+      "summary": "`select-text` makes a text selectable, read only: a drag selects, a second press in a row selects the word and a third the whole text, and Control or Command + C copies it to the clipboard (+ A selects it all). `selection:bg-*` colours the highlight."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui Text",
+      "summary": "`<Text>Gold: {n} coins</Text>` no longer lays its three runs out as boxes stacked one per line: they are one line of text."
+    }
+  ]
+}

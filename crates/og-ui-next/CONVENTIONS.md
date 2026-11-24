@@ -35,7 +35,9 @@ export function AbilitySlot(props: { icon: string; cooldown: number; ready: bool
 ```
 
 - **Primitives**, imported from `@origingame/engine/ui` (NSH's rule: tags
-  are PascalCase imports; a lowercase tag is an error): `View`, `Text`,
+  are PascalCase imports; a lowercase tag is an error): `View`, `Text` (a
+  paragraph: its strings, nested `<Text>` spans and `<Icon>`/`<Image>` lay
+  out as one text, §Paragraphs),
   `Image` (`src` a texture from `og.load.texture`, stretched over its box;
   a class's `nine-<name>` slices a pack's art instead), `Icon`, `Scroll`,
   `Input`, `Line` (a polyline: `points` x, y
@@ -458,6 +460,30 @@ placement props (`occlusion`, `declutter`, `priority`, `clamp`,
   drawn (blended) place (`Tree::follow_anchors`), so it stays on what it
   names; one the tick hid stays hidden. Clamping and decluttering settle
   after layout on every frame (`Tree::present`), from this frame's boxes.
+
+## Paragraphs
+
+A `<Text>` whose content is more than one string, or holds a nested
+`<Text>`, an `<Icon>` or an `<Image>`, is one paragraph (`tree/para.rs`),
+as CSS lays out an inline formatting context: its strings in order make
+one og-text layout on a leaf of its own, each string a span in the style
+it resolves (size, spacing, weight, slant, family), each icon or image an
+inline box its px size (an em square without one), `vertical-align:
+middle`. It wraps, aligns, clamps and ellipsizes as one text; a span's
+glyphs draw in its ink and its decoration lies along the stretches its
+ink drew. One string alone lays itself out as before. A `<View>` (or any
+other box) inside a `<Text>` keeps the content laid out as boxes, warned
+once.
+
+The members keep their elements: their classes, states and events work
+as anywhere. A string takes no box, a span stands at the paragraph's
+corner without size and an icon or image is drawn where its inline box
+lies. A span is hit on its glyphs, on each line it runs over
+(`Tree::on_span`), so `onPress` on a span is a link; the probe gives it
+its first line's piece. `select-text` (inherited) makes a text, a
+paragraph or one string, selectable read only: a drag selects, a second
+press selects the word, a third all of it, and Control or Command + C
+copies it through `Tree::take_copy` (+ A selects all).
 
 ## Particles
 

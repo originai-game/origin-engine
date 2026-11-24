@@ -768,6 +768,9 @@ impl Tree {
             image: None,
             entering: Some(false),
             eff: self.root,
+            inline: NONE,
+            para: None,
+            queued: false,
         });
         if self.by_js.len() <= id as usize {
             self.by_js.resize(id as usize + 1, NONE);
@@ -947,6 +950,7 @@ impl Tree {
                     let id = r.u32()?;
                     let tag = r.u8()?;
                     let kind = match tag {
+                        1 => Kind::Text,
                         2 => Kind::Image,
                         5 => Kind::Icon,
                         0..=7 => Kind::Box,
@@ -1453,10 +1457,13 @@ impl Tree {
                         u32::MAX => None,
                         id => Some(self.els[self.op(id)? as usize].node),
                     };
+                    // The paragraph it leaves and the one it joins lay out again.
+                    self.para_touch(self.els[child as usize].parent);
                     self.arena
                         .attach(self.els[child as usize].node, pnode, before);
                     let el = &mut self.els[child as usize];
                     (el.parent, el.arena_parent) = (p, p);
+                    self.para_touch(child);
                     self.data_dirty = true;
                     let held = self.leaving.iter().any(|l| l.0 == child)
                         && !self.motion.exiting(self.els[child as usize].node);
@@ -1509,6 +1516,7 @@ impl Tree {
                 9 => {
                     let _parent = r.u32()?;
                     let child = self.op(r.u32()?)?;
+                    self.para_touch(self.els[child as usize].parent);
                     if self.els[child as usize].record.glide.is_some() {
                         self.left_glide(child);
                     }
@@ -1531,6 +1539,7 @@ impl Tree {
                 // release
                 10 => {
                     let e = self.op(r.u32()?)?;
+                    self.para_touch(self.els[e as usize].parent);
                     self.release(e);
                     self.ordered = false;
                     self.paint = true;
@@ -1726,7 +1735,15 @@ impl Tree {
             .filter(|&(e, el)| !el.dead && el.js != NONE && !self.leaving_in(e as u32))
             .filter_map(|(e, el)| {
                 let &(x, y, shown, _) = self.abs.get(e)?;
-                let b = self.arena.box_of(el.node);
+                let mut b = self.arena.box_of(el.node);
+                // A span in a paragraph is where a press on it lands.
+                let (x, y) = match self.span_piece(e as u32) {
+                    Some([sx, sy, w, h]) => {
+                        (b.w, b.h) = (w, h);
+                        (sx, sy)
+                    }
+                    None => (x, y),
+                };
                 let transform = self
                     .xfs
                     .get(e)
@@ -1923,6 +1940,30 @@ mod tests {
                         r.layout = rune_taffy::CompactStyle::from(&l);
                     }
                     "ink" => r.skin.fill = [1.0; 4],
+                    // Text: `lg` 32 px, `red` inked red, `w120` 120 px
+                    // wide, `ico` a 16 px square, `sel` selectable.
+                    "lg" => {
+                        r.font_size = 32.0;
+                        r.text.sized = true;
+                    }
+                    "red" => {
+                        r.inked = true;
+                        r.skin.ink = [1.0, 0.0, 0.0, 1.0];
+                    }
+                    "w120" => {
+                        let mut l = taffy::Style::from(&r.layout);
+                        l.size.width = taffy::Dimension::length(120.0);
+                        r.layout = rune_taffy::CompactStyle::from(&l);
+                    }
+                    "ico" => {
+                        let mut l = taffy::Style::from(&r.layout);
+                        l.size = taffy::Size::from_lengths(16.0, 16.0);
+                        r.layout = rune_taffy::CompactStyle::from(&l);
+                    }
+                    "sel" => {
+                        r.text.select = true;
+                        r.text.set |= Text::SELECT;
+                    }
                     _ => {}
                 }
             }
@@ -7599,5 +7640,184 @@ mod tests {
             .expect("an icon quad");
         assert_eq!((q.a, q.b), (first, count));
         assert_eq!(q.rect, [0.0, 0.0, 24.0, 24.0]);
+    }
+
+    /// `<Text 1 class={root}>Gold <Text 3 class={span}>[span text]</Text> coins<Icon 6 class="ico"/>!</Text>`
+    /// under the root, the span listening for a press.
+    fn paragraph(root: &str, span: &str, span_text: &str) -> Tree {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(1);
+        b.op(4).u32(1).str(root);
+        b.op(2).u32(2).str("Gold ");
+        b.op(1).u32(3).u8(1);
+        b.op(4).u32(3).str(span);
+        b.op(7).u32(3).u8(Event::Press as u8).u8(1);
+        b.op(2).u32(4).str(span_text);
+        b.op(2).u32(5).str(" coins");
+        b.op(1).u32(6).u8(5);
+        b.op(4).u32(6).str("ico");
+        b.op(2).u32(7).str("!");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        for c in [2, 3, 5, 6, 7] {
+            b.op(8).u32(1).u32(c).u32(u32::MAX);
+        }
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t
+    }
+
+    fn para_leaf(t: &Tree, id: u32) -> &crate::text::Leaf {
+        let e = t.op(id).unwrap() as usize;
+        t.texts.leaf(t.els[e].leaf.unwrap()).unwrap()
+    }
+
+    /// A `<Text>` of runs, a span and an icon is one paragraph: one text
+    /// in one line box, its span's glyphs in the span's ink and its icon
+    /// drawn where the line put it; its runs take no boxes of their own.
+    #[test]
+    fn a_text_lays_its_runs_spans_and_icons_out_as_one_paragraph() {
+        let t = paragraph("", "lg red", "1250");
+        let root = t.op(1).unwrap() as usize;
+        assert_eq!(t.els[root].text, "Gold 1250 coins!");
+        // One line, as tall as the span's 32 px makes it.
+        let g = para_leaf(&t, 1);
+        assert_eq!(g.lines.len(), 1, "{:?}", g.lines);
+        let [_, _, w, _] = t.op_box(1).unwrap();
+        // Its baseline is where the span's 32 px put it.
+        let base = g.lines[0][1];
+        assert!(base > 26.0 && base < 40.0, "{base}");
+        for run in [2, 4, 5, 7] {
+            assert_eq!(t.op_box(run), None, "run {run} is drawn by its paragraph");
+        }
+        // The span's glyphs draw red, the rest in the paragraph's ink.
+        let span_ink = 1 + t.els[root]
+            .para
+            .as_ref()
+            .unwrap()
+            .members
+            .iter()
+            .position(|&m| m == t.op(4).unwrap())
+            .unwrap() as u16;
+        let red = g.fill_ink.iter().filter(|&&i| i == span_ink).count();
+        assert_eq!(red, 4, "{:?}", g.fill_ink);
+        assert_eq!(
+            g.fill_ink.iter().filter(|&&i| i != span_ink).count(),
+            "Gold coins!".chars().filter(|c| !c.is_whitespace()).count()
+        );
+        // The icon stands after " coins" and before "!", its 16 px in the line.
+        let icon = t.op_box(6).unwrap();
+        assert_eq!(&icon[2..], &[16.0, 16.0]);
+        let [ox, oy, ..] = t.op_box(1).unwrap();
+        let mut coins = None;
+        g.selection(9..15, |r| coins = Some(r));
+        let coins = coins.unwrap();
+        assert!(
+            (icon[0] - (ox + coins[0] + coins[2])).abs() < 0.5,
+            "{icon:?} {coins:?}"
+        );
+        assert!(icon[0] + 16.0 <= ox + w + 0.5);
+        // Its middle on the text's middle, above the baseline.
+        let middle = icon[1] + 8.0 - oy;
+        assert!(middle < base && middle > base - 16.0, "{middle} {base}");
+    }
+
+    /// In a narrow box the paragraph wraps as one text: a span runs on
+    /// from one line to the next, and a press on its glyphs on either
+    /// line presses it, but one on the paragraph's other words does not.
+    #[test]
+    fn a_span_wraps_with_its_paragraph_and_is_pressed_on_its_glyphs() {
+        let mut t = paragraph("w120", "red", "of the ashen warden vault");
+        let g = para_leaf(&t, 1);
+        assert!(g.lines.len() >= 3, "{:?}", g.lines);
+        let [ox, oy, ..] = t.op_box(1).unwrap();
+        // Where the span's bytes lie on each line.
+        let span = 5..30;
+        let mut rects = Vec::new();
+        g.selection(span, |r| rects.push(r));
+        assert!(rects.len() >= 2, "{rects:?}");
+        let mut gold = None;
+        g.selection(0..4, |r| gold = Some(r));
+        let gold = gold.unwrap();
+        let centre = |r: [f32; 4]| (ox + r[0] + r[2] / 2.0, oy + r[1] + r[3] / 2.0);
+        // Its last line's piece: the span's press, with its id.
+        let (x, y) = centre(*rects.last().unwrap());
+        t.pointer(x, y, true, false);
+        t.pointer(x, y, false, true);
+        assert_eq!(t.events.len(), 1, "{:?}", t.events);
+        assert_eq!(t.events[0].id, 3);
+        t.events.clear();
+        // "Gold": no press.
+        let (x, y) = centre(gold);
+        t.pointer(x, y, true, false);
+        t.pointer(x, y, false, true);
+        assert!(t.events.is_empty(), "{:?}", t.events);
+    }
+
+    /// A paragraph follows its runs: a changed run's text, a span taken
+    /// out, and down to one run it lays that run out as a text of its own.
+    #[test]
+    fn a_paragraph_follows_its_runs_and_comes_apart_at_one() {
+        let mut t = paragraph("", "red", "1250");
+        let mut b = Batch::default();
+        b.op(3).u32(4).str("98,000");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let root = t.op(1).unwrap() as usize;
+        assert_eq!(t.els[root].text, "Gold 98,000 coins!");
+        let mut b = Batch::default();
+        for c in [3, 5, 6, 7] {
+            b.op(9).u32(1).u32(c);
+        }
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        // "Gold " alone: its run lays itself out, the paragraph's leaf gone.
+        assert!(t.els[root].para.is_none());
+        assert_eq!(t.els[t.op(2).unwrap() as usize].inline, NONE);
+        let [_, _, w, h] = t.op_box(2).expect("the run draws itself");
+        assert!(w > 10.0 && h > 10.0);
+        let leaf = t.els[root].leaf.unwrap();
+        assert_eq!(
+            t.arena.box_of(leaf).h,
+            0.0,
+            "the paragraph's leaf takes no room"
+        );
+    }
+
+    /// A `select-text` paragraph is selected by a drag across it and a
+    /// second press in a row selects the word; Control + C copies the
+    /// selection's text, spans and all.
+    #[test]
+    fn a_selectable_paragraph_selects_by_drag_and_word_and_copies() {
+        let mut t = paragraph("sel", "red", "1250");
+        let g = para_leaf(&t, 1);
+        let [ox, oy, ..] = t.op_box(1).unwrap();
+        let at = |g: &crate::text::Leaf, i: usize| {
+            let mut r = None;
+            g.selection(i..i + 1, |x| r = Some(x));
+            let r = r.unwrap();
+            (ox + r[0] + 1.0, oy + r[1] + r[3] / 2.0)
+        };
+        let (from, to) = (at(g, 2), at(g, 12));
+        t.pointer(from.0, from.1, true, false);
+        t.pointer(to.0, to.1, false, false);
+        t.pointer(to.0, to.1, false, true);
+        assert!(t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("ld 1250 co"));
+        // A double press on "1250" selects it.
+        let g = para_leaf(&t, 1);
+        let mid = at(g, 6);
+        for _ in 0..2 {
+            t.pointer(mid.0, mid.1, true, false);
+            t.pointer(mid.0, mid.1, false, true);
+        }
+        assert!(t.key("KeyC", false, false, false, true));
+        assert_eq!(t.take_copy().as_deref(), Some("1250"));
+        // A press outside it clears it: nothing to copy.
+        t.pointer(390.0, 290.0, true, false);
+        t.pointer(390.0, 290.0, false, true);
+        assert!(!t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy(), None);
     }
 }
