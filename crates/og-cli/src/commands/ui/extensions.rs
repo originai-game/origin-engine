@@ -229,20 +229,11 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     })
 }
 
-pub fn css_pack(directory: &Path) -> bool {
-    std::fs::read_dir(directory).is_ok_and(|entries| {
-        entries
-            .flatten()
-            .any(|e| e.path().is_file() && e.path().extension().is_some_and(|ext| ext == "css"))
-    })
-}
-
-/// Whether `directory` is a UI style pack (`pack.json`), a theme recipe
-/// (`theme.json`), or a legacy CSS style pack.
+/// Whether `directory` is a UI style pack (`pack.json`) or a theme recipe
+/// (`theme.json`).
 pub fn style_pack(directory: &Path) -> bool {
     directory.join("pack.json").is_file()
         || directory.join(og_cook::cook::ui_themes::RECIPE).is_file()
-        || css_pack(directory)
 }
 
 fn style_description(directory: &Path) -> String {

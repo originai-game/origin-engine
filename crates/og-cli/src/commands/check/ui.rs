@@ -107,7 +107,8 @@ fn class_resolver(pack: &og_ui_next::pack::Pack) -> Result<og_ui_next::classes::
     Ok(classes)
 }
 
-/// Loads a style directory's pack layer (`pack.json` or compiled `theme.json`).
+/// Loads a style directory's layers: its compiled `theme.json`, then its
+/// `pack.json` over it, as the cook lays them (either may be absent).
 /// Returns `Err(())` when an existing file is malformed (deferring diagnostics to `og cook`).
 fn push_style_dir(
     layers: &mut Vec<og_ui_next::pack::Layer>,
@@ -115,16 +116,15 @@ fn push_style_dir(
     label: &str,
 ) -> Result<(), ()> {
     use og_ui_next::pack::Layer;
-    let pack_path = dir.join("pack.json");
-    if let Ok(text) = std::fs::read_to_string(&pack_path) {
-        let layer = Layer::parse(&text).map_err(|_| ())?;
-        layers.push(layer);
-        return Ok(());
-    }
     let recipe_path = dir.join(og_cook::cook::ui_themes::RECIPE);
     if let Ok(text) = std::fs::read_to_string(&recipe_path) {
         let theme = og_cook::cook::ui_themes::compile(&text, label).map_err(|_| ())?;
         let layer = theme.layer(Default::default()).map_err(|_| ())?;
+        layers.push(layer);
+    }
+    let pack_path = dir.join("pack.json");
+    if let Ok(text) = std::fs::read_to_string(&pack_path) {
+        let layer = Layer::parse(&text).map_err(|_| ())?;
         layers.push(layer);
     }
     Ok(())
@@ -227,28 +227,39 @@ pub(super) fn unknown_classes(p: &Project, report: &mut Report) {
 
 /// Each of the game's style packs (`assets/styles/<name>/pack.json`) whose
 /// variants paint the ground under the text without its ink
-/// (`og_ui_next::pack::grounds_without_ink`), laid over the default pack.
+/// (`og_ui_next::pack::grounds_without_ink`), laid over the default pack and
+/// the style's own compiled `theme.json`.
 pub(super) fn pack_grounds(p: &Project, report: &mut Report) {
     use og_ui_next::pack::{Layer, grounds_without_ink};
     let Ok(dirs) = std::fs::read_dir(p.root.join("assets/styles")) else {
         return;
     };
-    let mut packs: Vec<_> = dirs
+    let mut styles: Vec<_> = dirs
         .flatten()
-        .map(|d| d.path().join("pack.json"))
-        .filter(|f| f.is_file())
+        // A directory symlink is never followed.
+        .filter(|d| d.file_type().is_ok_and(|t| t.is_dir()))
+        .map(|d| d.path())
         .collect();
-    packs.sort();
-    for path in packs {
+    styles.sort();
+    for dir in styles {
+        // The theme compiler solves its own inks; the pack over it is what
+        // can paint a ground without one.
+        let path = dir.join("pack.json");
+        if !path.is_file() {
+            continue;
+        }
+        let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
+        let mut layers = Vec::new();
         // One that does not parse is the cook's error.
-        let Some(layer) = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|t| Layer::parse(&t).ok())
-        else {
+        if push_style_dir(&mut layers, &dir, &file).is_err() {
+            continue;
+        }
+        let mut under = vec![Layer::default_pack()];
+        let Some(layer) = layers.pop() else {
             continue;
         };
-        let file = typescript_path(path.strip_prefix(&p.root).unwrap_or(&path));
-        for message in grounds_without_ink(&[Layer::default_pack()], &layer) {
+        under.extend(layers);
+        for message in grounds_without_ink(&under, &layer) {
             report
                 .raw
                 .push_str(&format!("{file}: error OG{PACK_GROUND_INK}: {message}\n"));
@@ -281,7 +292,13 @@ fn ogt_imports(text: &str) -> Vec<(u32, u32, &str)> {
         let Some(stmt) = line.trim_start().strip_prefix("import") else {
             continue;
         };
-        let rest = stmt.trim_start();
+        let mut rest = stmt.trim_start();
+        // A default import of the table (`import strings from "./x.en.ogt"`).
+        if !rest.starts_with(['"', '\''])
+            && let Some(at) = rest.find(" from ")
+        {
+            rest = rest[at + " from ".len()..].trim_start();
+        }
         let Some(quote) = rest.chars().next().filter(|c| *c == '"' || *c == '\'') else {
             continue;
         };
@@ -414,8 +431,33 @@ mod tests {
                 | "nine-panel-cut"
                 | "nine-plate-cut"
                 | "nine-chip-cut"
+                | "nine-socket"
         ) {
             return true;
+        }
+        // A fixed radius on one side or corner (`rounded-t-lg`,
+        // `rounded-tl-md`, `rounded-s`): the radius roles have no sides.
+        if let Some(rest) = utility.strip_prefix("rounded-") {
+            let (side, size) = rest.split_once('-').unwrap_or((rest, ""));
+            let sided = matches!(
+                side,
+                "t" | "r"
+                    | "b"
+                    | "l"
+                    | "s"
+                    | "e"
+                    | "tl"
+                    | "tr"
+                    | "bl"
+                    | "br"
+                    | "ss"
+                    | "se"
+                    | "es"
+                    | "ee"
+            );
+            if sided && matches!(size, "" | "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl") {
+                return true;
+            }
         }
         let Some((name, value)) = utility.rsplit_once('-') else {
             return false;
@@ -584,6 +626,7 @@ mod tests {
             dark: true,
             rtl: false,
             touch: true,
+            reduce_motion: false,
             states: 0,
         };
         let mut files = Vec::new();

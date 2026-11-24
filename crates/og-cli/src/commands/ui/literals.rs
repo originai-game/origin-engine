@@ -11,12 +11,15 @@
 //! (in a comment) is not reported, for a value that is not the style's (a
 //! physical black, a debug colour).
 //!
-//! TypeScript is read lexically, like the lockstep lint: comments are
-//! skipped, strings kept. It finds `"#rrggbb"` strings (`hex("#…")`
+//! TypeScript and TSX are read lexically, like the lockstep lint: comments
+//! are skipped, strings kept. It finds `"#rrggbb"` strings (`hex("#…")`
 //! included), `{ r: <n>, g: <n>, b: <n> }` colour objects, `radius: <n>`
-//! and `radii: [<n>, …]` with a number other than 0, and `font: "<name>"`
-//! naming no font role. The default argument is the project's
-//! `assets/ui`.
+//! and `radii: [<n>, …]` with a number other than 0, `font: "<name>"`
+//! naming no font role, and in class strings an arbitrary hex colour
+//! (`bg-[#0af]`), a fixed corner (`rounded-lg`, `rounded-t-md`) and the
+//! retired cuts (`nine-socket`, `nine-panel-cut`). The walk never follows
+//! a directory symlink and skips `.og/`, `cooked/`, `og-out/` and
+//! installs. The default argument is the project's `assets/ui`.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -26,7 +29,7 @@ pub struct Finding {
     pub file: String,
     pub line: usize,
     pub col: usize,
-    /// `colour`, `radius` or `font`.
+    /// `colour`, `radius`, `font` or `class`.
     pub kind: &'static str,
     /// The value as written.
     pub text: String,
@@ -43,6 +46,9 @@ impl Finding {
             // A document's border-radius takes px only: its corner is the
             // part's, dressed in the style pack.
             ("radius", true) => "a part (`part frame`) whose corner the style pack dresses",
+            ("class", _) => {
+                "a token class: a palette role (bg-surface, text-fg) or a radius role (rounded-control, rounded-card, rounded-panel, rounded-capsule)"
+            }
             _ => "a font role: body, display, mono or rounded",
         }
     }
@@ -237,6 +243,85 @@ fn scan_line(line: &str) -> Vec<(usize, &'static str, String)> {
     out
 }
 
+/// A class utility that writes a look no pack can change: an arbitrary
+/// hex colour, a fixed corner or a retired nine cut.
+fn literal_class(token: &str) -> bool {
+    // The utility after its variants (`hover:`, `data-on:`), outside brackets.
+    let mut depth = 0i32;
+    let mut start = 0;
+    for (i, c) in token.char_indices() {
+        match c {
+            '[' => depth += 1,
+            ']' => depth -= 1,
+            ':' if depth == 0 => start = i + 1,
+            _ => {}
+        }
+    }
+    let u = token[start..].trim_start_matches(['-', '!']);
+    if u.contains("-[#") {
+        return true;
+    }
+    if matches!(
+        u,
+        "nine-socket" | "nine-panel-cut" | "nine-plate-cut" | "nine-chip-cut"
+    ) {
+        return true;
+    }
+    const SIDES: &[&str] = &[
+        "t", "r", "b", "l", "s", "e", "tl", "tr", "bl", "br", "ss", "se", "es", "ee",
+    ];
+    const SIZES: &[&str] = &["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "4xl"];
+    if u == "rounded" {
+        return true;
+    }
+    let Some(rest) = u.strip_prefix("rounded-") else {
+        return false;
+    };
+    if SIZES.contains(&rest) || SIDES.contains(&rest) || rest.starts_with('[') {
+        return true;
+    }
+    rest.split_once('-').is_some_and(|(side, size)| {
+        SIDES.contains(&side) && (SIZES.contains(&size) || size.starts_with('['))
+    })
+}
+
+/// The class findings of one line of masked source: the tokens inside its
+/// strings and template text (0-based columns).
+fn scan_classes(line: &str) -> Vec<(usize, &'static str, String)> {
+    let mut out = Vec::new();
+    let mut quote: Option<char> = None;
+    let mut tok_start: Option<usize> = None;
+    let flush = |from: Option<usize>, to: usize, out: &mut Vec<(usize, &'static str, String)>| {
+        if let Some(f) = from {
+            let t = &line[f..to];
+            if literal_class(t) {
+                out.push((f, "class", t.to_string()));
+            }
+        }
+    };
+    for (i, c) in line.char_indices() {
+        match quote {
+            None => {
+                if matches!(c, '"' | '\'' | '`') {
+                    quote = Some(c);
+                }
+            }
+            Some(q) => {
+                if c == q || c.is_whitespace() || c == '$' || c == '{' || c == '}' {
+                    flush(tok_start.take(), i, &mut out);
+                    if c == q {
+                        quote = None;
+                    }
+                } else if tok_start.is_none() {
+                    tok_start = Some(i);
+                }
+            }
+        }
+    }
+    flush(tok_start.take(), line.len(), &mut out);
+    out
+}
+
 /// The findings of a TypeScript file.
 pub fn scan_ts(file: &str, src: &str) -> Vec<Finding> {
     let masked = mask(src);
@@ -245,7 +330,10 @@ pub fn scan_ts(file: &str, src: &str) -> Vec<Finding> {
         if raw.contains(OK) {
             continue;
         }
-        for (col, kind, text) in scan_line(line) {
+        let mut found = scan_line(line);
+        found.extend(scan_classes(line));
+        found.sort_by_key(|f| f.0);
+        for (col, kind, text) in found {
             out.push(Finding {
                 file: file.into(),
                 line: k + 1,
@@ -258,6 +346,14 @@ pub fn scan_ts(file: &str, src: &str) -> Vec<Finding> {
     out
 }
 
+/// A TypeScript or TSX source, not a declaration or a test.
+fn source(name: &str) -> bool {
+    (name.ends_with(".ts") || name.ends_with(".tsx"))
+        && !name.ends_with(".d.ts")
+        && !name.ends_with(".test.ts")
+        && !name.ends_with(".test.tsx")
+}
+
 fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -265,13 +361,19 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in entries.flatten() {
         let p = e.path();
         let name = e.file_name().to_string_lossy().into_owned();
-        if p.is_dir() {
-            if !matches!(name.as_str(), "node_modules" | "tests" | "og-out")
-                && !name.starts_with('.')
+        // The entry's own type: a directory symlink is never followed.
+        let Ok(kind) = e.file_type() else {
+            continue;
+        };
+        if kind.is_dir() {
+            if !matches!(
+                name.as_str(),
+                "node_modules" | "tests" | "og-out" | "cooked"
+            ) && !name.starts_with('.')
             {
                 collect(&p, out);
             }
-        } else if name.ends_with(".ts") && !name.ends_with(".d.ts") && !name.ends_with(".test.ts") {
+        } else if kind.is_file() && source(&name) {
             out.push(p);
         }
     }
@@ -281,7 +383,8 @@ fn collect(dir: &Path, out: &mut Vec<PathBuf>) {
 pub fn scan(paths: &[PathBuf]) -> Result<Vec<Finding>, String> {
     let mut files = Vec::new();
     for p in paths {
-        if p.is_dir() {
+        let meta = std::fs::symlink_metadata(p);
+        if meta.as_ref().is_ok_and(|m| m.is_dir()) {
             collect(p, &mut files);
         } else if p.is_file() {
             files.push(p.clone());
@@ -295,7 +398,7 @@ pub fn scan(paths: &[PathBuf]) -> Result<Vec<Finding>, String> {
     for f in &files {
         let text = std::fs::read_to_string(f).map_err(|e| format!("{}: {e}", f.display()))?;
         let name = f.to_string_lossy().replace('\\', "/");
-        if f.extension().is_some_and(|e| e == "ts") {
+        if f.extension().is_some_and(|e| e == "ts" || e == "tsx") {
             out.extend(scan_ts(&name, &text));
         }
     }
@@ -360,10 +463,11 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         let count = |k: &str| found.iter().filter(|f| f.kind == k).count();
         println!(
-            "og ui literals: {} colour, {} radius, {} font",
+            "og ui literals: {} colour, {} radius, {} font, {} class",
             count("colour"),
             count("radius"),
-            count("font")
+            count("font"),
+            count("class")
         );
     }
     ExitCode::SUCCESS

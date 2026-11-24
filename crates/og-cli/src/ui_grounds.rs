@@ -402,7 +402,7 @@ impl<'p, 'a> Scan<'_, 'p, 'a> {
                         col,
                         class: class.clone(),
                         message: format!(
-                            "`{class}` sets the ink on {key}'s art at {r:.2}:1 (under {ratio}:1): the theme solved the slot's own ink on that art, so leave the ink to the slot; a state that paints its own fill sets its own shape with it (`data-on:nine-chip-cut`, or `data-on:nine-none`)"
+                            "`{class}` sets the ink on {key}'s art at {r:.2}:1 (under {ratio}:1): the theme solved the slot's own ink on that art, so leave the ink to the slot; a state that paints its own fill drops the art with it (`data-on:nine-none`) and takes its corner from a radius role"
                         ),
                         fix: None,
                     },

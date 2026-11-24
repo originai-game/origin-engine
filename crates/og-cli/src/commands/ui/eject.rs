@@ -234,11 +234,10 @@ fn barrel_aliases(ui: &Path, entry_rel: &str) -> std::collections::BTreeMap<Stri
         let Some((names, tail)) = rest.split_once('}') else {
             continue;
         };
-        let Some(from) = tail
-            .trim()
-            .strip_prefix("from \"")
-            .and_then(|s| s.split('"').next())
-        else {
+        let Some(from) = tail.trim().strip_prefix("from ").and_then(|s| {
+            let q = s.chars().next().filter(|c| matches!(c, '"' | '\''))?;
+            s[1..].split(q).next()
+        }) else {
             continue;
         };
         let resolved = normalize(&comp_dir.join(from));
@@ -481,10 +480,17 @@ pub(super) fn eject_from(
 fn relative_imports(code: &str, dir: &Path, ui: &Path) -> String {
     let mut out = String::with_capacity(code.len());
     let mut rest = code;
-    while let Some(at) = rest.find("from \".") {
+    loop {
+        let found = [("from \".", '"'), ("from '.", '\'')]
+            .iter()
+            .filter_map(|(pat, q)| rest.find(pat).map(|at| (at, *q)))
+            .min_by_key(|(at, _)| *at);
+        let Some((at, q)) = found else {
+            break;
+        };
         let (head, tail) = rest.split_at(at + "from \"".len());
         out.push_str(head);
-        let end = tail.find('"').unwrap_or(tail.len());
+        let end = tail.find(q).unwrap_or(tail.len());
         let spec = &tail[..end];
         let resolved = normalize(&dir.join(spec));
         match resolved.strip_prefix(ui) {
@@ -563,10 +569,32 @@ fn rewire(
     package_path: &str,
     target: &str,
 ) -> String {
-    let mut text = text
-        .replace(&format!("\"{package_path}.tsx\""), &format!("\"{target}\""))
-        .replace(&format!("\"{package_path}\""), &format!("\"{target}\""));
-    let from = format!("from \"{BARREL}\"");
+    let mut text = text.to_string();
+    for q in ['"', '\''] {
+        text = text
+            .replace(
+                &format!("{q}{package_path}.tsx{q}"),
+                &format!("{q}{target}{q}"),
+            )
+            .replace(&format!("{q}{package_path}{q}"), &format!("{q}{target}{q}"));
+    }
+    for q in ['"', '\''] {
+        text = rewire_barrel(&text, exports, aliases, target, q);
+    }
+    text
+}
+
+/// One quote style's imports from the barrel, split so the symbols in
+/// `exports` or `aliases` come from `target` (written in the same quote).
+fn rewire_barrel(
+    text: &str,
+    exports: &BTreeSet<String>,
+    aliases: &std::collections::BTreeMap<String, String>,
+    target: &str,
+    q: char,
+) -> String {
+    let mut text = text.to_string();
+    let from = format!("from {q}{BARREL}{q}");
     let mut search = 0;
     while let Some(at) = text[search..].find(&from).map(|i| i + search) {
         let Some(start) = text[..at].rfind("import") else {
@@ -613,7 +641,7 @@ fn rewire(
             continue;
         }
         let own = format!(
-            "{}{{ {} }} from \"{target}\";",
+            "{}{{ {} }} from {q}{target}{q};",
             &clause[..open],
             moved.join(", ")
         );

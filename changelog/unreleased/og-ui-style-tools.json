@@ -1,0 +1,35 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og style init",
+      "summary": "`og style init <name> [project] [--from <theme>]` starts a style at `assets/styles/<name>/theme.json` from one of the engine's themes (minimal by default); it never overwrites."
+    },
+    {
+      "member": "og style validate",
+      "summary": "`og style validate <directory>` compiles the style's theme.json, parses its pack.json and reports pack variants that paint a ground without its ink; it exits 1 on a problem."
+    },
+    {
+      "member": "og ui literals",
+      "summary": "Reads `.tsx` as well as `.ts`, and reports class literals: an arbitrary hex colour (`bg-[#0af]`), a fixed corner (`rounded-lg`, `rounded-t-md`) and the retired cuts (`nine-socket`, `nine-panel-cut`)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og ui literals",
+      "summary": "The walk no longer follows directory symlinks and skips `cooked/`."
+    },
+    {
+      "member": "og check",
+      "summary": "A style with both theme.json and pack.json is checked as the cook lays them (the pack over the theme, both over the default pack); a default import of a string table (`import strings from \"./x.en.ogt\"`) counts as importing it; fixed side or corner radii and `nine-socket` count as visual literals."
+    },
+    {
+      "member": "og ui eject",
+      "summary": "Rewires a game's imports written with single quotes as well as double quotes."
+    },
+    {
+      "member": "og style",
+      "summary": "A directory of `.css` files is no longer taken for a style pack."
+    }
+  ]
+}
