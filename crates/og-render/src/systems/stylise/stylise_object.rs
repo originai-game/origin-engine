@@ -29,8 +29,8 @@ pub(crate) const STYLISE_OBJECT_WGSL: &str = wgsl!("stylise_object.wgsl");
 /// format's precision at the triangle), so a surface whose vertices land a
 /// rounding away from the prepass's still passes `LessEqual`.
 const BIAS: wgpu::DepthBiasState = wgpu::DepthBiasState {
-    constant: -4,
-    slope_scale: -0.5,
+    constant: 4,
+    slope_scale: 0.5,
     clamp: 0.0,
 };
 
@@ -96,7 +96,7 @@ impl ObjectPass {
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: crate::DEPTH_FORMAT,
                     depth_write_enabled: Some(false),
-                    depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                    depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
                     stencil: Default::default(),
                     bias: BIAS,
                 }),

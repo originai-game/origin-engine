@@ -8,6 +8,7 @@ pub mod graph;
 mod group;
 pub(crate) use group::FrameGroupParts;
 pub(crate) mod origin;
+pub(crate) mod projection;
 pub(crate) mod quality;
 pub(crate) mod timing;
 pub(crate) mod views;
@@ -144,7 +145,12 @@ pub(crate) fn view_rays(view_proj: Mat4) -> [[f32; 4]; 3] {
     let row = |i| view_proj.row(i).truncate().as_dvec3();
     let (x, y, depth, w) = (row(0), row(1), row(2), row(3));
     let middle = x.cross(y);
-    let ahead = if w.length_squared() > 1e-12 { w } else { depth };
+    // In Reverse-Z orthographic projection, clip z decreases along +forward.
+    let ahead = if w.length_squared() > 1e-12 {
+        w
+    } else {
+        -depth
+    };
     let scale = middle.dot(ahead).signum() / middle.length().max(1e-300);
     [y.cross(w), w.cross(x), middle].map(|d| (d * scale).as_vec3().extend(0.0).to_array())
 }
@@ -164,7 +170,7 @@ pub(crate) struct CameraFrame {
 
 pub(crate) fn camera_frame(cam: &Camera, aspect: f32, jitter_ndc: Vec2) -> CameraFrame {
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
-    let proj = cam.projection.matrix(aspect, cam.near, cam.far);
+    let proj = projection::matrix(&cam.projection, aspect, cam.near, cam.far);
     let orthographic = matches!(cam.projection, Projection::Orthographic { .. });
     let view_proj = proj * view;
     let jittered_view_proj = if jitter_ndc == Vec2::ZERO {

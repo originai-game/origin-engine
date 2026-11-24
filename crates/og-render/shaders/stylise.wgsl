@@ -1506,8 +1506,8 @@ fn dither_cells(q: vec2<f32>, gu: vec2<f32>, gv: vec2<f32>) -> f32 {
 fn view_dir(p: vec2<f32>) -> vec3<f32> {
   let uv = p * st.screen.zw;
   let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = st.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = st.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  let a = st.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  let b = st.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
   return normalize((st.view_rotation * vec4<f32>(b.xyz / b.w - a.xyz / a.w, 0.0)).xyz);
 }
 

@@ -34,7 +34,8 @@ impl Raster {
         for i in 0..3 {
             let j = (i + 1) % 3;
             let (a, b) = (tri[i], tri[j]);
-            let (da, db) = (a.z, b.z);
+            // Reverse-Z near plane is z <= w (w - z >= 0).
+            let (da, db) = (a.w - a.z, b.w - b.z);
             if da >= 0.0 {
                 poly.push((a, at(i)));
             }
@@ -120,11 +121,11 @@ impl Raster {
                 if sprite {
                     // Over the meshes in front of nothing nearer; sprites
                     // over sprites in their draw order.
-                    if z <= self.mesh_depth[k] {
+                    if z >= self.mesh_depth[k] {
                         self.ids[k] = id;
                         self.depth[k] = z;
                     }
-                } else if z < self.depth[k] {
+                } else if z > self.depth[k] {
                     self.ids[k] = id;
                     self.depth[k] = z;
                 }

@@ -397,7 +397,7 @@ impl Fluid3dRenderer {
                         depth_stencil: depth.then(|| wgpu::DepthStencilState {
                             format: crate::DEPTH_FORMAT,
                             depth_write_enabled: Some(true),
-                            depth_compare: Some(wgpu::CompareFunction::Less),
+                            depth_compare: Some(wgpu::CompareFunction::Greater),
                             stencil: Default::default(),
                             bias: Default::default(),
                         }),
@@ -464,7 +464,7 @@ impl Fluid3dRenderer {
                 buffers: &[],
                 cull: None,
                 depth_write: true,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_compare: wgpu::CompareFunction::Greater,
                 blend: None,
                 samples,
             },
@@ -748,7 +748,7 @@ impl Fluid3dRenderer {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: views.zbuf,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
+                        load: wgpu::LoadOp::Clear(crate::frame::projection::DEPTH_CLEAR),
                         store: wgpu::StoreOp::Discard,
                     }),
                     stencil_ops: None,

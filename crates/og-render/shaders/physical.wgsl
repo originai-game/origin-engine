@@ -417,7 +417,7 @@ fn transmission_data(uv: vec2<f32>) -> vec4<u32> {
 // either camera projection (not distance from the eye).
 fn transmission_point(uv: vec2<f32>, depth: f32) -> vec3<f32> {
   let xy = (uv * 2.0 - 1.0) * vec2<f32>(1.0, -1.0);
-  let a = frame.inv_view_proj * vec4<f32>(xy, 0.0, 1.0);
+  let a = frame.inv_view_proj * vec4<f32>(xy, 1.0, 1.0);
   let p = a.xyz / a.w;
   let dir = pixel_ray(xy);
   return p + dir * ((depth - dot(p - frame.view_pos.xyz, frame.view_forward.xyz)) / dot(dir, frame.view_forward.xyz));

@@ -35,7 +35,7 @@ struct SkyOut {
 fn sky_triangle(i: u32) -> SkyOut {
   var o: SkyOut;
   o.ndc = fullscreen_clip(i).xy;
-  o.pos = vec4<f32>(o.ndc, 1.0, 1.0);
+  o.pos = vec4<f32>(o.ndc, 0.0, 1.0);
   return o;
 }
 
@@ -48,7 +48,7 @@ fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
 fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   // The view ray through the pixel: from its near point (perspective and orthographic).
-  let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
+  let near = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
   let eye = near.xyz / near.w;
   let dir = pixel_ray(in.ndc);
   return vec4<f32>(sky_fog(sky_background(eye, dir) * (1.0 - frame.view_up.w), dir), sky_tone_fraction());

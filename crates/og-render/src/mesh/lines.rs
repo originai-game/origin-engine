@@ -565,7 +565,7 @@ impl LineRenderer {
             depth: pipeline(
                 "lines (depth tested)",
                 crate::HDR_FORMAT,
-                Some(wgpu::CompareFunction::LessEqual),
+                Some(wgpu::CompareFunction::GreaterEqual),
                 samples,
                 false,
             ),
@@ -579,7 +579,7 @@ impl LineRenderer {
             wire: pipeline(
                 "lines (wireframe)",
                 crate::HDR_FORMAT,
-                Some(wgpu::CompareFunction::LessEqual),
+                Some(wgpu::CompareFunction::GreaterEqual),
                 samples,
                 true,
             ),

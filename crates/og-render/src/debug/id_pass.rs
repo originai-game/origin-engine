@@ -539,7 +539,7 @@ pub fn render_ids_from(
         width,
         height,
         ids: vec![0; n],
-        depth: vec![1.0; n],
+        depth: vec![0.0; n],
         mesh_depth: Vec::new(),
         stamp: vec![0; n],
         group: 0,

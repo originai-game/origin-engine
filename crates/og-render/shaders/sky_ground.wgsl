@@ -54,7 +54,7 @@ fn ground_kept(p: vec3<f32>) -> vec3<f32> {
 fn fs_sky_ground(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   // The view ray as the sky's (sky.wgsl fs_sky): from the pixel's near point along pixel_ray.
-  let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
+  let near = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
   let eye = near.xyz / near.w;
   let dir = pixel_ray(in.ndc);
   var color = sky_background(eye, dir) * (1.0 - frame.view_up.w);

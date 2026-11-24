@@ -121,7 +121,7 @@ pub(super) fn terrain_passes(
         Some(wgpu::DepthStencilState {
             format: crate::DEPTH_FORMAT,
             depth_write_enabled: Some(write),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: Default::default(),
             bias: Default::default(),
         })

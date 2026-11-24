@@ -56,8 +56,8 @@ fn fullscreen_clip(i: u32) -> vec4<f32> {
 // projection's inverse (perspective or orthographic).
 fn view_point(inv_proj: mat4x4<f32>, uv: vec2<f32>, d: f32) -> vec3<f32> {
   let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  let a = inv_proj * vec4<f32>(ndc, 1.0, 1.0);
+  let b = inv_proj * vec4<f32>(ndc, 0.0, 1.0);
   let p0 = a.xyz / a.w;
   let p1 = b.xyz / b.w;
   let t = (d + p0.z) / (p0.z - p1.z);

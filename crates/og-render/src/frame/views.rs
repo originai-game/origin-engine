@@ -179,7 +179,7 @@ impl Views {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &slot.depth,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    load: wgpu::LoadOp::Clear(crate::frame::projection::DEPTH_CLEAR),
                     store: wgpu::StoreOp::Store,
                 }),
                 stencil_ops: None,

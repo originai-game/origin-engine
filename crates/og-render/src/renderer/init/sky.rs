@@ -58,7 +58,7 @@ impl Renderer {
                     buffers: &[],
                     cull: None,
                     depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     blend: None,
                     samples,
                 },

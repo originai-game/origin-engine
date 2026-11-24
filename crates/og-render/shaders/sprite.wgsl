@@ -461,7 +461,7 @@ struct PlateOut {
 fn vs_plate(@builtin(vertex_index) vi: u32) -> PlateOut {
   var o: PlateOut;
   o.ndc = fullscreen_clip(vi).xy;
-  o.pos = vec4<f32>(o.ndc, 1.0, 1.0);
+  o.pos = vec4<f32>(o.ndc, 0.0, 1.0);
   return o;
 }
 

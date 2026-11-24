@@ -81,7 +81,7 @@ fn oit_front_mark(position: vec4<f32>, alpha: f32) {
   if (!(clamp(alpha, 0.0, 1.0) >= OIT_FRONT_ALPHA)) { return; }
   let w = oit_front_word(position);
   if (w == 0xffffffffu) { return; }
-  atomicMax(&oit_arena[w], ~bitcast<u32>(max(position.z, 0.0)));
+  atomicMax(&oit_arena[w], bitcast<u32>(max(position.z, 0.0)));
 }
 
 fn oit_front_of(position: vec4<f32>, alpha: f32) -> bool {
@@ -90,7 +90,7 @@ fn oit_front_of(position: vec4<f32>, alpha: f32) -> bool {
   if (w == 0xffffffffu) { return false; }
   let marked = atomicLoad(&oit_arena[w]);
   if (marked == 0u) { return false; }
-  return bitcast<u32>(max(position.z, 0.0)) <= ~marked + OIT_FRONT_ULPS;
+  return bitcast<u32>(max(position.z, 0.0)) + OIT_FRONT_ULPS >= marked;
 }
 
 // A fragment of the weighted mode with the front layer.

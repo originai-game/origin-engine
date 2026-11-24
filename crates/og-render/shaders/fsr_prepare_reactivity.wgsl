@@ -34,7 +34,7 @@ fn exposure() -> f32 { return exposure_of(frame_info); }
 
 fn load_reconstructed_prev_depth(p: vec2<i32>) -> f32 {
   let v = reconstructed_depth[u32(p.y) * u32(max_render_size().x) + u32(p.x)];
-  return select(1.0, bitcast<f32>(~v), v != 0u);
+  return bitcast<f32>(v);
 }
 
 // A load as HLSL's: zero outside the texture.

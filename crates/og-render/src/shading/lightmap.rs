@@ -657,7 +657,7 @@ impl Lightmaps {
                 // the depth the prepass wrote for it (a one-sample frame
                 // shares that depth, post/plan.rs `shares_prepass_depth`).
                 depth_compare: if blend {
-                    wgpu::CompareFunction::Less
+                    wgpu::CompareFunction::Greater
                 } else {
                     crate::LIT_DEPTH_COMPARE
                 },
@@ -719,7 +719,7 @@ impl Lightmaps {
                 buffers: &buffers,
                 cull: faces.cull(),
                 depth_write: false,
-                depth_compare: wgpu::CompareFunction::Less,
+                depth_compare: wgpu::CompareFunction::Greater,
                 blend: None,
                 samples,
             },

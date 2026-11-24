@@ -440,7 +440,7 @@ impl EffectMeshRenderer {
                     buffers: EFFECT_MESH_BUFFERS,
                     cull: (!double_sided).then_some(wgpu::Face::Back),
                     depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     blend: Some(blend),
                     samples,
                 },

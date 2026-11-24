@@ -172,7 +172,7 @@ impl Renderer {
                             // The prepass's depth, when it is this pass's
                             // (post::shares_prepass_depth).
                             load: if first && !shared_depth {
-                                wgpu::LoadOp::Clear(1.0)
+                                wgpu::LoadOp::Clear(frame::projection::DEPTH_CLEAR)
                             } else {
                                 wgpu::LoadOp::Load
                             },

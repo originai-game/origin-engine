@@ -169,7 +169,7 @@ impl ScatterRenderer {
                     ..d.clone()
                 },
                 layout,
-                wgpu::CompareFunction::LessEqual,
+                wgpu::CompareFunction::GreaterEqual,
             )),
             (_, true, None) => None,
         };
@@ -402,7 +402,7 @@ fn lit_pipeline(
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: crate::DEPTH_FORMAT,
                 depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
+                depth_compare: Some(wgpu::CompareFunction::Greater),
                 stencil: Default::default(),
                 bias: Default::default(),
             }),

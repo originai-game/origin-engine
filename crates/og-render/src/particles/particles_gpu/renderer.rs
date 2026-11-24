@@ -784,7 +784,7 @@ impl ParticleRenderer {
                     buffers: &buffers,
                     cull: (mesh && !double_sided).then_some(wgpu::Face::Back),
                     depth_write: solid,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     blend: Some(blend),
                     samples,
                 },

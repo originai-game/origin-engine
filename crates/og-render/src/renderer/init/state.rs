@@ -439,7 +439,7 @@ impl StripState {
                         buffers: if points { &[] } else { RIBBON_BUFFERS },
                         cull: None,
                         depth_write: false,
-                        depth_compare: wgpu::CompareFunction::LessEqual,
+                        depth_compare: wgpu::CompareFunction::GreaterEqual,
                         blend: Some(blend_state),
                         samples,
                     },

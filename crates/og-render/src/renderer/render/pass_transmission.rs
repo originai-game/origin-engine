@@ -52,7 +52,7 @@ impl Renderer {
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &volume.depth,
                 depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
+                    load: wgpu::LoadOp::Clear(frame::projection::DEPTH_CLEAR),
                     store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,

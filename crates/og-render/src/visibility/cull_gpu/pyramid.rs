@@ -9,8 +9,8 @@ pub(crate) fn hiz_source(multisampled: bool) -> String {
     let decl = if multisampled {
         "@group(0) @binding(2) var depth_in: texture_multisampled_2d<f32>;\n\
          fn farthest_sample(xy: vec2<u32>) -> f32 {\n\
-           var d = 0.0;\n\
-           for (var s = 0u; s < textureNumSamples(depth_in); s++) { d = max(d, textureLoad(depth_in, xy, i32(s)).r); }\n\
+           var d = 1.0;\n\
+           for (var s = 0u; s < textureNumSamples(depth_in); s++) { d = min(d, textureLoad(depth_in, xy, i32(s)).r); }\n\
            return d;\n\
          }\n"
     } else {

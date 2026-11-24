@@ -170,7 +170,7 @@ impl MeshletGpu {
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: crate::DEPTH_FORMAT,
                     depth_write_enabled: Some(true),
-                    depth_compare: Some(wgpu::CompareFunction::Less),
+                    depth_compare: Some(wgpu::CompareFunction::Greater),
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),

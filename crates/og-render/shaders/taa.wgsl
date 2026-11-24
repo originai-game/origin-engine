@@ -221,7 +221,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // closest surface in the footprint, not the background's motion. Keep
   // colour sampling and its confidence at the original scene sample.
   var motion_at = at;
-  var closest_depth = 1.0;
+  var closest_depth = 0.0;
   if (upscale) {
     closest_depth = textureSampleLevel(depth, depth_sampler, (vec2<f32>(at) + 0.5) / vec2<f32>(size), 0.0).r;
   }
@@ -236,7 +236,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       a_hi = max(a_hi, t.a);
       if (upscale) {
         let d = textureSampleLevel(depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
-        if (d < closest_depth) {
+        if (d > closest_depth) {
           closest_depth = d;
           motion_at = q;
         }
@@ -392,14 +392,14 @@ fn was_occluded(uv: vec2<f32>, expected: f32) -> bool {
   // farthest of the four footprint taps is conservative at thin edges:
   // reject only when every tap had a closer surface, not merely one.
   let at = vec2<i32>(floor(uv * vec2<f32>(size) + taa.previous_jitter.xy - 0.5));
-  var farthest = 0.0;
+  var farthest = 1.0;
   for (var y = 0; y < 2; y++) {
     for (var x = 0; x < 2; x++) {
       let d = saved_depth(at + vec2<i32>(x, y));
-      farthest = max(farthest, d);
+      farthest = min(farthest, d);
     }
   }
-  return expected > farthest + DEPTH_ROUNDOFF;
+  return expected < farthest - DEPTH_ROUNDOFF;
 }
 
 // Whether a sample moving on its own motion vectors (an object, a skinned

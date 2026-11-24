@@ -22,9 +22,9 @@ pub(crate) fn depth_source(msaa: bool) -> String {
     let depth_read = if msaa {
         "@group(1) @binding(0) var opaque_depth: texture_multisampled_2d<f32>;
          fn opaque_depth_at(px: vec2<i32>) -> f32 {
-           var z = 1.0;
+           var z = 0.0;
            for (var i = 0u; i < textureNumSamples(opaque_depth); i++) {
-             z = min(z, textureLoad(opaque_depth, px, i32(i)).r);
+             z = max(z, textureLoad(opaque_depth, px, i32(i)).r);
            }
            return z;
          }"
@@ -209,7 +209,7 @@ impl Volume {
                     depth_stencil: Some(wgpu::DepthStencilState {
                         format: crate::DEPTH_FORMAT,
                         depth_write_enabled: Some(true),
-                        depth_compare: Some(wgpu::CompareFunction::Less),
+                        depth_compare: Some(wgpu::CompareFunction::Greater),
                         stencil: Default::default(),
                         bias: Default::default(),
                     }),

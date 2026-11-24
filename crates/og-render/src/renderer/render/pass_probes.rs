@@ -156,7 +156,7 @@ impl Renderer {
                                     view: &s.depth,
                                     depth_ops: Some(wgpu::Operations {
                                         load: if first {
-                                            wgpu::LoadOp::Clear(1.0)
+                                            wgpu::LoadOp::Clear(frame::projection::DEPTH_CLEAR)
                                         } else {
                                             wgpu::LoadOp::Load
                                         },

@@ -91,13 +91,13 @@ impl Renderer {
                         attachment(self.graph.view("gbuffer"), 0.0),
                         attachment(self.graph.view("lindepth"), post::FAR_DEPTH as f64),
                         attachment(self.graph.view("outline-id"), 0.0),
-                        attachment(self.graph.view("motion-depth"), 1.0),
+                        attachment(self.graph.view("motion-depth"), 0.0),
                     ],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: self.graph.view(post::prepass_depth(self.samples)),
                         depth_ops: Some(wgpu::Operations {
                             load: if first {
-                                wgpu::LoadOp::Clear(1.0)
+                                wgpu::LoadOp::Clear(frame::projection::DEPTH_CLEAR)
                             } else {
                                 wgpu::LoadOp::Load
                             },

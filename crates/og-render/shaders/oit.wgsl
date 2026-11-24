@@ -39,7 +39,7 @@ struct OitOutput {
 // leaves the half-float sums headroom for bright, many-layered pixels.
 fn oit_weight(alpha: f32, depth: f32) -> f32 {
   let a = min(1.0, alpha * 10.0) + 0.01;
-  let z = max(1.0 - clamp(depth, 0.0, 1.0), 1e-4);
+  let z = max(clamp(depth, 0.0, 1.0), 1e-4);
   return clamp(a * a * a * 1e5 * z * z, 1e-2, 3e3) / 3e3;
 }
 

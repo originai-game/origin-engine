@@ -37,7 +37,7 @@ impl GpuCulling {
                         depth_stencil: Some(wgpu::DepthStencilState {
                             format: DEPTH_FORMAT,
                             depth_write_enabled: Some(true),
-                            depth_compare: Some(wgpu::CompareFunction::Less),
+                            depth_compare: Some(wgpu::CompareFunction::Greater),
                             stencil: Default::default(),
                             bias: Default::default(),
                         }),
@@ -502,7 +502,7 @@ impl GpuCulling {
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: &pyramid.depth,
                         depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
+                            load: wgpu::LoadOp::Clear(crate::frame::projection::DEPTH_CLEAR),
                             store: wgpu::StoreOp::Store,
                         }),
                         stencil_ops: None,

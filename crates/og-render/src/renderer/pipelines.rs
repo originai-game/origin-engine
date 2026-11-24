@@ -95,7 +95,7 @@ pub(crate) fn unbounded_shader(
 /// the nearest one per pixel is shaded. Both passes place their vertices
 /// with the same functions (pbr.wgsl `lit_place`), so the depths agree to
 /// the bit.
-pub(crate) const LIT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::LessEqual;
+pub(crate) const LIT_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::GreaterEqual;
 
 /// The pipeline state shared by the passes that draw into the HDR target.
 pub(crate) struct HdrPipeline<'a> {
@@ -383,7 +383,7 @@ pub(crate) fn lit_pipeline(
             // Blended surfaces test against the opaque depth but do not write it.
             depth_write: !transparent,
             depth_compare: if transparent {
-                wgpu::CompareFunction::Less
+                wgpu::CompareFunction::Greater
             } else {
                 LIT_DEPTH_COMPARE
             },
@@ -592,7 +592,7 @@ fn prepass_variant(
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: DEPTH_FORMAT,
                 depth_write_enabled: Some(true),
-                depth_compare: Some(wgpu::CompareFunction::Less),
+                depth_compare: Some(wgpu::CompareFunction::Greater),
                 stencil: Default::default(),
                 bias: Default::default(),
             }),

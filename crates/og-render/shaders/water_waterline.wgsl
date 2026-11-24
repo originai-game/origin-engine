@@ -36,7 +36,7 @@ fn waterline_height(q: vec2<f32>) -> f32 {
 
 @fragment
 fn fs_waterline(in: LineOut) -> @location(0) vec4<f32> {
-  let n4 = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
+  let n4 = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
   let near = n4.xyz / n4.w;
   let s = near.y - waterline_height(near.xz);
   // Its distance from the line in pixels (the height's change across a pixel).

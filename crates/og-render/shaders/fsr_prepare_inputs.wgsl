@@ -54,7 +54,7 @@ fn load_input_motion_vector(q: vec2<i32>) -> vec2<f32> {
 
 fn store_reconstructed_depth(p: vec2<i32>, depth: f32) {
   let i = u32(p.y) * u32(max_render_size().x) + u32(p.x);
-  atomicMax(&reconstructed_depth[i], ~bitcast<u32>(depth));
+  atomicMax(&reconstructed_depth[i], bitcast<u32>(max(depth, 0.0)));
 }
 
 fn scatter_depth(b: BilinearSamplingData, k: i32, offset: vec2<i32>, depth: f32) {
@@ -87,15 +87,14 @@ struct Extents {
   nearest_coord: vec2<i32>,
 };
 
-// One neighbour of FindDepthExtents' walk: the nearest (smallest: the
-// engine's depth is not reversed) of the samples on screen, and the
-// farthest of those nearer than the centre as the walk finds them.
+// One neighbour of FindDepthExtents' walk: in Reverse-Z, nearest is largest
+// and farthest is smallest.
 fn extents_tap(e: ptr<function, Extents>, p: vec2<i32>, offset: vec2<i32>) {
   let q = p + offset;
   if (is_on_screen(q, render_size())) {
     let d = load_input_depth(q);
-    if (d < (*e).nearest) {
-      (*e).farthest = max((*e).farthest, d);
+    (*e).farthest = min((*e).farthest, d);
+    if (d > (*e).nearest) {
       (*e).nearest_coord = q;
       (*e).nearest = d;
     }

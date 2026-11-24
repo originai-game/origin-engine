@@ -187,7 +187,7 @@ fn pipelines(
                 buffers: &[Some(crate::sprite_mesh::MESH_LAYOUT)],
                 cull: None,
                 depth_write: false,
-                depth_compare: wgpu::CompareFunction::LessEqual,
+                depth_compare: wgpu::CompareFunction::GreaterEqual,
                 blend: Some(blend),
                 samples,
             },

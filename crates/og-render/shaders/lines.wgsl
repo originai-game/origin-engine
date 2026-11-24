@@ -49,7 +49,7 @@ struct LineOut {
 fn to_clip(p: vec3<f32>, screen: bool) -> vec4<f32> {
   if (screen) {
     let d = p.xy * lf.viewport.z;
-    return vec4<f32>(d.x / lf.viewport.x * 2.0 - 1.0, 1.0 - d.y / lf.viewport.y * 2.0, 0.0, 1.0);
+    return vec4<f32>(d.x / lf.viewport.x * 2.0 - 1.0, 1.0 - d.y / lf.viewport.y * 2.0, 1.0, 1.0);
   }
   return lf.view_proj * vec4<f32>(p, 1.0);
 }

@@ -192,13 +192,8 @@ pub(crate) fn mirror_frame(eye: &Camera, m: &MirrorQuad) -> Option<(CameraFrame,
     ))
 }
 
-/// A right-handed off-centre perspective projection with depth 0..1 (as
-/// glam's `perspective_rh`, for an asymmetric frustum).
+/// A right-handed off-centre Reverse-Z perspective projection (`near -> 1`,
+/// `far -> 0`, for an asymmetric frustum).
 pub(crate) fn off_axis(l: f32, r: f32, b: f32, t: f32, n: f32, f: f32) -> Mat4 {
-    Mat4::from_cols(
-        Vec4::new(2.0 * n / (r - l), 0.0, 0.0, 0.0),
-        Vec4::new(0.0, 2.0 * n / (t - b), 0.0, 0.0),
-        Vec4::new((r + l) / (r - l), (t + b) / (t - b), f / (n - f), -1.0),
-        Vec4::new(0.0, 0.0, n * f / (n - f), 0.0),
-    )
+    crate::frame::projection::off_axis(l, r, b, t, n, f)
 }

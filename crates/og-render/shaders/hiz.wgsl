@@ -25,10 +25,10 @@ fn reduce(@builtin(global_invocation_id) gid: vec3<u32>) {
   // An odd size below folds its last row or column into the last texel.
   let x1 = select(x0 + 1u, below.x - 1u, gid.x == dims.x - 1u);
   let y1 = select(y0 + 1u, below.y - 1u, gid.y == dims.y - 1u);
-  var depth = 0.0;
+  var depth = 1.0;
   for (var y = y0; y <= y1; y++) {
     for (var x = x0; x <= x1; x++) {
-      depth = max(depth, textureLoad(level_in, vec2<u32>(x, y), 0).r);
+      depth = min(depth, textureLoad(level_in, vec2<u32>(x, y), 0).r);
     }
   }
   textureStore(level_out, gid.xy, vec4<f32>(depth, 0.0, 0.0, 1.0));

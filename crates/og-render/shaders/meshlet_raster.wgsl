@@ -147,7 +147,7 @@ fn triangle(k: u32, tri: u32) -> Tri {
     let world = model * vec4<f32>(raster_position(f.y, local, c.w, c.z, e.x, model, model, false), 1.0);
     let clip = raster_retro(mul_point(raster.view_proj, world));
     // Never for a soft cluster (it lies past the near plane): skipped.
-    if (clip.w <= 1e-6 || clip.z < 0.0) { return t; }
+    if (clip.w <= 1e-6 || clip.z > clip.w) { return t; }
     let ndc = clip.xyz / clip.w;
     t.p[j] = vec3<f32>((ndc.x * 0.5 + 0.5) * size.x, (0.5 - ndc.y * 0.5) * size.y, ndc.z);
   }
@@ -160,7 +160,7 @@ fn triangle(k: u32, tri: u32) -> Tri {
   if (area == 0.0 || (side == 0u && !front) || (side == 1u && front)) { return t; }
   let lo = min(a, min(b, d));
   let hi = max(a, max(b, d));
-  if (lo.z > 1.0 || hi.x < 0.0 || hi.y < 0.0 || lo.x > size.x || lo.y > size.y) { return t; }
+  if (hi.z < 0.0 || hi.x < 0.0 || hi.y < 0.0 || lo.x > size.x || lo.y > size.y) { return t; }
   if (hi.x - lo.x > RASTER_MAX || hi.y - lo.y > RASTER_MAX) { return t; }
   t.lo = max(vec2<i32>(ceil(lo.xy - 0.5)), vec2<i32>(0));
   t.hi = min(vec2<i32>(floor(hi.xy - 0.5)), vec2<i32>(raster.size.xy) - 1);
@@ -214,8 +214,8 @@ fn cover(t: Tri, id: u32) {
       if (!(inside(e0, v[1], v[2]) && inside(e1, v[2], v[0]) && inside(e2, v[0], v[1]))) { continue; }
       let depth = (f32(e0) * z.x + f32(e1) * z.y + f32(e2) * z.z) / f32(area);
       if (depth < 0.0 || depth > 1.0) { continue; }
-      // meshlet.rs `vis_depth`.
-      let word = ~bitcast<u32>(max(depth, 0.0));
+      // Reverse-Z: nearer depth is larger, and 0u is the far plane (0.0).
+      let word = bitcast<u32>(max(depth, 0.0));
       let pixel = u32(y) * w + u32(x);
       if (id == 0u) {
         atomicMax(&vbuf[pixel], word);
@@ -405,7 +405,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     look.y = 0.8;
     look.z = raster_level_color(c.z);
   }
-  let depth = bitcast<f32>(~atomicLoad(&vbuf[pixel]));
+  let depth = bitcast<f32>(atomicLoad(&vbuf[pixel]));
   let dwx = (model * vec4<f32>(dpos_x, 0.0)).xyz;
   let dwy = (model * vec4<f32>(dpos_y, 0.0)).xyz;
   // The original triangle's projected winding, as triangle() culls it;

@@ -442,7 +442,7 @@ fn vs_impostor_front(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> 
   let toward = select(normalize(frame.view_pos.xyz - o.centre), -frame.view_forward.xyz, ortho);
   let front = mul_point(frame.view_proj, vec4<f32>(o.centre + toward * o.root_extent.w, 1.0));
   let inside = !ortho && distance(frame.view_pos.xyz, o.centre) <= o.root_extent.w;
-  let z = select(clamp(front.z / max(front.w, 1e-6), 0.0, 1.0), 0.0, inside);
-  if (o.clip.w > 0.0 && o.clip.z <= o.clip.w) { o.clip.z = z * o.clip.w; }
+  let z = select(clamp(front.z / max(front.w, 1e-6), 0.0, 1.0), 1.0, inside);
+  if (o.clip.w > 0.0 && o.clip.z >= 0.0) { o.clip.z = z * o.clip.w; }
   return o;
 }

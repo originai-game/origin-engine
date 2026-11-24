@@ -153,7 +153,7 @@ impl SpriteHooks {
                     buffers: crate::SPRITE_BUFFERS,
                     cull: None,
                     depth_write: false,
-                    depth_compare: wgpu::CompareFunction::LessEqual,
+                    depth_compare: wgpu::CompareFunction::GreaterEqual,
                     blend: Some(blend),
                     samples: self.samples,
                 },

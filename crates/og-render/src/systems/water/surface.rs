@@ -204,17 +204,18 @@ pub(crate) fn mirrored_camera(camera: &crate::Camera, n: Vec3, at: Vec3) -> crat
 }
 
 /// `proj` with its near plane replaced by the world plane (`n`, `at`)
-/// seen through `view` (Lengyel's oblique near-plane clipping, for depth
-/// 0..1): what lies below the plane is clipped and the far plane is
+/// seen through `view` (Lengyel's oblique near-plane clipping, for Reverse-Z
+/// depth 1..0): what lies below the plane is clipped and the far plane is
 /// tilted to keep the depth range. `lift` raises the plane (m) to hide
 /// the seam where geometry meets the water.
 pub(crate) fn oblique(proj: Mat4, view: Mat4, n: Vec3, at: Vec3, lift: f32) -> Mat4 {
     let world = n.extend(-(n.dot(at) + lift));
     // Planes transform by the inverse transpose.
     let c = view.inverse().transpose() * world;
-    let q = proj.inverse() * Vec4::new(c.x.signum(), c.y.signum(), 1.0, 1.0);
-    let c = c * (1.0 / c.dot(q));
-    let mut rows = [proj.row(0), proj.row(1), c, proj.row(3)];
+    // Far plane in Reverse-Z is z_ndc = 0.0; near plane is z_clip = w_clip.
+    let q = proj.inverse() * Vec4::new(c.x.signum(), c.y.signum(), 0.0, 1.0);
+    let row2 = proj.row(3) - c * (1.0 / c.dot(q));
+    let mut rows = [proj.row(0), proj.row(1), row2, proj.row(3)];
     if !rows[2].is_finite() {
         rows[2] = proj.row(2);
     }
