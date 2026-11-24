@@ -44,7 +44,7 @@ export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
           <Image class={`size-full`} src={props.portrait} label="" />
         </View>
       </Show>
-      <Text class={`text-caption opacity-80 text-center`}>{t("rpg.party.level", { level: props.level })}</Text>
+      <Text class={`text-caption opacity-quiet text-center`}>{t("rpg.party.level", { level: props.level })}</Text>
       <View class="relative self-stretch mx-1">
         <HudBar value={props.health} max={props.healthMax} showValue />
       </View>

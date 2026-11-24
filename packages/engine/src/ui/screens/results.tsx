@@ -150,7 +150,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <View class={`flex-row flex-wrap gap-3 ${packClass("List", "cascade")}`}>
                     <For each={props.rewards}>
                       {(r) => (
-                      <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
+                      <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
                         <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                           <Show when={!r().texture && r().icon}>

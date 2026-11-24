@@ -115,7 +115,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
             >
               {/* The arrow: a filled triangle from borders, turned to its heading. */}
               <View
-                class="absolute size-0 border-x-7 border-b-11 border-x-transparent border-b-fg"
+                class="absolute size-0 border-x-pointer-side border-b-pointer border-x-transparent border-b-fg"
                 style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: `translate(-50%,-55%) rotate(${c().heading}deg)` }}
                 role="image"
                 label={c().name}

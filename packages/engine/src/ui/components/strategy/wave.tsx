@@ -55,7 +55,7 @@ export function StrategyWave(props: StrategyWaveProps) {
         </Show>
         <View class={`flex-col gap-y-0.25 flex-1 min-w-0`}>
           <View class={`flex-row items-center gap-x-1.5 min-w-0`}>
-            <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-danger group-data-done/wave:opacity-78 compact:text-xs compact:tracking-normal`}>
+            <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-danger group-data-done/wave:opacity-quiet compact:text-xs compact:tracking-normal`}>
               {props.waves > 0
                 ? (props.name !== "" ? t("strategy.wave.titleOfNamed", { wave: props.wave, waves: props.waves, name: props.name }) : t("strategy.wave.titleOf", { wave: props.wave, waves: props.waves }))
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}

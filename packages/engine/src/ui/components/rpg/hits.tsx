@@ -17,7 +17,7 @@ export function RpgHits(props: RpgHitsProps) {
     <View class={`flex-col items-start max-w-full pointer-events-none text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 ${packClass("Plate", "frame")}`} role="log" label={t("rpg.hits.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
-        <View class={`group/hits flex-col items-start max-w-full min-w-0 animate-pop transition duration-fast exit:opacity-0 data-later:mt-8 data-later:opacity-soft data-third:ml-55 data-third:mt-0 data-third:opacity-70 data-lead:ml-37.5 compact:data-lead:ml-0 compact:data-later:hidden`}
+        <View class={`group/hits flex-col items-start max-w-full min-w-0 animate-pop transition duration-fast exit:opacity-0 data-later:mt-8 data-later:opacity-soft data-third:ml-55 data-third:mt-0 data-third:opacity-quiet data-lead:ml-37.5 compact:data-lead:ml-0 compact:data-later:hidden`}
           data-lead={i() === 0 && (props.hits ?? []).length > 1}
           data-later={i() >= 1}
           data-third={i() >= 2}
@@ -38,7 +38,7 @@ export function RpgHits(props: RpgHitsProps) {
               </Text>
             </Show>
             <Show when={h().word}>
-              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden group-data-burn/hits:text-legendary group-data-miss/hits:text-title group-data-miss/hits:opacity-80`}>
+              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden group-data-burn/hits:text-legendary group-data-miss/hits:text-title group-data-miss/hits:opacity-quiet`}>
                 {h().word}
               </Text>
             </Show>

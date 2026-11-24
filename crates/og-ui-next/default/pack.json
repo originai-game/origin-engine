@@ -1220,8 +1220,10 @@
       "faint": 0.25,
       "flash": 0.8,
       "muted": 0.6,
+      "quiet": 0.78,
       "soft": 0.85,
       "sweep": 0.66,
+      "veil": 0.15,
       "wash": 0.25
     },
     "radius": {
@@ -1239,6 +1241,9 @@
       "breathe": 0.45,
       "combo-pop": 1.25,
       "damage-pop": 1.5,
+      "enter": 0.8,
+      "lift": 1.06,
+      "nudge": 0.98,
       "pop": 1.4,
       "press": 0.94,
       "ready-pulse": 1.05,
@@ -1307,9 +1312,15 @@
     "stroke": {
       "ability": 4.0,
       "arc": 12.0,
+      "beacon": 9.0,
+      "dial": 8.0,
       "edge": 0.5,
       "focus": 2.0,
       "hairline": 1.0,
+      "heavy": 4.0,
+      "marker": 5.0,
+      "pointer": 11.0,
+      "pointer-side": 7.0,
       "regular": 2.0,
       "thick": 3.0,
       "thin": 1.5

@@ -98,7 +98,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                   <View class="relative flex-row items-center justify-center size-7.5 group-data-selected/marker:size-10">
                     <Switch fallback={
                       <Show when={m().kind === "player"}>
-                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-glow-lg ring-5 ring-entry-grain" />
+                        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-71/100 rounded-full bg-hud-accent shadow-glow-lg ring-marker ring-entry-grain" />
                         <Line class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-3/5 rotate-35 stroke-hud-accent-fg" points={[8, 1, 14, 14, 8, 10.5, 2, 14]} closed />
                       </Show>
                     }>

@@ -93,9 +93,9 @@ export function RadialMenu(props: RadialMenuProps) {
                   data-disabled={item().disabled === true}
                 >
                   <Show when={(item().icon ?? "") !== ""}>
-                    <Icon class="size-6 text-fg group-data-chosen/radialitem:text-accent-fg group-data-chosen/radialitem:scale-110 group-data-disabled/radialitem:opacity-50" name={item().icon} />
+                    <Icon class="size-6 text-fg group-data-chosen/radialitem:text-accent-fg group-data-chosen/radialitem:scale-lift group-data-disabled/radialitem:opacity-dim" name={item().icon} />
                   </Show>
-                  <Text class="max-w-full text-caption whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-50">{item().label}</Text>
+                  <Text class="max-w-full text-caption whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-dim">{item().label}</Text>
                   <Show when={(item().cost ?? "") !== ""}>
                     <View class="flex-row items-center gap-x-0.5">
                       <Icon class="size-4 text-fg" name="coin" />

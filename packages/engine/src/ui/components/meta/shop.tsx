@@ -131,14 +131,14 @@ export function Shop(props: ShopProps) {
                             <View class="w-full gap-1">
                               <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
                                 <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
-                                  <View class="absolute opacity-26 inset-0" />
+                                  <View class="absolute opacity-faint inset-0" />
                                   <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
                                   </Show>
                                 </View>
                               </Flourish>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
+                                <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden max-w-2/5`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
@@ -202,14 +202,14 @@ export function Shop(props: ShopProps) {
                           <View class="w-full gap-1">
                             <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
                               <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
-                                <View class="absolute opacity-26 inset-0" />
+                                <View class="absolute opacity-faint inset-0" />
                                 <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
                                   </Show>
                               </View>
                             </Flourish>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden`} style={{ maxWidth: "calc(50% - 12px)" }}>
+                              <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden max-w-2/5`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>

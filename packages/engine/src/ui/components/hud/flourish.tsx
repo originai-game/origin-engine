@@ -91,7 +91,7 @@ export function Flourish(props: FlourishProps) {
     <View class={`items-center ${props.class ?? ""}`}>
       <View class="relative self-stretch items-center justify-center">
         <Show when={kind() == "highlight"}>
-          <View class="absolute inset-0.5 rounded-panel bg-accent opacity-40 shadow-glow-lg shadow-accent animate-pulse" />
+          <View class="absolute inset-0.5 rounded-panel bg-accent opacity-dim shadow-glow-lg shadow-accent animate-pulse" />
         </Show>
         <For each={shots()} key={(s) => s.id}>
           {() => (

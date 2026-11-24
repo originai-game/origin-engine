@@ -121,7 +121,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
               <View class={`group/tier gap-0 compact:grow compact:shrink compact:basis-0 text-common data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} label={recipe().name} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
                 <View class="shrink w-full gap-3 overflow-auto">
                   <View class={`items-center justify-center h-24 relative`}>
-                    <View class={`absolute inset-0 opacity-35 bg-linear-to-b from-fg-subtle to-transparent group-data-tier-uncommon/tier:from-uncommon group-data-tier-rare/tier:from-rare group-data-tier-epic/tier:from-epic group-data-tier-legendary/tier:from-legendary group-data-tier-mythic/tier:from-mythic`} />
+                    <View class={`absolute inset-0 opacity-dim bg-linear-to-b from-fg-subtle to-transparent group-data-tier-uncommon/tier:from-uncommon group-data-tier-rare/tier:from-rare group-data-tier-epic/tier:from-epic group-data-tier-legendary/tier:from-legendary group-data-tier-mythic/tier:from-mythic`} />
                     <Icon class="shrink" name={recipe().icon} />
                   </View>
                   <View class={`gap-0.5`}>

@@ -53,13 +53,13 @@ export function DailyQuests(props: DailyQuestsProps) {
                 <For each={props.quests}>
                   {(q) => (
                   <View class={`group/row flex-row items-center nine-plate-cut bg-layer-2 text-fg transition duration-control w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-layer-3 data-state-done:bg-layer-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("List", "item")}`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                    <View class={`group/well relative nine-socket gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-66`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                    <View class={`group/well relative nine-socket gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-muted`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                       <View class="absolute inset-0 nine-socket-rim bg-rim group-data-state-done/well:bg-gold group-data-state-claimed/well:bg-sheen" />
                       <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:text-gold">
                         <Icon class="size-6" name={q().state === 'claimed' ? 'check' : q().icon} />
                       </View>
                     </View>
-                    <View class="grow shrink basis-0 gap-1 group-data-state-claimed/row:opacity-66">
+                    <View class="grow shrink basis-0 gap-1 group-data-state-claimed/row:opacity-muted">
                       <Text class={`text-fg text-start font-semibold text-lg m-0`}>
                         {q().name}
                       </Text>
@@ -71,7 +71,7 @@ export function DailyQuests(props: DailyQuestsProps) {
                       </View>
                     </View>
                     <View class="flex-row items-center max-w-9/20 gap-1 compact:max-w-full compact:w-full compact:justify-between">
-                      <View class={`text-fg min-w-22.5 max-w-full min-h-16 items-center justify-center bg-layer-3 nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-66`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                      <View class={`text-fg min-w-22.5 max-w-full min-h-16 items-center justify-center bg-layer-3 nine-plate-cut py-0.5 px-2 gap-0 compact:flex-row compact:gap-x-1 compact:min-h-0 compact:py-0.5 compact:px-3 data-state-done:text-gold data-state-done:bg-transparent group-data-state-claimed/row:opacity-muted`} label={t("general.quests.reward", { reward: q().reward })} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
                         <Icon class="size-6" name={q().rewardIcon} />
                         <Text class="text-center text-xl font-bold tabular-nums">{q().reward}</Text>
                       </View>

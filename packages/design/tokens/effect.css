@@ -91,6 +91,10 @@
   --opacity-dim: 0.45;
   --opacity-muted: 0.6;
   --opacity-soft: 0.85;
+  /* `veil` what is nearly gone (a cooling item's icon, a faint rule);
+     `quiet` secondary text and marks on their plate, still read. */
+  --opacity-veil: 0.15;
+  --opacity-quiet: 0.78;
   /* The combat HUD's (§12): a cooldown's dark sweep and a use's flash. */
   --opacity-sweep: 0.66;
   --opacity-flash: 0.8;

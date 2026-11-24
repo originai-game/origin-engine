@@ -101,7 +101,7 @@ export function RpgLoot(props: RpgLootProps) {
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-focus-within/row:block group-focus-within/row:bg-hud-accent group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-dim compact:row-span-2`}>
                   <Show when={(item().rarity || "common") !== "common"}>
-                    <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
+                    <View class="absolute inset-0 nine-plate-cut bg-current opacity-faint" />
                   </Show>
                   <Icon class="relative size-39/50" name={item().icon} />
                 </View>

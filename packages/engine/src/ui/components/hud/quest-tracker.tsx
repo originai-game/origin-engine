@@ -38,7 +38,7 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
         <View class="gap-y-1 gap-x-2 p-0 m-0">
           <For each={props.steps}>
             {(s, i) => (
-            <View class={`group/step flex-row items-center opacity-66 gap-1 compact:hidden data-current:opacity-100 data-done:opacity-55 compact:data-current:flex`} data-done={s().done} data-current={!s().done && (i() === 0 || props.steps[i() - 1]['done'])}>
+            <View class={`group/step flex-row items-center opacity-muted gap-1 compact:hidden data-current:opacity-100 data-done:opacity-dim compact:data-current:flex`} data-done={s().done} data-current={!s().done && (i() === 0 || props.steps[i() - 1]['done'])}>
               <View class={`rotate-45 inset-ring-regular inset-ring-gold mx-0.5 size-2 group-data-done/step:bg-none group-data-done/step:bg-gold`} />
               <Text class={`shrink text-caption font-semibold whitespace-nowrap text-fg text-shadow-xs text-shadow-bg overflow-hidden group-data-done/step:line-through`}>
                 {s().text}

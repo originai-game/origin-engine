@@ -79,10 +79,10 @@ function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
       <View class="size-full rounded-block overflow-hidden flex-row items-center justify-center bg-surface">
         <Show when={(s().portrait ?? 0) != 0} fallback={
           <Show when={(s().icon ?? "") != ""}>
-            <Icon class="size-4 text-fg data-banned:text-fg-muted data-banned:opacity-40" name={s().icon ?? ""} data-banned={hasName()} />
+            <Icon class="size-4 text-fg data-banned:text-fg-muted data-banned:opacity-dim" name={s().icon ?? ""} data-banned={hasName()} />
           </Show>
         }>
-          <Image class="size-full data-banned:opacity-40" src={s().portrait ?? 0} data-banned={hasName()} />
+          <Image class="size-full data-banned:opacity-dim" src={s().portrait ?? 0} data-banned={hasName()} />
         </Show>
       </View>
       <Show when={hasName()}>

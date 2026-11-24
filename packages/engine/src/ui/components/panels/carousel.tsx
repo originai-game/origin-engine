@@ -36,7 +36,7 @@ export function Carousel(props: CarouselProps) {
         </Show>
         <For each={props.pages} key={(page) => page.id}>
           {(page, i) => (
-          <View class={`shrink-0 w-full min-w-0 gap-1 p-0 border border-transparent data-selected:border-hud-accent rounded-field data-selected:opacity-100 opacity-80`} data-selected={i() === props.index}>
+          <View class={`shrink-0 w-full min-w-0 gap-1 p-0 border border-transparent data-selected:border-hud-accent rounded-field data-selected:opacity-100 opacity-quiet`} data-selected={i() === props.index}>
             <Show when={page().image} fallback={
                 <View class={`bg-tile shadow-sunk w-full h-32 rounded-field`} />
             }>
@@ -67,7 +67,7 @@ export function Carousel(props: CarouselProps) {
             )}
           </For>
           <Show when={props.pages.length}>
-            <View class={`bg-hud-accent absolute top-0 w-4 h-0.5 shadow-glow-sm transition-colors duration-200`} style={{ left: `calc(50% + ${(props.index * 20 - props.pages.length * 10 + 2).toFixed(1)}px)` }} />
+            <View class={`bg-hud-accent absolute top-0 w-4 h-0.5 shadow-glow-sm transition-colors duration-fast`} style={{ left: `calc(50% + ${(props.index * 20 - props.pages.length * 10 + 2).toFixed(1)}px)` }} />
           </Show>
         </View>
         <View class={`flex-row gap-1 p-0 size-11 shrink-0 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("component.carousel.next")} disabled={props.pages.length < 2} onPress={(e) => props.onNext?.(e)}>

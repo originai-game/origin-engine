@@ -140,7 +140,7 @@ export function RpgTrade(props: RpgTradeProps) {
                 <View class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 w-full">
                   <View class={`${socket} gap-2 size-11 group-data-not-available/row:opacity-dim compact:row-span-2`}>
                     <Show when={(good().rarity || "common") !== "common"}>
-                      <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
+                      <View class="absolute inset-0 nine-plate-cut bg-current opacity-faint" />
                     </Show>
                     <Icon class="relative size-37/50" name={good().icon} />
                   </View>
@@ -183,7 +183,7 @@ export function RpgTrade(props: RpgTradeProps) {
                 <View class="flex-row items-center w-full gap-2 compact:flex-wrap">
                   <View class={`${socket} gap-2 size-15`}>
                     <Show when={(good().rarity || "common") !== "common"}>
-                      <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
+                      <View class="absolute inset-0 nine-plate-cut bg-current opacity-faint" />
                     </Show>
                     <Icon class="relative size-37/50" name={good().icon} />
                   </View>

@@ -58,11 +58,11 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
       >
         {/* The dial (svg arcs in the svelte): the well ring, then the revs as a nine-ring wipe from the lower left clockwise over the top (the arc spans 270°, so the wipe is the rev share of 0.75), then the red zone as a second nine-ring over its own span. */}
         <View class="absolute inset-0 rounded-full bg-glass" />
-        <View class="absolute inset-0 rounded-full border-8 border-rim" />
+        <View class="absolute inset-0 rounded-full border-dial border-rim" />
         <View class="absolute inset-0 nine-ring bg-fg" wipe={revFrac()} wipeStart={REV_START} />
         <Show when={props.redline > 0 && max() > 0 && props.redline < max()}>
           <View
-            class="absolute inset-0 nine-ring bg-critical opacity-35 group-data-redline/tel:opacity-100"
+            class="absolute inset-0 nine-ring bg-critical opacity-dim group-data-redline/tel:opacity-100"
             wipe={0.75 - 0.75 * at(props.redline)}
             wipeStart={REV_START + 1.5 * Math.PI * at(props.redline)}
           />

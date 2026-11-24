@@ -36,7 +36,7 @@ function Slider(props: {
     >
       <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track inset-shadow-lit ring ring-rim" onPointerDown={dragged} onPointerMove={dragged}>
         <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${percent()}%` }} />
-        <View class="absolute top-0 size-2.5 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `calc(${percent()}% - 5px)` }} />
+        <View class="absolute top-0 size-2.5 -translate-x-1/2 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `${percent()}%` }} />
       </View>
     </View>
   );

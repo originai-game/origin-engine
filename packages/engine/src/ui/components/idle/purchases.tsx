@@ -97,7 +97,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
                       <Button variant="primary" class={`min-h-11 min-w-32 max-w-full py-0.5 px-2 data-not-affordable:text-danger`} disabled={!u().affordable || u().maxed || u().locked} label={u().cost ? t("idle.purchases.buyFor", { name: u().name, cost: u().cost }) : t("idle.purchases.buyNamed", { name: u().name })} onPress={(e) => props.onBuy?.(e, u().id)} data-not-affordable={!(u().affordable)}>
                         <View class="items-center max-w-full gap-0">
                           <Show when={u().count}>
-                            <Text class={`tabular-nums text-current whitespace-nowrap text-xs font-bold opacity-80`}>
+                            <Text class={`tabular-nums text-current whitespace-nowrap text-xs font-bold opacity-quiet`}>
                               {u().count}
                             </Text>
                           </Show>

@@ -86,14 +86,14 @@ export function TooltipCard(props: TooltipCardProps) {
         data-mythic={tier() === "mythic"}
       >
         <Show when={tiered()}>
-          <View class="absolute inset-x-0 top-0 h-22.5 bg-linear-to-b from-current to-transparent opacity-16 pointer-events-none" />
+          <View class="absolute inset-x-0 top-0 h-22.5 bg-linear-to-b from-current to-transparent opacity-veil pointer-events-none" />
           <View class="absolute left-0 right-0 top-0 h-0.5 bg-current pointer-events-none" />
         </Show>
         <View class="relative flex-row items-center gap-y-2 gap-x-3 w-full">
           <Show when={props.image || props.icon}>
             <View class="flex-row items-center justify-center gap-2 size-12 overflow-hidden bg-tile">
               <Show when={tiered()}>
-                <View class="absolute inset-0 bg-current opacity-40" />
+                <View class="absolute inset-0 bg-current opacity-dim" />
               </Show>
               <Show when={props.image} fallback={
                 <Icon class="relative text-fg size-3/5 shrink" name={props.icon} />

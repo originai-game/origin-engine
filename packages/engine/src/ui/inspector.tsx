@@ -47,7 +47,7 @@ const BOX: Record<Box["kind"], string> = {
   margin: "border-warn",
   border: "border-gold",
   padding: "border-success",
-  content: "border-transparent bg-info opacity-45",
+  content: "border-transparent bg-info opacity-dim",
 };
 
 /** A toolbar button: quiet, or primary while `on`. */
@@ -185,7 +185,7 @@ export function Inspector(props: InspectorProps) {
                     selected={r().selected}
                     data-on={r().selected}
                     data-unnamed={!r().named}
-                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-sm text-sm text-fg hover:bg-surface-hover data-unnamed:text-fg-muted data-on:bg-surface-hover data-on:border-l-3 data-on:border-hud-accent"
+                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-sm text-sm text-fg hover:bg-surface-hover data-unnamed:text-fg-muted data-on:bg-surface-hover data-on:border-l-thick data-on:border-hud-accent"
                     onPress={() => click("Label", r().id)}
                   >
                     <Text class="truncate">{r().label}</Text>
@@ -263,7 +263,7 @@ export function Inspector(props: InspectorProps) {
                           >
                             <View class="relative grow h-1 rounded-capsule bg-track">
                               <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${share(f()) * 100}%` }} />
-                              <View class="absolute top-0 size-2.5 -translate-y-0.75 rounded-capsule bg-accent" style={{ left: `calc(${share(f()) * 100}% - 5px)` }} />
+                              <View class="absolute top-0 size-2.5 -translate-x-1/2 -translate-y-0.75 rounded-capsule bg-accent" style={{ left: `${share(f()) * 100}%` }} />
                             </View>
                           </View>
                         </Show>

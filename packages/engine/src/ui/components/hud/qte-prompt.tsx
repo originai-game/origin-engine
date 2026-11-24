@@ -49,7 +49,7 @@ export function QtePrompt(props: QtePromptProps) {
     >
       <Text class="text-caption font-semibold text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
       <View
-        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-50`}
+        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-dim`}
         role="button"
         label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
         {...(hold ? { hold: Math.max(props.holdMs ?? 600, 1) / 1000, onHold: (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) } : {})}
@@ -73,14 +73,14 @@ export function QtePrompt(props: QtePromptProps) {
       <Text class={`text-caption text-shadow-xs ${stateInk()}`} role="status">
         {state === "success" ? t("hud.qte-prompt.success") : state === "failure" ? t("hud.qte-prompt.failure") : state === "expired" ? t("hud.qte-prompt.expired") : state === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
       </Text>
-      <Text class="text-caption opacity-80 text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
+      <Text class="text-caption opacity-quiet text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
       <View class="relative w-full h-2 overflow-hidden bg-track shadow-plate ring ring-rim" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}>
-        <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
+        <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-control ease-out" style={{ width: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
       </View>
       <Show when={(props.mode ?? "press") === "mash"}>
-        <Text class="text-caption opacity-80 text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>
+        <Text class="text-caption opacity-quiet text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>
         <View class="relative w-full h-2 overflow-hidden bg-track shadow-plate ring ring-rim" role="progressbar" label={t("hud.qte-prompt.progress")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}>
-          <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-300 ease-out" style={{ width: `${Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}%` }} />
+          <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-control ease-out" style={{ width: `${Math.min(Math.max(props.progress ?? 0, 0), 1) * 100}%` }} />
         </View>
       </Show>
     </View>

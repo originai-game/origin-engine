@@ -102,7 +102,7 @@ export function Nameplate(props: NameplateProps) {
               </View>
             </Show>
           }>
-            <View class="shrink-0 flex-row items-center justify-center h-4 min-w-4.75 px-1 nine-chip-cut bg-raised-pressed group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-50" label={t("world.nameplate.level", { level: level() })}>
+            <View class="shrink-0 flex-row items-center justify-center h-4 min-w-4.75 px-1 nine-chip-cut bg-raised-pressed group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-dim" label={t("world.nameplate.level", { level: level() })}>
               <Text class="text-2xs leading-none font-bold tabular-nums">{level()}</Text>
             </View>
           </Show>
@@ -130,7 +130,7 @@ export function Nameplate(props: NameplateProps) {
             valueText={`${formatNumber(hp() * 100, { decimals: 0 })}%`}
           >
             <View class="absolute inset-0 overflow-hidden">
-              <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-300 delay-slow ease-out" style={{ width: `${hp() * 100}%` }} />
+              <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-control delay-slow ease-out" style={{ width: `${hp() * 100}%` }} />
               <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-hud-accent" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
                 <View class="absolute top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-42% bg-info" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />

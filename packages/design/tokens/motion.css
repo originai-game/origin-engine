@@ -54,6 +54,11 @@
   --motion-scale-pop: 1.4;
   --motion-scale-shrink: 0.9;
   --motion-scale-breathe: 0.45;
+  /* `nudge` a wide row going down, `lift` a label under the pointer,
+     `enter` what a banner or a tip grows from as it arrives. */
+  --motion-scale-nudge: 0.98;
+  --motion-scale-lift: 1.06;
+  --motion-scale-enter: 0.8;
   /* The combat HUD's (§12): an ultimate's breath at its peak, a critical
      damage number's pop and a combo count's. */
   --motion-scale-ready-pulse: 1.05;

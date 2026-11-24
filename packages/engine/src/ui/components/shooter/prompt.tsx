@@ -21,7 +21,7 @@ export interface ShooterPromptProps {
 export function ShooterPrompt(props: ShooterPromptProps) {
   return (
     <View
-      class={`group/prompt flex-row items-center justify-center gap-1 max-w-full text-fg data-disabled:opacity-55`}
+      class={`group/prompt flex-row items-center justify-center gap-1 max-w-full text-fg data-disabled:opacity-dim`}
       role="status"
       data-disabled={props.disabled}
     >

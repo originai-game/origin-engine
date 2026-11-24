@@ -103,7 +103,7 @@ export function ArenaRoster(props: ArenaRosterProps) {
                         <Icon class={`size-12 text-fg data-disabled:text-fg-muted group-data-compact/roster:size-8`} name={c().icon ?? ""} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
                       </View>
                     }>
-                      <Image class="size-full data-disabled:opacity-40" src={c().portrait ?? 0} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
+                      <Image class="size-full data-disabled:opacity-dim" src={c().portrait ?? 0} data-disabled={c().locked || (c().takenBy ?? "") != ""} />
                     </Show>
                     <Show when={(players() ?? []).some((p) => p.at == c().id)}>
                       <View class="absolute left-1 right-1 top-1 flex-row flex-wrap gap-x-0.5 gap-y-0.5">

@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "Theme tokens",
+      "summary": "Opacity `veil` (0.15) and `quiet` (0.78); scale `nudge` (0.98), `lift` (1.06) and `enter` (0.8); stroke `heavy` (4px), `marker` (5px), `beacon` (9px), `dial` (8px), `pointer` (11px) and `pointer-side` (7px). A theme's `pack.theme` sets them like the others."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Built-in components and screens",
+      "summary": "No built-in component or screen keeps a visual value of its own: every opacity, press or hover scale, duration, edge width and inline length now reads a theme token, so a theme restyles them all (`og check`'s literal list is empty). Values moved to the nearest step: dimmed and disabled parts take `dim` (0.45), secondary text `quiet` (0.78), pressed tiles `press` (0.94), quick transitions `fast` (180 ms) and 300 ms ones `control`."
+    },
+    {
+      "member": "FlowChoices, FlowScreen, Subtitles",
+      "summary": "The HUD inset and the screen's own spacing are separate pads, and FlowChoices keeps the device inset in its compact layout, where its choices sat under a phone's home bar."
+    }
+  ]
+}

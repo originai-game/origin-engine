@@ -45,7 +45,7 @@ export function ItemSlot(props: ItemSlotProps) {
           <View class="absolute inset-0 pointer-events-none nine-socket-rim bg-common group-data-rarity-uncommon/slot:bg-uncommon group-data-rarity-rare/slot:bg-rare group-data-rarity-epic/slot:bg-epic group-data-rarity-legendary/slot:bg-legendary group-data-rarity-mythic/slot:bg-mythic" />
         </Show>
         <Show when={props.icon && !(props.empty ?? false) && !(props.loading ?? false)}>
-          <Icon class={`size-16/25 group-data-cooling/slot:opacity-12`} name={props.icon ?? ""} />
+          <Icon class={`size-16/25 group-data-cooling/slot:opacity-veil`} name={props.icon ?? ""} />
         </Show>
         <Show when={((props.empty ?? false) || !props.icon) && !(props.loading ?? false)}>
           <Icon class={`text-fg-muted size-9/25`} name="plus" />

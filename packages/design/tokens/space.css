@@ -52,6 +52,16 @@
      direction arc. */
   --stroke-ability: 4px;
   --stroke-arc: 12px;
+  /* Marks: `heavy` a spinner's track and a minimap's frame, `marker` a
+     map marker's or a selection's ring, `beacon` the current node's halo. */
+  --stroke-heavy: 4px;
+  --stroke-marker: 5px;
+  --stroke-beacon: 9px;
+  /* A dial's well (a rev counter) and a map pointer's arrow, its length
+     and its half width. */
+  --stroke-dial: 8px;
+  --stroke-pointer: 11px;
+  --stroke-pointer-side: 7px;
   /* Device safe-area insets (notch, home indicator, rounded corners) as
      --safe-area-*; index.html sets viewport-fit=cover. @origingame/ui turns them
      into pt-safe / pb-safe / px-safe / top-safe / bottom-safe utilities (with

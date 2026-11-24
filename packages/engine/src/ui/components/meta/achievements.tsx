@@ -56,12 +56,12 @@ export function Achievements(props: AchievementsProps) {
             <For each={props.achievements}>
               {(a) => (
               <View class={`group/row flex-row items-center nine-plate-cut bg-layer-2 text-fg transition duration-control w-full pr-3 pl-2 py-2 gap-3 compact:items-start compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-layer-3 data-ready:bg-layer-3 data-hidden:bg-layer-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("List", "item")}`} label={a().hidden && a().state !== 'unlocked' ? t("general.achievements.hidden") : a().name} data-ready={a().claimable && !a().claimed} data-hidden={a().hidden && a().state !== 'unlocked'} data-claimed={a().claimed} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
-                <View class={`w-16 h-17.5 text-fg-muted bg-linear-to-b from-lit via-current via-40% to-entry-lo to-125% gap-2 group-data-claimed/row:opacity-66 compact:w-12 compact:h-13.25 data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn data-state-locked:text-fg-subtle data-state-locked:bg-linear-to-b data-state-locked:from-sheen data-state-locked:to-lit data-state-locked:bg-transparent`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
+                <View class={`w-16 h-17.5 text-fg-muted bg-linear-to-b from-lit via-current via-40% to-entry-lo to-125% gap-2 group-data-claimed/row:opacity-muted compact:w-12 compact:h-13.25 data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn data-state-locked:text-fg-subtle data-state-locked:bg-linear-to-b data-state-locked:from-sheen data-state-locked:to-lit data-state-locked:bg-transparent`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
                   <View class="absolute justify-center items-center inset-0 gap-2">
                     <Icon class="size-6" name={a().hidden && a().state !== 'unlocked' ? 'lock' : a().icon} />
                   </View>
                 </View>
-                <View class="grow shrink basis-0 gap-0.5 group-data-claimed/row:opacity-66">
+                <View class="grow shrink basis-0 gap-0.5 group-data-claimed/row:opacity-muted">
                   <Text class={`text-fg text-start font-bold text-lg m-0 group-data-state-locked/row:text-fg-muted`}>
                     {a().hidden && a().state !== 'unlocked' ? t("general.achievements.hidden") : a().name}
                   </Text>
@@ -94,7 +94,7 @@ export function Achievements(props: AchievementsProps) {
                   </View>
                 </View>
                 <Show when={a().rarity}>
-                  <View class={`group/rarity min-w-24 items-end text-end m-0 group-data-claimed/row:opacity-66 compact:flex-row compact:items-baseline compact:w-full compact:gap-x-1 compact:pl-15`} role="group" label={t("general.achievements.rarity", { percent: a().rarity })} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
+                  <View class={`group/rarity min-w-24 items-end text-end m-0 group-data-claimed/row:opacity-muted compact:flex-row compact:items-baseline compact:w-full compact:gap-x-1 compact:pl-15`} role="group" label={t("general.achievements.rarity", { percent: a().rarity })} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'}>
                     <Text class="whitespace-nowrap text-xl font-bold tabular-nums text-fg group-data-tier-legendary/rarity:text-gold">
                       {a().rarity}
                     </Text>

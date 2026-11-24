@@ -36,7 +36,7 @@ export function Card(props: CardProps) {
               <Text class="whitespace-normal">{props.badge}</Text>
             </View>
           </View>
-          <Text class={`opacity-66 text-start whitespace-normal m-0 data-hidden:hidden`} data-hidden={props.body === ""}>
+          <Text class={`opacity-muted text-start whitespace-normal m-0 data-hidden:hidden`} data-hidden={props.body === ""}>
             {props.body}
           </Text>
         </View>

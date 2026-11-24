@@ -74,7 +74,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         data-previewing={s().id === props.previewing}
                         data-locked={s().locked}
                         data-selected={s().id === props.selected}
-                        class={`transition duration-control self-stretch min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-62 disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-regular data-selected:inset-ring-hud-accent`}
+                        class={`transition duration-control self-stretch min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-muted disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-regular data-selected:inset-ring-hud-accent`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
                           <View class={`shrink size-15 compact:size-12 data-selected:size-20 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
@@ -122,8 +122,8 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                                 </Show>
                                 <Show when={s().locked}>
                                   <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                                    <Icon class={`size-4 opacity-80`} name="lock" />
-                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
+                                    <Icon class={`size-4 opacity-quiet`} name="lock" />
+                                    <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-quiet`}>{t("rhythm.songs.locked")}</Text>
                                   </View>
                                 </Show>
                               </View>
@@ -175,8 +175,8 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               </Show>
                               <Show when={s().locked}>
                                 <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
-                                  <Icon class={`size-4 opacity-80`} name="lock" />
-                                  <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-80`}>{t("rhythm.songs.locked")}</Text>
+                                  <Icon class={`size-4 opacity-quiet`} name="lock" />
+                                  <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-quiet`}>{t("rhythm.songs.locked")}</Text>
                                 </View>
                               </Show>
                             </View>
@@ -189,11 +189,11 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                           </Text>
                           <View class={`flex flex-row flex-wrap gap-2 py-1 items-stretch max-w-full compact:flex-nowrap compact:items-center compact:py-0`}>
                             <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
+                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet compact:hidden`}>{t("rhythm.songs.bpmLabel")}</Text>
                               <Text class={`text-display-md compact:text-base leading-flat font-bold tabular-nums whitespace-nowrap`}>{s().bpm}</Text>
                             </View>
                             <View class={`flex-col items-start gap-0 min-w-20 compact:min-w-0 compact:min-h-0 compact:flex-row compact:items-baseline compact:gap-1 py-1 px-2 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
-                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78 compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
+                              <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet compact:hidden`}>{t("rhythm.songs.lengthLabel")}</Text>
                               <Text class={`text-display-md compact:text-base leading-flat font-bold tabular-nums whitespace-nowrap`}>{s().length}</Text>
                             </View>
                             <View
@@ -204,7 +204,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                               onPress={(e) => props.onPreview?.(e, s().id)}
                               onAction={{ details: (e) => props.onPreview?.(e, s().id) }}
                               data-pressed={s().id === props.previewing}
-                              class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-layer-3 nine-plate-cut hover:bg-layer-4 data-pressed:bg-hud-accent text-fg data-pressed:nine-plate-cut data-pressed:text-hud-accent-fg disabled:opacity-50 disabled:bg-layer-3 ${packClass("Button", "plate")}`}
+                              class={`min-h-11 compact:min-h-8.75 min-w-30 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 bg-layer-3 nine-plate-cut hover:bg-layer-4 data-pressed:bg-hud-accent text-fg data-pressed:nine-plate-cut data-pressed:text-hud-accent-fg disabled:opacity-dim disabled:bg-layer-3 ${packClass("Button", "plate")}`}
                             >
                               <Text class={`shrink-0 pointer-coarse:hidden text-title leading-none`} glyph="details" />
                               <Show when={s().id === props.previewing}>

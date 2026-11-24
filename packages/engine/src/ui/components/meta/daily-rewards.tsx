@@ -58,7 +58,7 @@ export function DailyRewards(props: DailyRewardsProps) {
                         {d().label}
                       </Text>
                       <View class="grow shrink basis-0 min-h-16 w-full gap-2">
-                        <View class="absolute justify-center items-center w-full inset-0 gap-2 group-data-state-claimed/cell:opacity-35 group-data-state-missed/cell:opacity-35">
+                        <View class="absolute justify-center items-center w-full inset-0 gap-2 group-data-state-claimed/cell:opacity-dim group-data-state-missed/cell:opacity-dim">
                           <Icon class="text-fg size-12 compact:size-8 group-data-milestone/cell:text-epic-hi group-data-state-today/cell:text-gold" name={d().icon} />
                         </View>
                         <Show when={d().state === 'claimed'}>

@@ -31,8 +31,8 @@ export function FlowPicture(props: FlowPictureProps) {
         <Image class="absolute inset-0 size-full object-cover" src={props.picture} style={{ opacity: props.previous ? (props.mix ?? 1) : 1 }} />
       </Show>
       <Show when={props.onSkip}>
-        <View class="absolute top-0 right-0 pt-[calc(env(hud-inset-top)+16px)] pr-[calc(env(hud-inset-right)+16px)] pointer-events-none">
-          <View class={`min-h-11 px-4 flex-row items-center justify-center pointer-events-auto ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onSkip?.(e)}>
+        <View class="absolute top-0 right-0 pt-[env(hud-inset-top)] pr-[env(hud-inset-right)] pointer-events-none">
+          <View class={`mt-4 mr-4 min-h-11 px-4 flex-row items-center justify-center pointer-events-auto ${packClass("Button", "plate")}`} role="button" onPress={(e) => props.onSkip?.(e)}>
             <Text class="text-sm font-semibold uppercase tracking-wide">{t("screen.flow-screen.skip")}</Text>
           </View>
         </View>

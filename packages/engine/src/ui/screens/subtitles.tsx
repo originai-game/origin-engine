@@ -19,8 +19,8 @@ export function Subtitles(props: SubtitlesProps) {
   ]);
   return (
     <Show when={all().length > 0}>
-      <View class={`absolute inset-0 justify-end items-center pt-12 pb-[calc(env(hud-inset-bottom)+48px)] pl-[calc(env(hud-inset-left)+24px)] pr-[calc(env(hud-inset-right)+24px)] ${packClass("Screen", "frame")}`} role="log" live="polite">
-        <View class={`items-center gap-2 max-w-240 py-6 px-12 bg-glass compact:px-4 ${packClass("Plate", "frame")}`}>
+      <View class={`absolute inset-0 justify-end items-center pt-12 pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)] ${packClass("Screen", "frame")}`} role="log" live="polite">
+        <View class={`mb-12 mx-6 items-center gap-2 max-w-240 py-6 px-12 bg-glass compact:px-4 ${packClass("Plate", "frame")}`}>
           <For each={all()} key={(l) => l.id}>
             {(l, i) => (
               <View class="group/line items-center gap-0.5" data-past={i() < all().length - 1}>

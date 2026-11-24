@@ -76,7 +76,7 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
     if (m().kind === "loot") return "bg-epic";
     return "";
   };
-  const ring = () => (m().kind === "ping" ? "ring-4 ring-fill inset-ring-regular inset-ring-warn" : "ring-regular ring-raised-lo");
+  const ring = () => (m().kind === "ping" ? "ring-heavy ring-fill inset-ring-regular inset-ring-warn" : "ring-regular ring-raised-lo");
   return (
     <View
       class={`absolute ${shape()} ${fill()} ${ring()}`}
@@ -84,7 +84,7 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
       style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top() }}
     >
       <Show when={m().kind === "ping"}>
-        <View class="absolute inset-0 rounded-full ring-4 ring-fill inset-ring-regular inset-ring-warn animate-ping" />
+        <View class="absolute inset-0 rounded-full ring-heavy ring-fill inset-ring-regular inset-ring-warn animate-ping" />
       </Show>
     </View>
   );

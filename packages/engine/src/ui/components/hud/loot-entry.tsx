@@ -32,7 +32,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
   const rarity = () => props.rarity ?? "common";
   return (
     <View
-      class={`flex-row items-center w-fit min-w-0 max-w-full pr-3 bg-glass data-fading:opacity-55 ${packClass("Plate", "frame")}`}
+      class={`flex-row items-center w-fit min-w-0 max-w-full pr-3 bg-glass data-fading:opacity-dim ${packClass("Plate", "frame")}`}
       role="group"
       label={(props.quantity ?? 0) > 0 ? t("hud.loot-entry.row", { name: props.name, quantity: props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) }) }) : props.name}
       data-rarity={rarity()}

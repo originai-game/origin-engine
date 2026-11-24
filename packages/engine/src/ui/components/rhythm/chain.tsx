@@ -23,7 +23,7 @@ export function RhythmChain(props: RhythmChainProps) {
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
           <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop text-fg ${packClass("Plate", "frame")}`}>
-            <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-78`}>
+            <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet`}>
               {t("rhythm.chain.label")}
             </Text>
             <Text class={`text-title leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent-ink`}>
@@ -34,8 +34,8 @@ export function RhythmChain(props: RhythmChainProps) {
         </Show>
         <Show when={(props.steps ?? 8) > 0}>
           <View
-            class={`relative shrink -skew-x-22`}
-            style={{ width: `${(props.steps ?? 8) * 15 - 3}px`, height: "5px" }}
+            class={`relative shrink h-1.25 -skew-x-22`}
+            style={{ width: `${(props.steps ?? 8) * 15 - 3}px` }}
             role="meter"
             label={t("rhythm.chain.steps")}
             valueMin={0}

@@ -85,7 +85,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </View>
             </View>
             <View role="group" label={t("rhythm.results.score")} class={`grow min-w-0 max-w-full flex-col items-start bg-plate-hi nine-plate-cut py-3 px-4 text-fg ${packClass("Plate", "frame")}`}>
-              <Text class={`text-xs font-semibold tracking-label uppercase opacity-78`}>{t("rhythm.results.score")}</Text>
+              <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.score")}</Text>
               <Text class={`text-8xl compact:text-4xl leading-none font-bold tabular-nums whitespace-nowrap pb-1`}>{formatNumber(props.score)}</Text>
               <View class={`flex flex-row flex-wrap items-center gap-1`}>
                 <Show when={props.newBest}>
@@ -97,7 +97,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                   </Text>
                 </Show>
                 <Show when={props.previous > 0}>
-                  <Text class={`whitespace-nowrap text-xs font-semibold tracking-normal normal-case opacity-78`}>
+                  <Text class={`whitespace-nowrap text-xs font-semibold tracking-normal normal-case opacity-quiet`}>
                     {t("rhythm.results.previous", { score: props.previous })}
                   </Text>
                 </Show>
@@ -107,19 +107,19 @@ export function RhythmResults(props: RhythmResultsProps) {
           <View class={`flex-row items-start gap-4 w-full compact:flex-col`}>
             <View class={`flex flex-row flex-wrap gap-2 min-w-0 grow basis-0`}>
               <View role="group" label={t("rhythm.results.maxCombo")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
-                <Text class={`text-xs font-semibold tracking-label uppercase opacity-78`}>{t("rhythm.results.maxCombo")}</Text>
+                <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.maxCombo")}</Text>
                 <Text class={`shrink whitespace-nowrap text-display-md compact:text-title font-bold tabular-nums`}>{formatNumber(props.maxCombo)}</Text>
               </View>
               <Show when={props.accuracy !== ""}>
                 <View role="group" label={t("rhythm.results.accuracy")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
-                  <Text class={`text-xs font-semibold tracking-label uppercase opacity-78`}>{t("rhythm.results.accuracy")}</Text>
+                  <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.accuracy")}</Text>
                   <Text class={`shrink whitespace-nowrap text-display-md compact:text-title font-bold tabular-nums`}>{props.accuracy}</Text>
                 </View>
               </Show>
             </View>
             <Show when={(props.counts ?? []).length} fallback={
               <View role="status" class={`min-w-0 grow basis-0 p-3`}>
-                <Text class={`text-center text-xs font-semibold tracking-label uppercase opacity-78`}>{t("rhythm.results.empty")}</Text>
+                <Text class={`text-center text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.empty")}</Text>
               </View>
             }>
               <View role="list" label={t("rhythm.results.counts")} class={`flex-col gap-0.5 min-w-0 grow basis-0 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
@@ -128,7 +128,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                     <View
                       role="listitem"
                       label={c().label}
-                      class={`flex-row items-baseline gap-3 py-0.5 w-full data-judgement-perfect:text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:opacity-80`}
+                      class={`flex-row items-baseline gap-3 py-0.5 w-full data-judgement-perfect:text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:opacity-quiet`}
                       data-judgement-perfect={c().judgement === "perfect"}
                       data-judgement-great={c().judgement === "great"}
                       data-judgement-good={c().judgement === "good"}

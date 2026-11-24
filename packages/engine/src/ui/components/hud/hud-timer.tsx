@@ -36,7 +36,7 @@ export function HudTimer(props: HudTimerProps) {
       data-paused={props.paused}
     >
       <Show when={props.label}>
-        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-80 text-shadow-tag">{props.label}</Text>
+        <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet text-shadow-tag">{props.label}</Text>
       </Show>
       <View class="flex-row items-center gap-1">
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>

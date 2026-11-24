@@ -109,7 +109,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                         <View class={`flex-col min-w-0`}>
                           <Text class={`font-bold`}>{r().label}</Text>
                           <Show when={r().detail}>
-                            <Text class={`text-caption opacity-80 group-data-unique/reward:text-gold`}>{r().detail}</Text>
+                            <Text class={`text-caption opacity-quiet group-data-unique/reward:text-gold`}>{r().detail}</Text>
                           </Show>
                         </View>
                       </View>

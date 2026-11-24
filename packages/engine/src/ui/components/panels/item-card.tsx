@@ -81,7 +81,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
       <View class="shrink w-full gap-1 overflow-auto">
         <View class="w-full gap-0 compact:flex-row compact:items-center compact:gap-2">
           <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-rim-soft gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
-            <View class="absolute opacity-40 inset-0 bg-linear-to-b from-current to-transparent to-70% compact:hidden" />
+            <View class="absolute opacity-dim inset-0 bg-linear-to-b from-current to-transparent to-70% compact:hidden" />
             <Show when={props.art} fallback={
               <Icon class="relative size-[max(4rem,min(8.286rem,16vh))] compact:size-4/5" name={props.icon} />
             }>

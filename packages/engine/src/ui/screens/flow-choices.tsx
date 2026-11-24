@@ -67,7 +67,8 @@ export function FlowChoices(props: FlowChoicesProps) {
             )}
           </For>
         </View>
-        <View class="absolute inset-x-0 bottom-0 items-center bg-linear-to-t from-shade-deep to-transparent pt-12 pb-[calc(env(hud-inset-bottom)+24px)] pl-[calc(env(hud-inset-left)+48px)] pr-[calc(env(hud-inset-right)+48px)] compact:px-4 compact:pb-[calc(env(hud-inset-bottom)+16px)]">
+        <View class="absolute inset-x-0 bottom-0 items-center bg-linear-to-t from-shade-deep to-transparent pt-12 pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)]">
+          <View class="w-full items-center pb-6 px-12 compact:px-4 compact:pb-4">
           <View class="w-full max-w-240 gap-2" role="group" label={t("screen.flow-choices.label")}>
             <Progress value={now().left * 100} class="h-1 rounded-none" />
             <View class="flex-row flex-wrap gap-2 compact:flex-col compact:flex-nowrap">
@@ -89,6 +90,7 @@ export function FlowChoices(props: FlowChoicesProps) {
                 )}
               </For>
             </View>
+          </View>
           </View>
         </View>
       </View>

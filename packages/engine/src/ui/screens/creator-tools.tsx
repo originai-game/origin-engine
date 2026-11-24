@@ -65,7 +65,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
         <Button class={`h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 shrink`} onPress={(e) => props.onRedo?.(e)}>
           <Text>{t("screen.creator-tools.redo")}</Text>
         </Button>
-        <Button class={`text-accent h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-run-playing:opacity-80 shrink`} onPress={(e) => props.onPlay?.(e)} data-run-stopped={props.playing !== true} data-run-playing={props.playing === true}>
+        <Button class={`text-accent h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-run-playing:opacity-quiet shrink`} onPress={(e) => props.onPlay?.(e)} data-run-stopped={props.playing !== true} data-run-playing={props.playing === true}>
           <Text>{t("screen.creator-tools.play")}</Text>
         </Button>
         <Button variant="primary" class={`h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 shrink`} disabled={!props.dirty} onPress={(e) => props.onSave?.(e)}>

@@ -37,7 +37,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
           <Text class={`tabular-nums whitespace-nowrap text-display-lg font-bold data-low:text-warn compact:text-4xl`} data-low={props.low === true}>
             {props.counter === 'time' ? formatDuration(props.seconds) : formatNumber(props.moves)}
           </Text>
-          <Text class={`tracking-label uppercase opacity-78 whitespace-nowrap text-xs font-semibold text-shadow-tag`}>
+          <Text class={`tracking-label uppercase opacity-quiet whitespace-nowrap text-xs font-semibold text-shadow-tag`}>
             {props.counter === 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}
           </Text>
           <Show when={props.low}>
