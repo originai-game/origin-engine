@@ -181,16 +181,29 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
       direct += frame.light_color.rgb * n_dot_l;
     }
   }
-  // One local light at random, as many times as there are lights (its
-  // windowed inverse square and a spot's cone, frame.wgsl's).
+  // One local light at random, scaled by light count: handles point, spot,
+  // and rect area lights accurately.
   let lights = gp.misc.w;
   if (lights > 0u) {
     let light = light_at(pcg(seed) % lights);
     let to_light = light.position_range.xyz - q;
     let d2 = max(dot(to_light, to_light), 1e-4);
-    var atten = local_falloff(light, d2);
     let lv = to_light * inverseSqrt(d2);
-    if (light.color_kind.w > 0.5) { atten *= spot_cone(light, lv); }
+    var atten = local_falloff(light, d2);
+    if (light.color_kind.w < -0.5) {
+      // Rect area light: direction_slot.xyz = hw, cone.xyz = hh; emits along -(hw x hh).
+      let hw = light.direction_slot.xyz;
+      let hh = light.cone.xyz;
+      let area_n = cross(hw, hh);
+      let area_len = length(area_n);
+      let emit_dir = -area_n / max(area_len, 1e-6);
+      let facing = dot(-lv, emit_dir);
+      let two_sided = light.color_kind.w < -1.5;
+      let cos_light = select(max(facing, 0.0), abs(facing), two_sided);
+      atten *= 4.0 * area_len * cos_light;
+    } else if (light.color_kind.w > 0.5) {
+      atten *= spot_cone(light, lv);
+    }
     let ndl = dot(n, lv);
     if (atten > 0.0 && ndl > 0.0) {
       if (gi_trace(q, lv, sqrt(d2), true).record == 0u) {
@@ -200,10 +213,10 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
   }
   // The bounces before: the probes' light where the hit is, slightly less
   // than all of it so the feedback converges (Wicked's 0.95); past the
-  // probes, the environment's.
+  // probes, the environment's plus hemisphere fill.
   let bounce = gi_gather(p, n, -d, true);
-  let env = textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x;
-  let indirect = mix(env, gi_eval(bounce, n) * 0.95, bounce.w) + hemi_irradiance(n);
+  let env = textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x + hemi_irradiance(n);
+  let indirect = mix(env, gi_eval(bounce, n) * 0.95, bounce.w);
   let reflected = albedo * (direct / PI + indirect) * gp.trace.z;
   return reflected + emissive;
 }

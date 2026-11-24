@@ -586,9 +586,9 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     let brdf = ssr_d(max(dot(n, h), 0.0), a2) * v_ggx(n_dot_v, n_dot_l, alpha) * n_dot_l;
     let w = brdf / hit.w * bilateral;
     let r = textureLoad(ray_radiance, rt, 0);
-    // Weighted by 1 / (1 + luma) (Karis 2014) so a lone bright hit cannot
-    // dominate the lobe as a firefly.
-    let tw = 1.0 / (1.0 + luma(r.rgb));
+    // Gentle high-tail luma weighting suppresses extreme fireflies without
+    // systematically darkening normal HDR specular reflections.
+    let tw = 1.0 / (1.0 + 0.125 * luma(r.rgb));
     sum_w += w;
     sum_c += w * r.a;
     sum_tc += w * r.a * tw;

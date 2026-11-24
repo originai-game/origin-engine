@@ -52,9 +52,10 @@ override OG_STATIC_FAR: bool = true;
 // The diffuse light arriving at a surface along `ambient_n`, with the
 // probe GI's gather `gi` there.
 fn surface_irradiance(at: ShadeAt, ambient_n: vec3<f32>, gi: GiSample) -> vec3<f32> {
-  // The baked lightmap or the light volumes where there are, at the
-  // environment's intensity; the hemisphere light adds at its own.
-  var irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
+  // The baked lightmap or the light volumes where there are; sky env is
+  // already scaled by frame.params.x inside ambient_light_from, and the
+  // hemisphere light adds at its own intensity.
+  var irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) + hemi_irradiance(at.n);
   // The static lights' far field, here alone, so the lit shaders carry
   // one copy of its gather.
   if (OG_STATIC_FAR) { irradiance += static_far_irradiance(at.p, at.n); }
@@ -62,11 +63,11 @@ fn surface_irradiance(at: ShadeAt, ambient_n: vec3<f32>, gi: GiSample) -> vec3<f
   return irradiance;
 }
 
-// `prefiltered` (the environment along `r`, or a reflection probe's
-// capture) as a surface of `roughness` at `at` receives it: relit by the
-// light volumes and occluded by the probe GI's gather `gi` where there
-// are. After surface_irradiance at the same point (the light volumes'
-// weight is taken there).
+// `prefiltered` (already scaled by frame.params.x) as a surface of
+// `roughness` at `at` receives it: relit by the light volumes and
+// occluded by the probe GI's gather `gi` where there are. After
+// surface_irradiance at the same point (the light volumes' weight is
+// taken there).
 fn surface_reflected(prefiltered: vec3<f32>, at: ShadeAt, r: vec3<f32>, roughness: f32, gi: GiSample) -> vec3<f32> {
   return gi_reflected_from(volume_reflected(prefiltered, at.p, r, roughness), r, at.p, gi);
 }
@@ -91,7 +92,7 @@ fn surface_gather(at: ShadeAt, around: vec3<f32>, facet: vec3<f32>, roughness: f
   // rough surface reflects around its normal, not the mirror direction;
   // a back-facing leaf card otherwise mirrors the bright sky behind it).
   let r = normalize(mix(reflect(-at.v, around), around, roughness * roughness));
-  o.prefiltered = surface_reflected(reflected_light(r, at.p, roughness * frame.params.y), at, r, roughness, gi) * frame.params.x;
+  o.prefiltered = surface_reflected(reflected_light(r, at.p, roughness * frame.params.y) * frame.params.x, at, r, roughness, gi);
   // The screen-space reflections over it, for the surface they were traced for.
   if (at.opaque) { o.prefiltered = ssr_reflected(o.prefiltered, at.p, at.frag); }
   o.lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(clamp(dot(facet, at.v), 1e-4, 1.0), roughness), 0.0).rg;
@@ -112,6 +113,22 @@ struct Ambient {
   occlusion: ScreenOcclusion,
 };
 
+// Lagarde & de Rousiers 2014 specular occlusion from diffuse AO, N.V and roughness.
+fn specular_occlusion(n_dot_v: f32, ao: f32, roughness: f32) -> f32 {
+  return clamp(pow(n_dot_v + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
+}
+
+// Multi-scattering GGX IBL directional reflectance (Fdez-Aguera 2019 / Turquin 2019)
+// using the existing single-scattering split-sum BRDF LUT (scale, bias).
+fn multi_scatter_ibl(f0: vec3<f32>, lut: vec2<f32>) -> vec3<f32> {
+  let ess = lut.x + lut.y;
+  let ems = max(1.0 - ess, 0.0);
+  let f_avg = f0 + (vec3<f32>(1.0) - f0) / 21.0;
+  let f_single = f0 * lut.x + lut.y;
+  let f_ms = f_single * f_avg / max(vec3<f32>(1.0) - f_avg * ems, vec3<f32>(1e-4));
+  return f_single + f_ms * ems;
+}
+
 // `facet`: the face that reflects, its normal for every surface but a
 // leaf's, whose light around it arrives along its canopy's normal
 // (foliage.wgsl `foliage_normal`) while its own face mirrors the
@@ -119,11 +136,15 @@ struct Ambient {
 fn surface_ambient(s: Surface, at: ShadeAt, facet: vec3<f32>) -> Ambient {
   let g = surface_gather(at, facet, facet, s.roughness);
   var o: Ambient;
-  o.kd = (vec3<f32>(1.0) - f_schlick_roughness(clamp(dot(facet, at.v), 1e-4, 1.0), s.f0, s.roughness)) * (1.0 - s.metallic);
+  let k_spec = multi_scatter_ibl(s.f0, g.lut);
+  o.kd = max(vec3<f32>(1.0) - k_spec, vec3<f32>(0.0)) * (1.0 - s.metallic);
   o.diffuse = g.irradiance * s.albedo;
-  // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term
-  // already holds the Fresnel rise at grazing angles.
-  o.specular = g.prefiltered * (s.f0 * g.lut.x + g.lut.y);
+  o.specular = g.prefiltered * k_spec;
+  // Apply Lagarde specular occlusion from screen AO while preserving
+  // linear AO for diffuse irradiance in surface_sum.
+  let n_dot_v = clamp(dot(facet, at.v), 1e-4, 1.0);
+  let spec_ao = specular_occlusion(n_dot_v, g.occlusion.ambient, s.roughness);
+  o.specular *= spec_ao / max(g.occlusion.ambient, 1e-4);
   o.occlusion = g.occlusion;
   return o;
 }
@@ -160,8 +181,7 @@ fn crown_ambient(a: Ambient, s: Surface, n_dot_v: f32, crown: f32) -> Ambient {
   let seen = 1.0 - clamp(crown, 0.0, 1.0);
   var o = a;
   o.diffuse *= crown_passed(crown, crown_forward(s));
-  let specular = clamp(pow(n_dot_v + seen, exp2(-16.0 * s.roughness - 1.0)) - 1.0 + seen, 0.0, 1.0);
-  o.specular *= specular;
+  o.specular *= specular_occlusion(n_dot_v, seen, s.roughness);
   return o;
 }
 
@@ -223,7 +243,7 @@ fn surface_sum(s: Surface, direct: vec3<f32>, a: Ambient, emissive: vec3<f32>, i
   o.direct = direct * a.occlusion.all;
   o.diffuse = a.kd * (a.diffuse * scale + s.albedo * a.occlusion.bounce * kept);
   o.specular = a.specular * scale;
-  o.emissive = emissive * a.occlusion.all;
+  o.emissive = emissive;
   return o;
 }
 

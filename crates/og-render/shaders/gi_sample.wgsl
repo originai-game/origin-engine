@@ -98,7 +98,7 @@ fn gi_cascade(c: u32, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, visibility: bool
     var weight = 1.0;
     // The smooth backface test: wrap shading of the direction to the
     // probe, so the probes behind a small detail still count a little.
-    let to_probe = normalize(probe - p);
+    let to_probe = safe_normalize(probe - p, n);
     let wrap = (dot(to_probe, n) + 1.0) * 0.5;
     weight *= wrap * wrap + 0.2;
     if (visibility) {

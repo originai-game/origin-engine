@@ -96,8 +96,8 @@ fn surface_decals(s_in: Surface, n: vec3<f32>, facing: vec3<f32>, frag: vec2<f32
 // layer covers earlier bends and receiver detail; mix layers keep the
 // original additive bend, including its exact zero-coverage arithmetic.
 fn decal_shading_normal(n: vec3<f32>, bend: vec4<f32>, coverage: f32) -> vec3<f32> {
-  if (coverage > 0.0) { return normalize(n * (1.0 - coverage) + bend.xyz); }
-  if (bend.w > 0.0) { return normalize(n + bend.xyz); }
+  if (coverage > 0.0) { return safe_normalize(n * (1.0 - coverage) + bend.xyz, n); }
+  if (bend.w > 0.0) { return safe_normalize(n + bend.xyz, n); }
   return n;
 }
 

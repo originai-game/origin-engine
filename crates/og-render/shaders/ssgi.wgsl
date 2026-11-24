@@ -384,11 +384,11 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
       light += g.w * (max(all - hit, vec3<f32>(0.0)) - ao * all);
     }
   }
-  return vec4<f32>(ao, light);
+  return vec4<f32>(ao, max(light, vec3<f32>(0.0)));
 }
 
-// The 4x4 blur of fs_ao_blur over the GI's four channels, weighed by depth
-// and by how far the normals turn (the bounce changes across a crease).
+// Symmetric 3x3 bilateral blur over the GI's four channels, weighted by depth
+// and normal alignment (eliminates the half-pixel shift of an asymmetric 4x4).
 @fragment
 fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -401,8 +401,8 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   let scale = max(d0 * 0.04, 1e-3);
   var sum = vec4<f32>(0.0);
   var weight = 0.0;
-  for (var y = -2; y <= 1; y++) {
-    for (var x = -2; x <= 1; x++) {
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
       let facing = max(dot(gbuffer_normal(q * k), n0), 0.0);
       let w = exp(-abs(depth_at(q * k) - d0) / scale) * facing * facing * facing * facing + 1e-6;
@@ -413,15 +413,16 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   // GTAO's visibility (r) overshoots 1 before it is averaged (fxpost.wgsl
   // gtao_bent); after, it is clamped.
   let mean = sum / weight;
-  return vec4<f32>(min(mean.r, 1.0), mean.gba);
+  return vec4<f32>(min(mean.r, 1.0), max(mean.gba, vec3<f32>(0.0)));
 }
 
-// fs_ao_upsample over the GI's four channels.
+// Normal- and depth-aware bilateral upsample over the GI's four channels.
 @fragment
 fn fs_gi_upsample(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   let d0 = depth_at(px);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 0.0); }
+  let n0 = gbuffer_normal(px);
   let size = vec2<i32>(textureDimensions(tex_b));
   let base = px / 2;
   let f = vec2<f32>(px - base * 2) * 0.5;
@@ -435,8 +436,9 @@ fn fs_gi_upsample(in: VsOut) -> @location(0) vec4<f32> {
       let q = min(base + vec2<i32>(x, y), size - 1);
       let a = textureLoad(tex_b, q, 0);
       let dz = abs(depth_at(q * 2) - d0);
+      let facing = max(dot(gbuffer_normal(q * 2), n0), 0.0);
       let bilinear = select(1.0 - f.x, f.x, x == 1) * select(1.0 - f.y, f.y, y == 1);
-      let w = bilinear * exp(-dz / scale);
+      let w = bilinear * exp(-dz / scale) * (facing * facing + 1e-4);
       sum += a * w;
       weight += w;
       if (dz < nearest_dz) {

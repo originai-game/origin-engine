@@ -77,6 +77,8 @@ struct Lobes {
   sheen_roughness: f32,
   sheen_albedo: f32,          // E(n.v) of the sheen (sheen_albedo)
   iridescence: f32,
+  iridescence_ior: f32,
+  iridescence_thickness: f32,
   iridescence_fresnel: vec3<f32>,
   anisotropy: f32,            // 0: isotropic
   aniso_t: vec3<f32>,         // the stretch's direction on the surface
@@ -158,9 +160,9 @@ fn v_ggx_aniso(alpha_t: f32, alpha_b: f32, tv: f32, bv: f32, tl: f32, bl: f32, n
   return 0.5 / max(lambda_v + lambda_l, 1e-6);
 }
 
-// Thin-film iridescence (Belcour and Barla 2017, as three.js): the
-// Fresnel of a film of index `film_ior` and `thickness` nm over a base of
-// reflectance `base_f0`, seen at `cos1`.
+// Thin-film iridescence (Belcour and Barla 2017, glTF KHR_materials_iridescence):
+// Fresnel of a film of index `film_ior` and `thickness` nm under medium `outside_ior`
+// over a base of reflectance `base_f0`, seen at `cos1`.
 fn ior_to_f0(t: f32, i: f32) -> f32 {
   let r = (t - i) / (t + i);
   return r * r;
@@ -182,16 +184,17 @@ fn eval_sensitivity(opd: f32, shift: vec3<f32>) -> vec3<f32> {
   return to_rgb * xyz;
 }
 
-fn eval_iridescence(film_ior_in: f32, cos1: f32, thickness: f32, base_f0: vec3<f32>) -> vec3<f32> {
-  let film_ior = mix(1.0, film_ior_in, smoothstep(0.0, 0.03, thickness));
-  let sin2_sq = (1.0 / film_ior) * (1.0 / film_ior) * (1.0 - cos1 * cos1);
+fn eval_iridescence(outside_ior: f32, film_ior_in: f32, cos1: f32, thickness: f32, base_f0: vec3<f32>) -> vec3<f32> {
+  let film_ior = mix(outside_ior, film_ior_in, smoothstep(0.0, 0.03, thickness));
+  let eta = outside_ior / max(film_ior, 1e-4);
+  let sin2_sq = eta * eta * (1.0 - cos1 * cos1);
   let cos2_sq = 1.0 - sin2_sq;
   if (cos2_sq < 0.0) { return vec3<f32>(1.0); }
   let cos2 = sqrt(cos2_sq);
-  let r0 = ior_to_f0(film_ior, 1.0);
+  let r0 = ior_to_f0(film_ior, outside_ior);
   let r12 = r0 + (1.0 - r0) * pow(1.0 - cos1, 5.0);
   let t121 = 1.0 - r12;
-  let phi12 = select(0.0, PI, film_ior < 1.0);
+  let phi12 = select(0.0, PI, film_ior < outside_ior);
   let phi21 = PI - phi12;
   let sqrt_f0 = sqrt(clamp(base_f0, vec3<f32>(0.0), vec3<f32>(0.9999)));
   let base_ior = (vec3<f32>(1.0) + sqrt_f0) / (vec3<f32>(1.0) - sqrt_f0);
@@ -237,7 +240,11 @@ fn physical_source_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec
   let n_dot_h = max(dot(n, h), 0.0);
   let h_dot_v = max(dot(h, v), 0.0);
   var f = f_schlick(h_dot_v, s.f0);
-  if (k.iridescence > 0.0) { f = mix(f, k.iridescence_fresnel, k.iridescence); }
+  if (k.iridescence > 0.0) {
+    let outside_ior = mix(1.0, 1.5, s.coat);
+    let irid = eval_iridescence(outside_ior, k.iridescence_ior, h_dot_v, k.iridescence_thickness, s.f0);
+    f = mix(f, irid, k.iridescence);
+  }
   var spec: vec3<f32>;
   if (k.anisotropy > 0.0) {
     let ab = s.roughness * s.roughness;
@@ -658,6 +665,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
+  s.roughness = specular_aa(n, s.roughness, dpdxFine(n), dpdyFine(n));
   s.coat = material.coat.x * coat_maps.r;
   s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
   s.coat_normal = n_vertex * face;
@@ -674,11 +682,13 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   k.sheen_roughness = clamp(physical.sheen.w * sheen_maps.a, 0.07, 1.0);
   k.sheen_albedo = sheen_albedo(n_dot_v, k.sheen_roughness);
   k.iridescence = physical.iridescence.x * film_maps.a;
+  k.iridescence_ior = physical.iridescence.y;
+  k.iridescence_thickness = mix(physical.iridescence.z, physical.iridescence.w, aniso_maps.a);
   k.iridescence_fresnel = vec3<f32>(0.0);
   var f0_ibl = s.f0;
   if (physical.iridescence.x > 0.0) {
-    let thickness = mix(physical.iridescence.z, physical.iridescence.w, aniso_maps.a);
-    k.iridescence_fresnel = eval_iridescence(physical.iridescence.y, n_dot_v, thickness, s.f0);
+    let outside_ior = mix(1.0, 1.5, s.coat);
+    k.iridescence_fresnel = eval_iridescence(outside_ior, k.iridescence_ior, n_dot_v, k.iridescence_thickness, s.f0);
     f0_ibl = mix(s.f0, schlick_to_f0(k.iridescence_fresnel, n_dot_v), k.iridescence);
   }
   k.anisotropy = 0.0;
@@ -753,14 +763,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     specular += o.specular;
   }
 
-  // Image-based light (split sum): an anisotropic surface reflects along
-  // its bent normal (as three.js).
-  let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The light around it (surface_shade.wgsl): every lit surface's one
-  // gather, around the bent normal. Screen-space reflections only in the
-  // opaque main pass (a blended surface lies over the one they were
-  // traced for).
+  // Image-based light (multi-scattering split sum): an anisotropic surface
+  // reflects along its bent normal (as three.js).
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
@@ -771,32 +775,36 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let around = surface_gather(at, bent, n, s.roughness);
   let irradiance = around.irradiance;
   let prefiltered = around.prefiltered;
-  let env_brdf = f0_ibl * around.lut.x + around.lut.y;  // Karis split sum
+  let env_brdf = multi_scatter_ibl(f0_ibl, around.lut);
+  let kd_ibl = max(vec3<f32>(1.0) - env_brdf, vec3<f32>(0.0)) * (1.0 - s.metallic);
   // What the material's AO map and the style's shadow darkness keep of
-  // the light around it, then the screen's occlusion; `ao_direct` also
-  // scales the emitted light.
+  // the light around it, then the screen's occlusion.
   var ao = 1.0;
   if (material.flags.y >= 0.0) {
     ao = mix(1.0, maps.b, material.flags.y);
   }
   let kept = keep * clamp(surface_ao(hook, params, ao), 0.0, 1.0);
   let ibl_scale = material.flags.z * kept * around.occlusion.ambient;
+  let spec_ao = specular_occlusion(n_dot_v, around.occlusion.ambient, s.roughness);
+  let spec_scale = material.flags.z * kept * spec_ao;
   let bounce = around.occlusion.bounce * kept;
   let ao_direct = around.occlusion.all;
   diffuse *= ao_direct;
   specular *= ao_direct;
-  // The coat's reflection of the environment, and what it takes from
-  // everything under it (the lights' share is taken per light).
+  // The coat's reflection of the environment, routed through probe GI and SSR
+  // like the base layer.
   var coat_keep = 1.0;
   var coat_ibl = vec3<f32>(0.0);
   if (material.coat.x > 0.0) {
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
-    let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
+    let coat_gi = gi_sample_at(in.world_pos, s.coat_normal);
+    var coat_env = surface_reflected(reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y) * frame.params.x, at, rc, s.coat_roughness, coat_gi);
+    if (at.opaque) { coat_env = ssr_reflected(coat_env, in.world_pos, in.clip.xy); }
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     coat_keep = 1.0 - fc;
-    coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
+    coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
   }
   var ibl_diffuse = kd_ibl * (irradiance * ibl_scale + bounce) * s.albedo;
   var ibl_specular = prefiltered * env_brdf;
@@ -812,7 +820,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     ibl_specular = ibl_specular * sheen_keep + irradiance * k.sheen_color * k.sheen_albedo;
   }
   diffuse += ibl_diffuse * coat_keep;
-  specular += (ibl_specular * coat_keep + coat_ibl) * ibl_scale;
+  specular += (ibl_specular * coat_keep + coat_ibl) * spec_scale;
 
   // Transmission: the opaque scene behind, refracted through the volume
   // (`thickness` along the refracted ray, in object space), blurred by
@@ -895,7 +903,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var color = diffuse + specular;
 
   let emissive_uv = material_uv(UV_EMISSIVE, uv);
-  color += surface_emissive(hook, params, material.emissive.rgb * stochastic_texel(emissive_tex, emissive_uv, dpdxFine(emissive_uv), dpdyFine(emissive_uv), 4u).rgb) * ao_direct;
+  color += surface_emissive(hook, params, material.emissive.rgb * stochastic_texel(emissive_tex, emissive_uv, dpdxFine(emissive_uv), dpdyFine(emissive_uv), 4u).rgb);
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {

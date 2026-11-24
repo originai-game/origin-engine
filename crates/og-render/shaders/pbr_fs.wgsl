@@ -342,6 +342,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
+  if (!ANALYTIC) {
+    s.roughness = specular_aa(n, s.roughness, dpdxFine(n), dpdyFine(n));
+  }
   s.coat = material.coat.x;
   s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
   s.coat_normal = n_vertex * face;
@@ -435,7 +438,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // tinted by its colour.
   if (material.coat.z > 0.0) {
     let back = -n;
-    let behind = ambient_irradiance(ambient_light_level(back, in.world_pos), in.world_pos, back) * frame.params.x + hemi_irradiance(back);
+    let behind = ambient_irradiance(ambient_light_level(back, in.world_pos) * frame.params.x, in.world_pos, back) + hemi_irradiance(back);
     around.diffuse += behind * s.albedo * s.translucency;
   }
   around = crown_ambient(around, s, clamp(dot(facet, v), 1e-4, 1.0), in.crown.x);
@@ -450,17 +453,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     var flat_sum = vec3<f32>(0.0);
     for (var j = 0u; j < 2u; j++) {
       let d = select(-up, up, j == 0u);
-      flat_sum += ambient_irradiance(ambient_light_level(d, in.world_pos), in.world_pos, d);
+      flat_sum += ambient_irradiance(ambient_light_level(d, in.world_pos) * frame.params.x, in.world_pos, d);
     }
     let flat_irradiance = 0.5 * flat_sum;
     let flat_hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
-    let flat_diffuse = (flat_irradiance * frame.params.x + flat_hemi) * s.albedo;
+    let flat_diffuse = (flat_irradiance + flat_hemi) * s.albedo;
     // A metal takes the flat ambient as a matte surface in f0 times its
     // reflection's bands (toon_metal_bands), not the reflection's colour:
     // the ambient's colour and brightness, the metal's hue.
     let flat_specular = mix(
       reflected_light(up, in.world_pos, frame.params.y) * s.f0 * frame.params.x,
-      (flat_irradiance * frame.params.x + flat_hemi) * s.f0 * toon_metal_lit,
+      (flat_irradiance + flat_hemi) * s.f0 * toon_metal_lit,
       s.metallic);
     around.diffuse = mix(flat_diffuse, around.diffuse, frame.toon.y);
     around.specular = mix(flat_specular, around.specular, frame.toon.y);
@@ -469,14 +472,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // takes all of `s` as varying once a member comes from a texture, and the
   // LUT is read without derivatives (it has one level).
   if (material.coat.x > 0.0) {
-    // The coat's reflection of the environment, and what it takes from the base.
+    // The coat's reflection of the environment, occluded by probe GI and
+    // combined with screen-space reflections like the base layer.
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
     let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
     let rc = reflect(-v, s.coat_normal);
-    let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
+    let coat_gi = gi_sample_at(in.world_pos, s.coat_normal);
+    var coat_env = surface_reflected(reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y) * frame.params.x, at, rc, s.coat_roughness, coat_gi);
+    if (at.opaque) { coat_env = ssr_reflected(coat_env, in.world_pos, in.clip.xy); }
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
     around.diffuse *= 1.0 - fc;
-    around.specular = around.specular * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
+    around.specular = around.specular * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
   }
   // What the material's AO map keeps of the light around it (it darkens
   // only that), with the style's shadow darkness.

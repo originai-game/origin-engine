@@ -191,10 +191,11 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
       s.mean = y;
       s.short_mean = y;
       s.variance = vec3<f32>(0.0);
-      s.vbbr = 0.0;
+      s.vbbr = 1.0;
       s.inconsistency = 1.0;
+    } else {
+      s = estimate(y, s, gp.blend.y);
     }
-    s = estimate(y, s, gp.blend.y);
     store_estimate(word, s);
     radiance[t] = s.mean;
   }
@@ -206,22 +207,34 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
   probes[at + GI_DEPTH_AT + t] = vec4<f32>(depth[2u * t], depth[2u * t + 1u]);
 
   if (t == 0u) {
-    // The harmonics: each texel's radiance over its share of the sphere
-    // (4π / 36), as probe_grid.wgsl projects a capture; deringed.
+    // The harmonics: weight each octahedral texel by its spherical solid-angle
+    // Jacobian dOmega/duv ~ |u|^(-3) where u is the unnormalized octahedral
+    // point, eliminating corner-vs-pole solid-angle bias.
     var sh = array<vec4<f32>, 3>(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0));
+    var w_sum = 0.0;
     for (var i = 0u; i < TEXELS; i++) {
       let p = vec2<f32>(f32(i % GI_RADIANCE), f32(i / GI_RADIANCE));
-      let d = oct_decode((p + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
-      let basis = vec4<f32>(d * (2.0 / f32(TEXELS)), 1.0 / f32(TEXELS));
+      let e = (p + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0;
+      var u = vec3<f32>(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
+      if (u.z < 0.0) {
+        let ox = (1.0 - abs(u.y)) * select(-1.0, 1.0, u.x >= 0.0);
+        let oy = (1.0 - abs(u.x)) * select(-1.0, 1.0, u.y >= 0.0);
+        u = vec3<f32>(ox, oy, u.z);
+      }
+      let len2 = max(dot(u, u), 1e-6);
+      let inv_len = inverseSqrt(len2);
+      let d = u * inv_len;
+      let w = inv_len * inv_len * inv_len;
+      w_sum += w;
+      let basis = vec4<f32>(d * 2.0, 1.0) * w;
       sh[0] += basis * radiance[i].r;
       sh[1] += basis * radiance[i].g;
       sh[2] += basis * radiance[i].b;
     }
+    let inv_w = 1.0 / max(w_sum, 1e-6);
     for (var c = 0u; c < 3u; c++) {
-      // The texels hold the radiance filtered by the cos⁴ lobe above,
-      // which scales the first band by (n + 1) / (n + 2) = 5/6 (Funk and
-      // Hecke's theorem for a normalised cosine power): undone, so a probe
-      // over a darker floor keeps the sky's light on the floor beside it.
+      sh[c] *= inv_w;
+      // Undo cos^4 filter attenuation (5/6) on band 1.
       sh[c] = vec4<f32>(sh[c].xyz * 1.2, sh[c].w);
       let band = length(sh[c].xyz);
       let keep = select(1.0, max(sh[c].w, 0.0) / band, band > max(sh[c].w, 0.0));

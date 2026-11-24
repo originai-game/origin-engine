@@ -159,14 +159,6 @@ fn rect_shadow_tap(i: u32, n: u32, turn: f32) -> vec2<f32> {
   return vec2<f32>(cos(a), sin(a)) * r;
 }
 
-// A turn in [0, 2π) hashed from a world position's bits (PCG): each
-// pixel's spiral turned its own way, so the few taps over a wide penumbra
-// read as fine grain instead of copies of the caster.
-fn rect_shadow_turn(p: vec3<f32>) -> f32 {
-  let h = bitcast<u32>(p.x) ^ (bitcast<u32>(p.y) * 0x9e3779b9u) ^ (bitcast<u32>(p.z) * 0x85ebca6bu);
-  return hash_unit(h) * 2.0 * PI;
-}
-
 // How much of a shadowed rect light reaches p (normal n): 1 without a
 // shadow slot (direction_slot.w < 0). Its layer (the back's next when
 // two-sided) is a perspective view from the centre storing distance /
@@ -206,11 +198,11 @@ fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let texel = 1.0 / texels;
   let search = clamp(size * per_metre, 2.0 * texel, 48.0 * texel);
   let size_i = vec2<i32>(textureDimensions(local_shadow_map));
-  let turn = rect_shadow_turn(p);
+  let turn = shadow_turn(uv * texels);
   var blockers = 0.0;
   var count = 0.0;
-  for (var i = 0u; i < 16u; i++) {
-    let q = clamp(uv + rect_shadow_tap(i, 16u, turn) * search, vec2<f32>(0.0), vec2<f32>(1.0));
+  for (var i = 0u; i < 8u; i++) {
+    let q = clamp(uv + rect_shadow_tap(i, 8u, turn) * search, vec2<f32>(0.0), vec2<f32>(1.0));
     let at = clamp(vec2<i32>(q * vec2<f32>(size_i)), vec2<i32>(0), size_i - 1);
     let d = local_depth(at, layer);
     if (d < ref_depth) {
@@ -222,11 +214,11 @@ fn rect_shadow(light: LocalLight, p: vec3<f32>, n: vec3<f32>) -> f32 {
   let blocker = max(blockers / count * range, 1e-3);
   let penumbra = clamp(size * (receiver - blocker) / blocker * per_metre, texel, 48.0 * texel);
   var lit = 0.0;
-  for (var i = 0u; i < 24u; i++) {
-    let q = clamp(uv + rect_shadow_tap(i, 24u, turn) * penumbra, vec2<f32>(0.0), vec2<f32>(1.0));
+  for (var i = 0u; i < 12u; i++) {
+    let q = clamp(uv + rect_shadow_tap(i, 12u, turn) * penumbra, vec2<f32>(0.0), vec2<f32>(1.0));
     lit += pcf_local(q, layer, ref_depth);
   }
-  return lit / 24.0;
+  return lit / 12.0;
 }
 
 fn cookie_texel(layer: u32, at: vec2<i32>) -> vec3<f32> {

@@ -247,11 +247,13 @@ fn probe_direction(r: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 fn ambient_light_from(n: vec3<f32>, p: vec3<f32>, s: GiSample) -> vec3<f32> {
   // The irradiance cube has one level: read without screen derivatives, so
   // a shader may gather after a fragment has returned.
-  if (frame.probe_min.w < 0.5) { return gi_ambient_from(textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb, s, n); }
+  if (frame.probe_min.w < 0.5) {
+    return gi_ambient_from(textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb * frame.params.x, s, n);
+  }
   let top = frame.params.y;
   let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
   let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
-  return gi_ambient_from(mix(env, probe, probe_weight(p)), s, n);
+  return gi_ambient_from(mix(env, probe, probe_weight(p)) * frame.params.x, s, n);
 }
 
 // ambient_light_from with the probe GI's own gather at `p`.

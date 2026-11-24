@@ -93,23 +93,21 @@ var<private> live_weight: f32;
 // lightmapped fragments) `prefiltered` as it came.
 fn volume_reflected(prefiltered: vec3<f32>, p: vec3<f32>, r: vec3<f32>, roughness: f32) -> vec3<f32> {
   if (live_weight <= 0.0) { return prefiltered; }
-  let scale = 1.0 / max(frame.params.x, 1e-4);
-  let along = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, r), live_sh[1].w + dot(live_sh[1].xyz, r), live_sh[2].w + dot(live_sh[2].xyz, r)), vec3<f32>(0.0)) * scale;
+  let along = max(vec3<f32>(live_sh[0].w + dot(live_sh[0].xyz, r), live_sh[1].w + dot(live_sh[1].xyz, r), live_sh[2].w + dot(live_sh[2].xyz, r)), vec3<f32>(0.0));
   let probe = select(0.0, probe_weight(p), frame.probe_min.w > 0.5);
   let sharp = probe * (1.0 - smoothstep(0.4, 1.0, roughness));
   return mix(prefiltered, mix(along, prefiltered, sharp), live_weight);
 }
 
-// The diffuse ambient light of a lit fragment, in the environment
-// irradiance's units (the caller scales it by the environment intensity,
-// which baked and captured light do not take): its lightmap texel, else
-// the realtime light volumes around it over the baked ones over `env`.
+// The diffuse ambient light of a lit fragment, already in linear
+// irradiance/π units (the caller scales sky env by frame.params.x before
+// passing `env`, so baked lightmaps and captured probe volumes remain
+// intact even when env.intensity == 0).
 fn ambient_irradiance(env: vec3<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
-  let scale = 1.0 / max(frame.params.x, 1e-4);
-  if (baked_lightmap.a > 0.5) { return baked_lightmap.rgb * scale; }
+  if (baked_lightmap.a > 0.5) { return baked_lightmap.rgb; }
   let v = light_volumes(p, n);
   live_weight = v.live.w;
-  let baked = mix(env, v.baked.rgb * scale, v.baked.w);
-  return mix(baked, v.live.rgb * scale, v.live.w);
+  let baked = mix(env, v.baked.rgb, v.baked.w);
+  return mix(baked, v.live.rgb, v.live.w);
 }
 "#;
