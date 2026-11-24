@@ -541,12 +541,13 @@ impl Renderer {
             samples,
         });
         // The strips' pipelines (init/strips.rs).
+        let additive_blend = sprite_pipelines.additive;
         let strip_pipelines = Self::strip_pipelines(StripPipelinesInputs {
             device: &device,
             ribbon_pl: &ribbon_pl,
             ribbon_shader: &ribbon_shader,
             samples,
-            additive: sprite_pipelines.additive,
+            additive: additive_blend,
             flags,
             frame_layout: &frame_layout,
             sprite_layout: &sprite_layout,
@@ -793,6 +794,8 @@ impl Renderer {
             gi_probes: None,
             strips: StripState::new(
                 strip_pipelines,
+                ribbon_pl,
+                additive_blend,
                 ribbon_buffer,
                 ribbon_sampler,
                 ribbon_shader,

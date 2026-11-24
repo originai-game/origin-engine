@@ -202,15 +202,7 @@ pub(crate) fn extract(
                         effect: *effect,
                         ..Default::default()
                     };
-                    let key = crate::present::fx::style_key(&style);
-                    let handle = match rs.fx.trail_styles.get(&key) {
-                        Some(h) => *h,
-                        None => {
-                            let h = rs.scene.add_trail_style(style);
-                            rs.fx.trail_styles.insert(key, h);
-                            h
-                        }
-                    };
+                    let handle = rs.fx.trail_style(&mut rs.scene, id, style);
                     rs.scene.effects.trails.push(Trail {
                         id,
                         style: handle,

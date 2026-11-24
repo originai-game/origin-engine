@@ -208,8 +208,14 @@ pub(crate) struct FxState {
     /// og.particles' state (`crate::bind::particles`): the systems the
     /// tick simulates, drawn as they stand. Set at the first emitter load.
     pub host: Option<Arc<std::sync::Mutex<crate::bind::particles::Hosted>>>,
-    /// Trail styles made from Trail components, by their fields' bits.
-    pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
+    /// Per-trail-id mutable style handles, updated in-place via
+    /// `RenderScene::set_trail_style` so animated styles never leak or reset
+    /// GPU history rings.
+    pub entity_trail_styles: IdMap<u64, TrailStyleHandle>,
+    /// Recycled trail style handles returned when a trail entity disappears.
+    pub free_trail_styles: Vec<TrailStyleHandle>,
+    /// Trail ids extracted during the current frame (for reclaiming unused handles).
+    pub active_trails: Vec<u64>,
     /// Ribbons and sprites queued this tick (`og.render.ribbon`, `.sprite`).
     pub ribbons: Vec<og_render::Ribbon>,
     pub sprites: Vec<QueuedSprite>,
@@ -548,6 +554,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             hue: 0.0,
         });
     }
+    drop(hosted);
+    fx.active_trails.clear();
     for (e, v) in rows(world, layouts.trail.as_ref()) {
         let Ok(v) = record::Trail::from_json(&v) else {
             continue;
@@ -577,15 +585,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             },
             effect: effect(v.effect),
         };
-        let key = style_key(&style);
-        let handle = match fx.trail_styles.get(&key) {
-            Some(h) => *h,
-            None => {
-                let h = scene.add_trail_style(style);
-                fx.trail_styles.insert(key, h);
-                h
-            }
-        };
+        let handle = fx.trail_style(scene, e, style);
         if v.layered {
             scene.effects.trail_layers.push((e, v.layer));
         }
@@ -661,30 +661,55 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     }
 }
 
-/// A trail style's identity: the bits of its fields.
-pub(crate) fn style_key(s: &TrailStyle) -> Vec<u32> {
-    let mut k = vec![s.lifetime.to_bits(), s.min_distance.to_bits()];
-    k.extend(
-        s.width
-            .keys
-            .iter()
-            .flat_map(|(t, v)| [t.to_bits(), v.to_bits()]),
-    );
-    k.extend(
-        s.color
-            .keys
-            .iter()
-            .flat_map(|(t, c)| std::iter::once(t.to_bits()).chain(c.iter().map(|x| x.to_bits()))),
-    );
-    k.push(s.texture.map_or(u32::MAX, |t| t.index() as u32));
-    k.push(match s.uv {
-        RibbonUv::Stretch => 0,
-        RibbonUv::Tile { length } => length.to_bits(),
-    });
-    k.push(s.blend as u32);
-    // Two trails differing only in their effect material are two styles.
-    k.push(s.effect.map_or(u32::MAX, |m| m.index() as u32));
-    k
+impl FxState {
+    /// Returns the mutable style handle owned by trail `id`, updating it
+    /// in-place via `set_trail_style` so animated parameters never leak handles
+    /// or wipe GPU history rings.
+    pub(crate) fn trail_style(
+        &mut self,
+        scene: &mut og_render::RenderScene,
+        id: u64,
+        style: TrailStyle,
+    ) -> TrailStyleHandle {
+        self.active_trails.push(id);
+        if let Some(&h) = self.entity_trail_styles.get(&id) {
+            scene.set_trail_style(h, style);
+            return h;
+        }
+        let h = match self.free_trail_styles.pop() {
+            Some(h) => {
+                scene.set_trail_style(h, style);
+                h
+            }
+            None => scene.add_trail_style(style),
+        };
+        self.entity_trail_styles.insert(id, h);
+        h
+    }
+
+    /// Returns trail style handles of entities absent from the current frame
+    /// to the free pool.
+    pub(crate) fn reclaim_trail_styles(&mut self) {
+        if self.active_trails.is_empty() {
+            self.free_trail_styles
+                .extend(self.entity_trail_styles.values().copied());
+            self.entity_trail_styles.clear();
+            return;
+        }
+        self.active_trails.sort_unstable();
+        self.active_trails.dedup();
+        let active = &self.active_trails;
+        let free = &mut self.free_trail_styles;
+        self.entity_trail_styles.retain(|id, h| {
+            if active.binary_search(id).is_ok() {
+                true
+            } else {
+                free.push(*h);
+                false
+            }
+        });
+        self.active_trails.clear();
+    }
 }
 
 /// Queued sprites and ribbons into the scene (world sprites with their

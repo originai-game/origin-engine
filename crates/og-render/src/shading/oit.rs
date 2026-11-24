@@ -538,10 +538,16 @@ pub(crate) enum Source {
     Msdf,
     /// Alpha strips from their vertices (ribbon.wgsl `vs`).
     Ribbon,
+    /// Alpha strips from their vertices with an effect material shader hook.
+    RibbonHook(usize),
     /// Alpha strips from their points (ribbon.wgsl `vs_strip`).
     Strip,
+    /// Alpha strips from their points with an effect material shader hook.
+    StripHook(usize),
     /// Alpha particle billboards (particles.wgsl `fs`).
     Particles,
+    /// Instanced alpha effect meshes (`double_sided`, optional hook shader index).
+    EffectMesh(bool, Option<usize>),
 }
 
 /// The lit module a blended mesh draws with.

@@ -202,6 +202,7 @@ impl Renderer {
                     false,
                     Some(&frustum),
                     particles_gpu::ParticlePart::All,
+                    |_| None,
                     |t: Option<TextureHandle>| match t {
                         None => white,
                         Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
@@ -539,7 +540,7 @@ impl Pass for ViewPass {
                     .prepass
                     .as_ref()
                     .map_or(&r.post.far_depth, |pre| &pre.lindepth);
-                (!particle_frame.systems.is_empty()).then(|| {
+                particle_frame.has_draws().then(|| {
                     r.particles.gpu.draw_group_of(
                         &r.device,
                         &slot.particle_buffer,

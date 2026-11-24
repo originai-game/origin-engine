@@ -176,11 +176,15 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
   ring[job.base] = vec4<u32>(head, held, last, 0u);
 
   // The strip: the live head, then the history newest to oldest, each
-  // point further than 1e-5 from the one before.
+  // point further than 1e-5 from the one before (bounded by job.out_count).
+  let max_out = max(job.out_count, 1u);
   var total = 0.0;
   var kept = 1u;
   var prev = now;
   for (var k = 0u; k < held; k++) {
+    if (kept >= max_out) {
+      break;
+    }
     let p = ring_pos(ring_at(job, head, k));
     let d = distance(p, prev);
     if (d > 1e-5) {
@@ -190,7 +194,7 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
     }
   }
   var o = 0u;
-  if (kept >= 2u) {
+  if (kept >= 2u && job.out_count >= 2u) {
     let tex = select(0u, 4u, s.textured != 0u);
     let span = max(total, 1e-6);
     write_point(job, s, 0u, now, 0.0, span, tex | 2u);
@@ -198,6 +202,9 @@ fn advance(@builtin(global_invocation_id) id: vec3<u32>) {
     var along = 0.0;
     prev = now;
     for (var k = 0u; k < held; k++) {
+      if (o >= kept) {
+        break;
+      }
       let p = ring_pos(ring_at(job, head, k));
       let d = distance(p, prev);
       if (d > 1e-5) {

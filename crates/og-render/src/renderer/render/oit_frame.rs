@@ -44,15 +44,26 @@ impl Renderer {
             .chain(sprite_frame.billboards.iter().map(|(_, r)| r))
             .filter_map(|r| self.oit_billboard(r, scene))
             .collect();
-        let oit_strips = ribbon_frame
+        let mut oit_strips: Vec<oit::Source> = Vec::new();
+        for r in ribbon_frame
             .runs
             .iter()
             .filter(|r| r.layer.is_none() && r.blend == ParticleBlend::Alpha)
-            .fold((false, false), |(v, p), r| (v || !r.points, p || r.points));
-        let oit_particles = particle_frame.has_oit(scene.frame.camera_layers);
-        // What needs no culling: billboards, particles and strips.
+        {
+            let src = match (r.points, r.hook) {
+                (true, Some(h)) => oit::Source::StripHook(h),
+                (true, None) => oit::Source::Strip,
+                (false, Some(h)) => oit::Source::RibbonHook(h),
+                (false, None) => oit::Source::Ribbon,
+            };
+            if !oit_strips.contains(&src) {
+                oit_strips.push(src);
+            }
+        }
+        let oit_particles = particle_frame.oit_sources(scene.frame.camera_layers);
+        // What needs no culling: billboards, particles, effect meshes and strips.
         let oit_candidates =
-            !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
+            !oit_billboards.is_empty() || !oit_particles.is_empty() || !oit_strips.is_empty();
         // Its targets are three, each blended its own way (sorted
         // blending without MRT or independent blending).
         let oit_frame = (scene.frame.debug == DebugView::None
@@ -70,8 +81,9 @@ impl Renderer {
                 batches,
                 skinned_batches,
                 &oit_billboards,
-                oit_particles,
-                oit_strips,
+                &oit_particles,
+                &oit_strips,
+                scene.shaders(),
             );
         }
         PlanOitFrameOutputs {

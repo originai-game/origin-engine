@@ -33,10 +33,11 @@ impl Renderer {
                 StripPart::Additive => None,
                 StripPart::Oit(_) if !alpha => continue,
                 StripPart::Oit(mode) => {
-                    let source = if run.points && self.strips.gpu_trails.is_some() {
-                        oit::Source::Strip
-                    } else {
-                        oit::Source::Ribbon
+                    let source = match (run.points && self.strips.gpu_trails.is_some(), run.hook) {
+                        (true, Some(h)) => oit::Source::StripHook(h),
+                        (true, None) => oit::Source::Strip,
+                        (false, Some(h)) => oit::Source::RibbonHook(h),
+                        (false, None) => oit::Source::Ribbon,
                     };
                     match self.oit_pipeline(source, mode) {
                         Some(p) => Some(p),
@@ -53,6 +54,7 @@ impl Renderer {
                 run.first,
                 run.count,
                 run.effect,
+                run.hook,
             );
             draws += 1;
         }
@@ -73,17 +75,23 @@ impl Renderer {
         points: bool,
         first: u32,
         count: u32,
-        // The effect material it draws with (effect.rs).
+        // The effect material it draws with (effect.rs) and its optional hook.
         effect: Option<crate::EffectMaterialHandle>,
+        hook: Option<usize>,
     ) {
         let (group, offset) = self.particles.gpu.effects.bind(effect);
         pass.set_bind_group(3, group, &[offset]);
         let alpha = usize::from(blend != ParticleBlend::Additive as u8);
         let gpu = self.strips.gpu_trails.as_ref().filter(|_| points);
-        let Some(pipeline) = (match (pipeline, gpu) {
-            (Some(p), _) => Some(p),
-            (None, Some(g)) => g.pipelines[alpha].get(),
-            (None, None) => self.strips.ribbon_pipelines[alpha].get(),
+        let Some(pipeline) = (match (pipeline, hook, gpu) {
+            (Some(p), _, _) => Some(p),
+            (None, Some(h), _) => self
+                .strips
+                .hook_pipelines
+                .get(&(gpu.is_some(), alpha, self.samples, h))
+                .and_then(|p| p.get()),
+            (None, None, Some(g)) => g.pipelines[alpha].get(),
+            (None, None, None) => self.strips.ribbon_pipelines[alpha].get(),
         }) else {
             return;
         };

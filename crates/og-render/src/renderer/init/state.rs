@@ -330,21 +330,123 @@ impl StripState {
     /// (init/shaders.rs); no CPU trail yet.
     pub(super) fn new(
         pipelines: StripPipelinesOutputs,
+        ribbon_pl: wgpu::PipelineLayout,
+        additive: wgpu::BlendState,
         ribbon_buffer: wgpu::Buffer,
         ribbon_sampler: wgpu::Sampler,
         ribbon_shader: deferred::Module,
     ) -> StripState {
         let StripPipelinesOutputs {
             ribbon_pipelines,
+            strip_pl,
             gpu_trails,
         } = pipelines;
         StripState {
             ribbon_pipelines,
+            ribbon_pl,
+            strip_pl,
+            additive,
+            hook_modules: HashMap::new(),
+            hook_pipelines: HashMap::new(),
             ribbon_buffer,
             ribbon_sampler,
             ribbon_shader,
             trails: ribbons::Trails::default(),
             gpu_trails,
+        }
+    }
+
+    /// Compiles (and caches) a strip shader module with `hook`'s effect hook.
+    pub(crate) fn hook_module(
+        &mut self,
+        device: &wgpu::Device,
+        hook: usize,
+        shaders: &[MaterialShader],
+    ) -> wgpu::ShaderModule {
+        self.hook_modules
+            .entry(hook)
+            .or_insert_with(|| {
+                crate::gpu::shader_module(
+                    device,
+                    wgpu::ShaderModuleDescriptor {
+                        label: Some("ribbon (effect hook)"),
+                        source: wgpu::ShaderSource::Wgsl(
+                            ribbons_gpu::ribbon_source_with(shaders.get(hook)).into(),
+                        ),
+                    },
+                )
+            })
+            .clone()
+    }
+
+    /// Ensures non-OIT hooked strip pipelines for every hooked run in `runs`.
+    pub(crate) fn ensure_hook_pipelines(
+        &mut self,
+        device: &wgpu::Device,
+        runs: &[ribbons::RibbonRun],
+        samples: u32,
+        diagnostic: bool,
+        shaders: &[MaterialShader],
+    ) {
+        let alpha_blend = wgpu::BlendState {
+            color: wgpu::BlendComponent::OVER,
+            alpha: self.additive.alpha,
+        };
+        for run in runs {
+            let Some(hook) = run.hook else {
+                continue;
+            };
+            let points = run.points && self.gpu_trails.is_some();
+            let blend = if diagnostic {
+                ParticleBlend::Alpha
+            } else {
+                run.blend
+            };
+            let alpha_idx = usize::from(blend != ParticleBlend::Additive);
+            let key = (points, alpha_idx, samples, hook);
+            if self.hook_pipelines.contains_key(&key) {
+                continue;
+            }
+            let layout = if points {
+                self.strip_pl
+                    .as_ref()
+                    .expect("gpu_trails has strip_pl")
+                    .clone()
+            } else {
+                self.ribbon_pl.clone()
+            };
+            let module = self.hook_module(device, hook, shaders);
+            let blend_state = if alpha_idx == 0 {
+                self.additive
+            } else {
+                alpha_blend
+            };
+            let device = device.clone();
+            let p = Deferred::anywhere(move || {
+                hdr_pipeline(
+                    &device,
+                    HdrPipeline {
+                        alpha_to_coverage: false,
+                        label: if points {
+                            "strip (hook)"
+                        } else {
+                            "ribbon (hook)"
+                        },
+                        layout: &layout,
+                        module: &module,
+                        vs: if points { "vs_strip" } else { "vs" },
+                        fs: if alpha_idx == 0 { "fs" } else { "fs_alpha" },
+                        buffers: if points { &[] } else { RIBBON_BUFFERS },
+                        cull: None,
+                        depth_write: false,
+                        depth_compare: wgpu::CompareFunction::LessEqual,
+                        blend: Some(blend_state),
+                        samples,
+                    },
+                )
+            });
+            crate::deferred::Start::start(&p);
+            self.hook_pipelines.insert(key, p);
         }
     }
 }

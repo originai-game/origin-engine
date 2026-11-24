@@ -225,7 +225,7 @@ impl Renderer {
             .graph
             .try_view("lindepth")
             .unwrap_or(&self.post.far_depth);
-        let particle_group = (!particle_frame.systems.is_empty()).then(|| {
+        let particle_group = particle_frame.has_draws().then(|| {
             let copy = self
                 .graph
                 .try_view("scene-copy")

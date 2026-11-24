@@ -117,6 +117,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         "particles",
         crate::particles_gpu::draw_source(&crate::fluid_shared_source(), None),
     );
+    add("effect meshes", crate::particles::effect_mesh::source(None));
     for (label, wgsl) in crate::post::post_sources() {
         add(label, wgsl);
     }

@@ -1199,7 +1199,17 @@ impl ParticleRenderer {
             }
         }
 
-        self.effect_meshes(scene, eye, forward, &mut draw_entries, &mut out)?;
+        out.effect_meshes = self.effect_meshes.prepare(
+            device,
+            queue,
+            scene,
+            oit_order_free,
+            eye,
+            forward,
+            &mut out.meshes,
+            &mut out.needs_depth,
+            &mut out.soft,
+        )?;
 
         // Retire absent systems and return their GPU slabs to the Mega-Pool.
         let frame = self.frame;
@@ -1731,113 +1741,4 @@ fn push_trail(
     };
     out.systems.push(trail);
     Ok(())
-}
-
-/// The key of an effect mesh's state among the systems': its id with the
-/// top bit set, apart from a particle system on the same entity.
-const EFFECT_MESH_KEY: u64 = 1 << 63;
-
-impl ParticleRenderer {
-    /// The scene's effect meshes as one-particle mesh systems (replaced by
-    /// dedicated instanced `EffectMeshRenderer` in the next commit).
-    fn effect_meshes(
-        &mut self,
-        scene: &RenderScene,
-        eye: Vec3,
-        forward: Vec3,
-        draw_entries: &mut Vec<EmitterDrawGpu>,
-        out: &mut ParticleFrame,
-    ) -> Result<(), RenderError> {
-        for (i, m) in scene.effects.effect_meshes.iter().enumerate() {
-            let material = scene.effect_material(m.material).ok_or_else(|| {
-                RenderError::InvalidHandle(format!(
-                    "effect mesh {i}: effect material {}",
-                    m.material.index()
-                ))
-            })?;
-            if scene.mesh(m.mesh).is_none() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "effect mesh {i}: mesh {}",
-                    m.mesh.index()
-                )));
-            }
-            out.meshes.push(m.mesh.index());
-            let seed = hash_seed(m.seed);
-            let particle = ParticleState {
-                pos_age: [0.0, 0.0, 0.0, m.life.clamp(0.0, 1.0) * 0.99999],
-                vel_life: [0.0, 0.0, 0.0, 1.0],
-                misc: [1.0, 0.0, 0.0, crate::particles::hash_unit(seed)],
-            };
-            let key = m.id | EFFECT_MESH_KEY;
-            let state = self.systems.entry(key).or_insert_with(|| SystemState {
-                emitter: usize::MAX,
-                max: 1,
-                gpu: None,
-                cpu: CpuParticles::default(),
-                seen: 0,
-                shift: Vec3::ZERO,
-                path: Default::default(),
-            });
-            state.seen = self.frame;
-            let packed = Packed {
-                particles: pack(
-                    &mut self.cpu_bytes,
-                    std::slice::from_ref(&particle),
-                    1,
-                    &drawn(1, None),
-                ),
-                trails: [0; 2],
-            };
-            let soft = if scene.frame.quality.soft_particles {
-                material.soft_depth.max(0.0)
-            } else {
-                0.0
-            };
-            out.needs_depth |= soft > 0.0;
-            out.soft |= soft > 0.0;
-            let look = ParticleEmitter {
-                render: ParticleRender::Mesh { mesh: m.mesh },
-                size_over_life: crate::particles::Curve::constant(1.0),
-                color_over_life: crate::particles::ColorCurve::constant([1.0; 4]),
-                color: m.color,
-                gravity: Vec3::ZERO,
-                ..Default::default()
-            };
-            let draw_entry = draw_entries.len() as u32;
-            let mut entry = emitter_draw_gpu(
-                &look,
-                m.transform,
-                Vec3::ONE,
-                m.hue,
-                seed,
-                false,
-                soft,
-                false,
-            );
-            entry.look[2] = 2.0;
-            entry.axis[3] = m.billboard as u32 as f32;
-            draw_entries.push(entry);
-            out.systems.push(FrameSystem {
-                id: key,
-                draw_entry,
-                blend: material.blend.unwrap_or(m.blend),
-                texture: None,
-                depth: (m.transform.w_axis.truncate() - eye).dot(forward),
-                layers: m.layers,
-                child: None,
-                slots: drawn(1, None),
-                source: VertexSource::Cpu(packed),
-                bound: None,
-                kind: DrawKind::Mesh,
-                mesh: Some(m.mesh),
-                effect: Some(m.material),
-                look: look_of(
-                    DrawKind::Mesh,
-                    Some(material),
-                    material.shader.map(|h| h.index()),
-                ),
-            });
-        }
-        Ok(())
-    }
 }

@@ -79,7 +79,7 @@ const TRAIL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout
 
 /// A mesh's vertices beside the particles (`MeshIn` in particles.wgsl):
 /// [`crate::Vertex`]'s position, normal and colour.
-const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+pub(crate) const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: std::mem::size_of::<crate::Vertex>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
     attributes: &[
@@ -241,11 +241,8 @@ pub(crate) struct Look {
     double_sided: bool,
 }
 
-/// Every draw the scene's loaded emitters (each with its trail) and effect
-/// materials (an effect mesh's, at its default additive blend or the
-/// material's own) can need, as `prepare` would key it on their first frame.
-/// Sprite mode is the 2D batch's, and a material shader's hook is made on
-/// first use: neither is listed.
+/// Every draw the scene's loaded emitters (each with its trail) can need.
+/// Effect meshes are warmed separately via [`EffectMeshRenderer`].
 pub(crate) fn reachable_draws(scene: &crate::RenderScene) -> Vec<(ParticleBlend, DrawKind, Look)> {
     let mut out = Vec::new();
     let mut push = |k: (ParticleBlend, DrawKind, Look)| {
@@ -274,14 +271,6 @@ pub(crate) fn reachable_draws(scene: &crate::RenderScene) -> Vec<(ParticleBlend,
             let t = DrawKind::Trail;
             push((blend, t, look_of(t, drawn(t), hook(t))));
         }
-    }
-    for m in scene.effect_materials() {
-        let look = look_of(DrawKind::Mesh, Some(m), m.shader.map(|h| h.index()));
-        push((
-            m.blend.unwrap_or(ParticleBlend::Additive),
-            DrawKind::Mesh,
-            look,
-        ));
     }
     out
 }
@@ -338,10 +327,12 @@ struct SpriteParamsGpu {
     _pad1: f32,
 }
 
-/// What the frame's particles need from the rest of the renderer.
+/// What the frame's particles and instanced effect meshes need from the renderer.
 #[derive(Default)]
 pub(crate) struct ParticleFrame {
     pub systems: Vec<FrameSystem>,
+    /// Standalone instanced effect meshes prepared for this frame.
+    pub effect_meshes: crate::particles::effect_mesh::EffectMeshFrame,
     /// Sprite-mode particles simulated on the CPU (a host's, or with
     /// sub-emitters), as the 2D batch draws them.
     pub sprites: Vec<ExtraSprite>,
@@ -395,7 +386,9 @@ pub(crate) struct ParticleRenderer {
     hook_modules: HashMap<usize, wgpu::ShaderModule>,
     frame_wgsl: String,
     draw_pl: wgpu::PipelineLayout,
-    /// The effect materials (group 3 of every particle and strip draw).
+    /// Standalone instanced effect mesh renderer sharing `draw_pl` and `effects`.
+    pub(crate) effect_meshes: crate::particles::effect_mesh::EffectMeshRenderer,
+    /// The effect materials (group 3 of every particle, effect mesh and strip draw).
     pub(crate) effects: crate::effect::EffectRenderer,
     /// Draw-only emitter dynamic uniform buffer (`EMITTER_DRAW_STRIDE`).
     emitter_draw_buffer: wgpu::Buffer,
@@ -466,25 +459,25 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
     }
 }
 
-/// Which of a camera's 3D systems a draw takes.
-#[derive(Clone, Copy)]
-pub(crate) enum ParticlePart<'a> {
-    /// Every system, in one place (no OIT).
+/// Which of a camera's 3D systems and effect meshes a draw takes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ParticlePart {
+    /// Every system and effect mesh, in one place (no OIT).
     All,
-    /// Mesh systems (debris).
+    /// Solid mesh particles (debris, depth-writing).
     Before,
-    /// Alpha billboards, with the OIT pipeline given.
-    Oit(&'a wgpu::RenderPipeline),
-    /// Additive and distortion billboards.
+    /// Alpha billboards and instanced alpha effect meshes into the OIT pass.
+    Oit,
+    /// Additive, subtractive, multiply and distortion draws after OIT resolve.
     After,
 }
 
-impl ParticlePart<'_> {
+impl ParticlePart {
     fn draws(self, s: &FrameSystem) -> bool {
         match self {
             ParticlePart::All => true,
             ParticlePart::Before => solid_mesh(s),
-            ParticlePart::Oit(_) => in_oit(s),
+            ParticlePart::Oit => in_oit(s),
             ParticlePart::After => !solid_mesh(s) && !in_oit(s),
         }
     }
@@ -501,12 +494,30 @@ fn in_oit(s: &FrameSystem) -> bool {
 }
 
 impl ParticleFrame {
-    /// Whether a camera on `mask` draws a system that joins the
-    /// order-independent passes.
-    pub fn has_oit(&self, mask: u32) -> bool {
-        self.systems
+    /// Whether this frame has any 3D particle systems or instanced effect meshes.
+    pub fn has_draws(&self) -> bool {
+        !self.systems.is_empty() || !self.effect_meshes.batches.is_empty()
+    }
+
+    /// OIT pipeline sources needed by particles and effect meshes on `mask`.
+    pub fn oit_sources(&self, mask: u32) -> Vec<crate::oit::Source> {
+        let mut out = Vec::new();
+        if self
+            .systems
             .iter()
             .any(|s| s.layers & mask != 0 && in_oit(s))
+        {
+            out.push(crate::oit::Source::Particles);
+        }
+        for b in &self.effect_meshes.batches {
+            if b.layers & mask != 0 && b.in_oit() {
+                let src = b.oit_source();
+                if !out.contains(&src) {
+                    out.push(src);
+                }
+            }
+        }
+        out
     }
 }
 

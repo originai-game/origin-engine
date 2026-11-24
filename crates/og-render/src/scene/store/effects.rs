@@ -65,6 +65,18 @@ impl RenderScene {
         TrailStyleHandle(self.trail_styles.len() as u32 - 1)
     }
 
+    /// Replaces a trail style in-place without resetting running trails'
+    /// history rings. `false` for a handle of another scene.
+    pub fn set_trail_style(&mut self, handle: TrailStyleHandle, style: TrailStyle) -> bool {
+        match self.trail_styles.get_mut(handle.index()) {
+            Some(s) => {
+                *s = style;
+                true
+            }
+            None => false,
+        }
+    }
+
     pub(crate) fn emitters(&self) -> &[ParticleEmitter] {
         &self.emitters
     }

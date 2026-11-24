@@ -323,6 +323,7 @@ impl Renderer {
                         false,
                         None,
                         particles_gpu::ParticlePart::All,
+                        |_| None,
                         |t: Option<TextureHandle>| match t {
                             None => white,
                             Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
@@ -586,7 +587,7 @@ impl Pass for ProbesPass {
                 let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
                 let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
                 (
-                    (!particle_frame.systems.is_empty()).then(|| {
+                    particle_frame.has_draws().then(|| {
                         r.particles
                             .gpu
                             .draw_group_of(&r.device, &pb, depth, &r.post.white)

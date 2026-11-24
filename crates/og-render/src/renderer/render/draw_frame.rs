@@ -466,7 +466,15 @@ impl Renderer {
             probe_frame: &probe_frame,
             probe_faces: &probe_faces,
             active_probes: &active_probes,
+            oit_order_free,
         })?;
+        self.strips.ensure_hook_pipelines(
+            &self.device,
+            &arenas.ribbon_frame.runs,
+            self.samples,
+            scene.frame.debug != DebugView::None,
+            scene.shaders(),
+        );
         plans.metaballs = MetaballsPass::bind(self, &mut frames.metaballs, arenas.fluids);
         // Order-independent transparency's frame mode (oit_frame.rs).
         let oit = self.plan_oit_frame(PlanOitFrameInputs {

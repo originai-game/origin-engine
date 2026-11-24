@@ -168,7 +168,14 @@ impl EffectGpu {
         }
         if let Some(f) = m.fresnel {
             flags |= FLAG_FRESNEL;
-            g.fresnel = [f.power, f.strength, f32::from(u8::from(f.invert)), 0.0];
+            g.fresnel = [
+                f.power,
+                f.strength,
+                f32::from(u8::from(f.invert)),
+                m.soft_depth.max(0.0),
+            ];
+        } else {
+            g.fresnel[3] = m.soft_depth.max(0.0);
         }
         if let Some(r) = &m.ramp {
             flags |= FLAG_RAMP;

@@ -20,6 +20,7 @@ impl ParticleRenderer {
         let counts = (scene.emitters().len(), scene.effect_materials().len());
         if (self.reachable.0, self.reachable.1) != counts {
             self.reachable = (counts.0, counts.1, reachable_draws(scene));
+            self.effect_meshes.note_loaded(scene.effect_materials());
         }
     }
 
@@ -48,7 +49,9 @@ impl ParticleRenderer {
                 self.make_draw(device, (blend, samples, kind, look), &[]);
                 true
             }
-            None => false,
+            None => self
+                .effect_meshes
+                .warm_loaded(device, &self.draw_pl, samples),
         }
     }
 
@@ -277,6 +280,7 @@ impl ParticleRenderer {
             hook_modules: HashMap::new(),
             frame_wgsl: frame_wgsl.to_string(),
             draw_pl,
+            effect_meshes: crate::particles::effect_mesh::EffectMeshRenderer::new(device),
             effects,
             emitter_draw_buffer,
             emitter_draw_gen: 1,
@@ -585,6 +589,13 @@ impl ParticleRenderer {
                 self.make_draw(device, key, shaders);
             }
         }
+        self.effect_meshes.ensure_pipelines(
+            device,
+            &self.draw_pl,
+            &frame.effect_meshes,
+            samples,
+            shaders,
+        );
         let _ = HDR_FORMAT;
     }
 
@@ -686,8 +697,8 @@ impl ParticleRenderer {
         self.draw.insert(key, p);
     }
 
-    /// Draws the frame's 3D systems on a camera's layers (`mask`) that
-    /// `part` selects, far to near, using compacted indirect draws where available.
+    /// Draws the frame's 3D systems and instanced effect meshes on a camera's
+    /// layers (`mask`) that `part` selects, far to near.
     #[allow(clippy::too_many_arguments)]
     pub fn draw<'b>(
         &self,
@@ -698,7 +709,8 @@ impl ParticleRenderer {
         mask: u32,
         distort: bool,
         view: Option<&crate::frame::Frustum>,
-        part: ParticlePart<'_>,
+        part: ParticlePart,
+        oit_lookup: impl Fn(crate::oit::Source) -> Option<&'b wgpu::RenderPipeline>,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
         mesh: impl Fn(crate::MeshHandle) -> Option<(wgpu::BufferSlice<'b>, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
@@ -713,7 +725,7 @@ impl ParticleRenderer {
                     .is_some_and(|(f, (lo, hi))| !f.intersects_box(lo, hi))
         }) {
             let Some(pipeline) = (match part {
-                ParticlePart::Oit(p) => Some(p),
+                ParticlePart::Oit => oit_lookup(crate::oit::Source::Particles),
                 _ => self
                     .draw
                     .get(&(s.blend, samples, s.kind, s.look))
@@ -816,6 +828,18 @@ impl ParticleRenderer {
                 }
             }
         }
+        draws += self.effect_meshes.draw(
+            pass,
+            &frame.effect_meshes,
+            samples,
+            group,
+            texture_group(None),
+            &self.effects,
+            mask,
+            part,
+            &oit_lookup,
+            &mesh,
+        );
         draws
     }
 

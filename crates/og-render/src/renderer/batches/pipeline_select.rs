@@ -193,14 +193,7 @@ impl Renderer {
                 self.ensure_pipelines_now(std::slice::from_ref(b), &[], prepass);
             }
             if let Some(m) = blended {
-                self.ensure_oit_pipelines(
-                    m,
-                    std::slice::from_ref(b),
-                    &[],
-                    &[],
-                    false,
-                    (false, false),
-                );
+                self.ensure_oit_pipelines(m, std::slice::from_ref(b), &[], &[], &[], &[], &[]);
             }
             if lit || blended.is_some() {
                 made = true;

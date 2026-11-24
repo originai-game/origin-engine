@@ -17,6 +17,7 @@ pub(super) struct SpriteArenaInputs<'a> {
     pub probe_frame: &'a probes::ProbeFrame,
     pub probe_faces: &'a [[frame::CameraFrame; 6]],
     pub active_probes: &'a [ReflectionProbe],
+    pub oit_order_free: bool,
 }
 
 pub(super) struct SpriteArenas {
@@ -48,6 +49,7 @@ impl Renderer {
             probe_frame,
             probe_faces,
             active_probes,
+            oit_order_free,
         }: SpriteArenaInputs<'_>,
     ) -> Result<SpriteArenas, RenderError> {
         let mut ribbon_frame = match &mut self.strips.gpu_trails {
@@ -56,16 +58,21 @@ impl Renderer {
                 &self.queue,
                 scene.id(),
                 scene.trail_styles(),
+                scene.effect_materials(),
                 &scene.effects.trails,
                 &scene.effects.trail_layers,
                 &scene.effects.ribbons,
                 &scene.effects.beams,
                 scene.frame.tick,
                 scene.frame.tick_rate,
+                camera.position,
+                cam.forward,
+                oit_order_free,
             ),
             None => self.strips.trails.build(
                 scene.id(),
                 scene.trail_styles(),
+                scene.effect_materials(),
                 &scene.effects.trails,
                 &scene.effects.trail_layers,
                 &scene.effects.ribbons,
@@ -75,6 +82,7 @@ impl Renderer {
                 camera.position,
                 cam.forward,
                 cam.orthographic,
+                oit_order_free,
             ),
         }
         .map_err(RenderError::InvalidHandle)?;
@@ -138,7 +146,7 @@ impl Renderer {
             .filter_map(|r| {
                 Some(sprites::LayeredStrip {
                     layer: r.layer?,
-                    source: RunSource::Strip(r.blend as u8, r.texture, r.points),
+                    source: RunSource::Strip(r.blend as u8, r.texture, r.points, r.effect, r.hook),
                     first: r.first,
                     count: r.count,
                 })
@@ -216,7 +224,13 @@ impl Renderer {
                 .filter_map(|r| {
                     Some(sprites::LayeredStrip {
                         layer: r.layer?,
-                        source: RunSource::Strip(r.blend as u8, r.texture, r.points),
+                        source: RunSource::Strip(
+                            r.blend as u8,
+                            r.texture,
+                            r.points,
+                            r.effect,
+                            r.hook,
+                        ),
                         first: r.first,
                         count: r.count,
                     })

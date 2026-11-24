@@ -180,10 +180,17 @@ pub(crate) enum RunSource {
     /// (the MSDF pipeline) or colour glyphs (the sprite pipeline).
     Glyphs(GlyphTier, u16),
     /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
-    /// buffer, or strip points when the last field is true
+    /// buffer, or strip points when the third field is true
     /// ([`crate::ribbons::RibbonRun::points`]); the blend is
-    /// `ParticleBlend as u8`.
-    Strip(u8, Option<TextureHandle>, bool),
+    /// `ParticleBlend as u8`, followed by the optional effect material and
+    /// its shader hook index.
+    Strip(
+        u8,
+        Option<TextureHandle>,
+        bool,
+        Option<crate::EffectMaterialHandle>,
+        Option<usize>,
+    ),
     /// A 2D fluid's metaball composite (the fluid's index this frame).
     Metaballs(u8),
     /// Sprites drawn from layers of a texture array, and their blend.

@@ -145,35 +145,40 @@ fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
 
 @fragment
 fn fs(in: RibbonOut) -> @location(0) vec4<f32> {
-  return ribbon_fragment(in);
+  return ribbon_fragment(in, false);
+}
+
+@fragment
+fn fs_alpha(in: RibbonOut) -> @location(0) vec4<f32> {
+  return ribbon_fragment(in, true);
 }
 
 // An alpha strip in the main camera's order-independent passes (oit.rs).
 @fragment
 fn fs_oit(in: RibbonOut) -> OitOutput {
-  return oit_weighted(ribbon_fragment(in), in.clip.z);
+  return oit_weighted(ribbon_fragment(in, true), in.clip.z);
 }
 
 @fragment
 fn fs_oit_list(in: RibbonOut, @builtin(sample_mask) mask: u32) -> OitOutput {
-  let c = ribbon_fragment(in);
+  let c = ribbon_fragment(in, true);
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
 }
 
 @fragment
 fn fs_oit_front(in: RibbonOut) -> OitOutput {
-  let c = ribbon_fragment(in);
+  let c = ribbon_fragment(in, true);
   return oit_hybrid(c, in.clip);
 }
 
 @fragment
 fn fs_oit_mark(in: RibbonOut) {
-  let c = ribbon_fragment(in);
+  let c = ribbon_fragment(in, true);
   oit_front_mark(in.clip, c.a);
 }
 
-fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
+fn ribbon_fragment(in: RibbonOut, alpha: bool) -> vec4<f32> {
   let tex = textureSample(ribbon_tex, ribbon_sampler, in.uv);
   let e = 1.0 - abs(in.uv.y * 2.0 - 1.0);
   let soft = e * e * (3.0 - 2.0 * e);
@@ -211,7 +216,11 @@ fn ribbon_fragment(in: RibbonOut) -> vec4<f32> {
   } else {
     c.a *= soft;
   }
-  c.a *= fog_keep(in.world);
+  if (alpha) {
+    c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+  } else {
+    c.a *= fog_keep(in.world);
+  }
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return c;

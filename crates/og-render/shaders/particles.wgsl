@@ -397,19 +397,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   var nrm = m.normal;
   let speed = length(vel);
   let align = particle_align();
-  if (emitter.look.z > 1.5) {
-    // An effect mesh: the entry's transform places it whole.
-    center = (emitter.transform * vec4<f32>(m.position, 1.0)).xyz;
-    pos = vec3<f32>(0.0);
-    nrm = (emitter.transform * vec4<f32>(m.normal, 0.0)).xyz;
-    if (emitter.axis.w > 0.5) {
-      // Facing the camera: its rotation and scale in the camera's frame.
-      let l = center - emitter.transform[3].xyz;
-      let b = mat3x3<f32>(view.cam_right.xyz, view.cam_up.xyz, -view.cam_forward.xyz);
-      center = emitter.transform[3].xyz + b * l;
-      nrm = b * nrm;
-    }
-  } else if (align >= 2u) {
+  if (align >= 2u) {
     // Its own +z across the quad's plane, spun about it by its rotation.
     let b = particle_basis(align, center);
     let rot = particle_rotation(p.misc, age, p.vel_life.w, t);

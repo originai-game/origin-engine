@@ -479,8 +479,10 @@ impl Renderer {
                 binder.reset(&mut pass);
             }
         }
-        // Particles, far systems first.
-        let particles = |pass: &mut wgpu::RenderPass, part: particles_gpu::ParticlePart| {
+        // Particles and instanced effect meshes, far systems first.
+        let particles = |pass: &mut wgpu::RenderPass,
+                         part: particles_gpu::ParticlePart,
+                         oit_mode: Option<oit::Oit>| {
             let Some(group) = particle_group else {
                 return 0;
             };
@@ -495,6 +497,7 @@ impl Renderer {
                 true,
                 Some(view_frustum),
                 part,
+                |src| oit_mode.and_then(|m| self.oit_pipeline(src, m)),
                 |t: Option<TextureHandle>| match t {
                     None => white,
                     Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
@@ -535,7 +538,7 @@ impl Renderer {
                     probe_binding,
                     main_list.indirect,
                 );
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::All);
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::All, None);
                 // Trails, ribbons and beams (layered 2D trails go with the sprites).
                 stats.draw_calls += ctx.draw_strips(&mut pass, &ribbon_frame.runs);
             }
@@ -546,7 +549,7 @@ impl Renderer {
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls +=
                     ctx.draw_oit_part(&mut pass, BlendedPart::Transmissive, probe_binding);
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before);
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before, None);
                 drop(pass);
                 // The blended surfaces in any order into the weighted
                 // targets (and the arena's nodes or front layer), against
@@ -599,10 +602,8 @@ impl Renderer {
                     mark_pass.set_bind_group(2, fx_group, &[]);
                     stats.draw_calls +=
                         ctx.draw_oit_part(&mut mark_pass, BlendedPart::Oit(mark), probes);
-                    if let Some(p) = self.oit_pipeline(oit::Source::Particles, mark) {
-                        stats.draw_calls +=
-                            particles(&mut mark_pass, particles_gpu::ParticlePart::Oit(p));
-                    }
+                    stats.draw_calls +=
+                        particles(&mut mark_pass, particles_gpu::ParticlePart::Oit, Some(mark));
                     stats.draw_calls += self.frame_draw_strips(
                         &mut mark_pass,
                         &ribbon_frame.runs,
@@ -652,10 +653,8 @@ impl Renderer {
                 oit_pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls +=
                     ctx.draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
-                if let Some(p) = self.oit_pipeline(oit::Source::Particles, mode) {
-                    stats.draw_calls +=
-                        particles(&mut oit_pass, particles_gpu::ParticlePart::Oit(p));
-                }
+                stats.draw_calls +=
+                    particles(&mut oit_pass, particles_gpu::ParticlePart::Oit, Some(mode));
                 stats.draw_calls += self.frame_draw_strips(
                     &mut oit_pass,
                     &ribbon_frame.runs,
@@ -674,7 +673,7 @@ impl Renderer {
                 pass.set_bind_group(0, frame_bind_group, &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += ctx.draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::After);
+                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::After, None);
                 stats.draw_calls += self.frame_draw_strips(
                     &mut pass,
                     &ribbon_frame.runs,

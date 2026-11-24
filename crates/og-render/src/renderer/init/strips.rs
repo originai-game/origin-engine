@@ -19,6 +19,7 @@ pub(super) struct StripPipelinesInputs<'a> {
 
 pub(super) struct StripPipelinesOutputs {
     pub ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
+    pub strip_pl: Option<wgpu::PipelineLayout>,
     pub gpu_trails: Option<ribbons_gpu::GpuTrails>,
 }
 
@@ -38,7 +39,11 @@ impl Renderer {
             effects_layout,
         }: StripPipelinesInputs<'_>,
     ) -> StripPipelinesOutputs {
-        let ribbon_state = |blend| {
+        let alpha = wgpu::BlendState {
+            color: wgpu::BlendComponent::OVER,
+            alpha: additive.alpha,
+        };
+        let ribbon_state = |fs: &'static str, blend| {
             deferred_hdr(
                 device,
                 ribbon_pl,
@@ -50,7 +55,7 @@ impl Renderer {
                     layout,
                     module,
                     vs: "vs",
-                    fs: "fs",
+                    fs,
                     buffers: RIBBON_BUFFERS,
                     cull: None,
                     depth_write: false,
@@ -61,11 +66,12 @@ impl Renderer {
             )
         };
         let ribbon_pipelines = [
-            ribbon_state(additive),
-            ribbon_state(wgpu::BlendState::ALPHA_BLENDING),
+            ribbon_state("fs", additive),
+            ribbon_state("fs_alpha", alpha),
         ];
         // The strips expanded from their points (ribbons_gpu.rs), where
         // the device can: `vs_strip` reads them from group 2.
+        let mut strip_pl_out = None;
         let gpu_trails = ribbons_gpu::GpuTrails::supported(flags).then(|| {
             let points = ribbons_gpu::GpuTrails::draw_layout(device);
             let strip_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -78,7 +84,7 @@ impl Renderer {
                 ],
                 immediate_size: 0,
             });
-            let strip_state = |blend| {
+            let strip_state = |fs: &'static str, blend| {
                 deferred_hdr(
                     device,
                     &strip_pl,
@@ -90,7 +96,7 @@ impl Renderer {
                         layout,
                         module,
                         vs: "vs_strip",
-                        fs: "fs",
+                        fs,
                         buffers: &[],
                         cull: None,
                         depth_write: false,
@@ -100,14 +106,13 @@ impl Renderer {
                     },
                 )
             };
-            let pipelines = [
-                strip_state(additive),
-                strip_state(wgpu::BlendState::ALPHA_BLENDING),
-            ];
+            let pipelines = [strip_state("fs", additive), strip_state("fs_alpha", alpha)];
+            strip_pl_out = Some(strip_pl);
             ribbons_gpu::GpuTrails::new(device, points, pipelines)
         });
         StripPipelinesOutputs {
             ribbon_pipelines,
+            strip_pl: strip_pl_out,
             gpu_trails,
         }
     }

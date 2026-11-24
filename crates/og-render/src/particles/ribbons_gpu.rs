@@ -145,7 +145,6 @@ impl Ranges {
 struct Slot {
     base: u32,
     cap: u32,
-    style: usize,
     last_tick: u64,
     seen: u64,
 }
@@ -154,12 +153,19 @@ pub(crate) struct GpuTrails {
     slots: HashMap<u64, Slot>,
     ranges: Ranges,
     ring: wgpu::Buffer,
+    ring_gen: u64,
     jobs: wgpu::Buffer,
+    jobs_gen: u64,
     styles: wgpu::Buffer,
+    styles_gen: u64,
+    style_cache: Vec<u8>,
     count: wgpu::Buffer,
     /// The strip points (data_texture.rs), three texels each.
     points: DataTexture,
+    points_gen: u64,
     layout: wgpu::BindGroupLayout,
+    /// Cached compute bind group keyed by `[jobs_gen, styles_gen, ring_gen, points_gen]`.
+    compute_group: Option<([u64; 4], wgpu::BindGroup)>,
     /// Made on first use (deferred.rs).
     pub(crate) pipeline: Deferred<wgpu::ComputePipeline>,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
@@ -314,8 +320,12 @@ impl GpuTrails {
                 RING_BYTES * 4096,
                 STORAGE.union(wgpu::BufferUsages::COPY_SRC),
             ),
+            ring_gen: 1,
             jobs: buffer(device, "trail jobs", 64 * 64, STORAGE),
+            jobs_gen: 1,
             styles: buffer(device, "trail styles", 320 * 16, STORAGE),
+            styles_gen: 1,
+            style_cache: Vec::new(),
             count: buffer(
                 device,
                 "trail count",
@@ -323,7 +333,9 @@ impl GpuTrails {
                 wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             ),
             points,
+            points_gen: 1,
             layout,
+            compute_group: None,
             pipeline,
             draw_layout,
             draw_group,
@@ -368,12 +380,16 @@ impl GpuTrails {
         queue: &wgpu::Queue,
         scene_id: u64,
         styles: &[TrailStyle],
+        effect_materials: &[crate::EffectMaterial],
         trails: &[Trail],
         trail_layers: &[(u64, i32)],
         ribbons: &[Ribbon],
         beams: &[Beam],
         tick: u64,
         tick_rate: f32,
+        eye: Vec3,
+        forward: Vec3,
+        oit_order_free: bool,
     ) -> Result<RibbonFrame, String> {
         // A frame planned and never recorded (it failed after this) steps
         // on its own now: the histories and the buffers this plan reuses
@@ -392,6 +408,7 @@ impl GpuTrails {
             self.scene_id = scene_id;
             self.slots.clear();
             self.ranges = Ranges::default();
+            self.style_cache.clear();
         }
         let tick_rate = tick_rate.max(1e-3);
         let shift = std::mem::take(&mut self.shift);
@@ -401,14 +418,15 @@ impl GpuTrails {
             Trail(usize),
             Points(crate::ribbons::Strip),
         }
-        // Layer, texture, blend and effect: the draw's key, then its body.
-        type Entry = (
-            Option<i32>,
-            Option<TextureHandle>,
-            ParticleBlend,
-            Option<crate::EffectMaterialHandle>,
-            Body,
-        );
+        struct Entry {
+            layer: Option<i32>,
+            texture: Option<TextureHandle>,
+            blend: ParticleBlend,
+            effect: Option<crate::EffectMaterialHandle>,
+            hook: Option<usize>,
+            depth: f32,
+            body: Body,
+        }
         let mut entries: Vec<Entry> = Vec::new();
         let mut jobs: Vec<JobGpu> = Vec::new();
         for t in trails {
@@ -419,49 +437,52 @@ impl GpuTrails {
             if self.slots.get(&t.id).is_some_and(|s| s.seen == self.frame) {
                 continue;
             }
-            let cap = (life_ticks(style, tick_rate) + 2).min(u64::from(MAX_TRAIL_POINTS)) as u32;
-            // A new trail, or one whose lifetime changed its ring's size,
-            // starts again in a ring of its own.
+            let need_cap =
+                (life_ticks(style, tick_rate) + 2).min(u64::from(MAX_TRAIL_POINTS)) as u32;
+            // Allocate power-of-two ring slabs and only grow/reset when the
+            // trail is new or needs more capacity than its current slab holds.
+            // Style edits (colour, width, shorter lifetime) never wipe history.
             let mut reset = false;
-            if self.slots.get(&t.id).is_none_or(|s| s.cap != cap) {
+            if self.slots.get(&t.id).is_none_or(|s| need_cap > s.cap) {
                 if let Some(old) = self.slots.remove(&t.id) {
                     self.ranges.release(old.base, old.cap + 1);
                 }
                 reset = true;
+                let cap = need_cap.max(32).next_power_of_two().min(MAX_TRAIL_POINTS);
                 let base = self.ranges.alloc(cap + 1);
                 self.slots.insert(
                     t.id,
                     Slot {
                         base,
                         cap,
-                        style: t.style.index(),
                         last_tick: t.tick,
                         seen: 0,
                     },
                 );
             }
             let slot = self.slots.get_mut(&t.id).expect("made above");
-            reset |= slot.style != t.style.index() || t.tick < slot.last_tick;
-            slot.style = t.style.index();
+            reset |= t.tick < slot.last_tick;
             slot.last_tick = t.tick;
             slot.seen = self.frame;
-            entries.push((
-                trail_layer(trail_layers, t.id),
-                style.texture,
-                style.blend,
-                style.effect,
-                Body::Trail(jobs.len()),
-            ));
+            entries.push(Entry {
+                layer: trail_layer(trail_layers, t.id),
+                texture: style.texture,
+                blend: style.blend,
+                effect: style.effect,
+                hook: crate::ribbons::effect_hook(style.effect, effect_materials),
+                depth: (t.position - eye).dot(forward),
+                body: Body::Trail(jobs.len()),
+            });
             jobs.push(JobGpu {
                 head: t.position.extend(0.0).to_array(),
                 shift: shift.extend(0.0).to_array(),
                 base: slot.base,
-                cap,
+                cap: slot.cap,
                 tick: t.tick as u32,
                 flags: u32::from(reset),
                 style: t.style.index() as u32,
                 out_first: 0,
-                out_count: cap + 1,
+                out_count: (need_cap + 1).min(slot.cap + 1),
                 seed: strip_seed(t.id),
             });
         }
@@ -474,17 +495,40 @@ impl GpuTrails {
             }
             keep
         });
-        for s in fixed_strips(ribbons, beams, tick, tick_rate) {
-            entries.push((s.layer, s.texture, s.blend, s.effect, Body::Points(s)));
+        for s in fixed_strips(ribbons, beams, effect_materials, tick, tick_rate) {
+            let depth = crate::ribbons::strip_depth(&s.points, eye, forward);
+            entries.push(Entry {
+                layer: s.layer,
+                texture: s.texture,
+                blend: s.blend,
+                effect: s.effect,
+                hook: s.hook,
+                depth,
+                body: Body::Points(s),
+            });
         }
-        // Grouped by (texture, blend) for one draw each, layered strips
-        // after the 3D ones by layer (as `Trails::build` sorts them).
-        og_core::sort::sort_by_key(&mut entries, |e| (e.0, e.1, e.2 as u8, e.3));
+        og_core::sort::sort_by(&mut entries, |a, b| {
+            crate::ribbons::cmp_strip_order(
+                a.layer,
+                a.blend,
+                a.texture,
+                a.effect,
+                a.hook,
+                a.depth,
+                b.layer,
+                b.blend,
+                b.texture,
+                b.effect,
+                b.hook,
+                b.depth,
+                oit_order_free,
+            )
+        });
         let mut out = RibbonFrame::default();
         let mut points: Vec<StripPoint> = Vec::new();
-        for (layer, texture, blend, effect, body) in &entries {
+        for e in &entries {
             let first = points.len() as u32;
-            match body {
+            match &e.body {
                 Body::Trail(j) => {
                     jobs[*j].out_first = first;
                     let n = jobs[*j].out_count as usize;
@@ -494,24 +538,26 @@ impl GpuTrails {
             }
             let count = points.len() as u32 - first;
             out.strips += 1;
-            out.segments += count - 1;
+            out.segments += count.saturating_sub(1);
             match out.runs.last_mut() {
                 Some(r)
-                    if r.texture == *texture
-                        && r.blend == crate::ribbons::strip_blend(*blend)
-                        && r.layer == *layer
-                        && r.effect == *effect =>
+                    if r.texture == e.texture
+                        && r.blend == crate::ribbons::strip_blend(e.blend)
+                        && r.layer == e.layer
+                        && r.effect == e.effect
+                        && r.hook == e.hook =>
                 {
                     r.count += count
                 }
                 _ => out.runs.push(RibbonRun {
-                    texture: *texture,
-                    blend: crate::ribbons::strip_blend(*blend),
-                    layer: *layer,
+                    texture: e.texture,
+                    blend: crate::ribbons::strip_blend(e.blend),
+                    layer: e.layer,
                     points: true,
                     first,
                     count,
-                    effect: *effect,
+                    effect: e.effect,
+                    hook: e.hook,
                 }),
             }
         }
@@ -520,6 +566,7 @@ impl GpuTrails {
         }
         if points.len() as u32 * TEXELS > self.points.texels {
             self.points = points_texture(device, (points.len() as u32).next_power_of_two());
+            self.points_gen += 1;
             self.draw_group = Self::group(device, &self.draw_layout, &self.points);
         }
         self.points.write(queue, 0, bytemuck::cast_slice(&points));
@@ -534,19 +581,25 @@ impl GpuTrails {
                 ring_bytes.next_power_of_two(),
                 STORAGE.union(wgpu::BufferUsages::COPY_SRC),
             );
+            self.ring_gen += 1;
             std::mem::replace(&mut self.ring, grown)
         });
         let style_data: Vec<StyleGpu> = styles.iter().map(|s| StyleGpu::of(s, tick_rate)).collect();
         let style_bytes: &[u8] = bytemuck::cast_slice(&style_data);
-        if style_bytes.len() as u64 > self.styles.size() {
-            self.styles = buffer(
-                device,
-                "trail styles",
-                (style_bytes.len() as u64).next_power_of_two(),
-                STORAGE,
-            );
+        if style_bytes != self.style_cache.as_slice() {
+            if style_bytes.len() as u64 > self.styles.size() {
+                self.styles = buffer(
+                    device,
+                    "trail styles",
+                    (style_bytes.len() as u64).next_power_of_two(),
+                    STORAGE,
+                );
+                self.styles_gen += 1;
+            }
+            crate::traffic::write_buffer(queue, &self.styles, 0, style_bytes);
+            self.style_cache.clear();
+            self.style_cache.extend_from_slice(style_bytes);
         }
-        crate::traffic::write_buffer(queue, &self.styles, 0, style_bytes);
         let job_bytes: &[u8] = bytemuck::cast_slice(&jobs);
         if job_bytes.len() as u64 > self.jobs.size() {
             self.jobs = buffer(
@@ -555,6 +608,7 @@ impl GpuTrails {
                 (job_bytes.len() as u64).next_power_of_two(),
                 STORAGE,
             );
+            self.jobs_gen += 1;
         }
         crate::traffic::write_buffer(queue, &self.jobs, 0, job_bytes);
         crate::traffic::write_buffer(
@@ -563,32 +617,45 @@ impl GpuTrails {
             0,
             bytemuck::cast_slice(&[jobs.len() as u32, 0, 0, 0]),
         );
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("trails"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.jobs.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.styles.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.ring.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::TextureView(&self.points.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.count.as_entire_binding(),
-                },
-            ],
-        });
+        let gen_key = [
+            self.jobs_gen,
+            self.styles_gen,
+            self.ring_gen,
+            self.points_gen,
+        ];
+        let group = match &self.compute_group {
+            Some((k, g)) if *k == gen_key => g.clone(),
+            _ => {
+                let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("trails"),
+                    layout: &self.layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: self.jobs.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: self.styles.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: self.ring.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 3,
+                            resource: wgpu::BindingResource::TextureView(&self.points.view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 4,
+                            resource: self.count.as_entire_binding(),
+                        },
+                    ],
+                });
+                self.compute_group = Some((gen_key, g.clone()));
+                g
+            }
+        };
         self.pending = Some(Pending {
             grown_from,
             group,
@@ -636,11 +703,17 @@ pub(crate) const WGSL: &str = wgsl!("trails.wgsl");
 
 pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
 
-/// The strips' module (alpha strips join the order-independent passes).
-pub(crate) fn ribbon_source() -> String {
+/// The strips' module with an optional effect shader hook (alpha strips join
+/// the order-independent passes).
+pub(crate) fn ribbon_source_with(hook: Option<&crate::MaterialShader>) -> String {
     format!(
         "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{RIBBON_WGSL}",
         crate::effect::EFFECT_WGSL,
-        crate::effect::hooks_source(None)
+        crate::effect::hooks_source(hook)
     )
+}
+
+/// The default strips' module without custom shader hooks.
+pub(crate) fn ribbon_source() -> String {
+    ribbon_source_with(None)
 }

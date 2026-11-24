@@ -202,7 +202,15 @@ impl Renderer {
         if !missing(self) {
             return false;
         }
-        self.ensure_oit_pipelines(mode, &[], &[], &[], true, (false, false));
+        self.ensure_oit_pipelines(
+            mode,
+            &[],
+            &[],
+            &[],
+            &[crate::oit::Source::Particles],
+            &[],
+            &[],
+        );
         true
     }
 

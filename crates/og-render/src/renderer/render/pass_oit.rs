@@ -74,8 +74,9 @@ impl Renderer {
         batches: &[Batch],
         skinned: &[Batch],
         billboards: &[Source],
-        particles: bool,
-        strips: (bool, bool),
+        particles: &[Source],
+        strips: &[Source],
+        shaders: &[MaterialShader],
     ) {
         let samples = self.samples;
         self.oit
@@ -100,14 +101,14 @@ impl Renderer {
             wanted.push(Self::oit_lit_source(b, true, physical));
         }
         wanted.extend_from_slice(billboards);
-        if particles {
-            wanted.push(Source::Particles);
-        }
-        if strips.0 {
-            wanted.push(Source::Ribbon);
-        }
-        if strips.1 && self.strips.gpu_trails.is_some() {
-            wanted.push(Source::Strip);
+        wanted.extend_from_slice(particles);
+        for &src in strips {
+            if matches!(src, Source::Strip | Source::StripHook(_))
+                && self.strips.gpu_trails.is_none()
+            {
+                continue;
+            }
+            wanted.push(src);
         }
         for (source, &mode) in wanted
             .iter()
@@ -322,8 +323,14 @@ impl Renderer {
                     });
                     (none, job)
                 }
-                Source::Ribbon | Source::Strip => {
-                    let strip = source == Source::Strip;
+                Source::Ribbon | Source::Strip | Source::RibbonHook(_) | Source::StripHook(_) => {
+                    let (strip, hook) = match source {
+                        Source::Ribbon => (false, None),
+                        Source::Strip => (true, None),
+                        Source::RibbonHook(h) => (false, Some(h)),
+                        Source::StripHook(h) => (true, Some(h)),
+                        _ => unreachable!(),
+                    };
                     let mut rest = vec![&self.sprite.sprite_layout];
                     if strip {
                         rest.push(
@@ -340,7 +347,10 @@ impl Renderer {
                     rest.push(&self.particles.gpu.effects.layout);
                     let name = if strip { "strip (oit)" } else { "ribbon (oit)" };
                     let layout = self.oit.layout(&device, name, mode, frame, &rest).clone();
-                    let shader = self.strips.ribbon_shader.get().clone();
+                    let shader = match hook {
+                        None => self.strips.ribbon_shader.get().clone(),
+                        Some(h) => self.strips.hook_module(&device, h, shaders),
+                    };
                     let job = variant_job(move |_| {
                         Made::Pipeline(oit::pipeline(
                             &device,
@@ -397,6 +407,50 @@ impl Renderer {
                                 fs: "fs",
                                 buffers: PARTICLES,
                                 cull: None,
+                                depth_write: false,
+                                depth_compare: wgpu::CompareFunction::LessEqual,
+                                blend: None,
+                                samples,
+                            },
+                            mode,
+                        ))
+                    });
+                    (none, job)
+                }
+                Source::EffectMesh(double_sided, hook) => {
+                    let layout = self
+                        .oit
+                        .layout(
+                            &device,
+                            "effect meshes (oit)",
+                            mode,
+                            frame,
+                            &[
+                                &self.sprite.sprite_layout,
+                                &self.particles.gpu.draw_layout,
+                                &self.particles.gpu.effects.layout,
+                            ],
+                        )
+                        .clone();
+                    let shader = self
+                        .particles
+                        .gpu
+                        .effect_meshes
+                        .shader_module(&device, hook, shaders);
+                    let job = variant_job(move |_| {
+                        Made::Pipeline(oit::pipeline(
+                            &device,
+                            &[],
+                            wgpu::FrontFace::Ccw,
+                            HdrPipeline {
+                                alpha_to_coverage: false,
+                                label: "effect meshes (oit)",
+                                layout: &layout,
+                                module: &shader,
+                                vs: "vs_effect_mesh",
+                                fs: "fs_effect_mesh",
+                                buffers: crate::particles::effect_mesh::EFFECT_MESH_BUFFERS,
+                                cull: (!double_sided).then_some(wgpu::Face::Back),
                                 depth_write: false,
                                 depth_compare: wgpu::CompareFunction::LessEqual,
                                 blend: None,

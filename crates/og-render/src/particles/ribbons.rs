@@ -198,6 +198,8 @@ pub(crate) struct RibbonRun {
     pub count: u32,
     /// The effect material the run draws with (`effect.rs`).
     pub effect: Option<crate::EffectMaterialHandle>,
+    /// The shader hook index of `effect`, if any.
+    pub hook: Option<usize>,
 }
 
 /// The points a trail remembers at most: a lifetime past this many ticks
@@ -297,7 +299,6 @@ pub(crate) struct RibbonFrame {
 }
 
 struct TrailHistory {
-    style: usize,
     points: VecDeque<(Vec3, u64)>,
     last_tick: u64,
     seen: u64,
@@ -323,12 +324,76 @@ pub(crate) struct Strip {
     /// Added to u (beam scroll).
     pub u_offset: f32,
     pub effect: Option<crate::EffectMaterialHandle>,
+    /// Shader hook index of `effect`, if any.
+    pub hook: Option<usize>,
     /// Its random bits for an effect material (24 bits: they ride a float).
     pub seed: u32,
     /// The share of its life an effect material fades in over at each end,
     /// 0 to 0.5 (a beam's: one width of its length; 0 for trails and
     /// ribbons, whose ends are their curves').
     pub cap: f32,
+}
+
+/// Resolves the shader hook index for an effect material handle.
+pub(crate) fn effect_hook(
+    effect: Option<crate::EffectMaterialHandle>,
+    materials: &[crate::EffectMaterial],
+) -> Option<usize> {
+    effect
+        .and_then(|h| materials.get(h.index()))
+        .and_then(|m| m.shader)
+        .map(|s| s.index())
+}
+
+/// Centroid view-space depth along `forward`, for back-to-front sorting of
+/// non-OIT alpha 3D strips.
+pub(crate) fn strip_depth(points: &[RibbonPoint], eye: Vec3, forward: Vec3) -> f32 {
+    if points.is_empty() {
+        return 0.0;
+    }
+    let sum = points.iter().fold(Vec3::ZERO, |acc, p| acc + p.position);
+    (sum / points.len() as f32 - eye).dot(forward)
+}
+
+/// Draw sort order shared by CPU and GPU strip builders: 3D before 2D (2D by
+/// layer); within 3D, non-OIT alpha strips sort back-to-front by depth while
+/// order-independent strips (Additive and OIT alpha) group by draw state.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn cmp_strip_order(
+    a_layer: Option<i32>,
+    a_blend: ParticleBlend,
+    a_tex: Option<TextureHandle>,
+    a_effect: Option<crate::EffectMaterialHandle>,
+    a_hook: Option<usize>,
+    a_depth: f32,
+    b_layer: Option<i32>,
+    b_blend: ParticleBlend,
+    b_tex: Option<TextureHandle>,
+    b_effect: Option<crate::EffectMaterialHandle>,
+    b_hook: Option<usize>,
+    b_depth: f32,
+    oit_order_free: bool,
+) -> std::cmp::Ordering {
+    let a_sb = strip_blend(a_blend);
+    let b_sb = strip_blend(b_blend);
+    a_layer.cmp(&b_layer).then_with(|| {
+        if a_layer.is_some() {
+            return (a_tex, a_sb as u8, a_effect, a_hook)
+                .cmp(&(b_tex, b_sb as u8, b_effect, b_hook));
+        }
+        let a_alpha = a_sb == ParticleBlend::Alpha;
+        let b_alpha = b_sb == ParticleBlend::Alpha;
+        // Alpha strips before additive strips so additive glows sit over smoke.
+        b_alpha.cmp(&a_alpha).then_with(|| {
+            if a_alpha && !oit_order_free {
+                b_depth
+                    .total_cmp(&a_depth)
+                    .then_with(|| (a_tex, a_effect, a_hook).cmp(&(b_tex, b_effect, b_hook)))
+            } else {
+                (a_tex, a_effect, a_hook).cmp(&(b_tex, b_effect, b_hook))
+            }
+        })
+    })
 }
 
 impl Trails {
@@ -351,6 +416,7 @@ impl Trails {
         &mut self,
         scene_id: u64,
         styles: &[TrailStyle],
+        effect_materials: &[crate::EffectMaterial],
         trails: &[Trail],
         trail_layers: &[(u64, i32)],
         ribbons: &[Ribbon],
@@ -360,6 +426,7 @@ impl Trails {
         eye: Vec3,
         forward: Vec3,
         orthographic: bool,
+        oit_order_free: bool,
     ) -> Result<RibbonFrame, String> {
         self.frame += 1;
         if self.scene_id != scene_id {
@@ -374,14 +441,12 @@ impl Trails {
                 .ok_or_else(|| format!("trail {}: style {}", t.id, t.style.index()))?;
             let life_ticks = life_ticks(style, tick_rate);
             let h = self.histories.entry(t.id).or_insert_with(|| TrailHistory {
-                style: t.style.index(),
                 points: VecDeque::new(),
                 last_tick: t.tick,
                 seen: 0,
             });
-            if h.style != t.style.index() || t.tick < h.last_tick {
+            if t.tick < h.last_tick {
                 h.points.clear();
-                h.style = t.style.index();
             }
             h.seen = self.frame;
             if h.points.is_empty() {
@@ -441,19 +506,42 @@ impl Trails {
                 points,
                 u_offset: 0.0,
                 effect: style.effect,
+                hook: effect_hook(style.effect, effect_materials),
                 seed: strip_seed(t.id),
                 cap: 0.0,
             });
         }
         let frame = self.frame;
         self.histories.retain(|_, h| h.seen == frame);
-        strips.extend(fixed_strips(ribbons, beams, tick, tick_rate));
-        // Group by (texture, blend) for one draw each.
-        // (Layered strips after the 3D ones, by layer: each is its own run.)
-        og_core::sort::sort_by_key(&mut strips, |s| {
-            (s.layer, s.texture, s.blend as u8, s.effect)
+        strips.extend(fixed_strips(
+            ribbons,
+            beams,
+            effect_materials,
+            tick,
+            tick_rate,
+        ));
+        let mut keyed: Vec<(f32, Strip)> = strips
+            .into_iter()
+            .map(|s| (strip_depth(&s.points, eye, forward), s))
+            .collect();
+        og_core::sort::sort_by(&mut keyed, |a, b| {
+            cmp_strip_order(
+                a.1.layer,
+                a.1.blend,
+                a.1.texture,
+                a.1.effect,
+                a.1.hook,
+                a.0,
+                b.1.layer,
+                b.1.blend,
+                b.1.texture,
+                b.1.effect,
+                b.1.hook,
+                b.0,
+                oit_order_free,
+            )
         });
-        self.strips = strips;
+        self.strips = keyed.into_iter().map(|(_, s)| s).collect();
         Ok(self.emit(eye, forward, orthographic))
     }
 
@@ -476,7 +564,8 @@ impl Trails {
                     if r.texture == s.texture
                         && r.blend == strip_blend(s.blend)
                         && r.layer == s.layer
-                        && r.effect == s.effect =>
+                        && r.effect == s.effect
+                        && r.hook == s.hook =>
                 {
                     r.count += count
                 }
@@ -488,6 +577,7 @@ impl Trails {
                     first,
                     count,
                     effect: s.effect,
+                    hook: s.hook,
                 }),
             }
         }
@@ -500,6 +590,7 @@ impl Trails {
 pub(crate) fn fixed_strips(
     ribbons: &[Ribbon],
     beams: &[Beam],
+    effect_materials: &[crate::EffectMaterial],
     tick: u64,
     tick_rate: f32,
 ) -> Vec<Strip> {
@@ -513,6 +604,7 @@ pub(crate) fn fixed_strips(
             points: r.points.clone(),
             u_offset: 0.0,
             effect: r.effect,
+            hook: effect_hook(r.effect, effect_materials),
             seed: 0,
             cap: 0.0,
         });
@@ -552,6 +644,7 @@ pub(crate) fn fixed_strips(
             points,
             u_offset: -time * b.scroll,
             effect: b.effect,
+            hook: effect_hook(b.effect, effect_materials),
             seed: hash_seed(b.seed) & 0x00ff_ffff,
             cap: (b.width / axis.length().max(1e-6)).min(0.5),
         });

@@ -336,6 +336,7 @@ fn effects(
     super::fx::settings(world, rs);
     super::fx::components(world, rs, h, tick);
     crate::present::vfx::extract(world, rs, h, tick, true);
+    rs.fx.reclaim_trail_styles();
     rs.scene.effects.particle_history = rs.particle_history.clone();
     // The pixel grid's snap: after the sprites and the camera are in.
     super::fx::snap_to_grid(rs);

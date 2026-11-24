@@ -891,9 +891,15 @@ pub(crate) struct ReflectionTargets {
     pub(crate) warned_planar: bool,
 }
 
-/// The strips' resources: their two pipelines, shader, vertex buffer and sampler, and the CPU and GPU trails.
+/// The strips' resources: their two pipelines, shader, vertex buffer and sampler, hook caches, and the CPU and GPU trails.
 pub(crate) struct StripState {
     pub(crate) ribbon_pipelines: [Sampled<wgpu::RenderPipeline>; 2],
+    pub(crate) ribbon_pl: wgpu::PipelineLayout,
+    pub(crate) strip_pl: Option<wgpu::PipelineLayout>,
+    pub(crate) additive: wgpu::BlendState,
+    pub(crate) hook_modules: HashMap<usize, wgpu::ShaderModule>,
+    /// Hooked strip pipelines keyed by `(points, alpha_idx, samples, hook)`.
+    pub(crate) hook_pipelines: HashMap<(bool, usize, u32, usize), Deferred<wgpu::RenderPipeline>>,
     pub(crate) ribbon_buffer: wgpu::Buffer,
     pub(crate) ribbon_sampler: wgpu::Sampler,
     pub(crate) ribbon_shader: deferred::Module,
