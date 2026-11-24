@@ -724,7 +724,26 @@ impl Tree {
             let run = arena.text_of(w.id);
             let up = self.slots[w.slot];
             let mut slot = w.slot;
-            if w.slot != 0 && leaf(up.role) {
+            // A pressable span in a paragraph is a link of its own, named
+            // by its runs (the paragraph draws them, so they take no box).
+            let link = w.slot != 0 && leaf(up.role) && s.kind == Kind::Text && s.press;
+            if link {
+                let mut h = rustc_hash::FxHasher::default();
+                (s.print, Role::Link as u8).hash(&mut h);
+                shown.map(|f| (f * 32.0).round() as i32).hash(&mut h);
+                self.slots.push(Slot {
+                    id: w.id,
+                    parent: w.slot,
+                    role: Role::Link,
+                    rect: shown,
+                    print: mix(h.finish(), runs_print(arena, w.id)),
+                    words: true,
+                });
+                if focus == Some(w.id) {
+                    focused = NodeId(w.id as u64);
+                }
+                continue;
+            } else if w.slot != 0 && leaf(up.role) {
                 // Inside a leaf: its text is the leaf's content.
                 if let Some(t) = run.filter(|t| !t.trim().is_empty()) {
                     let up = &mut self.slots[w.slot];
@@ -856,10 +875,13 @@ fn describe(node: &mut Node, s: &Slot, arena: &Arena, m: &Sem) {
     node.set_bounds(rect(s.rect));
     let words = || {
         let mut w = String::new();
-        if let Some(t) = arena.text_of(s.id) {
+        if let Some(t) = arena
+            .text_of(s.id)
+            .filter(|_| m.kind != Kind::Text || !m.press)
+        {
             push_words(&mut w, t);
         } else if s.words {
-            content(arena, s.id, &mut w);
+            content(arena, s.id, &mut w, m.kind == Kind::Text);
         }
         w
     };
@@ -939,16 +961,25 @@ fn describe(node: &mut Node, s: &Slot, arena: &Arena, m: &Sem) {
 }
 
 /// The text inside `id`, in tree order, its runs' words one space apart.
-fn content(arena: &Arena, id: Id, out: &mut String) {
+/// The words of `id`'s content: its shown texts, or with `runs` (a span
+/// of a paragraph, which draws them) all of them.
+fn content(arena: &Arena, id: Id, out: &mut String, runs: bool) {
     for &c in arena.children(id) {
-        if out.chars().count() >= NAME_MAX || !arena.shown(c) {
+        if out.chars().count() >= NAME_MAX || !(runs || arena.shown(c)) {
             continue;
         }
         match arena.text_of(c) {
             Some(t) => push_words(out, t),
-            None => content(arena, c, out),
+            None => content(arena, c, out, runs),
         }
     }
+}
+
+/// A print of a span's runs' texts, so a change of them sends it again.
+fn runs_print(arena: &Arena, id: Id) -> u64 {
+    let mut w = String::new();
+    content(arena, id, &mut w, true);
+    hash_str(&w)
 }
 
 fn push_words(out: &mut String, t: &str) {

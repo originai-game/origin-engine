@@ -7937,4 +7937,32 @@ mod tests {
         assert_eq!(g.hit(lb.w - 4.0, 1.0), 0);
         assert!(g.hit(4.0, 1.0) >= "Go up ".len(), "{}", g.hit(4.0, 1.0));
     }
+
+    /// A span with a press in a paragraph is its own node for a reader:
+    /// its text as its label and its first piece as its bounds, where a
+    /// press on it lands.
+    #[test]
+    fn a_pressable_span_is_a_reader_node_over_its_glyphs() {
+        let mut t = paragraph("", "", "Tokyo");
+        frame(&mut t);
+        let mut client = a11y::Tree::new();
+        let u = t.a11y(&mut client, None, 1.0).unwrap();
+        let span = t.op(3).unwrap();
+        let id = t.els[span as usize].node as u64;
+        let node = u.nodes.iter().find(|n| n.0.0 == id).map(|n| n.1.clone());
+        let node = node.expect("the span's node");
+        assert_eq!(
+            (node.role(), node.label()),
+            (accesskit::Role::Link, Some("Tokyo"))
+        );
+        let r = node.bounds().unwrap();
+        let [x, y, w, h] = t.span_piece(span).unwrap();
+        let want = [x, y, x + w, y + h].map(f64::from);
+        let got = [r.x0, r.y0, r.x1, r.y1];
+        assert!(
+            got.iter().zip(want).all(|(g, w)| (g - w).abs() < 0.05),
+            "{got:?} {want:?}"
+        );
+        assert!(w > 20.0 && h > 10.0, "{w} {h}");
+    }
 }

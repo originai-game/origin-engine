@@ -1534,6 +1534,13 @@ impl Tree {
                 .fold(f32::NEG_INFINITY, f32::max);
             out.insert(el.node, [x0, y0, x1 - x0, y1 - y0]);
         }
+        // A span is where its glyphs are: its first piece, where a press
+        // on it lands.
+        for e in 0..self.els.len() as u32 {
+            if let Some(piece) = self.span_piece(e) {
+                out.insert(self.els[e as usize].node, piece);
+            }
+        }
         out
     }
 
