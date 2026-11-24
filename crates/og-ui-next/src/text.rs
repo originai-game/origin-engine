@@ -108,6 +108,23 @@ impl Leaf {
     pub fn selection(&self, range: std::ops::Range<usize>, f: impl FnMut([f32; 4])) {
         self.layout.selection(range, f);
     }
+
+    /// The caret offset (a byte of its laid-out text) nearest (x, y) from
+    /// its left and top, the word there, and the offset `lines` lines from
+    /// `at` (og-text's [`Text::hit`], [`Text::word_at`], [`Text::line_step`]).
+    pub fn hit(&self, x: f32, y: f32) -> usize {
+        self.layout.hit(x, y)
+    }
+    /// Its widest line, CSS px.
+    pub fn width(&self) -> f32 {
+        self.layout.width()
+    }
+    pub fn word_at(&self, x: f32, y: f32) -> std::ops::Range<usize> {
+        self.layout.word_at(x, y)
+    }
+    pub fn line_step(&self, at: usize, lines: isize) -> usize {
+        self.layout.line_step(at, lines)
+    }
 }
 
 /// Every text leaf's layout, by arena node.

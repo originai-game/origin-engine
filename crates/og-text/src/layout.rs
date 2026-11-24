@@ -299,6 +299,31 @@ impl Text {
         ]
     }
 
+    /// The caret position nearest the point (x, y), CSS px from the box's
+    /// top left, as a byte offset of the laid-out text: where a press puts
+    /// the caret (Parley's cursor: the nearer edge of the cluster under it,
+    /// on the line under it or the nearest one).
+    pub fn hit(&self, x: f32, y: f32) -> usize {
+        parley::Cursor::from_point(&self.layout, x, y + self.trimmed[0]).index()
+    }
+
+    /// The word at the point (x, y), as a byte range of the laid-out text
+    /// (UAX #29 words, with dictionaries for scripts written without
+    /// spaces): what a double press selects.
+    pub fn word_at(&self, x: f32, y: f32) -> std::ops::Range<usize> {
+        parley::Selection::word_from_point(&self.layout, x, y + self.trimmed[0]).text_range()
+    }
+
+    /// Where the caret at byte `at` goes `lines` lines down (up when
+    /// negative), keeping its x: to the text's start or end past its
+    /// first or last line.
+    pub fn line_step(&self, at: usize, lines: isize) -> usize {
+        parley::Selection::from_byte_index(&self.layout, at, parley::Affinity::Downstream)
+            .move_lines(&self.layout, lines, false)
+            .focus()
+            .index()
+    }
+
     /// Selection highlight rectangles in layout CSS pixels. Parley owns
     /// bidi reordering and grapheme geometry, as it does for the caret.
     pub fn selection(&self, range: std::ops::Range<usize>, mut f: impl FnMut([f32; 4])) {

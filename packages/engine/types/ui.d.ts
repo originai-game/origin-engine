@@ -58,6 +58,8 @@ export declare const Input: (props: HostProps & {
     autoComplete?: string | undefined;
     secret?: boolean | undefined;
     multiline?: boolean | undefined;
+    /** A multi-line field at least this many lines tall (more than 1 makes it multi-line). */
+    rows?: number | undefined;
     maxLength?: number | undefined;
     readOnly?: boolean | undefined;
 }) => UiNode;

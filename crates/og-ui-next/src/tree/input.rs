@@ -119,6 +119,16 @@ pub(super) struct Per {
     pub max_length: usize,
     /// Read-only field: allows focus/selection/copy, refuses edits.
     pub read_only: bool,
+    /// `rows`: a multi-line field at least that many lines tall (0: its text's).
+    pub rows: u16,
+    /// How far a one-line field's text is scrolled left to keep the caret
+    /// in view, CSS px.
+    pub scroll_x: f32,
+    /// The states undo goes back to, oldest first, and redo forward to;
+    /// the last edit's kind and time, which typing joins.
+    pub undo: Vec<Snap>,
+    pub redo: Vec<Snap>,
+    pub last_edit: (Edit, f64),
     /// The pack slot its class names (`@Component.slot[.variant]`, from
     /// `packClass`, without the `@`): the scope of its sounds.
     pub slot: Box<str>,
@@ -145,6 +155,32 @@ pub(super) struct Per {
     /// (WAI-ARIA's roving tab index, NSH base's `roving.rs`).
     pub roving: bool,
 }
+
+/// An `Input`'s text and selection, as undo and redo restore them.
+#[derive(Clone, Default)]
+pub(super) struct Snap {
+    value: String,
+    caret: usize,
+    anchor: usize,
+}
+
+/// What an `Input` edit was, for undo's grouping: typing joins the typing
+/// before it and deleting the deleting, until the caret moves, the kind
+/// changes or [`UNDO_PAUSE`] passes; anything else (a paste, a cut, typing
+/// over a selection) is a step of its own.
+#[derive(Clone, Copy, Default, PartialEq)]
+pub(super) enum Edit {
+    #[default]
+    None,
+    Type,
+    Delete,
+    Other,
+}
+
+/// Seconds without an edit that end an undo group.
+const UNDO_PAUSE: f64 = 1.0;
+/// The most undo steps a field keeps.
+const UNDO_STEPS: usize = 100;
 
 /// A node being dragged, or a press on one not yet past the slop.
 #[derive(Clone, Copy)]
@@ -360,6 +396,13 @@ pub struct Input {
     capture: u32,
     /// The last click: its element, time and place, for a double press.
     first: Option<(u32, f64, (f32, f32))>,
+    /// The last press in a field's text: its element, time, place and how
+    /// many presses in a row (1 places the caret, 2 selects a word, 3 all).
+    field_press: Option<(u32, f64, (f32, f32), u8)>,
+    /// The field a held press is selecting in, as the pointer drags.
+    selecting: Option<u32>,
+    /// The field whose text was last scrolled to its caret.
+    scrolled: Option<u32>,
     focus: u32,
     modality: Modality,
     /// The open modals, innermost last, each with the focus it returns.
@@ -487,10 +530,29 @@ pub(super) fn caret_bar(
     .unwrap_or([0.0, 0.0, line]);
     let lb = arena.box_of(leaf);
     let bar = (size / 14.0 * scale).round().max(1.0) / scale;
-    Some([lb.x + cx, lb.y + top, bar, height])
+    let scroll = if f.multiline { 0.0 } else { f.scroll_x };
+    Some([lb.x + cx - scroll, lb.y + top, bar, height])
 }
 
 impl Per {
+    /// The byte offset in `self.value` at byte `shown` of the displayed
+    /// text (its bullets when `secret`): [`Per::display_offset`]'s inverse.
+    pub(crate) fn value_offset(&self, shown: usize) -> usize {
+        if self.secret {
+            let n = shown / '•'.len_utf8();
+            self.value
+                .char_indices()
+                .nth(n)
+                .map_or(self.value.len(), |(b, _)| b)
+        } else {
+            let mut at = shown.min(self.value.len());
+            while !self.value.is_char_boundary(at) {
+                at -= 1;
+            }
+            at
+        }
+    }
+
     /// Byte offset in the displayed text corresponding to a byte offset in `self.value`.
     pub(crate) fn display_offset(&self, byte: usize) -> usize {
         let clamped = byte.min(self.value.len());
@@ -872,6 +934,203 @@ impl Tree {
         true
     }
 
+    /// Before an edit of `kind` to `e`: its state goes on the undo stack,
+    /// unless the edit joins the one before it (typing after typing,
+    /// deleting after deleting, within [`UNDO_PAUSE`]); redo is cleared.
+    fn remember(&mut self, e: u32, kind: Edit) {
+        let time = self.time;
+        let p = &mut self.input.per[e as usize];
+        let (last, at) = p.last_edit;
+        if kind == Edit::Other || kind != last || time - at > UNDO_PAUSE {
+            if p.undo.len() == UNDO_STEPS {
+                p.undo.remove(0);
+            }
+            p.undo.push(Snap {
+                value: p.value.clone(),
+                caret: p.caret,
+                anchor: p.anchor,
+            });
+        }
+        p.redo.clear();
+        p.last_edit = (kind, time);
+    }
+
+    /// Undo (or `redo`) on the focused field `e`: its text and selection
+    /// go back to the last step (forward to the next), which it hears as
+    /// a `change`. Whether there was one.
+    fn undo(&mut self, e: u32, redo: bool) -> bool {
+        let p = &mut self.input.per[e as usize];
+        if p.read_only {
+            return false;
+        }
+        let Some(s) = (if redo { p.redo.pop() } else { p.undo.pop() }) else {
+            return false;
+        };
+        let now = Snap {
+            value: std::mem::replace(&mut p.value, s.value),
+            caret: p.caret,
+            anchor: p.anchor,
+        };
+        (p.caret, p.anchor) = (s.caret, s.anchor);
+        p.composing.clear();
+        p.last_edit = (Edit::None, 0.0);
+        if redo { &mut p.undo } else { &mut p.redo }.push(now);
+        self.edited(e);
+        true
+    }
+
+    /// The caret offset in field `e`'s value nearest the surface point
+    /// (x, y), from its laid-out text.
+    fn field_hit(&self, e: u32, x: f32, y: f32) -> Option<usize> {
+        let (leaf, ox, oy) = self.field_origin(e)?;
+        let p = &self.input.per[e as usize];
+        if p.value.is_empty() {
+            return Some(0);
+        }
+        let shown = self.texts.leaf(leaf)?.hit(x - ox, y - oy);
+        Some(p.value_offset(shown))
+    }
+
+    /// Field `e`'s text leaf and the surface point its text starts at
+    /// (scrolled with a one-line field's text).
+    fn field_origin(&self, e: u32) -> Option<(Id, f32, f32)> {
+        let leaf = self.els[e as usize].leaf?;
+        let &(x, y, ..) = self.abs.get(e as usize)?;
+        let lb = self.arena.box_of(leaf);
+        let p = &self.input.per[e as usize];
+        let scroll = if p.multiline { 0.0 } else { p.scroll_x };
+        Some((leaf, x + lb.x - scroll, y + lb.y))
+    }
+
+    /// A press at (x, y) after it focused: in the focused field's text it
+    /// places the caret there (and starts a drag selection), a second
+    /// press in a row selects the word there, a third the whole text.
+    pub(super) fn field_press(&mut self, x: f32, y: f32) {
+        let Some(e) = self.editing() else {
+            return;
+        };
+        if !self.inside(e, x, y) || !self.input.per[e as usize].composing.is_empty() {
+            return;
+        }
+        let n = match self.input.field_press {
+            Some((f, at, p, n)) if f == e && self.time - at <= DOUBLE_PRESS && near(p, (x, y)) => {
+                n % 3 + 1
+            }
+            _ => 1,
+        };
+        self.input.field_press = Some((e, self.time, (x, y), n));
+        let word = match n {
+            2 => self
+                .field_origin(e)
+                .and_then(|(leaf, ox, oy)| Some(self.texts.leaf(leaf)?.word_at(x - ox, y - oy))),
+            _ => None,
+        };
+        let Some(at) = self.field_hit(e, x, y) else {
+            return;
+        };
+        let p = &mut self.input.per[e as usize];
+        (p.anchor, p.caret) = match (n, word) {
+            (2, Some(w)) if !p.value.is_empty() => (p.value_offset(w.start), p.value_offset(w.end)),
+            (3, _) => (0, p.value.len()),
+            _ => (at, at),
+        };
+        p.last_edit = (Edit::None, 0.0);
+        self.input.selecting = (n == 1).then_some(e);
+        self.paint = true;
+    }
+
+    /// The pointer moved: a press held in a field's text selects from where
+    /// it went down to here.
+    pub(super) fn field_drag(&mut self, x: f32, y: f32) {
+        let Some(e) = self.input.selecting else {
+            return;
+        };
+        if self.editing() != Some(e) {
+            self.input.selecting = None;
+            return;
+        }
+        if let Some(at) = self.field_hit(e, x, y)
+            && at != self.input.per[e as usize].caret
+        {
+            self.input.per[e as usize].caret = at;
+            self.paint = true;
+        }
+    }
+
+    /// ↑ or ↓ in a multi-line field: the caret goes a line up or down,
+    /// keeping its x (extending the selection with `shift`).
+    fn line_key(&mut self, e: u32, down: bool, shift: bool) {
+        let Some(leaf) = self.els[e as usize].leaf else {
+            return;
+        };
+        let p = &self.input.per[e as usize];
+        let shown = p.display_offset(p.caret);
+        let Some(to) = self
+            .texts
+            .leaf(leaf)
+            .map(|l| l.line_step(shown, if down { 1 } else { -1 }))
+        else {
+            return;
+        };
+        let p = &mut self.input.per[e as usize];
+        p.caret = p.value_offset(to);
+        if !shift {
+            p.anchor = p.caret;
+        }
+        p.last_edit = (Edit::None, 0.0);
+        self.paint = true;
+    }
+
+    /// Before paint: the focused one-line field scrolls its text so the
+    /// caret shows inside its content box, no further than its text runs;
+    /// a field that lost the focus shows its text's start again.
+    pub(super) fn follow_caret(&mut self) {
+        let focused = self
+            .editing()
+            .filter(|&e| !self.input.per[e as usize].multiline);
+        if let Some(was) = self.input.scrolled
+            && Some(was) != focused
+            && let Some(p) = self.input.per.get_mut(was as usize)
+            && p.scroll_x != 0.0
+        {
+            p.scroll_x = 0.0;
+            self.paint = true;
+        }
+        self.input.scrolled = focused;
+        let Some(e) = focused else {
+            return;
+        };
+        let el = &self.els[e as usize];
+        let Some(leaf) = el.leaf else {
+            return;
+        };
+        let p = &self.input.per[e as usize];
+        let Some(caret) = caret_bar(el, p, &self.texts, &self.arena, self.scale, self.text_scale)
+        else {
+            return;
+        };
+        let b = self.arena.box_of(el.node);
+        let lb = self.arena.box_of(leaf);
+        let view = (b.w - b.inset[0] - b.inset[2]).max(0.0);
+        let width = self.texts.leaf(leaf).map_or(0.0, |l| l.width());
+        // The caret from the text's start, unscrolled.
+        // (Its bar may stand past the content box's right edge, into the
+        // room paint leaves it there.)
+        let x = caret[0] - lb.x + p.scroll_x;
+        let mut s = p.scroll_x;
+        if x - s > view {
+            s = x - view;
+        }
+        if x < s {
+            s = x;
+        }
+        let s = s.clamp(0.0, (width - view).max(0.0));
+        if s != p.scroll_x {
+            self.input.per[e as usize].scroll_x = s;
+            self.paint = true;
+        }
+    }
+
     /// A frame's text from the host (og-input's `InputFrame`): `text` it
     /// committed, then the input method's `composition` as it stands after
     /// that commit (`Some("")` ends it). A commit and the next word's
@@ -918,17 +1177,37 @@ impl Tree {
         }
         p.composing.clear();
         let (start, end) = p.selection_range();
-        p.value.replace_range(start..end, "");
-        let max_len = p.max_length;
-        let existing_chars = p.value.chars().count();
-        let insert_str: String = if max_len > 0 {
-            let room = max_len.saturating_sub(existing_chars);
-            filtered.chars().take(room).collect()
-        } else {
-            filtered
-        };
-        p.value.insert_str(start, &insert_str);
-        p.caret = start + insert_str.len();
+        // `maxLength` counts characters, and cuts what goes in at the
+        // last whole grapheme cluster that fits.
+        let mut insert = filtered.as_str();
+        if p.max_length > 0 {
+            let kept = p.value.chars().count() - p.value[start..end].chars().count();
+            let room = p.max_length.saturating_sub(kept);
+            if let Some((cut, _)) = insert.char_indices().nth(room) {
+                insert = &insert[..cluster_edge(insert, cut + 1, true)];
+            }
+        }
+        if insert.is_empty() && start == end {
+            if had_composing {
+                self.show_value(e);
+            }
+            return false;
+        }
+        // One grapheme typed at a caret joins the typing before it; a
+        // paste, a commit of several, or typing over a selection is a step.
+        let one = cluster_edge(insert, 0, false) == insert.len();
+        let insert = insert.to_owned();
+        self.remember(
+            e,
+            if one && start == end {
+                Edit::Type
+            } else {
+                Edit::Other
+            },
+        );
+        let p = &mut self.input.per[e as usize];
+        p.value.replace_range(start..end, &insert);
+        p.caret = start + insert.len();
         p.anchor = p.caret;
         self.edited(e);
         true
@@ -963,12 +1242,24 @@ impl Tree {
                     };
                     (at, next)
                 };
-                p.caret = a;
-                p.anchor = a;
+                p.caret = at;
                 if a < b {
+                    let kind = if p.anchor == at {
+                        Edit::Delete
+                    } else {
+                        Edit::Other
+                    };
+                    self.remember(e, kind);
+                    let p = &mut self.input.per[e as usize];
                     p.value.replace_range(a..b, "");
+                    (p.caret, p.anchor) = (a, a);
                     self.edited(e);
+                } else {
+                    p.anchor = a;
+                    p.caret = a;
                 }
+                self.paint = true;
+                return true;
             }
             "ArrowLeft" => {
                 p.caret = if !shift && p.anchor != at {
@@ -992,6 +1283,8 @@ impl Tree {
             "End" => p.caret = p.value.len(),
             _ => return false,
         }
+        // The caret moved: the next typing is a new undo step.
+        p.last_edit = (Edit::None, 0.0);
         if !shift {
             self.input.per[e as usize].anchor = self.input.per[e as usize].caret;
         }
@@ -1521,6 +1814,7 @@ impl Tree {
         if moved && !pressed {
             self.drag_moved(x, y);
             self.finger_moved(x, y);
+            self.field_drag(x, y);
         }
         let mut took = false;
         if pressed {
@@ -1585,8 +1879,10 @@ impl Tree {
                 self.input.modality = Modality::Pointer;
                 self.focus(f);
             }
+            self.field_press(x, y);
         }
         if released {
+            self.input.selecting = None;
             match self.input.drag {
                 Some(d) if d.live && !d.keys => {
                     let t = self.drop_at(x, y);
@@ -2240,12 +2536,26 @@ impl Tree {
                     }
                     if code == "KeyX" && !p.read_only {
                         p.composing.clear();
+                        self.remember(e, Edit::Other);
+                        let p = &mut self.input.per[e as usize];
                         p.value.replace_range(start..end, "");
                         p.caret = start;
                         p.anchor = start;
                         self.edited(e);
                     }
                 }
+                return true;
+            }
+            // Undo, and redo with Shift (or Ctrl+Y); the text's own.
+            if cmd && (code == "KeyZ" || code == "KeyY" && ctrl) {
+                self.undo(e, shift || code == "KeyY");
+                return true;
+            }
+            if !(ctrl || alt || meta)
+                && matches!(code, "ArrowUp" | "ArrowDown")
+                && self.input.per[e as usize].multiline
+            {
+                self.line_key(e, code == "ArrowDown", shift);
                 return true;
             }
             if !(ctrl || alt || meta)

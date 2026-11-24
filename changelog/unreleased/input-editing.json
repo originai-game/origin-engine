@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Input",
+      "summary": "An Input edits as a text field does: Ctrl+Z (Cmd+Z) undoes and Ctrl+Shift+Z or Ctrl+Y redoes, typing grouped into one step until a pause or a caret move, a paste or cut its own step; a press places the caret at the nearest character edge, a drag selects, a double press selects the word and a triple press all; ↑ and ↓ move between lines of a multi-line Input keeping the caret's x; a long one-line text scrolls to keep the caret in view instead of widening the field. New prop `rows`: a multi-line Input at least that many lines tall."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui Input maxLength",
+      "summary": "maxLength no longer splits a grapheme cluster (an accented letter or an emoji sequence): what does not fit whole is left out, and typing over a selection counts the room the selection frees."
+    }
+  ]
+}

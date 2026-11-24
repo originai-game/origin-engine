@@ -1179,6 +1179,20 @@ impl Tree {
             // The player's text size scales the size and what is a
             // length with it, before the text is laid out.
             let k = self.text_scale;
+            let field = self.input.per(e).filter(|p| p.input);
+            let one_line = field.is_some_and(|p| !p.multiline);
+            // `rows`: a field at least that many lines tall.
+            let rows = field.map_or(0, |p| p.rows);
+            if field.is_some() {
+                let mut s = taffy::Style::default();
+                if rows > 0 {
+                    let line = eff.text.line_height(eff.size) * k;
+                    let line = if line < 0.0 { eff.size * k * 1.2 } else { line };
+                    s.min_size.height = taffy::LengthPercentageAuto::length(f32::from(rows) * line);
+                }
+                self.arena
+                    .set_style(leaf, rune_taffy::CompactStyle::from(&s));
+            }
             self.arena.set_run(
                 leaf,
                 Run {
@@ -1186,7 +1200,7 @@ impl Tree {
                     tracking: eff.text.tracking(eff.size) * k,
                     line: eff.text.line_height(eff.size) * k,
                     weight: eff.text.weight,
-                    nowrap: eff.text.nowrap,
+                    nowrap: eff.text.nowrap || one_line,
                     clamp: eff.text.clamp,
                     family: eff.text.family,
                     italic: eff.text.italic,
@@ -1199,6 +1213,7 @@ impl Tree {
                     },
                     ellipsis: eff.text.overflow == 1,
                     align: eff.text.align,
+                    field: one_line,
                 },
             );
         }
@@ -1465,6 +1480,7 @@ impl Tree {
         }
         let (vw, vh) = self.size;
         let screen = [0.0, 0.0, vw, vh];
+        self.follow_caret();
         let p = &mut self.drawn;
         p.clear();
         (p.width, p.height) = (vw, vh);
@@ -2174,6 +2190,16 @@ impl Tree {
             }
             // An `Input`'s own placeholder colour, else half its ink.
             let field = self.input.per(e as u32).filter(|f| f.input);
+            // A one-line field's text scrolls inside its content box, with
+            // room past its right edge for the caret standing there.
+            let scroll = field.filter(|f| !f.multiline).map_or(0.0, |f| f.scroll_x);
+            let clip = match field {
+                Some(f) if !f.multiline => {
+                    let [l, _, r, _] = self.arena.box_of(el.node).inset;
+                    cut_to(clip, [x + l, y, x + b.w - r + 2.0, y + b.h])
+                }
+                _ => clip,
+            };
             let mut text_ink = ink;
             if field.is_some_and(|f| f.value.is_empty()) {
                 text_ink = s.placeholder.map_or_else(
@@ -2205,7 +2231,7 @@ impl Tree {
                     true => v,
                     false => ((v + t) * scale).round() / scale - t,
                 };
-                let (lx, ly) = (snap(x + lb.x, tx), snap(y + lb.y, ty));
+                let (lx, ly) = (snap(x + lb.x - scroll, tx), snap(y + lb.y, ty));
                 // `text-overflow` cuts at the box that set it.
                 let mut width = lb.w;
                 if run.ellipsis

@@ -62,6 +62,10 @@ pub struct Run {
     pub ellipsis: bool,
     /// `text-align`: 0 start, 1 center, 2 right, 3 left, 4 justify.
     pub align: u8,
+    /// A one-line field's text (an `Input` without `multiline`): it stays
+    /// on one line and takes no more width than its box has, as an HTML
+    /// input's text scrolls inside it instead of widening it.
+    pub field: bool,
 }
 
 impl Run {
@@ -81,6 +85,7 @@ impl Run {
             hyphens: og_text::layout::Hyphens::Manual,
             ellipsis: false,
             align: 0,
+            field: false,
         }
     }
 
@@ -91,7 +96,14 @@ impl Run {
             .map(f32::to_bits)
             .hash(h);
         (self.weight, self.nowrap, self.family, self.italic).hash(h);
-        (self.variant, self.wrap, self.ellipsis, self.align).hash(h);
+        (
+            self.variant,
+            self.wrap,
+            self.ellipsis,
+            self.align,
+            self.field,
+        )
+            .hash(h);
         self.clamp.hash(h);
         self.hyphens.hash(h);
     }
@@ -471,6 +483,12 @@ impl Arena {
                                 n.memo.set(memo);
                                 (w, h)
                             }
+                        };
+                        // A one-line field's text is no wider than it may be.
+                        let w = match (run.field, avail) {
+                            (false, _) | (true, Avail::Max) => w,
+                            (true, Avail::Min) => 0.0,
+                            (true, Avail::Width(a)) => w.min(a),
                         };
                         Size {
                             width: known.width.unwrap_or(w),

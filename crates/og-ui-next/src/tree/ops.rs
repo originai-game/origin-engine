@@ -1050,6 +1050,10 @@ impl Tree {
                                 p.composing.clear();
                                 p.caret = p.value.len();
                                 p.anchor = p.caret;
+                                // Another text: what undo knew is gone.
+                                p.undo.clear();
+                                p.redo.clear();
+                                p.last_edit = Default::default();
                             }
                             self.show_value(e);
                         }
@@ -1076,6 +1080,15 @@ impl Tree {
                         "multiline" if self.input.per[e as usize].input => {
                             self.input.per[e as usize].multiline =
                                 !matches!(value, "" | "false" | "0" | "null");
+                            self.inherit(e);
+                        }
+                        // `rows`: a multi-line field that many lines tall.
+                        "rows" if self.input.per[e as usize].input => {
+                            let rows = value.trim().parse::<u16>().unwrap_or(0);
+                            let p = &mut self.input.per[e as usize];
+                            p.rows = rows;
+                            p.multiline |= rows > 1;
+                            self.inherit(e);
                         }
                         "maxLength" | "maxlength" if self.input.per[e as usize].input => {
                             self.input.per[e as usize].max_length =
@@ -5446,6 +5459,199 @@ mod tests {
         assert_eq!(t.focused_id(), Some(2));
         t.text_frame("a\r\nb\rc", None);
         assert_eq!(changes(&mut t), ["a\nb\nc"]);
+    }
+
+    /// An `Input` edits as a text field does. Ways this could fail, each
+    /// asserted: every typed character its own undo step, or typing after
+    /// a pause joined to the typing before it; a deletion run undone a
+    /// character at a time; a paste over a selection undone in two steps;
+    /// redo lost; `maxLength` keeping half a grapheme cluster; a long
+    /// one-line text running past the field instead of scrolling to the
+    /// caret; a press placing the caret off the CJK character edge nearest
+    /// it; a drag or a double press not selecting; ↑ in a multi-line field
+    /// not keeping the caret's x; `rows` not sizing the field.
+    #[test]
+    fn an_input_edits_like_a_text_field() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(4);
+        b.op(4).u32(1).str("b");
+        b.op(7).u32(1).u8(Event::Change as u8).u8(1);
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(1).u32(2).u8(4);
+        b.op(7).u32(2).u8(Event::Change as u8).u8(1);
+        b.op(6).u32(2).str("rows").str("3");
+        b.op(8).u32(0).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(1));
+        let changes = |t: &mut Tree| -> Vec<String> {
+            t.events
+                .drain(..)
+                .filter(|f| f.event == Event::Change)
+                .map(|f| f.value.to_string())
+                .collect()
+        };
+        let value = |t: &mut Tree| changes(t).pop();
+        let key = |t: &mut Tree, code: &str, shift: bool, ctrl: bool| {
+            t.key(code, shift, ctrl, false, false);
+        };
+        let advance = |text: &str| {
+            let run = crate::arena::Run::sized(16.0);
+            TEXT.with_borrow_mut(|(fonts, _)| {
+                crate::text::Texts::default()
+                    .measure(fonts, 0, text, &run, crate::arena::Avail::Max)
+                    .0
+            })
+        };
+        // The painted caret's x from the field's left.
+        let caret = |t: &mut Tree| {
+            frame(t);
+            let x0 = t.op_box(1).unwrap()[0];
+            t.drawn
+                .quads
+                .iter()
+                .find(|q| q.kind == og_draw::paint::PaintKind::Solid as u32 && q.rect[2] <= 2.0)
+                .map(|q| q.rect[0] - x0)
+        };
+
+        // Typing groups until a pause; deleting groups as one step.
+        t.set_time(1.0, false);
+        for c in ["a", "b"] {
+            t.type_text(c);
+        }
+        t.set_time(2.5, false);
+        for c in ["c", "d"] {
+            t.type_text(c);
+        }
+        key(&mut t, "Backspace", false, false);
+        key(&mut t, "Backspace", false, false);
+        assert_eq!(value(&mut t).as_deref(), Some("ab"));
+        key(&mut t, "KeyZ", false, true);
+        assert_eq!(
+            value(&mut t).as_deref(),
+            Some("abcd"),
+            "the deletions are one step"
+        );
+        key(&mut t, "KeyZ", false, true);
+        assert_eq!(
+            value(&mut t).as_deref(),
+            Some("ab"),
+            "typing after a pause is a step"
+        );
+        key(&mut t, "KeyZ", false, true);
+        assert_eq!(
+            value(&mut t).as_deref(),
+            Some(""),
+            "typing without one is one"
+        );
+        key(&mut t, "KeyZ", true, true);
+        key(&mut t, "KeyY", false, true);
+        assert_eq!(
+            changes(&mut t),
+            ["ab", "abcd"],
+            "redo with Shift and with Y"
+        );
+        // A paste over a selection is one step, and replaces it.
+        key(&mut t, "Home", false, false);
+        key(&mut t, "ArrowRight", false, false);
+        key(&mut t, "ArrowRight", true, false);
+        key(&mut t, "ArrowRight", true, false);
+        t.text_frame("XYZ", None);
+        assert_eq!(value(&mut t).as_deref(), Some("aXYZd"));
+        key(&mut t, "KeyZ", false, true);
+        assert_eq!(value(&mut t).as_deref(), Some("abcd"));
+        assert_eq!(
+            t.text_target().unwrap().selection,
+            "bc",
+            "the selection comes back"
+        );
+
+        // maxLength cuts at a whole grapheme cluster.
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("maxLength").str("5");
+        t.apply(&b.bytes()).unwrap();
+        key(&mut t, "End", false, false);
+        t.type_text("e\u{301}x");
+        assert!(
+            changes(&mut t).is_empty(),
+            "no room for the e and its accent"
+        );
+        t.type_text("x");
+        assert_eq!(value(&mut t).as_deref(), Some("abcdx"));
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("maxLength").str("0");
+        t.apply(&b.bytes()).unwrap();
+
+        // A long one-line text scrolls to its caret, inside the 50 px field.
+        t.type_text("efghijklmnop");
+        let end = caret(&mut t).unwrap();
+        assert_eq!(t.op_box(1).unwrap()[2], 50.0, "the text does not widen it");
+        assert!(
+            (48.0..=52.0).contains(&end),
+            "the caret at the field's end: {end}"
+        );
+        let told = t.text_target().unwrap().caret[0] - t.op_box(1).unwrap()[0];
+        assert!(
+            (told - end).abs() < 1.0,
+            "the host hears the scrolled caret"
+        );
+        key(&mut t, "Home", false, false);
+        assert_eq!(caret(&mut t), Some(0.0), "back to the start");
+
+        // A press places the caret at the CJK character edge nearest it,
+        // a drag selects, a double press selects a word.
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("value").str("你好世界");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        key(&mut t, "Home", false, false);
+        frame(&mut t);
+        let [x0, y0, ..] = t.op_box(1).unwrap();
+        let one = advance("你");
+        t.set_time(10.0, false);
+        at(&mut t, x0 + one * 1.4, y0 + 10.0, true, false);
+        at(&mut t, x0 + one * 1.4, y0 + 10.0, false, true);
+        assert_eq!(
+            caret(&mut t),
+            Some(one.round()),
+            "nearer the end of 你 than of 好"
+        );
+        t.set_time(11.0, false);
+        at(&mut t, x0 + one * 0.9, y0 + 10.0, true, false);
+        at(&mut t, x0 + one * 2.9, y0 + 10.0, false, false);
+        at(&mut t, x0 + one * 2.9, y0 + 10.0, false, true);
+        assert_eq!(t.text_target().unwrap().selection, "好世");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("value").str("go far");
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        key(&mut t, "Home", false, false);
+        frame(&mut t);
+        let far = x0 + advance("go f");
+        t.set_time(20.0, false);
+        for _ in 0..2 {
+            at(&mut t, far, y0 + 10.0, true, false);
+            at(&mut t, far, y0 + 10.0, false, true);
+        }
+        assert_eq!(t.text_target().unwrap().selection, "far");
+        changes(&mut t);
+
+        // A multi-line field: `rows` lines tall, ↑ keeps the caret's x.
+        t.key("Tab", false, false, false, false);
+        assert_eq!(t.focused_id(), Some(2));
+        frame(&mut t);
+        assert!(
+            t.op_box(2).unwrap()[3] >= 3.0 * 16.0 * 1.2 - 0.5,
+            "{:?}",
+            t.op_box(2)
+        );
+        t.text_frame("ab\ncd", None);
+        frame(&mut t);
+        key(&mut t, "ArrowUp", false, false);
+        t.type_text("X");
+        assert_eq!(value(&mut t).as_deref(), Some("abX\ncd"));
     }
 
     /// A control sounds the pack's sound for its slot (`@Component.slot`
