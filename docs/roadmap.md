@@ -74,6 +74,8 @@ the L4 and restates its target there at the same ratio.
 | Watercolour look | a watercolour primitive (Bousseau, MNPR) in place of today's oil-like result, with the art review | — |
 | Distant impostors | their own shadow, the view from below and sway, with the art review | — |
 | Latest features on wasm, determinism and browser tiers | measured before a release | — |
+| TAAU edges | thin edges and moving silhouettes as clean as the full-resolution reference | deferred by the owner (2026-11-24): stepped fringe on moving spheres, jagged and gapped fence silhouettes, broad softness, lost thin-edge coverage; history is not depth-aware and reprojects without translation (L4 at 975082e9d; findings artifact thin-edge-coverage-findings) |
+| Physical depth of field | defocused edges within quantisation of a raster-disc oracle at f/1, f/2, f/4, DoF at most 0.75 ms | deferred by the owner (2026-11-24): the layered half-resolution gather fits the budget (0.52 ms) but misses the oracle by 34/85/87 codes, with false exterior tails, an f/1 edge of 208 over its 197 bound and card-edge outlining; work kept on branch camera/physical-dof (physical-camera-evidence artifact) |
 
 Deferred by the owner: UI text scale at 200 %, accessibility beyond
 AccessKit, the overlay's GPU cost, SSSR and FSR follow-ups, W7 (CPU FFT
