@@ -80,7 +80,7 @@ pub struct CharacterController {
     #[reflect(name = "stepHeight", min = 0, unit = "m", default = 0.3, tunable)]
     pub step_height: f32,
     /// How far below it the ground still holds it (stairs down, slopes): 0 lets it leave every edge.
-    #[reflect(name = "snapDistance", min = 0, unit = "m", default = 0.5, tunable)]
+    #[reflect(name = "snapDistance", min = 0, unit = "m", default = 0.2, tunable)]
     pub snap_distance: f32,
     /// The gap kept between it and every surface.
     #[reflect(min = 0.001, unit = "m", default = 0.02)]
