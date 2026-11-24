@@ -45,6 +45,13 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 | `fromFocus` | `number` | `0` | — | `m` | read only | Its focus distance (0: none). |
 | `fromFocusRange` | `number` | `0` | — | `m` | read only | Its focus range. |
 | `fromLensProjection` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection. |
+| `fromCocSources` | `readonly number[]` | `[]` | — | — | a list of at most 36 `f32` (`List.f32.36`): reads a frozen copy, writes a whole array, read only | Held outgoing CoC: at most four sources, nine numbers each in CameraCocDropped.source order. Survives shot removal and nested interruptions. |
+| `fromPost` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | Held outgoing shutter: x seconds, y artistic frame fraction. Survives interruption and restore. |
+| `fromPostPhysical` | `boolean` | `false` | — | — | read only | The held post channels contain a physical source; false preserves the legacy artistic shutter path even across nested artistic interruptions. |
+| `cocExcluded` | `number` | `0` | — | — | read only | Capacity-completed slots for this transition: bits 0–3 held sources, bit 4 incoming. A dropped source stays excluded until the transition ends; resets on the next shot change. |
+| `cocDropCount` | `number` | `0` | — | — | read only | Number of CoC capacity drops; each is also a CameraCocDropped event. A drop completes the lowest-weight source immediately rather than fitting a curve. |
+| `lastCocDrop` | `readonly number[]` | `[]` | — | — | a list of at most 9 `f32` (`List.f32.9`): reads a frozen copy, writes a whole array, read only | Latest dropped primitive in CameraCocDropped.source order; valid when cocDropCount is nonzero. Inspect through the probe or dump. |
+| `lastCocDropFrame` | `number` | `0` | — | — | read only | Fixed simulation frame (tick) of lastCocDrop; valid when cocDropCount is nonzero. |
 | `activations` | `number` | `0` | — | — | read only | How many times a virtual camera has been enabled (og.VirtualCamera.activated). |
 
 #### Depth of field held
@@ -124,6 +131,27 @@ resource CameraBrain {
   field fromLensProjection Vector3 "Held resolved projection: vertical focal factor and shift x/y, before zoom, at the last evaluated aspect. An interrupted blend holds its exact displayed projection." {
     readonly true
   }
+  field fromCocSources List.f32.36 "Held outgoing CoC: at most four sources, nine numbers each in CameraCocDropped.source order. Survives shot removal and nested interruptions." {
+    readonly true
+  }
+  field fromPost Vector2 "Held outgoing shutter: x seconds, y artistic frame fraction. Survives interruption and restore." {
+    readonly true
+  }
+  field fromPostPhysical bool "The held post channels contain a physical source; false preserves the legacy artistic shutter path even across nested artistic interruptions." {
+    readonly true
+  }
+  field cocExcluded u32 "Capacity-completed slots for this transition: bits 0–3 held sources, bit 4 incoming. A dropped source stays excluded until the transition ends; resets on the next shot change." {
+    readonly true
+  }
+  field cocDropCount u32 "Number of CoC capacity drops; each is also a CameraCocDropped event. A drop completes the lowest-weight source immediately rather than fitting a curve." {
+    readonly true
+  }
+  field lastCocDrop List.f32.9 "Latest dropped primitive in CameraCocDropped.source order; valid when cocDropCount is nonzero. Inspect through the probe or dump." {
+    readonly true
+  }
+  field lastCocDropFrame u32 "Fixed simulation frame (tick) of lastCocDrop; valid when cocDropCount is nonzero." {
+    readonly true
+  }
   field activations u32 "How many times a virtual camera has been enabled (og.VirtualCamera.activated)." {
     readonly true
   }
@@ -145,4 +173,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>Module `camera` line 605</sub>
+<sub>Module `camera` line 622</sub>

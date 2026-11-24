@@ -346,6 +346,7 @@ impl crate::present::extract::RenderState {
             }
         };
         let fx = &mut self.fx;
+        fx.motion_clock.shift(d);
         for (_, t) in fx.current.iter_mut().chain(fx.previous.iter_mut()) {
             m(t);
         }

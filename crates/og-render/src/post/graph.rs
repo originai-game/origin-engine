@@ -10,6 +10,7 @@ mod cx;
 mod exposure;
 mod fx;
 mod lens_flare;
+mod motion;
 mod outline;
 mod screen;
 mod temporal;
@@ -22,6 +23,7 @@ struct Bindings {
     /// The view depth's MIP chain's fill (`depth_mips.rs`).
     depth_mips: Option<wgpu::BindGroup>,
     fx: fx::Fx,
+    motion: Option<motion::Motion>,
     contact: Option<contact_shadows::ContactShadows>,
     temporal: temporal::Temporal,
     exposure: exposure::Exposure,
@@ -40,6 +42,7 @@ impl Bindings {
                     .bind(cx.device, &cx.passes.fx_buffer, cx.ao_depth(), mips)
             }),
             fx: fx::Fx::bind(cx),
+            motion: motion::Motion::bind(cx),
             contact: contact_shadows::ContactShadows::bind(cx),
             temporal: temporal::Temporal::bind(cx),
             exposure: exposure::Exposure::bind(cx),
@@ -62,6 +65,14 @@ impl Bindings {
         if pass == FramePass::Contact {
             let contact = self.contact.as_ref().expect("contact bound");
             return Some(contact.encode(encoder, cx));
+        }
+        if pass == FramePass::MotionBlur {
+            return Some(
+                self.motion
+                    .as_ref()
+                    .expect("motion bound")
+                    .encode(encoder, cx),
+            );
         }
         self.fx
             .encode(encoder, cx, pass)

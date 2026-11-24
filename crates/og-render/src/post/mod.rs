@@ -46,6 +46,7 @@ const EXPOSURE_WGSL: &str = wgsl!("exposure.wgsl");
 const FXPOST_WGSL: &str = concat!(
     wgsl!("fxpost_uniform.wgsl"),
     wgsl!("fxpost.wgsl"),
+    wgsl!("motion_blur.wgsl"),
     wgsl!("gi_common.wgsl"),
     wgsl!("gi_sample.wgsl"),
     wgsl!("ssgi.wgsl")
@@ -630,6 +631,9 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),
     ("fs_dof_composite", HDR_FORMAT),
+    ("fs_motion_tile_x", HDR_FORMAT),
+    ("fs_motion_tile_y", HDR_FORMAT),
+    ("fs_motion_neighbor", HDR_FORMAT),
     ("fs_motion_blur", HDR_FORMAT),
     ("fs_screen_blur", HDR_FORMAT),
     ("fs_zoom_fine", HDR_FORMAT),

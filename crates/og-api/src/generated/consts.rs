@@ -8,6 +8,9 @@ pub const MAX_POINTERS: u32 = 5;
 /// The most gamepads og.Gamepad reads: pads 0 to 7.
 pub const MAX_GAMEPADS: u32 = 8;
 
+/// Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection.
+pub const MAX_CAMERA_COC_SOURCES: u32 = 4;
+
 /// ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it.
 pub const PARTICLES_ARMED: u32 = 4294967295;
 

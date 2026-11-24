@@ -337,7 +337,88 @@ therefore remains continuous even if its outgoing entity disappears.
 The old artistic-to-artistic fov blend is unchanged. A timeline camera
 track still owns the camera while it plays.
 
-The aperture, focus distance, shutter and exposure fields reserve the
-physical post channels; projection alone does not enable DoF or motion
-blur. Keep the corresponding PostEffects switches explicit. The artistic
-post settings and Camera.exposure remain independent authored inputs.
+The aperture, focus distance and exposure fields remain reserved for
+physical post channels. Physical DoF is not enabled: the existing artistic
+DoF band and gather are unchanged, including on a physical camera.
+Camera.exposure and the artistic post settings remain independent.
+
+## 8. Physical shutter and motion history
+
+Projection alone enables no effect. Enable PostEffects.motionBlur
+explicitly. On a physical camera, shutterSpeed then replaces that view's
+artistic frame-fraction shutter without editing its authored value.
+
+```ts recipe ticks=2
+import { defineSystem, og } from "@origingame/engine";
+
+const Check = defineSystem("CheckShutter", { reads: [og.Camera, og.PostEffects], writes: [] }, (_q, time, world) => {
+  if (time.tick === 0) return;
+  const lens = world.resource(og.Camera);
+  const post = world.resource(og.PostEffects);
+  if (!lens.ok || !post.ok) throw new Error("camera/post unavailable");
+  og.assert.always(lens.value.shutterSpeed === 1 / 128
+    && post.value.motionBlur && post.value.motionBlurShutter === 0.75,
+    "physical shutter leaves the artistic input intact", {});
+});
+
+export default og.game({
+  systems: [Check],
+  start(world) {
+    const lens = world.resource(og.Camera);
+    const post = world.resource(og.PostEffects);
+    if (!lens.ok || !post.ok) throw new Error("camera/post unavailable");
+    Object.assign(lens.value, {
+      lensMode: "physical", focalLength: 50, sensorSize: { x: 36, y: 24 },
+      shutterSpeed: 1 / 128,
+    });
+    post.value.motionBlur = true;
+    post.value.motionBlurShutter = 0.75;
+    post.value.motionBlurSamples = 32;
+    post.value.motionBlurMaxPixels = 64;
+  },
+});
+```
+
+Shutter duration is seconds, not 1/seconds. The velocity-buffer factor is
+duration divided by the simulation-time interval represented by its motion
+inputs, not wall-clock frame time. At 60 Hz, 1/120 s gives a 0.5-frame
+centred shutter, the same interval as Blender shutter 0.5 at 60 fps.
+Displayed interpolation uses tick-plus-alpha coordinates. Missing or
+nonpositive intervals close the shutter; rewinding the displayed view
+does not imply reverse physical motion.
+
+Captures use the immediately preceding fixed tick's hierarchy and optical
+camera, independently of displayed interpolation or skipped draws. Probe
+snapshots retain this presentation sample; a portable world-only restore
+cuts it. Repeated capture warm-ups do not advance display history.
+Durations longer than the represented interval extrapolate its velocity,
+not integrate nonlinear motion across several ticks. Camera cuts and
+snapped objects do not smear across a teleport. Interrupted mixed-mode
+shots retain shutter seconds and artistic frame fractions separately
+until the motion interval is known, including after snapshot/restore.
+
+Separable TileMax and NeighborMax bound the search to a dominant direction
+per tile. Each sampled donor must cover the receiving pixel with its own
+swept segment and pass the depth test. The authored tap count is unchanged.
+All four draws, including reduction and neighbour expansion, belong to the
+single timed motion-blur pass. This follows McGuire et al. (I3D 2012);
+the permissive implementation provenance is in third_party/motion-blur.
+Crossing velocities within a tile can exceed what one dominant direction
+represents; this is not temporal ray tracing.
+
+Motion review budget on the reference NVIDIA L4: 0.5 ms warmed peak GPU
+time at 1920×1080 and 1080×1920, release build, 32 samples/64 pixel cap.
+Measure the complete motion pass with GPU timestamps, not capture wall
+time; report median/p95/peak over 60 frames after warm-up. This is review
+guidance, not an engine threshold or an automatically selected look.
+
+The brain also retains reserved CoC primitives for exact interrupted lens
+transitions; they do not drive the artistic DoF renderer. The capacity is
+MAX_CAMERA_COC_SOURCES (4). Identical sources coalesce first. A fifth
+distinct source completes the lowest-weight contribution immediately,
+dropping it and renormalising the survivors. Equal weights drop the oldest
+source. The incoming source participates; if dropped, it stays excluded
+for that transition, then the endpoint cuts to the incoming shot. Each
+drop emits CameraCocDropped with the primitive, pre-renormalisation weight
+and fixed frame. The brain retains the count and latest report for the
+probe and dump. It never reports the same drop on every subsequent tick.

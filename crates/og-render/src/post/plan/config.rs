@@ -51,6 +51,9 @@ pub(crate) struct GraphConfig {
     pub transmission: bool,
     /// Iterated zoom (other screen blurs stay one pass).
     pub zoom_blur: bool,
+    /// Motion's tile width in output pixels: ceil(maxPixels / 2), bounded
+    /// by the output's longest axis. NeighborMax spans the adjacent tiles.
+    pub motion_tile: u32,
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
     pub fluid_fields: u32,

@@ -10,7 +10,7 @@ See `camera`.
 
 - **TypeScript**: functions are the namespace `og.camera`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 18 more are advanced (`og api show camera --all`).
+- **Core** (what most games use): `og.Camera`, `og.Follow2D`, `og.camera.shake`; 20 more are advanced (`og api show camera --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -35,6 +35,8 @@ module camera {
 | [`CameraExposureMode()`](#column-CameraExposureMode) | column kind |  | A CameraExposureMode field. |
 | [`CameraLensStatus`](camera/type-CameraLensStatus.md) | enum |  | The main camera's resolved projection source. |
 | [`CameraLensStatus()`](#column-CameraLensStatus) | column kind |  | A CameraLensStatus field. |
+| [`MAX_CAMERA_COC_SOURCES`](#const-MAX_CAMERA_COC_SOURCES) | constant |  | Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection. |
+| [`og.CameraCocDropped`](camera/record-CameraCocDropped.md) | event |  | A camera CoC blend exceeded MAX_CAMERA_COC_SOURCES after identical-source coalescing. |
 | [`og.OrbitCamera`](camera/record-OrbitCamera.md) | component |  | Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own. |
 | [`og.FollowCamera`](camera/record-FollowCamera.md) | component |  | Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. |
 | [`og.Follow2D`](camera/record-Follow2D.md) | component |  | Keeps og.Camera on the entity carrying it in the xy plane, for 2D games: the camera moves only when the entity leaves the dead zone, eases by smoothTime (smoothTimeY for y when set) and, with clamp, … |
@@ -68,7 +70,7 @@ column CameraLensMode {
 }
 ```
 
-<sub>Module `camera` line 194</sub>
+<sub>Module `camera` line 203</sub>
 
 ```ogt
 column CameraGateFit {
@@ -79,7 +81,7 @@ column CameraGateFit {
 }
 ```
 
-<sub>Module `camera` line 207</sub>
+<sub>Module `camera` line 216</sub>
 
 ```ogt
 column CameraExposureMode {
@@ -90,7 +92,7 @@ column CameraExposureMode {
 }
 ```
 
-<sub>Module `camera` line 219</sub>
+<sub>Module `camera` line 228</sub>
 
 ```ogt
 column CameraLensStatus {
@@ -101,4 +103,16 @@ column CameraLensStatus {
 }
 ```
 
-<sub>Module `camera` line 232</sub>
+<sub>Module `camera` line 241</sub>
+
+## Constants
+
+| Constant | Type | Value | Doc |
+|---|---|---|---|
+| <a id="const-MAX_CAMERA_COC_SOURCES"></a>`MAX_CAMERA_COC_SOURCES` | `number` | `4` | Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection. |
+
+```ogt
+const MAX_CAMERA_COC_SOURCES u32 4 "Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection."
+```
+
+<sub>Module `camera` line 247</sub>

@@ -90,7 +90,11 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::DofComposite => {
             g.pass(name, &[aa, "dof.blur", "lindepth", "gbuffer"], &["hdr.dof"])
         }
-        FramePass::MotionBlur => g.pass(name, &[after_dof, "gbuffer", "lindepth"], &["hdr.mb"]),
+        FramePass::MotionBlur => g.pass(
+            name,
+            &[after_dof, "gbuffer", "lindepth"],
+            &["motion.x", "motion.tile", "motion.neighbor", "hdr.mb"],
+        ),
         // The prepass's targets are bound when the frame has them
         // (`fx_group`); the screen blur alone does not ask for one.
         FramePass::ScreenBlur => {

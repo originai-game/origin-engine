@@ -16,15 +16,22 @@
 use super::*;
 use og_physics::{PhysicsSystem, QueryFilter, SHAPE_SPHERE, ShapeCastDesc, ShapeDesc};
 
+mod coc;
 mod lens;
+mod post;
+use crate::host::wire::ToJson;
+use crate::present::lens::coc as wire_coc;
 use lens::Lens;
+use og_render::{CocMix, WeightedCoc};
+use post::Post;
 
 pub(crate) const VCAM: &str = "og.VirtualCamera";
 pub(crate) const BRAIN: &str = "og.CameraBrain";
 pub(crate) const CUT: &str = "og.CameraCut";
+pub(crate) use coc::DROPPED;
 const POST: &str = "og.PostEffects";
 /// Registered together (crate::engine::lazy::TOGETHER).
-pub(crate) const RECORDS: [&str; 3] = [VCAM, BRAIN, CUT];
+pub(crate) const RECORDS: [&str; 4] = [VCAM, BRAIN, CUT, DROPPED];
 
 /// The layouts of the lazy records (and og.PostEffects), resolved at
 /// assembly; their ids are looked up per tick, once registered.
@@ -33,6 +40,7 @@ pub(crate) struct Layouts {
     vcam: Option<Layout>,
     brain: Option<Layout>,
     cut: Option<Layout>,
+    coc_dropped: Option<Layout>,
     post: Option<Layout>,
 }
 
@@ -42,6 +50,7 @@ impl Layouts {
             vcam: layouts.get(VCAM).cloned(),
             brain: layouts.get(BRAIN).cloned(),
             cut: layouts.get(CUT).cloned(),
+            coc_dropped: layouts.get(DROPPED).cloned(),
             post: layouts.get(POST).cloned(),
         }
     }
@@ -78,6 +87,8 @@ struct Pose {
     fov: f32,
     focus: Option<(f32, f32)>,
     lens: Lens,
+    coc: CocMix,
+    post: Post,
 }
 
 /// `q` normalized (a zero quaternion: the identity).
@@ -156,11 +167,11 @@ fn approach(from: f32, to: f32, dt: f32, smooth: f32) -> f32 {
 fn evaluate(
     ctx: &SystemContext<'_>,
     r: &Records,
-    e: Entity,
+    (e, snap): (Entity, bool),
     (v, row): (&mut Value, &record::VirtualCamera),
-    (dt, aspect): (f32, f32),
-    snap: bool,
+    (dt, aspect, zoom): (f32, f32, f32),
     physics: Option<&og_physics::PhysicsQuery>,
+    post: &record::PostEffects,
 ) -> og_core::Result<Pose> {
     let own = transform(ctx, r, e)?.unwrap_or((Vec3::ZERO, Quat::IDENTITY));
     let follow = placed(ctx, r, entity(row.follow))?;
@@ -251,30 +262,50 @@ fn evaluate(
         rotation = (rotation * Quat::from_xyzw(0.0, 0.0, s, c)).normalize();
     }
     let focus = row.focus;
+    let focus = (focus > 0.0).then(|| (focus, row.focus_range.max(0.0)));
+    let mut camera = record::Camera::from_json(v).map_err(invalid)?;
+    camera.zoom = zoom;
     Ok(Pose {
         position,
         rotation,
         fov: row.fov,
-        focus: (focus > 0.0).then(|| (focus, row.focus_range.max(0.0))),
-        lens: Lens::read(&record::Camera::from_json(v).map_err(invalid)?, aspect),
+        focus,
+        lens: Lens::read(&camera, aspect),
+        coc: CocMix::one(coc::primitive(&camera, post, aspect, focus)),
+        post: Post::read(&camera, post.motion_blur_shutter),
     })
 }
 
 /// `from` blended to `to` at curve weight `w`.
-fn mix(from: Pose, to: Pose, w: f32, aspect: f32) -> Pose {
-    Pose {
-        position: from.position + (to.position - from.position) * w,
-        rotation: og_core::math::quat_slerp(from.rotation, to.rotation, w),
-        fov: lerp(from.fov, to.fov, w),
-        lens: from
-            .lens
-            .blend(to.lens, w, lerp(from.fov, to.fov, w), aspect),
-        focus: match (from.focus, to.focus) {
-            (Some(a), Some(b)) => Some((lerp(a.0, b.0, w), lerp(a.1, b.1, w))),
-            (a, None) => a,
-            (None, b) => b,
+fn mix(
+    from: Pose,
+    to: Pose,
+    w: f32,
+    aspect: f32,
+    zoom: f32,
+    excluded: &mut u32,
+) -> (Pose, Option<WeightedCoc>) {
+    let lens = from
+        .lens
+        .blend(to.lens, w, lerp(from.fov, to.fov, w), aspect);
+    let focus = match (from.focus, to.focus) {
+        (Some(a), Some(b)) => Some((lerp(a.0, b.0, w), lerp(a.1, b.1, w))),
+        (a, None) => a,
+        (None, b) => b,
+    };
+    let (coc, dropped) = coc::mix(from.coc, to.coc, lens, focus, w, (aspect, zoom), excluded);
+    (
+        Pose {
+            position: from.position + (to.position - from.position) * w,
+            rotation: og_core::math::quat_slerp(from.rotation, to.rotation, w),
+            fov: lerp(from.fov, to.fov, w),
+            lens,
+            focus,
+            coc,
+            post: from.post.blend(to.post, w),
         },
-    }
+        dropped,
+    )
 }
 
 /// The brain: picks the live shot, advances the blend and writes the pose
@@ -302,6 +333,7 @@ pub(crate) fn brain(
     let brain_bytes = ctx.resource_bytes(bid)?;
     let mut brain = bl.decode(&brain_bytes);
     let brain_row = brain_of(&brain).map_err(bad)?;
+    let post = coc::settings(ctx, l).map_err(bad)?;
     let mut activations = brain_row.activations;
     // Every shot, in query order.
     let mut shots: Vec<(Entity, Vec<u8>, Value, record::VirtualCamera)> = Vec::new();
@@ -348,6 +380,7 @@ pub(crate) fn brain(
     let index = |e: Entity| order.iter().position(|x| *x == e);
     let viewport = crate::bind::modules::viewport_of(engine_id);
     let aspect = viewport.width.max(1.0) / viewport.height.max(1.0);
+    let zoom = record::Camera::from_json(cam).map_err(bad)?.zoom.max(0.01);
     let physics = physics.tick_query().ok();
     // Every enabled shot (and the live and outgoing ones) keeps its follow
     // state current, so a cut to a standby shot lands where it should.
@@ -365,16 +398,17 @@ pub(crate) fn brain(
         poses[i] = Some(evaluate(
             ctx,
             r,
-            e,
+            (e, snapped[i]),
             (v, &*row),
-            (dt, aspect),
-            snapped[i],
+            (dt, aspect, zoom),
             collide,
+            &post,
         )?);
     }
     let mut blend = brain_row.blend.clamp(0.0, 1.0);
     let mut from = from_entity;
     if live != prev {
+        brain["cocExcluded"] = json!(0);
         let solo_blend = brain_row.solo_blend;
         let (duration, curve) = match live.and_then(index) {
             // A blend to the solo shot by the solo's own (a timeline's shot key).
@@ -400,6 +434,8 @@ pub(crate) fn brain(
                 rotation: unit(shown.quaternion),
                 fov: shown.fov,
                 lens: Lens::read(&shown, aspect),
+                coc: wire_coc::read(&shown.coc_sources),
+                post: Post::read(&shown, post.motion_blur_shutter),
                 focus: if brain_row.focus_held {
                     post_focus(ctx, l).map_err(bad)?
                 } else {
@@ -412,6 +448,9 @@ pub(crate) fn brain(
             brain["fromFocus"] = json!(p.focus.map_or(0.0, |x| x.0));
             brain["fromFocusRange"] = json!(p.focus.map_or(0.0, |x| x.1));
             brain["fromLensProjection"] = jv3(p.lens.held_projection());
+            brain["fromPost"] = p.post.held_values();
+            brain["fromPostPhysical"] = json!(p.post.physical);
+            coc::remember(&mut brain, p.coc);
             from = None;
         } else {
             from = prev.filter(|_| blends);
@@ -446,6 +485,8 @@ pub(crate) fn brain(
     let now = brain_of(&brain).map_err(bad)?;
     // The pose: the live shot's, mixed from the outgoing shot (or the held
     // pose: an interrupted blend, or an outgoing shot that went away).
+    let mut dropped = None;
+    let mut excluded = now.coc_excluded;
     let out = live.and_then(index).and_then(|i| poses[i]).map(|to| {
         if blend >= 1.0 {
             return to;
@@ -456,19 +497,33 @@ pub(crate) fn brain(
             .and_then(|i| poses[i])
             .unwrap_or_else(|| held(&now));
         brain["fromLensProjection"] = jv3(from_pose.lens.held_projection());
-        mix(from_pose, to, w, aspect)
+        brain["fromPost"] = from_pose.post.held_values();
+        brain["fromPostPhysical"] = json!(from_pose.post.physical);
+        coc::remember(&mut brain, from_pose.coc);
+        let (out, drop) = mix(from_pose, to, w, aspect, zoom, &mut excluded);
+        dropped = drop;
+        out
     });
+    brain["cocExcluded"] = json!(excluded);
     // A held pose outlives the shot it came from.
     if from.is_some_and(|e| index(e).and_then(|i| poses[i]).is_none()) {
         brain["from"] = json!(0);
     }
     let drives = brain_row.enabled && !crate::bind::timeline::owns_camera(engine_id);
+    if !drives || out.is_none() {
+        cam["postBlending"] = json!(false);
+    }
     if drives {
         if let Some(p) = out {
             cam["position"] = jv3(p.position);
             cam["quaternion"] = jq(p.rotation);
             cam["fov"] = json!(p.fov);
             p.lens.write(cam);
+            p.post.write(cam, blend < 1.0);
+            cam["cocSources"] = wire_coc::write(p.coc).to_json();
+        }
+        if let Some(drop) = dropped {
+            coc::report(ctx, l, &mut brain, drop)?;
         }
         let focus_held = brain_row.focus_held;
         focus(ctx, l, &mut brain, focus_held, out.and_then(|p| p.focus))?;
@@ -506,6 +561,8 @@ fn held(brain: &record::CameraBrain) -> Pose {
         fov: brain.from_fov,
         focus: (focus > 0.0).then_some((focus, brain.from_focus_range)),
         lens: Lens::held(brain.from_lens_projection, brain.from_fov),
+        coc: wire_coc::read(&brain.from_coc_sources),
+        post: Post::held(brain.from_post, brain.from_post_physical),
     }
 }
 

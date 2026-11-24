@@ -362,6 +362,12 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
         g.transient("dof.coc", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND))
             .transient("dof.blur", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND));
     }
+    if has(FramePass::MotionBlur) {
+        let (mw, mh) = (pw.div_ceil(cfg.motion_tile), ph.div_ceil(cfg.motion_tile));
+        g.transient("motion.x", desc(mw, ph, HDR_FORMAT, 1, ATTACH_BIND))
+            .transient("motion.tile", desc(mw, mh, HDR_FORMAT, 1, ATTACH_BIND))
+            .transient("motion.neighbor", desc(mw, mh, HDR_FORMAT, 1, ATTACH_BIND));
+    }
     let customs = passes
         .iter()
         .filter(|p| matches!(p, FramePass::CustomPost(_)))

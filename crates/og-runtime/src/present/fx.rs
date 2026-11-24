@@ -231,6 +231,7 @@ pub(crate) struct FxState {
     /// Instance transforms by (entity, part) of the last two ticks, for
     /// per-object motion blur.
     pub tick: u64,
+    pub motion_clock: MotionClock,
     /// In instance order; a key's last entry is its transform.
     pub current: Vec<((u64, u32), Mat4)>,
     pub previous: Vec<((u64, u32), Mat4)>,

@@ -2,6 +2,10 @@
 
 use super::*;
 
+mod clock;
+mod fixed;
+pub(crate) use clock::MotionClock;
+
 /// Per-object motion's state (`FxState`'s last two ticks and what the last
 /// display frame drew), kept by a presentation checkpoint: the first frame
 /// after a restore moves its objects from where the saved run's frame
@@ -9,6 +13,7 @@ use super::*;
 #[derive(Clone, Default)]
 pub(crate) struct MotionCheckpoint {
     tick: u64,
+    clock: MotionClock,
     current: Vec<((u64, u32), Mat4)>,
     previous: Vec<((u64, u32), Mat4)>,
     drawn_keys: Vec<(u64, u32)>,
@@ -22,6 +27,7 @@ impl FxState {
     pub(crate) fn motion_checkpoint(&self) -> MotionCheckpoint {
         MotionCheckpoint {
             tick: self.tick,
+            clock: self.motion_clock.clone(),
             current: self.current.clone(),
             previous: self.previous.clone(),
             drawn_keys: self.drawn_keys.clone(),
@@ -34,6 +40,7 @@ impl FxState {
 
     pub(crate) fn restore_motion(&mut self, c: &MotionCheckpoint) {
         self.tick = c.tick;
+        self.motion_clock = c.clock.clone();
         self.current.clone_from(&c.current);
         self.previous.clone_from(&c.previous);
         self.previous_by_key = None;
@@ -69,11 +76,25 @@ pub(crate) fn taa(rs: &RenderState) -> bool {
 pub(crate) fn motion(
     rs: &mut RenderState,
     keys: &[(u64, u32)],
-    tick: u64,
-    cut: &IdMap<u64, ()>,
+    world: &World,
     list: u64,
+    physical: bool,
+    snap_distance: f32,
+    h: &mut Hierarchy,
 ) -> u64 {
+    let time = world.time();
+    let tick = time.tick;
     let taa = taa(rs);
+    let mut cut = IdMap::new();
+    if rs.interp.drawn.is_some() && (rs.scene.look.post.motion_blur.is_some() || taa) {
+        for &(e, _) in keys {
+            if !cut.contains_key(&e) && h.cut(e) {
+                cut.insert(e, ());
+            }
+        }
+    }
+    let fixed = (physical && !rs.interp.display && rs.scene.look.post.motion_blur.is_some())
+        .then(|| fixed::capture(rs, h, keys, world));
     let RenderState {
         scene,
         fx,
@@ -97,6 +118,11 @@ pub(crate) fn motion(
     scene.objects.previous_morph_weights.clear();
     scene.objects.previous_deformed_vertices.clear();
     let blur = scene.look.post.motion_blur.is_some();
+    scene.frame.motion_camera = None;
+    let camera = scene.frame.camera;
+    let snapped = |now: Vec3, before: Vec3| {
+        snap_distance > 0.0 && now.distance_squared(before) > snap_distance * snap_distance
+    };
     let keyed = keys.len() == scene.objects.instances.len();
     if blur && keyed {
         if same_keys(&fx.previous, keys) {
@@ -115,6 +141,7 @@ pub(crate) fn motion(
     // Kept only while motion blur or TAA is on (a copy of every instance's
     // transform a frame otherwise).
     if !blur && !taa {
+        fx.motion_clock = MotionClock::default();
         fx.drawn_keys.clear();
         fx.drawn.clear();
         fx.drawn_list = 0;
@@ -129,6 +156,30 @@ pub(crate) fn motion(
     // the display drew (or did not draw: `og run --capture-only`) neither
     // reach it nor are moved by it (docs/design.md §2.4).
     if !interp.display {
+        let mut before =
+            fx.motion_clock
+                .sample(time, interp.drawn, false, false, scene.frame.camera);
+        if let Some(fixed) = fixed {
+            before = fixed.camera;
+            fx.motion_clock.seconds = fixed.seconds;
+            scene.objects.previous_transforms = fixed.transforms;
+        }
+        if physical {
+            scene.frame.motion_camera = before;
+            scene.frame.camera_cut |= interp.camera_snapped(tick)
+                || before.is_some_and(|b| snapped(camera.position, b.position));
+            for ((key, now), previous) in keys
+                .iter()
+                .zip(&scene.objects.instances)
+                .zip(&mut scene.objects.previous_transforms)
+            {
+                if interp.snapped(key.0, tick)
+                    || snapped(now.transform.w_axis.truncate(), previous.w_axis.truncate())
+                {
+                    *previous = now.transform;
+                }
+            }
+        }
         return 0;
     }
     joints(scene, atmo, fx);
@@ -137,6 +188,14 @@ pub(crate) fn motion(
     } else {
         keyed
     };
+    let before = fx
+        .motion_clock
+        .sample(time, interp.drawn, true, from_drawn, scene.frame.camera);
+    if physical {
+        scene.frame.motion_camera = before;
+        scene.frame.camera_cut |= interp.camera_snapped(tick)
+            || before.is_some_and(|b| snapped(camera.position, b.position));
+    }
     // The frame's keys as the last frame's (the usual case): the last
     // frame's transforms are the previous ones by position, swapped in
     // whole (both vectors keep their capacity) and this frame's refill
@@ -161,13 +220,17 @@ pub(crate) fn motion(
                 .collect();
         }
     }
-    if !cut.is_empty() {
+    if physical || !cut.is_empty() {
         for ((k, i), p) in keys
             .iter()
             .zip(&scene.objects.instances)
             .zip(&mut scene.objects.previous_transforms)
         {
-            if cut.contains_key(&k.0) {
+            if cut.contains_key(&k.0)
+                || (physical
+                    && (interp.snapped(k.0, tick)
+                        || snapped(i.transform.w_axis.truncate(), p.w_axis.truncate())))
+            {
                 *p = i.transform;
             }
         }

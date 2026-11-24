@@ -88,6 +88,20 @@ fn motion_blur_does_not_borrow_a_neighbors_perpendicular_velocity() {
         "moving card must still blur"
     );
     assert!(marker_change <= 2, "stationary marker borrowed card motion");
+    // Independent box-shutter integral: projection is 75 px/m at z=5.
+    // The card moves 11.25 px/tick; a half-tick exposure spans 5.625 px.
+    // Its current edges are x=161.875/180.625. These exterior pixels
+    // receive 0.2556/0.1667 coverage under the centred shutter.
+    for (x, expected) in [(160, 0.255_555_57f32), (182, 0.166_666_67)] {
+        assert_eq!(px_clamped(&sharp, x, 90)[0], 0, "outside current card");
+        let encoded = f32::from(px_clamped(&moving, x, 90)[0]) / 255.0;
+        let linear = og_core::math::pow((encoded + 0.055) / 1.055, 2.4);
+        assert!(
+            (linear / 0.8 - expected).abs() < 0.06,
+            "centred shutter coverage at {x}: {} instead of {expected}",
+            linear / 0.8
+        );
+    }
     // Negative control: moving the camera must blur the marker itself.
     scene.look.post.motion_blur.as_mut().unwrap().shutter = 0.5;
     scene.objects.previous_transforms.clear();

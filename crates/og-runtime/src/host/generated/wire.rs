@@ -27595,6 +27595,9 @@ pub mod record {
         pub lens_blending: bool,
         pub lens_projection: Vec3,
         pub lens_status: CameraLensStatus,
+        pub coc_sources: Vec<f32>,
+        pub post_blending: bool,
+        pub post_shutter: Vec2,
         pub background: Color,
         pub background_texture: u64,
         pub exposure: f32,
@@ -27643,6 +27646,9 @@ pub mod record {
                 lens_blending: Default::default(),
                 lens_projection: Default::default(),
                 lens_status: Default::default(),
+                coc_sources: Default::default(),
+                post_blending: Default::default(),
+                post_shutter: Default::default(),
                 background: Color { r: 0.00699_f32, g: 0.00803_f32, b: 0.01096_f32 },
                 background_texture: Default::default(),
                 exposure: 1.0_f32,
@@ -27697,6 +27703,9 @@ pub mod record {
                 lens_blending: field(o, "lensBlending", d.lens_blending)?,
                 lens_projection: field(o, "lensProjection", d.lens_projection)?,
                 lens_status: field(o, "lensStatus", d.lens_status)?,
+                coc_sources: field(o, "cocSources", d.coc_sources)?,
+                post_blending: field(o, "postBlending", d.post_blending)?,
+                post_shutter: field(o, "postShutter", d.post_shutter)?,
                 background: field(o, "background", d.background)?,
                 background_texture: field(o, "backgroundTexture", d.background_texture)?,
                 exposure: field(o, "exposure", d.exposure)?,
@@ -27718,6 +27727,38 @@ pub mod record {
                 zone_scroll: field(o, "zoneScroll", d.zone_scroll)?,
                 zone_scroll_time: field(o, "zoneScrollTime", d.zone_scroll_time)?,
                 layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `CameraCocDropped`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraCocDropped {
+        pub source: Vec<f32>,
+        pub frame: u32,
+        pub count: u32,
+    }
+
+    impl Default for CameraCocDropped {
+        fn default() -> Self {
+            Self {
+                source: Default::default(),
+                frame: Default::default(),
+                count: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CameraCocDropped {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                source: field(o, "source", d.source)?,
+                frame: field(o, "frame", d.frame)?,
+                count: field(o, "count", d.count)?,
             })
         }
     }
@@ -28161,6 +28202,13 @@ pub mod record {
         pub from_focus: f32,
         pub from_focus_range: f32,
         pub from_lens_projection: Vec3,
+        pub from_coc_sources: Vec<f32>,
+        pub from_post: Vec2,
+        pub from_post_physical: bool,
+        pub coc_excluded: u32,
+        pub coc_drop_count: u32,
+        pub last_coc_drop: Vec<f32>,
+        pub last_coc_drop_frame: u32,
         pub activations: u32,
         pub focus_held: bool,
         pub held_depth_of_field: bool,
@@ -28188,6 +28236,13 @@ pub mod record {
                 from_focus: Default::default(),
                 from_focus_range: Default::default(),
                 from_lens_projection: Default::default(),
+                from_coc_sources: Default::default(),
+                from_post: Default::default(),
+                from_post_physical: Default::default(),
+                coc_excluded: Default::default(),
+                coc_drop_count: Default::default(),
+                last_coc_drop: Default::default(),
+                last_coc_drop_frame: Default::default(),
                 activations: Default::default(),
                 focus_held: Default::default(),
                 held_depth_of_field: Default::default(),
@@ -28221,6 +28276,13 @@ pub mod record {
                 from_focus: field(o, "fromFocus", d.from_focus)?,
                 from_focus_range: field(o, "fromFocusRange", d.from_focus_range)?,
                 from_lens_projection: field(o, "fromLensProjection", d.from_lens_projection)?,
+                from_coc_sources: field(o, "fromCocSources", d.from_coc_sources)?,
+                from_post: field(o, "fromPost", d.from_post)?,
+                from_post_physical: field(o, "fromPostPhysical", d.from_post_physical)?,
+                coc_excluded: field(o, "cocExcluded", d.coc_excluded)?,
+                coc_drop_count: field(o, "cocDropCount", d.coc_drop_count)?,
+                last_coc_drop: field(o, "lastCocDrop", d.last_coc_drop)?,
+                last_coc_drop_frame: field(o, "lastCocDropFrame", d.last_coc_drop_frame)?,
                 activations: field(o, "activations", d.activations)?,
                 focus_held: field(o, "focusHeld", d.focus_held)?,
                 held_depth_of_field: field(o, "heldDepthOfField", d.held_depth_of_field)?,

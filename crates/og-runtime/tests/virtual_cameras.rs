@@ -173,6 +173,173 @@ fn brain(engine: u32) -> Value {
     )))
 }
 
+/// Read the public packed values independently of the runtime adapter.
+fn coc_radius(cam: &Value, depth: f64) -> f64 {
+    cam["cocSources"]
+        .as_array()
+        .unwrap()
+        .as_chunks::<9>()
+        .0
+        .iter()
+        .map(|s| {
+            let n = |i: usize| s[i].as_f64().unwrap();
+            let r = if n(0) > 0.0 {
+                let f = n(0) / 1000.0;
+                f * f / (2.0 * (n(1) / 1000.0) * n(2) * (n(3) - f)) * (1.0 - n(3) / depth)
+            } else {
+                let off = depth - n(3);
+                off.signum() * ((off.abs() - n(4)) / (n(4) * n(5))).clamp(0.0, 1.0) * n(6)
+            };
+            r.clamp(-n(6), n(6)) * n(8)
+        })
+        .sum()
+}
+
+#[test]
+fn interrupted_coc_is_an_exact_snapshot_owned_primitive_mix() {
+    let (engine, _) = start(false);
+    value(og_engine_write_resource(
+        engine,
+        "og.PostEffects".into(),
+        json!({
+            "depthOfField": true, "dofMaxBlur": 100, "dofFalloff": 2,
+        })
+        .to_string(),
+    ));
+    let outgoing = shot(
+        engine,
+        0.0,
+        json!({
+            "lensMode": "physical", "focalLength": 1000,
+            "sensorSize": { "x": 125, "y": 125 }, "aperture": 1, "focusDistance": 5,
+        }),
+    );
+    ticks(engine, 1);
+    shot(
+        engine,
+        0.0,
+        json!({"priority": 1, "focus": 8, "focusRange": 1, "blendTime": 1, "blendEase": "none"}),
+    );
+    ticks(engine, 1);
+    // Removed shots retain the last evaluated outgoing primitive. New
+    // artistic sources use their own cap, not the held lens's cap.
+    value(og_runtime::host_impl::answer(og_world_despawn(
+        engine, outgoing,
+    )));
+    value(og_engine_write_resource(
+        engine,
+        "og.PostEffects".into(),
+        json!({"dofMaxBlur": 1}).to_string(),
+    ));
+    ticks(engine, 20);
+    assert!((brain(engine)["blend"].as_f64().unwrap() - 1.0 / 3.0).abs() < 1e-6);
+    shot(
+        engine,
+        0.0,
+        json!({"priority": 2, "focus": 9, "focusRange": 1, "blendTime": 1, "blendEase": "none"}),
+    );
+    ticks(engine, 1);
+    ticks(engine, 15);
+    let shown = camera(engine);
+    assert_eq!(shown["cocSources"].as_array().unwrap().len(), 27);
+    for (depth, expected) in [(2.0, -1.25), (5.0, -0.5), (8.0, 0.1875)] {
+        assert!(
+            (coc_radius(&shown, depth) - expected).abs() < 1e-5,
+            "{shown}"
+        );
+    }
+    let saved = value(og_runtime::host_impl::answer(og_world_snapshot(
+        engine, None,
+    )))
+    .as_str()
+    .unwrap()
+    .to_owned();
+    ticks(engine, 7);
+    let continued = camera(engine)["cocSources"].clone();
+    value(og_runtime::host_impl::answer(og_world_restore(
+        engine, saved, None,
+    )));
+    ticks(engine, 7);
+    assert_eq!(camera(engine)["cocSources"], continued);
+}
+
+#[test]
+fn fifth_coc_source_drops_lowest_weight_and_dumps_the_discontinuity() {
+    let (engine, _) = start(false);
+    value(og_engine_write_resource(
+        engine,
+        "og.PostEffects".into(),
+        json!({
+            "depthOfField": true, "dofMaxBlur": 1, "dofFalloff": 2,
+        })
+        .to_string(),
+    ));
+    shot(
+        engine,
+        0.0,
+        json!({
+            "lensMode": "physical", "focalLength": 1000,
+            "sensorSize": { "x": 125, "y": 125 }, "aperture": 1, "focusDistance": 5,
+        }),
+    );
+    ticks(engine, 1);
+    for (priority, focus, count) in [(1, 4, 12), (2, 6, 18), (3, 8, 24), (4, 10, 6)] {
+        shot(
+            engine,
+            0.0,
+            json!({"priority": priority, "focus": focus, "focusRange": 1, "blendTime": 1, "blendEase": "none"}),
+        );
+        ticks(engine, 1);
+        ticks(engine, count);
+    }
+    let b = brain(engine);
+    let drop = b["lastCocDrop"].as_array().unwrap();
+    // The incoming source is initially the smallest. Complete it once;
+    // later ticks must not reintroduce it or send another drop event.
+    assert_eq!(b["cocDropCount"], json!(1));
+    assert_eq!(b["cocExcluded"], json!(16));
+    assert_eq!(drop[3], json!(10.0));
+    assert!((drop[8].as_f64().unwrap() - 1.0 / 60.0).abs() < 1e-6);
+    let cam = camera(engine);
+    let sources: Vec<_> = cam["cocSources"]
+        .as_array()
+        .unwrap()
+        .as_chunks::<9>()
+        .0
+        .iter()
+        .collect();
+    assert_eq!(sources.len(), 4);
+    for (s, (focus, weight)) in
+        sources
+            .iter()
+            .zip([(5.0, 0.336), (4.0, 0.084), (6.0, 0.18), (8.0, 0.4)])
+    {
+        assert_eq!(s[3], json!(focus));
+        assert!((s[8].as_f64().unwrap() - weight).abs() < 1e-6);
+    }
+    let scheduled: Value = serde_json::from_str(&og_runtime::og_engine_probe_commands(
+        engine,
+        "0:get:og.CameraBrain:camera-brain.json".into(),
+    ))
+    .unwrap();
+    assert_eq!(scheduled["scheduled"], json!(1));
+    ticks(engine, 1);
+    let outputs: Value = serde_json::from_str(&og_runtime::og_engine_take_outputs(engine)).unwrap();
+    let dump = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|o| o["kind"] == "json")
+        .unwrap();
+    let dump: Value = serde_json::from_str(dump["data"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        dump["value"]["lastCocDrop"].as_array().unwrap()[3],
+        json!(10.0)
+    );
+    assert_eq!(dump["value"]["lastCocDropFrame"], b["lastCocDropFrame"]);
+    assert_eq!(dump["value"]["cocDropCount"], json!(1));
+}
+
 #[test]
 fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
     let (engine, _) = start(false);
@@ -182,6 +349,7 @@ fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
         json!({
             "lensMode": "physical", "focalLength": 35,
             "sensorSize": { "x": 36, "y": 24 },
+            "shutterSpeed": 0.01,
             "lensShift": { "x": 0.2, "y": -0.1 },
         }),
     );
@@ -193,6 +361,7 @@ fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
             "priority": 1, "blendTime": 1, "blendEase": "none",
             "lensMode": "physical", "focalLength": 85,
             "sensorSize": { "x": 48, "y": 32 },
+            "shutterSpeed": 0.03,
             "lensShift": { "x": -0.1, "y": 0.15 },
         }),
     );
@@ -202,6 +371,9 @@ fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
     assert!(!cam["lensBlending"].as_bool().unwrap());
     assert!((cam["focalLength"].as_f64().unwrap() - (35.0 + 50.0 * w)).abs() < 1e-4);
     assert!((cam["sensorSize"]["y"].as_f64().unwrap() - (24.0 + 8.0 * w)).abs() < 1e-4);
+    let shutter = cam["postShutter"].clone();
+    assert!((shutter["x"].as_f64().unwrap() - (0.01 + 0.02 * w)).abs() < 1e-6);
+    assert_eq!(shutter["y"].as_f64(), Some(0.0));
     let point = json!({ "x": 0.3, "y": 0.2, "z": -5 }).to_string();
     let shown = og_runtime::og_camera_world_to_screen(engine, point.clone()).unwrap();
     // Interrupt into an artistic lens. Its first frame must show exactly
@@ -214,6 +386,7 @@ fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
     ticks(engine, 1);
     let held = og_runtime::og_camera_world_to_screen(engine, point.clone()).unwrap();
     assert!((held - shown).length() < 0.001, "{shown:?} -> {held:?}");
+    assert_eq!(camera(engine)["postShutter"], shutter);
     let snap = value(og_runtime::host_impl::answer(og_world_snapshot(
         engine, None,
     )))
@@ -222,11 +395,15 @@ fn physical_lenses_blend_authored_values_and_hold_an_interrupted_projection() {
     .to_owned();
     ticks(engine, 7);
     let first = og_runtime::og_camera_world_to_screen(engine, point.clone());
+    let continued_shutter = camera(engine)["postShutter"].clone();
+    assert!(continued_shutter["y"].as_f64().unwrap() > 0.0);
+    assert!(continued_shutter["x"].as_f64().unwrap() < shutter["x"].as_f64().unwrap());
     value(og_runtime::host_impl::answer(og_world_restore(
         engine, snap, None,
     )));
     ticks(engine, 7);
     assert_eq!(first, og_runtime::og_camera_world_to_screen(engine, point));
+    assert_eq!(camera(engine)["postShutter"], continued_shutter);
 }
 
 #[test]

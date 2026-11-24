@@ -11,6 +11,7 @@ procgen.ogt
 input.ogt
 camera.ogt
 camera-lens.ogt
+camera-coc.ogt
 camera-controllers.ogt
 camera-shots.ogt
 render.ogt

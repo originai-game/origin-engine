@@ -646,6 +646,7 @@ mod tests {
             water_fog: false,
             transmission: false,
             zoom_blur: false,
+            motion_tile: 32,
             fluid_fields: 0,
             reflection: [Some((32, 16)), Some((32, 16))],
             object_space: false,

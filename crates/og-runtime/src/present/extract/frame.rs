@@ -193,29 +193,12 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
         let (position, rot, cut) = super::interpolate::camera(&rs.interp, position, rot);
         scene.frame.camera_cut = cut;
         let cam = &mut scene.frame.camera;
+        *cam = super::super::lens::view(c, size.0 as f32 / size.1.max(1) as f32);
         cam.position = position;
         cam.target = position + og_core::facing::camera_forward(rot);
         cam.up = og_core::facing::up(rot);
         origin = render_origin(position, zero);
         look_along = Some(og_core::facing::camera_forward(rot));
-        cam.near = c.near;
-        cam.far = c.far;
-        let zoom = c.zoom.max(0.01);
-        cam.projection = if c.orthographic {
-            og_render::Projection::Orthographic {
-                height: c.height / zoom,
-            }
-        } else if let Some(projection) =
-            super::super::lens::projection(c, size.0 as f32 / size.1.max(1) as f32)
-        {
-            projection
-        } else {
-            // three.js zoom narrows the field of view: tan(fov/2) / zoom.
-            let half = (c.fov.to_radians() / 2.0).tan() / zoom;
-            og_render::Projection::Perspective {
-                fov_y_degrees: (2.0 * half.atan()).to_degrees(),
-            }
-        };
         exposure = c.exposure.max(0.0);
         let bg = &c.background;
         scene.lighting.environment.background =
@@ -462,7 +445,7 @@ fn finish(
     view: &View,
     keys: &[(u64, u32)],
     vp: (f32, f32),
-    tick: u64,
+    _tick: u64,
 ) {
     let (fresh, size, zero, camera) = (b.fresh, b.size, b.zero, b.camera.clone());
     let (origin, look_along) = (view.origin, view.look_along);
@@ -477,18 +460,28 @@ fn finish(
     // Lines, points and debug draw (after every instance is in, for the
     // bounds view).
     super::geometry::extract(world, rs, &mut h, vp);
-    // Teleported into this frame: drawn without per-object motion.
-    let mut cut = IdMap::new();
-    if rs.interp.drawn.is_some() && (rs.scene.look.post.motion_blur.is_some() || super::fx::taa(rs))
-    {
-        for &(e, _) in keys {
-            if !cut.contains_key(&e) && h.cut(e) {
-                cut.insert(e, ());
-            }
-        }
-    }
     let list = rs.kept_models.list;
-    let previous = super::fx::motion(rs, keys, tick, &cut, list);
+    let lens = camera
+        .as_deref()
+        .and_then(|c| crate::host::wire::record::Camera::from_json(c).ok());
+    let physical = rs.review.is_none()
+        && lens.as_ref().is_some_and(|c| {
+            c.lens_mode == crate::host::wire::CameraLensMode::Physical || c.post_blending
+        });
+    let previous = super::fx::motion(
+        rs,
+        keys,
+        world,
+        list,
+        physical,
+        b.settings.as_ref().map_or(10.0, |s| s.snap_distance),
+        &mut h,
+    );
+    if rs.review.is_none()
+        && let Some(c) = lens
+    {
+        super::super::lens::post::apply(&c, &mut rs.scene.look.post, rs.fx.motion_clock.seconds);
+    }
     // Layer masks, secondary cameras and custom post passes.
     super::views::extract(world, rs, keys, &mut h);
     // Which entity each instance came from, for the probe's id pass.

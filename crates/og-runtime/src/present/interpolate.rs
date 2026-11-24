@@ -39,6 +39,9 @@ pub(crate) struct InterpState {
     /// og.Camera's position and rotation as the last tick started, with
     /// that tick.
     camera: Option<(u64, Vec3, Quat)>,
+    /// The same tick's complete optical view and world origin. Captures
+    /// reproject from this fixed sample, never an intervening display draw.
+    tick_view: Option<(u64, og_render::Camera, glam::DVec3)>,
     /// og.render.snap: entity bits → the tick it was asked at.
     snaps: IdMap<u64, u64>,
     /// og.render.snapCamera's tick.
@@ -105,6 +108,25 @@ impl og_anim::PaletteSink for Poses<'_> {
 }
 
 impl InterpState {
+    pub(crate) fn tick_view(&self, tick: u64) -> Option<(og_render::Camera, glam::DVec3)> {
+        self.tick_view
+            .filter(|(t, _, _)| !self.stale && Some(*t) == tick.checked_sub(1))
+            .map(|(_, camera, zero)| (camera, zero))
+    }
+
+    /// Explicit snaps also suppress motion at tick boundaries and in captures,
+    /// where no interpolation blend is active.
+    pub(crate) fn snapped(&self, entity: u64, tick: u64) -> bool {
+        self.snaps
+            .get(&entity)
+            .is_some_and(|t| *t >= tick.saturating_sub(1))
+    }
+
+    pub(crate) fn camera_snapped(&self, tick: u64) -> bool {
+        self.camera_snap
+            .is_some_and(|t| t >= tick.saturating_sub(1))
+    }
+
     /// og.render.snap of `entity` (bits) at `tick`.
     pub(crate) fn snap(&mut self, entity: u64, tick: u64) {
         self.snaps.insert(entity, tick);
@@ -127,6 +149,7 @@ impl InterpState {
     pub(crate) fn checkpoint(&self) -> InterpCheckpoint {
         InterpCheckpoint {
             camera: self.camera,
+            tick_view: self.tick_view,
             snaps: self.snaps.clone(),
             camera_snap: self.camera_snap,
             stale: self.stale,
@@ -136,6 +159,7 @@ impl InterpState {
 
     pub(crate) fn restore(&mut self, c: &InterpCheckpoint) {
         self.camera = c.camera;
+        self.tick_view = c.tick_view;
         self.snaps = c.snaps.clone();
         self.camera_snap = c.camera_snap;
         self.stale = c.stale;
@@ -149,6 +173,7 @@ impl InterpState {
 #[derive(Clone, Default)]
 pub(crate) struct InterpCheckpoint {
     camera: Option<(u64, Vec3, Quat)>,
+    tick_view: Option<(u64, og_render::Camera, glam::DVec3)>,
     snaps: IdMap<u64, u64>,
     camera_snap: Option<u64>,
     stale: bool,
@@ -165,10 +190,21 @@ pub(crate) fn camera_pose(c: &crate::host::wire::record::Camera) -> (Vec3, Quat)
 pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
     let tick = world.time().tick;
     let camera = crate::present::extract::resource(world, rs.camera.as_ref())
-        .and_then(|c| crate::host::wire::record::Camera::from_json(&c).ok())
-        .map(|c| camera_pose(&c));
+        .and_then(|c| crate::host::wire::record::Camera::from_json(&c).ok());
+    let size = rs.backend.as_ref().map_or((1, 1), |b| b.size());
+    let zero = crate::world::origin::zero(world, rs.draw.origin.as_ref());
     let s = &mut rs.interp;
-    s.camera = camera.map(|(p, q)| (tick, p, q));
+    s.camera = camera.as_ref().map(|c| {
+        let (p, q) = camera_pose(c);
+        (tick, p, q)
+    });
+    s.tick_view = camera.as_ref().map(|c| {
+        (
+            tick,
+            super::lens::view(c, size.0 as f32 / size.1.max(1) as f32),
+            zero,
+        )
+    });
     s.snaps.retain(|_, t| *t >= tick);
     s.camera_snap = s.camera_snap.filter(|t| *t >= tick);
     s.stale = false;

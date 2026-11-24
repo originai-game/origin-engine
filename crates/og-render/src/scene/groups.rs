@@ -434,6 +434,9 @@ pub struct SceneFrame {
     /// motion blur takes no camera motion from the frame before, and TAA
     /// starts from this frame's samples ([`crate::Renderer::reset_history`]).
     pub camera_cut: bool,
+    /// Optional view supplying the physical shutter's motion history.
+    /// Kept separate from TAA's displayed-frame projection history.
+    pub motion_camera: Option<Camera>,
     /// The main camera's layer mask (three.js `Camera.layers`): it draws
     /// the instances, skinned instances, world sprites, scene lines and
     /// points and particle systems whose masks share a bit with it, as each

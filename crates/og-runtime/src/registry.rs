@@ -401,6 +401,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::present::feel::vcam::CUT,
         enable: |w, _| crate::present::feel::vcam::enable(w, crate::present::feel::vcam::CUT),
     },
+    Lazy {
+        name: crate::present::feel::vcam::DROPPED,
+        enable: |w, _| crate::present::feel::vcam::enable(w, crate::present::feel::vcam::DROPPED),
+    },
     // R4: the physical sky and the clouds, read by extraction alone (no
     // system is granted them): a world without them keeps its type table
     // and hash.

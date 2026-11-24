@@ -48,6 +48,9 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `lensBlending` | `boolean` | `false` | — | — | read only | Brain state: lensProjection overrides the projection during a mixed-mode or interrupted lens blend. |
 | `lensProjection` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Brain state: resolved vertical focal factor and gate shift x/y, before zoom, at the blend's aspect. |
 | `lensStatus` | `CameraLensStatus` | `"artistic"` | — | — | read only | Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic. |
+| `cocSources` | `readonly number[]` | `[]` | — | — | a list of at most 36 `f32` (`List.f32.36`): reads a frozen copy, writes a whole array, read only | Brain-owned CoC: at most four oldest-first sources, nine numbers each in CameraCocDropped.source order. Empty leaves the direct camera in control; zero-weight entries are inactive. |
+| `postBlending` | `boolean` | `false` | — | — | read only | Brain-owned: postShutter resolves an active crossfade, including interrupted physical/artistic blends. |
+| `postShutter` | `Vector2` | `{ x: 0, y: 0 }` | — | — | read only | Resolved shutter coefficients: x seconds / motion-vector interval + y artistic frame fraction. Read only while postBlending. |
 
 #### Output
 
@@ -166,6 +169,15 @@ resource Camera {
     readonly true
   }
   field lensStatus CameraLensStatus "Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic." {
+    readonly true
+  }
+  field cocSources List.f32.36 "Brain-owned CoC: at most four oldest-first sources, nine numbers each in CameraCocDropped.source order. Empty leaves the direct camera in control; zero-weight entries are inactive." {
+    readonly true
+  }
+  field postBlending bool "Brain-owned: postShutter resolves an active crossfade, including interrupted physical/artistic blends." {
+    readonly true
+  }
+  field postShutter Vector2 "Resolved shutter coefficients: x seconds / motion-vector interval + y artistic frame fraction. Read only while postBlending." {
     readonly true
   }
   group "Output"
@@ -307,7 +319,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 168</sub>
+<sub>Module `camera` line 177</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -338,7 +350,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 172</sub>
+<sub>Module `camera` line 181</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -368,4 +380,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 178</sub>
+<sub>Module `camera` line 187</sub>

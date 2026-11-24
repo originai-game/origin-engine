@@ -40,7 +40,10 @@ impl Renderer {
         }: PrepareWorldInputs<'_>,
     ) -> Result<PrepareWorldOutputs, RenderError> {
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
-        let prev_view_proj = match self.history.prev_view_proj {
+        let motion = scene.frame.motion_camera.map(|c| {
+            frame::camera_frame(&c, self.width as f32 / self.height as f32, Vec2::ZERO).view_proj
+        });
+        let prev_view_proj = match motion.or(self.history.prev_view_proj) {
             Some(vp) if !scene.frame.camera_cut => vp,
             _ => cam.view_proj,
         };

@@ -128,6 +128,7 @@ impl RenderScene {
                 interpolation: None,
                 camera: Camera::default(),
                 camera_cut: false,
+                motion_camera: None,
                 camera_layers: 1,
                 plate: None,
                 views: Vec::new(),

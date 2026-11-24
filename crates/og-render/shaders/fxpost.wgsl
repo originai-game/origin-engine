@@ -857,45 +857,6 @@ fn fs_dof_composite(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(mix(sharp.rgb, b.rgb, b.a * select(1.0, clamp(sharp.a, 0.0, 1.0), fxp.dof2.z > 0.5)), sharp.a);
 }
 
-// Taps along the fastest velocity whose shutter sweep covers this pixel.
-// Mere proximity is not coverage: horizontal motion cannot smear a marker
-// above the moving surface, nor can a background surface smear a foreground.
-@fragment
-fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
-  let px = vec2<i32>(in.pos.xy);
-  let c = textureLoad(tex_a, px, 0);
-  let size = vec2<i32>(textureDimensions(tex_gbuffer));
-  var v = textureLoad(tex_gbuffer, prepass_px(px, size), 0).zw;
-  let reach = i32(fxp.mb.z * 0.5);
-  for (var i = 0u; i < 8u; i++) {
-    let a = f32(i) * PI * 0.25;
-    let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * f32(reach)));
-    let w = textureLoad(tex_gbuffer, prepass_px(q, size), 0).zw;
-    let pixels = w * fxp.screen.xy;
-    let speed = length(pixels);
-    let direction = pixels / max(speed, 1e-6);
-    let delta = vec2<f32>(px - q);
-    let along = dot(delta, direction);
-    let across = length(delta - direction * along);
-    let half_sweep = min(speed * abs(fxp.mb.x), fxp.mb.z) * 0.5;
-    // One pixel of reconstruction support around the centred segment.
-    let covers = speed > 0.0 && abs(along) <= half_sweep + 1.0 && across <= 1.0;
-    if (covers && depth_at(q) <= depth_at(px) && dot(w, w) > dot(v, v)) { v = w; }
-  }
-  v *= fxp.mb.x;
-  let len_px = length(v * fxp.screen.xy);
-  if (len_px < 0.5) { return c; }
-  if (len_px > fxp.mb.z) { v *= fxp.mb.z / len_px; }
-  let n = u32(fxp.mb.y);
-  var sum = c.rgb;
-  for (var i = 0u; i < n; i++) {
-    let t = (f32(i) + 0.5) / f32(n) - 0.5;
-    sum += textureSampleLevel(tex_a, fx_linear, in.uv + v * t, 0.0).rgb;
-  }
-  // Drawn as given (alpha below 1): no camera moved it.
-  return vec4<f32>(mix(c.rgb, sum / f32(n + 1u), select(1.0, clamp(c.a, 0.0, 1.0), fxp.mb.w > 0.5)), c.a);
-}
-
 // Three eight-tap radial stages cover 8^3 positions using 24 reads. In logarithmic radius
 // the three strides are exactly 1, 8, 64: composing scales adds offsets,
 // without changing the requested 1-strength .. 1+strength footprint.

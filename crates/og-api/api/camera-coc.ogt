@@ -1,0 +1,8 @@
+  const MAX_CAMERA_COC_SOURCES u32 4 "Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection."
+
+  event CameraCocDropped {
+    doc "A camera CoC blend exceeded MAX_CAMERA_COC_SOURCES after identical-source coalescing. The lowest-weight primitive was dropped and survivors renormalised, producing a defined step rather than fitting a curve. CameraBrain also retains the latest drop and total count for probe and dump."
+    field source List.f32.9 "Dropped primitive: focal length mm (0: artistic), fitted gate height / zoom mm, aperture, focus distance m, focus range m, falloff, radius cap / output height, tilt half-height, pre-renormalisation weight."
+    field frame u32 "The fixed simulation frame (tick) when the camera evaluated the drop, not a wall-clock or display-frame counter."
+    field count u32 "CameraBrain's cumulative drop count, including this event."
+  }

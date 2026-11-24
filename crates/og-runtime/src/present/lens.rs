@@ -5,6 +5,9 @@ use crate::host::wire::{CameraGateFit, CameraLensMode, record};
 use glam::{Vec2, Vec3};
 use og_render::{GateFit, PhysicalLens};
 
+pub(crate) mod coc;
+pub(crate) mod post;
+
 pub(crate) fn of(c: &record::Camera) -> Option<PhysicalLens> {
     (c.lens_mode == CameraLensMode::Physical).then_some(PhysicalLens {
         focal_length: c.focal_length,
@@ -49,6 +52,35 @@ pub(crate) fn projection(c: &record::Camera, aspect: f32) -> Option<og_render::P
         fov_y_degrees: (2.0 * og_core::math::atan(1.0 / (p.x * c.zoom.max(0.01)))).to_degrees(),
         shift: Vec2::new(p.y, p.z),
     })
+}
+
+/// The authored view, before display interpolation or the render-origin shift.
+/// Tick motion samples and scene extraction must resolve the same projection.
+#[allow(clippy::disallowed_methods)]
+pub(crate) fn view(c: &record::Camera, aspect: f32) -> og_render::Camera {
+    let (position, rotation) = super::interpolate::camera_pose(c);
+    let zoom = c.zoom.max(0.01);
+    let projection = if c.orthographic {
+        og_render::Projection::Orthographic {
+            height: c.height / zoom,
+        }
+    } else if let Some(projection) = projection(c, aspect) {
+        projection
+    } else {
+        let half = (c.fov.to_radians() / 2.0).tan() / zoom;
+        og_render::Projection::Perspective {
+            fov_y_degrees: (2.0 * half.atan()).to_degrees(),
+        }
+    };
+    og_render::Camera {
+        position,
+        target: position + og_core::facing::camera_forward(rotation),
+        up: og_core::facing::up(rotation),
+        near: c.near,
+        far: c.far,
+        projection,
+        exposure: Default::default(),
+    }
 }
 
 pub(crate) fn status(c: &record::Camera, aspect: f32) -> &'static str {

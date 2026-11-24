@@ -4724,6 +4724,7 @@
         "CameraExposureMode",
         "CameraLensStatus",
         "CameraLensStatus",
+        "CameraCocDropped",
         "OrbitCamera",
         "FollowCamera",
         "Follow2D",
@@ -4734,7 +4735,14 @@
         "CameraBrain",
         "CameraCut"
       ],
-      "consts": [],
+      "consts": [
+        {
+          "name": "MAX_CAMERA_COC_SOURCES",
+          "type": "u32",
+          "value": 4,
+          "doc": "Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection."
+        }
+      ],
       "functions": [
         {
           "name": "shake",
@@ -22316,6 +22324,31 @@
           "default": "artistic",
           "readOnly": true
         },
+        "cocSources": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 36,
+          "description": "Brain-owned CoC: at most four oldest-first sources, nine numbers each in CameraCocDropped.source order. Empty leaves the direct camera in control; zero-weight entries are inactive.",
+          "default": [],
+          "readOnly": true
+        },
+        "postBlending": {
+          "type": "boolean",
+          "description": "Brain-owned: postShutter resolves an active crossfade, including interrupted physical/artistic blends.",
+          "default": false,
+          "readOnly": true
+        },
+        "postShutter": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Resolved shutter coefficients: x seconds / motion-vector interval + y artistic frame fraction. Read only while postBlending.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
         "background": {
           "$ref": "#/$defs/Color",
           "description": "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.",
@@ -22548,6 +22581,40 @@
         "invalid": "An incomplete physical lens: projection falls back to fov.",
         "orthographic": "Orthographic height owns projection; perspective lens settings are inactive."
       }
+    },
+    "CameraCocDropped": {
+      "x-og-kind": "event",
+      "x-og-module": "camera",
+      "description": "A camera CoC blend exceeded MAX_CAMERA_COC_SOURCES after identical-source coalescing. The lowest-weight primitive was dropped and survivors renormalised, producing a defined step rather than fitting a curve. CameraBrain also retains the latest drop and total count for probe and dump.",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 9,
+          "description": "Dropped primitive: focal length mm (0: artistic), fitted gate height / zoom mm, aperture, focus distance m, focus range m, falloff, radius cap / output height, tilt half-height, pre-renormalisation weight."
+        },
+        "frame": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The fixed simulation frame (tick) when the camera evaluated the drop, not a wall-clock or display-frame counter."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "CameraBrain's cumulative drop count, including this event."
+        }
+      },
+      "required": [
+        "source",
+        "frame",
+        "count"
+      ],
+      "additionalProperties": false
     },
     "OrbitCamera": {
       "x-og-kind": "component",
@@ -23415,6 +23482,65 @@
             "y": 0,
             "z": 0
           },
+          "readOnly": true
+        },
+        "fromCocSources": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 36,
+          "description": "Held outgoing CoC: at most four sources, nine numbers each in CameraCocDropped.source order. Survives shot removal and nested interruptions.",
+          "default": [],
+          "readOnly": true
+        },
+        "fromPost": {
+          "$ref": "#/$defs/Vector2",
+          "description": "Held outgoing shutter: x seconds, y artistic frame fraction. Survives interruption and restore.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readOnly": true
+        },
+        "fromPostPhysical": {
+          "type": "boolean",
+          "description": "The held post channels contain a physical source; false preserves the legacy artistic shutter path even across nested artistic interruptions.",
+          "default": false,
+          "readOnly": true
+        },
+        "cocExcluded": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Capacity-completed slots for this transition: bits 0–3 held sources, bit 4 incoming. A dropped source stays excluded until the transition ends; resets on the next shot change.",
+          "default": 0,
+          "readOnly": true
+        },
+        "cocDropCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Number of CoC capacity drops; each is also a CameraCocDropped event. A drop completes the lowest-weight source immediately rather than fitting a curve.",
+          "default": 0,
+          "readOnly": true
+        },
+        "lastCocDrop": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 9,
+          "description": "Latest dropped primitive in CameraCocDropped.source order; valid when cocDropCount is nonzero. Inspect through the probe or dump.",
+          "default": [],
+          "readOnly": true
+        },
+        "lastCocDropFrame": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fixed simulation frame (tick) of lastCocDrop; valid when cocDropCount is nonzero.",
+          "default": 0,
           "readOnly": true
         },
         "activations": {

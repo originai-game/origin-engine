@@ -5152,6 +5152,25 @@ export interface Camera {
    * @readonly written by the engine
    */
   readonly lensStatus: CameraLensStatus;
+  /**
+   * Brain-owned CoC: at most four oldest-first sources, nine numbers each in CameraCocDropped.source order. Empty leaves the direct camera in control; zero-weight entries are inactive.
+   *
+   * @capacity 36 elements (List.f32.36): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @readonly written by the engine
+   */
+  readonly cocSources: readonly number[];
+  /**
+   * Brain-owned: postShutter resolves an active crossfade, including interrupted physical/artistic blends.
+   *
+   * @readonly written by the engine
+   */
+  readonly postBlending: boolean;
+  /**
+   * Resolved shutter coefficients: x seconds / motion-vector interval + y artistic frame fraction. Read only while postBlending.
+   *
+   * @readonly written by the engine
+   */
+  readonly postShutter: Vector2;
   // ── Output ──
   /**
    * The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB.
@@ -5393,6 +5412,31 @@ export type CameraLensStatus = "artistic" | "physical" | "invalid" | "orthograph
  * @param options Range, unit, label, docs and the tunable flag.
  */
 export declare function CameraLensStatus(value?: CameraLensStatus, options?: FieldOptions): FieldSpec<"CameraLensStatus">;
+
+/**
+ * Maximum distinct primitive CoC sources in an interrupted camera blend; identical sources coalesce before overflow selection.
+ */
+export declare const MAX_CAMERA_COC_SOURCES: 4;
+
+/**
+ * A camera CoC blend exceeded MAX_CAMERA_COC_SOURCES after identical-source coalescing. The lowest-weight primitive was dropped and survivors renormalised, producing a defined step rather than fitting a curve. CameraBrain also retains the latest drop and total count for probe and dump.
+ *
+ * The payload of the `CameraCocDropped` event (token `og.CameraCocDropped`).
+ */
+export interface CameraCocDropped {
+  /**
+   * Dropped primitive: focal length mm (0: artistic), fitted gate height / zoom mm, aperture, focus distance m, focus range m, falloff, radius cap / output height, tilt half-height, pre-renormalisation weight.
+   *
+   * @capacity 9 elements (List.f32.9): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  readonly source: readonly number[];
+  /**
+   * The fixed simulation frame (tick) when the camera evaluated the drop, not a wall-clock or display-frame counter.
+   */
+  readonly frame: number;
+  /** CameraBrain's cumulative drop count, including this event. */
+  readonly count: number;
+}
 
 /**
  * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
@@ -6146,6 +6190,50 @@ export interface CameraBrain {
    * @readonly written by the engine
    */
   readonly fromLensProjection: Vector3;
+  /**
+   * Held outgoing CoC: at most four sources, nine numbers each in CameraCocDropped.source order. Survives shot removal and nested interruptions.
+   *
+   * @capacity 36 elements (List.f32.36): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @readonly written by the engine
+   */
+  readonly fromCocSources: readonly number[];
+  /**
+   * Held outgoing shutter: x seconds, y artistic frame fraction. Survives interruption and restore.
+   *
+   * @readonly written by the engine
+   */
+  readonly fromPost: Vector2;
+  /**
+   * The held post channels contain a physical source; false preserves the legacy artistic shutter path even across nested artistic interruptions.
+   *
+   * @readonly written by the engine
+   */
+  readonly fromPostPhysical: boolean;
+  /**
+   * Capacity-completed slots for this transition: bits 0–3 held sources, bit 4 incoming. A dropped source stays excluded until the transition ends; resets on the next shot change.
+   *
+   * @readonly written by the engine
+   */
+  readonly cocExcluded: number;
+  /**
+   * Number of CoC capacity drops; each is also a CameraCocDropped event. A drop completes the lowest-weight source immediately rather than fitting a curve.
+   *
+   * @readonly written by the engine
+   */
+  readonly cocDropCount: number;
+  /**
+   * Latest dropped primitive in CameraCocDropped.source order; valid when cocDropCount is nonzero. Inspect through the probe or dump.
+   *
+   * @capacity 9 elements (List.f32.9): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @readonly written by the engine
+   */
+  readonly lastCocDrop: readonly number[];
+  /**
+   * Fixed simulation frame (tick) of lastCocDrop; valid when cocDropCount is nonzero.
+   *
+   * @readonly written by the engine
+   */
+  readonly lastCocDropFrame: number;
   /**
    * How many times a virtual camera has been enabled (og.VirtualCamera.activated).
    *
@@ -35732,7 +35820,11 @@ export declare namespace og {
   /**
    * The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation.
    */
-  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly lensMode: FieldSpec<"CameraLensMode">; readonly focalLength: FieldSpec<"f32">; readonly sensorSize: FieldSpec<"Vector2">; readonly gateFit: FieldSpec<"CameraGateFit">; readonly aperture: FieldSpec<"f32">; readonly focusDistance: FieldSpec<"f32">; readonly shutterSpeed: FieldSpec<"f32">; readonly iso: FieldSpec<"f32">; readonly exposureMode: FieldSpec<"CameraExposureMode">; readonly ev100: FieldSpec<"f32">; readonly lensShift: FieldSpec<"Vector2">; readonly lensBlending: FieldSpec<"bool">; readonly lensProjection: FieldSpec<"Vector3">; readonly lensStatus: FieldSpec<"CameraLensStatus">; readonly background: FieldSpec<"Color">; readonly backgroundTexture: FieldSpec<"Texture">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Camera>;
+  const Camera: ResourceType<{ readonly position: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly fov: FieldSpec<"f32">; readonly near: FieldSpec<"f32">; readonly far: FieldSpec<"f32">; readonly zoom: FieldSpec<"f32">; readonly orthographic: FieldSpec<"bool">; readonly height: FieldSpec<"f32">; readonly lensMode: FieldSpec<"CameraLensMode">; readonly focalLength: FieldSpec<"f32">; readonly sensorSize: FieldSpec<"Vector2">; readonly gateFit: FieldSpec<"CameraGateFit">; readonly aperture: FieldSpec<"f32">; readonly focusDistance: FieldSpec<"f32">; readonly shutterSpeed: FieldSpec<"f32">; readonly iso: FieldSpec<"f32">; readonly exposureMode: FieldSpec<"CameraExposureMode">; readonly ev100: FieldSpec<"f32">; readonly lensShift: FieldSpec<"Vector2">; readonly lensBlending: FieldSpec<"bool">; readonly lensProjection: FieldSpec<"Vector3">; readonly lensStatus: FieldSpec<"CameraLensStatus">; readonly cocSources: ListSpec<"f32">; readonly postBlending: FieldSpec<"bool">; readonly postShutter: FieldSpec<"Vector2">; readonly background: FieldSpec<"Color">; readonly backgroundTexture: FieldSpec<"Texture">; readonly exposure: FieldSpec<"f32">; readonly trauma: FieldSpec<"f32">; readonly traumaDecay: FieldSpec<"f32">; readonly shakeOffset: FieldSpec<"f32">; readonly shakeRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly punch: FieldSpec<"f32">; readonly punchDecay: FieldSpec<"f32">; readonly kick: FieldSpec<"Vector3">; readonly kickDecay: FieldSpec<"f32">; readonly zoneActive: FieldSpec<"bool">; readonly zoneMin: FieldSpec<"Vector2">; readonly zoneMax: FieldSpec<"Vector2">; readonly zoneFromActive: FieldSpec<"bool">; readonly zoneFromMin: FieldSpec<"Vector2">; readonly zoneFromMax: FieldSpec<"Vector2">; readonly zoneScroll: FieldSpec<"f32">; readonly zoneScrollTime: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Camera>;
+  /**
+   * A camera CoC blend exceeded MAX_CAMERA_COC_SOURCES after identical-source coalescing. The lowest-weight primitive was dropped and survivors renormalised, producing a defined step rather than fitting a curve. CameraBrain also retains the latest drop and total count for probe and dump.
+   */
+  const CameraCocDropped: EventType<CameraCocDropped>;
   /**
    * Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
    * Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
@@ -35772,7 +35864,7 @@ export declare namespace og {
    * Registered with og.VirtualCamera. Its state fields are world state, so a replay or a restore mid-blend continues the same blend.
    * See `camera §2`.
    */
-  const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly soloBlend: FieldSpec<"f32">; readonly soloEase: FieldSpec<"Ease">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly fromLensProjection: FieldSpec<"Vector3">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
+  const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly soloBlend: FieldSpec<"f32">; readonly soloEase: FieldSpec<"Ease">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly fromLensProjection: FieldSpec<"Vector3">; readonly fromCocSources: ListSpec<"f32">; readonly fromPost: FieldSpec<"Vector2">; readonly fromPostPhysical: FieldSpec<"bool">; readonly cocExcluded: FieldSpec<"u32">; readonly cocDropCount: FieldSpec<"u32">; readonly lastCocDrop: ListSpec<"f32">; readonly lastCocDropFrame: FieldSpec<"u32">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
   /** The live virtual camera changed (sent by the og.camera system; read the tick after). */
   const CameraCut: EventType<CameraCut>;
   /**

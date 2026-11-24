@@ -8,6 +8,9 @@ import type * as Api from "@origingame/engine";
 export const MAX_POINTERS: typeof Api.MAX_POINTERS = 5;
 export const MAX_GAMEPADS: typeof Api.MAX_GAMEPADS = 8;
 
+// camera
+export const MAX_CAMERA_COC_SOURCES: typeof Api.MAX_CAMERA_COC_SOURCES = 4;
+
 // render
 export const PARTICLES_ARMED: typeof Api.PARTICLES_ARMED = 4294967295;
 export const MAX_LIGHTS: typeof Api.MAX_LIGHTS = 256;

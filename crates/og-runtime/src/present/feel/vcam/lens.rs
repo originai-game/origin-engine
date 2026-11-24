@@ -7,11 +7,11 @@ use og_render::{GateFit, PhysicalLens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Lens {
-    physical: Option<PhysicalLens>,
+    pub physical: Option<PhysicalLens>,
     exposure_mode: CameraExposureMode,
     ev100: f32,
     pub projection: Vec3,
-    resolved: bool,
+    pub resolved: bool,
 }
 
 impl Lens {

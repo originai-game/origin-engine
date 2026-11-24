@@ -6,6 +6,9 @@
 
 use glam::Vec2;
 
+mod coc;
+pub use coc::{COC_SOURCE_CAPACITY, CocMix, CocSource, WeightedCoc};
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum GateFit {
     #[default]
@@ -26,6 +29,15 @@ pub struct PhysicalLens {
     pub shutter_speed: f32,
     pub iso: f32,
     pub shift: Vec2,
+}
+
+/// Signed thin-lens radius as a fraction of output height:
+/// `scale + bias / axial_depth_metres`. Negative is in front of focus.
+/// Coefficients blend linearly even when their focus planes differ.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ThinLensCoc {
+    pub scale: f32,
+    pub bias: f32,
 }
 
 impl PhysicalLens {
@@ -55,6 +67,42 @@ impl PhysicalLens {
         let gate = self.gate_height(aspect)?;
         let focal = 2.0 * self.focal_length / gate * zoom;
         (focal.is_finite() && focal > 0.0).then_some(focal)
+    }
+
+    /// Thin-lens sensor diameter f²/[N(s−f)]·(1−s/z), divided by twice
+    /// the fitted gate height to give a radius. Zoom crops both projection
+    /// and the displayed radius. Invalid or closed apertures have no CoC.
+    pub fn coc_coefficients(self, aspect: f32, zoom: f32) -> Option<ThinLensCoc> {
+        let gate = self.gate_height(aspect)? * 0.001;
+        let focal = self.focal_length * 0.001;
+        if !(self.aperture.is_finite()
+            && self.aperture > 0.0
+            && self.focus_distance.is_finite()
+            && self.focus_distance > focal
+            && zoom.is_finite()
+            && zoom > 0.0)
+        {
+            return None;
+        }
+        let scale =
+            focal * focal / (self.aperture * (self.focus_distance - focal)) / (2.0 * gate) * zoom;
+        let bias = -scale * self.focus_distance;
+        (scale.is_finite() && bias.is_finite()).then_some(ThinLensCoc { scale, bias })
+    }
+
+    /// Fraction of the interval represented by the motion vectors that
+    /// the shutter exposes. A closed shutter or absent history gives zero.
+    /// Values above one extrapolate the measured velocity; no silent cap.
+    pub fn shutter_fraction(self, interval: f32) -> f32 {
+        if interval.is_finite()
+            && interval > 0.0
+            && self.shutter_speed.is_finite()
+            && self.shutter_speed > 0.0
+        {
+            self.shutter_speed / interval
+        } else {
+            0.0
+        }
     }
 
     /// Blend the continuous authored values, not independently derived effects.
@@ -101,5 +149,46 @@ mod tests {
         assert_eq!(PhysicalLens::default().focal_y(2.0, 1.0), None);
         lens.sensor_size.x = f32::NAN;
         assert_eq!(lens.focal_y(2.0, 1.0), None);
+    }
+
+    #[test]
+    fn thin_lens_radius_has_correct_sign_units_focus_and_crop() {
+        let mut lens = PhysicalLens {
+            focal_length: 50.0,
+            sensor_size: Vec2::new(36.0, 24.0),
+            aperture: 2.0,
+            focus_distance: 5.0,
+            ..Default::default()
+        };
+        let coc = lens.coc_coefficients(16.0 / 9.0, 1.0).unwrap();
+        for (depth, pixels) in [
+            (2.0, -8.522_727),
+            (5.0, 0.0),
+            (10.0, 2.840_909),
+            (f32::INFINITY, 5.681_818),
+        ] {
+            assert!(((coc.scale + coc.bias / depth) * 1080.0 - pixels).abs() < 1e-5);
+        }
+        lens.aperture = 1.0;
+        let cropped = lens.coc_coefficients(16.0 / 9.0, 1.7).unwrap();
+        assert!((cropped.scale / coc.scale - 3.4).abs() < 1e-6);
+        lens.focus_distance = 0.05;
+        assert_eq!(lens.coc_coefficients(1.0, 1.0), None);
+        assert_eq!(PhysicalLens::default().coc_coefficients(1.0, 1.0), None);
+    }
+
+    #[test]
+    fn physical_shutter_uses_the_represented_interval_without_a_hidden_cap() {
+        let lens = PhysicalLens {
+            shutter_speed: 0.01,
+            ..Default::default()
+        };
+        for interval in [1.0 / 30.0, 1.0 / 144.0, 0.023] {
+            let vector_pixels = 200.0 * interval;
+            assert!((vector_pixels * lens.shutter_fraction(interval) - 2.0).abs() < 1e-6);
+        }
+        assert!(lens.shutter_fraction(1.0 / 240.0) > 1.0);
+        assert_eq!(lens.shutter_fraction(0.0), 0.0);
+        assert_eq!(PhysicalLens::default().shutter_fraction(0.02), 0.0);
     }
 }

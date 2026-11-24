@@ -10831,6 +10831,28 @@
           "readonly": true
         },
         {
+          "name": "cocSources",
+          "column": "f32",
+          "list": 36,
+          "default": [],
+          "readonly": true
+        },
+        {
+          "name": "postBlending",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "postShutter",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
+        },
+        {
           "name": "background",
           "column": "Color",
           "default": {
@@ -11078,6 +11100,53 @@
             "y": 0,
             "z": 0
           },
+          "readonly": true
+        },
+        {
+          "name": "fromCocSources",
+          "column": "f32",
+          "list": 36,
+          "default": [],
+          "readonly": true
+        },
+        {
+          "name": "fromPost",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "readonly": true
+        },
+        {
+          "name": "fromPostPhysical",
+          "column": "bool",
+          "default": false,
+          "readonly": true
+        },
+        {
+          "name": "cocExcluded",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "cocDropCount",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "lastCocDrop",
+          "column": "f32",
+          "list": 9,
+          "default": [],
+          "readonly": true
+        },
+        {
+          "name": "lastCocDropFrame",
+          "column": "u32",
+          "default": 0,
           "readonly": true
         },
         {
@@ -14527,6 +14596,30 @@
     },
     {
       "id": 11,
+      "name": "CameraCocDropped",
+      "schema": "og.CameraCocDropped",
+      "module": "camera",
+      "fields": [
+        {
+          "name": "source",
+          "type": "f32",
+          "list": 9,
+          "default": []
+        },
+        {
+          "name": "frame",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "count",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 12,
       "name": "CameraCut",
       "schema": "og.CameraCut",
       "module": "camera",
@@ -14549,7 +14642,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 13,
       "name": "ParticleEvent",
       "schema": "og.ParticleEvent",
       "module": "render",
@@ -14590,7 +14683,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 14,
       "name": "AssetReady",
       "schema": "og.AssetReady",
       "module": "load",
@@ -14608,7 +14701,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "AssetFailed",
       "schema": "og.AssetFailed",
       "module": "load",
@@ -14631,7 +14724,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "name": "CollisionStarted",
       "schema": "og.CollisionStarted",
       "module": "physics",
@@ -14684,7 +14777,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "CollisionEnded",
       "schema": "og.CollisionEnded",
       "module": "physics",
@@ -14705,7 +14798,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "SensorEntered",
       "schema": "og.SensorEntered",
       "module": "physics",
@@ -14726,7 +14819,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "SensorExited",
       "schema": "og.SensorExited",
       "module": "physics",
@@ -14747,7 +14840,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "JointBroken",
       "schema": "og.JointBroken",
       "module": "physics",
@@ -14783,7 +14876,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "BodySlept",
       "schema": "og.BodySlept",
       "module": "physics",
@@ -14799,7 +14892,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "BodyWoke",
       "schema": "og.BodyWoke",
       "module": "physics",
@@ -14815,7 +14908,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "Contact",
       "schema": "og.Contact",
       "module": "physics",
@@ -14841,7 +14934,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "CharacterEvent",
       "schema": "og.CharacterEvent",
       "module": "physics",
@@ -14867,7 +14960,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "Splash",
       "schema": "og.Splash",
       "module": "physics",
@@ -14902,7 +14995,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "LightningStrike",
       "schema": "og.LightningStrike",
       "module": "atmosphere",
@@ -14924,7 +15017,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "AnimationEvent",
       "schema": "og.AnimationEvent",
       "module": "anim",
@@ -14972,7 +15065,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "FlipbookEvent",
       "schema": "og.FlipbookEvent",
       "module": "anim",
@@ -15000,7 +15093,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "Skeleton2DEvent",
       "schema": "og.Skeleton2DEvent",
       "module": "anim",
@@ -15033,7 +15126,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "TweenCompleted",
       "schema": "og.TweenCompleted",
       "module": "tween",
@@ -15056,7 +15149,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "TweenEvent",
       "schema": "og.TweenEvent",
       "module": "tween",
@@ -15089,7 +15182,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "MusicBeat",
       "schema": "og.MusicBeat",
       "module": "audio",
@@ -15117,7 +15210,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -15140,7 +15233,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -15168,7 +15261,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "NavLinkReached",
       "schema": "og.NavLinkReached",
       "module": "nav",
@@ -15222,7 +15315,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
@@ -15253,7 +15346,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "AiActionStarted",
       "schema": "og.AiActionStarted",
       "module": "ai",
@@ -15284,7 +15377,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "AiActionStopped",
       "schema": "og.AiActionStopped",
       "module": "ai",
@@ -15315,7 +15408,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "DialogueShown",
       "schema": "og.DialogueShown",
       "module": "story",
@@ -15336,7 +15429,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "name": "DialogueEnded",
       "schema": "og.DialogueEnded",
       "module": "story",
@@ -15352,7 +15445,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "name": "DialogueCheck",
       "schema": "og.DialogueCheck",
       "module": "story",
@@ -15388,7 +15481,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "name": "QuestUpdated",
       "schema": "og.QuestUpdated",
       "module": "story",
@@ -15409,7 +15502,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "name": "BarkSaid",
       "schema": "og.BarkSaid",
       "module": "story",
@@ -15440,7 +15533,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "name": "StoryEvent",
       "schema": "og.StoryEvent",
       "module": "story",
@@ -15466,7 +15559,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "name": "PlatformAnswered",
       "schema": "og.PlatformAnswered",
       "module": "platform",
@@ -15484,7 +15577,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "name": "PlatformNotice",
       "schema": "og.PlatformNotice",
       "module": "platform",
@@ -15502,7 +15595,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "name": "RoomJoined",
       "schema": "og.RoomJoined",
       "module": "platform",
@@ -15535,7 +15628,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "name": "RoomPeerJoined",
       "schema": "og.RoomPeerJoined",
       "module": "platform",
@@ -15553,7 +15646,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "RoomPeerLeft",
       "schema": "og.RoomPeerLeft",
       "module": "platform",
@@ -15571,7 +15664,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "RoomMessage",
       "schema": "og.RoomMessage",
       "module": "platform",
@@ -15594,7 +15687,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "CellEvent",
       "schema": "og.CellEvent",
       "module": "stream",
@@ -15617,7 +15710,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "StreamEvent",
       "schema": "og.StreamEvent",
       "module": "stream",
@@ -15635,7 +15728,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "name": "MediaIntent",
       "schema": "og.MediaIntent",
       "module": "video",
@@ -15671,7 +15764,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -15689,7 +15782,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -15717,7 +15810,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -15735,7 +15828,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",
@@ -15758,7 +15851,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "SeatDropped",
       "schema": "og.SeatDropped",
       "module": "net",
@@ -15786,7 +15879,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "SeatRejoined",
       "schema": "og.SeatRejoined",
       "module": "net",
@@ -15809,7 +15902,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "PeerStalled",
       "schema": "og.PeerStalled",
       "module": "net",
@@ -15832,7 +15925,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "SharedJoined",
       "schema": "og.SharedJoined",
       "module": "shared",
@@ -15855,7 +15948,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "SharedLeft",
       "schema": "og.SharedLeft",
       "module": "shared",
@@ -15868,7 +15961,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "name": "PresenceEntered",
       "schema": "og.PresenceEntered",
       "module": "shared",
@@ -15896,7 +15989,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "name": "PresenceLeft",
       "schema": "og.PresenceLeft",
       "module": "shared",
@@ -15914,7 +16007,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "name": "SharedCorrected",
       "schema": "og.SharedCorrected",
       "module": "shared",
@@ -15927,7 +16020,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "name": "SharedObjectChanged",
       "schema": "og.SharedObjectChanged",
       "module": "shared",
@@ -15950,7 +16043,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "name": "SharedObjectGone",
       "schema": "og.SharedObjectGone",
       "module": "shared",
@@ -15968,7 +16061,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "name": "SharedOpAnswered",
       "schema": "og.SharedOpAnswered",
       "module": "shared",
@@ -15991,7 +16084,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "name": "Fractured",
       "schema": "og.Fractured",
       "module": "destruction",
@@ -16042,7 +16135,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "name": "PixelDetached",
       "schema": "og.PixelDetached",
       "module": "destruction",
@@ -16083,7 +16176,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "name": "VfxEvent",
       "schema": "og.VfxEvent",
       "module": "vfx",
@@ -16111,7 +16204,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "FlowSegment",
       "schema": "og.FlowSegment",
       "module": "flow",
@@ -16138,7 +16231,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "FlowChoice",
       "schema": "og.FlowChoice",
       "module": "flow",
@@ -16170,7 +16263,7 @@
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "name": "FlowChapter",
       "schema": "og.FlowChapter",
       "module": "flow",
@@ -16197,7 +16290,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "name": "FlowEnded",
       "schema": "og.FlowEnded",
       "module": "flow",
@@ -16224,7 +16317,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "name": "SceneChanged",
       "schema": "og.SceneChanged",
       "module": "scene",
@@ -16252,7 +16345,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "name": "HitEvent",
       "schema": "og.HitEvent",
       "module": "play",
@@ -16303,7 +16396,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "name": "Damaged",
       "schema": "og.Damaged",
       "module": "combat",
@@ -16359,7 +16452,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "name": "Died",
       "schema": "og.Died",
       "module": "combat",
@@ -16377,7 +16470,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "name": "Interacted",
       "schema": "og.Interacted",
       "module": "interact",
@@ -16395,7 +16488,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "name": "PickedUp",
       "schema": "og.PickedUp",
       "module": "inventory",
@@ -16423,7 +16516,7 @@
       ]
     },
     {
-      "id": 81,
+      "id": 82,
       "name": "AbilityUsed",
       "schema": "og.AbilityUsed",
       "module": "abilities",

@@ -2,7 +2,9 @@
 
 use super::*;
 use glam::Vec2;
-pub use og_render_data::camera::{GateFit, PhysicalLens};
+pub use og_render_data::camera::{
+    COC_SOURCE_CAPACITY, CocMix, CocSource, GateFit, PhysicalLens, WeightedCoc,
+};
 
 /// One object to draw: a mesh with a material at a world transform. Callers
 /// submit instances one by one; the renderer batches all instances that share

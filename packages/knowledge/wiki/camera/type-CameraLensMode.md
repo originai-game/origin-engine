@@ -23,4 +23,4 @@ enum CameraLensMode {
 }
 ```
 
-<sub>Module `camera` line 189</sub>
+<sub>Module `camera` line 198</sub>

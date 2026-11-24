@@ -55,4 +55,4 @@ component FramingCamera {
 }
 ```
 
-<sub>Module `camera` line 390</sub>
+<sub>Module `camera` line 407</sub>

@@ -76,6 +76,15 @@ module camera {
     field lensStatus CameraLensStatus "Projection status after the camera system resolves its lens: artistic, physical, invalid or orthographic." {
       readonly true
     }
+    field cocSources List.f32.36 "Brain-owned CoC: at most four oldest-first sources, nine numbers each in CameraCocDropped.source order. Empty leaves the direct camera in control; zero-weight entries are inactive." {
+      readonly true
+    }
+    field postBlending bool "Brain-owned: postShutter resolves an active crossfade, including interrupted physical/artistic blends." {
+      readonly true
+    }
+    field postShutter Vector2 "Resolved shutter coefficients: x seconds / motion-vector interval + y artistic frame fraction. Read only while postBlending." {
+      readonly true
+    }
     group "Output"
     field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
       default 0.00699 0.00803 0.01096

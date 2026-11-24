@@ -110,6 +110,12 @@ impl Renderer {
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     water_fog: !scene_water.is_empty() && volumetric_fog,
                     transmission,
+                    motion_tile: effects.motion_blur.map_or(1, |m| {
+                        (m.max_pixels * 0.5)
+                            .ceil()
+                            .clamp(1.0, self.history_size().0.max(self.history_size().1) as f32)
+                            as u32
+                    }),
                     zoom_blur: effects.screen_blur.is_some_and(|b| {
                         b.kind == crate::ScreenBlurKind::Zoom && b.strength.abs() < 1.0
                     }),

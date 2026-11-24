@@ -57,6 +57,10 @@ impl RenderScene {
         }
         self.frame.camera.position += d;
         self.frame.camera.target += d;
+        if let Some(camera) = &mut self.frame.motion_camera {
+            camera.position += d;
+            camera.target += d;
+        }
         if let crate::ShadowBounds::Sphere { center, .. } = &mut self.lighting.light.shadow_bounds {
             *center += d;
         }

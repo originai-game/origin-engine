@@ -27,4 +27,4 @@ enum CameraLensStatus {
 }
 ```
 
-<sub>Module `camera` line 225</sub>
+<sub>Module `camera` line 234</sub>

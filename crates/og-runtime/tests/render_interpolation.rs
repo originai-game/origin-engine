@@ -113,6 +113,12 @@ struct Seen {
     /// captured one's.
     interpolation: Option<f32>,
     captured_interpolation: Option<f32>,
+    shutter: f32,
+    dof: Option<(f32, f32, f32)>,
+    motion_camera: Option<Vec3>,
+    captured_motion: Option<(f32, f32)>,
+    captured_camera_motion: Option<f32>,
+    captured_cut: bool,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -136,6 +142,13 @@ impl RenderBackend for Recorder {
         s.camera_cut = scene.frame.camera_cut;
         s.camera = scene.frame.camera.position;
         s.interpolation = scene.frame.interpolation;
+        s.shutter = scene.look.post.motion_blur.map_or(0.0, |m| m.shutter);
+        s.dof = scene
+            .look
+            .post
+            .depth_of_field
+            .map(|d| (d.focus_distance, d.focus_range, d.max_blur));
+        s.motion_camera = scene.frame.motion_camera.map(|c| c.position);
         Ok(())
     }
     fn capture(&mut self, scene: &RenderScene, w: u32, h: u32) -> Option<og_render::RgbaImage> {
@@ -146,6 +159,26 @@ impl RenderBackend for Recorder {
             .map(|i| i.transform)
             .collect();
         self.0.borrow_mut().captured_interpolation = scene.frame.interpolation;
+        if let Some(motion) = scene.look.post.motion_blur {
+            let now = at(
+                &scene
+                    .objects
+                    .instances
+                    .iter()
+                    .map(|i| i.transform)
+                    .collect::<Vec<_>>(),
+                0.0,
+            )
+            .w_axis
+            .x;
+            let previous = at(&scene.objects.previous_transforms, 0.0).w_axis.x;
+            self.0.borrow_mut().captured_motion = Some((now - previous, motion.shutter));
+            self.0.borrow_mut().captured_camera_motion = scene
+                .frame
+                .motion_camera
+                .map(|before| scene.frame.camera.position.x - before.position.x);
+            self.0.borrow_mut().captured_cut = scene.frame.camera_cut;
+        }
         Some(og_render::RgbaImage {
             width: w.max(1),
             height: h.max(1),
@@ -339,6 +372,189 @@ fn a_60_hz_tick_drawn_at_144_hz_is_blended_by_the_accumulator() {
     }
     assert_eq!(w2, w);
     assert_eq!(hash(e2), hash(e), "the blend never reaches the world");
+}
+
+#[test]
+fn physical_shutter_uses_the_interval_of_its_actual_motion_inputs() {
+    let entities = Entities::default();
+    let (e, seen) = engine(&entities);
+    value(write_resource(
+        e,
+        "og.Camera",
+        &json!({
+            "lensMode": "physical", "focalLength": 50,
+            "sensorSize": {"x": 36, "y": 24}, "shutterSpeed": 0.01,
+            "aperture": 1, "focusDistance": 2,
+        })
+        .to_string(),
+    ));
+    value(write_resource(
+        e,
+        "og.PostEffects",
+        &json!({
+            "motionBlur": true, "motionBlurShutter": 0.9,
+            "depthOfField": true, "dofFocusDistance": 7, "dofFocusRange": 3, "dofMaxBlur": 0.03125,
+        })
+        .to_string(),
+    ));
+    frame(e, TICK_MS);
+    assert_eq!(seen.borrow().shutter, 0.0, "no motion history: no blur");
+    assert_eq!(
+        seen.borrow().dof,
+        Some((7.0, 3.0, 0.03125)),
+        "physical aperture/focus must not override artistic DoF"
+    );
+    frame(e, TICK_MS);
+    frame(e, TICK_MS);
+    // Irregular draws, including skipped ticks: at 60 m/s a 0.01 s
+    // shutter covers 0.6 m whatever interval the vectors represent.
+    for ms in [TICK_MS, 4.0, 9.0, 31.0, 6.0, 45.0, 3.0, 11.0, 22.0] {
+        frame(e, ms);
+        let s = seen.borrow();
+        let moved = at(&s.drawn, 0.0).w_axis.x - at(&s.previous, 0.0).w_axis.x;
+        // The existing exact-boundary view draws the tick, while a
+        // between-tick view lags one tick. Crossing between those modes
+        // can rewind the view: a nonpositive interval must close the
+        // shutter, never infer a reverse physical velocity.
+        let expected = if moved > 0.0 { 0.6 } else { 0.0 };
+        close(
+            moved * s.shutter,
+            expected,
+            "physical object shutter distance",
+        );
+        let moved = s.camera.x - s.motion_camera.unwrap().x;
+        close(
+            moved * s.shutter,
+            expected,
+            "physical camera shutter distance",
+        );
+    }
+    // Warm-up redraws do not advance capture motion. The capture uses
+    // the interval belonging to its own previous transforms, not display dt.
+    let capture = || {
+        let shot: Value =
+            serde_json::from_str(&og_engine_probe_capture(e, Some(16), Some(9), None, None))
+                .unwrap();
+        assert!(shot.get("error").is_none(), "{shot}");
+        seen.borrow().captured_motion.unwrap()
+    };
+    let a = capture();
+    let b = capture();
+    assert_eq!(a, b);
+    close(a.0 * a.1, 0.6, "captured physical shutter distance");
+}
+
+/// Accelerated motion distinguishes the immediately preceding fixed tick
+/// from an arbitrarily old or interpolated extraction at the same speed.
+struct Accelerating(Entities);
+
+impl Hooks for Accelerating {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        Mover(self.0.clone()).dispatch(call)?;
+        if call.kind == 0 && call.id == MOVE {
+            let e = self.0.borrow()[&call.engine][0];
+            let t = f64::from(og_world_get_tick(call.engine));
+            let position = json!({"position": {"x": t * t, "y": 0, "z": 0}});
+            value(og_runtime::host_impl::answer(og_world_set(
+                call.engine,
+                e,
+                "og.Transform".into(),
+                position.to_string(),
+            )));
+            value(write_resource(
+                call.engine,
+                "og.Camera",
+                &json!({
+                    "position": {"x": t * t, "y": 2, "z": 100},
+                })
+                .to_string(),
+            ));
+        }
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("{path}: no assets in this test"))
+    }
+}
+
+#[test]
+fn physical_capture_uses_the_previous_fixed_tick_independently_of_draws() {
+    let entities = Entities::default();
+    let (whole, a) = engine(&entities);
+    let (half, b) = engine(&entities);
+    let (undrawn, c) = engine(&entities);
+    set_hooks(Rc::new(Accelerating(entities.clone())));
+    for e in [whole, half, undrawn] {
+        value(write_resource(
+            e,
+            "og.Camera",
+            &json!({
+                "lensMode": "physical", "shutterSpeed": 0.01,
+            })
+            .to_string(),
+        ));
+        value(write_resource(
+            e,
+            "og.PostEffects",
+            &json!({"motionBlur": true}).to_string(),
+        ));
+        value(write_resource(
+            e,
+            "og.RenderSettings",
+            &json!({"snapDistance": 0}).to_string(),
+        ));
+    }
+    for _ in 0..8 {
+        frame(whole, TICK_MS);
+    }
+    for _ in 0..16 {
+        frame(half, TICK_MS / 2.0);
+    }
+    value(og_runtime::og_engine_advance(undrawn, 8));
+    for (e, seen) in [(whole, a), (half, b), (undrawn, c)] {
+        assert_eq!(og_world_get_tick(e), 8);
+        let saved: Value = serde_json::from_str(&og_runtime::og_engine_probe_snapshot(e)).unwrap();
+        let saved = saved["id"].as_str().unwrap().to_owned();
+        let capture = || {
+            let reply: Value =
+                serde_json::from_str(&og_engine_probe_capture(e, Some(16), Some(9), None, None))
+                    .unwrap();
+            assert!(reply.get("error").is_none(), "{reply}");
+        };
+        for restored in [false, true] {
+            if restored {
+                value(og_runtime::og_engine_advance(e, 3));
+                assert!(og_runtime::og_engine_probe_restore(e, saved.clone()));
+            }
+            capture();
+            let s = seen.borrow();
+            let (distance, shutter) = s.captured_motion.expect("physical motion capture");
+            // At world tick8 the current/previous positions are7² and6².
+            // The exposure is .01/(1/60)=.6 intervals, even after restore.
+            close(distance, 13.0, "capture uses the preceding fixed tick");
+            close(
+                s.captured_camera_motion.unwrap(),
+                13.0,
+                "camera uses the same fixed tick",
+            );
+            close(shutter, 0.6, "capture uses its fixed interval");
+        }
+        value(og_runtime::host_impl::answer(og_render_snap(
+            e,
+            entities.borrow()[&e][0],
+        )));
+        og_runtime::og_render_snap_camera(e);
+        capture();
+        assert_eq!(
+            seen.borrow().captured_motion.unwrap().0,
+            0.0,
+            "explicit capture snap suppresses object motion"
+        );
+        assert!(
+            seen.borrow().captured_cut,
+            "explicit camera snap cuts captured camera motion"
+        );
+    }
 }
 
 // ── world-anchored UI ───────────────────────────────────────────────────────

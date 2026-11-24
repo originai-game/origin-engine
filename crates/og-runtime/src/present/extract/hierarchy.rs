@@ -553,7 +553,7 @@ impl Hierarchy {
     }
 
     /// Whether `e` has og.Transform here.
-    fn knows(&mut self, e: u64) -> bool {
+    pub(crate) fn knows(&mut self, e: u64) -> bool {
         if self.pending.is_some() {
             self.apply();
         }

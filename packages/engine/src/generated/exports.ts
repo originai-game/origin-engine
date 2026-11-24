@@ -31,6 +31,7 @@ export const CameraLensMode = ((value = "artistic" as Api.CameraLensMode, option
 export const CameraGateFit = ((value = "vertical" as Api.CameraGateFit, options) => spec("CameraGateFit", value, options)) as typeof Api.CameraGateFit;
 export const CameraExposureMode = ((value = "artistic" as Api.CameraExposureMode, options) => spec("CameraExposureMode", value, options)) as typeof Api.CameraExposureMode;
 export const CameraLensStatus = ((value = "artistic" as Api.CameraLensStatus, options) => spec("CameraLensStatus", value, options)) as typeof Api.CameraLensStatus;
+export { MAX_CAMERA_COC_SOURCES } from "./consts.ts";
 
 // render
 export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry", value, options)) as typeof Api.Geometry;
