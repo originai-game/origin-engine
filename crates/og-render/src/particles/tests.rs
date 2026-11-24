@@ -819,3 +819,54 @@ fn quality_thins_an_emitter_by_its_particles_alive() {
     small.max_particles = 10;
     assert!((small.thinned(0.5) - 0.8).abs() < 1e-6);
 }
+
+/// A scaled system is the same effect larger (sf-g43): spawned at scale 2,
+/// a world-space burst under gravity and drag lands every particle
+/// twice as far from the emitter, twice as large, as at scale 1. Before,
+/// only its birth place and speed scaled, so a big explosion threw small
+/// sparks twice as fast through the same gravity: long streaks, not the
+/// same burst.
+#[test]
+fn a_scaled_system_is_the_same_effect_larger() {
+    let e = ParticleEmitter {
+        shape: EmitterShape::Sphere {
+            radius: 0.3,
+            surface: false,
+        },
+        spread_degrees: 180.0,
+        speed: [2.0, 6.0],
+        size: [0.1, 0.3],
+        gravity: Vec3::new(0.0, -9.0, 1.5),
+        drag: 2.0,
+        lifetime: [2.0, 2.0],
+        rate: 0.0,
+        bursts: vec![Burst::once(0.0, 64)],
+        looping: false,
+        ..Default::default()
+    };
+    let at = Vec3::new(3.0, 1.0, -2.0);
+    let run = |s: f32| {
+        let place = Mat4::from_scale_rotation_translation(Vec3::splat(s), glam::Quat::IDENTITY, at);
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), place, 3, 0);
+        live(&e, &mut sys, 45)
+    };
+    let (one, two) = (run(1.0), run(2.0));
+    assert_eq!(one.len(), 64);
+    assert_eq!(two.len(), 64);
+    for (a, b) in one.iter().zip(&two) {
+        let (pa, pb) = (
+            Vec3::from_slice(&a.pos_age[..3]) - at,
+            Vec3::from_slice(&b.pos_age[..3]) - at,
+        );
+        assert!(
+            (pb - pa * 2.0).length() < 1e-3 * (1.0 + pa.length()),
+            "at {pb} scaled, {pa} unscaled"
+        );
+        assert!(
+            (b.misc[0] - 2.0 * a.misc[0]).abs() < 1e-5,
+            "size {} scaled, {} unscaled",
+            b.misc[0],
+            a.misc[0]
+        );
+    }
+}

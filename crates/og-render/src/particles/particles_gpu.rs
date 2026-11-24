@@ -654,10 +654,11 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
         }) => strength.abs() * vectors.iter().map(|v| v.length()).fold(0.0, f32::max),
         None => 0.0,
     };
-    let pull = e.gravity.length()
+    let pull = (e.gravity.length()
         + e.noise.strength.abs()
         + field
-        + e.attractors.iter().map(|a| a.strength.abs()).sum::<f32>();
+        + e.attractors.iter().map(|a| a.strength.abs()).sum::<f32>())
+        * crate::particles::force_scale(e, transform);
     // Half the particle's longest side (its size curve's peak, its height
     // curve's, a velocity stretch's length), at least 0.5 m.
     let peak = |c: &crate::particles::Curve| c.keys.iter().map(|k| k.1).fold(0.0, f32::max);

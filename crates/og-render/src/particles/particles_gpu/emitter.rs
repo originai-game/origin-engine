@@ -120,14 +120,17 @@ pub(super) fn emitter_gpu(
         }) => [2.0, *strength, *size, *cells as f32],
     };
     let velocity = step.map_or(Vec3::ZERO, |s| s.velocity);
+    // A scaled effect is the same effect larger (cpu.rs `transform_scale`).
+    let scale = crate::particles::transform_scale(transform);
+    let force = crate::particles::force_scale(e, transform);
     EmitterGpu {
         transform: transform.to_cols_array_2d(),
         shape: [kind, a, b, 0.0],
         shape2: [half.x, half.y, half.z, e.spread_degrees.to_radians()],
         ranges0: [e.lifetime[0], e.lifetime[1], e.speed[0], e.speed[1]],
         ranges1: [
-            e.size[0],
-            e.size[1],
+            e.size[0] * scale,
+            e.size[1] * scale,
             e.rotation_degrees[0].to_radians(),
             e.rotation_degrees[1].to_radians(),
         ],
@@ -141,8 +144,13 @@ pub(super) fn emitter_gpu(
             },
             dt,
         ],
-        forces: e.gravity.extend(e.drag).to_array(),
-        noise: [e.noise.strength, e.noise.frequency, e.noise.scroll, time],
+        forces: (e.gravity * force).extend(e.drag).to_array(),
+        noise: [
+            e.noise.strength * force,
+            e.noise.frequency,
+            e.noise.scroll,
+            time,
+        ],
         collision: [collide as u32 as f32, bounce, friction, 0.0],
         color: e.color,
         size_t,

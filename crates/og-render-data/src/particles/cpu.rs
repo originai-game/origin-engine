@@ -151,7 +151,7 @@ fn spawn(
     let lerp = |range: [f32; 2], t: f32| range[0] + (range[1] - range[0]) * t;
     let life = lerp(e.lifetime, r(0)).max(1e-3);
     let speed = lerp(e.speed, r(1));
-    let size = lerp(e.size, r(2));
+    let size = lerp(e.size, r(2)) * transform_scale(step.transform);
     let rot = lerp(e.rotation_degrees, r(3)).to_radians();
     let spin = lerp(e.angular_velocity_degrees, r(4)).to_radians();
     let (mut pos, dir) = shape_sample(&e.shape, [r(6), r(7), r(8), r(11)], points);
@@ -406,15 +406,43 @@ pub fn field_origin(field: &VectorField, origin: Vec3) -> ([i32; 3], Vec3) {
     }
 }
 
+/// How much a system's transform scales its effect: the largest axis
+/// scale (an effect spawned at scale 2, or under a scaled parent). Every
+/// length of the emitter scales by it, so a scaled effect is the same
+/// effect larger: its particles' size where they are born, and in world
+/// space (where the transform is applied at birth, not at draw) its
+/// accelerations too: gravity, noise and attractors. Velocities already
+/// scale through the transform; drag is a rate and does not.
+pub fn transform_scale(transform: Mat4) -> f32 {
+    let s = transform
+        .to_scale_rotation_translation()
+        .0
+        .abs()
+        .max_element();
+    if s.is_finite() && s > 0.0 { s } else { 1.0 }
+}
+
+/// The scale a world-space system's accelerations take (1 for a local
+/// one, whose whole simulation the draw's transform scales).
+pub fn force_scale(e: &ParticleEmitter, transform: Mat4) -> f32 {
+    match e.space {
+        SimulationSpace::World => transform_scale(transform),
+        SimulationSpace::Local => 1.0,
+    }
+}
+
 /// An emitter's attractors in its simulation space at a tick placed by
-/// `transform`: carried into the world for a world-space system.
+/// `transform`: carried into the world for a world-space system, their
+/// pull scaled with it.
 pub fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> Vec<Attractor> {
+    let s = force_scale(e, transform);
     e.attractors
         .iter()
         .take(MAX_ATTRACTORS)
         .map(|a| match e.space {
             SimulationSpace::World => Attractor {
                 position: transform.transform_point3(a.position),
+                strength: a.strength * s,
                 ..*a
             },
             SimulationSpace::Local => *a,
@@ -560,10 +588,11 @@ fn integrate(
     origin: Vec3,
     air: Vec3,
     fields: &Forces,
+    scale: f32,
 ) -> bool {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
-    vel += e.gravity * dt;
+    vel += e.gravity * (scale * dt);
     if e.force_fields != 0.0 && e.space == SimulationSpace::World && !fields.is_empty() {
         vel += fields.at(pos) * (e.force_fields * dt);
     }
@@ -576,7 +605,7 @@ fn integrate(
             value_noise3_at(q, whole, seed ^ 0x3333),
         ) * 2.0
             - Vec3::ONE;
-        vel += n * e.noise.strength * dt;
+        vel += n * (e.noise.strength * scale * dt);
     }
     vel += forces(e, pulls, pos, time, seed, origin) * dt;
     // Drag closes on the air's velocity: on rest in still air, bit for bit
@@ -874,6 +903,7 @@ impl CpuParticles {
                             self.origin,
                             air,
                             fields,
+                            force_scale(e, step.transform),
                         );
                         if let (Some(path), Some(i)) = (path, sample)
                             && p.alive()
@@ -919,6 +949,7 @@ impl CpuParticles {
                         self.origin,
                         carrying_air(ce, sys.air, None),
                         fields,
+                        1.0,
                     );
                 }
                 if sub.trigger == SubTrigger::Life {
