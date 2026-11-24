@@ -188,6 +188,12 @@ impl Vfx {
         self.elements[i].when.is_none_or(|p| values[p] > 0.0)
     }
 
+    /// What element `i`'s `stretch` multiplies its length by with these
+    /// values (1 without one).
+    pub fn stretch(&self, i: usize, values: &[f32; MAX_PARAMS]) -> f32 {
+        self.elements[i].stretch.map_or(1.0, |p| values[p].max(0.0))
+    }
+
     /// What element `i`'s `amount` multiplies it by with these values.
     pub fn amount(&self, i: usize, values: &[f32; MAX_PARAMS]) -> f32 {
         self.elements[i].amount.map_or(1.0, |p| values[p].max(0.0))
@@ -313,6 +319,7 @@ impl Vfx {
                 continue;
             }
             let amount = self.amount(i, &at.params);
+            let long = self.stretch(i, &at.params);
             let local = m * el.local_at(te);
             let life = el.life.max(1e-4);
             let x = (te / life).clamp(0.0, 1.0);
@@ -337,7 +344,8 @@ impl Vfx {
                     face_camera,
                     ..
                 } if alive => {
-                    let s = Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount));
+                    let k = size.eval(x, rnd) * amount;
+                    let s = Mat4::from_scale(Vec3::new(k, k * long, k));
                     // Facing the camera: where it is and how large, its
                     // spin in the camera's frame (the renderer's), no
                     // rotation of its own.
@@ -358,7 +366,10 @@ impl Vfx {
                     }
                 }
                 VfxKind::Glow { size, color } if alive => VfxDrawKind::Mesh {
-                    transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount)),
+                    transform: local * {
+                        let k = size.eval(x, rnd) * amount;
+                        Mat4::from_scale(Vec3::new(k, k * long, k))
+                    },
                     life: x,
                     seed: u64::from(seed) ^ i as u64,
                     color: tinted(*color, tint),
@@ -568,6 +579,50 @@ mod tests {
         )
         .unwrap_err();
         assert!(e.contains("`power`") && e.contains("declared: crit"), "{e}");
+    }
+
+    /// `stretch` lengthens a mesh along its own y by a live param and
+    /// leaves its width (`amount` scaled it whole, so a plume grew fat as
+    /// it grew long); an emitter refuses the line.
+    #[test]
+    fn stretch_lengthens_a_mesh_alone() {
+        let fx = crate::vfx::parse_vfx(
+            "type vfx\nversion 2\n---\nduration 1\nloop true\nparam thrust 1\nmesh cylinder {\n  life 1\n  effect \"fx/plume.ogt\"\n  scale 2\n  rotate 90 0 0\n  stretch thrust\n}\n",
+        )
+        .expect("parses");
+        let axes = |thrust: f32| {
+            let at = VfxInstance {
+                id: 1,
+                seed: 1,
+                transform: Mat4::IDENTITY,
+                scale: 1.0,
+                tint: Vec3::ONE,
+                hue: 0.0,
+                params: fx.values(&[thrust]),
+            };
+            match fx.draws(&at, 0, 6, 60.0)[0].kind {
+                VfxDrawKind::Mesh { transform, .. } => {
+                    let m = transform;
+                    (m.x_axis.truncate().length(), m.y_axis.truncate().length())
+                }
+                _ => panic!("a mesh"),
+            }
+        };
+        let (w1, l1) = axes(1.0);
+        let (w3, l3) = axes(3.0);
+        assert!(
+            (w1 - 2.0).abs() < 1e-5 && (l1 - 2.0).abs() < 1e-5,
+            "{w1} {l1}"
+        );
+        assert!(
+            (w3 - 2.0).abs() < 1e-5 && (l3 - 6.0).abs() < 1e-5,
+            "{w3} {l3}"
+        );
+        let e = crate::vfx::parse_vfx(
+            "type vfx\nversion 2\n---\nduration 1\nparam thrust 1\nemitter \"fx/a.ogt\" {\n  stretch thrust\n}\n",
+        )
+        .unwrap_err();
+        assert!(e.contains("stretch"), "{e}");
     }
 
     /// A `face camera` mesh keeps where it is placed and its size (the

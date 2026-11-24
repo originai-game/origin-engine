@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "type vfx stretch",
+      "summary": "A `mesh` or `glow` element takes `stretch <param>`: its length alone, along its own y after `rotate`, is multiplied by the param every frame. A jet plume lengthens with the thrust a game writes to og.Vfx.params without growing wider; `amount` still scales the element whole."
+    }
+  ]
+}

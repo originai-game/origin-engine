@@ -130,6 +130,7 @@ An element's block takes these lines; In names the elements that take one (every
 | `accelerate <x> <y> <z>` | every | `0 0 0` | Metres per second squared. |
 | `when <param>` | every |  | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | every |  | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `stretch <param>` | mesh, glow |  | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole. |
 | `seed <u32>` | emitter | `0` | Added to the effect's seed. |
 | `effect "<id>"` | mesh, trail, beam |  | Its effect material (§2); a mesh needs one. |
 | `scale <value>` | mesh | `1` | Uniform scale over its life. |
