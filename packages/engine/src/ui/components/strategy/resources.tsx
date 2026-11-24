@@ -18,14 +18,14 @@ export interface StrategyResourcesProps {
  */
 export function StrategyResources(props: StrategyResourcesProps) {
   return (
-    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-5.5 gap-y-1.5 py-1.5 px-4 text-fg nine-plate-cut bg-plate-hi compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`} role="group" label={t("strategy.resources.name")}>
+    <View class={`flex-row flex-wrap items-center w-fit max-w-full min-w-0 gap-x-5.5 gap-y-1.5 py-1.5 px-4 compact:w-full compact:justify-between compact:gap-x-2 compact:gap-y-1 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`} role="group" label={t("strategy.resources.name")}>
       <For each={props.resources ?? []} key={(r) => r.id}>
         {(r) => (
         <View class={`group/res flex-row items-center gap-x-2 min-w-0 compact:gap-x-1`} role="group" label={t("strategy.resources.value", { name: r().name, amount: r().amount })} data-warn={r().warn}>
           <Show when={r().icon} fallback={
               <Icon class={`shrink size-6 compact:size-4`} name={r().glyph} />
           }>
-            <Image class={`shrink size-6 rounded-tl-control rounded-tr-none rounded-br-control rounded-bl-none compact:size-4`} src={r().icon} />
+            <Image class={`shrink size-6 rounded-control compact:size-4`} src={r().icon} />
           </Show>
           <View class="flex-col min-w-0">
             <View class="flex-row items-baseline gap-x-0.75 min-w-0">
@@ -54,7 +54,7 @@ export function StrategyResources(props: StrategyResourcesProps) {
         )}
       </For>
       <Show when={props.tier !== ""}>
-        <Text class={`shrink py-0.5 px-2 text-xs font-bold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent-fg nine-chip-cut bg-hud-accent ${packClass("Chip", "frame")}`}>
+        <Text class={`shrink py-0.5 px-2 text-xs font-bold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent-fg rounded-control bg-hud-accent`}>
           {props.tier}
         </Text>
       </Show>

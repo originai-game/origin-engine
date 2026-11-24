@@ -40,7 +40,7 @@ export interface ItemSlotProps {
 export function ItemSlot(props: ItemSlotProps) {
   return (
     <View class={`text-fg w-24 p-0 gap-1 disabled:text-fg-subtle`}>
-      <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-soft bg-tile shadow-sunk text-fg transition duration-control w-full h-24 min-h-11 p-2 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success active:border-accent active:shadow-glow active:shadow-accent active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-hairline hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk disabled:text-fg-subtle data-down:opacity-dim ${packClass("Slot", "frame")}`} role="button" data-rarity-uncommon={props.rarity === "uncommon"} data-rarity-rare={props.rarity === "rare"} data-rarity-epic={props.rarity === "epic"} data-rarity-legendary={props.rarity === "legendary"} data-rarity-mythic={props.rarity === "mythic"} data-empty={(props.empty ?? false)} label={t("base.item-slot.label", { name: props.name || t("base.item-slot.empty"), state: (props.loading ?? false) ? t("base.item-slot.loading") : (props.locked ?? false) ? t("base.item-slot.locked") : (props.disabled ?? false) ? t("base.item-slot.disabled") : (props.cooldown ?? 0) > 0 ? t("base.item-slot.cooldown", { time: formatDuration((props.cooldown ?? 0)) }) : (props.empty ?? false) ? t("base.item-slot.empty") : t("base.item-slot.count", { count: (props.count ?? 1) }) })} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.locked ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)} data-cooling={(props.cooldown ?? 0) > 0 && !(props.empty ?? false) && !(props.loading ?? false)}>
+      <View class={`flex-row items-center justify-center gap-1 group/slot transition duration-control w-full h-24 min-h-11 p-2 overflow-hidden data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent active:shadow-glow active:shadow-accent active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-hairline hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk disabled:text-fg-subtle data-down:opacity-dim ${packClass("Slot", "frame")}`} role="button" data-rarity-uncommon={props.rarity === "uncommon"} data-rarity-rare={props.rarity === "rare"} data-rarity-epic={props.rarity === "epic"} data-rarity-legendary={props.rarity === "legendary"} data-rarity-mythic={props.rarity === "mythic"} data-empty={(props.empty ?? false)} label={t("base.item-slot.label", { name: props.name || t("base.item-slot.empty"), state: (props.loading ?? false) ? t("base.item-slot.loading") : (props.locked ?? false) ? t("base.item-slot.locked") : (props.disabled ?? false) ? t("base.item-slot.disabled") : (props.cooldown ?? 0) > 0 ? t("base.item-slot.cooldown", { time: formatDuration((props.cooldown ?? 0)) }) : (props.empty ?? false) ? t("base.item-slot.empty") : t("base.item-slot.count", { count: (props.count ?? 1) }) })} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.locked ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)} data-cooling={(props.cooldown ?? 0) > 0 && !(props.empty ?? false) && !(props.loading ?? false)}>
         <Show when={!(props.empty ?? false)}>
           <View class="absolute inset-0 pointer-events-none nine-socket-rim bg-common group-data-rarity-uncommon/slot:bg-uncommon group-data-rarity-rare/slot:bg-rare group-data-rarity-epic/slot:bg-epic group-data-rarity-legendary/slot:bg-legendary group-data-rarity-mythic/slot:bg-mythic" />
         </Show>
@@ -62,17 +62,17 @@ export function ItemSlot(props: ItemSlotProps) {
           </View>
         </Show>
         <Show when={(props.count ?? 1) > 1 && !(props.empty ?? false) && !(props.loading ?? false)}>
-          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control absolute right-0.5 bottom-0.5 py-0 px-1 rounded-capsule`}>
+          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control absolute right-0.5 bottom-0.5 py-0 px-1 rounded-capsule`}>
             <Text class="tabular-nums">{formatNumber((props.count ?? 1))}</Text>
           </View>
         </Show>
         <Show when={props.keyLabel}>
-          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control absolute left-0.5 top-0.5 py-0 px-1 rounded-capsule`}>
+          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control absolute left-0.5 top-0.5 py-0 px-1 rounded-capsule`}>
             <Text class="tabular-nums">{props.keyLabel}</Text>
           </View>
         </Show>
         <Show when={((props.locked ?? false) || (props.disabled ?? false)) && !(props.loading ?? false)}>
-          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control absolute bottom-0.5 text-center p-0.5 inset-x-0.5 rounded-capsule overflow-hidden`}>
+          <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control absolute bottom-0.5 text-center p-0.5 inset-x-0.5 rounded-capsule overflow-hidden`}>
             <Text class="tabular-nums whitespace-nowrap text-ellipsis">{(props.locked ?? false) ? t("base.item-slot.locked") : t("base.item-slot.disabled")}</Text>
           </View>
         </Show>

@@ -72,12 +72,12 @@ export function StatBar(props: StatBarProps) {
       data-critical={critical()}
       data-bare={props.bare}
     >
-      <View class={`flex-row items-center gap-1 ${props.bare ? "" : "border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate"} py-1 px-2`}>
+      <View class={`flex-row items-center gap-1 ${props.bare ? "" : packClass("Plate", "frame")} py-1 px-2`}>
         <Show when={props.icon}>
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>
         <Show when={props.label}>
-          <View class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control py-0 px-1 shrink-0">
             <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-tag">{props.label}</Text>
           </View>
         </Show>
@@ -103,7 +103,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
-          <View class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control py-0 px-1 shrink-0">
             <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>

@@ -59,9 +59,9 @@ export function LoadingScreen(props: LoadingScreenProps) {
               {props.place}
             </Text>
           </View>
-          <View class={`pt-4 pb-4.5 nine-panel-cut bg-layer-1 text-fg max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
+          <View class={`pt-4 pb-4.5 max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-row items-center gap-2">
-              <Text class={`tracking-label uppercase text-hud-accent-ink text-xs font-bold bg-tile nine-plate-cut py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
+              <Text class={`tracking-label uppercase text-hud-accent-ink text-xs font-bold py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
               </Text>
               <View class={`flex-row items-center justify-center shrink ml-auto gap-x-1 text-xs font-semibold tracking-label px-1 pointer-coarse:min-h-11`} role="button" onPress={(e) => props.onNextTip?.(e)}>
@@ -71,7 +71,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
                 <Text>{t("screen.loading.next")}</Text>
               </View>
             </View>
-            <Text class="text-body tracking-normal text-fg m-0">{props.tip}</Text>
+            <Text class="text-sm tracking-normal text-fg m-0">{props.tip}</Text>
             <View class="text-caption text-fg-muted short:hidden">{props.lore?.()}</View>
           </View>
         </View>

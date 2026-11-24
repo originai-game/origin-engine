@@ -154,7 +154,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
           >
             <Show when={showSafe()}>
               <View
-                class="absolute inset-0 pointer-events-none border border-dashed border-rim rounded-card"
+                class="absolute inset-0 pointer-events-none border border-dashed border-border-strong rounded-card"
                 label={t("screen.hud-editor.safeArea")}
               />
             </Show>
@@ -172,7 +172,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
                     data-selected={isSelected()}
                     data-dragging={isDragging()}
                     data-hidden={r().hidden === true}
-                    class={`absolute -translate-x-1/2 -translate-y-1/2 min-w-28 min-h-11 px-3 py-2 flex-col items-center justify-center gap-0.5 rounded-control bg-glass border border-rim transition duration-fast hover:bg-surface-hover focus-visible:border-hud-accent data-selected:border-hud-accent data-selected:bg-surface-hover data-selected:shadow-glow data-selected:shadow-hud-accent data-dragging:scale-lift data-hidden:opacity-muted`}
+                    class={`absolute -translate-x-1/2 -translate-y-1/2 min-w-28 min-h-11 px-3 py-2 flex-col items-center justify-center gap-0.5 rounded-card bg-glass inset-ring-hairline inset-ring-border transition duration-fast hover:bg-surface-hover focus-visible:inset-ring-regular focus-visible:inset-ring-hud-accent data-selected:inset-ring-regular data-selected:inset-ring-hud-accent data-selected:bg-surface-hover data-selected:shadow-glow data-selected:shadow-hud-accent data-dragging:scale-lift data-hidden:opacity-muted`}
                     style={{
                       left: `${Math.min(1, Math.max(0, r().x)) * 100}%`,
                       top: `${Math.min(1, Math.max(0, r().y)) * 100}%`,
@@ -206,7 +206,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
         </View>
       </Show>
       <Show when={props.showHint}>
-        <View class={`absolute w-max top-6 bg-plate-hi backdrop-blur-regular nine-panel-cut py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
+        <View class={`absolute w-max top-6 bg-plate-hi backdrop-blur-regular py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
           <Text class={`text-center line-clamp-2 text-reading font-semibold text-fg m-0`}>
             {t("screen.hud-editor.hint")}
           </Text>
@@ -214,7 +214,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
       </Show>
       <View class={`absolute w-max max-w-full bottom-6 mx-auto inset-x-0 flex-col items-center gap-2 px-4 narrow:left-4 narrow:right-0 narrow:w-auto narrow:bottom-8 narrow:mx-0 short:left-24 short:right-0 short:w-auto short:mx-0`}>
         <Show when={hasRegions()}>
-          <View class={`flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2.5 px-4 bg-plate-hi backdrop-blur-regular nine-panel-cut ${packClass("Panel", "frame")}`}>
+          <View class={`flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2.5 px-4 bg-plate-hi backdrop-blur-regular ${packClass("Panel", "frame")}`}>
             <Show
               when={activeRegion()}
               fallback={

@@ -20,7 +20,7 @@ export interface StrategyClockProps {
 export function StrategyClock(props: StrategyClockProps) {
   return (
     <View
-      class={`group/clock flex-row items-center gap-x-2.5 w-fit max-w-full min-w-0 py-1.5 px-4 text-fg nine-plate-cut bg-plate-hi compact:w-full compact:gap-x-1.5 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`}
+      class={`group/clock flex-row items-center gap-x-2.5 w-fit max-w-full min-w-0 py-1.5 px-4 compact:w-full compact:gap-x-1.5 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label !== "" ? props.label : t("strategy.clock.name")}
       valueText={props.time}
@@ -36,12 +36,12 @@ export function StrategyClock(props: StrategyClockProps) {
       </Text>
       <Show when={props.paused} fallback={
           <Show when={props.speed !== ""}>
-            <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap ${packClass("Chip", "frame")}`}>
               {props.speed}
             </Text>
           </Show>
       }>
-        <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status">
+        <Text class={`shrink min-w-5.5 py-0 px-1.5 leading-normal text-xs font-bold tabular-nums text-center whitespace-nowrap text-gold ${packClass("Chip", "frame")}`} role="status">
           {t("strategy.clock.paused")}
         </Text>
       </Show>

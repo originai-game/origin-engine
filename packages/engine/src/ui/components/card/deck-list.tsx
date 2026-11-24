@@ -40,8 +40,8 @@ export interface CardDeckListProps {
  */
 export function CardDeckList(props: CardDeckListProps) {
   return (
-    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
-      <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
+    <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
+      <View class={`flex-row items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-2`}>
         <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden shrink`}>
           {props.title}
         </Text>
@@ -82,10 +82,10 @@ export function CardDeckList(props: CardDeckListProps) {
                     </Text>
                   </View>
                 </Button>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-border text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
                   <Text class="text-center">{t("card.deck.less")}</Text>
                 </View>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-border text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
                   <Text class="text-center">{t("card.deck.more")}</Text>
                 </View>
               </View>

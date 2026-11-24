@@ -38,7 +38,7 @@ export interface RpgCharacterProps {
 export function RpgCharacter(props: RpgCharacterProps) {
   return (
     <View
-      class={`group/sheet flex-col text-fg p-4 nine-panel-cut bg-glass compact:p-2 ${packClass("Panel", "frame")}`}
+      class={`group/sheet flex-col p-4 compact:p-2 ${packClass("Panel", "frame")}`}
       label={props.title !== "" ? props.title : props.name}
       data-narrow={props.compact}
       data-dense={props.dense}
@@ -88,7 +88,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "start"}>
               <View
-                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}
@@ -119,7 +119,7 @@ export function RpgCharacter(props: RpgCharacterProps) {
             {(s) => (
             <Show when={s().side === "end"}>
               <View
-                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 nine-plate-cut bg-tile text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
+                class={`flex-row items-center justify-center gap-1 group/cell flex size-19 p-1 text-fg data-empty:bg-tile data-empty:text-fg-muted compact:size-13.5 compact:p-0.5 group-data-dense/sheet:size-12 group-data-dense/sheet:p-0.5 ${packClass("Button", "plate")}`}
                 role="button"
                 label={s().label}
                 selected={s().id === props.selected}

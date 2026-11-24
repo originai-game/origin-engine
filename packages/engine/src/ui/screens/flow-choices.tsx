@@ -75,7 +75,7 @@ export function FlowChoices(props: FlowChoicesProps) {
               <For each={now().choices} key={(c) => c.index}>
                 {(c) => (
                   <View
-                    class="grow shrink basis-42 min-h-14 items-center justify-center gap-1 py-2 px-3 rounded-tl-block rounded-br-block bg-plate-lo shadow-plate text-fg hover:bg-plate-hi data-chosen:ring-regular data-chosen:ring-accent data-chosen:bg-accent data-chosen:text-accent-fg disabled:opacity-dim compact:basis-auto"
+                    class="grow shrink basis-42 min-h-14 items-center justify-center gap-1 py-2 px-3 rounded-card inset-ring-hairline inset-ring-border bg-plate-lo shadow-plate text-fg hover:bg-plate-hi data-chosen:ring-regular data-chosen:ring-accent data-chosen:bg-accent data-chosen:text-accent-fg disabled:opacity-dim compact:basis-auto"
                     role="button"
                     current={c().chosen}
                     data-chosen={c().chosen}

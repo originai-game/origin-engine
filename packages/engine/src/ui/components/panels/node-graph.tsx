@@ -38,7 +38,7 @@ export function NodeGraph(props: NodeGraphProps) {
   let last: [number, number] | null = null;
   return (
     <View
-      class="relative grow self-stretch min-h-48 min-w-0 overflow-hidden bg-glass border border-rim"
+      class="relative grow self-stretch min-h-48 min-w-0 overflow-hidden rounded-panel bg-glass inset-ring-hairline inset-ring-border"
       role="group"
       label={props.name || t("component.node-graph.name")}
       valueText={t("component.node-graph.zoom", { zoom: props.zoom ?? 1 })}
@@ -80,7 +80,7 @@ export function NodeGraph(props: NodeGraphProps) {
                 data-hex={n().shape === "hex"}
               >
                 <View
-                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-regular border-rim text-fg group-data-square/node:rounded-md group-data-diamond/node:rounded-sm group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-enemy/node:bg-danger group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-thick"
+                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-regular border-border text-fg group-data-square/node:rounded-field group-data-diamond/node:rounded-control group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-enemy/node:bg-danger group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-thick"
                   role="button"
                   label={n().label}
                   valueText={n().state}

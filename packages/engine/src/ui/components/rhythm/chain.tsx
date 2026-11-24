@@ -22,7 +22,7 @@ export function RhythmChain(props: RhythmChainProps) {
       <Show when={props.multiplier !== ""}>
         <Show when={`${props.multiplier}·${props.hit}`} keyed>
           {() => (
-          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink bg-plate-hi nine-plate-cut animate-pop text-fg ${packClass("Plate", "frame")}`}>
+          <View class={`flex-row items-baseline gap-1 py-0.5 px-3 shrink animate-pop ${packClass("Plate", "frame")}`}>
             <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet`}>
               {t("rhythm.chain.label")}
             </Text>

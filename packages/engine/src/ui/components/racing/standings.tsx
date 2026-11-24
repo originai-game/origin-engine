@@ -48,7 +48,7 @@ export function RacingStandings(props: RacingStandingsProps) {
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-2 w-full min-w-0 pr-3 bg-glass nine-plate-cut data-off:hidden data-retired:opacity-muted data-player:bg-hud-accent compact:gap-x-1.5 compact:pr-2 compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-2 w-full min-w-0 pr-3 bg-glass rounded-card data-off:hidden data-retired:opacity-muted data-player:bg-hud-accent compact:gap-x-1.5 compact:pr-2 compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}
@@ -68,7 +68,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                   <Text class={`flex-1 min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg group-data-player/srow:text-hud-accent-fg compact:text-caption`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
-                      class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe-ink ${packClass("Chip", "frame")}`}
+                      class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap data-pitting:text-gold data-retired:text-foe-ink ${packClass("Chip", "frame")}`}
                       label={r().state === "pitting" ? t("racing.standings.pittingName") : r().state === "retired" ? t("racing.standings.retiredName") : t("racing.standings.finishedName")}
                       data-pitting={r().state === "pitting"}
                       data-retired={r().state === "retired"}

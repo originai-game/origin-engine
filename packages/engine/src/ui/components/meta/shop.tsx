@@ -66,9 +66,9 @@ export interface ShopProps {
  */
 export function Shop(props: ShopProps) {
   return (
-    <View class={`grow shrink basis-0 min-h-0 bg-layer-1 text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")} ${props.class ?? ""}`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
+    <View class={`grow shrink basis-0 min-h-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")} ${props.class ?? ""}`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
-      <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
+      <View class={`flex-row flex-wrap items-end min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-30 gap-0.5 compact:basis-full">
           <Show when={props.kicker}>
             <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap text-ellipsis overflow-hidden`}>
@@ -83,7 +83,7 @@ export function Shop(props: ShopProps) {
           <View class={`flex-row flex-wrap items-center justify-end max-w-full p-0 m-0 gap-1 compact:justify-start shrink`} label={t("general.shop.wallet")}>
             <For each={props.wallet}>
               {(w) => (
-              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-hairline inset-ring-rim py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
+              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-hairline inset-ring-border py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
                 <Icon class="size-5" name={w().icon} />
                 <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink ${packClass("Count", "roll")}`}>
                   {w().amount}
@@ -130,7 +130,7 @@ export function Shop(props: ShopProps) {
                           <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
                               <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                                <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
+                                <View class={`justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
                                   <View class="absolute opacity-faint inset-0" />
                                   <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
@@ -138,7 +138,7 @@ export function Shop(props: ShopProps) {
                                 </View>
                               </Flourish>
                               <Show when={o().featured}>
-                                <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden max-w-2/5`}>
+                                <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis rounded-card py-0.5 px-1 overflow-hidden max-w-2/5`}>
                                   {t("general.shop.featured")}
                                 </Text>
                               </Show>
@@ -157,7 +157,7 @@ export function Shop(props: ShopProps) {
                                   </Text>
                                 </Show>
                               </View>
-                              <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-rim gap-1`} label={t("general.shop.price")}>
+                              <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-border gap-1`} label={t("general.shop.price")}>
                                 <For each={props.prices}>
                                   {(p) => (
                                   <Show when={p().offer === o().id}>
@@ -176,18 +176,18 @@ export function Shop(props: ShopProps) {
                                   )}
                                 </For>
                                 <Show when={o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted py-0.5 px-1 gap-0.5 ${packClass("Chip", "frame")}`}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.soldOut")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={o().owned && !o().soldOut}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:nine-plate-cut data-kind-owned:text-success-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted py-0.5 px-1 gap-0.5 data-kind-owned:bg-none data-kind-owned:bg-success data-kind-owned:nine-none data-kind-owned:text-success-fg ${packClass("Chip", "frame")}`} data-kind-owned={true}>
                                     <Icon class="size-3" name="check" />
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.owned")}</Text>
                                   </View>
                                 </Show>
                                 <Show when={!o().affordable && !o().soldOut && !o().owned}>
-                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted nine-plate-cut py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:nine-plate-cut data-kind-short:text-danger-fg ${packClass("Chip", "frame")}`} data-kind-short={true}>
+                                  <View class={`flex-row items-center ml-auto text-xs font-bold tracking-label uppercase text-fg-muted py-0.5 px-1 gap-0.5 data-kind-short:bg-none data-kind-short:bg-danger data-kind-short:nine-none data-kind-short:text-danger-fg ${packClass("Chip", "frame")}`} data-kind-short={true}>
                                     <Text class="whitespace-nowrap shrink">{t("general.shop.short")}</Text>
                                   </View>
                                 </Show>
@@ -201,7 +201,7 @@ export function Shop(props: ShopProps) {
                         <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
                             <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                              <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
+                              <View class={`justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
                                 <View class="absolute opacity-faint inset-0" />
                                 <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
@@ -209,7 +209,7 @@ export function Shop(props: ShopProps) {
                               </View>
                             </Flourish>
                             <Show when={o().featured}>
-                              <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis nine-plate-cut py-0.5 px-1 overflow-hidden max-w-2/5`}>
+                              <Text class={`absolute top-2 left-2 bg-hud-accent text-hud-accent-fg text-xs font-bold tracking-label uppercase leading-tight whitespace-nowrap text-ellipsis rounded-card py-0.5 px-1 overflow-hidden max-w-2/5`}>
                                 {t("general.shop.featured")}
                               </Text>
                             </Show>
@@ -228,7 +228,7 @@ export function Shop(props: ShopProps) {
                                 </Text>
                               </Show>
                             </View>
-                            <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-rim gap-1`} label={t("general.shop.price")}>
+                            <View class={`flex-row flex-wrap items-center w-full mt-auto pt-1 border-t border-border gap-1`} label={t("general.shop.price")}>
                               <For each={props.prices}>
                                 {(p) => (
                                 <Show when={p().offer === o().id}>

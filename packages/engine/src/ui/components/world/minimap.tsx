@@ -60,7 +60,7 @@ export function Minimap(props: MinimapProps) {
   const size = () => props.size ?? 160;
   return (
     <View class="flex-col items-center gap-y-3" role="image" label={props.label ?? ""}>
-      <View class="relative overflow-hidden rounded-button border border-rim shadow-plate" style={{ width: `${size()}px`, height: `${size()}px` }}>
+      <View class="relative overflow-hidden rounded-card inset-ring-hairline inset-ring-border shadow-plate" style={{ width: `${size()}px`, height: `${size()}px` }}>
         <Show when={(props.texture ?? 0) > 0} fallback={
           <View class="absolute inset-0 bg-tile">
             <For each={Array.from({ length: 7 }, (_, k) => k)} key={(k) => `h${k}`}>
@@ -96,7 +96,7 @@ export function Minimap(props: MinimapProps) {
         </For>
       </View>
       <Show when={(props.label ?? "") !== ""}>
-        <Text class={`py-0.5 px-2 whitespace-nowrap text-caption text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>{props.label}</Text>
+        <Text class={`py-0.5 px-2 whitespace-nowrap text-caption ${packClass("Plate", "frame")}`}>{props.label}</Text>
       </Show>
     </View>
   );

@@ -49,9 +49,9 @@ export function StrategyWave(props: StrategyWaveProps) {
       data-done={props.phase === "done"}
       data-near={props.phase === "countdown" && next() >= 0 && next() <= (props.warnAt ?? 5)}
     >
-      <View class={`flex-row items-center gap-x-2.5 min-w-0 py-1.5 px-4 nine-plate-cut bg-plate-hi compact:gap-x-2 compact:py-1 compact:px-2.5 text-fg ${packClass("Plate", "frame")}`}>
+      <View class={`flex-row items-center gap-x-2.5 min-w-0 py-1.5 px-4 compact:gap-x-2 compact:py-1 compact:px-2.5 ${packClass("Plate", "frame")}`}>
         <Show when={props.icon}>
-          <Image class={`shrink size-6 rounded-tl-control rounded-tr-none rounded-br-control rounded-bl-none`} src={props.icon} />
+          <Image class={`shrink size-6 rounded-control`} src={props.icon} />
         </Show>
         <View class={`flex-col gap-y-0.25 flex-1 min-w-0`}>
           <View class={`flex-row items-center gap-x-1.5 min-w-0`}>
@@ -61,7 +61,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 : (props.name !== "" ? t("strategy.wave.titleNamed", { wave: props.wave, name: props.name }) : t("strategy.wave.title", { wave: props.wave }))}
             </Text>
             <Show when={props.finalWave}>
-              <Text class={`shrink py-0 px-1.25 leading-normal text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink py-0 px-1.25 leading-normal text-xs font-bold whitespace-nowrap text-gold ${packClass("Chip", "frame")}`}>
                 {t("strategy.wave.final")}
               </Text>
             </Show>
@@ -95,7 +95,7 @@ export function StrategyWave(props: StrategyWaveProps) {
                 {e().scouted ? e().name : t("strategy.wave.unknown")}
               </Text>
               <Show when={e().boss}>
-                <Text class={`shrink py-0 px-1.25 leading-normal text-xs font-bold whitespace-nowrap text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink py-0 px-1.25 leading-normal text-xs font-bold whitespace-nowrap text-danger ${packClass("Chip", "frame")}`}>
                   {t("strategy.wave.boss")}
                 </Text>
               </Show>
@@ -111,7 +111,7 @@ export function StrategyWave(props: StrategyWaveProps) {
       </Show>
       <Show when={props.canCallEarly && props.phase !== "done"}>
         <View
-          class={`flex-row items-center justify-center gap-1 min-h-11 min-w-0 max-w-full py-1 px-3 nine-plate-cut bg-plate-hi text-fg ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 min-h-11 min-w-0 max-w-full py-1 px-3 ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("strategy.wave.callEarly")}
           onPress={(e) => props.onCallEarly?.(e)}

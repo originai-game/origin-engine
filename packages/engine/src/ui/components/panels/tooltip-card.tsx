@@ -7,7 +7,7 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** One stat row of either card: its words left, its figure right, a hairline rule under all but the last. */
 const statRow =
-  "group/row flex-row flex-wrap items-baseline gap-y-0.5 gap-x-2 text-fg transition duration-control w-full justify-end border-b border-material-edge py-1 px-0 data-last:border-b-0 data-change-removed:text-fg-subtle data-down:opacity-dim";
+  "group/row flex-row flex-wrap items-baseline gap-y-0.5 gap-x-2 text-fg transition duration-control w-full justify-end border-b border-border-muted py-1 px-0 data-last:border-b-0 data-change-removed:text-fg-subtle data-down:opacity-dim";
 
 export interface TooltipCardProps {
   /** The title, in its rarity's colour. */
@@ -55,7 +55,7 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+        <View class={`from-raised-pressed inset-shadow-lit inset-ring-hairline inset-ring-border w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-label uppercase">
             {props.compareTitle}
           </Text>
@@ -77,7 +77,7 @@ export function TooltipCard(props: TooltipCardProps) {
         </View>
       </Show>
       <View
-        class={`group/card relative bg-linear-to-b from-raised-pressed to-plate-lo text-fg data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
+        class={`group/card relative from-raised-pressed data-common:text-common data-uncommon:text-uncommon data-rare:text-rare data-epic:text-epic data-legendary:text-legendary data-mythic:text-mythic w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink overflow-hidden ${packClass("Panel", "frame")}`}
         data-common={tier() === "common"}
         data-uncommon={tier() === "uncommon"}
         data-rare={tier() === "rare"}
@@ -157,7 +157,7 @@ export function TooltipCard(props: TooltipCardProps) {
                       </View>
                     </Show>
                   }>
-                    <Text class={`font-bold text-2xs leading-snug text-success tracking-label whitespace-nowrap bg-well py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                    <Text class={`font-bold text-2xs leading-snug text-success tracking-label whitespace-nowrap py-0.5 px-1 group-data-change-removed/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                       {s().change === "added" ? t("tooltip.change.added") : t("tooltip.change.removed")}
                     </Text>
                   </Show>

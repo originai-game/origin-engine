@@ -35,7 +35,7 @@ export function CardHand(props: CardHandProps) {
     <View class={`grow shrink basis-0 text-fg justify-center p-0 gap-0 disabled:text-fg-subtle`} label={props.label || t("card.hand.name")}>
       <Show when={props.cards.length} fallback={
           <View class="grow shrink basis-0 justify-center items-center w-full gap-2" role="status">
-            <Text class={`m-0 py-2 px-4 text-fg bg-glass nine-plate-cut ${packClass("Plate", "frame")}`}>{t("card.hand.empty")}</Text>
+            <Text class={`m-0 py-2 px-4 ${packClass("Plate", "frame")}`}>{t("card.hand.empty")}</Text>
           </View>
       }>
         <View class="flex-row items-end grow shrink basis-0 w-full justify-center pt-14 pb-14 px-8 gap-0" role="listbox" label={props.label || t("card.hand.name")}>
@@ -44,11 +44,11 @@ export function CardHand(props: CardHandProps) {
             <View class={`group/card relative shrink min-w-0 basis-48 h-68.5 compact:basis-30 compact:h-42.75 origin-[50%_100%] data-tail:shrink-0 data-selected:rotate-0 data-selected:translate-x-0 data-selected:-translate-y-12 data-selected:z-1 hover:translate-x-0 hover:-translate-y-2 transition-transform duration-fast ease-out`} data-playable={c().playable} data-tail={c().at === 1 || props.cards.length === 1} data-selected={c().id === props.selected} style={{ rotate: `${((c().at) * (props.fan))}deg` }}>
               <View class="absolute left-0 inset-y-0 w-48 compact:w-30">
                 <Show when={c().playable} fallback={
-                    <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised inset-shadow-lit transition duration-control size-full justify-stretch p-0 rounded-block border group-data-selected/card:border-accent data-down:opacity-dim`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().reason || t("card.hand.unplayable")} onPress={(e) => props.onSelect?.(e, c().id)}>
+                    <View class={`flex-row items-stretch gap-1 bg-surface-raised inset-shadow-lit transition duration-control size-full justify-stretch p-0 rounded-card inset-ring-hairline inset-ring-border group-data-selected/card:inset-ring-regular group-data-selected/card:inset-ring-accent data-down:opacity-dim`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().reason || t("card.hand.unplayable")} onPress={(e) => props.onSelect?.(e, c().id)}>
                       <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={true} />
                       </View>
-                      <View class={`flex-row items-center absolute left-9 right-1 top-2 nine-plate-cut bg-foe-fg text-danger text-2xs font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
+                      <View class={`flex-row items-center absolute left-9 right-1 top-2 rounded-control bg-foe-fg text-danger text-2xs font-bold tracking-xs py-0.5 px-1 gap-0.5 data-not-cost:left-1`} data-not-cost={!(!!c().cost)}>
                         <Icon class="size-2.75" name="lock" />
                         <Text class="text-start line-clamp-2 leading-tight m-0 overflow-hidden shrink">
                           {c().reason || t("card.hand.unplayable")}
@@ -56,7 +56,7 @@ export function CardHand(props: CardHandProps) {
                       </View>
                     </View>
                 }>
-                  <View class={`flex-row items-stretch gap-1 border-rim-soft bg-surface-raised inset-shadow-lit transition duration-control size-full justify-stretch p-0 rounded-block border group-data-selected/card:border-accent data-down:opacity-dim`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onSelect?.(e, c().id)} onAction={{ details: (e) => props.onPlay?.(e, c().id) }}>
+                  <View class={`flex-row items-stretch gap-1 bg-surface-raised inset-shadow-lit transition duration-control size-full justify-stretch p-0 rounded-card inset-ring-hairline inset-ring-border group-data-selected/card:inset-ring-regular group-data-selected/card:inset-ring-accent data-down:opacity-dim`} role="option" data-playable={c().playable} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onSelect?.(e, c().id)} onAction={{ details: (e) => props.onPlay?.(e, c().id) }}>
                     <View class="size-full">
                       <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                     </View>

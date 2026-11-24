@@ -45,7 +45,7 @@ function StepCard(props: TutorialScreenProps) {
     <View
       anchor={target() || undefined}
       lift={target() ? [0, 1, 0] : undefined}
-      class={`data-target:translate-y-3 bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-hairline inset-ring-hud-accent text-fg w-full max-w-100 transition duration-base ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-enter ${packClass("Panel", "frame")}`}
+      class={`data-target:translate-y-3 w-full max-w-100 transition duration-base ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-enter ${packClass("Panel", "frame")} shadow-overlay inset-shadow-overline inset-ring-hud-accent`}
       data-target={target() !== ""}
       style={target() ? undefined : { left: `${props.x}px`, top: `${props.y}px` }}
     >
@@ -53,8 +53,8 @@ function StepCard(props: TutorialScreenProps) {
         <Text class={`text-xs font-bold tracking-label uppercase tabular-nums text-fg m-0 shrink`}>
           {t("screen.tutorial.Step", { step: props.step, steps: props.steps })}
         </Text>
-        <View class="grow shrink basis-0 min-w-0 h-0.5 bg-raised-hi">
-          <View class="h-full bg-hud-accent shadow-glow-sm" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
+        <View class="grow shrink basis-0 min-w-0 h-0.5 rounded-capsule bg-raised-hi">
+          <View class="h-full rounded-capsule bg-hud-accent shadow-glow-sm" style={{ width: `${(props.step / (props.steps || 1)) * 100}%` }} />
         </View>
       </View>
       <Show when={props.texture !== 0}>
@@ -68,11 +68,11 @@ function StepCard(props: TutorialScreenProps) {
       </Text>
       {props.hint?.()}
       <View class="flex-row flex-wrap items-center justify-between gap-y-2 gap-x-2 mt-1">
-        <Button class={`text-fg-muted compact:-ml-2 shrink`} onPress={(e) => props.onSkip?.(e)}>
+        <Button class="text-fg-muted compact:-ml-2 shrink" onPress={(e) => props.onSkip?.(e)}>
           <Text>{t("screen.tutorial.skip")}</Text>
         </Button>
         <Show when={!props.waits}>
-          <Button variant="primary" class={`nine-plate-cut ml-auto min-w-30 h-9 shrink`} onPress={(e) => props.onNext?.(e)}>
+          <Button variant="primary" class="ml-auto min-w-30 h-9 shrink" onPress={(e) => props.onNext?.(e)}>
             <Text>{t("screen.tutorial.next")}</Text>
           </Button>
         </Show>

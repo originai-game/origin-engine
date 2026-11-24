@@ -30,8 +30,8 @@ export function IdleResources(props: IdleResourcesProps) {
         <View class="flex-row flex-wrap items-center w-full p-0 m-0 gap-1 shrink">
           <For each={props.currencies}>
             {(c) => (
-            <View class={`flex-row items-center nine-plate-cut bg-plate-hi text-fg transition duration-control shrink pr-2 pl-0.5 min-h-11 max-w-full py-0.5 gap-1 data-full:border-gold data-down:opacity-dim compact:grow compact:shrink compact:basis-0 compact:pr-1`} data-loading={props.loading === true} label={props.loading ? t("idle.resources.loading", { name: c().name }) : t("idle.resources.row", { name: c().name, amount: c().value ? c().value : formatCompact(c().amount) })} data-full={c().full} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
-              <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-12 compact:size-8 ${packClass("Slot", "frame")}`}>
+            <View class={`flex-row items-center rounded-card bg-plate-hi text-fg transition duration-control shrink pr-2 pl-0.5 min-h-11 max-w-full py-0.5 gap-1 data-full:inset-ring-regular data-full:inset-ring-gold data-down:opacity-dim compact:grow compact:shrink compact:basis-0 compact:pr-1`} data-loading={props.loading === true} label={props.loading ? t("idle.resources.loading", { name: c().name }) : t("idle.resources.row", { name: c().name, amount: c().value ? c().value : formatCompact(c().amount) })} data-full={c().full} data-trend-down={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'down') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "down")} data-trend-up={((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === 'up') || ((c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "up")} data-trend-flat={(c().perSecond < 0 ? 'down' : c().perSecond > 0 ? 'up' : 'flat') === "flat"}>
+              <View class={`justify-center items-center gap-2 size-12 compact:size-8 ${packClass("Slot", "frame")}`}>
                 <Icon class="text-shadow-tag size-18/25" name={c().icon} />
               </View>
               <View class="gap-0 shrink">
@@ -50,7 +50,7 @@ export function IdleResources(props: IdleResourcesProps) {
                       </Text>
                     </Show>
                     <Show when={c().full}>
-                      <Text class={`text-shadow-tag bg-gold nine-chip-cut whitespace-nowrap text-xs font-semibold tracking-label uppercase text-gold-fg py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                      <Text class={`text-shadow-tag bg-gold rounded-control whitespace-nowrap text-xs font-semibold tracking-label uppercase text-gold-fg py-0 px-0.5`}>
                         {t("idle.resources.full")}
                       </Text>
                     </Show>

@@ -50,7 +50,7 @@ export function Killfeed(props: KillfeedProps) {
               {r().victim}
             </Text>
             <Show when={r().headshot}>
-              <Text class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-foe-ink text-shadow-none nine-chip-cut bg-raised-pressed ${packClass("Chip", "frame")}`}>
+              <Text class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-foe-ink text-shadow-none ${packClass("Chip", "frame")}`}>
                 {t("shooter.killfeed.hs")}
               </Text>
             </Show>

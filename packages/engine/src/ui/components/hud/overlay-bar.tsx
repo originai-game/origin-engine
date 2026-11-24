@@ -1,4 +1,4 @@
-import { For, Icon, Image, Scroll, Show, Text, View, type UiEvent, t } from "@origingame/engine/ui";
+import { For, Icon, Image, Scroll, Show, Text, View, packClass, type UiEvent, t } from "@origingame/engine/ui";
 import type { Texture } from "@origingame/engine";
 import "./overlay-bar.en.ogt";
 
@@ -44,7 +44,7 @@ export function OverlayBar(props: OverlayBarProps) {
         {(o) => (
           <Show when={o().id === (props.selected ?? "")}>
             <View
-              class={`flex-col w-70 max-w-full gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border py-2 px-3`}
+              class={`flex-col w-70 max-w-full gap-y-1 py-2 px-3 ${packClass("Plate", "frame")}`}
               role="status"
               label={`${o().name}: ${o().low ?? ""} – ${o().high ?? ""}`}
             >
@@ -59,18 +59,18 @@ export function OverlayBar(props: OverlayBarProps) {
         )}
       </For>
       <Scroll class="max-w-full" role="toolbar" label={(props.label ?? "") !== "" ? props.label : t("component.overlay-bar.name")}>
-        <View class="flex-row gap-2 p-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border w-fit">
+        <View class={`flex-row gap-2 p-2 w-fit ${packClass("Plate", "frame")}`}>
           <For each={props.overlays ?? []} key={(o) => o.id}>
             {(o) => (
               <View
-                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border active:bg-none active:bg-tile-pressed`}
+                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button inset-ring-hairline inset-ring-border-strong active:bg-none active:bg-tile-pressed`}
                 role="button"
                 label={o().name}
                 pressed={o().id === (props.selected ?? "")}
                 onPress={(e) => props.onChoose?.(e, o().id)}
               >
                 <Show when={o().image} fallback={
-                  <View class="size-12 flex-col items-center justify-center rounded-control bg-tile border border-rim-soft">
+                  <View class="size-12 flex-col items-center justify-center rounded-control bg-tile inset-ring-hairline inset-ring-border">
                     <Show when={o().icon}>
                       <Icon class="size-6 text-fg" name={o().icon} />
                     </Show>

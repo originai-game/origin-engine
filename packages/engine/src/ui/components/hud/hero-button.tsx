@@ -35,10 +35,11 @@ export function HeroButton(props: HeroButtonProps) {
       onPress={(e) => props.onPress?.(e)}
       data-premium={tone() === "premium"}
       data-secondary={tone() === "secondary"}
+      data-danger={tone() === "danger"}
     >
-      <Text class={`whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse ${packClass("Hero", "label")}`}>{props.label}</Text>
+      <Text class={`whitespace-nowrap text-accent-fg group-data-premium/hero:text-gold-fg group-data-secondary/hero:text-fg group-data-danger/hero:text-danger-fg ${packClass("Hero", "label")}`}>{props.label}</Text>
       <Show when={props.key}>
-        <Text class={`text-caption uppercase text-center whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse`}>{props.key}</Text>
+        <Text class={`text-caption uppercase text-center whitespace-nowrap text-accent-fg group-data-premium/hero:text-gold-fg group-data-secondary/hero:text-fg group-data-danger/hero:text-danger-fg`}>{props.key}</Text>
       </Show>
       <Show when={charge() >= 0}>
         <View class={packClass("Hero", "charge")} role="meter" valueMin={0} valueMax={100} valueNow={Math.min(charge(), 1) * 100}>

@@ -58,7 +58,7 @@ export function Pips(props: PipsProps) {
             </View>
           </Show>
           <Show when={(props.disabled ?? false)}>
-            <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control py-0 px-2 rounded-capsule shrink`}>
+            <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control py-0 px-2 rounded-capsule shrink`}>
               <Text class="tabular-nums">{t("base.pips.disabled")}</Text>
             </View>
           </Show>

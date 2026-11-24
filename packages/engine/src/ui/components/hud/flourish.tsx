@@ -209,9 +209,9 @@ const ICON = (name: string) => () => (
 export const fixtures: Record<string, Partial<FlourishProps>> = {
   reward: { kind: "reward", shots: [{ id: "1" }], children: ICON("chest") },
   levelUp: { kind: "levelUp", shots: [{ id: "1" }], children: () => <View class="px-6 py-2 rounded-panel bg-glass"><Text class="text-display-md font-bold text-gold">LV 12</Text></View> },
-  purchase: { kind: "purchase", shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
+  purchase: { kind: "purchase", shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-capsule bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
   reveal: { kind: "reveal", rarity: "epic", shots: [{ id: "1" }], children: ICON("gem") },
-  collect: { kind: "collect", from: [0, 260], shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
+  collect: { kind: "collect", from: [0, 260], shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-capsule bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
   revealLegendary: { kind: "reveal", rarity: "legendary", shots: [{ id: "1" }], children: ICON("crown") },
   highlight: { kind: "highlight", children: () => <Button variant="primary" class="h-14 w-56" onPress={() => {}}><Text>Claim</Text></Button> },
 };

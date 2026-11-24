@@ -33,8 +33,8 @@ export interface RpgQuestLogProps {
  */
 export function RpgQuestLog(props: RpgQuestLogProps) {
   return (
-    <View class={`relative grow shrink basis-0 min-h-0 nine-panel-cut bg-glass text-fg w-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
-      <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
+    <View class={`relative grow shrink basis-0 min-h-0 w-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
+      <View class={`flex-row items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-2`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title}
         </Text>
@@ -66,7 +66,7 @@ export function RpgQuestLog(props: RpgQuestLogProps) {
                           {q().name}
                         </Text>
                         <Show when={q().fresh && !g().done}>
-                          <Text class={`font-bold text-caption tracking-label uppercase whitespace-nowrap text-gold-fg bg-gold nine-chip-cut py-0 px-1 animate-pop ${packClass("Chip", "frame")}`}>
+                          <Text class={`font-bold text-caption tracking-label uppercase whitespace-nowrap text-gold-fg bg-gold rounded-control py-0 px-1 animate-pop`}>
                             {t("rpg.quests.fresh")}
                           </Text>
                         </Show>

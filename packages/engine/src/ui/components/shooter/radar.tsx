@@ -91,7 +91,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-30%" />
       </View>
       <Text
-        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-xs font-bold whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}
+        class={`absolute top-0 left-1/2 -translate-x-1/2 py-0 px-1 text-xs font-bold whitespace-nowrap ${packClass("Chip", "frame")}`}
       >
         {t("shooter.radar.north")}
       </Text>

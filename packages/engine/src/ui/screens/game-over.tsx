@@ -44,7 +44,7 @@ export interface GameOverScreenProps {
 export function GameOverScreen(props: GameOverScreenProps) {
   return (
     <View class={`absolute inset-0 grow shrink basis-0 justify-center items-center w-full p-8 gap-2 compact:p-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <View class={`text-fg items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center ${packClass("Panel", "frame")}`}>
+      <View class={`items-center w-full max-w-105 p-0 gap-4 disabled:text-fg-subtle short:grid short:items-center short:gap-y-2 short:gap-x-6 short:max-w-210 short:grid-cols-[1fr_1fr] short:grid-rows-[1fr_auto_auto_auto_auto_1fr] short:justify-items-center ${packClass("Panel", "frame")}`}>
         <Text sound="error" class={`font-display text-display-lg compact:text-display-md font-bold leading-flat tracking-md uppercase text-danger max-w-full text-center m-0 short:text-8xl`}>
           {props.title}
         </Text>
@@ -82,7 +82,7 @@ export function GameOverScreen(props: GameOverScreenProps) {
               </Show>
             </View>
         }>
-          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi nine-plate-cut p-4 gap-2 short:justify-self-stretch`}>
+          <View class={`grid justify-items-stretch self-stretch text-center bg-plate-hi rounded-card p-4 gap-2 short:justify-self-stretch`}>
             <Text class="justify-self-center text-center leading-22 text-display-md font-bold tabular-nums text-fg inset-ring-marker inset-ring-gold m-0 size-22 rounded-full short:leading-16 short:size-16">
               {t("screen.game-over.Left", { value: formatDuration(props.left) })}
             </Text>

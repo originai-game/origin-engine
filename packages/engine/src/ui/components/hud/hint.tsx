@@ -21,7 +21,7 @@ export function HudHint(props: HudHintProps) {
           {props.key}
         </Text>
       </Show>
-      <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{props.label}</Text>
+      <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted`}>{props.label}</Text>
     </View>
   );
 }

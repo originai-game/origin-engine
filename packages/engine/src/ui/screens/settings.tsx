@@ -48,7 +48,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
   return (
     <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class={`absolute bg-glass inset-0`} />
-      <View class={`flex-row min-h-12 border-b border-rim-soft items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
+      <View class={`flex-row min-h-12 border-b border-border-muted items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
           <Button class={`text-fg-muted compact:-ml-2 shrink`} onPress={(e) => props.onBack?.(e)}>
             <View class="flex-row items-center gap-x-1">
@@ -70,7 +70,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       </View>
       <View class="grow shrink basis-0 gap-y-4">
         <Show when={props.page}>
-          <View class={`flex-row items-center gap-x-3 border-b border-rim`}>
+          <View class={`flex-row items-center gap-x-3 border-b border-border`}>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
             <Scroll class="grow shrink compact:-mx-4">
               <Tabs class="border-b-0 gap-x-2 px-2" label={t("screen.settings.title")}>
@@ -157,12 +157,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
               </Button>
             </Show>
             <Show when={props.onRevert}>
-              <Button class={`text-fg bg-plate-hi nine-plate-cut min-w-40 h-9 disabled:border-transparent active:border-transparent hover:bg-plate-hi hover:bg-transparent hover:border-transparent compact:min-w-0 data-pressed:hover:border-transparent shrink`} onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+              <Button class="min-w-40 h-9 compact:min-w-0 shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
                 <Text>{t("screen.settings.revert")}</Text>
               </Button>
             </Show>
             <Show when={props.onApply}>
-              <Button variant="primary" class={`nine-plate-cut min-w-40 h-9 compact:min-w-0 shrink`} disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+              <Button variant="primary" class="min-w-40 h-9 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
                 <Text>{t("screen.settings.apply")}</Text>
               </Button>
             </Show>

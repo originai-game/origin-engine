@@ -58,9 +58,9 @@ export interface RpgBackpackProps {
  */
 export function RpgBackpack(props: RpgBackpackProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-panel bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
+    <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
-      <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3 compact:py-1`}>
+      <View class={`flex-row flex-wrap items-end min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3 compact:py-1`}>
         <View class="grow shrink basis-30 gap-0.5">
           <Show when={props.kicker}>
             <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap text-ellipsis overflow-hidden`}>
@@ -72,7 +72,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
           </Text>
         </View>
         <Show when={props.gold}>
-          <View class={`flex-row items-center pr-2 pl-0.5 bg-well py-0.5 gap-1 nine-chip-cut text-fg ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
+          <View class={`flex-row items-center pr-2 pl-0.5 py-0.5 gap-1 ${packClass("Chip", "frame")}`} label={t("rpg.backpack.gold", { gold: props.gold })}>
             <Icon class="size-5.5 text-gold" name="coin" />
             <Text class={`tabular-nums whitespace-nowrap font-bold shrink`}>
               {props.gold}
@@ -118,7 +118,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
             <For each={props.items} key={(i) => i.id}>
               {(i) => (
               <View class={`group/cell text-fg transition duration-control w-full aspect-square min-w-11 p-0.5 data-down:opacity-dim`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} draggable={i().locked ? undefined : i().id} dropTarget={i().id} onDrop={(e) => { if (e.key !== i().id) props.onMove?.(e, { dragged: e.key, target: i().id }); }} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
-                <View class={`grow shrink basis-0 justify-center items-center w-full bg-tile nine-plate-cut gap-0 hover:border-rim-strong group-data-selected/cell:border-hud-accent group-data-tier-uncommon/cell:border-uncommon group-data-tier-rare/cell:border-rare group-data-tier-epic/cell:border-epic group-data-tier-legendary/cell:border-legendary group-data-tier-mythic/cell:border-mythic ${packClass("Slot", "frame")}`}>
+                <View class={`grow shrink basis-0 justify-center items-center w-full gap-0 hover:inset-ring-border-strong group-data-selected/cell:inset-ring-regular group-data-selected/cell:inset-ring-hud-accent group-data-tier-uncommon/cell:inset-ring-regular group-data-tier-uncommon/cell:inset-ring-uncommon group-data-tier-rare/cell:inset-ring-regular group-data-tier-rare/cell:inset-ring-rare group-data-tier-epic/cell:inset-ring-regular group-data-tier-epic/cell:inset-ring-epic group-data-tier-legendary/cell:inset-ring-regular group-data-tier-legendary/cell:inset-ring-legendary group-data-tier-mythic/cell:inset-ring-regular group-data-tier-mythic/cell:inset-ring-mythic ${packClass("Slot", "frame")}`}>
                   <Icon class="size-17/25" name={i().icon} />
                   <View class="absolute bottom-0 h-0.75 bg-current inset-x-2 text-common group-data-tier-uncommon/cell:text-uncommon group-data-tier-rare/cell:text-rare group-data-tier-epic/cell:text-epic group-data-tier-legendary/cell:text-legendary group-data-tier-mythic/cell:text-mythic" />
                   <Show when={i().broken}>
@@ -128,17 +128,17 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   </Show>
                 </View>
                 <Show when={i().count > 1}>
-                  <Text class={`font-bold text-xs leading-snug tabular-nums bg-well text-fg transition duration-control absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 nine-chip-cut group-data-broken/cell:bottom-7.5 ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
+                  <Text class={`font-bold text-xs leading-snug tabular-nums transition duration-control absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 group-data-broken/cell:bottom-7.5 ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
                     {formatCompact(i().count)}
                   </Text>
                 </Show>
                 <Show when={i().equipped}>
-                  <Text class={`absolute text-xs font-bold leading-snug text-success-fg bg-success whitespace-nowrap left-1 top-1 py-0 px-1 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.equipped")}>
+                  <Text class={`absolute text-xs font-bold leading-snug text-success-fg bg-success whitespace-nowrap left-1 top-1 py-0 px-1 rounded-control`} label={t("rpg.backpack.equipped")}>
                     {t("rpg.backpack.equippedMark")}
                   </Text>
                 </Show>
                 <Show when={i().locked}>
-                  <View class={`absolute items-center justify-center text-fg bg-well right-1 top-1 p-0 size-5 nine-chip-cut ${packClass("Chip", "frame")}`} label={t("rpg.backpack.locked")}>
+                  <View class={`absolute items-center justify-center right-1 top-1 p-0 size-5 ${packClass("Chip", "frame")}`} label={t("rpg.backpack.locked")}>
                     <Icon class="size-16/25" name="lock" />
                   </View>
                 </Show>
@@ -164,7 +164,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
         </View>
       </Show>
       <Show when={props.weight}>
-        <View class="w-full pt-2 pb-0 border-t border-rim-soft px-1 gap-1 compact:pt-1">
+        <View class="w-full pt-2 pb-0 border-t border-border-muted px-1 gap-1 compact:pt-1">
           <View class="flex-row items-baseline gap-2">
             <Text class={`grow shrink basis-0 text-caption text-fg-muted tracking-kicker uppercase`}>
               {t("rpg.backpack.weight")}

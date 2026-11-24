@@ -29,7 +29,7 @@ export interface RpgPlaceCardProps {
  */
 export function RpgPlaceCard(props: RpgPlaceCardProps) {
   return (
-    <View class={`flex-row items-stretch w-full min-w-0 text-fg nine-panel-cut bg-glass-lo ${packClass("Panel", "frame")}`} role="region" label={props.name}>
+    <View class={`flex-row items-stretch w-full min-w-0 bg-glass-lo ${packClass("Panel", "frame")}`} role="region" label={props.name}>
       <Show when={props.picture}>
         <View class="relative shrink-0 w-17/50 compact:w-13/50 overflow-hidden">
           <Image class="absolute inset-0 size-full" src={props.picture} />
@@ -47,11 +47,11 @@ export function RpgPlaceCard(props: RpgPlaceCardProps) {
           </Text>
         </Show>
         <View class="flex-row w-full shrink-0 gap-1 pt-1">
-          <View class={`transition duration-fast flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-label uppercase nine-plate-cut text-fg bg-plate-hi data-marked:text-gold ${packClass("Button", "plate")}`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
+          <View class={`transition duration-fast flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-label uppercase text-fg data-marked:text-gold ${packClass("Button", "plate")}`} role="button" label={props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")} pressed={props.marked} selected={props.marked} data-marked={props.marked} onPress={(e) => props.onMark?.(e)}>
             <Icon class="shrink-0 size-3.75 compact:hidden" name="flag" />
             <Text class="whitespace-nowrap">{props.marked ? t("rpg.place.unmark") : t("rpg.place.mark")}</Text>
           </View>
-          <View class={`transition duration-fast flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-label uppercase nine-plate-cut text-gold-fg bg-gold disabled:opacity-dim ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
+          <View class={`transition duration-fast flex-1 min-w-0 min-h-11 flex-row items-center justify-center gap-1 px-2 compact:px-1 text-caption font-bold tracking-label uppercase disabled:opacity-dim ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.place.travel")} disabled={!props.canTravel} onPress={(e) => props.onTravel?.(e)}>
             <Icon class="shrink-0 size-3.75 compact:hidden" name="map" />
             <Text class="whitespace-nowrap">{t("rpg.place.travel")}</Text>
           </View>

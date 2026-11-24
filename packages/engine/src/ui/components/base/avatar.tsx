@@ -33,7 +33,7 @@ export function Avatar(props: AvatarProps) {
   return (
     <View class={`text-fg items-center w-24 p-0 m-0 gap-1 disabled:text-fg-subtle`} data-frame={props.frame} data-status={props.status} label={props.name || t("base.avatar.unnamed")} busy={(props.loading ?? false)}>
       <View class={`relative bg-tile shadow-sunk w-full aspect-square mb-1 gap-2 rounded-capsule`}>
-        <View class={`grow shrink basis-0 border-rim justify-center items-center gap-0 size-full rounded-capsule border-regular overflow-hidden`}>
+        <View class={`grow shrink basis-0 border-border justify-center items-center gap-0 size-full rounded-capsule border-regular overflow-hidden`}>
           <Show when={(props.loading ?? false)} fallback={
               <Show when={(props.portrait ?? 0)} fallback={
                   <Icon class={`text-fg-muted size-14/25`} name={(props.icon ?? "person")} />
@@ -53,7 +53,7 @@ export function Avatar(props: AvatarProps) {
           <View class={`absolute top-1/50 right-1/50 border-tile bg-accent text-fg size-4 rounded-capsule border-regular data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg data-tone-danger:bg-none data-tone-danger:bg-danger data-tone-danger:text-danger-fg data-tone-warn:bg-none data-tone-warn:bg-warn data-tone-warn:text-warn-fg`} data-tone-success={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "success"} data-tone-warn={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "warn"} data-tone-danger={(props.status === 'online' ? 'success' : props.status === 'away' ? 'warn' : props.status === 'busy' ? 'danger' : null) === "danger"} />
         </Show>
         <Show when={(props.level ?? 0) > 0}>
-          <View class={`absolute bottom-0 text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control justify-center items-end py-0 px-2 inset-x-0 rounded-capsule`} label={t("base.avatar.level", { level: (props.level ?? 0) })}>
+          <View class={`absolute bottom-0 text-caption bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control justify-center items-end py-0 px-2 inset-x-0 rounded-capsule`} label={t("base.avatar.level", { level: (props.level ?? 0) })}>
             <Text class="tabular-nums">{formatNumber((props.level ?? 0))}</Text>
           </View>
         </Show>

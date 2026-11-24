@@ -1,4 +1,4 @@
-import { For, Scroll, Show, Text, View, t } from "@origingame/engine/ui";
+import { For, Scroll, Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import "./combat-log.en.ogt";
 
 export interface CombatLogLine {
@@ -25,7 +25,7 @@ export interface CombatLogProps {
 export function RpgCombatLog(props: CombatLogProps) {
   const tone = (t?: string) => t === "damage" ? "text-danger" : t === "heal" ? "text-success" : t === "crit" ? "text-warn" : "text-fg";
   return (
-    <View class={`flex-col w-full h-full min-h-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border overflow-hidden`} role="log" label={t("rpg.log.name")}>
+    <View class={`flex-col w-full h-full min-h-0 overflow-hidden ${packClass("Plate", "frame")}`} role="log" label={t("rpg.log.name")}>
       <View class="flex-row shrink-0 h-8 items-center px-3">
         <Text class="text-sm font-semibold whitespace-nowrap text-fg text-shadow-xs">{t("rpg.log.name")}</Text>
       </View>

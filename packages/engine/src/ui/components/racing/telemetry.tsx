@@ -1,4 +1,4 @@
-import { For, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
+import { For, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
 import "./racing.en.ogt";
 
 /** The rev arc's start: the lower left, −135° from up, sweeping clockwise over the top. */
@@ -116,7 +116,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
             <View class={`flex-row items-center justify-center gap-x-2 max-w-full min-w-0 mt-1 compact:absolute compact:top-full compact:left-0 compact:right-0 compact:mt-0.5 compact:gap-x-1.25 compact:justify-start`}>
               <Show when={props.gear !== ""}>
                 <Text
-                  class={`shrink-0 py-0 px-2 text-base leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent-fg bg-hud-accent nine-chip-cut compact:text-caption ${packClass("Chip", "frame")}`}
+                  class={`shrink-0 py-0 px-2 text-base leading-tight font-bold tabular-nums whitespace-nowrap text-hud-accent-fg bg-hud-accent rounded-control compact:text-caption`}
                   role="image"
                   label={t("racing.telemetry.gearValue", { gear: props.gear })}
                 >

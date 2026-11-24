@@ -28,7 +28,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
       <For each={props.commands ?? []} key={(c) => c.id}>
         {(c) => (
         <Show when={c().id === props.focused && c().name}>
-          <View class={`flex-col gap-y-1 w-59.25 max-w-full min-w-0 py-2 px-3 nine-panel-cut bg-layer-1 compact:hidden ${packClass("Panel", "frame")}`} role="tooltip">
+          <View class={`flex-col gap-y-1 w-59.25 max-w-full min-w-0 py-2 px-3 compact:hidden ${packClass("Panel", "frame")}`} role="tooltip">
             <View class="flex-row items-center justify-between gap-x-2 min-w-0">
               <Text class={`shrink min-w-0 text-reading font-bold whitespace-nowrap overflow-hidden`}>
                 {c().name}
@@ -57,12 +57,12 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </View>
                 </Show>
                 <Show when={c().cooldownText}>
-                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden ${packClass("Chip", "frame")}`}>
                     {c().cooldownText}
                   </Text>
                 </Show>
                 <Show when={c().readyText}>
-                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`shrink min-w-0 py-0 px-1.5 leading-normal text-xs font-bold whitespace-nowrap overflow-hidden text-gold ${packClass("Chip", "frame")}`}>
                     {c().readyText}
                   </Text>
                 </Show>
@@ -77,13 +77,13 @@ export function StrategyCommands(props: StrategyCommandsProps) {
         </Show>
         )}
       </For>
-      <View class={`group/grid grid grid-cols-4 gap-1 justify-start self-end p-2.5 nine-panel-cut bg-layer-1 compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-1.25 ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
+      <View class={`group/grid grid grid-cols-4 gap-1 justify-start self-end p-2.5 compact:grid-cols-8 compact:justify-between compact:self-stretch compact:p-1.25 ${packClass("Panel", "frame")}`} role="toolbar" label={t("strategy.commands.name")}>
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <Show when={c().name} fallback={
-              <View class={`h-12.75 nine-plate-cut bg-sheen`} />
+              <View class={`h-12.75 rounded-card bg-sheen`} />
           }>
-            <View class={`h-12.75 flex-row items-center justify-center gap-1 group/cmd flex p-0.5 nine-plate-cut bg-layer-3 data-active:bg-hud-accent disabled:opacity-dim text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`h-12.75 flex-row items-center justify-center gap-1 group/cmd flex p-0.5 data-active:bg-hud-accent disabled:opacity-dim text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
@@ -112,7 +112,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                   </Text>
                 </Show>
                 <Show when={!c().affordable && c().cost}>
-                  <Text class={`absolute right-0.75 bottom-0.75 max-w-97/100 py-0 px-1 leading-snug text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute right-0.75 bottom-0.75 max-w-97/100 py-0 px-1 leading-snug text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-danger ${packClass("Chip", "frame")}`}>
                     {c().cost}
                   </Text>
                 </Show>

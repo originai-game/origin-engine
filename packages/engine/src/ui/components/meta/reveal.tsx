@@ -49,9 +49,9 @@ export interface RevealProps {
  */
 export function Reveal(props: RevealProps) {
   return (
-    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading' || (props.state ?? "sealed") === 'revealing'}>
+    <View class={`grow shrink basis-0 w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.reveal.title")} busy={(props.state ?? "sealed") === 'loading'|| (props.state ?? "sealed") === 'revealing'}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
-      <View class={`min-h-12 border-b border-rim-soft w-full items-center text-center py-1 px-4 gap-0.5`}>
+      <View class={`min-h-12 border-b border-border-muted w-full items-center text-center py-1 px-4 gap-0.5`}>
         <Show when={props.kicker}>
           <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-subtle`}>
             {props.kicker}
@@ -83,11 +83,11 @@ export function Reveal(props: RevealProps) {
                         <View class={`flex-row items-center justify-center gap-1 group/reward w-full p-0 hover:bg-transparent hover:bg-none hover:shadow-none`} role="button" disabled={(props.disabled ?? false)} label={t("meta.reveal.reward", { name: reward().name, rarity: reward().rarity === 'mythic' ? t("meta.rarity.mythic") : reward().rarity === 'legendary' ? t("meta.rarity.legendary") : reward().rarity === 'epic' ? t("meta.rarity.epic") : reward().rarity === 'rare' ? t("meta.rarity.rare") : reward().rarity === 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onPress={(e) => props.onInspect?.(e, reward().id)} data-tier-common={(reward().rarity || 'common') === "common"}>
                           <View class="w-full items-center text-center gap-1">
                             <Flourish kind="reveal" rarity={reward().rarity} shots={[{ id: reward().id }]} class="max-w-full">
-                              <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square bg-tile nine-plate-cut gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
+                              <View class={`grow shrink basis-0 justify-center items-center w-30 max-w-full aspect-square gap-2 compact:w-24 ${packClass("Slot", "frame")}`}>
                                 <Icon class="size-7/10" name={reward().icon} />
                                 <View class="absolute bottom-0 h-0.75 text-border-strong bg-current inset-x-2" />
                                 <Show when={reward().amount}>
-                                  <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-snug whitespace-nowrap text-fg bg-well nine-chip-cut py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                                  <Text class={`absolute right-1 bottom-2 text-xs font-bold leading-snug whitespace-nowrap py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                                     {reward().amount}
                                   </Text>
                                 </Show>

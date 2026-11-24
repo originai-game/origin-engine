@@ -60,7 +60,7 @@ function Tool(props: { label: string; on?: boolean | undefined; quiet?: boolean 
       disabled={props.disabled}
       data-on={props.on}
       data-quiet={props.quiet}
-      class={`flex-row items-center justify-center shrink-0 h-7 px-2.5 rounded-md text-sm text-fg bg-raised-lo border border-border hover:bg-raised-hover-lo active:bg-raised-pressed data-quiet:bg-transparent data-quiet:border-transparent data-quiet:hover:bg-surface-hover data-on:bg-accent data-on:border-accent data-on:text-accent-fg data-on:hover:bg-accent disabled:text-fg-subtle disabled:bg-well disabled:border-transparent ${props.class ?? ""}`}
+      class={`flex-row items-center justify-center shrink-0 h-7 px-2.5 rounded-button text-sm text-fg bg-raised-lo inset-ring-hairline inset-ring-border hover:bg-raised-hover-lo active:bg-raised-pressed data-quiet:bg-transparent data-quiet:inset-ring-0 data-quiet:hover:bg-surface-hover data-on:bg-accent data-on:inset-ring-accent data-on:text-accent-fg data-on:hover:bg-accent disabled:text-fg-subtle disabled:bg-well disabled:inset-ring-0 ${props.class ?? ""}`}
       onPress={() => props.onPress()}
     >
       <Text class="whitespace-nowrap">{props.label}</Text>
@@ -83,7 +83,7 @@ function Chevron(props: { open: boolean }) {
 function Check(props: { label: string; on: boolean; class?: string | undefined; onPress: () => void }) {
   return (
     <View role="checkbox" label={props.label} checked={props.on} class={`flex-row items-center gap-2 min-w-0 text-sm text-fg ${props.class ?? ""}`} onPress={() => props.onPress()}>
-      <View data-on={props.on} class="size-4 shrink-0 rounded-sm border border-border-strong bg-well data-on:bg-accent data-on:border-transparent" />
+      <View data-on={props.on} class="size-4 shrink-0 rounded-control inset-ring-hairline inset-ring-border-strong bg-well data-on:bg-accent data-on:inset-ring-0" />
       <Text class="truncate">{props.label}</Text>
     </View>
   );
@@ -123,7 +123,7 @@ export function Inspector(props: InspectorProps) {
         ref={(node) => send({ kind: "panel", value: node.id })}
         role="dialog"
         label="Inspector"
-        class="relative w-90 h-full flex-col gap-2 p-3 rounded-lg bg-surface border border-border shadow-panel text-fg pointer-events-auto"
+        class="relative w-90 h-full flex-col gap-2 p-3 rounded-panel bg-linear-to-b from-glass-hi to-glass-lo inset-ring-hairline inset-ring-border shadow-panel text-fg pointer-events-auto"
       >
         <View class="flex-row items-center gap-1">
           <Text class="text-base font-semibold whitespace-nowrap">Inspector</Text>
@@ -146,7 +146,7 @@ export function Inspector(props: InspectorProps) {
           <Tool label="Undo" disabled={!v().canUndo} tip="Undo the last edit (Ctrl+Z)" onPress={() => click("Undo")} />
           <Tool label="Redo" disabled={!v().canRedo} tip="Redo (Ctrl+Shift+Z)" onPress={() => click("Redo")} />
         </View>
-        <View role="tablist" label="Inspector view" class="flex-row p-0.5 rounded-md bg-well">
+        <View role="tablist" label="Inspector view" class="flex-row p-0.5 rounded-field bg-well inset-ring-hairline inset-ring-border">
           <For each={TABS}>
             {(tab) => (
               <View
@@ -154,7 +154,7 @@ export function Inspector(props: InspectorProps) {
                 label={tab()[1]}
                 selected={v().tab === tab()[0]}
                 data-on={v().tab === tab()[0]}
-                class="grow basis-0 flex-row items-center justify-center h-7 rounded-sm text-sm text-fg-muted hover:text-fg data-on:bg-raised-lo data-on:text-fg"
+                class="grow basis-0 flex-row items-center justify-center h-7 rounded-control text-sm text-fg-muted hover:text-fg data-on:bg-raised-lo data-on:text-fg"
                 onPress={() => changed("current", tab()[0])}
               >
                 <Text>{tab()[1]}</Text>
@@ -163,7 +163,7 @@ export function Inspector(props: InspectorProps) {
           </For>
         </View>
         <Input
-          class="py-1.5 px-2 rounded-md bg-well border border-border text-sm text-fg"
+          class="py-1.5 px-2 rounded-field bg-well inset-ring-hairline inset-ring-border text-sm text-fg"
           label={v().hint}
           placeholder={v().hint}
           value={v().filter}
@@ -175,7 +175,7 @@ export function Inspector(props: InspectorProps) {
               {(r) => (
                 <View class="flex-row items-center gap-0.5 shrink-0" style={{ "padding-left": `${r().depth * 12}px` }}>
                   <Show when={r().fold !== "leaf"} fallback={<View class="size-6 shrink-0" />}>
-                    <View role="button" label={r().label} class="size-6 shrink-0 items-center justify-center rounded-sm hover:bg-surface-hover" onPress={() => click("Fold", r().id)}>
+                    <View role="button" label={r().label} class="size-6 shrink-0 items-center justify-center rounded-control hover:bg-surface-hover" onPress={() => click("Fold", r().id)}>
                       <Chevron open={r().fold === "open"} />
                     </View>
                   </Show>
@@ -185,7 +185,7 @@ export function Inspector(props: InspectorProps) {
                     selected={r().selected}
                     data-on={r().selected}
                     data-unnamed={!r().named}
-                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-sm text-sm text-fg hover:bg-surface-hover data-unnamed:text-fg-muted data-on:bg-surface-hover data-on:border-l-thick data-on:border-hud-accent"
+                    class="grow min-w-0 flex-row items-center h-7 px-2 rounded-control text-sm text-fg hover:bg-surface-hover data-unnamed:text-fg-muted data-on:bg-surface-hover data-on:border-l-thick data-on:border-hud-accent"
                     onPress={() => click("Label", r().id)}
                   >
                     <Text class="truncate">{r().label}</Text>
@@ -233,7 +233,7 @@ export function Inspector(props: InspectorProps) {
           <For each={v().sections} key={(s) => s.id}>
             {(s) => (
               <View class="flex-col gap-1 shrink-0">
-                <View role="button" label={s().name} expanded={s().open} class="flex-row items-center gap-1 h-7 px-1 rounded-sm bg-well text-sm hover:bg-surface-hover" onPress={() => click("Section", s().id)}>
+                <View role="button" label={s().name} expanded={s().open} class="flex-row items-center gap-1 h-7 px-1 rounded-control bg-well text-sm hover:bg-surface-hover" onPress={() => click("Section", s().id)}>
                   <Chevron open={s().open} />
                   <Text class="grow min-w-0 truncate">{s().name}</Text>
                 </View>
@@ -275,7 +275,7 @@ export function Inspector(props: InspectorProps) {
                             role="combobox"
                             label={f().name}
                             valueText={f().choice}
-                            class="grow min-w-0 flex-row items-center justify-between h-7 px-2 rounded-md bg-well border border-border text-sm hover:bg-surface-hover"
+                            class="grow min-w-0 flex-row items-center justify-between h-7 px-2 rounded-field bg-well inset-ring-hairline inset-ring-border text-sm hover:bg-surface-hover"
                             onPress={() => {
                               const o = f().options;
                               changed("current", o[(o.indexOf(f().choice) + 1) % o.length], f().id);
@@ -286,7 +286,7 @@ export function Inspector(props: InspectorProps) {
                           </View>
                         </Show>
                         <Show when={f().editor === "link"}>
-                          <View role="link" label={f().text} description="Select this entity" class="grow min-w-0 h-7 flex-row items-center px-2 rounded-sm text-sm text-info hover:bg-surface-hover" onPress={() => click("Link", f().id)}>
+                          <View role="link" label={f().text} description="Select this entity" class="grow min-w-0 h-7 flex-row items-center px-2 rounded-control text-sm text-info hover:bg-surface-hover" onPress={() => click("Link", f().id)}>
                             <Text class="truncate">{f().text}</Text>
                           </View>
                         </Show>
@@ -294,13 +294,13 @@ export function Inspector(props: InspectorProps) {
                           <Text class="grow min-w-0 truncate text-xs text-fg-subtle">{f().text}</Text>
                         </Show>
                         <Show when={f().swatch !== ""}>
-                          <View class="size-6 shrink-0 rounded-sm border border-border" style={{ backgroundColor: f().swatch }} />
+                          <View class="size-6 shrink-0 rounded-control inset-ring-hairline inset-ring-border" style={{ backgroundColor: f().swatch }} />
                         </Show>
                         <For each={f().parts} key={(p) => p.id}>
                           {(p) => (
                             <Input
                               data-narrow={f().editor === "slider"}
-                              class="grow basis-0 min-w-0 py-1 px-1.5 rounded-sm bg-well border border-border text-sm text-fg data-narrow:grow-0 data-narrow:basis-auto data-narrow:w-16"
+                              class="grow basis-0 min-w-0 py-1 px-1.5 rounded-control bg-well inset-ring-hairline inset-ring-border text-sm text-fg data-narrow:grow-0 data-narrow:basis-auto data-narrow:w-16"
                               label={`${f().name} ${p().hint}`}
                               placeholder={p().hint}
                               value={p().text}

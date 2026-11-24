@@ -67,7 +67,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
   const tiered = () => tier() !== "common";
   return (
     <View
-      class={`group/card relative grow shrink basis-0 min-h-0 nine-panel-cut bg-glass text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
+      class={`group/card relative grow shrink basis-0 min-h-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
       label={props.name}
       onAction={{ details: (e) => props.onEquip?.(e) }}
       data-tier-common={tier() === "common"}
@@ -80,7 +80,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class="shrink w-full gap-1 overflow-auto">
         <View class="w-full gap-0 compact:flex-row compact:items-center compact:gap-2">
-          <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-rim-soft gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
+          <View class={`group/hero justify-center items-center w-full text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic border-b border-border-muted gap-2 compact:relative compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-auto compact:border-0 compact:text-fg`}>
             <View class="absolute opacity-dim inset-0 bg-linear-to-b from-current to-transparent to-70% compact:hidden" />
             <Show when={props.art} fallback={
               <Icon class="relative size-[max(4rem,min(8.286rem,16vh))] compact:size-4/5" name={props.icon} />
@@ -88,7 +88,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
               <Image class="relative object-contain size-[max(4rem,min(8.286rem,16vh))] compact:size-4/5" src={props.art} />
             </Show>
           </View>
-          <View class={`min-h-12 pt-2 pb-1 border-b border-rim-soft w-full px-4 gap-0.5 compact:min-w-0 compact:grow compact:shrink compact:basis-0 compact:p-0 compact:border-0`}>
+          <View class={`min-h-12 pt-2 pb-1 border-b border-border-muted w-full px-4 gap-0.5 compact:min-w-0 compact:grow compact:shrink compact:basis-0 compact:p-0 compact:border-0`}>
             <Show when={props.kind}>
               <Text class="text-xs font-semibold tracking-kicker uppercase text-common group-data-tier-uncommon/card:text-uncommon group-data-tier-rare/card:text-rare group-data-tier-epic/card:text-epic group-data-tier-legendary/card:text-legendary group-data-tier-mythic/card:text-mythic compact:whitespace-nowrap compact:text-ellipsis compact:overflow-hidden" label={props.kind}>
                 {props.kind}
@@ -106,7 +106,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
         </View>
         <For each={props.lead}>
           {(s) => (
-            <View class="flex-row flex-wrap items-end nine-plate-cut bg-layer-2 py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
+            <View class="flex-row flex-wrap items-end rounded-card bg-layer-2 py-2 px-3 gap-x-3 gap-y-0.5" label={s().label}>
               <View class="grow gap-0.5">
                 <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle">{s().label}</Text>
                 <View class="flex-row items-center flex-wrap gap-1">
@@ -114,7 +114,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
                     {s().value}
                   </Text>
                   <Show when={s().delta}>
-                    <View class={`${deltaChip} data-trend-up:nine-plate-cut data-trend-down:nine-plate-cut`} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
+                    <View class={`${deltaChip} data-trend-up:nine-none data-trend-down:nine-none`} data-trend-down={(s().trend) === "down"} data-trend-up={(s().trend) === "up"}>
                       <Icon name="play" class="hidden bg-current size-2 group-data-trend-up/delta:flex -rotate-90 group-data-trend-down/delta:flex group-data-trend-down/delta:rotate-90" />
                       <Text class="whitespace-nowrap shrink">{s().delta}</Text>
                     </View>
@@ -150,7 +150,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
             </View>
             <For each={props.stats}>
               {(s) => (
-                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-control flex-wrap min-h-10 border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
+                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-control flex-wrap min-h-10 border-t border-border-muted py-0.5 hover:bg-surface-hover" role="row">
                   <View class="flex-row items-center grow shrink basis-20 text-fg-muted gap-1">
                     <Icon class="size-6" name={s().icon} />
                     <Text class="shrink" role="rowheader">{s().label}</Text>
@@ -185,7 +185,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
         </Show>
       </View>
       <Show when={props.primary || props.secondary}>
-        <View class="w-full pt-2 border-t border-rim-soft gap-1">
+        <View class="w-full pt-2 border-t border-border-muted gap-1">
           <Show when={props.primary && !props.canPrimary && props.reason}>
             <Text class="text-danger m-0" role="status">{props.reason}</Text>
           </Show>

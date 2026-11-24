@@ -16,8 +16,8 @@ export interface TableProps {
  */
 export function Table(props: TableProps) {
   return (
-    <View class={`nine-panel-cut bg-layer-1 text-fg w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
-      <View class={`min-h-12 border-b border-material-edge grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
+    <View class={`w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
+      <View class={`min-h-12 border-b border-border-muted grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
         <For each={props.columns}>
           {(c, i) => (
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>
@@ -30,7 +30,7 @@ export function Table(props: TableProps) {
         <View class="grid grid-cols-[2fr_1fr_1fr] w-full px-2">
           <For each={props.cells}>
             {(c, i) => (
-            <View class={`group/table w-full min-h-11 justify-center text-start border-b border-material-edge px-2 data-figure:items-end data-figure:text-end data-figure:font-bold`} role="cell" onPress={(e) => props.onChoose?.(e, c().id)} data-figure={i() % 3 !== 0}>
+            <View class={`group/table w-full min-h-11 justify-center text-start border-b border-border-muted px-2 data-figure:items-end data-figure:text-end data-figure:font-bold`} role="cell" onPress={(e) => props.onChoose?.(e, c().id)} data-figure={i() % 3 !== 0}>
               <Text class="whitespace-normal group-data-figure/table:tabular-nums">{c().text}</Text>
             </View>
             )}

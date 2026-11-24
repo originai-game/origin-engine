@@ -56,7 +56,7 @@ export interface ArenaScoreboardProps {
  * opacity, the hover wash is dropped (the same fill), the scroll fade
  * at the list's foot is dropped, and a long word wraps without breaking.
  */
-const TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-fg nine-chip-cut bg-raised-pressed whitespace-nowrap ${packClass("Chip", "frame")}`;
+const TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase whitespace-nowrap ${packClass("Chip", "frame")}`;
 const CAPTION = "text-end whitespace-nowrap text-xs font-semibold tracking-label uppercase text-fg-muted";
 const STAT = "text-end whitespace-nowrap text-base font-bold tabular-nums compact:flex-1 compact:min-w-0";
 
@@ -129,7 +129,7 @@ export function ArenaScoreboard(props: ArenaScoreboardProps) {
   const nameA = () => props.nameA || t("arena.team.a");
   const nameB = () => props.nameB || t("arena.team.b");
   return (
-    <View class={`w-full min-w-0 max-h-full flex-col gap-y-3 p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} label={heading()}>
+    <View class={`w-full min-w-0 max-h-full flex-col gap-y-3 p-4 ${packClass("Panel", "frame")}`} label={heading()}>
       <View class="flex-none flex-row w-full min-h-0">
         <Text class="flex-1 min-w-0 text-center text-base font-semibold tracking-label uppercase text-fg-muted">{heading()}</Text>
       </View>

@@ -36,7 +36,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
         <For each={props.items ?? []} key={(q) => q.id}>
           {(q, i) => (
           <View
-            class={`flex-row items-center justify-center gap-1 shrink size-6.75 compact:size-6.25 p-0.5 nine-chip-cut bg-plate-hi data-state-blocked:bg-danger data-first:size-8.75 compact:data-first:size-8 text-fg ${packClass("Button", "plate")}`}
+            class={`flex-row items-center justify-center gap-1 shrink size-6.75 compact:size-6.25 p-0.5 data-state-blocked:bg-danger data-first:size-8.75 compact:data-first:size-8 text-fg ${packClass("Button", "plate")}`}
             role="button"
             label={t("strategy.queue.cancel", { name: q().name })}
             description={q().reason !== "" ? q().reason : q().timeText}
@@ -71,7 +71,7 @@ export function StrategyQueue(props: StrategyQueueProps) {
                 </View>
               </Show>
               <Show when={q().count > 1}>
-                <Text class={`absolute right-0 top-0 py-0 px-0.5 leading-tight text-xs font-bold whitespace-nowrap bg-well ${packClass("Chip", "frame")}`}>
+                <Text class={`absolute right-0 top-0 py-0 px-0.5 leading-tight text-xs font-bold whitespace-nowrap ${packClass("Chip", "frame")}`}>
                   {t("strategy.queue.stack", { count: q().count })}
                 </Text>
               </Show>
@@ -82,26 +82,26 @@ export function StrategyQueue(props: StrategyQueueProps) {
         <Show when={props.limit > props.queued}>
           <For each={Array.from({ length: Math.min(12, props.limit - props.queued) }, (_, i) => i)} key={(i) => i}>
             {() => (
-              <View class={`shrink size-6.75 compact:size-6.25 nine-chip-cut bg-sheen`} />
+              <View class={`shrink size-6.75 compact:size-6.25 rounded-control bg-sheen`} />
             )}
           </For>
         </Show>
       </View>
       <Show when={props.limit > 0} fallback={
           <Show when={props.full}>
-            <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold whitespace-nowrap text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
+            <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold whitespace-nowrap text-gold ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })}>
               {t("strategy.queue.full")}
             </Text>
           </Show>
       }>
-        <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold tabular-nums whitespace-nowrap text-fg data-full:text-gold nine-chip-cut bg-well ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
+        <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold tabular-nums whitespace-nowrap data-full:text-gold ${packClass("Chip", "frame")}`} label={t("strategy.queue.capacityName", { count: props.queued, limit: props.limit })} data-full={props.full}>
           {props.full ? t("strategy.queue.fullCount", { count: props.queued, limit: props.limit }) : t("strategy.queue.capacity", { count: props.queued, limit: props.limit })}
         </Text>
       </Show>
       <For each={props.items ?? []} key={(q) => q.id}>
         {(q) => (
         <Show when={q().state === "paused" || q().state === "blocked"}>
-          <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold whitespace-nowrap text-fg data-state-paused:text-gold data-state-blocked:text-danger nine-chip-cut bg-well ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
+          <Text class={`shrink py-0 px-1.5 leading-loose text-xs font-bold whitespace-nowrap data-state-paused:text-gold data-state-blocked:text-danger ${packClass("Chip", "frame")}`} role="status" data-state-paused={q().state === "paused"} data-state-blocked={q().state === "blocked"}>
             {q().state === "paused" ? t("strategy.queue.paused") : t("strategy.queue.blocked")}
           </Text>
           <Show when={q().reason !== ""}>

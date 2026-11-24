@@ -18,7 +18,7 @@ export function RpgExperience(props: RpgExperienceProps) {
   const share = (v: number) => `${formatNumber(v * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`flex-col w-full gap-y-2 text-fg nine-plate-cut bg-plate-hi p-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col w-full gap-y-2 p-2 ${packClass("Plate", "frame")}`}
       role="meter"
       label={t("rpg.xp.name")}
       valueMin={0}

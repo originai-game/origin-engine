@@ -42,7 +42,7 @@ export interface PuzzleSummaryProps {
  */
 export function PuzzleSummary(props: PuzzleSummaryProps) {
   return (
-    <View class={`pt-6 pb-4 nine-panel-cut bg-layer-1 transition duration-control w-full max-w-115.5 px-6 gap-3 compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:border-accent data-down:opacity-dim ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
+    <View class={`pt-6 pb-4 transition duration-control w-full max-w-115.5 px-6 gap-3 compact:pt-4 compact:pb-3 compact:px-3 compact:gap-1 data-selected:inset-ring-regular data-selected:inset-ring-accent data-down:opacity-dim ${packClass("Panel", "frame")}`} label={props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onAction={{ back: (e) => props.onMenu?.(e) }} data-result-lose={(props.result) === 'lose'}>
       <View class={`group/band items-center p-0 gap-0.5`} data-result-lose={(props.result) === 'lose'}>
         <Text class={`font-display text-display-sm font-bold leading-tight tracking-sm uppercase text-gold-hi text-center m-0 group-data-result-lose/band:text-danger`}>
           {props.result === 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}
@@ -68,14 +68,14 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
           {t("puzzle.summary.stars", { stars: props.stars, max: (props.maxStars ?? 3) })}
         </Text>
         <Show when={props.record}>
-          <Text class={`font-bold text-xs leading-4.5 tabular-nums nine-chip-cut bg-gold-hi text-gold-fg transition duration-control whitespace-nowrap tracking-label uppercase py-0 px-2 ${packClass("Chip", "frame")}`}>
+          <Text class={`font-bold text-xs leading-4.5 tabular-nums rounded-control bg-gold-hi text-gold-fg transition duration-control whitespace-nowrap tracking-label uppercase py-0 px-2`}>
             {t("puzzle.summary.record")}
           </Text>
         </Show>
       </View>
       <Show when={(props.rows ?? []).length}>
         <View class="grow shrink bg-tile inset-shadow-lit gap-2">
-          <Scroll class={`py-1 px-3 gap-2 `} role="table" label={t("puzzle.summary.breakdown")}>
+          <Scroll class={`py-1 px-3 gap-2`} role="table" label={t("puzzle.summary.breakdown")}>
             <For each={props.rows}>
               {(r) => (
               <View class={`flex-row items-baseline text-fg transition duration-control py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="row">
@@ -89,7 +89,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
               )}
             </For>
             <Show when={props.total}>
-              <View class={`flex-row items-baseline text-fg transition duration-control mt-1 border-t border-rim-soft py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="row">
+              <View class={`flex-row items-baseline text-fg transition duration-control mt-1 border-t border-border-muted py-1 px-0 gap-3 rounded-control compact:gap-1 hover:bg-transparent hover:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="row">
                 <Text class="grow shrink basis-0 text-start text-fg font-bold" role="rowheader">
                   {t("puzzle.summary.total")}
                 </Text>

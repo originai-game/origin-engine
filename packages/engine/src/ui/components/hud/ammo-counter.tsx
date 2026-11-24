@@ -48,7 +48,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
       data-empty={empty()}
     >
       <Show when={(props.secondary ?? "") != ""}>
-        <View class={`flex-row items-center gap-1 max-w-full min-w-0 py-0.5 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+        <View class={`flex-row items-center gap-1 max-w-full min-w-0 py-0.5 px-1.5 ${packClass("Plate", "frame")}`}>
           <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted whitespace-nowrap truncate min-w-0">{props.secondary}</Text>
           <Show when={(props.secondaryAmmo ?? -1) >= 0}>
             <Text class="shrink-0 text-base font-bold tabular-nums whitespace-nowrap text-fg compact:text-caption">{formatNumber(props.secondaryAmmo ?? 0)}</Text>
@@ -82,7 +82,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
           </View>
         </Show>
       </Show>
-      <View class={`flex-row items-center gap-1 max-w-full min-w-0 py-0.5 px-1.5 compact:flex-wrap compact:justify-end nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+      <View class={`flex-row items-center gap-1 max-w-full min-w-0 py-0.5 px-1.5 compact:flex-wrap compact:justify-end ${packClass("Plate", "frame")}`}>
         <View class="flex-row shrink-0 gap-x-0.75 compact:hidden" data-auto={(props.mode ?? "auto") == "auto"} data-burst={(props.mode ?? "auto") == "burst"} data-single={(props.mode ?? "auto") == "single"}>
           <For each={[0, 1, 2]}>
             {(i) => <View class="w-2.5 h-1 bg-sheen data-lit:bg-hud data-lit:shadow-glow-sm" data-lit={lit(i())} />}
@@ -100,7 +100,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </Show>
       </View>
       <Show when={(props.reloading ?? -1) >= 0}>
-        <View class={`flex-row items-center gap-1 w-full py-0.5 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+        <View class={`flex-row items-center gap-1 w-full py-0.5 px-1.5 ${packClass("Plate", "frame")}`}>
           <Text class="text-xs font-semibold tracking-label uppercase text-fg whitespace-nowrap">{t("shooter.ammo.reloading")}</Text>
           <View class="flex-1 h-1 overflow-hidden bg-track inset-shadow-lit ring ring-rim">
             <View class="h-full bg-hud transition-layout duration-fast ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
@@ -108,7 +108,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
       </Show>
       <Show when={props.magazine <= 0 && (props.reloading ?? -1) < 0}>
-        <Text class={`py-0.5 px-1.5 text-xs font-semibold tracking-label uppercase animate-pulse nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-foe-ink`}>{t("shooter.ammo.empty")}</Text>
+        <Text class={`py-0.5 px-1.5 text-xs font-semibold tracking-label uppercase animate-pulse ${packClass("Plate", "frame")} text-foe-ink`}>{t("shooter.ammo.empty")}</Text>
       </Show>
     </View>
   );

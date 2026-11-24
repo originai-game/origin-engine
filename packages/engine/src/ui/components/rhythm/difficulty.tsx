@@ -60,13 +60,13 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                         {l().label}
                       </Text>
                       <Show when={l().locked}>
-                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-locked={true}>
+                        <View class={`flex-row items-center gap-1 shrink py-0 px-1 ${packClass("Chip", "frame")}`} data-tag-locked={true}>
                           <Icon class={`size-4 opacity-quiet`} name="lock" />
                           <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap opacity-quiet`}>{t("rhythm.difficulty.locked")}</Text>
                         </View>
                       </Show>
                       <Show when={l().id === props.selected}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`} data-tag-selected={true}>
+                        <View class={`flex-row items-center shrink py-0 px-1 ${packClass("Chip", "frame")}`} data-tag-selected={true}>
                           <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{t("rhythm.difficulty.selected")}</Text>
                         </View>
                       </Show>
@@ -78,7 +78,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                     </View>
                     <View class={`flex-row items-center max-w-full min-w-0 compact:flex-none`}>
                       <Show when={l().grade !== ""}>
-                        <View class={`flex-row items-center shrink py-0 px-1 bg-well nine-chip-cut text-gold ${packClass("Chip", "frame")}`} data-tag-grade={true}>
+                        <View class={`flex-row items-center shrink py-0 px-1 text-gold ${packClass("Chip", "frame")}`} data-tag-grade={true}>
                           <Text class={`text-xs font-bold tracking-label uppercase whitespace-nowrap`}>{l().grade}</Text>
                         </View>
                       </Show>

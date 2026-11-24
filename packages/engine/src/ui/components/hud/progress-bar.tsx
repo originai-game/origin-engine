@@ -33,7 +33,7 @@ export function ProgressBar(props: ProgressBarProps) {
   const percent = () => `${formatNumber(Math.min(Math.max(props.value, 0), 1) * 100, { decimals: 0 })}%`;
   return (
     <View
-      class={`group/progress flex-col w-full min-w-0 gap-y-1 nine-plate-cut bg-glass py-1 px-2 ${packClass("Plate", "frame")} ${props.class ?? ""}`}
+      class={`group/progress flex-col w-full min-w-0 gap-y-1 py-1 px-2 ${packClass("Plate", "frame")} ${props.class ?? ""}`}
       role="progressbar"
       label={(props.label ?? "") !== "" ? props.label : t("component.progress-bar.name")}
       valueMin={0}

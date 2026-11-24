@@ -39,19 +39,19 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
       label={heading()}
     >
       <Show when={(props.goals ?? []).length}>
-        <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate compact:hidden py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-hud-accent-ink`}>{heading()}</Text>
+        <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate compact:hidden py-0.25 px-1.5 ${packClass("Plate", "frame")} text-hud-accent-ink`}>{heading()}</Text>
         <For each={props.goals ?? []} key={(g) => g.id}>
           {(g) => (
             <View class={`group/goal flex-row items-center gap-1 min-w-0 compact:hidden data-current:compact:flex`} data-current={g().current === true}>
               <View
                 class={`shrink-0 size-2 mx-0.5 rotate-45 bg-fg ring-regular ring-entry-hi group-data-current/goal:size-2.5 group-data-current/goal:mx-0.25 group-data-current/goal:bg-gold`}
               />
-              <Text class={`shrink basis-auto min-w-0 text-reading font-semibold whitespace-nowrap truncate group-data-current/goal:text-base py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted group-data-current/goal:text-fg`}
+              <Text class={`shrink basis-auto min-w-0 text-reading font-semibold whitespace-nowrap truncate group-data-current/goal:text-base py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted group-data-current/goal:text-fg`}
               >
                 {g().text}
               </Text>
               <Show when={g().tag}>
-                <Text class={`shrink-0 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap text-fg nine-chip-cut bg-tile ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink-0 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap ${packClass("Chip", "frame")}`}>
                   {g().tag}
                 </Text>
               </Show>

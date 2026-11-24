@@ -131,7 +131,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
           </Show>
           <Show when={props.length !== ""}>
             <Text
-              class={`shrink-0 max-w-1/2 ml-auto py-0 px-1.5 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden bg-well nine-chip-cut text-fg ${packClass("Chip", "frame")}`}
+              class={`shrink-0 max-w-1/2 ml-auto py-0 px-1.5 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden ${packClass("Chip", "frame")}`}
               label={`${t("racing.map.length")} ${props.length}`}
             >
               {props.length}

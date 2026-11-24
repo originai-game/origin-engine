@@ -26,7 +26,7 @@ export interface RpgEnemyInfoProps {
 export function RpgEnemyInfo(props: RpgEnemyInfoProps) {
   return (
     <View
-      class={`flex-col items-center w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col items-center w-full text-stroke-3 text-stroke-bg p-2 gap-y-2 ${packClass("Plate", "frame")}`}
       label={props.name}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 inset-shadow-underline inset-shadow-rim-soft`}>

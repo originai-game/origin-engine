@@ -49,9 +49,9 @@ export interface ShopConfirmProps {
  */
 export function ShopConfirm(props: ShopConfirmProps) {
   return (
-    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full max-w-105 max-h-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity || 'common') === "common"}>
+    <View class={`grow shrink basis-0 w-full max-w-105 max-h-full p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.confirm.name")} busy={props.busy} onAction={{ back: (e) => props.onCancel?.(e) }} data-tier-common={(props.rarity ||'common') === "common"}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
-      <View class={`min-h-12 border-b border-rim-soft w-full items-start text-start py-1 px-4 gap-0.5`}>
+      <View class={`min-h-12 border-b border-border-muted w-full items-start text-start py-1 px-4 gap-0.5`}>
         <Text class={`font-display text-xs font-semibold leading-tight tracking-kicker uppercase text-fg-subtle m-0`}>
           {props.title !== '' ? props.title : t("general.confirm.name")}
         </Text>
@@ -61,7 +61,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
       </View>
       <Scroll class="shrink w-full gap-3">
         <View class="flex-row items-center w-full gap-3">
-          <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
+          <View class={`justify-center items-center gap-2 size-24 compact:size-16 ${packClass("Slot", "frame")}`}>
             <Icon class="size-37/50" name={props.icon} />
           </View>
           <Show when={props.detail}>
@@ -70,7 +70,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
             </Text>
           </Show>
         </View>
-        <View class={`w-full bg-well inset-ring-hairline inset-ring-rim-soft py-1 px-2 m-0`} label={t("general.confirm.cost")}>
+        <View class={`w-full bg-well inset-ring-hairline inset-ring-border py-1 px-2 m-0`} label={t("general.confirm.cost")}>
           <For each={props.prices}>
             {(p, i) => (
             <View class="group/entry w-full py-1 gap-1 data-later:border-t data-later:border-material-control-hover" data-later={i() >= 1} data-short={p().short}>

@@ -73,7 +73,7 @@ export function BossBar(props: BossBarProps) {
   const staggerCells = () => (props.staggerCells ?? 10) > 0 ? (props.staggerCells ?? 1) : 1;
   return (
     <View
-      class={`flex-col items-center w-full max-w-150 gap-y-1.5 text-fg nine-panel-cut bg-glass py-2 px-4 compact:gap-y-1 compact:py-1 compact:px-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col items-center w-full max-w-150 gap-y-1.5 py-2 px-4 compact:gap-y-1 compact:py-1 compact:px-2 ${packClass("Plate", "frame")}`}
       role="region"
       label={(props.name ?? "") !== "" ? props.name : t("hud.boss-bar.name")}
       busy={props.loading}
@@ -150,15 +150,15 @@ export function BossBar(props: BossBarProps) {
               </Show>
               <For each={props.weaknesses ?? []} key={(w) => w.id}>
                 {(w) => (
-                  <View class={`relative shrink-0 size-5.5 nine-chip-cut bg-foe compact:size-4`} role="image" label={t("hud.boss-bar.weak", { name: w().name ?? "" })}>
+                  <View class={`relative shrink-0 size-5.5 rounded-control bg-foe compact:size-4`} role="image" label={t("hud.boss-bar.weak", { name: w().name ?? ""})}>
                     <Show when={w().icon} fallback={
-                      <View class="absolute inset-0.5 nine-chip-cut flex-row items-center justify-center bg-raised-lo">
+                      <View class="absolute inset-0.5 rounded-control flex-row items-center justify-center bg-raised-lo">
                         <Show when={w().glyph}>
                           <Icon class="size-16/25 text-fg" name={w().glyph} />
                         </Show>
                       </View>
                     }>
-                      <Image class="absolute inset-0.5 nine-chip-cut" src={w().icon} />
+                      <Image class="absolute inset-0.5 rounded-control" src={w().icon} />
                     </Show>
                   </View>
                 )}

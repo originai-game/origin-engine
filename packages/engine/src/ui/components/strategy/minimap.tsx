@@ -28,8 +28,8 @@ export interface StrategyMinimapProps {
  */
 export function StrategyMinimap(props: StrategyMinimapProps) {
   return (
-    <View class={`shrink p-0.5 nine-plate-cut bg-sheen w-50 h-50 compact:w-24 compact:h-24 ${packClass("Plate", "frame")}`} role="group" label={t("strategy.minimap.name")}>
-      <View class="relative size-full overflow-hidden nine-plate-cut bg-tile" role="image" label={t("strategy.minimap.name")}>
+    <View class={`shrink p-0.5 w-50 h-50 compact:w-24 compact:h-24 ${packClass("Plate", "frame")}`} role="group" label={t("strategy.minimap.name")}>
+      <View class="relative size-full overflow-hidden rounded-card bg-tile" role="image" label={t("strategy.minimap.name")}>
         <Show when={props.map}>
           <Image class="absolute inset-0 size-full" src={props.map} />
         </Show>

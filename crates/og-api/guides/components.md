@@ -375,7 +375,7 @@ A readout, not a button. A game can put it beside a separately named purchase co
 | `loading?` | `boolean` | Awaiting the amount; hides stale figures and reads Loading. |
 | `unavailable?` | `boolean` | The balance could not be read; hides stale figures and reads Unavailable. |
 
-Pack slots: `Count.roll`.
+Pack slots: `Count.roll`, `Plate.frame`.
 
 Fixtures: `default`, `empty`, `full`, `loading`, `unavailable`, `overflow`.
 
@@ -665,8 +665,6 @@ The draw, discard and exhaust piles as buttons: a stack of card backs (one when 
 | `label` | `string` | What a screen reader calls the group; empty is Piles. |
 | `onOpen?` | `(e: UiEvent, key?: string) => void` | The open event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`.
-
 A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`, `empty`, `overflow`.
@@ -896,6 +894,8 @@ Each `CombatLogLine`:
 | `text` | `string` | The line as the game words it (Sir Aldric uses Shield Bash on Cultist.). |
 | `tone?` | `string` | damage, heal, status, crit or plain inks the line. |
 | `detail?` | `string` | A quieter second line (→ 42 damage), empty for none. |
+
+Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
@@ -1218,6 +1218,8 @@ Each `OverlayBarOverlay`:
 | `low?` | `string` | The word at the ramp's low end. |
 | `high?` | `string` | The word at the ramp's high end. |
 
+Pack slots: `Plate.frame`.
+
 Fixtures: `default`, `none`.
 
 ## 52. PerfReadout
@@ -1233,6 +1235,8 @@ A HUD plate of how the game runs: the connection state in its tone's colour, the
 | `ping?` | `number` | Round-trip milliseconds; negative means unavailable. |
 | `loss?` | `number` | Packet loss as a fraction, 0 to 1; negative means unavailable. |
 | `status?` | `string` | offline, connecting, online or degraded. The game supplies connection state and thresholds; the document samples no clocks or network. |
+
+Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `degraded`, `offline`, `connecting`, `unknown`, `zero`.
 
@@ -1351,7 +1355,7 @@ The tracked quest on the HUD: a heading in gold, the quest's name, then its obje
 | `steps` | `ReadonlyArray<{ id: string; text: string; done: boolean; tag?: string }>` | Its objectives in order, keyed rows of { id, text, done, tag }: done ones are struck and dimmed with a filled diamond; the first not done is the step in play (lit, on data-current); the ones after it are upcoming (dim); tag its progress as the game words it (1 / 3) on a tag, empty for none. A phone shows the step in play alone. |
 | `distance` | `string` | How far its marker is, as the game words it (312 m), on a tag beside the name; empty hides it. |
 
-Pack slots: `Chip.frame`.
+Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `done`, `overflow`.
 
@@ -1482,7 +1486,7 @@ A stat with its bar: the icon and label before a leaning well that fills to valu
 | `bare?` | `boolean` | No HUD plate behind it. |
 | `name?` | `string` | What a screen reader calls it; empty is the label, else Health. |
 
-Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`, `Bar.trail`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`, `Bar.trail`, `Plate.frame`.
 
 Fixtures: `default`.
 
@@ -1642,7 +1646,7 @@ The resource bar of an idle game: one cut chip per currency with its art in a so
 | `currencies?` | `ReadonlyArray<{ id: string; icon: string; name: string; amount: number; value: string; rate: string; perSecond: number; full: boolean }>` | The currencies in the game's order, keyed rows of { id, icon, name, amount, value, rate, perSecond, full }: value the amount as the game formats it (it wins; empty shows amount, a number, compacted: 12.3K, counting to each new amount); rate the income as the game words it (+1.2K/s; it wins; empty shows perSecond, a number per second, compacted; 0 hides it); perSecond also sets data-trend (up, down, flat) whether or not rate is given, so pass it with a worded rate too; full the store is at its cap, named Full. |
 | `loading?` | `boolean` | The amounts are on their way: each row keeps its icon and name and shows a placeholder for its figures. |
 
-Pack slots: `Chip.frame`, `Count.roll`, `Slot.frame`.
+Pack slots: `Count.roll`, `Slot.frame`.
 
 Fixtures: `default`, `loading`, `full`, `draining`, `empty`, `overflow`.
 
@@ -1683,7 +1687,7 @@ A chat panel: channel tabs with unread badges, the message log (system lines, th
 | `onChooseTab?` | `(e: UiEvent, key?: string) => void` | The choosetab event, with the row's key where it comes from a row. |
 | `onSend?` | `(e: UiEvent, key?: string) => void` | The send event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Field.frame`, `Panel.frame`.
+Pack slots: `Field.frame`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `disabled`, `overflow`.
 
@@ -1789,7 +1793,7 @@ News and updates: articles with their date, kind, picture and summary, one expan
 | `onChoose?` | `(e: UiEvent, key?: string) => void` | The choose event, with the row's key where it comes from a row. |
 | `onOpen?` | `(e: UiEvent, key?: string) => void` | The open event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `List.cascade`, `List.item`, `Panel.frame`.
+Pack slots: `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
 
@@ -1848,7 +1852,7 @@ A player profile: the avatar with level and presence, the name, handle, rank and
 | `onAction?` | `(e: UiEvent, key?: string) => void` | The action event, with the row's key where it comes from a row. |
 | `onRetry?` | `(e: UiEvent, key?: string) => void` | The retry event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`.
+Pack slots: `Button.plate`, `Panel.frame`, `Plate.frame`.
 
 Fixtures: `default`, `private`, `pending`, `loading`, `error`, `empty`, `no-stats`, `overflow`.
 
@@ -2228,7 +2232,7 @@ The quest list, grouped as the game groups it (main, side, finished): each group
 | `onChoose?` | `(e: UiEvent, key?: string) => void` | The choose event, with the row's key where it comes from a row. |
 | `onTrack?` | `(e: UiEvent, key?: string) => void` | The track event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Panel.frame`, `Row.frame`, `Row.frame.selected`.
+Pack slots: `Panel.frame`, `Row.frame`, `Row.frame.selected`.
 
 Fixtures: `default`, `empty`, `overflow`.
 
@@ -2322,7 +2326,7 @@ The booster tray: each booster a round socket with its art, how many the player 
 | `armed` | `string` | The booster the game has armed (waiting for its target on the board); empty is none. Shown pressed and worded Armed. |
 | `onChoose?` | `(e: UiEvent, key?: string) => void` | The choose event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`.
+Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `selected`, `disabled`, `empty`, `overflow`.
 
@@ -2363,7 +2367,7 @@ A scrolling level path over the game's own map art, which the component leaves a
 | `onChoose?` | `(e: UiEvent, key?: string) => void` | The choose event, with the row's key where it comes from a row. |
 | `onDetails?` | `(e: UiEvent, key?: string) => void` | The details event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Plate.frame`.
+Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `empty`, `selected`, `locked`, `overflow`.
 
@@ -2392,7 +2396,7 @@ The end of a level: won or failed, the level's name, the stars on the shared Sta
 | `onNext?` | `(e: UiEvent, key?: string) => void` | The next event, with the row's key where it comes from a row. |
 | `onRetry?` | `(e: UiEvent, key?: string) => void` | The retry event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Panel.frame`.
+Pack slots: `Panel.frame`.
 
 Fixtures: `default`, `full`, `lose`, `empty`, `overflow`.
 
@@ -2599,8 +2603,6 @@ The tachometer at the bottom right: the revs as a white arc round a dark glass f
 | `lights?` | `number` | The share of the shift lights lit, 0 to 1, as the game decides it (seven cells, green to amber to red); negative hides the lights. Default -1. |
 | `shift` | `boolean` | The game's shift cue: the Shift word stands beside the gear in place of the mode, and the frame takes data-shift. |
 
-Pack slots: `Chip.frame`.
-
 Fixtures: `default`, `redline`, `pit`, `reverse`, `idle`, `overflow`.
 
 ## 111. RacingTrackMap
@@ -2733,7 +2735,7 @@ After the song: the grade, Cleared or Failed, the score with the old best and Ne
 | `onRetry?` | `(e: UiEvent) => void` | Retry; silent when the game refuses it. |
 | `onNext?` | `(e: UiEvent) => void` | Next; also Escape and the back action (pad B). |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Plate.frame`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Plate.frame`.
 
 Fixtures: `default`, `failed`, `fullCombo`, `allPerfect`, `disabled`, `empty`, `overflow`.
 
@@ -3375,7 +3377,7 @@ Each `LoadoutSlot`:
 | `locked?` | `boolean` | It cannot be chosen yet (shown with its cost). |
 | `cost?` | `string` | Its cost text; empty is none. |
 
-Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`, `Row.frame`, `Row.frame.selected`.
+Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`, `Row.frame`, `Row.frame.selected`.
 
 Fixtures: `default`.
 
@@ -3655,7 +3657,7 @@ The resource bar at the top left: each stockpile's picture in a cut tile, its am
 | `resources?` | `ReadonlyArray<{ id: string; name: string; icon: Texture \| 0; glyph: string; amount: string; cap: string; rate: string; trend: string; note: string; warn: boolean }>` | The stockpiles in the game's order, keyed rows of { id, name, icon, glyph, amount, cap, rate, trend, note, warn }: name for a reader (Gold); icon its picture (og.load.texture), 0 draws glyph (an icon of the atlas) instead; amount the store as the game words it (1,250); cap a ceiling shown after it (/ 50, the population's), empty none; rate the income as the game words it (+12/s), under the amount, inked by trend (gain, loss or none: data-trend); note a word in place of the rate (Near cap), empty none; warn marks a store at its limit in gold (data-warn). |
 | `tier` | `string` | The age or tier as the game words it (Castle Age), on a lit tag after the stockpiles; empty hides it. |
 
-Pack slots: `Chip.frame`, `Plate.frame`.
+Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `tier`, `capped`, `empty`, `overflow`.
 
@@ -5224,7 +5226,7 @@ After a match: the verdict set large in a lit fill (gold for a win, red for a lo
 | `onReplay?` | `((e: UiEvent, key?: string) => void) \| undefined` | The replay event, with the row's key where it comes from a row. |
 | `onTab?` | `(e: UiEvent, value: string) => void` | The tab switched (onTab), the tab's value (summary, graphs or board). Without it no tab row is drawn, and the page shows `tab`. |
 
-Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Reward.pop`, `Screen.frame`, `Tab.indicator`.
+Pack slots: `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Reward.pop`, `Screen.frame`, `Tab.indicator`.
 
 Fixtures: `default`.
 

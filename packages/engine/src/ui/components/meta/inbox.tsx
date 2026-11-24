@@ -37,13 +37,13 @@ export interface InboxProps {
  */
 export function Inbox(props: InboxProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg h-auto p-4 gap-3 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
-      <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft py-1 px-4 gap-2`}>
+    <View class={`grow shrink basis-0 h-auto p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
+      <View class={`flex-row flex-wrap items-center min-h-12 border-b border-border-muted py-1 px-4 gap-2`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
-          <Text class={`text-caption text-fg bg-well nine-chip-cut py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
+          <Text class={`text-caption py-0.5 px-2 shrink ${packClass("Chip", "frame")}`}>
             {props.summary}
           </Text>
         </Show>
@@ -56,7 +56,7 @@ export function Inbox(props: InboxProps) {
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`flex-row items-center justify-center gap-1 group/row nine-plate-cut bg-layer-2 text-fg transition duration-control w-full text-start py-2 px-3 data-selected:bg-layer-4 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`flex-row items-center justify-center gap-1 group/row rounded-card bg-layer-2 text-fg transition duration-control w-full text-start py-2 px-3 data-selected:bg-layer-4 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}
@@ -71,7 +71,7 @@ export function Inbox(props: InboxProps) {
                                 <Text class={`text-caption text-fg-muted shrink`}>
                                   {message().date}
                                 </Text>
-                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg-subtle transition duration-control tracking-label uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
+                                <Text class={`font-bold text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-border text-fg-subtle transition duration-control tracking-label uppercase py-0 px-2 rounded-capsule group-data-unread/row:text-gold shrink`}>
                                   {message().unread ? t("meta.inbox.unread") : t("meta.inbox.read")}
                                 </Text>
                                 <Show when={message().hasAttachments}>
@@ -84,7 +84,7 @@ export function Inbox(props: InboxProps) {
                         )}
                       </For>
                     </Scroll>
-                    <View class="max-h-140 overflow-y-hidden bg-glass inset-shadow-lit inset-ring-hairline inset-ring-rim-soft py-3 px-4 rounded-card compact:max-h-none">
+                    <View class="max-h-140 overflow-y-hidden bg-glass inset-shadow-lit inset-ring-hairline inset-ring-border py-3 px-4 rounded-card compact:max-h-none">
                       <Show when={!props.selected}>
                         <Text class={`text-caption text-fg-muted m-0`}>
                           {t("meta.inbox.select")}
@@ -117,7 +117,7 @@ export function Inbox(props: InboxProps) {
                                   <For each={(props.attachments ?? [])}>
                                     {(attachment) => (
                                     <Show when={attachment().message === message().id}>
-                                      <View class={`flex-row items-center pr-3 pl-2 bg-well nine-chip-cut py-1 gap-2 shrink text-fg ${packClass("Chip", "frame")}`}>
+                                      <View class={`flex-row items-center pr-3 pl-2 py-1 gap-2 shrink ${packClass("Chip", "frame")}`}>
                                         <Icon class={`text-gold size-4`} name={attachment().icon} />
                                         <View class={`shrink`}>
                                           <Text>{attachment().name}</Text>

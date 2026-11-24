@@ -43,7 +43,7 @@ export function ErrorState(props: ErrorStateProps) {
           <Text class={`text-center m-0`}>{props.body}</Text>
         </Show>
         <Show when={props.code}>
-          <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control self-center w-fit mt-1 mb-0 max-w-full py-0 px-2 mx-0 rounded-control`}>
+          <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control self-center w-fit mt-1 mb-0 max-w-full py-0 px-2 mx-0 rounded-control`}>
             {props.code}
           </Text>
         </Show>

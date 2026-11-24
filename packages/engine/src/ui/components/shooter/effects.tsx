@@ -40,22 +40,22 @@ export function ShooterEffects(props: ShooterEffectsProps) {
             label={e().label ? t("shooter.effects.effect", { name: e().name, label: e().label }) : e().name}
             data-harmful={e().harmful}
           >
-            <View class="relative size-8 compact:size-6 rounded-tl-control bg-success group-data-harmful/effects:bg-danger">
+            <View class="relative size-8 compact:size-6 rounded-control bg-success group-data-harmful/effects:bg-danger">
               <Show when={e().icon} fallback={
-                <View class="absolute inset-0.5 rounded-tl-control flex-row items-center justify-center bg-plate-hi">
+                <View class="absolute inset-0.5 rounded-control flex-row items-center justify-center bg-plate-hi">
                   <Show when={e().glyph}>
                     <Icon class="size-3/5 text-fg" name={e().glyph} />
                   </Show>
                 </View>
               }>
-                <Image class="absolute inset-0.5 rounded-tl-control" src={e().icon ?? 0} />
+                <Image class="absolute inset-0.5 rounded-control" src={e().icon ?? 0} />
               </Show>
               <Show when={(e().remaining ?? -1) >= 0}>
                 <View class="absolute inset-0 nine-tile bg-scrim" wipe={1 - Math.min(Math.max(e().remaining ?? 0, 0), 1)} wipeCcw />
               </Show>
             </View>
             <Show when={e().label}>
-              <Text class={`max-w-14 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-tag nine-chip-cut bg-tile compact:px-0.75 group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
+              <Text class={`max-w-14 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-shadow-tag compact:px-0.75 group-data-harmful/effects:text-danger ${packClass("Chip", "frame")}`}>
                 {e().label}
               </Text>
             </Show>

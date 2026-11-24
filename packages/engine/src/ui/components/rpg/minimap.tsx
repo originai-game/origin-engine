@@ -52,7 +52,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
           </View>
         </View>
         <View class="absolute top-0 inset-x-0 flex-row justify-center pointer-events-none">
-          <Text class={`py-0 px-1 text-xs font-bold whitespace-nowrap text-fg nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+          <Text class={`py-0 px-1 text-xs font-bold whitespace-nowrap ${packClass("Chip", "frame")}`}>
             {t("rpg.minimap.north")}
           </Text>
         </View>
@@ -65,7 +65,7 @@ export function RpgMinimap(props: RpgMinimapProps) {
             </Text>
           </Show>
           <Show when={props.clock !== ""}>
-            <Text class={`shrink max-w-1/2 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden text-fg nine-chip-cut bg-well ${packClass("Chip", "frame")}`}>
+            <Text class={`shrink max-w-1/2 py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap overflow-hidden ${packClass("Chip", "frame")}`}>
               {props.clock}
             </Text>
           </Show>

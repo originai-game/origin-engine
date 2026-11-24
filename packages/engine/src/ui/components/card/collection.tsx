@@ -42,16 +42,16 @@ export interface CardCollectionProps {
  */
 export function CardCollection(props: CardCollectionProps) {
   return (
-    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
+    <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
       <Show when={props.title}>
-        <View class={`flex-row items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-2`}>
+        <View class={`flex-row items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-2`}>
           <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0 shrink`}>
             {props.title}
           </Text>
         </View>
       </Show>
       <Show when={props.filters.length}>
-        <View class="w-full border-b border-rim-soft" role="tablist" label={t("card.collection.filters")} onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
+        <View class="w-full border-b border-border-muted" role="tablist" label={t("card.collection.filters")} onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
           <Scroll class="w-full">
             <View class="flex-row items-center pr-12 gap-1">
               <For each={props.filters}>
@@ -82,7 +82,7 @@ export function CardCollection(props: CardCollectionProps) {
               {(c) => (
               <View class="items-center gap-0.5">
                 <Show when={c().canAdd} fallback={
-                    <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                    <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                       <View class="size-full">
                         <View class="size-full">
                           <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={c().locked} />
@@ -91,7 +91,7 @@ export function CardCollection(props: CardCollectionProps) {
                           <View class="absolute pointer-events-none inset-0" />
                         </Show>
                         <Show when={c().owned > 0}>
-                          <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                          <Text class={`absolute right-0.5 top-0.5 text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                             {t("card.collection.owned", { count: c().owned })}
                           </Text>
                         </Show>
@@ -101,13 +101,13 @@ export function CardCollection(props: CardCollectionProps) {
                       </View>
                     </View>
                 }>
-                  <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                  <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                     <View class="size-full">
                       <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />
                       </View>
                       <Show when={c().owned > 0}>
-                        <Text class={`absolute right-0.5 top-0.5 nine-chip-cut bg-tile text-fg text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
+                        <Text class={`absolute right-0.5 top-0.5 text-xs font-bold py-0 px-0.5 ${packClass("Chip", "frame")}`}>
                           {t("card.collection.owned", { count: c().owned })}
                         </Text>
                       </Show>

@@ -34,22 +34,22 @@ export function HudEffect(props: HudEffectProps) {
       label={props.label ? t("hud.effect.label", { name: props.name, label: props.label }) : props.name}
       data-harmful={props.harmful}
     >
-      <View class="relative size-7.5 compact:size-6.5 rounded-tl-control bg-boon group-data-harmful/effect:bg-foe">
+      <View class="relative size-7.5 compact:size-6.5 rounded-control bg-boon group-data-harmful/effect:bg-foe">
         <Show when={props.icon} fallback={
-          <View class="absolute inset-0.5 rounded-tl-control flex-row items-center justify-center bg-raised-lo">
+          <View class="absolute inset-0.5 rounded-control flex-row items-center justify-center bg-raised-lo">
             <Show when={props.glyph}>
               <Icon class="size-3/5 text-fg" name={props.glyph} />
             </Show>
           </View>
         }>
-          <Image class="absolute inset-0.5 rounded-tl-control" src={props.icon} />
+          <Image class="absolute inset-0.5 rounded-control" src={props.icon} />
         </Show>
         <Show when={timed()}>
           <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - Math.min(Math.max(props.remaining ?? 0, 0), 1)} wipeCcw />
         </Show>
       </View>
       <Show when={props.label}>
-        <Text class={`max-w-16 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-fg text-shadow-tag nine-chip-cut bg-raised-pressed compact:px-0.75 group-data-harmful/effect:text-foe-ink ${packClass("Chip", "frame")}`}>
+        <Text class={`max-w-16 py-0 px-1.25 text-xs font-bold tabular-nums whitespace-nowrap truncate text-shadow-tag compact:px-0.75 group-data-harmful/effect:text-foe-ink ${packClass("Chip", "frame")}`}>
           {props.label}
         </Text>
       </Show>

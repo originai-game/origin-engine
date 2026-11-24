@@ -40,7 +40,7 @@ export interface RhythmResultsProps {
 export function RhythmResults(props: RhythmResultsProps) {
   return (
     <View
-      class={`flex-col gap-4 w-full h-full min-w-0 p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`}
+      class={`flex-col gap-4 w-full h-full min-w-0 p-4 ${packClass("Panel", "frame")}`}
       label={props.song !== "" ? props.song : t("rhythm.results.title")}
       data-mark-fullcombo={props.mark === "fullCombo"}
       data-mark-allperfect={props.mark === "allPerfect"}
@@ -67,7 +67,7 @@ export function RhythmResults(props: RhythmResultsProps) {
               </Show>
               <View class={`flex-col items-start gap-0.5 min-w-0`}>
                 <Text
-                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-hud-accent-fg bg-hud-accent nine-chip-cut data-tag-failed:nine-chip-cut data-tag-failed:text-critical-fg data-tag-failed:bg-critical ${packClass("Chip", "frame")}`}
+                  class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-hud-accent-fg bg-hud-accent rounded-control data-tag-failed:nine-none data-tag-failed:text-critical-fg data-tag-failed:bg-critical`}
                   data-tag-cleared={props.cleared}
                   data-tag-failed={!props.cleared}
                 >
@@ -75,7 +75,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                 </Text>
                 <Show when={props.mark !== ""}>
                   <Text
-                    class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-gold-fg bg-gold nine-chip-cut`}
+                    class={`whitespace-nowrap py-0 px-2 text-base font-bold tracking-label uppercase text-gold-fg bg-gold rounded-control`}
                     data-tag-fullcombo={props.mark === "fullCombo"}
                     data-tag-allperfect={props.mark === "allPerfect"}
                   >
@@ -84,13 +84,13 @@ export function RhythmResults(props: RhythmResultsProps) {
                 </Show>
               </View>
             </View>
-            <View role="group" label={t("rhythm.results.score")} class={`grow min-w-0 max-w-full flex-col items-start bg-plate-hi nine-plate-cut py-3 px-4 text-fg ${packClass("Plate", "frame")}`}>
+            <View role="group" label={t("rhythm.results.score")} class={`grow min-w-0 max-w-full flex-col items-start py-3 px-4 ${packClass("Plate", "frame")}`}>
               <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.score")}</Text>
               <Text class={`text-8xl compact:text-4xl leading-none font-bold tabular-nums whitespace-nowrap pb-1`}>{formatNumber(props.score)}</Text>
               <View class={`flex flex-row flex-wrap items-center gap-1`}>
                 <Show when={props.newBest}>
                   <Text
-                    class={`whitespace-nowrap py-0 px-1 text-xs font-bold tracking-label uppercase text-gold-fg bg-gold nine-chip-cut ${packClass("Chip", "frame")}`}
+                    class={`whitespace-nowrap py-0 px-1 text-xs font-bold tracking-label uppercase text-gold-fg bg-gold rounded-control`}
                     data-tag-newbest={true}
                   >
                     {t("rhythm.results.newBest")}
@@ -106,12 +106,12 @@ export function RhythmResults(props: RhythmResultsProps) {
           </View>
           <View class={`flex-row items-start gap-4 w-full compact:flex-col`}>
             <View class={`flex flex-row flex-wrap gap-2 min-w-0 grow basis-0`}>
-              <View role="group" label={t("rhythm.results.maxCombo")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
+              <View role="group" label={t("rhythm.results.maxCombo")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 py-2 px-3 ${packClass("Plate", "frame")}`}>
                 <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.maxCombo")}</Text>
                 <Text class={`shrink whitespace-nowrap text-display-md compact:text-title font-bold tabular-nums`}>{formatNumber(props.maxCombo)}</Text>
               </View>
               <Show when={props.accuracy !== ""}>
-                <View role="group" label={t("rhythm.results.accuracy")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
+                <View role="group" label={t("rhythm.results.accuracy")} class={`flex-col justify-between gap-0.5 min-w-0 grow basis-37.5 py-2 px-3 ${packClass("Plate", "frame")}`}>
                   <Text class={`text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.accuracy")}</Text>
                   <Text class={`shrink whitespace-nowrap text-display-md compact:text-title font-bold tabular-nums`}>{props.accuracy}</Text>
                 </View>
@@ -122,7 +122,7 @@ export function RhythmResults(props: RhythmResultsProps) {
                 <Text class={`text-center text-xs font-semibold tracking-label uppercase opacity-quiet`}>{t("rhythm.results.empty")}</Text>
               </View>
             }>
-              <View role="list" label={t("rhythm.results.counts")} class={`flex-col gap-0.5 min-w-0 grow basis-0 bg-plate-hi nine-plate-cut py-2 px-3 text-fg ${packClass("Plate", "frame")}`}>
+              <View role="list" label={t("rhythm.results.counts")} class={`flex-col gap-0.5 min-w-0 grow basis-0 py-2 px-3 ${packClass("Plate", "frame")}`}>
                 <For each={props.counts ?? []} key={(c) => c.id}>
                   {(c) => (
                     <View
@@ -151,7 +151,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           label={t("rhythm.results.retry")}
           disabled={!props.canRetry}
           onPress={(e) => props.onRetry?.(e)}
-          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-raised-hi disabled:opacity-dim ${packClass("Button", "plate")}`}
+          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 disabled:opacity-dim ${packClass("Button", "plate")}`}
         >
           <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.results.retry")}</Text>
         </View>
@@ -161,7 +161,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           onPress={(e) => props.onNext?.(e)}
           onKey={(e) => { if (e.key === "Escape") props.onNext?.(e); }}
           onAction={{ back: (e) => props.onNext?.(e) }}
-          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 rounded-control bg-hud-accent text-hud-accent-fg inset-shadow-lit ${packClass("Button", "plate", "primary")}`}
+          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-3 ${packClass("Button", "plate")} ${packClass("Button", "plate", "primary")}`}
         >
           <Text class={`shrink-0 pointer-coarse:hidden text-title leading-none`} glyph="back" />
           <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.results.next")}</Text>

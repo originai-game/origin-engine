@@ -32,7 +32,7 @@ export interface MenuProps {
  */
 export function Menu(props: MenuProps) {
   return (
-    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-overlay inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg min-w-60 max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
+    <View class={`pt-1 pb-2 from-raised-pressed shadow-overlay inset-shadow-lit inset-ring-hairline inset-ring-border min-w-60 max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
       <Show when={props.submenu !== ""}>
         <View class={row} role="menuitem" label={t("component.menu.back")} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center w-full gap-2">
@@ -74,7 +74,7 @@ export function Menu(props: MenuProps) {
                       {e().label}
                     </Text>
                     <Show when={e().shortcut}>
-                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap bg-well inset-ring-hairline inset-ring-rim py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                         {e().shortcut}
                       </Text>
                     </Show>

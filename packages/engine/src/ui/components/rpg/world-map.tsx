@@ -122,7 +122,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                       </Match>
                     </Switch>
                   </View>
-                  <Text class={`absolute left-1/2 -translate-x-1/2 top-10.25 py-0.5 px-1 whitespace-nowrap text-sm font-semibold text-fg nine-plate-cut bg-well compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-11.5 group-data-selected/marker:text-base ${packClass("Chip", "frame")}`}>
+                  <Text class={`absolute left-1/2 -translate-x-1/2 top-10.25 py-0.5 px-1 whitespace-nowrap text-sm font-semibold compact:hidden compact:group-data-selected/marker:block group-data-selected/marker:top-11.5 group-data-selected/marker:text-base ${packClass("Chip", "frame")}`}>
                     {m().label}
                   </Text>
                 </View>
@@ -132,13 +132,13 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
         </View>
       </View>
       <Show when={props.here}>
-        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 nine-plate-cut bg-plate-hi compact:left-1 compact:top-1 text-fg ${packClass("Plate", "frame")}`}>
+        <View class={`absolute left-2 top-2 flex-row items-center gap-1 py-0.5 px-2 compact:left-1 compact:top-1 ${packClass("Plate", "frame")}`}>
           <View class={`shrink size-4 rounded-full bg-hud-accent shadow-glow`} />
           <Text class={`text-caption whitespace-nowrap`}>{props.here}</Text>
         </View>
       </Show>
       <Show when={(props.legend ?? []).length}>
-        <View class={`absolute left-2 bottom-2 max-w-47/50 flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-caption nine-plate-cut bg-plate-hi compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-sm text-fg ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
+        <View class={`absolute left-2 bottom-2 max-w-47/50 flex-row flex-wrap items-center gap-x-2 gap-y-1 py-0.5 px-3 text-caption compact:left-1 compact:right-1 compact:bottom-1 compact:flex-nowrap compact:justify-center compact:px-2 compact:text-sm ${packClass("Plate", "frame")}`} role="group" label={t("rpg.map.legend")}>
           <For each={props.legend ?? []} key={(l) => l.id}>
             {(l) => (
               <View class={`shrink-0 flex-row items-center gap-1 whitespace-nowrap`}>

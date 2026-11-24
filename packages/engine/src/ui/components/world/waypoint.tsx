@@ -77,10 +77,10 @@ export function Waypoint(props: WaypointProps) {
       <Show when={(label() !== "" && range() !== "far") || (distance() !== "")}>
         <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-edge-left:items-start group-data-way-right:items-end group-data-edge-right:items-end">
           <Show when={label() !== "" && range() !== "far"}>
-            <Text class={`min-w-0 max-w-50 py-0.25 px-1.5 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap truncate text-fg nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{label()}</Text>
+            <Text class={`min-w-0 max-w-50 py-0.25 px-1.5 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap truncate ${packClass("Plate", "frame")}`}>{label()}</Text>
           </Show>
           <Show when={distance() !== ""}>
-            <View class="shrink-0 flex-row items-baseline py-0.25 px-1.5 nine-chip-cut bg-raised-pressed">
+            <View class="shrink-0 flex-row items-baseline py-0.25 px-1.5 rounded-control bg-raised-pressed">
               <Text class="text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg">{distance()}</Text>
               <Show when={units() !== ""}>
                 <Text class="ml-px text-2xs leading-tight text-fg-muted">{units()}</Text>

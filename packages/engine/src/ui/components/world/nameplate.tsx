@@ -82,7 +82,7 @@ export function Nameplate(props: NameplateProps) {
       declutter="stack"
       occlusion="fade"
       maxDistance={props.maxDistance}
-      class={`group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full text-fg leading-tight ${props.compact ? "" : `py-1 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}`}
+      class={`group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full leading-tight ${props.compact ? "":`py-1 px-2 ${packClass("Plate", "frame")}`}`}
       label={props.name}
       data-boss={props.boss}
       data-compact={props.compact}
@@ -98,12 +98,12 @@ export function Nameplate(props: NameplateProps) {
         <View class="flex-row items-center justify-center gap-x-1 max-w-full min-w-0">
           <Show when={level() !== ""} fallback={
             <Show when={props.boss}>
-              <View class="shrink-0 flex-row items-center justify-center h-4 w-4.75 nine-chip-cut bg-raised-pressed" label={t("world.nameplate.boss")}>
+              <View class="shrink-0 flex-row items-center justify-center h-4 w-4.75 rounded-control bg-raised-pressed" label={t("world.nameplate.boss")}>
                 <Icon class="size-2.75 text-fg" name="skull" />
               </View>
             </Show>
           }>
-            <View class="shrink-0 flex-row items-center justify-center h-4 min-w-4.75 px-1 nine-chip-cut bg-raised-pressed group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-dim" label={t("world.nameplate.level", { level: level() })}>
+            <View class="shrink-0 flex-row items-center justify-center h-4 min-w-4.75 px-1 rounded-control bg-raised-pressed group-data-elite:bg-gold group-data-elite:text-gold-fg group-data-dead:opacity-dim" label={t("world.nameplate.level", { level: level() })}>
               <Text class="text-2xs leading-none font-bold tabular-nums">{level()}</Text>
             </View>
           </Show>

@@ -19,14 +19,14 @@ export interface DataListProps {
  */
 export function DataList(props: DataListProps) {
   return (
-    <View class={`nine-panel-cut bg-layer-1 text-fg w-full p-0 ${packClass("Panel", "frame")}`} busy={props.loading}>
+    <View class={`w-full p-0 ${packClass("Panel", "frame")}`} busy={props.loading}>
       <Scroll class="grow shrink basis-0 w-full">
         <Show when={(props.rows ?? []).length} fallback={
             <Text class={`text-center text-fg-muted m-6`}>{props.loading ? props.busy : props.empty}</Text>
         }>
           <For each={props.rows ?? []}>
             {(r) => (
-              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-rim-soft text-fg`} onPress={(e) => props.onChoose?.(e, r().id)}>
+              <Button class={`w-full min-w-0 justify-stretch flex-row items-center gap-3 py-2 px-4 border-b border-border-muted text-fg`} onPress={(e) => props.onChoose?.(e, r().id)}>
                 <View class="flex-col items-start gap-0.5 grow shrink basis-0 min-w-0 text-start">
                   <Text class={`font-semibold text-start m-0`}>{r().title}</Text>
                   <Text class={`opacity-muted text-start m-0 shrink`}>{r().detail}</Text>

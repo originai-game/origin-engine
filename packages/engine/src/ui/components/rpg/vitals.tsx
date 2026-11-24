@@ -38,7 +38,7 @@ export function RpgVitals(props: RpgVitalsProps) {
         </Show>
       </View>
       <Show when={props.level !== 0}>
-        <View class={`absolute left-0 top-12 size-6 group-data-plate-large/plate:top-30.5 group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-17.25 bg-surface-raised inset-ring-hairline inset-ring-rim text-fg rounded-capsule flex-row items-center justify-center ${packClass("Chip", "frame")}`}>
+        <View class={`absolute left-0 top-12 size-6 group-data-plate-large/plate:top-30.5 group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-17.25 flex-row items-center justify-center ${packClass("Chip", "frame")} rounded-capsule`}>
           <Text class={`text-caption font-bold tabular-nums`}>{formatNumber(props.level)}</Text>
         </View>
       </Show>
@@ -46,7 +46,7 @@ export function RpgVitals(props: RpgVitalsProps) {
         <View class={`relative flex-row items-center justify-center overflow-hidden h-2 group-data-plate-large/plate:h-4.75 group-data-plate-large/plate:min-h-6 compact:group-data-plate-large/plate:h-3.5 bg-track`} role="meter" label={t("rpg.party.health")} valueText={t("rpg.party.figure", { now: props.health, max: props.healthMax })}>
           <View class="absolute left-0 inset-y-0 bg-health" style={{ width: `${bar(props.healthMax > 0 ? props.health / props.healthMax : 0)}%` }} />
           <Show when={props.plate === "large"}>
-            <Text class={`relative whitespace-nowrap px-1 text-xs font-bold tabular-nums text-fg py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+            <Text class={`relative whitespace-nowrap px-1 text-xs font-bold tabular-nums py-0.25 px-1.5 ${packClass("Plate", "frame")}`}>
               {t("rpg.party.figure", { now: props.health, max: props.healthMax })}
             </Text>
           </Show>
@@ -55,7 +55,7 @@ export function RpgVitals(props: RpgVitalsProps) {
           <View class={`relative flex-row items-center justify-center overflow-hidden h-2 group-data-plate-large/plate:h-4.75 group-data-plate-large/plate:min-h-6 compact:group-data-plate-large/plate:h-3.5 bg-track`} role="meter" label={t("rpg.party.mana")} valueText={t("rpg.party.figure", { now: props.mana, max: props.manaMax })}>
             <View class="absolute left-0 inset-y-0 bg-mana" style={{ width: `${bar(props.mana / props.manaMax)}%` }} />
             <Show when={props.plate === "large"}>
-              <Text class={`relative whitespace-nowrap px-1 text-xs font-bold tabular-nums text-fg py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+              <Text class={`relative whitespace-nowrap px-1 text-xs font-bold tabular-nums py-0.25 px-1.5 ${packClass("Plate", "frame")}`}>
                 {t("rpg.party.figure", { now: props.mana, max: props.manaMax })}
               </Text>
             </Show>

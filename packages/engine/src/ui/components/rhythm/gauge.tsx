@@ -36,7 +36,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       data-ready={props.ready}
     >
       <View
-        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well shadow-plate ring ring-rim data-danger:shadow-glow data-danger:shadow-foe data-danger:ring data-danger:ring-foe data-danger:animate-pulse data-ready:shadow-glow-lg data-ready:inset-ring-hairline data-ready:inset-ring-rim`}
+        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well shadow-plate ring ring-rim data-danger:shadow-glow data-danger:shadow-foe data-danger:ring data-danger:ring-foe data-danger:animate-pulse data-ready:shadow-glow-lg data-ready:inset-ring-hairline data-ready:inset-ring-border`}
         role="meter"
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}
@@ -53,7 +53,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
           {(i) => <View class={`absolute left-0 right-0 h-0.75 -translate-y-1/2 bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%` }} />}
         </For>
       </View>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted group-data-kind-fever/gauge:text-fever-ink`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted group-data-kind-fever/gauge:text-fever-ink`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={

@@ -42,7 +42,7 @@ export interface RpgQuestDetailProps {
  */
 export function RpgQuestDetail(props: RpgQuestDetailProps) {
   return (
-    <View class={`group/frame flex-col size-full min-h-0 overflow-hidden nine-panel-cut bg-glass text-fg ${packClass("Panel", "frame")}`} label={props.name} data-with-scenery={props.scenery !== 0}>
+    <View class={`group/frame flex-col size-full min-h-0 overflow-hidden ${packClass("Panel", "frame")}`} label={props.name} data-with-scenery={props.scenery !== 0}>
       {/* Band */}
       <View class={`relative shrink-0 w-full min-h-24 group-data-with-scenery/frame:min-h-48`}>
         <Show when={props.scenery !== 0}>
@@ -74,13 +74,13 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                 <View class={`flex-col`} role="list">
                   <For each={props.objectives ?? []} key={(o) => o.id}>
                     {(o, i) => (
-                      <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-rim`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
+                      <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-border`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
                         <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-regular inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-regular group-data-current/obj:inset-ring-gold group-data-done/obj:bg-success group-data-done/obj:shadow-glow-sm group-data-done/obj:shadow-health group-data-done/obj:inset-ring-regular group-data-done/obj:inset-ring-health`} />
                         <Text class={`grow min-w-0 group-data-step1/obj:text-fg-muted group-data-step1/obj:font-semibold group-data-done/obj:text-fg-subtle group-data-done/obj:line-through`}>
                           {o().text}
                         </Text>
                         <Show when={o().optional}>
-                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-label uppercase bg-tile inset-ring-hairline inset-ring-rim rounded-capsule ${packClass("Chip", "frame")}`}>
+                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-label uppercase ${packClass("Chip", "frame")} rounded-capsule`}>
                             {t("rpg.quest.optional")}
                           </Text>
                         </Show>
@@ -91,7 +91,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
               </View>
             </Show>
             <Show when={(props.rewards ?? []).length}>
-              <View class={`flex-col gap-1 p-2 nine-panel-cut bg-tile`} role="group" label={t("rpg.quest.rewards")}>
+              <View class={`flex-col gap-1 p-2 rounded-panel bg-tile`} role="group" label={t("rpg.quest.rewards")}>
                 <View class="flex-row items-center gap-1" role="heading">
                   <Text class={`text-caption font-semibold tracking-label uppercase text-fg-muted`}>{t("rpg.quest.rewards")}</Text>
                   <View class="grow h-px bg-rim" />
@@ -99,7 +99,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                 <View class={`flex-row flex-wrap items-stretch gap-2`} role="list">
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
-                      <View class={`group/reward flex-row items-center gap-3 grow min-w-62.5 compact:min-w-0 compact:w-full py-1 pl-1 pr-3 nine-chip-cut bg-glass text-fg ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
+                      <View class={`group/reward flex-row items-center gap-3 grow min-w-62.5 compact:min-w-0 compact:w-full py-1 pl-1 pr-3 ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
                         <View class={`relative shrink-0 size-12 nine-socket`}>
                           <View class={`absolute inset-0 nine-socket-rim bg-rim group-data-unique/reward:bg-gold`} />
                           <View class={`size-full flex-row items-center justify-center`}>
@@ -127,19 +127,19 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       <Show when={props.canTrack || props.canLocate}>
         <View class={`shrink flex-row flex-wrap justify-end gap-2 pt-2 px-4 pb-3 compact:px-3`}>
           <Show when={props.canLocate}>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
               <Icon class="shrink size-4" name="map" />
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.locate")}</Text>
             </View>
           </Show>
           <Show when={props.canTrack && props.tracked} fallback={
             <Show when={props.canTrack}>
-              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 rounded-control bg-accent text-accent-fg inset-shadow-lit hover:bg-accent-hover ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
+              <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 ${packClass("Button", "plate")} ${packClass("Button", "plate", "primary")}`} role="button" label={t("rpg.quest.track")} onPress={(e) => props.onTrack?.(e)}>
                 <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.track")}</Text>
               </View>
             </Show>
           }>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-3 disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.untrack")}</Text>
             </View>
           </Show>

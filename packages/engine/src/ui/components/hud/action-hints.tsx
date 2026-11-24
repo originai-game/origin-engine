@@ -43,7 +43,7 @@ function HintRow(props: { hold?: boolean; hint: string; action: string; onPress?
   const held = () => progress() > 0;
   return (
     <View
-      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2 overflow-hidden transition duration-control text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-rim active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
+      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2 overflow-hidden transition duration-control text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-border active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
       role="button"
       label={props.hint}
       {...(props.hold

@@ -22,14 +22,14 @@ export interface RhythmScoreHudProps {
 export function RhythmScoreHud(props: RhythmScoreHudProps) {
   return (
     <View class={`flex-col items-end gap-0 max-w-full`} role="group" label={t("rhythm.hud.name")}>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted`}>
         {t("rhythm.hud.score")}
       </Text>
       <Text class={`text-8xl compact:text-5xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg ${packClass("Count", "roll")}`}>
         {formatNumber(props.score)}
       </Text>
       <Show when={props.accuracy !== "" || props.grade !== ""}>
-        <View class={`flex-row items-baseline justify-end gap-1 mt-1 py-0.5 px-2 compact:mt-0.5 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}>
+        <View class={`flex-row items-baseline justify-end gap-1 mt-1 py-0.5 px-2 compact:mt-0.5 ${packClass("Plate", "frame")}`}>
           <Show when={props.accuracy !== ""}>
             <Text
               class={`text-title compact:text-base font-bold tabular-nums whitespace-nowrap text-fg`}
@@ -50,14 +50,14 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
       </Show>
       <Show when={(props.best ?? 0) > 0}>
         <View class={`flex-row items-baseline justify-end gap-1 mt-0.5`}>
-          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted`}>
             {t("rhythm.hud.best")}
           </Text>
-          <Text class={`text-base font-bold tabular-nums whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
+          <Text class={`text-base font-bold tabular-nums whitespace-nowrap py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted`}>
             {formatNumber(props.best ?? 0)}
           </Text>
           <Text
-            class={`shrink py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap bg-well nine-chip-cut text-success data-trend-down:text-danger ${packClass("Chip", "frame")}`}
+            class={`shrink py-0 px-1 text-xs font-bold tabular-nums whitespace-nowrap text-success data-trend-down:text-danger ${packClass("Chip", "frame")}`}
             data-trend-up={props.score >= (props.best ?? 0)}
             data-trend-down={props.score < (props.best ?? 0)}
           >

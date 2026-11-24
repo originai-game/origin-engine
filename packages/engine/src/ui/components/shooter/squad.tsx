@@ -69,9 +69,9 @@ export function ShooterSquad(props: ShooterSquadProps) {
                   </View>
                 </View>
                 <View class="flex-1 flex-row items-baseline gap-x-2 min-w-0">
-                  <Text class={`min-w-0 text-reading font-semibold whitespace-nowrap truncate text-fg compact:text-caption py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{m().name}</Text>
+                  <Text class={`min-w-0 text-reading font-semibold whitespace-nowrap truncate compact:text-caption py-0.25 px-1.5 ${packClass("Plate", "frame")}`}>{m().name}</Text>
                   <Show when={(m().status ?? "") != ""}>
-                    <Text class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted data-reviving:text-ally-ink data-down:text-danger`}
+                    <Text class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 ${packClass("Plate", "frame")} text-fg-muted data-reviving:text-ally-ink data-down:text-danger`}
                       data-reviving={m().state == "reviving"}
                       data-down={down()}
                     >

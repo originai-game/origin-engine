@@ -48,7 +48,7 @@ export interface ArenaVoteProps {
  * Approximations: the chosen tile's wash is flat and keeps no rim (a cut
  * takes one fill), and the scroll fade at the list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-layer-1 compact:p-2 ${packClass("Panel", "frame")}`;
+const CARD = `w-full max-h-full p-4 compact:p-2 ${packClass("Panel", "frame")}`;
 
 /**
  * A map or mode vote: the options, the local vote, the time left and, once
@@ -77,7 +77,7 @@ export function ArenaVote(props: ArenaVoteProps) {
               <For each={props.options ?? []} key={(o) => o.id}>
                 {(o) => (
                   <View
-                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start nine-plate-cut bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:border-l-thick data-selected:border-hud-accent disabled:text-fg-muted transition duration-control compact:py-1 compact:px-2`}
+                    class={`group/vote flex-row flex-wrap items-center gap-x-2 gap-y-1 w-full min-h-11 py-2 px-3 text-start rounded-card bg-glass-hi hover:bg-raised-hi data-selected:bg-surface-hover data-selected:border-l-thick data-selected:border-hud-accent disabled:text-fg-muted transition duration-control compact:py-1 compact:px-2`}
                     role="button"
                     label={o().name}
                     pressed={props.selected == o().id}

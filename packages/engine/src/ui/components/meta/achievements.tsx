@@ -31,8 +31,8 @@ export interface AchievementsProps {
  */
 export function Achievements(props: AchievementsProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg p-4 gap-2 rounded-panel border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.achievements.name")}>
-      <View class={`flex-row flex-wrap items-center min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
+    <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.achievements.name")}>
+      <View class={`flex-row flex-wrap items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3`}>
         <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.achievements.name")}
         </Text>
@@ -55,7 +55,7 @@ export function Achievements(props: AchievementsProps) {
           <View class={`w-full pt-0 pb-1 px-0 m-0 gap-1 ${packClass("List", "cascade")}`} label={props.title !== '' ? props.title : t("general.achievements.name")}>
             <For each={props.achievements}>
               {(a) => (
-              <View class={`group/row flex-row items-center nine-plate-cut bg-layer-2 text-fg transition duration-control w-full pr-3 pl-2 py-2 gap-3 compact:items-start compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-layer-3 data-ready:bg-layer-3 data-hidden:bg-layer-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("List", "item")}`} label={a().hidden && a().state !== 'unlocked' ? t("general.achievements.hidden") : a().name} data-ready={a().claimable && !a().claimed} data-hidden={a().hidden && a().state !== 'unlocked'} data-claimed={a().claimed} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
+              <View class={`group/row flex-row items-center rounded-card bg-layer-2 text-fg transition duration-control w-full pr-3 pl-2 py-2 gap-3 compact:items-start compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-layer-3 data-ready:bg-layer-3 data-hidden:bg-layer-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("List", "item")}`} label={a().hidden && a().state !== 'unlocked' ? t("general.achievements.hidden") : a().name} data-ready={a().claimable && !a().claimed} data-hidden={a().hidden && a().state !== 'unlocked'} data-claimed={a().claimed} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
                 <View class={`w-16 h-17.5 text-fg-muted bg-linear-to-b from-lit via-current via-40% to-entry-lo to-125% gap-2 group-data-claimed/row:opacity-muted compact:w-12 compact:h-13.25 data-tier-rare:text-info data-tier-epic:text-xp data-tier-legendary:text-warn data-state-locked:text-fg-subtle data-state-locked:bg-linear-to-b data-state-locked:from-sheen data-state-locked:to-lit data-state-locked:bg-transparent`} data-tier-epic={(a().tier) === 'epic'} data-tier-legendary={(a().tier) === 'legendary'} data-tier-rare={(a().tier) === 'rare'} data-state-locked={(a().state) === 'locked'} data-state-unlocked={(a().state) === 'unlocked'}>
                   <View class="absolute justify-center items-center inset-0 gap-2">
                     <Icon class="size-6" name={a().hidden && a().state !== 'unlocked' ? 'lock' : a().icon} />

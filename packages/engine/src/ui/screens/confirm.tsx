@@ -31,7 +31,7 @@ export function Confirm(props: ConfirmProps) {
   return (
     <Show when={props.open}>
       <View class={packClass("Modal", "scrim")} />
-      <View class={`group/confirm shrink min-h-0 m-auto w-115 max-w-full h-auto pt-6 pb-4 nine-panel-cut bg-layer-1 text-fg px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4 ${packClass("Panel", "frame")} ${packClass("Modal", "frame")}`} modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
+      <View class={`group/confirm shrink min-h-0 m-auto w-115 max-w-full h-auto pt-6 pb-4 px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4 ${packClass("Panel", "frame")} ${packClass("Modal", "frame")}`} modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
       <Show when={props.danger}>
         <View class={`items-center gap-x-2 text-xs font-bold tracking-label uppercase text-danger`}>
           <Text class="rotate-45 bg-danger size-2" />
@@ -47,10 +47,10 @@ export function Confirm(props: ConfirmProps) {
         </Text>
       </Scroll>
       <View class={`flex-row flex-wrap-reverse items-center mt-3 gap-2`}>
-        <Button class={`text-fg nine-plate-cut grow shrink max-w-full min-h-11 py-2 disabled:border-transparent active:bg-transparent active:border-transparent hover:bg-transparent hover:border-transparent data-pressed:hover:border-transparent`} onPress={(e) => props.onCancel?.(e)} autofocus>
+        <Button class="grow shrink max-w-full min-h-11 py-2" onPress={(e) => props.onCancel?.(e)} autofocus>
           <Text class="whitespace-normal">{props.cancel}</Text>
         </Button>
-        <Button variant="primary" class={`nine-plate-cut grow shrink max-w-full min-h-11 py-2`} onPress={(e) => props.onConfirm?.(e)}>
+        <Button variant={props.danger ? "danger" : "primary"} class="grow shrink max-w-full min-h-11 py-2" onPress={(e) => props.onConfirm?.(e)}>
           <Text class="whitespace-normal">{props.confirm}</Text>
         </Button>
       </View>

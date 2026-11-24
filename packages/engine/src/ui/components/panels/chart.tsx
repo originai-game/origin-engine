@@ -1,4 +1,4 @@
-import { For, Line, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Line, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./chart.en.ogt";
 
 export interface ChartProps {
@@ -27,7 +27,7 @@ export function Chart(props: ChartProps) {
   const n = () => Math.max(props.bars.length, props.line?.length ?? 0);
   const linePoints = () => (props.line ?? []).flatMap((v, i) => [i + 0.5, max() - Math.min(Math.max(v, 0), max())]);
   return (
-    <View class="w-120 max-w-full gap-1 p-4 nine-panel-cut bg-glass text-fg" role="figure" label={props.title || t("component.chart.name")}>
+    <View class={`w-120 max-w-full gap-1 p-4 ${packClass("Panel", "frame")}`} role="figure" label={props.title || t("component.chart.name")}>
       <Show when={props.subtitle}>
         <Text class="text-caption font-bold tracking-label uppercase text-hud-accent-ink">{props.subtitle}</Text>
       </Show>
@@ -42,7 +42,7 @@ export function Chart(props: ChartProps) {
             )}
           </For>
         </View>
-        <View class="relative grow min-w-0 border-l border-rim">
+        <View class="relative grow min-w-0 border-l border-border">
           <For each={props.ticks ?? []} key={(k) => k.id}>
             {(k) => (
               <View class="absolute inset-x-0 h-px bg-rim" style={{ bottom: `${k().at * 100}%` }} />

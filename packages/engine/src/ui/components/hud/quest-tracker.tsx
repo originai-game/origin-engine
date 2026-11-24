@@ -20,7 +20,7 @@ export interface RpgQuestTrackerProps {
  */
 export function RpgQuestTracker(props: RpgQuestTrackerProps) {
   return (
-    <View class={`gap-y-1.25 gap-x-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate w-62.5 max-w-full p-2 rounded-block border data-empty:hidden compact:w-full`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
+    <View class={`gap-y-1.25 gap-x-2 w-62.5 max-w-full p-2 data-empty:hidden compact:w-full ${packClass("Plate", "frame")}`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
       <Show when={props.name}>
         <Text class={`text-xs font-semibold tracking-label uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg overflow-hidden compact:hidden`}>
           {props.label !== '' ? props.label : t("rpg.quests.main")}
@@ -30,7 +30,7 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
             {props.name}
           </Text>
           <Show when={props.distance}>
-            <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap bg-well inset-shadow-lit rounded-tl-control rounded-tr-none rounded-br-control rounded-bl-none text-fg py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
+            <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
               {props.distance}
             </Text>
           </Show>
@@ -44,7 +44,7 @@ export function RpgQuestTracker(props: RpgQuestTrackerProps) {
                 {s().text}
               </Text>
               <Show when={s().tag}>
-                <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap bg-well inset-shadow-lit rounded-tl-control rounded-tr-none rounded-br-control rounded-bl-none text-fg py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
+                <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
                   {s().tag}
                 </Text>
               </Show>

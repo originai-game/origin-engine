@@ -39,11 +39,11 @@ export interface StatusGridProps {
  */
 // A debuff's edge by its type: theme roles, paired per scheme by the pack.
 const EDGES: Record<string, string> = {
-  magic: "border-info",
-  curse: "border-epic",
-  poison: "border-success",
-  disease: "border-warn",
-  bleed: "border-danger",
+  magic: "inset-ring-info",
+  curse: "inset-ring-epic",
+  poison: "inset-ring-success",
+  disease: "inset-ring-warn",
+  bleed: "inset-ring-danger",
 };
 
 function effectTime(remaining: number): string {
@@ -54,7 +54,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
   const remaining = () => props.effect.remaining ?? 0;
   const duration = () => props.effect.duration ?? 0;
   const stacks = () => props.effect.stacks ?? 0;
-  const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "border-danger" : "border-rim-strong");
+  const edge = () => (props.debuff ? EDGES[props.effect.type ?? ""] ?? "inset-ring-danger" : "inset-ring-border-strong");
   return (
     <View
       class="group/statusgrid flex-col items-center gap-y-0.5 min-w-9"
@@ -67,7 +67,7 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       data-type-bleed={props.effect.type === "bleed"}
     >
       <View
-        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center border ${edge()}`}
+        class={`relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep flex-col items-center justify-center inset-ring-hairline ${edge()}`}
       >
         <Icon class="size-6 text-fg text-shadow-tag group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
@@ -77,12 +77,12 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       <Show when={stacks() > 1 || remaining() > 0}>
         <View class="flex-row items-center gap-x-1">
           <Show when={stacks() > 1}>
-            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {t("component.status-grid.stacks", { count: stacks() })}
             </Text>
           </Show>
           <Show when={remaining() > 0}>
-            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {effectTime(remaining())}
             </Text>
           </Show>
@@ -108,7 +108,7 @@ export function StatusGrid(props: StatusGridProps) {
         </For>
         <Show when={(props.more ?? 0) > 0}>
           <View class="flex-col items-center gap-y-0.5 min-w-9">
-            <View class="relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep border border-rim-strong flex-row items-center justify-center">
+            <View class="relative size-8 overflow-hidden rounded-control bg-linear-to-b from-raised-lo to-surface ring ring-shade-deep inset-ring-hairline inset-ring-border-strong flex-row items-center justify-center">
               <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`+${formatNumber(props.more ?? 0)}`}</Text>
             </View>
           </View>

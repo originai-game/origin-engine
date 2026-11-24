@@ -31,7 +31,7 @@ export function ShooterRound(props: ShooterRoundProps) {
     >
       <Show when={(props.round ?? 0) > 0 || (props.clock ?? "") != ""}>
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-0.75 px-2 nine-plate-cut bg-plate-hi compact:flex-wrap text-fg ${packClass("Plate", "frame")}`}
+          class={`shrink basis-auto min-w-0 flex-row items-baseline gap-1 py-0.75 px-2 compact:flex-wrap ${packClass("Plate", "frame")}`}
         >
           <Show when={(props.round ?? 0) > 0}>
             <Text class="min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate opacity-quiet">
@@ -51,7 +51,7 @@ export function ShooterRound(props: ShooterRoundProps) {
       </Show>
       <View class="min-w-0 flex-1 compact:hidden" />
       <Show when={score()}>
-        <View class={`shrink-0 flex-row items-baseline gap-1 py-0.5 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}>
+        <View class={`shrink-0 flex-row items-baseline gap-1 py-0.5 px-2 ${packClass("Plate", "frame")}`}>
           <Text class="text-title leading-none font-bold tabular-nums whitespace-nowrap text-ally-ink compact:text-base">
             {formatNumber(props.ours ?? 0)}
           </Text>

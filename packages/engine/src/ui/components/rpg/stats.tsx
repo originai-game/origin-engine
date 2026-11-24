@@ -35,7 +35,7 @@ export function RpgStats(props: RpgStatsProps) {
     </View>
   );
   return (
-    <View class={`flex-col size-full p-4 compact:p-2 nine-panel-cut bg-raised-pressed text-fg ${packClass("Panel", "frame")}`} label={props.title}>
+    <View class={`flex-col size-full p-4 compact:p-2 bg-raised-pressed ${packClass("Panel", "frame")}`} label={props.title}>
       <View class={`shrink flex-row items-center justify-center gap-3 w-full`}>
         <View class="shrink-0 w-12 h-4" />
         <Text class={`min-w-0 text-title leading-tight font-bold tracking-sm uppercase text-fg text-center whitespace-normal`} role="heading" level={2}>

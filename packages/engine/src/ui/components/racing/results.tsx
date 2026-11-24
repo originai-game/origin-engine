@@ -28,7 +28,7 @@ function ordinal(n: number): string {
 }
 
 const hudLabel = `text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`;
-const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-hairline inset-ring-rim hover:bg-glass-hi disabled:opacity-dim compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
+const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg disabled:opacity-dim compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 /**
@@ -43,7 +43,7 @@ export function RacingResults(props: RacingResultsProps) {
   const rows = () => props.rows ?? [];
   const playerRow = () => rows().find((r) => r.player);
   return (
-    <View class={`flex-col gap-3 w-full h-full p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} label={heading()}>
+    <View class={`flex-col gap-3 w-full h-full p-4 ${packClass("Panel", "frame")}`} label={heading()}>
       <View class="flex-row w-full shrink-0">
         <Text class={`flex-1 min-w-0 text-display-xl leading-flat font-bold tracking-sm uppercase text-fg compact:text-display-sm`}>{heading()}</Text>
       </View>
@@ -58,12 +58,12 @@ export function RacingResults(props: RacingResultsProps) {
                   <Text class={`text-8xl leading-none font-bold italic whitespace-nowrap text-hud-accent-ink text-stroke-3 text-stroke-bg compact:text-6xl`}>
                     {r().state === "dnf" || r().state === "dsq" ? (r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")) : ordinal(r().position)}
                   </Text>
-                  <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
+                  <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 ${packClass("Plate", "frame")}`}>
                     <Text class={hudLabel}>{t("racing.results.time")}</Text>
                     <Text class={`text-display-md font-bold tabular-nums whitespace-nowrap compact:text-title`}>{r().time}</Text>
                   </View>
                   <Show when={r().points !== ""}>
-                    <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}>
+                    <View class={`flex-row flex-wrap items-baseline justify-between gap-x-3 py-2 px-3 ${packClass("Plate", "frame")}`}>
                       <Text class={hudLabel}>{t("racing.results.points")}</Text>
                       <Text class={`text-display-md font-bold tabular-nums whitespace-nowrap text-gold compact:text-title`}>{r().points}</Text>
                     </View>
@@ -84,7 +84,7 @@ export function RacingResults(props: RacingResultsProps) {
                 <For each={rows()} key={(r) => r.id}>
                   {(r, i) => (
                     <View
-                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-layer-2 nine-plate-cut text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-hud-accent-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
+                      class={`group/results flex-row items-center gap-4 min-h-11 py-0.5 pr-3 bg-layer-2 rounded-card text-fg data-dnf:text-fg-muted data-dsq:text-fg-muted data-player:bg-hud-accent data-player:text-hud-accent-fg compact:gap-2 compact:py-0.5 compact:pr-1`}
                       role="listitem"
                       label={r().name}
                       current={r().player}
@@ -101,10 +101,10 @@ export function RacingResults(props: RacingResultsProps) {
                       <View class="flex-1 min-w-0 flex-row flex-wrap items-center gap-x-0.5 gap-y-0.5">
                         <Text class={`flex-1 basis-full text-left text-reading font-semibold compact:text-caption`}>{r().name}</Text>
                         <Show when={r().player}>
-                          <Text class={`shrink-0 py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap bg-well nine-chip-cut text-fg compact:tracking-sm compact:text-xs ${packClass("Chip", "frame")}`}>{t("racing.results.you")}</Text>
+                          <Text class={`shrink-0 py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap compact:tracking-sm compact:text-xs ${packClass("Chip", "frame")}`}>{t("racing.results.you")}</Text>
                         </Show>
                         <Show when={r().fastest}>
-                          <Text class={`shrink-0 py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap bg-surface nine-chip-cut text-epic ${packClass("Chip", "frame")}`} label={t("racing.results.fastest")}>{t("racing.results.fastest")}</Text>
+                          <Text class={`shrink-0 py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-epic ${packClass("Chip", "frame")}`} label={t("racing.results.fastest")}>{t("racing.results.fastest")}</Text>
                         </Show>
                       </View>
                       <Show
@@ -113,7 +113,7 @@ export function RacingResults(props: RacingResultsProps) {
                           <Text class={`shrink-0 w-27.5 text-right text-title font-bold tabular-nums whitespace-nowrap compact:w-21.5 compact:text-caption`}>{r().time}</Text>
                         }
                       >
-                        <Text class={`shrink-0 ml-auto py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap bg-well nine-chip-cut text-foe-ink ${packClass("Chip", "frame")}`} label={r().state === "dsq" ? t("racing.results.dsqName") : t("racing.results.dnfName")}>
+                        <Text class={`shrink-0 ml-auto py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-foe-ink ${packClass("Chip", "frame")}`} label={r().state === "dsq" ? t("racing.results.dsqName") : t("racing.results.dnfName")}>
                           {r().state === "dsq" ? t("racing.results.dsq") : t("racing.results.dnf")}
                         </Text>
                       </Show>
@@ -136,7 +136,7 @@ export function RacingResults(props: RacingResultsProps) {
           <Text glyph="details" class={keyCap} />
           <Text>{t("racing.results.retry")}</Text>
         </View>
-        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-hairline inset-ring-rim hover:bg-glass-hi disabled:opacity-dim compact:flex-1 compact:min-w-0 bg-hud-accent text-hud-accent-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
+        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase disabled:opacity-dim compact:flex-1 compact:min-w-0 ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
           <Text>{t("racing.results.continue")}</Text>
         </View>
       </View>

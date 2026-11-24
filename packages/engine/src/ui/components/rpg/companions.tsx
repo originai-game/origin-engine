@@ -30,7 +30,7 @@ function isLow(props: RpgCompanionsProps, m: { fallen: boolean; health: number; 
 export function RpgCompanions(props: RpgCompanionsProps) {
   return (
     <View
-      class={`flex-col w-64 max-w-full text-fg text-stroke-3 text-stroke-bg nine-plate-cut bg-plate-hi p-2 gap-y-2.25 compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
+      class={`flex-col w-64 max-w-full text-stroke-3 text-stroke-bg p-2 gap-y-2.25 compact:flex-row compact:flex-wrap compact:w-full compact:gap-x-3 compact:gap-y-2 ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rpg.party.name")}
     >

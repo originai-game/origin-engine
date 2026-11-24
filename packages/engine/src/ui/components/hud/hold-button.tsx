@@ -64,7 +64,7 @@ export function HoldButton(props: HoldButtonProps) {
         </Show>
       </Button>
       <Show when={props.hint}>
-        <Text class={`text-center text-caption mt-1 py-0 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{props.hint}</Text>
+        <Text class={`text-center text-caption mt-1 py-0.5 px-2 ${packClass("Plate", "frame")} text-fg-muted`}>{props.hint}</Text>
       </Show>
     </View>
   );

@@ -17,7 +17,7 @@ export interface RpgCommandsProps {
 export function RpgCommands(props: RpgCommandsProps) {
   return (
     <View
-      class={`flex-col w-full text-fg nine-panel-cut bg-layer-1 p-2 gap-y-2 ${packClass("Panel", "frame")}`}
+      class={`flex-col w-full p-2 gap-y-2 ${packClass("Panel", "frame")}`}
       label={t("rpg.commands.name")}
     >
       <View class={`flex-row items-center justify-center w-full shrink-0 min-h-8 py-0.5 px-3 inset-shadow-underline inset-shadow-rim-soft`}>
@@ -33,7 +33,7 @@ export function RpgCommands(props: RpgCommandsProps) {
         <For each={props.commands ?? []} key={(c) => c.id}>
           {(c) => (
           <View
-            class={`flex-row items-center justify-center gap-1 group/cmd flex h-19.25 min-w-0 p-0 bg-tile rounded-field inset-ring-hairline inset-ring-rim-soft hover:inset-ring-hairline hover:inset-ring-well-rim data-selected:inset-shadow-lit data-selected:inset-ring-regular data-selected:inset-ring-accent disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
+            class={`flex-row items-center justify-center gap-1 group/cmd flex h-19.25 min-w-0 p-0 hover:inset-ring-hairline hover:inset-ring-well-rim data-selected:inset-shadow-lit data-selected:inset-ring-regular data-selected:inset-ring-accent disabled:text-fg-subtle ${packClass("Button", "plate", c().id === props.selected ? "primary" : undefined)}`}
             role="button"
             label={c().label}
             selected={c().id === props.selected}

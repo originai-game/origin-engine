@@ -31,7 +31,7 @@ export interface PuzzleLevelPathProps {
  */
 export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim bg-linear-to-b from-plate-hi to-plate-lo text-fg w-full p-2 gap-2 rounded-block border`} label={t("puzzle.path.name")}>
+    <View class={`grow shrink basis-0 w-full p-2 gap-2 ${packClass("Plate", "frame")}`} label={t("puzzle.path.name")}>
       <Show when={(props.levels ?? []).length && (props.chapters ?? []).length} fallback={
           <View class={`grow shrink basis-0 justify-center items-center p-6 gap-2`} role="status">
             <Text class={`text-base leading-4.5 text-fg text-center bg-tile py-2 px-3 m-0`}>
@@ -43,7 +43,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
           <For each={props.chapters}>
             {(c) => (
             <View class="mb-4 gap-0" label={c().label}>
-              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 bg-plate-hi nine-plate-cut px-3 gap-1 text-fg ${packClass("Plate", "frame")}`}>
+              <View class={`sticky top-0 z-1 w-full pt-2 pb-3 px-3 gap-1 ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
                   <Text class={`grow shrink basis-0 font-display text-3xl font-bold leading-tight tracking-tight text-start whitespace-nowrap m-0 overflow-hidden compact:text-xl`}>
                     {c().label}
@@ -82,7 +82,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                       </View>
                       <View class="shrink basis-0" style={{ flexGrow: String(String(l().x)) }} />
                       <View class="items-center justify-center shrink-0 w-36 h-24 compact:h-16.75">
-                        <View class={`flex-row items-center justify-center gap-1 group/node min-h-11 min-w-11 text-fg bg-linear-to-b from-plate-hi to-plate-lo shadow-float inset-ring-regular inset-ring-rim-strong transition duration-control p-0 size-16 rounded-capsule compact:size-12.75 data-state-current:text-hud-accent-fg data-state-current:from-hud-accent-hi data-state-current:to-hud-accent data-state-current:shadow-glow-lg data-state-current:ring-beacon data-state-current:ring-entry-grain data-state-current:inset-ring-thick data-state-current:inset-ring-knob data-state-current:size-24 data-state-locked:text-fg-muted data-state-locked:from-layer-2 data-state-locked:to-layer-1 data-state-locked:shadow-plate data-state-locked:inset-ring-regular data-state-locked:inset-ring-rim data-state-open:shadow-float data-state-open:inset-ring-thick data-state-open:inset-ring-hud-accent hover:shadow-float hover:inset-ring-regular hover:inset-ring-rim-strong data-selected:inset-shadow-lit data-selected:ring-marker data-selected:ring-knob data-selected:inset-ring-regular data-selected:inset-ring-rim-strong focus-visible:ring-marker focus-visible:ring-rim-strong focus-visible:inset-ring-regular focus-visible:inset-ring-rim-strong compact:data-state-current:size-16.75`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
+                        <View class={`flex-row items-center justify-center gap-1 group/node min-h-11 min-w-11 text-fg bg-linear-to-b from-plate-hi to-plate-lo shadow-float inset-ring-regular inset-ring-border-strong transition duration-control p-0 size-16 rounded-capsule compact:size-12.75 data-state-current:text-hud-accent-fg data-state-current:from-hud-accent-hi data-state-current:to-hud-accent data-state-current:shadow-glow-lg data-state-current:ring-beacon data-state-current:ring-entry-grain data-state-current:inset-ring-thick data-state-current:inset-ring-knob data-state-current:size-24 data-state-locked:text-fg-muted data-state-locked:from-layer-2 data-state-locked:to-layer-1 data-state-locked:shadow-plate data-state-locked:inset-ring-regular data-state-locked:inset-ring-border data-state-open:shadow-float data-state-open:inset-ring-thick data-state-open:inset-ring-hud-accent hover:shadow-float hover:inset-ring-regular hover:inset-ring-border-strong data-selected:inset-shadow-lit data-selected:ring-marker data-selected:ring-knob data-selected:inset-ring-regular data-selected:inset-ring-border-strong focus-visible:ring-marker focus-visible:ring-rim-strong focus-visible:inset-ring-regular focus-visible:inset-ring-border-strong compact:data-state-current:size-16.75`} role="option" selected={l().id === props.selected} disabled={l().state === 'locked'} label={l().state === 'locked' ? t("puzzle.path.levelLocked", { number: l().number }) : l().state === 'done' ? t("puzzle.path.levelDone", { number: l().number, stars: l().stars, max: l().maxStars }) : l().state === 'current' ? t("puzzle.path.levelCurrent", { number: l().number }) : t("puzzle.path.levelOpen", { number: l().number })} onPress={(e) => props.onChoose?.(e, l().id)} onAction={{ details: (e) => props.onDetails?.(e, l().id) }} data-state-current={(l().state) === 'current'} data-state-locked={(l().state) === 'locked'} data-state-open={(l().state) === 'open'} data-selected={l().id === props.selected}>
                           <View class="items-center max-w-105 mx-auto gap-2 size-full">
                             <Show when={l().state === 'locked'} fallback={
                                 <Text class={`text-4xl leading-flat font-bold tabular-nums whitespace-nowrap text-shadow-xs text-shadow-bg group-data-state-current/node:text-display-lg group-data-state-current/node:text-shadow-none`} data-length-long={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'long'} data-length-longer={(l().number >= 10000 ? 'longer' : l().number >= 1000 ? 'long' : null) === 'longer'}>
@@ -117,7 +117,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
                               </Text>
                             </Show>
                         }>
-                          <Text class={`absolute top-25 left-1/2 -translate-x-1/2 whitespace-nowrap font-bold tracking-label uppercase text-caption compact:top-17.75 text-hud-accent-fg bg-hud-accent-hi nine-chip-cut py-0.75 px-3 ${packClass("Chip", "frame")}`}>
+                          <Text class={`absolute top-25 left-1/2 -translate-x-1/2 whitespace-nowrap font-bold tracking-label uppercase text-caption compact:top-17.75 text-hud-accent-fg bg-hud-accent-hi rounded-control py-0.75 px-3`}>
                             {t("puzzle.path.play")}
                           </Text>
                         </Show>

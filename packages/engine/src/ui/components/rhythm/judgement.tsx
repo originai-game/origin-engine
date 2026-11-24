@@ -63,7 +63,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
             </Text>
             <Show when={!props.broken && props.mark !== ""}>
               <Text
-                class={`mt-1 compact:mt-0 py-0 px-2 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold bg-well nine-chip-cut ${packClass("Chip", "frame")}`}
+                class={`mt-1 compact:mt-0 py-0 px-2 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-gold ${packClass("Chip", "frame")}`}
                 data-mark-fullcombo={props.mark === "fullCombo"}
                 data-mark-allperfect={props.mark === "allPerfect"}
               >

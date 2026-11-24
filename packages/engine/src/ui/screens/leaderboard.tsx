@@ -57,7 +57,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <Text>{props.period}</Text>
         </Button>
       </View>
-      <Tabs class={`w-fit max-w-264 mx-auto px-1 rounded-field compact:w-full ${packClass("Plate", "frame")}`} label={t("screen.leaderboard.title")}>
+      <Tabs class={`w-fit max-w-264 mx-auto px-1 compact:w-full ${packClass("Plate", "frame")}`} label={t("screen.leaderboard.title")}>
         <Tab class="uppercase tracking-wide compact:tracking-sm compact:grow compact:basis-0 compact:min-w-0 compact:px-1" selected={props.tab === "global"} onPress={(e) => props.onTab?.(e, "global")}>
           <Text class="truncate">{t("screen.leaderboard.global")}</Text>
         </Tab>
@@ -69,7 +69,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Tab>
       </Tabs>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 flex-row items-center nine-panel-cut flex-wrap bg-plate-hi py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 flex-row items-center flex-wrap bg-plate-hi py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-title font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
@@ -86,8 +86,8 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <View>{props.board?.()}</View>
           <For each={props.rows}>
             {(r) => (
-            <View class={`group/row nine-plate-cut bg-layer-2 text-fg transition duration-control grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-dim compact:gap-x-2 active:scale-nudge ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
-              <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums nine-chip-cut bg-layer-2 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:nine-chip-cut group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:nine-chip-cut group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:nine-chip-cut group-data-place-3/row:text-legendary-fg ${r().rank <= 3 ? "" : packClass("Chip", "frame")}`}>
+            <View class={`group/row bg-layer-2 text-fg transition duration-control grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-dim compact:gap-x-2 active:scale-nudge ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league"&& r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
+              <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums rounded-control bg-layer-2 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:nine-none group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:nine-none group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:nine-none group-data-place-3/row:text-legendary-fg ${r().rank <= 3 ? "" : packClass("Chip", "frame")}`}>
                 {t("screen.leaderboard.RowRank", { value: ordinal(r().rank) })}
               </Text>
               <Art class="size-8 compact:size-6" kind="emblem" src={r().texture} />
@@ -109,8 +109,8 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           </For>
         </View>
       </Scroll>
-      <View class={`w-full max-w-264 flex-row items-center pr-3 pl-1 nine-plate-cut bg-glass text-fg py-2 mx-auto gap-3 ${packClass("Plate", "frame")}`}>
-        <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums nine-plate-cut bg-layer-3 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 shrink ${packClass("Chip", "frame")}`}>
+      <View class={`w-full max-w-264 flex-row items-center pr-3 pl-1 py-2 mx-auto gap-3 ${packClass("Plate", "frame")}`}>
+        <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 shrink ${packClass("Chip", "frame")}`}>
           {t("screen.leaderboard.MeRank", { value: ordinal(props.me.rank) })}
         </Text>
         <Text class="text-base font-semibold whitespace-nowrap shrink m-0 overflow-hidden">

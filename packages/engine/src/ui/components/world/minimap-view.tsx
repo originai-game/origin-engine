@@ -170,7 +170,7 @@ export function MinimapView(props: MinimapViewProps) {
               class="stroke-fg stroke-2"
             />
           </View>
-          <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-hairline inset-ring-rim data-square:rounded-card" data-square={props.square === true} />
+          <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-hairline inset-ring-border data-square:rounded-card" data-square={props.square === true} />
         </View>
         <View
           class="absolute inset-0 pointer-events-none"
@@ -188,7 +188,7 @@ export function MinimapView(props: MinimapViewProps) {
         </View>
       </View>
       <Show when={(props.zone ?? "") !== ""}>
-        <Text class={`py-0.5 px-2 text-caption font-semibold tracking-label uppercase whitespace-nowrap text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>
+        <Text class={`py-0.5 px-2 text-caption font-semibold tracking-label uppercase whitespace-nowrap ${packClass("Plate", "frame")}`}>
           {props.zone}
         </Text>
       </Show>

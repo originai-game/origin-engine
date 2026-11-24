@@ -55,7 +55,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
           <View class={`flex flex-row flex-wrap gap-1 mt-0.5`}>
             <Show when={props.chart !== ""}>
               <Text
-                class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-chart-normal nine-chip-cut data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master ${packClass("Chip", "frame")}`}
+                class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-chart-normal rounded-control data-tier-easy:bg-chart-easy data-tier-hard:bg-chart-hard data-tier-expert:bg-fever data-tier-master:bg-chart-master data-tier-special:bg-chart-master`}
                 data-tier-easy={props.tier === "easy"}
                 data-tier-hard={props.tier === "hard"}
                 data-tier-expert={props.tier === "expert"}
@@ -67,7 +67,7 @@ export function RhythmSongPlate(props: RhythmSongPlateProps) {
             </Show>
             <For each={props.modifiers ?? []} key={(m) => m.id}>
               {(m) => (
-                <Text class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden text-fg bg-well nine-chip-cut ${packClass("Chip", "frame")}`}>
+                <Text class={`max-w-full py-0 px-1 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis overflow-hidden ${packClass("Chip", "frame")}`}>
                   {m().label}
                 </Text>
               )}

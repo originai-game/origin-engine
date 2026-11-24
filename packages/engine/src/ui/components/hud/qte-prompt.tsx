@@ -43,7 +43,7 @@ export function QtePrompt(props: QtePromptProps) {
   const action = () => (props.action ?? "").trim();
   return (
     <View
-      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 text-fg data-state-failed:animate-shake data-state-success:animate-beat ${packClass("Plate", "frame")}`}
+      class={`flex-col max-w-full gap-y-2 p-2 data-state-failed:animate-shake data-state-success:animate-beat ${packClass("Plate", "frame")}`}
       label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
       busy={state() === "waiting"}
       data-state-success={state() === "success"}
@@ -69,7 +69,7 @@ export function QtePrompt(props: QtePromptProps) {
           </Show>
         </View>
         <View
-          class={`relative flex-1 flex-row items-center justify-center min-h-11 min-w-0 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-dim`}
+          class={`relative flex-1 flex-row items-center justify-center min-h-11 min-w-0 max-w-full py-2 px-3 gap-x-2 bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button inset-ring-hairline inset-ring-border-strong overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-dim`}
           role="button"
           label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
           hold={hold() ? Math.max(props.holdMs ?? 600, 1) / 1000 : undefined}

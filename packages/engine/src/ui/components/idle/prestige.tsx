@@ -45,9 +45,9 @@ export interface IdlePrestigeProps {
  */
 export function IdlePrestige(props: IdlePrestigeProps) {
   return (
-    <View class={`grow shrink basis-0 nine-panel-cut bg-glass-hi text-fg w-full h-auto max-h-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.prestige.name")} data-confirming={props.confirming === true} data-met={props.met === true}>
+    <View class={`grow shrink basis-0 w-full h-auto max-h-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.prestige.name")} data-confirming={props.confirming === true} data-met={props.met === true}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
-      <View class={`min-h-12 border-b border-rim-soft w-full items-start py-1 px-4 gap-0`}>
+      <View class={`min-h-12 border-b border-border-muted w-full items-start py-1 px-4 gap-0`}>
         <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
           {t("idle.prestige.kicker")}
         </Text>
@@ -58,7 +58,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
       <Scroll class="shrink gap-0 ">
         <View class="w-full gap-3">
           <View class="flex-row items-center w-full gap-3">
-            <View class={`justify-center items-center bg-tile shadow-plate inset-ring-regular inset-ring-rim gap-2 size-16 rounded-full`}>
+            <View class={`justify-center items-center bg-tile shadow-plate inset-ring-regular inset-ring-border gap-2 size-16 rounded-full`}>
               <Icon class="size-7/10" name={props.icon} />
             </View>
             <View class="grow shrink basis-0 gap-0">
@@ -82,7 +82,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             <View class="w-full p-0 m-0 gap-0.5" label={t("idle.prestige.bonus")}>
               <For each={props.rows}>
                 {(r) => (
-                <View class={`flex-row items-center nine-plate-cut text-fg transition duration-control w-full min-h-8 py-0.5 px-2 gap-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim compact:flex-wrap compact:py-0.5 compact:px-1 ${packClass("Row", "frame")}`} label={t("idle.prestige.rowName", { label: r().label, now: r().now, after: r().after })}>
+                <View class={`flex-row items-center text-fg transition duration-control w-full min-h-8 py-0.5 px-2 gap-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim compact:flex-wrap compact:py-0.5 compact:px-1 ${packClass("Row", "frame")}`} label={t("idle.prestige.rowName", { label: r().label, now: r().now, after: r().after })}>
                   <Icon class="size-6" name={r().icon} />
                   <Text class={`grow shrink basis-0 text-fg text-start font-semibold`}>
                     {r().label}
@@ -102,10 +102,10 @@ export function IdlePrestige(props: IdlePrestigeProps) {
             </View>
           </Show>
           <Show when={props.requirement !== ''}>
-            <View class={`bg-tile inset-ring-hairline inset-ring-rim p-2 gap-1`} data-met={props.met === true}>
+            <View class={`bg-tile inset-ring-hairline inset-ring-border p-2 gap-1`} data-met={props.met === true}>
               <View class="flex-row items-center w-full gap-1">
                 <Text class="grow shrink basis-0 text-start text-fg">{props.requirement}</Text>
-                <View class={`flex-row items-center bg-tile nine-chip-cut text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:nine-chip-cut data-met:text-success-fg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
+                <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-fg-muted py-0 px-1 gap-0.5 data-met:bg-success data-met:bg-none data-met:nine-none data-met:text-success-fg ${packClass("Chip", "frame")}`} data-met={props.met === true}>
                   <Icon class="text-shadow-tag size-3" name={props.met ? 'check' : 'lock'} />
                   <Text class="whitespace-nowrap text-shadow-tag shrink">
                     {props.met ? t("idle.prestige.met") : t("idle.prestige.notMet")}

@@ -55,9 +55,9 @@ export interface RpgCraftingProps {
  */
 export function RpgCrafting(props: RpgCraftingProps) {
   return (
-    <View class={`grow shrink basis-0 border-rim rounded-panel bg-linear-to-b from-glass-hi to-glass-lo shadow-panel text-fg w-full p-4 gap-3 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("rpg.craft.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
+    <View class={`grow shrink basis-0 w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("rpg.craft.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-slot-selected-edge to-transparent to-70% pointer-events-none" />
-      <View class={`min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-0.5`}>
+      <View class={`min-h-12 border-b border-border-muted w-full py-1 px-4 gap-0.5`}>
         <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap`}>
           {t("rpg.craft.title")}
         </Text>
@@ -87,12 +87,12 @@ export function RpgCrafting(props: RpgCraftingProps) {
           <View class={`gap-1 overflow-auto compact:grow-0 compact:shrink compact:basis-auto compact:max-h-2/5`} role="listbox" label={t("rpg.craft.title")}>
             <For each={(props.recipes ?? [])} key={(recipe) => recipe.id}>
               {(recipe) => (
-              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut text-fg transition duration-control w-full min-h-11 pr-2 pl-3 py-1 hover:bg-surface-hover ${recipe().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-subtle data-down:opacity-dim data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
+              <View class={`flex-row items-center justify-start gap-1 group/row relative text-fg transition duration-control w-full min-h-11 pr-2 pl-3 py-1 hover:bg-surface-hover ${recipe().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-subtle data-down:opacity-dim data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity ||'common') === "uncommon"} data-tier-rare={(recipe().rarity ||'common') === "rare"} data-tier-epic={(recipe().rarity ||'common') === "epic"} data-tier-legendary={(recipe().rarity ||'common') === "legendary"} data-tier-mythic={(recipe().rarity ||'common') === "mythic"}>
                 {/* The rarity's leading edge, inside the frame, which is the row's edge. */}
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                 <View class={`items-center w-full gap-2`}>
-                  <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-11 shrink-0 group-data-not-can/row:opacity-dim group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("Slot", "frame")}`}>
+                  <View class={`justify-center items-center gap-2 size-11 shrink-0 group-data-not-can/row:opacity-dim group-data-tier-uncommon/row:inset-ring-regular group-data-tier-uncommon/row:inset-ring-uncommon group-data-tier-rare/row:inset-ring-regular group-data-tier-rare/row:inset-ring-rare group-data-tier-epic/row:inset-ring-regular group-data-tier-epic/row:inset-ring-epic group-data-tier-legendary/row:inset-ring-regular group-data-tier-legendary/row:inset-ring-legendary group-data-tier-mythic/row:inset-ring-regular group-data-tier-mythic/row:inset-ring-mythic ${packClass("Slot", "frame")}`}>
                     <Icon class={`size-37/50`} name={recipe().icon} />
                   </View>
                   <View class="items-start text-start gap-0.5 shrink min-w-0">
@@ -145,7 +145,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       <View class={`grid grid-cols-fill-32.5 p-0 m-0 gap-1`}>
                         <For each={(props.ingredients ?? [])} key={(ingredient) => ingredient.id}>
                           {(ingredient) => (
-                          <View class={`bg-tile nine-plate-cut py-1 px-2 gap-0.5 data-not-sufficient:border-danger`} data-not-sufficient={!(ingredient().sufficient)}>
+                          <View class={`bg-tile rounded-card py-1 px-2 gap-0.5 data-not-sufficient:inset-ring-regular data-not-sufficient:inset-ring-danger`} data-not-sufficient={!(ingredient().sufficient)}>
                             <Text class={`text-fg-muted`}>
                               {ingredient().name}
                             </Text>
@@ -167,13 +167,13 @@ export function RpgCrafting(props: RpgCraftingProps) {
                     </Text>
                   </Show>
                 </View>
-                <View class="w-full pt-2 border-t border-rim-soft gap-1">
+                <View class="w-full pt-2 border-t border-border-muted gap-1">
                   <View class="flex-row items-center justify-between flex-wrap gap-2">
                     <View class={`flex-row items-center gap-0`}>
                       <View class={`flex-row gap-1 min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.less")} disabled={!(props.canDecrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onDecrease?.(e, recipe().id)}>
                         <Text>{t("rpg.economy.minus")}</Text>
                       </View>
-                      <View class={`grid items-center justify-items-center min-w-16 min-h-11 text-lg font-bold bg-well border border-rim-soft shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
+                      <View class={`grid items-center justify-items-center min-w-16 min-h-11 text-lg font-bold rounded-field bg-well inset-ring-hairline inset-ring-border shrink`} label={t("rpg.economy.quantity", { quantity: (props.quantity ?? 1) })}>
                         <Text class="tabular-nums">{formatNumber((props.quantity ?? 1))}</Text>
                       </View>
                       <View class={`flex-row gap-1 min-w-11 min-h-11 shrink px-4 items-center justify-center ${packClass("Button", "plate")}`} role="button" label={t("rpg.economy.more")} disabled={!(props.canIncrease ?? false) || (props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onIncrease?.(e, recipe().id)}>

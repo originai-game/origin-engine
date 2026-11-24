@@ -137,7 +137,7 @@ export function HudSlot(props: HudSlotProps) {
           </Show>
           <Show when={(props.count ?? 0) > 0}>
             <View class="absolute top-0 right-0">
-              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface inset-shadow-lit px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-normal text-fg rounded-bl-control overflow-hidden">
+              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface inset-shadow-lit px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-normal text-fg rounded-control overflow-hidden">
                 {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
               </Text>
             </View>

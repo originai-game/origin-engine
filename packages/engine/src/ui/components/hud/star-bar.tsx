@@ -44,7 +44,7 @@ export function StarBar(props: StarBarProps) {
       valueMax={max()}
       valueNow={props.value ?? 0}
     >
-      <View class={`flex-col items-center py-0.5 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+      <View class={`flex-col items-center py-0.5 px-2 ${packClass("Plate", "frame")}`}>
         <Show when={(props.label ?? "") !== "" && !props.compact}>
           <Text class="text-caption text-fg-muted">{props.label}</Text>
         </Show>

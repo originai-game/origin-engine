@@ -54,7 +54,7 @@ export interface ResultsScreenProps {
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
     <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <View class={`text-fg max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 compact:h-auto compact:max-h-full compact:my-auto shrink ${packClass("Panel", "frame")}`}>
+      <View class={`max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 compact:h-auto compact:max-h-full compact:my-auto shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 compact:grow-0 compact:basis-auto gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="flex-row items-end gap-6 compact:items-start compact:gap-3">
             <View class="grow shrink basis-0 gap-3 compact:gap-2">
@@ -120,13 +120,13 @@ export function ResultsScreen(props: ResultsScreenProps) {
               <View class={`grid grid-cols-fit-48.5 gap-3 compact:grid-cols-1 compact:gap-1 short:grid-cols-1 short:gap-1 ${packClass("List", "cascade")}`}>
                 <For each={props.stats}>
                   {(s) => (
-                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-control justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
+                  <View class={`rounded-card bg-plate-hi text-fg transition duration-control justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
                     <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0 shrink`}>
                         {s().name}
                       </Text>
                       <Show when={s().best}>
-                        <Text class={`text-xs font-bold tracking-label uppercase text-gold-fg bg-gold-hi nine-chip-cut whitespace-nowrap py-0 px-1 ${packClass("Chip", "frame")}`}>
+                        <Text class={`text-xs font-bold tracking-label uppercase text-gold-fg bg-gold-hi rounded-control whitespace-nowrap py-0 px-1`}>
                           {t("screen.results.best")}
                         </Text>
                       </Show>
@@ -150,7 +150,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <View class={`flex-row flex-wrap gap-3 ${packClass("List", "cascade")}`}>
                     <For each={props.rewards}>
                       {(r) => (
-                      <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
+                      <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
                         <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                           <Show when={!r().texture && r().icon}>

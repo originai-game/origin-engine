@@ -24,10 +24,10 @@ export interface CardProps {
  */
 export function Card(props: CardProps) {
   return (
-    <View class={`text-fg w-70 max-w-full p-0 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
-      <Button class={`text-fg bg-plate-hi nine-plate-cut w-full text-start p-3`} onPress={(e) => props.onOpen?.(e)} label={props.title}>
+    <View class={`w-70 max-w-full p-0 gap-2 overflow-hidden disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
+      <Button variant="ghost" class="w-full text-start p-3 rounded-panel" onPress={(e) => props.onOpen?.(e)} label={props.title}>
         <View class="w-full gap-2">
-          <Image class={`w-full aspect-16/9 nine-plate-cut data-hidden:hidden`} src={props.image} data-hidden={props.image === 0} />
+          <Image class="w-full aspect-16/9 rounded-card data-hidden:hidden" src={props.image} data-hidden={props.image === 0} />
           <View class="flex-wrap items-start gap-y-1 gap-x-2">
             <Text class={`font-display text-base font-bold leading-tight tracking-tight grow shrink basis-30 text-start whitespace-normal m-0`}>
               {props.title}

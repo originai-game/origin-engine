@@ -40,8 +40,8 @@ export interface ArenaReadyProps {
  * local readiness is faked. Approximations: the scroll fade at the
  * list's foot is dropped.
  */
-const CARD = `w-full max-h-full p-4 nine-panel-cut bg-layer-1 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-dim ${packClass("Button", "plate")}`;
+const CARD = `w-full max-h-full p-4 ${packClass("Panel", "frame")}`;
+const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg disabled:opacity-dim ${packClass("Button", "plate")}`;
 
 /**
  * A ready check: the players asked and their answers, the time left as the
@@ -98,7 +98,7 @@ export function ArenaReady(props: ArenaReadyProps) {
       </Show>
       <View class="flex-row flex-wrap gap-x-1 gap-y-1">
         <View
-          class={`flex-row items-center justify-center gap-1 ${BUTTON} text-boon-fg bg-none bg-success hover:bg-success ${packClass("Button", "plate", "primary")}`}
+          class={`flex-row items-center justify-center gap-1 ${BUTTON} ${packClass("Button", "plate", "primary")}`}
           role="button"
           label={t("ready.accept")}
           pressed={props.response == "ready"}

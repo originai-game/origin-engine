@@ -65,7 +65,7 @@ export function LootLabel(props: LootLabelProps) {
       data-legendary={rarity() === "legendary"}
     >
       <View
-        class={`group/chip relative flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap nine-chip-cut bg-raised-pressed animate-pop hover:scale-lift hover:bg-tile group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile data-hovered:scale-lift data-hovered:bg-tile text-fg ${packClass("Chip", "frame")}`}
+        class={`group/chip relative flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap animate-pop hover:scale-lift hover:bg-tile group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile data-hovered:scale-lift data-hovered:bg-tile ${packClass("Chip", "frame")}`}
         data-more={more() > 0}
         data-hovered={props.hovered}
         role="button"

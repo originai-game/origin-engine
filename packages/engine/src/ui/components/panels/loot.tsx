@@ -8,7 +8,7 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** An item's socket: its ground tinted by its rarity, the icon over it. */
 const socket =
-  "relative flex-row items-center justify-center nine-plate-cut bg-tile group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic";
+  "relative flex-row items-center justify-center rounded-card bg-tile group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic";
 
 export interface RpgLootProps {
   /** The source's name; empty uses Loot. */
@@ -52,13 +52,13 @@ export function RpgLoot(props: RpgLootProps) {
   const busy = () => props.busy ?? false;
   return (
     <View
-      class={`relative grow shrink basis-0 min-h-0 nine-panel-cut bg-glass text-fg p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
+      class={`relative grow shrink basis-0 min-h-0 p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}
       label={props.title || t("rpg.loot.title")}
       busy={loading() || busy()}
       onAction={{ back: (e) => props.onClose?.(e) }}
     >
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
-      <View class="shrink border-b border-rim-soft w-full py-1 px-4 gap-0.5">
+      <View class="shrink border-b border-border-muted w-full py-1 px-4 gap-0.5">
         <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
           {items().length ? t("rpg.loot.kicker", { count: formatNumber(items().length) }) : t("rpg.loot.title")}
         </Text>
@@ -88,7 +88,7 @@ export function RpgLoot(props: RpgLootProps) {
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut hover:bg-surface-hover transition duration-control ${packClass("Row", "frame")} ${packClass("List", "item")}`}
+                class={`group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 hover:bg-surface-hover transition duration-control ${packClass("Row", "frame")} ${packClass("List", "item")}`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}
@@ -101,7 +101,7 @@ export function RpgLoot(props: RpgLootProps) {
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-focus-within/row:block group-focus-within/row:bg-hud-accent group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-dim compact:row-span-2`}>
                   <Show when={(item().rarity || "common") !== "common"}>
-                    <View class="absolute inset-0 nine-plate-cut bg-current opacity-faint" />
+                    <View class="absolute inset-0 rounded-card bg-current opacity-faint"/>
                   </Show>
                   <Icon class="relative size-39/50" name={item().icon} />
                 </View>

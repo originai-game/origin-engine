@@ -47,15 +47,15 @@ export interface ArenaRoundHudProps {
  * are dropped, and a phone keeps the row, the names above the scores
  * (team b's name keeps its place after the score: no order surface).
  */
-const PLATE_RIM = "inset-shadow-lit inset-ring-hairline inset-ring-rim";
+const PLATE_RIM = "inset-shadow-lit inset-ring-hairline inset-ring-border";
 const TEAM_PLATE = `bg-glass ${PLATE_RIM}`;
-const TEAM_A_PLATE = "inset-shadow-underline inset-shadow-team1 inset-ring-hairline inset-ring-rim";
-const TEAM_B_PLATE = "inset-shadow-underline inset-shadow-team2 inset-ring-hairline inset-ring-rim";
+const TEAM_A_PLATE = "inset-shadow-underline inset-shadow-team1 inset-ring-hairline inset-ring-border";
+const TEAM_B_PLATE = "inset-shadow-underline inset-shadow-team2 inset-ring-hairline inset-ring-border";
 const NAME = "min-w-0 text-base leading-tight font-bold uppercase tracking-sm text-fg";
 const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 shadow-glow-lg shadow-team1 compact:text-3xl";
 const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 shadow-glow-lg shadow-team2 compact:text-3xl";
-const YOU = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-hud-accent-fg nine-chip-cut bg-hud-accent whitespace-nowrap`;
-const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 bg-raised-pressed ${PLATE_RIM} ${packClass("Plate", "frame")}`;
+const YOU = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-hud-accent-fg rounded-control bg-hud-accent whitespace-nowrap`;
+const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 ${PLATE_RIM} ${packClass("Plate", "frame")}`;
 
 /**
  * The round's HUD for two teams: each team's name and score on a plate (the
@@ -70,7 +70,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
     <View class="flex-col items-center gap-y-6 max-w-full min-w-0 pointer-events-none text-fg compact:gap-y-4" role="group" label={t("arena.round.name")}>
       <View class="flex-row items-stretch justify-center gap-x-0.5 max-w-full min-w-0 compact:w-full compact:flex-wrap">
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 rounded-tl-card py-1 px-4 ${TEAM_PLATE} ${TEAM_A_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
+          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 rounded-card py-1 px-4 ${TEAM_PLATE} ${TEAM_A_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
           role="group"
           label={nameA()}
           data-local={props.localTeam == "a"}
@@ -92,7 +92,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
           </Show>
         </View>
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-center justify-start gap-x-2 rounded-tr-card py-1 px-4 ${TEAM_PLATE} ${TEAM_B_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
+          class={`shrink basis-auto min-w-0 flex-row items-center justify-start gap-x-2 rounded-card py-1 px-4 ${TEAM_PLATE} ${TEAM_B_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
           role="group"
           label={nameB()}
           data-local={props.localTeam == "b"}
@@ -108,7 +108,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
       </View>
       <View class="w-full flex-row justify-center" role="status" live="assertive">
         <Show when={ended() ? `${props.outcome}:${props.at ?? 0}` : false} keyed>
-          <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 bg-glass nine-panel-cut animate-stamp compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
+          <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 animate-stamp compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
             <Text
               class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold shadow-glow-lg shadow-gold data-lost:text-danger data-lost:shadow-glow-lg data-lost:shadow-critical`}
               data-lost={props.outcome == "lost"}

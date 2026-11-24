@@ -72,7 +72,7 @@ export function InteractionPrompt(props: InteractionPromptProps) {
         </Show>
         <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong" glyph={key() === "" && action() !== "" ? action() : undefined}>{key()}</Text>
       </View>
-      <View class="flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 nine-plate-cut bg-plate-hi">
+      <View class="flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 rounded-card bg-plate-hi">
         <Text class="text-reading leading-tight font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>
         <Show when={name() !== ""}>
           <Text class="min-w-0 max-w-50 text-2xs leading-tight font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted">{name()}</Text>

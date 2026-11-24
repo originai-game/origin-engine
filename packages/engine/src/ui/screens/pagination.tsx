@@ -37,7 +37,7 @@ export function Pagination(props: PaginationProps) {
               </Text>
             </Show>
             <Show when={!p().gap}>
-              <Button variant={p().current ? "primary" : undefined} class={`min-w-11 min-h-11 font-bold rounded-control ${p().current ? "" : "bg-tile inset-ring-hairline inset-ring-rim-soft"}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
+              <Button variant={p().current ? "primary" : undefined} class={`min-w-11 min-h-11 font-bold rounded-control ${p().current ? "" : "bg-tile inset-ring-hairline inset-ring-border"}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
                 <Text class="tabular-nums">{p().label}</Text>
               </Button>
             </Show>

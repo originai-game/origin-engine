@@ -15,7 +15,7 @@ export interface RpgHintsProps {
 export function RpgHints(props: RpgHintsProps) {
   return (
     <View
-      class={`flex-row flex-wrap justify-end max-w-full text-fg nine-plate-cut bg-plate-hi p-2 gap-x-4 gap-y-1 pointer-coarse:hidden ${packClass("Plate", "frame")}`}
+      class={`flex-row flex-wrap justify-end max-w-full p-2 gap-x-4 gap-y-1 pointer-coarse:hidden ${packClass("Plate", "frame")}`}
       role="list"
       label={t("rpg.hints.name")}
     >

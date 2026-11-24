@@ -68,7 +68,7 @@ export function ListItem(props: ListItemProps) {
                     </Text>
                   </Show>
                   <Show when={props.badge}>
-                    <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control py-0 px-2 rounded-capsule`}>
+                    <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control py-0 px-2 rounded-capsule`}>
                       {props.badge}
                     </Text>
                   </Show>

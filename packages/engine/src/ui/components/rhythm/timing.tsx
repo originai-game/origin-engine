@@ -17,7 +17,7 @@ export interface RhythmTimingProps {
 export function RhythmTiming(props: RhythmTimingProps) {
   return (
     <View
-      class={`flex-col gap-1 w-49 max-w-full py-2 px-3 bg-plate-hi nine-plate-cut text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col gap-1 w-49 max-w-full py-2 px-3 ${packClass("Plate", "frame")}`}
       role="group"
       label={t("rhythm.timing.name")}
     >

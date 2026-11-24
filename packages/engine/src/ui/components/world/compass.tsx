@@ -94,7 +94,7 @@ export function Compass(props: CompassProps) {
   return (
     <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
       <View class="flex-col items-center relative z-1 -mb-1">
-        <Text class="py-0 px-1.25 text-xs leading-snug font-bold tabular-nums text-hud-accent-fg bg-hud-accent rounded-tl-control rounded-br-control text-shadow-none">
+        <Text class="py-0 px-1.25 text-xs leading-snug font-bold tabular-nums text-hud-accent-fg bg-hud-accent rounded-control text-shadow-none">
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
