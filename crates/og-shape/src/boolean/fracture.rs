@@ -559,9 +559,11 @@ fn split(m: &Mesh) -> Vec<Vec<usize>> {
 }
 
 /// Each piece's cut faces towards each neighbouring cell: (area,
-/// area-weighted centroid sum, area-weighted normal sum).
-fn faces_by_neighbour(p: &Piece) -> BTreeMap<u32, (f64, DVec3, DVec3)> {
-    let mut out: BTreeMap<u32, (f64, DVec3, DVec3)> = BTreeMap::new();
+/// Per-triangle cut face summary: `(area, centroid, weighted normal, aabb min, aabb max)`.
+type CutFace = (f64, DVec3, DVec3, DVec3, DVec3);
+
+fn cut_faces_by_neighbour(p: &Piece) -> BTreeMap<u32, Vec<CutFace>> {
+    let mut out: BTreeMap<u32, Vec<CutFace>> = BTreeMap::new();
     for (t, tri) in p.mesh.indices.as_chunks::<3>().0.iter().enumerate() {
         let Some(Some(j)) = p.faces.get(t).copied() else {
             continue;
@@ -570,55 +572,95 @@ fn faces_by_neighbour(p: &Piece) -> BTreeMap<u32, (f64, DVec3, DVec3)> {
             continue;
         }
         let (a, c, n) = tri_area(&p.mesh, tri);
-        let e = out.entry(j).or_default();
-        e.0 += a;
-        e.1 += c * a;
-        e.2 += n;
+        if a <= 0.0 {
+            continue;
+        }
+        let p0 = DVec3::from_array(p.mesh.positions[tri[0] as usize].map(f64::from));
+        let p1 = DVec3::from_array(p.mesh.positions[tri[1] as usize].map(f64::from));
+        let p2 = DVec3::from_array(p.mesh.positions[tri[2] as usize].map(f64::from));
+        let lo = p0.min(p1).min(p2);
+        let hi = p0.max(p1).max(p2);
+        out.entry(j).or_default().push((a, c, n, lo, hi));
     }
     out
 }
 
-/// The bonds between pieces of neighbouring cells: a piece's cut faces
-/// towards cell j bond it to the piece of cell j whose faces towards its
-/// cell lie nearest.
+fn aabb_overlaps(lo0: DVec3, hi0: DVec3, lo1: DVec3, hi1: DVec3, eps: f64) -> bool {
+    lo0.x <= hi1.x + eps
+        && hi0.x + eps >= lo1.x
+        && lo0.y <= hi1.y + eps
+        && hi0.y + eps >= lo1.y
+        && lo0.z <= hi1.z + eps
+        && hi0.z + eps >= lo1.z
+}
+
+/// The bonds between pieces of neighbouring cells: every pair of pieces
+/// `(a, b)` in adjacent cells whose opposing cut faces actually touch within
+/// geometric tolerance gets a bond carrying the contacting face subset's
+/// area, centroid, and normal. Non-convex pieces touching multiple parts of
+/// one neighbour cell produce one bond per contacting pair, and faces
+/// separated by empty air never form phantom bonds.
 fn bonds(pieces: &[Piece]) -> Vec<Bond> {
-    let faces: Vec<_> = pieces.iter().map(faces_by_neighbour).collect();
+    const CONTACT_EPS: f64 = 2.0e-3;
+    let faces: Vec<_> = pieces.iter().map(cut_faces_by_neighbour).collect();
     let mut by_cell: BTreeMap<u32, Vec<usize>> = BTreeMap::new();
     for (k, p) in pieces.iter().enumerate() {
         by_cell.entry(p.cell).or_default().push(k);
     }
     let mut out = Vec::new();
     for (a, pa) in pieces.iter().enumerate() {
-        for (&j, &(area, csum, nsum)) in &faces[a] {
-            if j <= pa.cell || area <= 0.0 {
+        for (&j, tris_a) in &faces[a] {
+            if j <= pa.cell || tris_a.is_empty() {
                 continue;
             }
-            let centroid = csum / area;
             let Some(candidates) = by_cell.get(&j) else {
                 continue;
             };
-            let best = candidates
-                .iter()
-                .filter_map(|&b| {
-                    let &(ab, cb, _) = faces[b].get(&pa.cell)?;
-                    (ab > 0.0).then(|| (b, (cb / ab - centroid).length_squared()))
-                })
-                .min_by(|x, y| x.1.total_cmp(&y.1).then(x.0.cmp(&y.0)));
-            let Some((b, _)) = best else { continue };
-            // The faces of a towards j face out of a: towards b.
-            let normal = nsum.normalize_or_zero();
-            let (lo, hi, normal) = if a < b {
-                (a, b, normal)
-            } else {
-                (b, a, -normal)
-            };
-            out.push(Bond {
-                a: lo as u32,
-                b: hi as u32,
-                centroid,
-                normal,
-                area,
-            });
+            for &b in candidates {
+                let Some(tris_b) = faces[b].get(&pa.cell) else {
+                    continue;
+                };
+                if tris_b.is_empty() {
+                    continue;
+                }
+                let (mut b_lo, mut b_hi) =
+                    (DVec3::splat(f64::INFINITY), DVec3::splat(f64::NEG_INFINITY));
+                for &(_, _, _, lo, hi) in tris_b {
+                    b_lo = b_lo.min(lo);
+                    b_hi = b_hi.max(hi);
+                }
+                let (mut area, mut csum, mut nsum) = (0.0, DVec3::ZERO, DVec3::ZERO);
+                for &(ta, tc, tn, tlo, thi) in tris_a {
+                    if !aabb_overlaps(tlo, thi, b_lo, b_hi, CONTACT_EPS) {
+                        continue;
+                    }
+                    let touches = tris_b
+                        .iter()
+                        .any(|&(_, _, _, blo, bhi)| aabb_overlaps(tlo, thi, blo, bhi, CONTACT_EPS));
+                    if touches {
+                        area += ta;
+                        csum += tc * ta;
+                        nsum += tn;
+                    }
+                }
+                if area <= 0.0 {
+                    continue;
+                }
+                let centroid = csum / area;
+                let normal = nsum.normalize_or_zero();
+                let (lo, hi, normal) = if a < b {
+                    (a, b, normal)
+                } else {
+                    (b, a, -normal)
+                };
+                out.push(Bond {
+                    a: lo as u32,
+                    b: hi as u32,
+                    centroid,
+                    normal,
+                    area,
+                });
+            }
         }
     }
     out.sort_by_key(|x| (x.a, x.b));

@@ -787,8 +787,6 @@ impl ScatterRenderer {
             // chunk in reach is culled. Any other: the chunks the camera
             // may see, copy by copy.
             let off_camera = lods[0].is_some() || impostor.is_some() || s.density_map.is_some();
-            // A copy's scale is the scatter's on the terrain's.
-            let ground = t.transform.transform_vector3(Vec3::X).length();
             let culled = keys
                 .iter()
                 .map(|k| {
@@ -822,7 +820,7 @@ impl ScatterRenderer {
                             let flat = to.x.hypot(to.z);
                             (flat - c.radius, flat + c.radius)
                         },
-                        scale: (ground * s.scale[0], ground * s.scale[1]),
+                        scale: (s.scale[0], s.scale[1]),
                     });
                     Some(cull_items.len() - 1)
                 })

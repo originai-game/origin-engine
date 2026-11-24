@@ -56,6 +56,7 @@ pub mod resample;
 pub mod schema;
 pub mod sink;
 pub mod sound;
+pub mod synth;
 pub mod system;
 
 /// The QOA codec: og-bundle's `src/qoa.rs`, compiled into this crate so audio

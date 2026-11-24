@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
+cook = ["og-render-data/bake", "dep:og-audio", "dep:resvg", "dep:blake3", "dep:og-story", "dep:og-i18n", "og-ai/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:ttf-parser", "dep:skrifa", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui-next", "dep:og-text", "dep:og-rive", "dep:og-css", "dep:og-tween", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-shape", "dep:og-shape-formats", "dep:og-video", "dep:ufbx", "dep:libm", "dep:og-bake"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -33,6 +33,7 @@ og-render-data = { path = "../og-render-data" }
 # the renderer draws them).
 og-draw = { path = "../og-draw" }
 og-anim = { path = "../og-anim" }
+og-audio = { path = "../og-audio", default-features = false, optional = true }
 # Style packs (pack.json) checked against the UI core's class resolver.
 og-ui-next = { path = "../og-ui-next", optional = true }
 # Font files and their glyphs, and Rive files.

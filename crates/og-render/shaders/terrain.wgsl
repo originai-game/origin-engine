@@ -197,6 +197,33 @@ fn slot_height(r: TileRef, u: vec2<f32>) -> f32 {
   return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
 }
 
+// Level-0 triangle height using the same shortest-height-difference diagonal
+// split as og_core::math::heightfield_zigzag and scatter_place.wgsl so grass
+// roots sit flush on the ground at saddle quads.
+fn slot_height_zigzag(r: TileRef, u: vec2<f32>) -> f32 {
+  let t = terrain.tiles.x;
+  let l = u - r.tile * t + 1.0;
+  let i = clamp(floor(l), vec2<f32>(0.0), vec2<f32>(t + 1.0));
+  let f = clamp(l - i, vec2<f32>(0.0), vec2<f32>(1.0));
+  let a = vec2<i32>(i);
+  let b = min(a + 1, vec2<i32>(i32(t) + 2));
+  let s = i32(r.slot);
+  let h00 = height_word(a, s);
+  let h10 = height_word(vec2<i32>(b.x, a.y), s);
+  let h01 = height_word(vec2<i32>(a.x, b.y), s);
+  let h11 = height_word(b, s);
+  if (!(abs(h00 - h11) <= abs(h10 - h01))) {
+    if (f.x + f.y <= 1.0) {
+      return h00 + (h10 - h00) * f.x + (h01 - h00) * f.y;
+    }
+    return h11 + (h01 - h11) * (1.0 - f.x) + (h10 - h11) * (1.0 - f.y);
+  }
+  if (f.y >= f.x) {
+    return h00 + (h11 - h01) * f.x + (h01 - h00) * f.y;
+  }
+  return h00 + (h10 - h00) * f.x + (h11 - h10) * f.y;
+}
+
 struct Resident {
   lvl: u32,
   r: TileRef,
@@ -225,6 +252,23 @@ fn resident_from(base: u32, s: vec2<f32>) -> Resident {
 // copy of the lookup's code (DXC inlines every call).
 fn terrain_height_at(base: u32, s: vec2<f32>) -> f32 {
   return terrain_height_from(resident_from(base, s), s);
+}
+
+// Level-0 height matching physics/scatter triangulation (`slot_height_zigzag`),
+// falling back to bilinear on coarser resident tiles while streaming.
+fn terrain_height_zigzag(s: vec2<f32>) -> f32 {
+  let first = resident_from(0u, s);
+  if (first.r.slot < 0.0) { return 0.0; }
+  if (first.lvl > 0u) { return terrain_height_from(first, s); }
+  let h = slot_height_zigzag(first.r, first.u);
+  let top = u32(terrain.tiles.z) - 1u;
+  if (first.r.fade < 1.0 && top > 0u) {
+    let parent = resident_from(1u, s);
+    if (parent.r.slot >= 0.0) {
+      return mix(slot_height(parent.r, parent.u), h, first.r.fade);
+    }
+  }
+  return h;
 }
 
 // `terrain_height_at` from the resident tile `first` already looked up

@@ -67,21 +67,21 @@ struct Cached {
 
 #[cfg(not(target_arch = "wasm32"))]
 struct Worker {
-    jobs: std::sync::mpsc::Sender<(Key, CookedTerrain)>,
-    done: std::sync::mpsc::Receiver<(Key, Result<TerrainTile, String>)>,
+    jobs: std::sync::mpsc::Sender<(u64, Key, CookedTerrain)>,
+    done: std::sync::mpsc::Receiver<(u64, Key, Result<TerrainTile, String>)>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Worker {
     fn new() -> Worker {
-        let (jobs, rx) = std::sync::mpsc::channel::<(Key, CookedTerrain)>();
+        let (jobs, rx) = std::sync::mpsc::channel::<(u64, Key, CookedTerrain)>();
         let (tx, done) = std::sync::mpsc::channel();
         std::thread::Builder::new()
             .name("og-terrain-decode".into())
             .spawn(move || {
-                while let Ok((key, terrain)) = rx.recv() {
+                while let Ok((id, key, terrain)) = rx.recv() {
                     let tile = terrain.tile(key.1).map_err(|e| e.to_string());
-                    if tx.send((key, tile)).is_err() {
+                    if tx.send((id, key, tile)).is_err() {
                         break;
                     }
                 }
@@ -111,11 +111,14 @@ pub(crate) struct Streamer {
     requested: BTreeMap<Key, u64>,
     /// The tick tiles were last handed at, and how many then.
     handed_at: (u64, usize),
-    /// Decodes a restore dropped (another branch's): their results are
-    /// thrown away when they land.
-    dropped: BTreeSet<Key>,
     cache: BTreeMap<Key, Cached>,
     in_flight: BTreeSet<Key>,
+    /// Active native worker jobs keyed by monotonic id; stale completions
+    /// from restored/removed branches carry ids no longer present here.
+    #[cfg(not(target_arch = "wasm32"))]
+    native_jobs: BTreeMap<u64, Key>,
+    #[cfg(not(target_arch = "wasm32"))]
+    next_job: u64,
     inflating: BTreeMap<Key, Inflating>,
     next_key: u64,
     #[cfg(not(target_arch = "wasm32"))]
@@ -146,18 +149,13 @@ impl Streamer {
         self.cache.retain(|k, _| k.0 != index);
         self.inflating.retain(|k, _| k.0 != index);
         self.in_flight.retain(|k| k.0 != index);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.native_jobs.retain(|_, k| k.0 != index);
     }
 
     /// Forgets a freed terrain whole: its tiles, its requests, and the
     /// decodes in flight, thrown away when they land.
     pub(crate) fn remove(&mut self, index: usize) {
-        let native: Vec<Key> = self
-            .in_flight
-            .iter()
-            .filter(|k| k.0 == index && !self.inflating.contains_key(k))
-            .copied()
-            .collect();
-        self.dropped.extend(native);
         self.requested.retain(|k, _| k.0 != index);
         self.forget(index);
     }
@@ -198,7 +196,10 @@ impl Streamer {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let w = self.worker.get_or_insert_with(Worker::new);
-            if w.jobs.send((key, cooked.clone())).is_ok() {
+            let id = self.next_job;
+            self.next_job = self.next_job.wrapping_add(1);
+            if w.jobs.send((id, key, cooked.clone())).is_ok() {
+                self.native_jobs.insert(id, key);
                 self.in_flight.insert(key);
                 return true;
             }
@@ -238,38 +239,31 @@ impl Streamer {
     ) {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let mut done = Vec::new();
+            let mut ready = Vec::new();
             if let Some(w) = &self.worker {
-                while let Ok(r) = w.done.try_recv() {
-                    done.push(r);
+                while let Ok((id, key, tile)) = w.done.try_recv() {
+                    if self.native_jobs.remove(&id).is_some() {
+                        ready.push((key, tile));
+                    }
                 }
                 if wait {
-                    let native = self
-                        .in_flight
-                        .iter()
-                        .filter(|k| !self.inflating.contains_key(k))
-                        .count();
-                    let mut mine = done
-                        .iter()
-                        .filter(|(k, _)| !self.dropped.contains(k))
-                        .count();
-                    while mine < native {
+                    while !self.native_jobs.is_empty() {
                         match w.done.recv() {
-                            Ok(r) => {
-                                if !self.dropped.contains(&r.0) {
-                                    mine += 1;
+                            Ok((id, key, tile)) => {
+                                if self.native_jobs.remove(&id).is_some() {
+                                    ready.push((key, tile));
                                 }
-                                done.push(r);
                             }
-                            Err(_) => break,
+                            Err(_) => {
+                                self.native_jobs.clear();
+                                break;
+                            }
                         }
                     }
                 }
             }
-            for (key, tile) in done {
-                if !self.dropped.remove(&key) {
-                    self.store(key, tile, notes);
-                }
+            for (key, tile) in ready {
+                self.store(key, tile, notes);
             }
         }
         let start = hooks.map_or(0.0, |h| h.now_ms());
@@ -504,14 +498,10 @@ impl Streamer {
         self.cache.clone_from(&c.cache);
         self.requested.clone_from(&c.requested);
         self.handed_at = c.handed_at;
-        // What is decoding now was asked for on the branch left behind.
-        let native: Vec<Key> = self
-            .in_flight
-            .iter()
-            .filter(|k| !self.inflating.contains_key(k))
-            .copied()
-            .collect();
-        self.dropped.extend(native);
+        // What is decoding now was asked for on the branch left behind; its
+        // job ids are no longer in `native_jobs`, so completions are ignored.
+        #[cfg(not(target_arch = "wasm32"))]
+        self.native_jobs.clear();
         self.in_flight.clear();
         self.inflating.clear();
     }

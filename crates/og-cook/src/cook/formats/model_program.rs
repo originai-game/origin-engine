@@ -484,6 +484,7 @@ fn over(material: &mut Material, m: &MaterialOver, maps: &LoadedMaps) {
     if material.color_space == ColorSpace::Srgb {
         material.color = material.color.map(|c| c.map(linear));
         material.emissive = material.emissive.map(linear);
+        material.sheen = material.sheen.map(linear);
         material.color_space = ColorSpace::Linear;
     }
     if let Some(c) = m.color {

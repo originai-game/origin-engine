@@ -525,6 +525,31 @@ impl TerrainTile {
                 hi = hi.max(v);
             }
         }
+        // Area-weighted 1D box weights mapping `src` samples onto `dst = src / 2`
+        // texels so odd sides (e.g. 129 normals or 33 control texels) include the
+        // shared right/bottom border instead of dropping it and creating mip seams.
+        let npot_taps = |i: usize, src: usize, dst: usize| -> [(usize, f32); 3] {
+            if src == 2 * dst {
+                return [(2 * i, 0.5), (2 * i + 1, 0.5), (0, 0.0)];
+            }
+            let lo = i as f32 * src as f32 / dst as f32;
+            let hi = (i + 1) as f32 * src as f32 / dst as f32;
+            let span = (hi - lo).max(1e-6);
+            let s0 = (lo.floor() as usize).min(src - 1);
+            let mut out = [(0usize, 0.0f32); 3];
+            for k in 0..3 {
+                let s = s0 + k;
+                if s >= src {
+                    break;
+                }
+                let a = (s as f32).max(lo);
+                let b = ((s + 1) as f32).min(hi);
+                if b > a {
+                    out[k] = (s, (b - a) / span);
+                }
+            }
+            out
+        };
         // Each mip: the mean of the unit normals under it (not of their x
         // and z alone, whose reconstructed y flattened far slopes), kept
         // unnormalised so its length carries their spread.
@@ -539,10 +564,19 @@ impl TerrainTile {
             let d = (s / 2).max(1);
             let mut next = vec![Vec3::ZERO; d * d];
             for y in 0..d {
+                let ty = npot_taps(y, s, d);
                 for x in 0..d {
+                    let tx = npot_taps(x, s, d);
                     let mut acc = Vec3::ZERO;
-                    for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                        acc += level[(2 * y + oy).min(s - 1) * s + (2 * x + ox).min(s - 1)] * 0.25;
+                    for &(sy, wy) in &ty {
+                        if wy <= 0.0 {
+                            continue;
+                        }
+                        for &(sx, wx) in &tx {
+                            if wx > 0.0 {
+                                acc += level[sy * s + sx] * (wx * wy);
+                            }
+                        }
                     }
                     next[y * d + x] = acc;
                 }
@@ -562,16 +596,22 @@ impl TerrainTile {
                     let d = (s / 2).max(1);
                     let mut next = vec![0u8; d * d * 4];
                     for y in 0..d {
+                        let ty = npot_taps(y, s, d);
                         for x in 0..d {
+                            let tx = npot_taps(x, s, d);
                             for ch in 0..4 {
-                                let mut sum = 0u32;
-                                for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                                    sum += level[((2 * y + oy).min(s - 1) * s
-                                        + (2 * x + ox).min(s - 1))
-                                        * 4
-                                        + ch] as u32;
+                                let mut sum = 0.0f32;
+                                for &(sy, wy) in &ty {
+                                    if wy <= 0.0 {
+                                        continue;
+                                    }
+                                    for &(sx, wx) in &tx {
+                                        if wx > 0.0 {
+                                            sum += level[(sy * s + sx) * 4 + ch] as f32 * (wx * wy);
+                                        }
+                                    }
                                 }
-                                next[(y * d + x) * 4 + ch] = ((sum + 2) / 4) as u8;
+                                next[(y * d + x) * 4 + ch] = sum.round().clamp(0.0, 255.0) as u8;
                             }
                         }
                     }

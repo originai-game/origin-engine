@@ -129,11 +129,14 @@ pub(super) fn middle(poly: &[DVec2]) -> DVec2 {
 /// bounds it (a short edge between two that move out) is gone, so it never
 /// turns inside out as a moved ring would. `None` when nothing is left.
 pub(super) fn grown(poly: &[DVec2], d: &[f64]) -> Option<Poly> {
-    let reach = d.iter().fold(1.0f64, |m, x| m.max(x.abs())) + 1.0;
+    let max_d = d.iter().fold(0.0f64, |m, x| m.max(x.abs()));
     let (lo, hi) = poly.iter().fold(
         (DVec2::splat(f64::INFINITY), DVec2::splat(f64::NEG_INFINITY)),
         |(lo, hi), p| (lo.min(*p), hi.max(*p)),
     );
+    // Outward miters at acute block corners extend up to max_d / sin(theta/2);
+    // give the initial bounding box ample room so mitered vertices stay inside.
+    let reach = (max_d * 20.0).max(max_d + 10.0) + (hi - lo).length();
     let (lo, hi) = (lo - reach, hi + reach);
     let mut out = Poly::new(
         vec![lo, DVec2::new(hi.x, lo.y), hi, DVec2::new(lo.x, hi.y)],

@@ -430,11 +430,12 @@ pub(super) fn build(
         let n = (0.5 + 0.5 * f64::from(n)).clamp(0.0, 1.0);
         let t = n * share + draw.unit() * (1.0 - share);
         let height = b.height[0] + (b.height[1] - b.height[0]) * t;
-        let params: BTreeMap<String, f64> = if g.params.contains_key("height") {
-            BTreeMap::from([("height".into(), height)])
-        } else {
-            BTreeMap::new()
-        };
+        let params: BTreeMap<String, f64> =
+            if g.params.contains_key("height") && (b.height[0] > 0.0 || b.height[1] > 0.0) {
+                BTreeMap::from([("height".into(), height)])
+            } else {
+                BTreeMap::new()
+            };
         let built = grammar::build(
             g,
             &grammar::Lot {

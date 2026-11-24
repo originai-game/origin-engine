@@ -157,6 +157,21 @@ pub(super) fn write(
     if json["nodes"][0]["extensions"].is_object() && !used.contains(&"MSFT_lod".to_string()) {
         used.push("MSFT_lod".into());
     }
+    let has_tex_transform = json["materials"].as_array().is_some_and(|ms| {
+        ms.iter().any(|mat| {
+            [
+                "/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform",
+                "/pbrMetallicRoughness/metallicRoughnessTexture/extensions/KHR_texture_transform",
+                "/normalTexture/extensions/KHR_texture_transform",
+                "/occlusionTexture/extensions/KHR_texture_transform",
+            ]
+            .iter()
+            .any(|p| mat.pointer(p).is_some())
+        })
+    });
+    if has_tex_transform && !used.contains(&"KHR_texture_transform".to_string()) {
+        used.push("KHR_texture_transform".into());
+    }
     if !used.is_empty() {
         used.sort();
         json["extensionsUsed"] = used.into();

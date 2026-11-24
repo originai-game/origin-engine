@@ -107,16 +107,33 @@ fn place_height(p: vec2<f32>) -> f32 {
   return h00 + (h10 - h00) * f.x + (h11 - h10) * f.y;
 }
 
-// TerrainSampler::sample_normal: central differences at a sample.
+// TerrainSampler::sample_normal: central differences at a sample, falling back
+// to one-sided differences if a neighbouring sample's tile is not resident so
+// tile edges never manufacture artificial 89° cliffs.
 fn place_sample_normal(c: u32, r: u32) -> vec3<f32> {
   let cell = terrain_cell();
   let last = vec2<u32>(terrain.extent.zw) - 1u;
-  let c0 = select(c - 1u, 0u, c == 0u);
-  let c1 = min(c + 1u, last.x);
-  let r0 = select(r - 1u, 0u, r == 0u);
-  let r1 = min(r + 1u, last.y);
-  let hx = (place_sample(c1, r) - place_sample(c0, r)) / (f32(max(c1 - c0, 1u)) * cell.x);
-  let hz = (place_sample(c, r1) - place_sample(c, r0)) / (f32(max(r1 - r0, 1u)) * cell.y);
+  let ac = place_at(c, r);
+  if (ac.z < 0) { return vec3<f32>(0.0, 1.0, 0.0); }
+  let hc = height_word(ac.xy, ac.z);
+  var c0 = select(c - 1u, 0u, c == 0u);
+  var c1 = min(c + 1u, last.x);
+  let ax0 = place_at(c0, r);
+  let ax1 = place_at(c1, r);
+  var hx0 = hc;
+  var hx1 = hc;
+  if (ax0.z >= 0) { hx0 = height_word(ax0.xy, ax0.z); } else { c0 = c; }
+  if (ax1.z >= 0) { hx1 = height_word(ax1.xy, ax1.z); } else { c1 = c; }
+  var r0 = select(r - 1u, 0u, r == 0u);
+  var r1 = min(r + 1u, last.y);
+  let az0 = place_at(c, r0);
+  let az1 = place_at(c, r1);
+  var hz0 = hc;
+  var hz1 = hc;
+  if (az0.z >= 0) { hz0 = height_word(az0.xy, az0.z); } else { r0 = r; }
+  if (az1.z >= 0) { hz1 = height_word(az1.xy, az1.z); } else { r1 = r; }
+  let hx = select(0.0, (hx1 - hx0) / (f32(c1 - c0) * cell.x), c1 > c0);
+  let hz = select(0.0, (hz1 - hz0) / (f32(r1 - r0) * cell.y), r1 > r0);
   return normalize(vec3<f32>(-hx, 1.0, -hz));
 }
 

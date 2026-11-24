@@ -41,14 +41,9 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
     {
         return Err("TerrainBrush.radius must be positive and strength at least 0".into());
     }
-    if t.field.is_none() {
-        t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
-    }
-    t.edited = true;
-    t.generation = next_generation();
-    let d = t.field.as_mut().expect("decoded above");
+    let size = t.size();
     let c = Vec2::new(center.x, center.z);
-    let half = d.size * 0.5;
+    let half = size * 0.5;
     let (lo, hi) = (c - Vec2::splat(radius), c + Vec2::splat(radius));
     if c.x + radius < -half.x
         || c.x - radius > half.x
@@ -57,7 +52,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
     {
         return Err(format!(
             "the brush at ({}, {}) with radius {world_radius} misses the terrain ({} × {} m of its own space around ({}, {}))",
-            world_center.x, world_center.z, d.size.x, d.size.y, m.w_axis.x, m.w_axis.z
+            world_center.x, world_center.z, size.x, size.y, m.w_axis.x, m.w_axis.z
         ));
     }
     if mode == 4 {
@@ -70,13 +65,21 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
                 t.layers.len()
             ));
         }
+    }
+    if t.field.is_none() {
+        t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
+    }
+    t.edited = true;
+    t.generation = next_generation();
+    let d = t.field.as_mut().expect("decoded above");
+    if mode == 4 {
         let n = paint(
             d,
             c,
             radius,
             falloff,
             strength.min(1.0),
-            layer as usize,
+            b.layer as usize,
             t.layers.len().div_ceil(4).max(1),
         );
         return Ok((n, lo, hi));
@@ -191,7 +194,7 @@ fn paint(
     let mut rgba = control.rgba.to_vec();
     let page = (control.width * control.height * 4) as usize;
     let pages = pages.max(control.pages() as usize);
-    rgba.resize(page * pages, 255);
+    rgba.resize(page * pages, 0);
     let px = d.size / Vec2::new(control.width as f32, control.height as f32);
     let half = d.size * 0.5;
     let mut touched = 0;
@@ -250,8 +253,10 @@ fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, Str
                 if t.field.is_none() {
                     t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
                 }
+                let res = stamp::apply(t.field.as_mut().expect("decoded above"), b)?;
                 t.edited = true;
-                stamp::apply(t.field.as_mut().expect("decoded above"), b)?
+                t.generation = next_generation();
+                res
             } else {
                 let (n, lo, hi) = apply(t, b)?;
                 (n, Some((lo, hi)))

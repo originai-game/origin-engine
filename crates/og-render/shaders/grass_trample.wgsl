@@ -57,19 +57,31 @@ fn press(@builtin(global_invocation_id) id: vec3<u32>) {
     s.w = min(s.w + trample.shift.w, TRAMPLE_MAX_AGE);
   }
   let at = trample.corner.xy + (vec2<f32>(c) + 0.5) * trample.corner.z;
-  var best = 0.0;
-  var dir = vec2<f32>(1.0, 0.0);
-  var bottom = TRAMPLE_NONE;
+  var lowest = TRAMPLE_NONE;
   let count = u32(trample.count.x);
+  // First pass: find the lowest active pusher over this cell so flying pushers
+  // cannot override a ground pusher or freeze a ground trail's recovery.
   for (var i = 0u; i < count; i++) {
     let a = trample.pushers[2u * i];
     let b = trample.pushers[2u * i + 1u];
+    if (b.y < b.x) { continue; }
+    let r = max(a.z, 1e-3);
+    if (length(at - a.xy) >= r) { continue; }
+    lowest = min(lowest, b.x);
+  }
+  var best = 0.0;
+  var dir = vec2<f32>(1.0, 0.0);
+  var bottom = TRAMPLE_NONE;
+  for (var i = 0u; i < count; i++) {
+    let a = trample.pushers[2u * i];
+    let b = trample.pushers[2u * i + 1u];
+    if (b.y < b.x || b.x > lowest + 2.0) { continue; }
     let d = at - a.xy;
     let dist = length(d);
     let r = max(a.z, 1e-3);
     if (dist >= r) { continue; }
     let crush = a.w * smoothstep(r, 0.35 * r, dist);
-    bottom = min(bottom, b.x - trample.count.y);
+    bottom = min(bottom, b.x);
     if (crush > best) {
       best = crush;
       // At the very centre a blade is pressed flat along a fixed way.
@@ -77,20 +89,26 @@ fn press(@builtin(global_invocation_id) id: vec3<u32>) {
     }
   }
   if (best > 0.0) {
-    // Still under a pusher since the last step (a trail being walked):
-    // the strongest press it had holds until the pusher leaves, then the
-    // cell ages from there.
     let old = length(s.xy);
-    if (s.w < 0.5 && old > best) {
-      best = old;
-      dir = s.xy / old;
+    let has_old = old > 0.0 && s.w < TRAMPLE_MAX_AGE;
+    // Ignore a pusher passing high above an existing ground track so it
+    // neither overwrites the track direction nor freezes its recovery timer.
+    if (!has_old || bottom <= s.z + 2.0) {
+      // Still under a ground-level pusher since the last step: keep the
+      // strongest press until the pusher leaves, then age from there.
+      if (has_old && s.w < 0.5 && old > best && abs(bottom - s.z) <= 2.0) {
+        best = old;
+        dir = s.xy / old;
+      }
+      let next_bottom = select(bottom, min(bottom, s.z), has_old && abs(bottom - s.z) <= 2.0);
+      s = vec4<f32>(dir * best, next_bottom, 0.0);
     }
-    s = vec4<f32>(dir * best, min(bottom, select(TRAMPLE_NONE, s.z, old > 0.0)), 0.0);
   }
   scratch[c.y * n + c.x] = s;
 }
 
-// The step's result back into the state and the map the fields read.
+// The step's result back into the state (absolute bottom y, immune to
+// WorldOrigin.y shifts) and the frame-relative map the fields read.
 @compute @workgroup_size(8, 8, 1)
 fn store(@builtin(global_invocation_id) id: vec3<u32>) {
   let c = vec2<i32>(id.xy);
@@ -98,5 +116,6 @@ fn store(@builtin(global_invocation_id) id: vec3<u32>) {
   let i = c.y * trample_n() + c.x;
   let s = scratch[i];
   state[i] = s;
-  textureStore(trample_out, c, s);
+  let rel_y = select(s.z - trample.count.y, TRAMPLE_NONE, s.z >= TRAMPLE_NONE * 0.5);
+  textureStore(trample_out, c, vec4<f32>(s.xy, rel_y, s.w));
 }

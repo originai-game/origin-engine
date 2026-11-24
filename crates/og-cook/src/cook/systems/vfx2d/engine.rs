@@ -292,14 +292,16 @@ impl C<'_> {
         if ![x0, y0, x1, y1].iter().all(|v| v.is_finite()) {
             return;
         }
+        let (x0, y0, x1, y1) = (x0.round(), y0.round(), x1.round(), y1.round());
         let (dx, dy) = ((x1 - x0).abs(), (y1 - y0).abs());
         let sx = if x0 < x1 { 1.0 } else { -1.0 };
         let sy = if y0 < y1 { 1.0 } else { -1.0 };
         let n = max(dx, dy);
         let n = if truthy(n) { n } else { 1.0 };
+        let limit = (n + 2.0).min(8192.0);
         let (mut err, mut x, mut y, mut k) = (dx - dy, x0, y0, 0.0);
-        loop {
-            let v = lerp(v0, v1, k / n);
+        while k <= limit {
+            let v = lerp(v0, v1, (k / n).clamp(0.0, 1.0));
             self.plot(x, y, v);
             if thick > 1.0 {
                 if dx > dy {
@@ -335,6 +337,10 @@ impl C<'_> {
     }
 
     pub(super) fn disc(&mut self, cx: f64, cy: f64, r: f64, v: f64) {
+        if ![cx, cy, r, v].iter().all(|x| x.is_finite()) || r <= 0.0 {
+            return;
+        }
+        let r = r.min(2048.0);
         let ri = r.ceil();
         let mut y = -ri;
         while y <= ri {
@@ -351,6 +357,10 @@ impl C<'_> {
 
     /// Grows bright pixels outward in decaying steps: a pixel-art glow.
     fn dilate(&mut self, passes: f64, falloff: f64) {
+        if !passes.is_finite() || !falloff.is_finite() {
+            return;
+        }
+        let passes = passes.clamp(0.0, 64.0);
         let (w, h) = (self.wi, self.hi);
         let mut src = self.heat.to_vec();
         let mut p = 0.0;

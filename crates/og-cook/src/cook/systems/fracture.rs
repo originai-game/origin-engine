@@ -546,17 +546,24 @@ fn radial(mesh: &Mesh, s: &Settings, thin: usize) -> Vec<Vec<fracture::Plane>> {
         .max(1e-3);
     let rings = s.rings as usize;
     let sectors = ((s.chunks as usize).saturating_sub(1) / rings).max(3);
-    // Sector edges: even, jittered by up to a third of a sector.
+    // Sector edges: even, jittered without allowing any sector span >= PI
+    // (which would invert the chord when sectors == 3).
     let step = std::f64::consts::TAU / sectors as f64;
+    let max_jitter = ((std::f64::consts::PI - 0.15 - step) / step)
+        .max(0.0)
+        .min(0.66)
+        * 0.5;
     let start = f() * step;
     let angles: Vec<f64> = (0..sectors)
-        .map(|k| start + step * (k as f64 + (f() - 0.5) * 0.66))
+        .map(|k| start + step * (k as f64 + (f() - 0.5) * 2.0 * max_jitter))
         .collect();
     // Ring radii: from a twelfth of the reach to half of it, spaced
-    // geometrically (cracks crowd the impact), each jittered.
+    // geometrically (cracks crowd the impact), jittered while kept strictly
+    // monotonic so adjacent rings never invert at rings == 8.
     let inner = s
         .impact
         .map_or(reach / 12.0, |(_, r)| (r * 0.35).min(reach / 4.0));
+    let mut prev_r = 0.0f64;
     let radii: Vec<f64> = (0..rings)
         .map(|k| {
             let t = if rings == 1 {
@@ -564,11 +571,20 @@ fn radial(mesh: &Mesh, s: &Settings, thin: usize) -> Vec<Vec<fracture::Plane>> {
             } else {
                 k as f64 / (rings - 1) as f64
             };
-            inner * (reach * 0.55 / inner).powf(t) * (0.9 + 0.2 * f())
+            let r = inner * og_core::math::double::pow(reach * 0.55 / inner, t) * (0.9 + 0.2 * f());
+            let r = if k == 0 { r } else { r.max(prev_r * 1.02) };
+            prev_r = r;
+            r
         })
         .collect();
-    let dir = |a: f64| u * a.cos() + v * a.sin();
-    let perp = |a: f64| u * -a.sin() + v * a.cos();
+    let dir = |a: f64| {
+        let (sa, ca) = og_core::math::double::sin_cos(a);
+        u * ca + v * sa
+    };
+    let perp = |a: f64| {
+        let (sa, ca) = og_core::math::double::sin_cos(a);
+        u * -sa + v * ca
+    };
     let idx = |sec: usize, k: usize| (1 + sec * rings + k) as u32;
     let mut cells = Vec::with_capacity(1 + sectors * rings);
     // The centre: inside every sector's first chord.

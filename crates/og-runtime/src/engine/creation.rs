@@ -316,6 +316,9 @@ pub fn destroy(id: u32) -> bool {
     }
     before_structural(&eng);
     og_audio::retire_link(id);
+    HANDLES.with(|t| {
+        t.borrow_mut().streams.retain(|_, (w, _)| *w != id);
+    });
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;

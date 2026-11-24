@@ -224,7 +224,12 @@ pub(crate) fn craters(p: DVec3, seed: u32, density: f64) -> f64 {
                 let t = (p - at).length() / radius;
                 if t < 1.0 {
                     let t2 = t * t;
-                    bowl = bowl.min(t2 - 1.0 + 0.3 * t2 * t2 * t2);
+                    let v = t2 - 1.0 + 0.3 * t2 * t2 * t2;
+                    if v < 0.0 {
+                        bowl = bowl.min(v);
+                    } else {
+                        rim += v;
+                    }
                 } else if t < 1.6 {
                     let f = 1.0 - (t - 1.0) / 0.6;
                     rim += 0.3 * f * f;

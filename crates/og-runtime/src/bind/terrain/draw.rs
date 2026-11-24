@@ -421,8 +421,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         else {
             continue;
         };
-        let mut types = v.types.iter().filter_map(|t| kinds.get(t).copied());
-        let types = [types.next(), types.next(), types.next()];
+        let types = std::array::from_fn(|k| v.types.get(k).and_then(|id| kinds.get(id).copied()));
         let (type_map, density_map, height_map) = (
             texture(v.type_map),
             texture(v.density_map),

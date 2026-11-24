@@ -3277,6 +3277,7 @@ dependencies = [
  "nalgebra 0.34.2",
  "og-ai",
  "og-anim",
+ "og-audio",
  "og-bake",
  "og-blob",
  "og-bundle",

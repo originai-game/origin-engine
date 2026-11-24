@@ -220,7 +220,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   if (terrain_hole(samples)) { return none; }
   let local = terrain_min() + rel;
   let maps = terrain_maps_at(samples, vec2<f32>(0.0), vec2<f32>(0.0));
-  let root = terrain_world(vec3<f32>(local.x, terrain_height_at(0u, samples), local.y));
+  let root = terrain_world(vec3<f32>(local.x, terrain_height_zigzag(samples), local.y));
   // No blade grows in a clearing (a floor laid over the field).
   for (var k = 0u; k < u32(gen.maps.w); k++) {
     let q = (gen.clearing[k] * vec4<f32>(root, 1.0)).xyz;

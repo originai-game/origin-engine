@@ -452,10 +452,8 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             let t = i as f64 / bud.sections as f64;
             let radius = if i == bud.sections && last_level {
                 1e-4
-            } else if p.growth == Growth::Deciduous {
-                bud.radius * (1.0 - l.taper.clamp(0.0, 1.0) * t)
             } else {
-                bud.radius * (1.0 - t)
+                bud.radius * (1.0 - l.taper.clamp(0.0, 1.0) * t)
             }
             .max(1e-4);
             sections.push(Section { origin, q, radius });
@@ -465,14 +463,14 @@ fn grow(p: &Plant, detail: f64, leafing: Leafing) -> Result<PlantMesh, String> {
             let g = (1.0 / units.sqrt()).clamp(1.0, 4.0) * l.gnarliness;
             let (gx, gz) = (rng.range(-g, g), rng.range(-g, g));
             q = q * turn(DVec3::X, gx) * turn(DVec3::Z, gz) * turn(DVec3::Y, l.twist);
-            // Towards the force's direction, faster the thinner, and
-            // never past it.
+            // Towards the force's direction (up to `full`), or away from it
+            // when negative (up to `PI - full` toward `-target`), never past.
             let up = q * DVec3::Y;
             let axis = up.cross(target);
             let sin_full = axis.length();
             if sin_full > 1e-6 && p.force_strength != 0.0 {
                 let full = double::atan2(sin_full, up.dot(target));
-                let by = (p.force_strength / units).clamp(-full, full);
+                let by = (p.force_strength / units).clamp(-(std::f64::consts::PI - full), full);
                 q = turn(axis / sin_full, by) * q;
             }
             q = q.normalize();

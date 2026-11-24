@@ -1,5 +1,6 @@
 mod sampler;
 pub use sampler::*;
+pub mod generate;
 pub mod stamp;
 
 use crate::scene::TextureHandle;

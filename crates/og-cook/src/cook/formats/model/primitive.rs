@@ -833,25 +833,23 @@ pub(crate) fn cook_primitive(
         }
         _ => None,
     };
-    // Leaf cards without levels of their own: thinned ones, each with the
-    // error `thin_leaves` measured and its leaf scale.
-    let mut thinned: Vec<(f32, f32)> = Vec::new();
-    if leaves
-        && given.len() == 1
-        && let Some(f) = &foliage
-    {
-        let full = given[0].clone();
+    // Leaf cards: thin further from the coarsest given level (even when a
+    // plant carried a kite MSFT_lod level as LOD 1), keeping `None` for any
+    // pre-existing given LODs so `thinned[k - 1]` stays aligned with `levels[k]`.
+    let mut thinned: Vec<Option<(f32, f32)>> = vec![None; given.len().saturating_sub(1)];
+    if leaves && let Some(f) = &foliage {
+        let base = given.last().cloned().unwrap_or_else(|| given[0].clone());
         for (range, error, scale) in thin_leaves(
             &mut verts,
             &mut indices,
             &mut sources,
             f,
-            full,
+            base,
             &opts.fractions(),
             coarsest,
         ) {
             given.push(range);
-            thinned.push((error, scale));
+            thinned.push(Some((error, scale)));
         }
     }
     let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
@@ -1192,8 +1190,8 @@ pub(crate) fn cook_primitive(
     // A thinned level's is how far its leaves moved: the leaves it drops
     // are covered by the larger ones beside them, not by a nearby surface.
     for (k, l) in levels.iter_mut().enumerate().skip(1) {
-        l.1 = match thinned.get(k - 1) {
-            Some(&(moved, _)) => moved,
+        l.1 = match thinned.get(k - 1).copied().flatten() {
+            Some((moved, _)) => moved,
             None => level_error(&pos_all, &lod0, &l.0),
         }
         .max(texture_errors.get(&k).copied().unwrap_or(0.0));
@@ -1204,7 +1202,7 @@ pub(crate) fn cook_primitive(
     let mut leaf_scales: Vec<f32> = (0..levels.len())
         .map(|k| {
             k.checked_sub(1)
-                .and_then(|k| thinned.get(k))
+                .and_then(|k| thinned.get(k).copied().flatten())
                 .map_or(1.0, |t| t.1)
         })
         .collect();

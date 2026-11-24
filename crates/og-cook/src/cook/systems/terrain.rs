@@ -903,8 +903,9 @@ pub(crate) fn cook_terrain(
             None => (format::NONE, 0),
             Some(s) => {
                 let at = strings.len() as u32;
-                strings.push_str(crate::runtime::asset_id(s));
-                (at, s.len() as u32)
+                let id = crate::runtime::asset_id(s);
+                strings.push_str(id);
+                (at, id.len() as u32)
             }
         }
     };

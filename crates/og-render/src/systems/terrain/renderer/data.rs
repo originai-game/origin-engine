@@ -325,9 +325,10 @@ impl TerrainRenderer {
             let height_bytes =
                 u64::from(layout.heights_side()) * u64::from(layout.heights_rows()) * 4;
             let height_slots = device.limits().max_storage_buffer_binding_size / height_bytes;
+            let max_slots = (self.max_layers / layout.pages.max(1)).max(1) as u64;
             let capacity = (t.lod.budget() / layout.slot_bytes().max(1))
                 .max(8)
-                .min((self.max_layers as u64).max(1))
+                .min(max_slots)
                 .min(height_slots)
                 .min(layout.tile_count() as u64) as u32;
             let view = TerrainView {

@@ -213,6 +213,16 @@ pub(crate) fn profile(v: &Value, fonts: &Fonts) -> Result<Profile, ModelError> {
             None | Some(Value::Null) => Ok(0),
             Some(x) => x
                 .as_u64()
+                .or_else(|| {
+                    x.as_f64()
+                        .filter(|n| {
+                            n.is_finite()
+                                && *n >= 0.0
+                                && n.fract() == 0.0
+                                && *n <= f64::from(u32::MAX)
+                        })
+                        .map(|n| n as u64)
+                })
                 .and_then(|n| u32::try_from(n).ok())
                 .ok_or_else(|| bad(key, "a whole number")),
         }

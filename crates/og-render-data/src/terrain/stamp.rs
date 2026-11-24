@@ -20,7 +20,11 @@ impl Grid {
     }
 
     fn cell(&self) -> Vec2 {
-        super::TerrainData::flat(self.size, self.columns.max(2), self.rows.max(2)).cell()
+        self.size
+            / Vec2::new(
+                self.columns.max(2) as f32 - 1.0,
+                self.rows.max(2) as f32 - 1.0,
+            )
     }
 }
 

@@ -357,7 +357,8 @@ pub(crate) struct Handles {
     pub view_types: Vec<u32>,
     pub frame_queries: Table<(u32, QueryRec)>,
     pub world_queries: Table<(u32, QueryRec)>,
-    pub streams: Table<(u32, Rng)>,
+    pub streams: std::collections::BTreeMap<u32, (u32, Rng)>,
+    pub next_stream: u32,
     /// og.tween.timeline's objects (the timelines are og.tween's state).
     pub timelines: Table<crate::present::feel::TimelineRef>,
     /// Spatial indexes (world.spatial), retired with the views.

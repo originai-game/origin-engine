@@ -52,7 +52,9 @@ fn foliage_offset(p: vec3f, f0: vec4f, f1: vec4f, model: mat4x4f, wind: FoliageW
   let b = model[1].xyz;
   let c = model[2].xyz;
   let d = vec3f(lean_xz.x, 0.0, lean_xz.y) / lean;
-  let inverse_d = vec3f(dot(cross(b, c), d), dot(cross(c, a), d), dot(cross(a, b), d)) / dot(a, cross(b, c));
+  let det = dot(a, cross(b, c));
+  if (abs(det) <= 1e-12) { return vec3f(0.0); }
+  let inverse_d = vec3f(dot(cross(b, c), d), dot(cross(c, a), d), dot(cross(a, b), d)) / det;
   let horizontal = vec3f(inverse_d.x, 0.0, inverse_d.z);
   if (dot(horizontal, horizontal) <= 1e-12) { return vec3f(0.0); }
   let direction = normalize(horizontal);

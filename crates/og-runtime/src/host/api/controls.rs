@@ -165,11 +165,7 @@ pub(crate) fn read_rng<T>(world: u32, f: impl FnOnce(&Rng) -> T) -> Option<T> {
 fn with_stream<T>(stream: u32, refused: T, f: impl FnOnce(&mut Rng) -> T) -> T {
     HANDLES.with(|t| {
         let mut t = t.borrow_mut();
-        let base = t.streams.base;
-        match stream
-            .checked_sub(base)
-            .and_then(|i| t.streams.items.get_mut(i as usize))
-        {
+        match t.streams.get_mut(&stream) {
             Some((_, r)) => f(r),
             None => refused,
         }
@@ -188,7 +184,16 @@ fn integer(r: &mut Rng, low: i32, high: i32) -> i32 {
 }
 
 fn new_stream(world: u32, rng: Rng) -> u32 {
-    HANDLES.with(|t| t.borrow_mut().streams.push((world, rng)))
+    HANDLES.with(|t| {
+        let mut t = t.borrow_mut();
+        let mut id = t.next_stream.wrapping_add(1).max(1);
+        while t.streams.contains_key(&id) {
+            id = id.wrapping_add(1).max(1);
+        }
+        t.next_stream = id;
+        t.streams.insert(id, (world, rng));
+        id
+    })
 }
 
 pub fn og_rng_stream_get_seed(stream: u32) -> u32 {
@@ -209,7 +214,7 @@ pub fn og_rng_stream_chance(stream: u32, p: f64) -> bool {
 pub fn og_rng_stream_fork(stream: u32, label: String) -> u32 {
     let owner = HANDLES.with(|t| {
         let t = t.borrow();
-        t.streams.get(stream).map(|(w, r)| (*w, r.fork(&label)))
+        t.streams.get(&stream).map(|(w, r)| (*w, r.fork(&label)))
     });
     match owner {
         Some((w, r)) => new_stream(w, r),
