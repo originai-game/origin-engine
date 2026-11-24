@@ -92,9 +92,17 @@ impl Rng {
         low + self.next_f64() * (high - low)
     }
 
-    /// Uniform in [low, high) as `f32` (the `f64` draw, rounded).
+    /// Uniform in [low, high) as `f32` (the `f64` draw, rounded without
+    /// reaching `high`).
     pub fn range_f32(&mut self, low: f32, high: f32) -> f32 {
-        self.range(f64::from(low), f64::from(high)) as f32
+        let v = self.range(f64::from(low), f64::from(high)) as f32;
+        if low < high && v >= high {
+            high.next_down()
+        } else if low > high && v <= high {
+            high.next_up()
+        } else {
+            v
+        }
     }
 
     /// Uniform integer in [low, high].

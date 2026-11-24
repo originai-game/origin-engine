@@ -20,6 +20,8 @@ pub struct BspLayout {
     pub corridors: Vec<CellRect>,
     /// `width` × `height`, row-major from the top: 0 wall, 1 room, 2 corridor.
     pub cells: Vec<u8>,
+    /// Room-to-room corridor connections as `(room_a, room_b)` index pairs.
+    pub edges: Vec<[u32; 2]>,
 }
 
 /// What [`bsp_rooms`] is asked for.
@@ -38,6 +40,8 @@ pub struct BspDesc {
     pub padding: u32,
     /// Corridor width.
     pub corridor: u32,
+    /// Chance (0 to 1) of adding extra loop corridors between nearby rooms.
+    pub loops: f32,
 }
 
 impl Default for BspDesc {
@@ -51,6 +55,7 @@ impl Default for BspDesc {
             depth: 5,
             padding: 1,
             corridor: 1,
+            loops: 0.0,
         }
     }
 }
@@ -59,8 +64,8 @@ impl Default for BspDesc {
 /// its longer side, at a drawn position leaving both halves room for a
 /// room) to `depth` levels or until a half would be too small; each leaf
 /// gets a room of drawn size and place inside its padding; the two halves
-/// of every split are joined by an L-shaped corridor between the centres
-/// of a room on each side (the horizontal or vertical leg first by a
+/// of every split are joined by an L-shaped corridor between the 2D-nearest
+/// pair of rooms across the split (the horizontal or vertical leg first by a
 /// draw). Draws in depth-first order, left half first.
 pub fn bsp_rooms(desc: &BspDesc) -> Result<BspLayout> {
     let (w, h) = (desc.width, desc.height);
@@ -73,7 +78,12 @@ pub fn bsp_rooms(desc: &BspDesc) -> Result<BspLayout> {
     let min_room = desc.min_room.max(1);
     let max_room = desc.max_room.max(min_room);
     let pad = desc.padding;
-    let leaf_min = min_room + 2 * pad;
+    let Some(leaf_min) = pad.checked_mul(2).and_then(|p| min_room.checked_add(p)) else {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("BSP rooms: minRoom {min_room} with padding {pad} overflows"),
+        ));
+    };
     if w < leaf_min || h < leaf_min {
         return Err(Error::new(
             ErrorKind::Invalid,
@@ -82,11 +92,13 @@ pub fn bsp_rooms(desc: &BspDesc) -> Result<BspLayout> {
             ),
         ));
     }
+    let cell_count = u64::from(w) * u64::from(h);
     let mut rng = Rng::new(desc.seed);
     let mut out = BspLayout {
         rooms: Vec::new(),
         corridors: Vec::new(),
-        cells: vec![0; (w * h) as usize],
+        cells: vec![0; cell_count as usize],
+        edges: Vec::new(),
     };
     split(
         &mut rng,
@@ -103,6 +115,52 @@ pub fn bsp_rooms(desc: &BspDesc) -> Result<BspLayout> {
         leaf_min,
         &mut out,
     );
+
+    // Optional extra loop connections between nearby non-connected rooms.
+    let loop_chance = if desc.loops.is_finite() {
+        desc.loops.clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    if loop_chance > 0.0 && out.rooms.len() >= 3 {
+        let mut candidates: Vec<(u64, usize, usize)> = Vec::new();
+        for i in 0..out.rooms.len() {
+            for j in (i + 1)..out.rooms.len() {
+                if out.edges.iter().any(|&[a, b]| {
+                    (a as usize == i && b as usize == j) || (a as usize == j && b as usize == i)
+                }) {
+                    continue;
+                }
+                let d2 = room_dist2(&out.rooms[i], &out.rooms[j]);
+                candidates.push((d2, i, j));
+            }
+        }
+        candidates.sort_unstable();
+        let max_loops = (out.rooms.len() / 2).max(1);
+        let mut added = 0usize;
+        for &(_, i, j) in candidates.iter().take(out.rooms.len() * 2) {
+            if added >= max_loops {
+                break;
+            }
+            if rng.next_f64() < f64::from(loop_chance) {
+                connect_rooms(
+                    &mut rng,
+                    desc,
+                    CellRect {
+                        x: 0,
+                        y: 0,
+                        width: w,
+                        height: h,
+                    },
+                    i,
+                    j,
+                    &mut out,
+                );
+                added += 1;
+            }
+        }
+    }
+
     for r in &out.rooms {
         paint(&mut out.cells, w, *r, 1);
     }
@@ -116,10 +174,69 @@ pub fn bsp_rooms(desc: &BspDesc) -> Result<BspLayout> {
     Ok(out)
 }
 
+#[inline]
+fn room_center(r: &CellRect) -> (u32, u32) {
+    (r.x + r.width / 2, r.y + r.height / 2)
+}
+
+#[inline]
+fn room_dist2(a: &CellRect, b: &CellRect) -> u64 {
+    let (ax, ay) = room_center(a);
+    let (bx, by) = room_center(b);
+    let dx = u64::from(ax.abs_diff(bx));
+    let dy = u64::from(ay.abs_diff(by));
+    dx * dx + dy * dy
+}
+
+fn connect_rooms(
+    rng: &mut Rng,
+    desc: &BspDesc,
+    area: CellRect,
+    ia: usize,
+    ib: usize,
+    out: &mut BspLayout,
+) {
+    let (ra, rb) = (out.rooms[ia], out.rooms[ib]);
+    let (ax, ay) = room_center(&ra);
+    let (bx, by) = room_center(&rb);
+    let cw = desc.corridor.max(1).min(area.width).min(area.height);
+    let max_x = area.x + area.width.saturating_sub(cw);
+    let max_y = area.y + area.height.saturating_sub(cw);
+    let hseg = |y: u32, x0: u32, x1: u32| CellRect {
+        x: x0.min(x1),
+        y: y.clamp(area.y, max_y),
+        width: x0.abs_diff(x1) + cw,
+        height: cw,
+    };
+    let vseg = |x: u32, y0: u32, y1: u32| CellRect {
+        x: x.clamp(area.x, max_x),
+        y: y0.min(y1),
+        width: cw,
+        height: y0.abs_diff(y1) + cw,
+    };
+    let clip = |r: CellRect| CellRect {
+        width: r.width.min(desc.width.saturating_sub(r.x)),
+        height: r.height.min(desc.height.saturating_sub(r.y)),
+        ..r
+    };
+    if rng.next_f64() < 0.5 {
+        out.corridors.push(clip(hseg(ay, ax, bx)));
+        out.corridors.push(clip(vseg(bx, ay, by)));
+    } else {
+        out.corridors.push(clip(vseg(ax, ay, by)));
+        out.corridors.push(clip(hseg(by, ax, bx)));
+    }
+    out.edges.push([ia as u32, ib as u32]);
+}
+
 fn paint(cells: &mut [u8], w: u32, r: CellRect, v: u8) {
-    for y in r.y..r.y + r.height {
-        for x in r.x..r.x + r.width {
-            cells[(y * w + x) as usize] = v;
+    let w = w as usize;
+    for y in r.y..r.y.saturating_add(r.height) {
+        let row = y as usize * w;
+        for x in r.x..r.x.saturating_add(r.width) {
+            if let Some(cell) = cells.get_mut(row + x as usize) {
+                *cell = v;
+            }
         }
     }
 }
@@ -139,8 +256,8 @@ fn split(
     let start = out.rooms.len();
     let along_x = area.width >= area.height;
     let side = if along_x { area.width } else { area.height };
-    let roomy = side >= 2 * leaf_min;
-    let big = side > max_room + 2 * desc.padding;
+    let roomy = side >= leaf_min.saturating_mul(2);
+    let big = side > max_room.saturating_add(desc.padding.saturating_mul(2));
     if depth > 0 && roomy && (big || rng.next_f64() < 0.5) {
         let at = rng.integer(i64::from(leaf_min), i64::from(side - leaf_min)) as u32;
         let (a, b) = if along_x {
@@ -164,64 +281,33 @@ fn split(
         };
         let left = split(rng, desc, a, depth - 1, min_room, max_room, leaf_min, out);
         let right = split(rng, desc, b, depth - 1, min_room, max_room, leaf_min, out);
-        // Join the room of each side nearest the split (ties: the first).
-        let key = |r: &CellRect| {
-            if along_x {
-                r.x + r.width / 2
-            } else {
-                r.y + r.height / 2
+        // Join the 2D-nearest pair of rooms across the split (ties: lowest indices).
+        let mut best: Option<(u64, usize, usize)> = None;
+        for ia in left.clone() {
+            for ib in right.clone() {
+                let d2 = room_dist2(&out.rooms[ia], &out.rooms[ib]);
+                if best.is_none_or(|b| (d2, ia, ib) < b) {
+                    best = Some((d2, ia, ib));
+                }
             }
-        };
-        let ia = left
-            .clone()
-            .max_by_key(|&i| (key(&out.rooms[i]), std::cmp::Reverse(i)))
-            .expect("every split side holds a room");
-        let ib = right
-            .clone()
-            .min_by_key(|&i| (key(&out.rooms[i]), i))
-            .expect("every split side holds a room");
-        let (ra, rb) = (out.rooms[ia], out.rooms[ib]);
-        let (ax, ay) = (ra.x + ra.width / 2, ra.y + ra.height / 2);
-        let (bx, by) = (rb.x + rb.width / 2, rb.y + rb.height / 2);
-        let cw = desc.corridor.max(1);
-        let hseg = |y: u32, x0: u32, x1: u32| CellRect {
-            x: x0.min(x1),
-            y: y.min(area.y + area.height - cw),
-            width: x0.abs_diff(x1) + cw,
-            height: cw,
-        };
-        let vseg = |x: u32, y0: u32, y1: u32| CellRect {
-            x: x.min(area.x + area.width - cw),
-            y: y0.min(y1),
-            width: cw,
-            height: y0.abs_diff(y1) + cw,
-        };
-        let clip = |r: CellRect| CellRect {
-            width: r.width.min(desc.width - r.x),
-            height: r.height.min(desc.height - r.y),
-            ..r
-        };
-        if rng.next_f64() < 0.5 {
-            out.corridors.push(clip(hseg(ay, ax, bx)));
-            out.corridors.push(clip(vseg(bx, ay, by)));
-        } else {
-            out.corridors.push(clip(vseg(ax, ay, by)));
-            out.corridors.push(clip(hseg(by, ax, bx)));
         }
+        let (_, ia, ib) = best.expect("every split side holds a room");
+        connect_rooms(rng, desc, area, ia, ib, out);
         return start..right.end;
     }
     // A leaf: one room inside its padding.
     let pad = desc.padding;
+    let pad2 = pad.saturating_mul(2);
     let room_w = rng.integer(
         i64::from(min_room),
-        i64::from(max_room.min(area.width - 2 * pad)),
+        i64::from(max_room.min(area.width - pad2)),
     ) as u32;
     let room_h = rng.integer(
         i64::from(min_room),
-        i64::from(max_room.min(area.height - 2 * pad)),
+        i64::from(max_room.min(area.height - pad2)),
     ) as u32;
-    let x = area.x + pad + rng.integer(0, i64::from(area.width - 2 * pad - room_w)) as u32;
-    let y = area.y + pad + rng.integer(0, i64::from(area.height - 2 * pad - room_h)) as u32;
+    let x = area.x + pad + rng.integer(0, i64::from(area.width - pad2 - room_w)) as u32;
+    let y = area.y + pad + rng.integer(0, i64::from(area.height - pad2 - room_h)) as u32;
     out.rooms.push(CellRect {
         x,
         y,

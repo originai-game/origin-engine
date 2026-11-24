@@ -80,6 +80,7 @@ pub fn og_procgen_bsp(desc: Option<String>) -> Result<crate::host::wire::BspResu
             depth: d.depth,
             padding: d.padding,
             corridor: d.corridor,
+            loops: 0.0,
         })
         .map_err(|e| e.reason().to_string())?;
         Ok(wire::BspResult {
