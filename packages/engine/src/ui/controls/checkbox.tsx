@@ -31,7 +31,7 @@ export function Checkbox(props: CheckboxProps) {
   return (
     <View
       role="checkbox"
-      class={`flex-row items-center gap-3 min-h-11 ${props.class ?? ""}`}
+      class={`group/checkbox flex-row items-center gap-3 min-h-11 ${props.class ?? ""}`}
       checked={state()}
       disabled={props.disabled}
       invalid={props.invalid}
@@ -39,7 +39,7 @@ export function Checkbox(props: CheckboxProps) {
       description={props.description}
       onPress={(e) => props.onChange?.(e, props.indeterminate === true || props.checked !== true)}
     >
-      <View class={packClass("Checkbox", "indicator")} checked={state()} disabled={props.disabled} hidden>
+      <View class={packClass("Checkbox", "indicator")} checked={state()} disabled={props.disabled} invalid={props.invalid} hidden>
         <Show when={props.indeterminate}>
           <View class={packClass("Checkbox", "dash")} />
         </Show>

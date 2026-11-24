@@ -97,7 +97,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Button.plate.contrast",
         "the inverse of the page: a light button on a dark page",
-        "text-fg-inverse bg-none bg-fg shadow-raise inset-shadow-none inset-ring-0 hover:bg-none hover:bg-fg active:bg-none active:bg-fg-muted",
+        "text-fg-inverse bg-none bg-fg shadow-raise inset-shadow-none inset-ring-0 hover:bg-none hover:bg-fg-muted active:bg-none active:bg-fg-subtle",
     ),
     (
         "Button.plate.outline",
@@ -127,12 +127,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Checkbox.indicator",
         "a checkbox's box; checked: and indeterminate: follow the checkbox",
-        "flex items-center justify-center size-5 shrink-0 rounded-control bg-fill-strong inset-ring-regular inset-ring-border-strong text-accent-fg transition duration-instant checked:bg-accent checked:inset-ring-0 indeterminate:bg-accent indeterminate:inset-ring-0 disabled:opacity-50",
+        "flex items-center justify-center size-5 shrink-0 rounded-control bg-fill-strong inset-ring-regular inset-ring-border-strong text-accent-fg transition duration-instant group-hover/checkbox:inset-ring-accent group-active/checkbox:scale-press checked:bg-accent checked:inset-ring-0 indeterminate:bg-accent indeterminate:inset-ring-0 aria-invalid:inset-ring-danger disabled:opacity-50",
     ),
     (
         "Radio.indicator",
         "a radio's circle; checked: follows the radio",
-        "flex items-center justify-center size-5 shrink-0 rounded-capsule bg-fill-strong inset-ring-regular inset-ring-border-strong transition duration-instant checked:inset-ring-accent disabled:opacity-50",
+        "flex items-center justify-center size-5 shrink-0 rounded-capsule bg-fill-strong inset-ring-regular inset-ring-border-strong transition duration-instant group-hover/radio:inset-ring-accent group-active/radio:scale-press checked:inset-ring-accent disabled:opacity-50",
     ),
     (
         "Radio.dot",
@@ -142,17 +142,17 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Switch.track",
         "a switch's track; checked: follows the switch",
-        "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-hairline inset-ring-border-strong transition duration-200 checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
+        "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-hairline inset-ring-border-strong transition duration-200 group-hover/switch:inset-ring-accent group-active/switch:scale-press checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
     ),
     (
         "Switch.thumb",
         "the thumb that moves along a switch's track",
-        "absolute top-0.5 left-0.5 size-5 rounded-capsule bg-knob shadow-raise transition-transform duration-200 ease-out checked:translate-x-5 checked:bg-accent-fg",
+        "absolute top-0.5 left-0.5 size-5 rounded-capsule bg-knob shadow-raise transition-transform duration-200 ease-out group-active/switch:scale-95 checked:translate-x-5 checked:bg-accent-fg",
     ),
     (
         "Tab.item",
         "a tab of a tab list",
-        "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-instant hover:text-fg selected:text-fg disabled:text-fg-subtle",
+        "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-instant hover:text-fg active:bg-pressed selected:text-fg disabled:text-fg-subtle",
     ),
     (
         "Checkbox.mark",
@@ -202,7 +202,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Slider.track",
         "a slider's track",
-        "relative grow h-1.5 rounded-capsule bg-fill-strong",
+        "relative grow h-1.5 rounded-capsule bg-fill-strong disabled:opacity-50",
     ),
     (
         "Slider.range",
@@ -212,12 +212,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Slider.thumb",
         "a slider's thumb",
-        "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-regular inset-ring-accent transition-transform duration-instant group-active/slider:scale-110 disabled:opacity-50",
+        "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-regular inset-ring-accent transition-transform duration-instant group-hover/slider:scale-105 group-active/slider:scale-110 disabled:opacity-50",
     ),
     (
         "NumberInput.frame",
         "a number input's box, around its field and steppers",
-        "flex-row items-center rounded-field bg-well inset-ring-hairline inset-ring-border",
+        "flex-row items-center rounded-field bg-well inset-ring-hairline inset-ring-border focus-within:inset-ring-regular focus-within:inset-ring-accent disabled:opacity-50",
     ),
     (
         "NumberInput.field",
@@ -227,12 +227,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "NumberInput.step",
         "a number input's decrement and increment buttons",
-        "flex items-center justify-center size-11 shrink-0 text-lg font-bold text-fg-muted hover:text-fg active:bg-pressed disabled:text-fg-subtle",
+        "flex items-center justify-center size-11 shrink-0 rounded-control text-lg font-bold text-fg-muted transition duration-instant hover:bg-hover hover:text-fg active:bg-pressed disabled:text-fg-subtle",
     ),
     (
         "Dialog.frame",
         "a dialog's panel, over Modal.scrim (Modal.frame is how it pops in)",
-        "flex-col gap-3 w-115 max-w-full m-auto p-6 compact:p-4 rounded-panel bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-overlay inset-ring-hairline inset-ring-border",
+        "flex-col gap-3 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto p-6 compact:p-4 rounded-panel bg-linear-to-b from-glass-hi to-glass-lo backdrop-blur-regular text-fg shadow-overlay inset-ring-hairline inset-ring-border",
     ),
     (
         "Dialog.title",
@@ -252,7 +252,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Sheet.frame",
         "a sheet's panel at the bottom of the screen",
-        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-overlay inset-ring-hairline inset-ring-border transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
+        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-[calc(env(hud-inset-bottom)+1.5rem)] rounded-t-sheet bg-linear-to-b from-glass-hi to-glass-lo backdrop-blur-regular text-fg shadow-overlay inset-ring-hairline inset-ring-border transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
     ),
     (
         "Sheet.grabber",
@@ -272,12 +272,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Popover.frame",
         "a popover's panel by its trigger",
-        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
+        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
     ),
     (
         "Menu.frame",
         "a menu's popup by its trigger, around its items",
-        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
+        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
     ),
     (
         "Menu.item",
@@ -322,7 +322,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Toast.frame",
         "a toast",
-        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
+        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-float inset-ring-hairline inset-ring-border pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
     ),
     (
         "Toast.frame.success",
@@ -337,12 +337,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Select.trigger",
         "a select's button, showing its value",
-        "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-hairline inset-ring-border text-fg hover:inset-ring-border-strong aria-expanded:inset-ring-accent disabled:text-fg-subtle",
+        "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-hairline inset-ring-border text-fg transition duration-instant hover:inset-ring-border-strong active:bg-pressed aria-expanded:inset-ring-accent aria-invalid:inset-ring-regular aria-invalid:inset-ring-danger disabled:text-fg-subtle disabled:opacity-50",
     ),
     (
         "Select.list",
         "a select's open list of options",
-        "flex-col p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
+        "flex-col p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
     ),
     (
         "Select.option",
@@ -352,7 +352,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Collapsible.trigger",
         "what a collapsible's or accordion item's header presses",
-        "flex-row items-center justify-between gap-2 min-h-11 px-3 text-fg font-semibold hover:bg-hover active:bg-pressed",
+        "flex-row items-center justify-between gap-2 min-h-11 px-3 text-fg font-semibold hover:bg-hover active:bg-pressed disabled:text-fg-subtle disabled:opacity-50",
     ),
     (
         "Collapsible.chevron",
@@ -382,12 +382,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Panel.frame",
         "a window or panel's frame (the first glass layer)",
-        "rounded-panel bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-panel inset-ring-hairline inset-ring-border",
+        "rounded-panel bg-linear-to-b from-glass-hi to-glass-lo backdrop-blur-regular text-fg shadow-panel inset-ring-hairline inset-ring-border",
     ),
     (
         "Plate.frame",
         "a plate over the scene or inside a panel (the second glass layer)",
-        "rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
+        "rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
     (
         "Slot.frame",
@@ -538,7 +538,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Bar.tone",
         "a bar's fill colour: health, unless a kind names another",
-        "bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-glow shadow-foe",
+        "bg-linear-to-b from-sheen to-transparent to-42% bg-health shadow-glow shadow-health",
     ),
     ("Bar.tone.mana", "a mana bar's fill", "bg-mana shadow-mana"),
     (
@@ -710,7 +710,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Hit.ring",
         "the ring the hit direction arcs sit on, round the view's centre",
-        "size-22",
+        "size-48 compact:size-36",
     ),
     (
         "Hit.arc",
@@ -722,7 +722,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "an arc for a hit the shield took",
         "stroke-ally",
     ),
-    ("Hit.arc.critical", "a critical hit's arc", "stroke-4"),
+    ("Hit.arc.critical", "a critical hit's arc", "stroke-arc-lg"),
     (
         "Hit.vignette",
         "the screen's edges flashing as a hit lands (HitFeedback)",
@@ -736,7 +736,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Combo.plate",
         "the combo readout's plate",
-        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
+        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
     (
         "Combo.count",
@@ -771,7 +771,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Feed.plate",
         "a pickup feed's plate",
-        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
+        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo backdrop-blur-thin text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
     (
         "Celebrate.title",

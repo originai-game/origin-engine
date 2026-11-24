@@ -142,7 +142,7 @@ fn centre_faces(img: &image::RgbaImage, entry: &Value) -> Option<Vec<String>> {
     for y in t..h - b {
         for x in l..w - r {
             let p = img.get_pixel(x, y).0;
-            if p[3] >= 250 {
+            if p[3] >= 200 {
                 px.push([p[0], p[1], p[2]]);
             }
         }

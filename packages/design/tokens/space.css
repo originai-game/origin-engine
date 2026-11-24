@@ -52,6 +52,7 @@
      direction arc. */
   --stroke-ability: 4px;
   --stroke-arc: 12px;
+  --stroke-arc-lg: 18px;
   /* Marks: `heavy` a spinner's track and a minimap's frame, `marker` a
      map marker's or a selection's ring, `beacon` the current node's halo. */
   --stroke-heavy: 4px;

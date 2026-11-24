@@ -218,6 +218,8 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             (name, if light { "light" } else { "dark" })
         };
         let (disabled, _) = ink("art-button-disabled-fg".into(), "disabled", 3.0);
+        let mut panel_look: Option<(String, &'static str)> = None;
+        let mut plate_look: Option<(String, &'static str)> = None;
         for (slot, image) in ART_SLOTS {
             let role = match image {
                 "button-primary" => "primary",
@@ -225,9 +227,22 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 other => other,
             };
             let (fg, s) = ink(format!("art-{image}-fg"), role, 4.5);
+            if image == "panel" {
+                panel_look = Some((fg.clone(), s));
+            } else if image == "plate" {
+                plate_look = Some((fg.clone(), s));
+            }
+            let radius = match slot {
+                "Panel.frame" => " rounded-panel",
+                "Plate.frame" | "Slot.frame" => " rounded-card",
+                "Chip.frame" => " rounded-control",
+                "Field.frame" | "Field.area" => " rounded-field",
+                s if s.starts_with("Button") => " rounded-button",
+                _ => "",
+            };
             let states = if slot.starts_with("Button") {
                 format!(
-                    " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled data-pressed:text-{fg} disabled:text-{disabled}"
+                    " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled aria-pressed:inset-ring-regular aria-pressed:inset-ring-accent selected:inset-ring-regular selected:inset-ring-accent aria-busy:opacity-80 data-pressed:text-{fg} disabled:text-{disabled}"
                 )
             } else if image == "field" {
                 // A text field's states, each its own art: read-only lies
@@ -237,15 +252,62 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 // Its box keeps the design's size and padding, which the
                 // art's edge sits in.
                 format!(
-                    " min-h-11 px-3 py-2 text-base data-readonly:nine-field-readonly aria-invalid:nine-field-invalid focus:nine-field-focus disabled:nine-field-disabled disabled:text-{disabled}"
+                    " min-h-11 px-3 py-2 text-base placeholder:text-fg-subtle data-readonly:nine-field-readonly aria-invalid:nine-field-invalid focus:nine-field-focus disabled:nine-field-disabled disabled:opacity-50 disabled:text-{disabled}"
                 )
             } else {
                 String::new()
             };
             variants.insert(
                 slot.into(),
-                json!(format!("scheme-{s} nine-{image}{states} bg-none bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
+                json!(format!("scheme-{s} nine-{image}{radius}{states} bg-none bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
             );
+        }
+        // Harmonize overlay & HUD container slots with the theme's panel/plate
+        // nine-slice art and solved ink so modals, sheets, menus, popovers,
+        // toasts, dropdowns and HUD plates share the theme's material.
+        if let Some((panel_fg, panel_s)) = &panel_look {
+            for (slot, layout) in [
+                (
+                    "Dialog.frame",
+                    "flex-col gap-3 w-115 max-w-full max-h-[85vh] overflow-y-auto m-auto p-6 compact:p-4 rounded-panel shadow-overlay",
+                ),
+                (
+                    "Sheet.frame",
+                    "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-[calc(env(hud-inset-bottom)+1.5rem)] rounded-t-sheet shadow-overlay transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
+                ),
+            ] {
+                variants.insert(
+                    slot.into(),
+                    json!(format!("{layout} scheme-{panel_s} nine-panel bg-none bg-transparent text-{panel_fg}")),
+                );
+            }
+        }
+        if let Some((plate_fg, plate_s)) = &plate_look {
+            for (slot, layout) in [
+                (
+                    "Popover.frame",
+                    "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
+                ),
+                (
+                    "Menu.frame",
+                    "flex-col min-w-52 max-w-80 p-1 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
+                ),
+                (
+                    "Toast.frame",
+                    "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card shadow-float pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
+                ),
+                (
+                    "Select.list",
+                    "flex-col p-1 rounded-card shadow-float transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
+                ),
+                ("Combo.plate", "gap-y-1 p-2 rounded-card shadow-plate"),
+                ("Feed.plate", "gap-y-1 p-2 rounded-card shadow-plate"),
+            ] {
+                variants.insert(
+                    slot.into(),
+                    json!(format!("{layout} scheme-{plate_s} nine-plate bg-none bg-transparent text-{plate_fg}")),
+                );
+            }
         }
         // The combat HUD's ability slot in the theme's own slot art (combat
         // HUD design §6): a round shape rings an ultimate with a disc, any
@@ -505,9 +567,9 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
     {
         let extra: &[(&str, &str)] = match d {
             "comfortable" => &[
-                ("Button.plate", "min-h-10 px-4"),
-                ("Button.plate.primary", "min-h-10 px-4"),
-                ("Button.plate.danger", "min-h-10 px-4"),
+                ("Button.plate", "min-h-11 px-4"),
+                ("Button.plate.primary", "min-h-11 px-4"),
+                ("Button.plate.danger", "min-h-11 px-4"),
                 ("Field.frame", "min-h-11 px-3.5 py-2.5"),
                 ("Row.frame", "min-h-11 px-3.5 py-2"),
                 ("Tab.item", "min-h-11 px-4"),

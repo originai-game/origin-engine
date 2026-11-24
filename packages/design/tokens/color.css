@@ -180,11 +180,11 @@
      of one that is locked or missed. Opaque
      wherever nothing shows through, since the engine blends in linear
      light. */
-  --color-glass-hi: var(--color-layer-2);
+  --color-glass-hi: oklch(from var(--seed-neutral) 0.96 min(c, 0.03) h / 0.9);
   --color-glass: var(--color-layer-1);
-  --color-glass-lo: oklch(from var(--seed-neutral) 0.955 min(c, 0.03) h / 0.97);
-  --color-plate-hi: var(--color-layer-2);
-  --color-plate-lo: oklch(from var(--seed-neutral) 0.96 min(c, 0.03) h / 0.86);
+  --color-glass-lo: oklch(from var(--seed-neutral) 0.945 min(c, 0.03) h / 0.88);
+  --color-plate-hi: oklch(from var(--seed-neutral) 0.97 min(c, 0.03) h / 0.9);
+  --color-plate-lo: oklch(from var(--seed-neutral) 0.955 min(c, 0.03) h / 0.86);
   --color-rim: oklch(from var(--seed-neutral) 0.8 min(c, 0.04) h);
   --color-rim-soft: oklch(from var(--seed-neutral) 0.88 min(c, 0.04) h);
   --color-rim-strong: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
@@ -340,11 +340,11 @@
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-stick: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);
-  --color-glass-hi: var(--color-layer-2);
+  --color-glass-hi: oklch(from var(--seed-neutral) 0.21 min(c, 0.04) h / 0.9);
   --color-glass: var(--color-layer-1);
-  --color-glass-lo: oklch(from var(--seed-neutral) 0.16 min(c, 0.04) h / 0.98);
-  --color-plate-hi: var(--color-layer-2);
-  --color-plate-lo: oklch(from var(--seed-neutral) 0.15 min(c, 0.04) h / 0.92);
+  --color-glass-lo: oklch(from var(--seed-neutral) 0.15 min(c, 0.04) h / 0.88);
+  --color-plate-hi: oklch(from var(--seed-neutral) 0.22 min(c, 0.04) h / 0.9);
+  --color-plate-lo: oklch(from var(--seed-neutral) 0.15 min(c, 0.04) h / 0.86);
   --color-rim: oklch(from var(--seed-neutral) 0.46 min(c, 0.04) h);
   --color-rim-soft: oklch(from var(--seed-neutral) 0.36 min(c, 0.04) h);
   --color-rim-strong: oklch(from var(--seed-neutral) 0.66 min(c, 0.04) h);
