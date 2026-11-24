@@ -121,26 +121,25 @@ fn material(m: MaterialInput, p: Params) -> vec4<f32> {
       return vec4<f32>(rgb, a);
     }
     case 9u: {
-      // Layer blur: a Gaussian of half the radius, 9x9 taps over the
-      // premultiplied layer, each read from the level of the layer's mips
-      // (ui/pass.rs) as coarse as the taps are apart, so every tap
-      // averages the detail between it and its neighbours: read from
-      // level 0, taps r/4 apart point-sampled fine detail into a mosaic.
+      // Layer blur: 5x5 mip-matched Gaussian (25 taps instead of 81) with
+      // zero-padding outside [0, 1] UV so layer edges do not smear.
       let r = max(p.a.x, 0.0);
       if (r < 0.5) {
         return layer(m.uv);
       }
       let sigma = 0.5 * r;
-      let step = r / 4.0;
+      let step = r / 2.0;
       let device = f32(textureDimensions(layer_tex, 0u).x) / max(layer_params.rect.z, 1.0);
       let lod = log2(max(step * device, 1.0));
       var sum = vec4<f32>(0.0);
       var wsum = 0.0;
-      for (var y = -4; y <= 4; y++) {
-        for (var x = -4; x <= 4; x++) {
+      for (var y = -2; y <= 2; y++) {
+        for (var x = -2; x <= 2; x++) {
           let o = vec2<f32>(f32(x), f32(y)) * step;
           let w = exp(-dot(o, o) / (2.0 * sigma * sigma));
-          sum += textureSampleLevel(layer_tex, layer_sampler, m.uv + o * texel, lod) * w;
+          let q = m.uv + o * texel;
+          let inside = all(q >= vec2<f32>(0.0)) && all(q <= vec2<f32>(1.0));
+          sum += select(vec4<f32>(0.0), textureSampleLevel(layer_tex, layer_sampler, q, lod), inside) * w;
           wsum += w;
         }
       }
@@ -156,25 +155,27 @@ fn material(m: MaterialInput, p: Params) -> vec4<f32> {
       return vec4<f32>(decode(o), c.a * clamp(p.d.x, 0.0, 1.0));
     }
     case 11u: {
-      // Drop shadow (CSS's drop-shadow()): the layer's alpha moved by
-      // a.xy, blurred by a Gaussian of half a.z as the layer blur's taps
-      // are, in colour b, under the layer.
+      // Drop shadow (CSS's drop-shadow()): 5x5 mip-matched Gaussian with
+      // zero-padding outside [0, 1] UV so edges never smear across borders.
       let c = layer(m.uv);
       let at = m.uv - p.a.xy * texel;
       let r = max(p.a.z, 0.0);
-      var sa = layer_premultiplied(at).a;
+      let at_in = all(at >= vec2<f32>(0.0)) && all(at <= vec2<f32>(1.0));
+      var sa = select(0.0, layer_premultiplied(at).a, at_in);
       if (r >= 0.5) {
         let sigma = 0.5 * r;
-        let step = r / 4.0;
+        let step = r / 2.0;
         let device = f32(textureDimensions(layer_tex, 0u).x) / max(layer_params.rect.z, 1.0);
         let lod = log2(max(step * device, 1.0));
         var sum = 0.0;
         var wsum = 0.0;
-        for (var y = -4; y <= 4; y++) {
-          for (var x = -4; x <= 4; x++) {
+        for (var y = -2; y <= 2; y++) {
+          for (var x = -2; x <= 2; x++) {
             let o = vec2<f32>(f32(x), f32(y)) * step;
             let w = exp(-dot(o, o) / (2.0 * sigma * sigma));
-            sum += textureSampleLevel(layer_tex, layer_sampler, at + o * texel, lod).a * w;
+            let q = at + o * texel;
+            let inside = all(q >= vec2<f32>(0.0)) && all(q <= vec2<f32>(1.0));
+            sum += select(0.0, textureSampleLevel(layer_tex, layer_sampler, q, lod).a, inside) * w;
             wsum += w;
           }
         }

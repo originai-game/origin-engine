@@ -111,63 +111,66 @@ impl UiRenderer {
             let mut camera = camera;
             camera.tick[1] = (n * super::super::mass::TEMPLATE_TEXELS) as u32;
             crate::traffic::write_buffer(queue, &self.mass_camera, 0, bytemuck::bytes_of(&camera));
-            let bytes: &[u8] = bytemuck::cast_slice(&frame.mass_instances);
-            if bytes.len() as u64 > self.mass_instances.size() {
-                self.mass_instances =
-                    vertex_buffer(device, (bytes.len() as u64).next_power_of_two());
-            }
-            crate::traffic::write_buffer(queue, &self.mass_instances, 0, bytes);
-            // The table: rows of TABLE_WIDTH entries, at least one.
-            let width = super::super::mass::TABLE_WIDTH;
-            let mut texels: Vec<[f32; 4]> = Vec::with_capacity(
-                n * super::super::mass::TEMPLATE_TEXELS + frame.mass_table.len(),
-            );
-            for t in &frame.mass_templates[..n] {
-                texels.extend(t.texels());
-            }
-            texels.extend_from_slice(&frame.mass_table);
-            let rows = (texels.len() as u32).div_ceil(width).max(1);
-            if self.mass_table.as_ref().is_none_or(|t| t.2 < rows) {
-                let texture = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("ui mass table"),
-                    size: wgpu::Extent3d {
+            if fresh || self.mass_table.is_none() {
+                let bytes: &[u8] = bytemuck::cast_slice(&frame.mass_instances);
+                if bytes.len() as u64 > self.mass_instances.size() {
+                    self.mass_instances =
+                        vertex_buffer(device, (bytes.len() as u64).next_power_of_two());
+                }
+                crate::traffic::write_buffer(queue, &self.mass_instances, 0, bytes);
+                // The table: rows of TABLE_WIDTH entries, at least one.
+                let width = super::super::mass::TABLE_WIDTH;
+                let mut texels: Vec<[f32; 4]> = Vec::with_capacity(
+                    n * super::super::mass::TEMPLATE_TEXELS + frame.mass_table.len(),
+                );
+                for t in &frame.mass_templates[..n] {
+                    texels.extend(t.texels());
+                }
+                texels.extend_from_slice(&frame.mass_table);
+                let rows = (texels.len() as u32).div_ceil(width).max(1);
+                if self.mass_table.as_ref().is_none_or(|t| t.2 < rows) {
+                    let texture = device.create_texture(&wgpu::TextureDescriptor {
+                        label: Some("ui mass table"),
+                        size: wgpu::Extent3d {
+                            width,
+                            height: rows.next_power_of_two(),
+                            depth_or_array_layers: 1,
+                        },
+                        mip_level_count: 1,
+                        sample_count: 1,
+                        dimension: wgpu::TextureDimension::D2,
+                        format: wgpu::TextureFormat::Rgba32Float,
+                        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                        view_formats: &[],
+                        texture_binding_view_dimension: None,
+                    });
+                    let view = texture.create_view(&Default::default());
+                    self.mass_table = Some((texture, view, rows.next_power_of_two()));
+                }
+                let (texture, _, _) = self.mass_table.as_ref().expect("made above");
+                texels.resize((rows * width) as usize, [0.0; 4]);
+                crate::traffic::write_texture(
+                    queue,
+                    wgpu::TexelCopyTextureInfo {
+                        texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    bytemuck::cast_slice(&texels),
+                    wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(width * 16),
+                        rows_per_image: Some(rows),
+                    },
+                    wgpu::Extent3d {
                         width,
-                        height: rows.next_power_of_two(),
+                        height: rows,
                         depth_or_array_layers: 1,
                     },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba32Float,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                    view_formats: &[],
-                    texture_binding_view_dimension: None,
-                });
-                let view = texture.create_view(&Default::default());
-                self.mass_table = Some((texture, view, rows.next_power_of_two()));
+                );
             }
-            let (texture, view, _) = self.mass_table.as_ref().expect("made above");
-            texels.resize((rows * width) as usize, [0.0; 4]);
-            crate::traffic::write_texture(
-                queue,
-                wgpu::TexelCopyTextureInfo {
-                    texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
-                bytemuck::cast_slice(&texels),
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(width * 16),
-                    rows_per_image: Some(rows),
-                },
-                wgpu::Extent3d {
-                    width,
-                    height: rows,
-                    depth_or_array_layers: 1,
-                },
-            );
+            let (_, view, _) = self.mass_table.as_ref().expect("made above");
             groups.mass = Some(crate::bind_group(
                 device,
                 "ui mass",
@@ -462,11 +465,15 @@ impl UiRenderer {
                 .as_ref()
                 .is_none_or(|(_, s)| s.0 < size.0 || s.1 < size.1)
             {
+                let alloc = self
+                    .layer_behind
+                    .as_ref()
+                    .map_or(size, |(_, s)| (s.0.max(size.0), s.1.max(size.1)));
                 let texture = device.create_texture(&wgpu::TextureDescriptor {
                     label: Some("ui layer behind"),
                     size: wgpu::Extent3d {
-                        width: size.0,
-                        height: size.1,
+                        width: alloc.0,
+                        height: alloc.1,
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
@@ -477,7 +484,7 @@ impl UiRenderer {
                     view_formats: &[],
                     texture_binding_view_dimension: None,
                 });
-                self.layer_behind = Some((texture, size));
+                self.layer_behind = Some((texture, alloc));
             }
             crate::traffic::write_buffer(
                 queue,

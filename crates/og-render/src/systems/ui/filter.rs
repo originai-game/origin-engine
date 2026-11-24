@@ -762,6 +762,7 @@ pub(crate) struct FilterRunner {
     /// first frame on Metal.
     pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
     layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
     pool: Pool<Pooled>,
     uniforms: Vec<wgpu::Buffer>,
     next_uniform: usize,
@@ -772,11 +773,11 @@ const FILTER_WGSL: &str = wgsl_library!("ui_filter.wgsl");
 
 impl FilterRunner {
     pub(crate) fn new(device: &wgpu::Device) -> FilterRunner {
-        let tex = |binding| wgpu::BindGroupLayoutEntry {
+        let tex = |binding, filterable| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Texture {
-                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                sample_type: wgpu::TextureSampleType::Float { filterable },
                 view_dimension: wgpu::TextureViewDimension::D2,
                 multisampled: false,
             },
@@ -785,9 +786,10 @@ impl FilterRunner {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ui filter"),
             entries: &[
-                tex(0),
-                tex(1),
-                tex(2),
+                tex(0, true),
+                tex(1, true),
+                // aux_tex may hold an Rgba32Float turbulence lattice (unfilterable).
+                tex(2, false),
                 wgpu::BindGroupLayoutEntry {
                     binding: 3,
                     visibility: wgpu::ShaderStages::FRAGMENT,
@@ -798,7 +800,21 @@ impl FilterRunner {
                     },
                     count: None,
                 },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 4,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
             ],
+        });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("ui filter linear"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("ui filter"),
@@ -846,6 +862,7 @@ impl FilterRunner {
         FilterRunner {
             pipeline,
             layout,
+            sampler,
             pool: Pool::new(),
             uniforms: Vec::new(),
             next_uniform: 0,
@@ -1135,6 +1152,7 @@ impl FilterRunner {
                         wgpu::BindingResource::TextureView(&in2),
                         wgpu::BindingResource::TextureView(&aux),
                         self.uniforms[u].as_entire_binding(),
+                        wgpu::BindingResource::Sampler(&self.sampler),
                     ],
                 );
                 passes.push(Pass { group, target: out });
@@ -1168,6 +1186,7 @@ impl FilterRunner {
                         wgpu::BindingResource::TextureView(inputs.white),
                         wgpu::BindingResource::TextureView(inputs.white),
                         self.uniforms[u].as_entire_binding(),
+                        wgpu::BindingResource::Sampler(&self.sampler),
                     ],
                 );
                 passes.push(Pass { group, target: out });

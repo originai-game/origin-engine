@@ -226,7 +226,11 @@ fn blend_state(mode: u8) -> wgpu::BlendState {
                 dst_factor: wgpu::BlendFactor::Zero,
                 operation: wgpu::BlendOperation::Add,
             },
-            alpha,
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::Zero,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
         },
         _ => wgpu::BlendState::ALPHA_BLENDING,
     }

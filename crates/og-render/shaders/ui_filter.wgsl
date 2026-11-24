@@ -41,6 +41,7 @@ struct FilterParams {
 @group(0) @binding(1) var in2_tex: texture_2d<f32>;
 @group(0) @binding(2) var aux_tex: texture_2d<f32>;
 @group(0) @binding(3) var<uniform> f: FilterParams;
+@group(0) @binding(4) var linear_sampler: sampler;
 
 const FLAG_SRGB: u32 = 1u;
 const FLAG_IN1_ALPHA: u32 = 2u;
@@ -100,15 +101,33 @@ fn texel(t: texture_2d<f32>, p: vec2<i32>, extent: vec2<f32>) -> vec4<f32> {
   return textureLoad(t, p, 0);
 }
 
-// Bilinear at device position `p` (pixel centres at .5), transparent
-// outside.
-fn bilinear(t: texture_2d<f32>, p: vec2<f32>, extent: vec2<f32>) -> vec4<f32> {
+// Software bilinear for unfilterable aux_tex (turbulence lattice / arbitrary image).
+fn bilinear_load(t: texture_2d<f32>, p: vec2<f32>, extent: vec2<f32>) -> vec4<f32> {
   let q = p - 0.5;
   let i = vec2<i32>(floor(q));
   let w = q - floor(q);
   let a = mix(texel(t, i, extent), texel(t, i + vec2<i32>(1, 0), extent), w.x);
   let b = mix(texel(t, i + vec2<i32>(0, 1), extent), texel(t, i + vec2<i32>(1, 1), extent), w.x);
   return mix(a, b, w.y);
+}
+
+// Hardware bilinear at device position `p` (pixel centres at .5): uses a
+// single hardware textureSampleLevel for interior pixels and clamped backdrops,
+// falling back to transparent-outside border blending only along the 1px rim.
+fn bilinear(t: texture_2d<f32>, p: vec2<f32>, extent: vec2<f32>) -> vec4<f32> {
+  let clamped = (f.op.y & FLAG_CLAMP) != 0u;
+  if (!clamped && (any(p <= vec2<f32>(-0.5)) || any(p >= extent + vec2<f32>(0.5)))) {
+    return vec4<f32>(0.0);
+  }
+  let dim = vec2<f32>(textureDimensions(t));
+  if (clamped) {
+    let pc = clamp(p, vec2<f32>(0.5), max(extent - vec2<f32>(0.5), vec2<f32>(0.5)));
+    return textureSampleLevel(t, linear_sampler, pc / dim, 0.0);
+  }
+  if (all(p >= vec2<f32>(0.5)) && all(p <= extent - vec2<f32>(0.5))) {
+    return textureSampleLevel(t, linear_sampler, p / dim, 0.0);
+  }
+  return bilinear_load(t, p, extent);
 }
 
 fn in1_at(p: vec2<f32>) -> vec4<f32> {
@@ -542,7 +561,7 @@ fn fs_filter(@builtin(position) at: vec4<f32>) -> @location(0) vec4<f32> {
       let t = (l - f.a.xy) / max(f.a.zw, vec2<f32>(1e-4));
       if (all(t >= vec2<f32>(0.0)) && all(t <= vec2<f32>(1.0))) {
         let size = vec2<f32>(textureDimensions(aux_tex));
-        let c = bilinear(aux_tex, mix(f.b.xy, f.b.zw, t) * size, size);
+        let c = bilinear_load(aux_tex, mix(f.b.xy, f.b.zw, t) * size, size);
         out = space_in(vec4<f32>(c.rgb * c.a, c.a));
       }
     }
