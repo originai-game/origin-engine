@@ -229,9 +229,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   var decal_normal = vec4<f32>(0.0);
   var decal_coverage = 0.0;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
-    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy, false);
+    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, s.metallic, dpx, dpy, false);
     s.albedo = d.albedo;
     s.roughness = clamp(d.roughness, 0.04, 1.0);
+    s.metallic = clamp(d.metallic, 0.0, 1.0);
     decal_emissive = d.emissive;
     decal_normal = d.normal;
     decal_coverage = d.coverage;

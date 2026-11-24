@@ -51,7 +51,7 @@ pub(crate) struct PhysicalUniform {
     pub sheen: [f32; 4],
     /// x: transmission, y: thickness, z: ior, w: attenuation distance (0: none).
     pub transmission: [f32; 4],
-    /// rgb: attenuation colour.
+    /// rgb: attenuation colour, w: chromatic dispersion (0: none).
     pub attenuation: [f32; 4],
     /// x: iridescence, y: the film's ior, zw: its thickness range (nm).
     pub iridescence: [f32; 4],
@@ -66,6 +66,8 @@ pub(crate) struct PhysicalUniform {
     /// rgb: the scatter distance per channel (m), w: how much of the
     /// diffuse light scatters under the surface.
     pub subsurface: [f32; 4],
+    /// rgb: dielectric specular colour, w: dielectric specular intensity.
+    pub specular: [f32; 4],
 }
 
 /// `struct Pack` in pack.wgsl.
@@ -242,7 +244,7 @@ pub(crate) fn uniform(m: &StandardMaterial, layers: [f32; 5]) -> PhysicalUniform
             m.attenuationColor.x,
             m.attenuationColor.y,
             m.attenuationColor.z,
-            0.0,
+            m.dispersion.clamp(0.0, 10.0),
         ],
         iridescence: [
             m.iridescence.clamp(0.0, 1.0),
@@ -262,6 +264,12 @@ pub(crate) fn uniform(m: &StandardMaterial, layers: [f32; 5]) -> PhysicalUniform
             let r = m.subsurfaceRadius.max(glam::Vec3::ZERO);
             [r.x, r.y, r.z, m.subsurface.clamp(0.0, 1.0)]
         },
+        specular: [
+            m.specularColor.x.max(0.0),
+            m.specularColor.y.max(0.0),
+            m.specularColor.z.max(0.0),
+            m.specularIntensity.clamp(0.0, 1.0),
+        ],
     }
 }
 

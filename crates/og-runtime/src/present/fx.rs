@@ -655,6 +655,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             let uv_max_s = Slot::of(layout, "uvMax");
             let emissive_s = Slot::of(layout, "emissive");
             let roughness_s = Slot::of(layout, "roughness");
+            let metallic_s = Slot::of(layout, "metallic");
             let wet_s = Slot::of(layout, "wet");
             let angle_fade_s = Slot::of(layout, "angleFade");
             let normal_min_s = Slot::of(layout, "normalMin");
@@ -675,6 +676,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                     color: [c.x, c.y, c.z, v.num(&opacity_s).map_or(1.0, |x| x as f32)],
                     emissive: col_rgb(&v, &emissive_s, Vec3::ZERO),
                     roughness: v.num(&roughness_s).map_or(-1.0, |x| x as f32),
+                    metallic: v.num(&metallic_s).map_or(-1.0, |x| x as f32),
                     wet: v.flag(&wet_s).unwrap_or(false),
                     angle_fade_degrees: v.num(&angle_fade_s).map_or(75.0, |x| x as f32),
                     normal_rect: [nlo.x, nlo.y, nhi.x, nhi.y],

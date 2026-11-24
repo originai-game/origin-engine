@@ -60,4 +60,4 @@ component RectLight {
 }
 ```
 
-<sub>Module `render` line 4347</sub>
+<sub>Module `render` line 4365</sub>

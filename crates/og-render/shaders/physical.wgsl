@@ -637,17 +637,20 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var decal_normal = vec4<f32>(0.0);
   var decal_coverage = 0.0;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
-    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy, false);
+    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, s.metallic, dpx, dpy, false);
     s.albedo = d.albedo;
     s.roughness = clamp(d.roughness, 0.04, 1.0);
+    s.metallic = clamp(d.metallic, 0.0, 1.0);
     decal_emissive = d.emissive;
     decal_normal = d.normal;
     decal_coverage = d.coverage;
   }
-  // The dielectric reflectance from the index of refraction.
+  // The dielectric reflectance from the index of refraction, scaled and tinted
+  // by KHR_materials_specular (physical.specular.rgb * physical.specular.w).
   let ior = physical.transmission.z;
   let f0 = ior_to_f0(ior, 1.0);
-  s.f0 = mix(vec3<f32>(f0), s.albedo, s.metallic);
+  let diel_f0 = min(vec3<f32>(f0) * max(physical.specular.rgb, vec3<f32>(0.0)), vec3<f32>(1.0)) * clamp(physical.specular.w, 0.0, 1.0);
+  s.f0 = mix(diel_f0, s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
   let normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
   if (material.flags.x > 0.5) {
@@ -880,10 +883,20 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     // Unreliable exits use the complete authored approximation, including
     // its absorption path, rather than retaining a frayed geometric sliver.
     confidence = smoothstep(0.5, 0.9, confidence);
+    // KHR_materials_dispersion: split red/blue wavelengths along the refraction
+    // displacement vector when dispersion > 0 (glTF half-spread = dispersion * (ior - 1) / 20).
+    let disp = physical.attenuation.w;
+    let base_uv = in.clip.xy / max(vec2<f32>(textureDimensions(transmission_tex)), vec2<f32>(1.0));
+    let disp_scale = clamp(disp * 0.05 * max(ior - 1.0, 0.0), 0.0, 0.35);
     var radiance = vec3<f32>(0.0);
     if (confidence > 0.0 && (opaque_confidence > 0.0 || tir)) {
       if (tir) {
         radiance = reflected_light(tir_dir, in.world_pos, s.roughness * frame.params.y) * frame.params.x;
+      } else if (disp > 0.0) {
+        let shift = (opaque_uv - base_uv) * disp_scale;
+        let uv_r = clamp(opaque_uv - shift, vec2<f32>(0.0), vec2<f32>(1.0));
+        let uv_b = clamp(opaque_uv + shift, vec2<f32>(0.0), vec2<f32>(1.0));
+        radiance = vec3<f32>(scene_behind(uv_r, lod).r, scene_behind(opaque_uv, lod).g, scene_behind(uv_b, lod).b);
       } else {
         radiance = scene_behind(opaque_uv, lod);
       }
@@ -895,7 +908,15 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     // completely. Only sample that second bicubic footprint in its blend
     // region or where the measured exit/opaque scene is unavailable.
     if (confidence < 1.0) {
-      var fallback = scene_behind(uv, lod);
+      var fallback = vec3<f32>(0.0);
+      if (disp > 0.0) {
+        let shift = (uv - base_uv) * disp_scale;
+        let uv_r = clamp(uv - shift, vec2<f32>(0.0), vec2<f32>(1.0));
+        let uv_b = clamp(uv + shift, vec2<f32>(0.0), vec2<f32>(1.0));
+        fallback = vec3<f32>(scene_behind(uv_r, lod).r, scene_behind(uv, lod).g, scene_behind(uv_b, lod).b);
+      } else {
+        fallback = scene_behind(uv, lod);
+      }
       if (physical.transmission.w > 0.0) {
         fallback *= pow(absorption, vec3<f32>(fallback_path / physical.transmission.w));
       }

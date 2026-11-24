@@ -145,6 +145,12 @@ pub(crate) fn material(
         rgb("attenuationColor", &t.attenuation_color)
     );
     set!(ior, num("ior", t.ior));
+    set!(
+        specularIntensity,
+        num("specularIntensity", t.specular_intensity)
+    );
+    set!(specularColor, rgb("specularColor", &t.specular_color));
+    set!(dispersion, num("dispersion", t.dispersion));
     set!(iridescence, num("iridescence", t.iridescence));
     set!(iridescenceIOR, num("iridescenceIOR", t.iridescence_ior));
     set!(

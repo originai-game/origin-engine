@@ -1879,6 +1879,11 @@
           "default": -1
         },
         {
+          "name": "metallic",
+          "column": "f32",
+          "default": -1
+        },
+        {
           "name": "wet",
           "column": "bool",
           "default": false

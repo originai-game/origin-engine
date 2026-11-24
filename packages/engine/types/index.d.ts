@@ -7969,6 +7969,27 @@ export interface StandardMaterialDesc {
    */
   readonly ior?: number;
   /**
+   * Scales a dielectric's specular reflection (three.js MeshPhysicalMaterial.specularIntensity, glTF KHR_materials_specular); 1 is full Fresnel, 0 suppresses dielectric specular.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly specularIntensity?: number;
+  /**
+   * Tints a dielectric's F0 specular reflection (three.js MeshPhysicalMaterial.specularColor, glTF KHR_materials_specular, linear).
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly specularColor?: Color;
+  /**
+   * Chromatic dispersion through a transmissive volume (three.js MeshPhysicalMaterial.dispersion, glTF KHR_materials_dispersion): splits refracted red, green and blue wavelengths; 0 is none.
+   *
+   * @default 0
+   * @range 0..10
+   */
+  readonly dispersion?: number;
+  /**
    * A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none.
    *
    * @default 0
@@ -11021,6 +11042,13 @@ export interface Decal {
    * @range -1..1
    */
   roughness: number;
+  /**
+   * The surface metalness under the decal; -1 keeps the surface's.
+   *
+   * @default -1
+   * @range -1..1
+   */
+  metallic: number;
   /**
    * Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend.
    *
@@ -37433,7 +37461,7 @@ export declare namespace og {
    * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
    * See `looks §14`.
    */
-  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
+  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly metallic: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
    * See `looks §14`.

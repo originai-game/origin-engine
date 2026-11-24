@@ -28,4 +28,4 @@ enum GraphicsQuality {
 }
 ```
 
-<sub>Module `render` line 711</sub>
+<sub>Module `render` line 724</sub>

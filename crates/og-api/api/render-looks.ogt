@@ -671,6 +671,11 @@
       min -1
       max 1
     }
+    field metallic f32 "The surface metalness under the decal; -1 keeps the surface's." {
+      default -1
+      min -1
+      max 1
+    }
     field wet bool "Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend." {
       default false
     }

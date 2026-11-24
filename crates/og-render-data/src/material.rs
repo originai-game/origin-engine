@@ -281,6 +281,15 @@ pub struct StandardMaterial {
     /// how far transmission refracts.
     #[reflect(min = 1.0, max = 2.333, default = 1.5, tunable)]
     pub ior: f32,
+    /// Scales a dielectric's specular reflection (glTF `KHR_materials_specular`).
+    #[reflect(min = 0.0, max = 1.0, default = 1.0, tunable)]
+    pub specularIntensity: f32,
+    /// Tints a dielectric's F0 specular reflection (glTF `KHR_materials_specular`, linear RGB).
+    #[reflect(min = 0.0, max = 1.0, default = [1.0, 1.0, 1.0], tunable)]
+    pub specularColor: Vec3,
+    /// Chromatic dispersion through a transmissive volume (glTF `KHR_materials_dispersion`).
+    #[reflect(min = 0.0, max = 10.0, default = 0.0, tunable)]
+    pub dispersion: f32,
     /// A thin-film interference layer (three.js `iridescence`, glTF
     /// `KHR_materials_iridescence`): soap bubbles, oil, beetle shells. 0: none.
     #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
@@ -512,6 +521,9 @@ impl Default for StandardMaterial {
             attenuationDistance: 0.0,
             attenuationColor: Vec3::ONE,
             ior: 1.5,
+            specularIntensity: 1.0,
+            specularColor: Vec3::ONE,
+            dispersion: 0.0,
             iridescence: 0.0,
             iridescenceIOR: 1.3,
             iridescenceThicknessRange: Vec2::new(100.0, 400.0),
@@ -651,7 +663,10 @@ impl StandardMaterial {
                 || self.subsurface > 0.0
                 || self.hair > 0.0
                 || self.irisRadius > 0.0
-                || self.ior != 1.5)
+                || self.ior != 1.5
+                || self.specularIntensity != 1.0
+                || self.specularColor != Vec3::ONE
+                || self.dispersion > 0.0)
     }
 
     /// Whether it sets a `MeshPhysicalMaterial` lobe: a clear coat or any
@@ -669,6 +684,9 @@ impl StandardMaterial {
             || self.hair > 0.0
             || self.irisRadius > 0.0
             || self.ior != 1.5
+            || self.specularIntensity != 1.0
+            || self.specularColor != Vec3::ONE
+            || self.dispersion > 0.0
     }
 
     /// Whether it refracts the scene behind it (drawn after the opaque

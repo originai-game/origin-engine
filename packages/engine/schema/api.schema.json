@@ -26031,6 +26031,30 @@
           "minimum": 1,
           "maximum": 2.333
         },
+        "specularIntensity": {
+          "type": "number",
+          "description": "Scales a dielectric's specular reflection (three.js MeshPhysicalMaterial.specularIntensity, glTF KHR_materials_specular); 1 is full Fresnel, 0 suppresses dielectric specular.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "specularColor": {
+          "$ref": "#/$defs/Color",
+          "description": "Tints a dielectric's F0 specular reflection (three.js MeshPhysicalMaterial.specularColor, glTF KHR_materials_specular, linear).",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "dispersion": {
+          "type": "number",
+          "description": "Chromatic dispersion through a transmissive volume (three.js MeshPhysicalMaterial.dispersion, glTF KHR_materials_dispersion): splits refracted red, green and blue wavelengths; 0 is none.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10
+        },
         "iridescence": {
           "type": "number",
           "description": "A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none.",
@@ -29219,6 +29243,13 @@
         "roughness": {
           "type": "number",
           "description": "The surface roughness under the decal; -1 keeps the surface's.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1
+        },
+        "metallic": {
+          "type": "number",
+          "description": "The surface metalness under the decal; -1 keeps the surface's.",
           "default": -1,
           "minimum": -1,
           "maximum": 1

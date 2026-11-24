@@ -5469,6 +5469,9 @@ pub struct StandardMaterialDesc {
     pub attenuation_distance: f32,
     pub attenuation_color: Color,
     pub ior: f32,
+    pub specular_intensity: f32,
+    pub specular_color: Color,
+    pub dispersion: f32,
     pub iridescence: f32,
     pub iridescence_ior: f32,
     pub iridescence_thickness_range: Vec2,
@@ -5571,6 +5574,9 @@ impl Default for StandardMaterialDesc {
             attenuation_distance: Default::default(),
             attenuation_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
             ior: 1.5_f32,
+            specular_intensity: 1.0_f32,
+            specular_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+            dispersion: Default::default(),
             iridescence: Default::default(),
             iridescence_ior: 1.3_f32,
             iridescence_thickness_range: Vec2::new(100.0_f32, 400.0_f32),
@@ -5679,6 +5685,9 @@ impl FromJson for StandardMaterialDesc {
             attenuation_distance: field(o, "attenuationDistance", d.attenuation_distance)?,
             attenuation_color: field(o, "attenuationColor", d.attenuation_color)?,
             ior: field(o, "ior", d.ior)?,
+            specular_intensity: field(o, "specularIntensity", d.specular_intensity)?,
+            specular_color: field(o, "specularColor", d.specular_color)?,
+            dispersion: field(o, "dispersion", d.dispersion)?,
             iridescence: field(o, "iridescence", d.iridescence)?,
             iridescence_ior: field(o, "iridescenceIOR", d.iridescence_ior)?,
             iridescence_thickness_range: field(o, "iridescenceThicknessRange", d.iridescence_thickness_range)?,
@@ -5783,6 +5792,9 @@ impl ToJson for StandardMaterialDesc {
         o.insert("attenuationDistance".into(), self.attenuation_distance.to_json());
         o.insert("attenuationColor".into(), self.attenuation_color.to_json());
         o.insert("ior".into(), self.ior.to_json());
+        o.insert("specularIntensity".into(), self.specular_intensity.to_json());
+        o.insert("specularColor".into(), self.specular_color.to_json());
+        o.insert("dispersion".into(), self.dispersion.to_json());
         o.insert("iridescence".into(), self.iridescence.to_json());
         o.insert("iridescenceIOR".into(), self.iridescence_ior.to_json());
         o.insert("iridescenceThicknessRange".into(), self.iridescence_thickness_range.to_json());
@@ -31229,6 +31241,7 @@ pub mod record {
         pub uv_max: Vec2,
         pub emissive: Color,
         pub roughness: f32,
+        pub metallic: f32,
         pub wet: bool,
         pub angle_fade: f32,
         pub normal_min: Vec2,
@@ -31246,6 +31259,7 @@ pub mod record {
                 uv_max: Vec2::new(1.0_f32, 1.0_f32),
                 emissive: Default::default(),
                 roughness: -1.0_f32,
+                metallic: -1.0_f32,
                 wet: false,
                 angle_fade: 75.0_f32,
                 normal_min: Default::default(),
@@ -31269,6 +31283,7 @@ pub mod record {
                 uv_max: field(o, "uvMax", d.uv_max)?,
                 emissive: field(o, "emissive", d.emissive)?,
                 roughness: field(o, "roughness", d.roughness)?,
+                metallic: field(o, "metallic", d.metallic)?,
                 wet: field(o, "wet", d.wet)?,
                 angle_fade: field(o, "angleFade", d.angle_fade)?,
                 normal_min: field(o, "normalMin", d.normal_min)?,

@@ -93,6 +93,9 @@ MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* 
 | `attenuationDistance` | `number` | `0` | ≥ 0 | — | — | The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity. |
 | `attenuationColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The colour white light becomes after attenuationDistance in the volume (linear). |
 | `ior` | `number` | `1.5` | 1 … 2.333 | — | — | The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts. |
+| `specularIntensity` | `number` | `1` | 0 … 1 | `ratio` | — | Scales a dielectric's specular reflection (three.js MeshPhysicalMaterial.specularIntensity, glTF KHR_materials_specular); 1 is full Fresnel, 0 suppresses dielectric specular. |
+| `specularColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Tints a dielectric's F0 specular reflection (three.js MeshPhysicalMaterial.specularColor, glTF KHR_materials_specular, linear). |
+| `dispersion` | `number` | `0` | 0 … 10 | — | — | Chromatic dispersion through a transmissive volume (three.js MeshPhysicalMaterial.dispersion, glTF KHR_materials_dispersion): splits refracted red, green and blue wavelengths; 0 is none. |
 | `iridescence` | `number` | `0` | 0 … 1 | `ratio` | — | A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none. |
 | `iridescenceIOR` | `number` | `1.3` | 1 … 2.333 | — | — | The film's index of refraction. |
 | `iridescenceThicknessRange` | `Vector2` | `{ x: 100, y: 400 }` | — | — | — | The film's thickness in nanometres: x where iridescenceThicknessMap is black, y where it is white and everywhere without the map (three.js's [100, 400]). |
@@ -325,6 +328,19 @@ struct StandardMaterialDesc {
     default 1.5
     min 1
     max 2.333
+  }
+  field specularIntensity f32 "Scales a dielectric's specular reflection (three.js MeshPhysicalMaterial.specularIntensity, glTF KHR_materials_specular); 1 is full Fresnel, 0 suppresses dielectric specular." {
+    default 1
+    min 0
+    max 1
+    unit ratio
+  }
+  field specularColor Color "Tints a dielectric's F0 specular reflection (three.js MeshPhysicalMaterial.specularColor, glTF KHR_materials_specular, linear)." {
+    default 1 1 1
+  }
+  field dispersion f32 "Chromatic dispersion through a transmissive volume (three.js MeshPhysicalMaterial.dispersion, glTF KHR_materials_dispersion): splits refracted red, green and blue wavelengths; 0 is none." {
+    min 0
+    max 10
   }
   field iridescence f32 "A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none." {
     min 0

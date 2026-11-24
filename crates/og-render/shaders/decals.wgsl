@@ -33,6 +33,7 @@ fn decal_at(i: u32) -> DecalGpu {
 struct DecalResult {
   albedo: vec3<f32>,
   roughness: f32,
+  metallic: f32,
   emissive: vec3<f32>,
   normal: vec4<f32>,
   coverage: f32,
@@ -79,14 +80,16 @@ struct Decaled {
 // the point's change across the pixel, for the atlas' mip): `facing` is
 // the direction a decal must project against to land (the geometric
 // normal; the ground's for what stands on it), `n` the shading normal
-// their normal maps bend. A metal's f0 follows its colour.
+// their normal maps bend. A metal's f0 follows its colour and metalness.
 fn surface_decals(s_in: Surface, n: vec3<f32>, facing: vec3<f32>, frag: vec2<f32>, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> Decaled {
   var o = Decaled(s_in, n, vec3<f32>(0.0));
   if (abs(fx.decal_info.x) < 0.5) { return o; }
-  let d = apply_decals(frag, p, facing, s_in.albedo, s_in.roughness, dpx, dpy, false);
+  let d = apply_decals(frag, p, facing, s_in.albedo, s_in.roughness, s_in.metallic, dpx, dpy, false);
   o.s.albedo = d.albedo;
   o.s.roughness = clamp(d.roughness, 0.04, 1.0);
-  o.s.f0 = s_in.f0 + s_in.metallic * (d.albedo - s_in.albedo);
+  o.s.metallic = clamp(d.metallic, 0.0, 1.0);
+  let diel_f0 = select(vec3<f32>(0.04), (s_in.f0 - s_in.albedo * s_in.metallic) / max(1.0 - s_in.metallic, 1e-4), s_in.metallic < 0.999);
+  o.s.f0 = mix(diel_f0, d.albedo, o.s.metallic);
   o.emissive = d.emissive;
   o.n = decal_shading_normal(n, d.normal, d.coverage);
   return o;
@@ -105,14 +108,15 @@ fn decal_shading_normal(n: vec3<f32>, bend: vec4<f32>, coverage: f32) -> vec3<f3
 // keep their existing prepass behavior so existing scenes do not move.
 // xyz: shading normal, w: roughness.
 fn wet_decal_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, facing: vec3<f32>, roughness: f32) -> vec4<f32> {
-  let d = apply_decals(frag, p, facing, vec3<f32>(1.0), roughness, dpdxFine(p), dpdyFine(p), true);
+  let d = apply_decals(frag, p, facing, vec3<f32>(1.0), roughness, 0.0, dpdxFine(p), dpdyFine(p), true);
   return vec4<f32>(decal_shading_normal(n, d.normal, d.coverage), d.roughness);
 }
 
-fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>, wet_only: bool) -> DecalResult {
+fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, metallic: f32, dpx: vec3<f32>, dpy: vec3<f32>, wet_only: bool) -> DecalResult {
   var r: DecalResult;
   r.albedo = albedo;
   r.roughness = roughness;
+  r.metallic = metallic;
   r.emissive = vec3<f32>(0.0);
   // xyz: the decals' normal maps' bend of `n`, summed; w: their reach.
   r.normal = vec4<f32>(0.0);
@@ -146,6 +150,7 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
       r.albedo = mix(r.albedo, c.rgb, a);
     }
     if (d.emissive.w >= 0.0) { r.roughness = mix(r.roughness, d.emissive.w, a); }
+    if (d.normal.z >= 0.0) { r.metallic = mix(r.metallic, d.normal.z, a); }
     r.emissive += d.emissive.rgb * texel.rgb * a;
     var target_normal = n;
     if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {

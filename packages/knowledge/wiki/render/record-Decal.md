@@ -20,6 +20,7 @@ Token `og.Decal`, registered under the schema name `og.Decal`; its value type is
 | `uvMax` | `Vector2` | `{ x: 1, y: 1 }` | — | — | worldspace `none` | The atlas region's bottom-right corner, v down. |
 | `emissive` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | Linear light added where the decal covers (glowing runes, lava). |
 | `roughness` | `number` | `-1` | -1 … 1 | — | — | The surface roughness under the decal; -1 keeps the surface's. |
+| `metallic` | `number` | `-1` | -1 … 1 | — | — | The surface metalness under the decal; -1 keeps the surface's. |
 | `wet` | `boolean` | `false` | — | — | — | Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend. |
 | `angleFade` | `number` | `75` | 0 … 90 | `deg` | — | Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade). |
 | `normalMin` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map. |
@@ -53,6 +54,11 @@ component Decal {
     min -1
     max 1
   }
+  field metallic f32 "The surface metalness under the decal; -1 keeps the surface's." {
+    default -1
+    min -1
+    max 1
+  }
   field wet bool "Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend." {
     default false
   }
@@ -76,4 +82,4 @@ component Decal {
 }
 ```
 
-<sub>Module `render` line 2297</sub>
+<sub>Module `render` line 2310</sub>

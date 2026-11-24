@@ -364,6 +364,19 @@ module render {
       min 1
       max 2.333
     }
+    field specularIntensity f32 "Scales a dielectric's specular reflection (three.js MeshPhysicalMaterial.specularIntensity, glTF KHR_materials_specular); 1 is full Fresnel, 0 suppresses dielectric specular." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field specularColor Color "Tints a dielectric's F0 specular reflection (three.js MeshPhysicalMaterial.specularColor, glTF KHR_materials_specular, linear)." {
+      default 1 1 1
+    }
+    field dispersion f32 "Chromatic dispersion through a transmissive volume (three.js MeshPhysicalMaterial.dispersion, glTF KHR_materials_dispersion): splits refracted red, green and blue wavelengths; 0 is none." {
+      min 0
+      max 10
+    }
     field iridescence f32 "A thin-film interference layer, as MeshPhysicalMaterial.iridescence (soap bubbles, oil, beetle shells); 0 is none." {
       min 0
       max 1

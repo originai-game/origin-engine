@@ -47,7 +47,7 @@ pub(crate) fn pack_decals(
             normal: [
                 if mapped { d.normal_scale } else { 0.0 },
                 f32::from(d.wet),
-                0.0,
+                d.metallic,
                 0.0,
             ],
         });

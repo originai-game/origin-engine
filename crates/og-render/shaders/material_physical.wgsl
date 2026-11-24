@@ -11,12 +11,13 @@ struct PhysicalFactors {
   coat: vec4<f32>,          // xy: clearcoat normal scale, z: 1 with a clearcoat normal map, w: 1 with an anisotropy map
   sheen: vec4<f32>,         // rgb: sheen colour x sheen, w: sheen roughness
   transmission: vec4<f32>,  // x: transmission, y: thickness, z: ior, w: attenuation distance (0: none)
-  attenuation: vec4<f32>,   // rgb: attenuation colour
+  attenuation: vec4<f32>,   // rgb: attenuation colour, w: chromatic dispersion (0: none)
   iridescence: vec4<f32>,   // x: iridescence, y: the film's ior, zw: its thickness range (nm)
   anisotropy: vec4<f32>,    // x: strength, yz: direction (cos and sin of the rotation), w: how much of the surface is hair
   layers: vec4<f32>,        // pack layers (-1: none): metalness/roughness/ao/dissolve, clearcoat/clearcoat roughness/transmission/thickness, sheen colour/roughness, coat normal/iridescence
   layers2: vec4<f32>,       // x: pack layer of anisotropy/film thickness, y: the iris's radius (uv; 0: no eye), z: its depth under the cornea (of its radius)
   subsurface: vec4<f32>,    // rgb: the scatter distance per channel (m), w: how much of the diffuse light scatters (0: none)
+  specular: vec4<f32>,      // rgb: dielectric specular colour, w: dielectric specular intensity
 };
 
 @group(1) @binding(1) var base_color_tex: texture_2d<f32>;
