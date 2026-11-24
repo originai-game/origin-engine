@@ -16,7 +16,8 @@
 @group(0) @binding(6) var<storage, read_write> draws: array<u32>;
 @group(0) @binding(7) var<storage, read_write> block_sums: array<vec2<u32>>;
 const WG: u32 = 128u;
-var<workgroup> shared_sum: array<vec2<u32>, WG>;
+alias Sum = vec2<u32>;
+var<workgroup> shared_sum: array<Sum, WG>;
 
 fn block(wid: vec3<u32>) -> u32 { return wid.x + wid.y * 65535u; }
 fn blocks() -> u32 { return (params.x + WG - 1u) / WG; }

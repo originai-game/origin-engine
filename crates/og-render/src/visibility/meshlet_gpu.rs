@@ -169,11 +169,11 @@ struct DrawParams {
 }
 
 /// vec4 rows per visibility-buffer record (meshlet_raster.wgsl `setup`).
-const RECORD_ROWS: u64 = 8;
+const RECORD_ROWS: u64 = 6;
 /// With the frame's material surface, affine texturing or a foliage mesh:
-/// four more, the local position's gradients, the affine uv, the lit uv's
-/// gradients and the canopy dome.
-const RECORD_ROWS_EXTRA: u64 = 12;
+/// three more, the local position's gradients, the affine uv, the lit uv's
+/// gradients and the canopy dome/season/crown.
+const RECORD_ROWS_EXTRA: u64 = 9;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]

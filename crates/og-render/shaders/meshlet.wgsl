@@ -197,60 +197,67 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   let pixel = u32(pos.y) * meshlet_screen.x + u32(pos.x);
   let slot = meshlet_attrs[pixel / 4u][pixel % 4u];
   r.ok = false;
-  r.depth = 1.0;
+  r.depth = 0.0;
   if (slot == 0u) { return r; }
   let at = meshlet_screen.z / 4u + (slot - 1u) * meshlet_screen.w;
   let a = meshlet_attrs[at];
   let b = meshlet_attrs[at + 1u];
   let c = meshlet_attrs[at + 2u];
-  if ((c.z & 0x0fffffffu) != row) { return r; }
+  if ((c.y & 0x0fffffffu) != row) { return r; }
   r.ok = true;
-  r.front = select(1.0, -1.0, (c.z & 0x80000000u) != 0u);
+  r.front = select(1.0, -1.0, (c.y & 0x80000000u) != 0u);
   r.depth = bitcast<f32>(a.w);
   r.v.clip = pos;
   r.v.world_pos = bitcast<vec3<f32>>(a.xyz);
   r.v.normal = oct_decode(unpack2x16snorm(b.x));
   r.v.uv = bitcast<vec2<f32>>(b.yz);
   r.v.color = unpack4x8unorm(b.w);
+  let r4 = meshlet_attrs[at + 4u];
+  let r5 = meshlet_attrs[at + 5u];
   // The material style's surface pattern lies in the mesh's own space.
-  r.v.local_pos = vec3<f32>(
-    bitcast<f32>(meshlet_attrs[at + 4u].w),
-    bitcast<f32>(meshlet_attrs[at + 6u].w),
-    bitcast<f32>(meshlet_attrs[at + 7u].w),
-  );
-  r.v.tangent = vec4<f32>(oct_decode(unpack2x16snorm(c.x)), bitcast<f32>(c.y));
-  if (r.v.tangent.w == 0.0) { r.v.tangent = vec4<f32>(0.0); }
+  r.v.local_pos = bitcast<vec3<f32>>(r4.xyz);
+  let tan_code = (c.y >> 29u) & 3u;
+  let tan_w = select(0.0, select(-1.0, 1.0, tan_code == 1u), tan_code != 0u);
+  r.v.tangent = select(vec4<f32>(0.0), vec4<f32>(oct_decode(unpack2x16snorm(c.x)), tan_w), tan_code != 0u);
   r.v.affine = vec3<f32>(r.v.uv, 1.0);
   r.v.look = bitcast<vec4<f32>>(meshlet_attrs[at + 3u]);
-  r.prev_world = bitcast<vec3<f32>>(meshlet_attrs[at + 4u].xyz);
+  let delta_xy = unpack_f16x2(r5.w);
+  let delta_z = unpack_f16x2(c.z >> 16u).x;
+  r.prev_world = r.v.world_pos + vec3<f32>(delta_xy, delta_z);
   // The pixel's gradients (pbr_fs.wgsl `ANALYTIC`).
-  analytic_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 5u]);
-  analytic_dx = bitcast<vec3<f32>>(meshlet_attrs[at + 6u].xyz);
-  analytic_dy = bitcast<vec3<f32>>(meshlet_attrs[at + 7u].xyz);
+  analytic_uv = vec4<f32>(unpack_f16x2(c.w), unpack_f16x2(r4.w));
+  let dw0 = unpack_f16x2(r5.x);
+  let dw1 = unpack_f16x2(r5.y);
+  let dw2 = unpack_f16x2(r5.z);
+  analytic_dx = vec3<f32>(dw0.x, dw0.y, dw1.x);
+  analytic_dy = vec3<f32>(dw1.y, dw2.x, dw2.y);
   r.lit_uv = analytic_uv;
-  if (meshlet_screen.w > 8u) {
+  if (meshlet_screen.w > 6u) {
     // The extra rows (meshlet_raster.wgsl `setup`).
-    let lx = bitcast<vec4<f32>>(meshlet_attrs[at + 8u]);
-    let ly = bitcast<vec4<f32>>(meshlet_attrs[at + 9u]);
-    analytic_local_dx = lx.xyz;
-    analytic_local_dy = ly.xyz;
+    let e0 = meshlet_attrs[at + 6u];
+    let e1 = meshlet_attrs[at + 7u];
+    let e2 = meshlet_attrs[at + 8u];
+    let dl0 = unpack_f16x2(e0.x);
+    let dl1 = unpack_f16x2(e0.y);
+    let dl2 = unpack_f16x2(e0.z);
+    analytic_local_dx = vec3<f32>(dl0.x, dl0.y, dl1.x);
+    analytic_local_dy = vec3<f32>(dl1.y, dl2.x, dl2.y);
     // Affine texturing's uv, which `stylised_uv` mixes in.
-    r.v.affine = vec3<f32>(lx.w, ly.w, 1.0);
-    r.lit_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 10u]);
+    r.v.affine = vec3<f32>(bitcast<f32>(e1.x), bitcast<f32>(e1.y), 1.0);
+    r.lit_uv = vec4<f32>(unpack_f16x2(e0.w), unpack_f16x2(e1.z));
     // A foliage mesh's canopy dome, by its material's foliage (coat.w),
     // as `vs_meshlet` blends it per vertex.
-    let d = meshlet_attrs[at + 11u];
-    if (d.y != 0u && material.coat.w > 0.0) {
-      r.v.normal = normalize(mix(normalize(r.v.normal), oct_decode(unpack2x16snorm(d.x)), clamp(material.coat.w, 0.0, 1.0)));
+    if (e2.x != 0u && material.coat.w > 0.0) {
+      r.v.normal = normalize(mix(normalize(r.v.normal), oct_decode(unpack2x16snorm(e1.w)), clamp(material.coat.w, 0.0, 1.0)));
     }
     // Its leaf's autumn colour (meshlet_raster.wgsl `setup`: rgb square
     // roots, then how far it replaces the leaf's own).
-    let season = unpack4x8unorm(d.z);
+    let season = unpack4x8unorm(e2.y);
     r.v.season = vec4<f32>(season.rgb * season.rgb, season.a);
     // And what its crown hides of the light around it and of the sun.
-    r.v.crown = unpack2x16unorm(d.w);
+    r.v.crown = unpack2x16unorm(e2.z);
   }
-  r.object = c.w;
+  r.object = c.z & 0xffffu;
   return r;
 }
 

@@ -414,41 +414,71 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   let e1 = clip[1].xy / clip[1].w - p0;
   let e2 = clip[2].xy / clip[2].w - p0;
   let back = e1.x * e2.y - e1.y * e2.x < 0.0;
-  // A tangent of w 0 is none (pbr.wgsl `lit_vertex`).
-  let rows = array<vec4<u32>, 8>(
+  let prev_world = (prev * vec4<f32>(before, 1.0)).xyz;
+  let delta = clamp(prev_world - world, vec3<f32>(-65000.0), vec3<f32>(65000.0));
+  let h_duv_x = clamp(duv_x, vec2<f32>(-65000.0), vec2<f32>(65000.0));
+  let h_duv_y = clamp(duv_y, vec2<f32>(-65000.0), vec2<f32>(65000.0));
+  let h_dwx = clamp(dwx, vec3<f32>(-65000.0), vec3<f32>(65000.0));
+  let h_dwy = clamp(dwy, vec3<f32>(-65000.0), vec3<f32>(65000.0));
+  // Tangent sign code: 0 none, 1 positive (+1), 2 negative (-1), stored in bits 29..30.
+  let has_t = dot(tw, tw) > 1e-20 && tangent.w != 0.0;
+  let tan_code = select(0u, select(2u, 1u, tangent.w > 0.0), has_t);
+  let obj = select(raster_object(model), group, group > 0u);
+  let rows = array<vec4<u32>, 6>(
     vec4<u32>(bitcast<vec3<u32>>(world), bitcast<u32>(depth)),
     vec4<u32>(pack2x16snorm(oct_encode(n)), bitcast<vec2<u32>>(uv), pack4x8unorm(color)),
     vec4<u32>(
       pack2x16snorm(oct_encode(t)),
-      bitcast<u32>(select(0.0, tangent.w, dot(tw, tw) > 1e-20)),
-      (f.x & 0x0fffffffu) | select(0u, 0x80000000u, back),
-      select(raster_object(model), group, group > 0u),
+      (f.x & 0x0fffffffu) | (tan_code << 29u) | select(0u, 0x80000000u, back),
+      (obj & 0xffffu) | ((pack_f16x2(vec2<f32>(delta.z, 0.0)) & 0xffffu) << 16u),
+      pack_f16x2(h_duv_x),
     ),
     bitcast<vec4<u32>>(look),
-    vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(before, 1.0)).xyz), bitcast<u32>(position.x)),
-    bitcast<vec4<u32>>(vec4<f32>(duv_x, duv_y)),
-    vec4<u32>(bitcast<vec3<u32>>(dwx), bitcast<u32>(position.y)),
-    vec4<u32>(bitcast<vec3<u32>>(dwy), bitcast<u32>(position.z)),
+    vec4<u32>(bitcast<vec3<u32>>(position), pack_f16x2(h_duv_y)),
+    vec4<u32>(
+      pack_f16x2(h_dwx.xy),
+      pack_f16x2(vec2<f32>(h_dwx.z, h_dwy.x)),
+      pack_f16x2(h_dwy.yz),
+      pack_f16x2(delta.xy),
+    ),
   );
   // The records from the slots' end, rounded up to a vec4.
   let stride = raster.soft.w;
   let r = ((wh + 3u) & ~3u) + slot * stride * 4u;
-  for (var i = 0u; i < 8u; i++) {
+  for (var i = 0u; i < 6u; i++) {
     for (var j = 0u; j < 4u; j++) { attrs[r + i * 4u + j] = rows[i][j]; }
   }
-  if (stride > 8u) {
+  if (stride > 6u) {
     let k = raster.stylise.z;
     // The dome in the world (0: none).
     var dome_world = 0u;
     if (c.w != 0u) { dome_world = pack2x16snorm(oct_encode(world_normal(model, dome))); }
-    let more = array<vec4<u32>, 4>(
-      bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
-      bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
-      bitcast<vec4<u32>>(vec4<f32>(mix(duv_x, daff_x, k), mix(duv_y, daff_y, k))),
-      vec4<u32>(dome_world, u32(c.w != 0u), pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)), pack2x16unorm(crown)),
+    let h_lx = clamp(dpos_x, vec3<f32>(-65000.0), vec3<f32>(65000.0));
+    let h_ly = clamp(dpos_y, vec3<f32>(-65000.0), vec3<f32>(65000.0));
+    let h_lux = clamp(mix(duv_x, daff_x, k), vec2<f32>(-65000.0), vec2<f32>(65000.0));
+    let h_luy = clamp(mix(duv_y, daff_y, k), vec2<f32>(-65000.0), vec2<f32>(65000.0));
+    let more = array<vec4<u32>, 3>(
+      vec4<u32>(
+        pack_f16x2(h_lx.xy),
+        pack_f16x2(vec2<f32>(h_lx.z, h_ly.x)),
+        pack_f16x2(h_ly.yz),
+        pack_f16x2(h_lux),
+      ),
+      vec4<u32>(
+        bitcast<u32>(affine.x),
+        bitcast<u32>(affine.y),
+        pack_f16x2(h_luy),
+        dome_world,
+      ),
+      vec4<u32>(
+        u32(c.w != 0u),
+        pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)),
+        pack2x16unorm(crown),
+        0u,
+      ),
     );
-    for (var i = 0u; i < 4u; i++) {
-      for (var j = 0u; j < 4u; j++) { attrs[r + (8u + i) * 4u + j] = more[i][j]; }
+    for (var i = 0u; i < 3u; i++) {
+      for (var j = 0u; j < 4u; j++) { attrs[r + (6u + i) * 4u + j] = more[i][j]; }
     }
   }
   attrs[pixel] = slot + 1u;

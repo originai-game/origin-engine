@@ -329,17 +329,20 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
   }
   partial[lane] = sum;
   workgroupBarrier();
-  if (lane == 0u) {
-    var run = vec3<u32>(0u);
-    for (var i = 0u; i < GRASS_SCAN_LANES; i++) {
-      let v = partial[i];
-      partial[i] = run;
-      run += v;
-    }
-    totals = run;
+  // Parallel exclusive scan over partial[0..GRASS_SCAN_LANES] (7 steps vs 128 serial).
+  for (var s = 1u; s < GRASS_SCAN_LANES; s <<= 1u) {
+    var v = partial[lane];
+    if (lane >= s) { v += partial[lane - s]; }
+    workgroupBarrier();
+    partial[lane] = v;
+    workgroupBarrier();
   }
+  if (lane == GRASS_SCAN_LANES - 1u) {
+    totals = partial[lane];
+  }
+  let excl = partial[lane] - sum;
   workgroupBarrier();
-  var run = partial[lane];
+  var run = excl;
   for (var i = first; i < last; i++) {
     let c = vec3<u32>(counts[i * 3u], counts[i * 3u + 1u], counts[i * 3u + 2u]);
     counts[i * 3u] = run.x;
@@ -369,7 +372,7 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
   }
 }
 
-var<workgroup> lane_lods: array<u32, 64>;
+var<workgroup> compact_scan: array<vec3<u32>, 64>;
 var<workgroup> placed: array<u32, 3>;
 
 @compute @workgroup_size(64)
@@ -382,23 +385,23 @@ fn compact(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_in
   for (var round = 0u; round < GRASS_SLICE / 64u; round++) {
     let words = scratch[w * GRASS_SLICE + round * 64u + lane];
     let lod = (words.z >> 24u) & 3u;
-    lane_lods[lane] = lod;
+    compact_scan[lane] = vec3<u32>(u32(lod == 0u), u32(lod == 1u), u32(lod == 2u));
     workgroupBarrier();
+    for (var s = 1u; s < 64u; s <<= 1u) {
+      var v = compact_scan[lane];
+      if (lane >= s) { v += compact_scan[lane - s]; }
+      workgroupBarrier();
+      compact_scan[lane] = v;
+      workgroupBarrier();
+    }
     if (lod < GRASS_NO_BLADE) {
-      var rank = 0u;
-      for (var j = 0u; j < lane; j++) {
-        rank += select(0u, 1u, lane_lods[j] == lod);
-      }
+      let rank = compact_scan[lane][lod] - 1u;
       let at = placed[lod] + rank;
       if (at < draws[lod * 5u + 1u]) { textureStore(instances, data_at(header[lod] + at), words); }
     }
     workgroupBarrier();
     if (lane < 3u) {
-      var n = 0u;
-      for (var j = 0u; j < 64u; j++) {
-        n += select(0u, 1u, lane_lods[j] == lane);
-      }
-      placed[lane] += n;
+      placed[lane] += compact_scan[63u][lane];
     }
     workgroupBarrier();
   }

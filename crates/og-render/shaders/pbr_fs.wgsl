@@ -173,7 +173,12 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // Alpha to coverage (mode 16, an alpha-tested material): alpha past the cut-off over one pixel's change of it is the
   // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
-  let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  var coverage = 1.0;
+  if (!ANALYTIC) {
+    coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+  } else if (material.emissive.w >= 0.0) {
+    coverage = select(0.0, 1.0, base.a >= material.emissive.w);
+  }
   // An instance fading in is cut by the dither (common.wgsl `dither_cut`).
   let hidden = dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w);
   if (DISCARD) {
