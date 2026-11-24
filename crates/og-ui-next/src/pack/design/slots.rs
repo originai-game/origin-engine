@@ -994,11 +994,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ("Badge.dot.danger", "a danger dot", "bg-danger"),
     ("Badge.dot.info", "an informational dot", "bg-info"),
     ("Badge.dot.gold", "a gold dot", "bg-gold"),
-    (
-        "Divider.line",
-        "a divider's hairline",
-        "bg-border",
-    ),
+    ("Divider.line", "a divider's hairline", "bg-border"),
     (
         "Divider.label",
         "the words centred on a divider",
