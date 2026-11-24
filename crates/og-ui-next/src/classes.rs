@@ -50,6 +50,10 @@ pub struct Classes {
     images: std::collections::BTreeMap<String, Slice>,
     /// A class string it parsed reads the window's exact size.
     sized: bool,
+    /// The placeholder ink a field without its own takes, per scheme
+    /// (light, dark): the theme's `fg-muted`, which the ink solver holds
+    /// on every ground. `None` until first read.
+    placeholder: [Option<Option<Rgba>>; 2],
 }
 
 /// A class string parsed: its Tailwind classes, and the names of its
@@ -123,6 +127,7 @@ impl Classes {
                 variants: Default::default(),
                 images: Default::default(),
                 sized: false,
+                placeholder: [None; 2],
             },
             ignored,
         ))
@@ -419,7 +424,28 @@ impl Classes {
                 record.skin.image = *image;
             }
         }
+        if record.skin.placeholder.is_none() {
+            record.skin.placeholder = self.placeholder(&env);
+        }
         record
+    }
+
+    /// The theme's placeholder ink in `env`'s scheme: `fg-muted`, held on
+    /// every ground, where half the field's ink alpha read too faint on
+    /// dark art.
+    fn placeholder(&mut self, env: &Env) -> Option<Rgba> {
+        let i = usize::from(env.dark);
+        if let Some(c) = self.placeholder[i] {
+            return c;
+        }
+        self.placeholder[i] = Some(None);
+        let env = Env { states: 0, ..*env };
+        let c = self
+            .record_styled("placeholder:text-fg-muted", "", &env)
+            .skin
+            .placeholder;
+        self.placeholder[i] = Some(c);
+        c
     }
 }
 
@@ -1336,6 +1362,24 @@ mod tests {
         assert_eq!(r.skin.caret, Some([0., 1., 0., 1.]));
         assert_eq!(r.skin.placeholder, Some([1., 0., 0., 1.]));
         assert_eq!(r.skin.selection, Some([0., 0., 1., 1.]));
+    }
+
+    #[test]
+    fn a_field_without_its_own_placeholder_takes_the_themes_fg_muted() {
+        let (mut c, _) =
+            Classes::new(Some(r##"{ "colors": { "fg-muted": "#404040" } }"##)).unwrap();
+        let env = Env::default();
+        let muted = Some(linear(Color(0x404040ff)));
+        assert_eq!(c.record("text-white", &env).skin.placeholder, muted);
+        // A field's own placeholder ink still wins.
+        let own = c
+            .record("placeholder:text-[#ff0000]", &env)
+            .skin
+            .placeholder;
+        assert_eq!(own, Some([1., 0., 0., 1.]));
+        // A theme without the role keeps the renderer's fallback.
+        let (mut bare, _) = Classes::new(None).unwrap();
+        assert_eq!(bare.record("", &env).skin.placeholder, None);
     }
 
     #[test]
