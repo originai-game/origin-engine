@@ -735,6 +735,13 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
     if let Some(Value::Object(v)) = motion.as_ref().and_then(|m| m.get("variants")) {
         variants.extend(v.clone());
     }
+    // A motion's own steps (how far a press, a hover or an arrival
+    // scales), under what the recipe's pack sets.
+    if let Some(Value::Object(t)) = motion.as_ref().and_then(|m| m.get("theme")) {
+        for (k, v) in t {
+            deep(theme.entry(k.clone()).or_insert(json!({})), v);
+        }
+    }
     if let Some(s) = sound.as_ref().and_then(|s| s.get("sounds")) {
         pack.insert("sounds".into(), s.clone());
     }
@@ -1255,6 +1262,8 @@ mod tests {
                 .unwrap()
                 .contains("active:scale-96")
         );
+        // The motion's own steps reach the pack's tokens.
+        assert_eq!(t.pack["theme"]["scale"]["lift"], 1.04);
         assert!(
             t.pack["theme"]["fontFamily"]["display"]
                 .as_str()

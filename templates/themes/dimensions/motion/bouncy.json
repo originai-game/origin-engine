@@ -13,5 +13,12 @@
     "Bar.trail": "transition-layout duration-350 delay-450 ease-out",
     "Attention.cue": "animate-nudge",
     "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-180 ease-out starting:opacity-0 exit:opacity-0 exit:duration-120 exit:ease-exit"
+  },
+  "theme": {
+    "scale": {
+      "nudge": 0.96,
+      "lift": 1.1,
+      "enter": 0.7
+    }
   }
 }
