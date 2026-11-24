@@ -67,10 +67,12 @@ fn ray(
         origin,
         direction: dir,
         max_distance: max,
+        solid: true,
         filter: QueryFilter {
             mask,
             include_sensors: false,
             exclude: Some(exclude),
+            kind_flags: 0,
         },
     })
     .ok()

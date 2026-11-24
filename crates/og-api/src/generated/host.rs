@@ -725,8 +725,16 @@ pub trait PhysicsApi: Wire {
     fn og_physics_project_point(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.castShape`
     fn og_physics_cast_shape(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.castShapeAll`
+    fn og_physics_cast_shape_all(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.overlap`
     fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.overlapPoint`
+    fn og_physics_overlap_point(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.massProperties`
+    fn og_physics_mass_properties(&self, world: u32, entity: f64) -> String;
+    /// `og.physics.velocityAtPoint`
+    fn og_physics_velocity_at_point(&self, world: u32, entity: f64, point: String) -> String;
     /// `og.physics.sensorContents`
     fn og_physics_sensor_contents(&self, world: u32, sensor: f64) -> String;
     /// `og.physics.applyForce`
@@ -1843,7 +1851,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_cast_ray_all",
     "og_physics_project_point",
     "og_physics_cast_shape",
+    "og_physics_cast_shape_all",
     "og_physics_overlap",
+    "og_physics_overlap_point",
+    "og_physics_mass_properties",
+    "og_physics_velocity_at_point",
     "og_physics_sensor_contents",
     "og_physics_apply_force",
     "og_physics_apply_impulse",

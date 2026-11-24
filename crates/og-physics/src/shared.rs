@@ -8,6 +8,7 @@ pub(crate) struct ShapeKey {
     pub shape: u32,
     pub mesh: u64,
     pub scale: [u32; 3],
+    pub round_radius: u32,
 }
 
 /// The key of chunk `chunk` of the height field `key` names

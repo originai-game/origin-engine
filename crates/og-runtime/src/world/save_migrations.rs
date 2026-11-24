@@ -477,6 +477,27 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.9.0 and earlier: gained state, layer and dominant (where a marker came from); a pending event restores with them at 0, 0 and false",
         run: None,
     },
+    Migration {
+        name: "og.RigidBody",
+        from: 4,
+        to: 5,
+        note: "gained dominance, enabled, gyroscopic and additionalSolverIterations; restore defaults them to 0, true, false and 0",
+        run: None,
+    },
+    Migration {
+        name: "og.Collider",
+        from: 4,
+        to: 5,
+        note: "gained cone/polyline shapes, roundRadius, frictionCombine, restitutionCombine, solverLayers, solverMask and enabled; restore defaults them to sharp average groups enabled",
+        run: None,
+    },
+    Migration {
+        name: "og.Joint",
+        from: 3,
+        to: 4,
+        note: "gained generic 6-DOF kind, lockAxes and motorModel; restore defaults them to 0 and acceleration",
+        run: None,
+    },
 ];
 
 /// og.Time 1 -> 2: `tick`, `dt` and `elapsed` become `tick` and `rate`,

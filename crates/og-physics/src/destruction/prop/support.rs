@@ -36,7 +36,7 @@ pub fn supports_of(
                     origin: cp.0,
                     direction: down,
                     max_distance: depth + 0.05,
-                    filter: crate::QueryFilter::default(),
+                    ..Default::default()
                 },
                 max_hits: 16,
             })

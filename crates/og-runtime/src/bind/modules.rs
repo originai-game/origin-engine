@@ -465,6 +465,7 @@ fn filter(f: wire::QueryFilter) -> Result<QueryFilter, String> {
         mask: f.mask,
         include_sensors: f.include_sensors,
         exclude,
+        kind_flags: f.kind_flags,
     })
 }
 
@@ -501,6 +502,7 @@ pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
             origin: d.origin,
             direction: d.direction,
             max_distance: d.max_distance,
+            solid: d.solid,
             filter: filter(d.filter)?,
         };
         let hit = query(world)?.raycast(&desc).map_err(err)?;
@@ -569,6 +571,7 @@ pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
             origin: d.origin,
             direction: d.direction,
             max_distance: d.max_distance,
+            solid: d.solid,
             filter: filter(d.filter)?,
         };
         let max_hits = d.max_hits;
@@ -633,10 +636,44 @@ pub fn og_physics_shape_cast(
         let hit = query(world)?.shape_cast(&desc).map_err(err)?;
         Ok(hit.map(|h| wire::ShapeCastHit {
             entity: h.entity.to_bits(),
+            body: h.body.to_bits(),
             distance: h.distance,
             point: h.point,
             normal: h.normal,
         }))
+    })()
+}
+
+pub fn og_physics_shape_cast_all(
+    world: u32,
+    desc: Option<String>,
+) -> Result<Vec<crate::host::wire::ShapeCastHit>, String> {
+    (|| -> Result<_, String> {
+        let d: wire::ShapeCastAllDesc = wire::arg(desc.as_deref(), "desc")?;
+        let cast = ShapeCastDesc {
+            shape: shape(d.shape),
+            position: d.position,
+            rotation: d.quaternion,
+            direction: d.direction,
+            max_distance: d.max_distance,
+            filter: filter(d.filter)?,
+        };
+        let hits = query(world)?
+            .shape_cast_all(&og_physics::ShapeCastAllDesc {
+                cast,
+                max_hits: d.max_hits,
+            })
+            .map_err(err)?;
+        Ok(hits
+            .into_iter()
+            .map(|h| wire::ShapeCastHit {
+                entity: h.entity.to_bits(),
+                body: h.body.to_bits(),
+                distance: h.distance,
+                point: h.point,
+                normal: h.normal,
+            })
+            .collect())
     })()
 }
 
@@ -652,6 +689,65 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> Result<serde_json
         let hits = query(world)?.overlap(&desc).map_err(err)?;
         Ok(json!(hits.iter().map(|e| e.to_bits()).collect::<Vec<_>>()))
     })()
+}
+
+pub fn og_physics_overlap_point(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    (|| -> Result<_, String> {
+        let d: wire::PointOverlapDesc = wire::arg(desc.as_deref(), "desc")?;
+        let desc = og_physics::PointOverlapDesc {
+            point: d.point,
+            filter: filter(d.filter)?,
+        };
+        let hits = query(world)?.overlap_point(&desc).map_err(err)?;
+        Ok(json!(hits.iter().map(|e| e.to_bits()).collect::<Vec<_>>()))
+    })()
+}
+
+pub fn og_physics_mass_properties(
+    world: u32,
+    entity: f64,
+) -> Result<Option<crate::host::wire::MassProperties>, String> {
+    if entity.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&entity) {
+        return Err(format!("{entity} is not an entity"));
+    }
+    let eng = engine(world)?;
+    let physics = eng
+        .state
+        .borrow()
+        .physics
+        .clone()
+        .ok_or("this engine has no physics")?;
+    Ok(physics
+        .mass_properties(Entity::from_bits(entity as u64))
+        .map(|mp| wire::MassProperties {
+            mass: mp.mass,
+            center_of_mass: mp.center_of_mass,
+            inertia: mp.inertia,
+        }))
+}
+
+pub fn og_physics_velocity_at_point(
+    world: u32,
+    entity: f64,
+    point: String,
+) -> Result<Option<Vec3>, String> {
+    if entity.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&entity) {
+        return Err(format!("{entity} is not an entity"));
+    }
+    let pt: Vec3 = wire::arg(Some(&point), "point")?;
+    let eng = engine(world)?;
+    let physics = eng
+        .state
+        .borrow()
+        .physics
+        .clone()
+        .ok_or("this engine has no physics")?;
+    physics
+        .velocity_at_point(Entity::from_bits(entity as u64), pt)
+        .map_err(err)
 }
 
 /// Registers a mesh with the engine's physics and remembers it, so a hot

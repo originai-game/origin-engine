@@ -308,9 +308,13 @@ pub(super) fn insert_body(
         .gravity_scale(body.gravity_scale)
         .locked_axes(rp::LockedAxes::from_bits_truncate((body.lock & 63) as u8))
         .ccd_enabled(body.ccd)
+        .dominance_group(body.dominance.clamp(-127, 127) as i8)
+        .enabled(body.enabled)
+        .additional_solver_iterations(body.additional_solver_iterations.min(32) as usize)
         // Resting and sleep are driven by og-physics' deterministic sleep pass.
         .can_sleep(false)
         .user_data(e.to_bits() as u128);
+    builder = gyroscopic_builder(builder, body.gyroscopic);
     if kind != rp::RigidBodyType::Fixed {
         let vel = unlocked(b.velocity.unwrap_or_default(), body.lock);
         builder = builder
@@ -416,7 +420,7 @@ fn pre_resolve_meshes(scene: &Scene, shared: &mut Shared) {
     if shared.mesh_source.is_none() {
         return;
     }
-    let need = |c: &Collider| matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH);
+    let need = |c: &Collider| matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_POLYLINE);
     for b in &scene.bodies {
         if let Some(c) = &b.collider
             && need(c)

@@ -42,7 +42,7 @@ pub const LOCK_ROTATION_Z: u32 = 32;
 /// an `og.Collider`. In the 2D profile the body moves in the xy plane and
 /// rotates about z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.RigidBody", version = 4)]
+#[reflect(name = "og.RigidBody", version = 5)]
 pub struct RigidBody {
     /// dynamic (simulated), fixed (not moved by the solver), kinematic (Velocity each tick, Transform teleports).
     #[reflect(variants = ["dynamic", "fixed", "kinematic"], label = "Kind")]
@@ -89,6 +89,19 @@ pub struct RigidBody {
     /// false to wake it; physics writes it back to what the body is.
     #[serde(skip)]
     pub sleeping: bool,
+    /// Dominance group (-127..=127): a body in a higher group treats bodies in
+    /// lower groups as having zero mass (infinite dominance) during contact resolution.
+    #[reflect(min = -127, max = 127, tunable)]
+    pub dominance: i32,
+    /// Whether this body participates in simulation and collision.
+    #[reflect(default = 1)]
+    pub enabled: bool,
+    /// Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only).
+    #[reflect(default = 1)]
+    pub gyroscopic: bool,
+    /// Extra solver iterations applied to islands containing this body (0..=32).
+    #[reflect(name = "additionalSolverIterations", min = 0, max = 32)]
+    pub additional_solver_iterations: u32,
 }
 
 impl Default for RigidBody {
@@ -105,6 +118,10 @@ impl Default for RigidBody {
             center_of_mass: Vec3::ZERO,
             can_sleep: true,
             sleeping: false,
+            dominance: 0,
+            enabled: true,
+            gyroscopic: true,
+            additional_solver_iterations: 0,
         }
     }
 }
@@ -142,8 +159,8 @@ pub const SHAPE_CONVEX: u32 = 4;
 /// share, [`crate::outline`]) as a polyline: hollow, so it stops what
 /// comes from outside.
 pub const SHAPE_TRIMESH: u32 = 5;
-/// `Collider.shape`: the height field registered as `mesh` (3D only; a
-/// terrain, static), centred on the entity
+/// `Collider.shape`: the height field registered as `mesh` (3D grid or 2D
+/// 1D height curve, static), centred on the entity
 /// ([`crate::PhysicsSystem::set_heightfield`]).
 pub const SHAPE_HEIGHTFIELD: u32 = 6;
 /// `Collider.shape`: a rhombus whose diagonals are `size.x` (along x) and
@@ -155,6 +172,19 @@ pub const SHAPE_DIAMOND: u32 = 7;
 /// quarters down each side: a hex tile (turn it a quarter about z for a
 /// flat-top one). In 3D a prism `size.z` deep (both profiles).
 pub const SHAPE_HEXAGON: u32 = 8;
+/// `Collider.shape`: a cone along y: `radius` at its base, `height` tall (3D only).
+pub const SHAPE_CONE: u32 = 9;
+/// `Collider.shape`: an open or multi-segment polyline from `mesh` (both profiles).
+pub const SHAPE_POLYLINE: u32 = 10;
+
+/// `Collider.frictionCombine` / `restitutionCombine`: arithmetic mean of both colliders.
+pub const COMBINE_AVERAGE: u32 = 0;
+/// `Collider.frictionCombine` / `restitutionCombine`: minimum of both colliders.
+pub const COMBINE_MIN: u32 = 1;
+/// `Collider.frictionCombine` / `restitutionCombine`: product of both colliders.
+pub const COMBINE_MULTIPLY: u32 = 2;
+/// `Collider.frictionCombine` / `restitutionCombine`: maximum of both colliders.
+pub const COMBINE_MAX: u32 = 3;
 
 /// The xy corners of a [`SHAPE_DIAMOND`] or [`SHAPE_HEXAGON`] of half
 /// extents (hx, hy), counter-clockwise from the right (or the top).
@@ -178,9 +208,9 @@ pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
 /// og.Transform.scale.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Collider", version = 4)]
+#[reflect(name = "og.Collider", version = 5)]
 pub struct Collider {
-    /// box, sphere (circle in 2D), capsule, cylinder (3D), convex hull of `mesh` (polygon in 2D), triangle mesh of `mesh` (its outline in 2D), the height field `mesh` (3D: a terrain), a diamond and a hexagon in `size` (both): the `SHAPE_*` codes, in order.
+    /// box, sphere (circle in 2D), capsule, cylinder (3D), convex hull of `mesh` (polygon in 2D), triangle mesh of `mesh` (its outline in 2D), the height field `mesh` (3D grid or 2D profile), diamond, hexagon, cone (3D) and polyline: the `SHAPE_*` codes, in order.
     #[reflect(
         variants = [
             "box",
@@ -191,7 +221,9 @@ pub struct Collider {
             "trimesh",
             "heightfield",
             "diamond",
-            "hexagon"
+            "hexagon",
+            "cone",
+            "polyline"
         ],
         label = "Shape"
     )]
@@ -199,13 +231,13 @@ pub struct Collider {
     /// Full extents of a box, as three.js BoxGeometry(width, height, depth).
     #[reflect(min = 0, unit = "m", default = [1, 1, 1], tunable)]
     pub size: Vec3,
-    /// Radius of a sphere, circle, capsule or cylinder.
+    /// Radius of a sphere, circle, capsule, cylinder or cone.
     #[reflect(min = 0, unit = "m", default = 0.5, tunable)]
     pub radius: f32,
-    /// Capsule: distance between the cap centres (three.js CapsuleGeometry length); cylinder: its height.
+    /// Capsule: distance between the cap centres (three.js CapsuleGeometry length); cylinder or cone: its height.
     #[reflect(min = 0, unit = "m", default = 1, tunable)]
     pub height: f32,
-    /// The mesh handle whose vertices a convex, polygon or triangle-mesh shape uses (registered with PhysicsSystem::set_mesh), or the height field of a height-field shape (PhysicsSystem::set_heightfield).
+    /// The mesh handle whose vertices a convex, polygon, triangle-mesh or polyline shape uses (registered with PhysicsSystem::set_mesh), or the height field of a height-field shape (PhysicsSystem::set_heightfield).
     pub mesh: u64,
     /// Position of the shape relative to the entity.
     #[reflect(unit = "m")]
@@ -213,10 +245,10 @@ pub struct Collider {
     /// Rotation of the shape relative to the entity.
     #[reflect(default = [0, 0, 0, 1])]
     pub quaternion: Quat,
-    /// Coulomb friction (0 = ice, 1 = rubber); a pair uses the mean of both colliders.
+    /// Coulomb friction (0 = ice, 1 = rubber); combined by `frictionCombine`.
     #[reflect(min = 0, max = 2, default = 0.5, tunable)]
     pub friction: f32,
-    /// Bounciness (0 = no bounce, 1 = elastic); a pair uses the mean of both colliders.
+    /// Bounciness (0 = no bounce, 1 = elastic); combined by `restitutionCombine`.
     #[reflect(min = 0, max = 1, tunable)]
     pub restitution: f32,
     /// Density in kg per cubic metre (per square metre in 2D); ignored when RigidBody.mass is set.
@@ -230,6 +262,30 @@ pub struct Collider {
     /// The layers it collides with (bits). Two colliders interact when each one's layers meet the other's mask.
     #[reflect(default = 4294967295)]
     pub mask: u32,
+    /// Rounding radius added around polygonal shapes (box, cylinder, cone, convex, diamond, hexagon); 0 is sharp.
+    #[reflect(name = "roundRadius", min = 0, unit = "m", tunable)]
+    pub round_radius: f32,
+    /// How friction combines with another collider: average, min, multiply or max.
+    #[reflect(
+        name = "frictionCombine",
+        variants = ["average", "min", "multiply", "max"]
+    )]
+    pub friction_combine: u32,
+    /// How restitution combines with another collider: average, min, multiply or max.
+    #[reflect(
+        name = "restitutionCombine",
+        variants = ["average", "min", "multiply", "max"]
+    )]
+    pub restitution_combine: u32,
+    /// Solver layers (bits) for contact force resolution; 0 inherits `layers`.
+    #[reflect(name = "solverLayers")]
+    pub solver_layers: u32,
+    /// Solver mask (bits) for contact force resolution; 0 inherits `mask`.
+    #[reflect(name = "solverMask")]
+    pub solver_mask: u32,
+    /// Whether this collider is active in collision detection and queries.
+    #[reflect(default = 1)]
+    pub enabled: bool,
 }
 
 impl Default for Collider {
@@ -248,6 +304,12 @@ impl Default for Collider {
             sensor: false,
             layers: 1,
             mask: u32::MAX,
+            round_radius: 0.0,
+            friction_combine: COMBINE_AVERAGE,
+            restitution_combine: COMBINE_AVERAGE,
+            solver_layers: 0,
+            solver_mask: 0,
+            enabled: true,
         }
     }
 }

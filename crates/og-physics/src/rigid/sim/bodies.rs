@@ -81,14 +81,20 @@ enum Plan {
 }
 
 /// Whether two colliders have the same structural topology (shape, size,
-/// offset, density, sensor flag); friction/restitution/layers/mask can be
-/// patched in place without rebuilding the collider or body.
+/// round_radius, offset, density, sensor flag); friction/restitution/combine/
+/// layers/mask/solver_layers/solver_mask/enabled are patched in place without
+/// rebuilding the collider or body.
 fn same_collider_topology(a: &Collider, b: &Collider) -> bool {
     let topo = |x: &Collider| Collider {
         friction: 0.0,
         restitution: 0.0,
         layers: 0,
         mask: 0,
+        friction_combine: 0,
+        restitution_combine: 0,
+        solver_layers: 0,
+        solver_mask: 0,
+        enabled: true,
         ..*x
     };
     topo(a) == topo(b)
@@ -123,7 +129,8 @@ fn compare_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> (bool, bool)
 }
 
 /// Whether two og.RigidBody values have the same structural topology
-/// (kind, mass, center_of_mass); damping, gravity_scale, lock and ccd are
+/// (kind, mass, center_of_mass); damping, gravity_scale, lock, ccd,
+/// dominance, enabled, gyroscopic and additional_solver_iterations are
 /// patched in place without losing warm starts or rebuilding joints.
 fn same_body_topology(a: &RigidBody, b: &RigidBody) -> bool {
     a.kind == b.kind && a.mass == b.mass && a.center_of_mass == b.center_of_mass
@@ -135,6 +142,10 @@ fn body_params_differ(a: &RigidBody, b: &RigidBody) -> bool {
         || a.gravity_scale != b.gravity_scale
         || a.lock != b.lock
         || a.ccd != b.ccd
+        || a.dominance != b.dominance
+        || a.enabled != b.enabled
+        || a.gyroscopic != b.gyroscopic
+        || a.additional_solver_iterations != b.additional_solver_iterations
 }
 
 fn plan(
@@ -144,8 +155,10 @@ fn plan(
     stale: &BTreeSet<u64>,
 ) -> Plan {
     let stale_mesh = |c: &Collider| {
-        matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
-            && stale.contains(&c.mesh)
+        matches!(
+            c.shape,
+            SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD | SHAPE_POLYLINE
+        ) && stale.contains(&c.mesh)
     };
     let key = b.entity.to_bits();
     match tracked.get(&key) {
@@ -280,8 +293,12 @@ fn patch_collider_in_place(c: &mut rp::Collider, next: &Collider, entity: Entity
         }
     }
     c.set_friction(next.friction);
+    c.set_friction_combine_rule(combine_rule(next.friction_combine));
     c.set_restitution(next.restitution);
+    c.set_restitution_combine_rule(combine_rule(next.restitution_combine));
     c.set_collision_groups(groups(next));
+    c.set_solver_groups(solver_groups(next));
+    c.set_enabled(next.enabled);
     Ok(())
 }
 
@@ -367,8 +384,10 @@ pub(super) fn sync<'s>(
     let stale = std::mem::take(&mut shared.stale_meshes);
     let edits = std::mem::take(&mut shared.field_edits);
     let stale_mesh = |c: &Collider| {
-        matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
-            && stale.contains(&c.mesh)
+        matches!(
+            c.shape,
+            SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD | SHAPE_POLYLINE
+        ) && stale.contains(&c.mesh)
     };
 
     // What to do to each body, decided by ranges of bodies on the lanes;
@@ -453,6 +472,12 @@ pub(super) fn sync<'s>(
                         true,
                     );
                     rb.enable_ccd(b.body.ccd);
+                    rb.set_dominance_group(b.body.dominance.clamp(-127, 127) as i8);
+                    rb.set_enabled(b.body.enabled);
+                    set_gyroscopic(rb, b.body.gyroscopic);
+                    rb.set_additional_solver_iterations(
+                        b.body.additional_solver_iterations.min(32) as usize,
+                    );
                 }
                 if patch_own_collider
                     && let Some(bc) = &b.collider

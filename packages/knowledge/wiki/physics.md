@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 104 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 118 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -43,6 +43,8 @@ module physics {
 | [`og.RigidBody`](physics/record-RigidBody.md) | component |  | A body the physics step simulates. |
 | [`ColliderShape`](physics/type-ColliderShape.md) | enum |  | What a collider is shaped as: Collider.shape and ShapeDesc.shape. |
 | [`ColliderShape()`](#column-ColliderShape) | column kind |  | A ColliderShape field: the variant's index. |
+| [`CombineRule`](physics/type-CombineRule.md) | enum |  | How two colliders' friction or restitution coefficients combine. |
+| [`CombineRule()`](#column-CombineRule) | column kind |  | A CombineRule field: the variant's index. |
 | [`og.Collider`](physics/record-Collider.md) | component |  | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). |
 | [`ForceFieldKind`](physics/type-ForceFieldKind.md) | enum |  | How an og.ForceField accelerates. |
 | [`ForceFieldKind()`](#column-ForceFieldKind) | column kind |  | A ForceFieldKind field: the variant's index. |
@@ -62,6 +64,8 @@ module physics {
 | [`JointType()`](#column-JointType) | column kind |  | A JointType field: the variant's index. |
 | [`JointMotor`](physics/type-JointMotor.md) | enum |  | What drives a joint: Joint.motor. |
 | [`JointMotor()`](#column-JointMotor) | column kind |  | A JointMotor field: the variant's index. |
+| [`JointMotorModel`](physics/type-JointMotorModel.md) | enum |  | How a joint motor interprets stiffness and damping: Joint.motorModel. |
+| [`JointMotorModel()`](#column-JointMotorModel) | column kind |  | A JointMotorModel field: the variant's index. |
 | [`og.Joint`](physics/record-Joint.md) | component |  | A joint between two bodies (or a body and a point of the world). |
 | [`og.CharacterController`](physics/record-CharacterController.md) | component |  | A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, sn… |
 | [`og.PlatformerController`](physics/record-PlatformerController.md) | component |  | A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps… |
@@ -100,6 +104,9 @@ module physics {
 | [`WaterPoint`](physics/type-WaterPoint.md) | struct |  | The water at a point (og.physics.water): whose it is, where its surface stands over the point and how it moves there. |
 | [`og.physics.water`](physics/fn-water.md) | function | `(world: World, point: Vector3): Result<WaterPoint \| null>` | The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motio… |
 | [`og.physics.waterHeight`](physics/fn-waterHeight.md) | function | `(world: World, entity: Entity, x: number, z: number): Result<number>` | The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurf… |
+| [`QUERY_DYNAMIC`](#const-QUERY_DYNAMIC) | constant |  | QueryFilter.kindFlags bit: include dynamic bodies. |
+| [`QUERY_FIXED`](#const-QUERY_FIXED) | constant |  | QueryFilter.kindFlags bit: include fixed bodies and static colliders. |
+| [`QUERY_KINEMATIC`](#const-QUERY_KINEMATIC) | constant |  | QueryFilter.kindFlags bit: include kinematic bodies and controllers. |
 | [`QueryFilter`](physics/type-QueryFilter.md) | desc struct |  | Which colliders a scene query considers. |
 | [`RaycastDesc`](physics/type-RaycastDesc.md) | desc struct |  | A ray for og.physics.castRay. |
 | [`RaycastHit`](physics/type-RaycastHit.md) | struct |  | The nearest collider a ray meets. |
@@ -108,14 +115,21 @@ module physics {
 | [`PointProjection`](physics/type-PointProjection.md) | struct |  | Where a point projects onto the nearest collider. |
 | [`ShapeDesc`](physics/type-ShapeDesc.md) | desc struct |  | The shape of a shape cast or an overlap test: the shape fields of a Collider. |
 | [`ShapeCastDesc`](physics/type-ShapeCastDesc.md) | desc struct |  | A shape swept along a direction for og.physics.castShape. |
-| [`ShapeCastHit`](physics/type-ShapeCastHit.md) | struct |  | The first collider a swept shape meets. |
+| [`ShapeCastAllDesc`](physics/type-ShapeCastAllDesc.md) | desc struct |  | A shape swept along a direction for og.physics.castShapeAll: castShape's fields and a cap on the hits. |
+| [`ShapeCastHit`](physics/type-ShapeCastHit.md) | struct |  | A collider a swept shape meets. |
 | [`OverlapDesc`](physics/type-OverlapDesc.md) | desc struct |  | A shape placed in the world for og.physics.overlap. |
-| [`MeshDesc`](physics/type-MeshDesc.md) | desc struct |  | Geometry for convex and triangle-mesh colliders, in the mesh's own space. |
+| [`PointOverlapDesc`](physics/type-PointOverlapDesc.md) | desc struct |  | A point placed in the world for og.physics.overlapPoint. |
+| [`MassProperties`](physics/type-MassProperties.md) | struct |  | A body's mass properties as computed by the solver. |
+| [`MeshDesc`](physics/type-MeshDesc.md) | desc struct |  | Geometry for convex, triangle-mesh and polyline colliders, in the mesh's own space. |
 | [`og.physics.castRay`](physics/fn-castRay.md) | function | `(world: World, desc?: RaycastDesc): Result<RaycastHit \| null>` | The nearest collider along a ray. |
 | [`og.physics.castRayAll`](physics/fn-castRayAll.md) | function | `(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>` | Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a pierci… |
 | [`og.physics.projectPoint`](physics/fn-projectPoint.md) | function | `(world: World, desc?: ProjectPointDesc): Result<PointProjection \| null>` | The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. |
 | [`og.physics.castShape`](physics/fn-castShape.md) | function | `(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit \| null>` | The first collider a shape meets when swept along a direction; the same view of the colliders as castRay. |
+| [`og.physics.castShapeAll`](physics/fn-castShapeAll.md) | function | `(world: World, desc?: ShapeCastAllDesc): Result<readonly ShapeCastHit[]>` | Every collider a shape meets when swept along a direction, nearest first (ties in entity order), at most `maxHits`; the same view of the colliders as castRay. |
 | [`og.physics.overlap`](physics/fn-overlap.md) | function | `(world: World, desc?: OverlapDesc): Result<readonly Entity[]>` | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay. |
+| [`og.physics.overlapPoint`](physics/fn-overlapPoint.md) | function | `(world: World, desc?: PointOverlapDesc): Result<readonly Entity[]>` | Every collider containing a point, sorted by entity id; the same view of the colliders as castRay. |
+| [`og.physics.massProperties`](physics/fn-massProperties.md) | function | `(world: World, entity: Entity): Result<MassProperties \| null>` | The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body. |
+| [`og.physics.velocityAtPoint`](physics/fn-velocityAtPoint.md) | function | `(world: World, entity: Entity, point: Vector3): Result<Vector3 \| null>` | The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body. |
 | [`og.physics.sensorContents`](physics/fn-sensorContents.md) | function | `(world: World, sensor: Entity): Result<readonly Entity[]>` | Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. |
 | [`og.physics.applyForce`](physics/fn-applyForce.md) | function | `(world: World, entity: Entity, force: Vector3, point?: Vector3): Result<void>` | Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-… |
 | [`og.physics.applyImpulse`](physics/fn-applyImpulse.md) | function | `(world: World, entity: Entity, impulse: Vector3, point?: Vector3): Result<void>` | Give a dynamic body an impulse (N·s, world axes) at a world point or its centre of mass: a sudden change of momentum (a kick, a hit, a jump: its velocity changes by impulse / mass), applied by the ne… |
@@ -149,9 +163,11 @@ Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a 
 |---|---|---|---|---|
 | <a id="column-RigidBodyType"></a>`RigidBodyType` | `RigidBodyType` | `Uint32Array` | 1 | A RigidBodyType field: the variant's index. |
 | <a id="column-ColliderShape"></a>`ColliderShape` | `ColliderShape` | `Uint32Array` | 1 | A ColliderShape field: the variant's index. |
+| <a id="column-CombineRule"></a>`CombineRule` | `CombineRule` | `Uint32Array` | 1 | A CombineRule field: the variant's index. |
 | <a id="column-ForceFieldKind"></a>`ForceFieldKind` | `ForceFieldKind` | `Uint32Array` | 1 | A ForceFieldKind field: the variant's index. |
 | <a id="column-JointType"></a>`JointType` | `JointType` | `Uint32Array` | 1 | A JointType field: the variant's index. |
 | <a id="column-JointMotor"></a>`JointMotor` | `JointMotor` | `Uint32Array` | 1 | A JointMotor field: the variant's index. |
+| <a id="column-JointMotorModel"></a>`JointMotorModel` | `JointMotorModel` | `Uint32Array` | 1 | A JointMotorModel field: the variant's index. |
 | <a id="column-VehicleDrive"></a>`VehicleDrive` | `VehicleDrive` | `Uint32Array` | 1 | A VehicleDrive field: the variant's index. |
 | <a id="column-VehicleModel"></a>`VehicleModel` | `VehicleModel` | `Uint32Array` | 1 | A VehicleModel field: the variant's index. |
 | <a id="column-Simulation"></a>`Simulation` | `Simulation` | `Uint32Array` | 1 | A Simulation field: the variant's index. |
@@ -177,7 +193,18 @@ column ColliderShape {
 }
 ```
 
-<sub>Module `physics` line 102</sub>
+<sub>Module `physics` line 119</sub>
+
+```ogt
+column CombineRule {
+  doc "A CombineRule field: the variant's index."
+  array Uint32Array
+  stride 1
+  value CombineRule
+}
+```
+
+<sub>Module `physics` line 134</sub>
 
 ```ogt
 column ForceFieldKind {
@@ -188,7 +215,7 @@ column ForceFieldKind {
 }
 ```
 
-<sub>Module `physics` line 173</sub>
+<sub>Module `physics` line 217</sub>
 
 ```ogt
 column JointType {
@@ -199,7 +226,7 @@ column JointType {
 }
 ```
 
-<sub>Module `physics` line 360</sub>
+<sub>Module `physics` line 405</sub>
 
 ```ogt
 column JointMotor {
@@ -210,7 +237,18 @@ column JointMotor {
 }
 ```
 
-<sub>Module `physics` line 375</sub>
+<sub>Module `physics` line 420</sub>
+
+```ogt
+column JointMotorModel {
+  doc "A JointMotorModel field: the variant's index."
+  array Uint32Array
+  stride 1
+  value JointMotorModel
+}
+```
+
+<sub>Module `physics` line 433</sub>
 
 ```ogt
 column VehicleDrive {
@@ -221,7 +259,7 @@ column VehicleDrive {
 }
 ```
 
-<sub>Module `physics` line 784</sub>
+<sub>Module `physics` line 847</sub>
 
 ```ogt
 column VehicleModel {
@@ -232,7 +270,7 @@ column VehicleModel {
 }
 ```
 
-<sub>Module `physics` line 797</sub>
+<sub>Module `physics` line 860</sub>
 
 ```ogt
 column Simulation {
@@ -243,7 +281,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1115</sub>
+<sub>Module `physics` line 1178</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -254,7 +292,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1300</sub>
+<sub>Module `physics` line 1363</sub>
 
 ## Constants
 
@@ -279,6 +317,9 @@ column SoftBodyShape {
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | <a id="const-PIN_TOP_RINGS"></a>`PIN_TOP_RINGS` | `number` | `8` | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
+| <a id="const-QUERY_DYNAMIC"></a>`QUERY_DYNAMIC` | `number` | `1` | QueryFilter.kindFlags bit: include dynamic bodies. |
+| <a id="const-QUERY_FIXED"></a>`QUERY_FIXED` | `number` | `2` | QueryFilter.kindFlags bit: include fixed bodies and static colliders. |
+| <a id="const-QUERY_KINEMATIC"></a>`QUERY_KINEMATIC` | `number` | `4` | QueryFilter.kindFlags bit: include kinematic bodies and controllers. |
 
 ```ogt
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
@@ -338,58 +379,76 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 758</sub>
+<sub>Module `physics` line 821</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 759</sub>
+<sub>Module `physics` line 822</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 760</sub>
+<sub>Module `physics` line 823</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 761</sub>
+<sub>Module `physics` line 824</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 762</sub>
+<sub>Module `physics` line 825</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 763</sub>
+<sub>Module `physics` line 826</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1122</sub>
+<sub>Module `physics` line 1185</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1123</sub>
+<sub>Module `physics` line 1186</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1124</sub>
+<sub>Module `physics` line 1187</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1125</sub>
+<sub>Module `physics` line 1188</sub>
+
+```ogt
+const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
+```
+
+<sub>Module `physics` line 1917</sub>
+
+```ogt
+const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
+```
+
+<sub>Module `physics` line 1918</sub>
+
+```ogt
+const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
+```
+
+<sub>Module `physics` line 1919</sub>

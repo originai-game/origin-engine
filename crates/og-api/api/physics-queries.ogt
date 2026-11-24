@@ -1,3 +1,7 @@
+  const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
+  const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
+  const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
+
   struct QueryFilter {
     doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
     guide "physics §4"
@@ -5,6 +9,7 @@
     field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
     field includeSensors bool "Also report sensors."
     field exclude Option.Entity "An entity to ignore, such as the caster itself."
+    field kindFlags u32 "Body kinds to consider (QUERY_DYNAMIC | QUERY_FIXED | QUERY_KINEMATIC); 0 means all."
   }
 
   struct RaycastDesc {
@@ -19,6 +24,9 @@
     field maxDistance f32 "How far it reaches; 0 is unbounded." {
       min 0
       unit m
+    }
+    field solid bool "A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface." {
+      default true
     }
     field filter QueryFilter "Which colliders count."
   }
@@ -46,6 +54,9 @@
     field maxDistance f32 "How far it reaches; 0 is unbounded." {
       min 0
       unit m
+    }
+    field solid bool "A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface." {
+      default true
     }
     field filter QueryFilter "Which colliders count."
     field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
@@ -87,20 +98,20 @@
   struct ShapeDesc {
     doc "The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box."
     desc true
-    field shape ColliderShape "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh."
+    field shape ColliderShape "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, cone, convex, trimesh and polyline."
     field size Vector3 "Full extents of a box." {
       default 1 1 1
       unit m
     }
-    field radius f32 "Radius of a sphere, circle, capsule or cylinder." {
+    field radius f32 "Radius of a sphere, circle, capsule, cylinder or cone." {
       default 0.5
       unit m
     }
-    field height f32 "Capsule or cylinder height." {
+    field height f32 "Capsule, cylinder or cone height." {
       default 1
       unit m
     }
-    field mesh Geometry "The geometry of a convex or triangle-mesh shape."
+    field mesh Geometry "The geometry of a convex, triangle-mesh or polyline shape."
   }
 
   struct ShapeCastDesc {
@@ -121,9 +132,32 @@
     field filter QueryFilter "Which colliders count."
   }
 
+  struct ShapeCastAllDesc {
+    doc "A shape swept along a direction for og.physics.castShapeAll: castShape's fields and a cap on the hits."
+    desc true
+    field shape ShapeDesc "The swept shape."
+    field position Vector3 "Where the sweep starts." {
+      unit m
+    }
+    field quaternion Quaternion "The shape's rotation; a zero quaternion is no rotation."
+    field direction Vector3 "Where it sweeps; it need not be normalised and must not be zero." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it sweeps; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+    field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
+      min 0
+      max 256
+    }
+  }
+
   struct ShapeCastHit {
-    doc "The first collider a swept shape meets."
+    doc "A collider a swept shape meets."
     field entity Entity "The collider's entity."
+    field body Entity "The body the collider belongs to: its own entity, or for a compound child collider the ancestor body it is part of."
     field distance f32 "How far the shape travelled before touching." {
       unit m
     }
@@ -142,11 +176,31 @@
     field filter QueryFilter "Which colliders count."
   }
 
+  struct PointOverlapDesc {
+    doc "A point placed in the world for og.physics.overlapPoint."
+    desc true
+    field point Vector3 "The point to test (z is ignored in 2D)." {
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct MassProperties {
+    doc "A body's mass properties as computed by the solver."
+    field mass f32 "Total mass in kilograms (0 for static and kinematic bodies)." {
+      unit kg
+    }
+    field centerOfMass Vector3 "World-space centre of mass." {
+      unit m
+    }
+    field inertia Vector3 "Local principal angular inertia (in 2D only z is non-zero)."
+  }
+
   struct MeshDesc {
-    doc "Geometry for convex and triangle-mesh colliders, in the mesh's own space."
+    doc "Geometry for convex, triangle-mesh and polyline colliders, in the mesh's own space."
     desc true
     field positions List.Vector3 "Vertex positions (2D polygons use x and y)."
-    field indices List.u32 "Triangles as triples of indices into positions; a convex hull ignores them."
+    field indices List.u32 "Triangles as triples of indices into positions; a convex hull ignores them; a polyline uses empty for an open chain or [a, b, a] triples per segment."
   }
 
   fn castRay {
@@ -179,12 +233,41 @@
     returns Result.Option.ShapeCastHit "The hit, or null; refused for a zero direction or an unknown mesh."
   }
 
+  fn castShapeAll {
+    doc "Every collider a shape meets when swept along a direction, nearest first (ties in entity order), at most `maxHits`; the same view of the colliders as castRay."
+    param world World "The world."
+    param desc ShapeCastAllDesc "The shape, its sweep, the filter and the cap."
+    returns Result.List.ShapeCastHit "The hits, nearest first; refused for a zero direction or an unknown mesh."
+  }
+
   fn overlap {
     doc "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay."
     aliases "overlap sphere, area query, shapes in range, Unity Physics.OverlapSphere, Godot intersect_shape"
     param world World "The world."
     param desc OverlapDesc "The shape, its placement and the filter."
     returns Result.List.Entity
+  }
+
+  fn overlapPoint {
+    doc "Every collider containing a point, sorted by entity id; the same view of the colliders as castRay."
+    param world World "The world."
+    param desc PointOverlapDesc "The point and the filter."
+    returns Result.List.Entity
+  }
+
+  fn massProperties {
+    doc "The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body."
+    param world World "The world."
+    param entity Entity "The body's entity."
+    returns Result.Option.MassProperties
+  }
+
+  fn velocityAtPoint {
+    doc "The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body."
+    param world World "The world."
+    param entity Entity "The body's entity."
+    param point Vector3 "The world-space point."
+    returns Result.Option.Vector3
   }
 
   fn sensorContents {

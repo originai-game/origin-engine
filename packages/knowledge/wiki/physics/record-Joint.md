@@ -14,13 +14,13 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `kind` | `JointType` | `"fixed"` | — | — | label “Kind” | fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball. |
+| `kind` | `JointType` | `"fixed"` | — | — | label “Kind” | fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF). |
 | `body` | `Entity` | `0` | — | — | — | The first body; 0 is this entity. |
 | `other` | `Entity` | `0` | — | — | — | The second body; 0 joins the first one to the world at `otherAnchor`. |
 | `anchor` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | Where the joint sits on the first body, in its frame. |
 | `otherAnchor` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `hook` | Where it sits on the second body, in its frame (a world point without `other`). |
 | `axis` | `Vector3` | `{ x: 1, y: 0, z: 0 }` | — | — | — | The hinge or slide axis in the first body's frame (a hinge in 2D turns about z). |
-| `limits` | `boolean` | `false` | — | — | — | Whether `min`..`max` bound the hinge angle (rad) or the slide (m). |
+| `limits` | `boolean` | `false` | — | — | — | Whether `min`..`max` bound the hinge angle (rad), the slide (m) or a ball joint's swing/twist. |
 | `min` | `number` | `0` | — | — | — | The lower limit: radians for a hinge, metres for a slider. |
 | `max` | `number` | `0` | — | — | — | The upper limit. |
 | `motor` | `JointMotor` | `"none"` | — | — | — | none, velocity (drive at motorTarget speed) or position (spring to motorTarget). |
@@ -34,15 +34,17 @@ Token `og.Joint`, registered under the schema name `og.Joint`; its value type is
 | `length` | `number` | `2` | ≥ 0 | `m` | tunable | A rope's longest distance between the anchors. |
 | `collide` | `boolean` | `false` | — | — | — | Whether the two bodies still collide with each other. |
 | `value` | `number` | `0` | — | — | read only | Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes. |
-| `breakForce` | `number` | `0` | ≥ 0 | `newton` | tunable | The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks. |
+| `breakForce` | `number` | `0` | ≥ 0 | `newton` | tunable | The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step. 0 never breaks. |
 | `breakTorque` | `number` | `0` | ≥ 0 | `newtonMetre` | tunable | The torque about its anchor it holds before it breaks, as breakForce (a shelf bracket, a cantilevered beam); 0 never breaks. |
 | `broken` | `boolean` | `false` | — | — | — | Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now. |
+| `lockAxes` | `number` | `0` | 0 … 63 | — | — | Locked axes for a `generic` joint, using the same LOCK_* bits as RigidBody.lock. |
+| `motorModel` | `JointMotorModel` | `"acceleration"` | — | — | — | How motor stiffness and damping are interpreted: acceleration (mass-independent) or force. |
 
 ```ogt
 component Joint {
   doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
   guide "physics §1"
-  field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball." {
+  field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF)." {
     label "Kind"
   }
   field body Entity "The first body; 0 is this entity."
@@ -58,7 +60,7 @@ component Joint {
   field axis Vector3 "The hinge or slide axis in the first body's frame (a hinge in 2D turns about z)." {
     default 1 0 0
   }
-  field limits bool "Whether `min`..`max` bound the hinge angle (rad) or the slide (m)."
+  field limits bool "Whether `min`..`max` bound the hinge angle (rad), the slide (m) or a ball joint's swing/twist."
   field min f32 "The lower limit: radians for a hinge, metres for a slider."
   field max f32 "The upper limit."
   field motor JointMotor "none, velocity (drive at motorTarget speed) or position (spring to motorTarget)." {
@@ -106,7 +108,7 @@ component Joint {
   field value f32 "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes." {
     readonly true
   }
-  field breakForce f32 "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks." {
+  field breakForce f32 "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step. 0 never breaks." {
     min 0
     unit newton
     tunable true
@@ -117,7 +119,12 @@ component Joint {
     tunable true
   }
   field broken bool "Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now."
+  field lockAxes u32 "Locked axes for a `generic` joint, using the same LOCK_* bits as RigidBody.lock." {
+    min 0
+    max 63
+  }
+  field motorModel JointMotorModel "How motor stiffness and damping are interpreted: acceleration (mass-independent) or force."
 }
 ```
 
-<sub>Module `physics` line 382</sub>
+<sub>Module `physics` line 440</sub>

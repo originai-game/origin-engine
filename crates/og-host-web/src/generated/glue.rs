@@ -1614,8 +1614,28 @@ pub fn og_physics_cast_shape(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_cast_shape_all(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_cast_shape_all(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_overlap_point(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_overlap_point(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_mass_properties(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_mass_properties(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_velocity_at_point(world: u32, entity: f64, point: String) -> String {
+    <Host as PhysicsApi>::og_physics_velocity_at_point(&Host, world, entity, point)
 }
 
 #[wasm_bindgen]

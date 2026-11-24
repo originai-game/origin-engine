@@ -14,10 +14,12 @@ pub(super) fn ground(q: &og_physics::PhysicsQuery, e: Entity, at: Vec3) -> Optio
         origin: at,
         direction: Vec3::NEG_Y,
         max_distance: 0.0,
+        solid: true,
         filter: og_physics::QueryFilter {
             mask: 0,
             include_sensors: false,
             exclude: Some(e),
+            kind_flags: 0,
         },
     })
     .ok()

@@ -59,6 +59,13 @@ impl ShapeDesc {
     }
 }
 
+/// `QueryFilter.kind_flags`: include dynamic bodies.
+pub const QUERY_DYNAMIC: u32 = 1;
+/// `QueryFilter.kind_flags`: include static/fixed bodies and static colliders.
+pub const QUERY_FIXED: u32 = 2;
+/// `QueryFilter.kind_flags`: include kinematic bodies and character controllers.
+pub const QUERY_KINEMATIC: u32 = 4;
+
 /// Which colliders a query considers. The zero value considers every solid
 /// collider on every layer.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -69,16 +76,32 @@ pub struct QueryFilter {
     pub include_sensors: bool,
     /// An entity to ignore (the caster itself, say).
     pub exclude: Option<Entity>,
+    /// Body kinds to consider (`QUERY_DYNAMIC | QUERY_FIXED | QUERY_KINEMATIC`); 0 means all.
+    pub kind_flags: u32,
 }
 
 /// A ray. `max_distance` 0 means unbounded.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RaycastDesc {
     pub origin: Vec3,
     /// Need not be normalised; must not be zero.
     pub direction: Vec3,
     pub max_distance: f32,
+    /// Whether a ray starting inside a solid collider hits immediately at distance 0 (true) or exits its surface (false).
+    pub solid: bool,
     pub filter: QueryFilter,
+}
+
+impl Default for RaycastDesc {
+    fn default() -> Self {
+        RaycastDesc {
+            origin: Vec3::ZERO,
+            direction: Vec3::ZERO,
+            max_distance: 0.0,
+            solid: true,
+            filter: QueryFilter::default(),
+        }
+    }
 }
 
 /// The nearest collider a ray meets.
@@ -158,10 +181,20 @@ pub struct ShapeCastDesc {
     pub filter: QueryFilter,
 }
 
-/// The first collider a swept shape meets.
+/// Every collider a swept shape meets ([`PhysicsQuery::shape_cast_all`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ShapeCastAllDesc {
+    pub cast: ShapeCastDesc,
+    pub max_hits: u32,
+}
+
+/// A collider a swept shape meets.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeCastHit {
     pub entity: Entity,
+    /// The body the collider belongs to: its own entity, or for a compound
+    /// child collider the ancestor body it is part of.
+    pub body: Entity,
     /// How far the shape travelled before touching.
     pub distance: f32,
     /// The contact point on the hit collider, in world space.
@@ -178,4 +211,22 @@ pub struct OverlapDesc {
     /// Zero is treated as no rotation.
     pub rotation: Quat,
     pub filter: QueryFilter,
+}
+
+/// A point in the world, for a point-containment test ([`PhysicsQuery::overlap_point`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PointOverlapDesc {
+    pub point: Vec3,
+    pub filter: QueryFilter,
+}
+
+/// A body's simulated mass properties as computed by the solver.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MassProperties {
+    /// Total mass in kilograms (0 for static/kinematic bodies).
+    pub mass: f32,
+    /// World-space centre of mass.
+    pub center_of_mass: Vec3,
+    /// Local principal angular inertia (in 2D only z is non-zero).
+    pub inertia: Vec3,
 }

@@ -83,6 +83,21 @@ module physics {
       default true
     }
     field sleeping bool "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is."
+    field dominance i32 "Dominance group (-127..=127): a body in a higher group treats bodies in lower groups as having zero mass during contact resolution." {
+      min -127
+      max 127
+      tunable true
+    }
+    field enabled bool "Whether this body participates in simulation and collision." {
+      default true
+    }
+    field gyroscopic bool "Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only)." {
+      default true
+    }
+    field additionalSolverIterations u32 "Extra solver iterations applied to islands containing this body." {
+      min 0
+      max 32
+    }
   }
 
   enum ColliderShape {
@@ -94,9 +109,11 @@ module physics {
     variant cylinder "A cylinder along y of `radius` and `height` (3D only)."
     variant convex "The convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
     variant trimesh "The triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside."
-    variant heightfield "The height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
+    variant heightfield "The height field registered as `mesh`, centred on the entity (3D grid or 2D profile; a terrain: og.terrain.load's TerrainInfo.geometry)."
     variant diamond "A rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
     variant hexagon "A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
+    variant cone "A cone along y of base `radius` and `height` (3D only)."
+    variant polyline "An open or multi-segment polyline from `mesh` (both profiles)."
   }
 
   column ColliderShape {
@@ -106,12 +123,27 @@ module physics {
     value ColliderShape
   }
 
+  enum CombineRule {
+    doc "How two colliders' friction or restitution coefficients combine."
+    variant average "Arithmetic mean of both colliders."
+    variant min "Minimum of both colliders."
+    variant multiply "Product of both colliders."
+    variant max "Maximum of both colliders."
+  }
+
+  column CombineRule {
+    doc "A CombineRule field: the variant's index."
+    array Uint32Array
+    stride 1
+    value CombineRule
+  }
+
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
     doc "A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children."
     guide "physics §1"
     aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
-    field shape ColliderShape "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles)." {
+    field shape ColliderShape "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a height field), diamond, hexagon, cone (3D) or polyline." {
       label "Shape"
     }
     field size Vector3 "Full extents of a box, as three.js BoxGeometry(width, height, depth)." {
@@ -120,30 +152,30 @@ module physics {
       unit m
       tunable true
     }
-    field radius f32 "Radius of a sphere, circle, capsule or cylinder." {
+    field radius f32 "Radius of a sphere, circle, capsule, cylinder or cone." {
       default 0.5
       min 0
       unit m
       tunable true
     }
-    field height f32 "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height." {
+    field height f32 "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's or cone's height." {
       default 1
       min 0
       unit m
       tunable true
     }
-    field mesh Geometry "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry)."
+    field mesh Geometry "The geometry whose vertices a convex, triangle-mesh or polyline shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry)."
     field offset Vector3 "Position of the shape relative to the entity." {
       unit m
     }
     field quaternion Quaternion "Rotation of the shape relative to the entity."
-    field friction f32 "Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders." {
+    field friction f32 "Coulomb friction (0 is ice, 1 rubber); combined according to `frictionCombine`." {
       default 0.5
       min 0
       max 2
       tunable true
     }
-    field restitution f32 "Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders." {
+    field restitution f32 "Bounciness (0 no bounce, 1 elastic); combined according to `restitutionCombine`." {
       min 0
       max 1
       tunable true
@@ -160,6 +192,18 @@ module physics {
     }
     field mask u32 "The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask." {
       default 4294967295
+    }
+    field roundRadius f32 "Rounding radius added around polygonal shapes (box, cylinder, cone, convex, diamond, hexagon); 0 is sharp." {
+      min 0
+      unit m
+      tunable true
+    }
+    field frictionCombine CombineRule "How friction combines with another collider: average, min, multiply or max."
+    field restitutionCombine CombineRule "How restitution combines with another collider: average, min, multiply or max."
+    field solverLayers u32 "Solver layers (bits) for contact force resolution; 0 inherits `layers`."
+    field solverMask u32 "Solver mask (bits) for contact force resolution; 0 inherits `mask`."
+    field enabled bool "Whether this collider is active in collision detection and queries." {
+      default true
     }
   }
 
@@ -233,7 +277,7 @@ module physics {
       max 32
       tunable true
     }
-    field restSpeed f32 "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it." {
+    field restSpeed f32 "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it." {
       default 0.02
       min 0
       max 1
@@ -355,6 +399,7 @@ module physics {
     variant spring "A damped spring pulling the anchors to `restLength` apart."
     variant rope "A rope: the anchors stay at most `length` apart, free inside it."
     variant ball "A ball and socket (3D; the 2D profile treats it as a hinge)."
+    variant generic "A 6-DOF generic joint whose locked axes are `lockAxes`."
   }
 
   column JointType {
@@ -379,10 +424,23 @@ module physics {
     value JointMotor
   }
 
+  enum JointMotorModel {
+    doc "How a joint motor interprets stiffness and damping: Joint.motorModel."
+    variant acceleration "Stiffness and damping act as acceleration (mass-independent)."
+    variant force "Stiffness and damping act as force or torque (N/m or N·m/rad)."
+  }
+
+  column JointMotorModel {
+    doc "A JointMotorModel field: the variant's index."
+    array Uint32Array
+    stride 1
+    value JointMotorModel
+  }
+
   component Joint {
     doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
     guide "physics §1"
-    field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball." {
+    field kind JointType "fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF)." {
       label "Kind"
     }
     field body Entity "The first body; 0 is this entity."
@@ -398,7 +456,7 @@ module physics {
     field axis Vector3 "The hinge or slide axis in the first body's frame (a hinge in 2D turns about z)." {
       default 1 0 0
     }
-    field limits bool "Whether `min`..`max` bound the hinge angle (rad) or the slide (m)."
+    field limits bool "Whether `min`..`max` bound the hinge angle (rad), the slide (m) or a ball joint's swing/twist."
     field min f32 "The lower limit: radians for a hinge, metres for a slider."
     field max f32 "The upper limit."
     field motor JointMotor "none, velocity (drive at motorTarget speed) or position (spring to motorTarget)." {
@@ -446,7 +504,7 @@ module physics {
     field value f32 "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes." {
       readonly true
     }
-    field breakForce f32 "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks." {
+    field breakForce f32 "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step. 0 never breaks." {
       min 0
       unit newton
       tunable true
@@ -457,5 +515,10 @@ module physics {
       tunable true
     }
     field broken bool "Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now."
+    field lockAxes u32 "Locked axes for a `generic` joint, using the same LOCK_* bits as RigidBody.lock." {
+      min 0
+      max 63
+    }
+    field motorModel JointMotorModel "How motor stiffness and damping are interpreted: acceleration (mass-independent) or force."
   }
 

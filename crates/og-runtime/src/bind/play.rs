@@ -160,6 +160,7 @@ impl Colliders for Physics {
             mask: layers,
             include_sensors: false,
             exclude: (exclude != 0).then(|| Entity::from_bits(exclude)),
+            kind_flags: 0,
         };
         let desc = match *shape {
             Shape::Sphere { radius } => ShapeDesc {
@@ -463,6 +464,7 @@ pub fn og_play_candidates(
             Some(0) => return Err("desc.filter.exclude: 0 is not an entity".into()),
             e => e.map(Entity::from_bits),
         },
+        kind_flags: d.filter.kind_flags,
     };
     let sight = |entity: u64, to: Vec3| -> bool {
         let Some(q) = &query else { return true };
@@ -475,6 +477,7 @@ pub fn og_play_candidates(
             origin: from,
             direction: dir / distance,
             max_distance: distance,
+            solid: true,
             filter,
         }) {
             Ok(Some(hit)) => {

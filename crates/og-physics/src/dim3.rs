@@ -51,21 +51,46 @@ pub(crate) fn cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedSh
 
 /// A primitive shape, or `None` for the mesh shapes.
 pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>> {
+    let r = c.round_radius.max(0.0);
     Ok(Some(match c.shape {
         SHAPE_BOX => {
             let h = c.size * s * 0.5;
-            rp::SharedShape::cuboid(h.x, h.y, h.z)
+            if r > 0.0 {
+                rp::SharedShape::round_cuboid(h.x, h.y, h.z, r)
+            } else {
+                rp::SharedShape::cuboid(h.x, h.y, h.z)
+            }
         }
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.max_element()),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
-        SHAPE_CYLINDER => rp::SharedShape::cylinder(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
+        SHAPE_CYLINDER => {
+            let (hh, rad) = (c.height * 0.5 * s.y, c.radius * s.x.max(s.z));
+            if r > 0.0 {
+                rp::SharedShape::round_cylinder(hh, rad, r)
+            } else {
+                rp::SharedShape::cylinder(hh, rad)
+            }
+        }
+        SHAPE_CONE => {
+            let (hh, rad) = (c.height * 0.5 * s.y, c.radius * s.x.max(s.z));
+            if r > 0.0 {
+                rp::SharedShape::round_cone(hh, rad, r)
+            } else {
+                rp::SharedShape::cone(hh, rad)
+            }
+        }
         SHAPE_DIAMOND | SHAPE_HEXAGON => {
             let h = c.size * s * 0.5;
             let points: Vec<rp::Vector> = polygon(c.shape, h.x, h.y)
                 .into_iter()
                 .flat_map(|[x, y]| [rp::Vector::new(x, y, -h.z), rp::Vector::new(x, y, h.z)])
                 .collect();
-            rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+            let built = if r > 0.0 {
+                rp::SharedShape::round_convex_hull(&points, r)
+            } else {
+                rp::SharedShape::convex_hull(&points)
+            };
+            built.ok_or_else(|| {
                 Error::new(
                     ErrorKind::Invalid,
                     format!(
@@ -75,12 +100,12 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
                 )
             })?
         }
-        SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => return Ok(None),
+        SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD | SHAPE_POLYLINE => return Ok(None),
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh, 6 height field, 7 diamond, 8 hexagon)"
+                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh, 6 height field, 7 diamond, 8 hexagon, 9 cone, 10 polyline)"
                 ),
             ));
         }
@@ -157,20 +182,114 @@ fn field_rect(
     rp::SharedShape::new(field)
 }
 
+/// Segments extracted from a `MeshDesc` for [`SHAPE_POLYLINE`]: empty `indices`
+/// gives a single open chain `0..n`; each `[a, b, c]` with `c == a || c == b`
+/// yields a single segment `[a, b]`, otherwise the three triangle edges.
+pub(crate) fn polyline_segments(mesh: &crate::MeshDesc) -> Option<Vec<[u32; 2]>> {
+    if mesh.indices.is_empty() {
+        return None;
+    }
+    let mut segs = Vec::with_capacity(mesh.indices.len());
+    for &[a, b, c] in &mesh.indices {
+        if c == a || c == b {
+            if a != b {
+                segs.push([a, b]);
+            }
+        } else {
+            segs.push([a, b]);
+            segs.push([b, c]);
+            segs.push([c, a]);
+        }
+    }
+    Some(segs)
+}
+
 /// A shape built from a registered mesh, scaled.
-pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+pub(crate) fn from_mesh(
+    shape: u32,
+    mesh: &crate::MeshDesc,
+    s: Vec3,
+    round_radius: f32,
+) -> Result<rp::SharedShape> {
+    let r = round_radius.max(0.0);
     match shape {
         SHAPE_CONVEX => {
             let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
-            rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+            let built = if r > 0.0 {
+                rp::SharedShape::round_convex_hull(&points, r)
+            } else {
+                rp::SharedShape::convex_hull(&points)
+            };
+            built.ok_or_else(|| {
                 Error::new(
                     ErrorKind::Invalid,
                     "the mesh's convex hull is degenerate (flat or a single point)",
                 )
             })
         }
+        SHAPE_POLYLINE => {
+            if mesh.positions.len() < 2 {
+                return Err(Error::new(
+                    ErrorKind::Invalid,
+                    "a polyline collider needs at least 2 vertices",
+                ));
+            }
+            let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
+            let segs = polyline_segments(mesh);
+            if segs.as_ref().is_some_and(|s| s.is_empty()) {
+                return Err(Error::new(
+                    ErrorKind::Invalid,
+                    "a polyline collider has no non-degenerate segments",
+                ));
+            }
+            Ok(rp::SharedShape::polyline(points, segs))
+        }
         _ => trimesh(mesh, s),
     }
+}
+
+pub(crate) fn gyroscopic_builder(b: rp::RigidBodyBuilder, enabled: bool) -> rp::RigidBodyBuilder {
+    b.gyroscopic_forces_enabled(enabled)
+}
+
+pub(crate) fn set_gyroscopic(rb: &mut rp::RigidBody, enabled: bool) {
+    rb.enable_gyroscopic_forces(enabled);
+}
+
+pub(crate) fn generic_lock_axes(lock: u32) -> rp::JointAxesMask {
+    let mut m = rp::JointAxesMask::empty();
+    if lock & LOCK_TRANSLATION_X != 0 {
+        m |= rp::JointAxesMask::LIN_X;
+    }
+    if lock & LOCK_TRANSLATION_Y != 0 {
+        m |= rp::JointAxesMask::LIN_Y;
+    }
+    if lock & LOCK_TRANSLATION_Z != 0 {
+        m |= rp::JointAxesMask::LIN_Z;
+    }
+    if lock & LOCK_ROTATION_X != 0 {
+        m |= rp::JointAxesMask::ANG_X;
+    }
+    if lock & LOCK_ROTATION_Y != 0 {
+        m |= rp::JointAxesMask::ANG_Y;
+    }
+    if lock & LOCK_ROTATION_Z != 0 {
+        m |= rp::JointAxesMask::ANG_Z;
+    }
+    m
+}
+
+pub(crate) fn set_ball_limits(data: &mut rp::GenericJoint, min: f32, max: f32) {
+    let swing = max.abs().max(min.abs());
+    data.set_limits(rp::JointAxis::AngX, [-swing, swing]);
+    data.set_limits(rp::JointAxis::AngY, [min, max]);
+    data.set_limits(rp::JointAxis::AngZ, [-swing, swing]);
+}
+
+pub(crate) fn principal_inertia(rb: &rp::RigidBody) -> Vec3 {
+    let inv = rb.mass_properties().local_mprops.inv_principal_inertia;
+    let to_i = |x: f32| if x > 1e-20 { 1.0 / x } else { 0.0 };
+    Vec3::new(to_i(inv.x), to_i(inv.y), to_i(inv.z))
 }
 
 pub(crate) use og_physics_data::trimesh::{trimesh, unbake};

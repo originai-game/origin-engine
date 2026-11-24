@@ -521,4 +521,24 @@ impl PhysicsSystem {
     pub fn set_forces(&self, forces: og_env::force::Forces) {
         lock(&self.shared).forces = forces;
     }
+
+    /// The solver's mass properties for `entity`'s body (`None` if not yet stepped or not a body).
+    pub fn mass_properties(&self, entity: Entity) -> Option<MassProperties> {
+        with_sim!(self.shared, |s| s.mass_properties(entity.to_bits()))
+    }
+
+    /// The world-space velocity of `entity`'s body at world `point` (`None` if not yet stepped or not a body).
+    pub fn velocity_at_point(&self, entity: Entity, point: Vec3) -> Result<Option<Vec3>> {
+        if !point.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("velocityAtPoint point must be finite, got {point}"),
+            ));
+        }
+        let v = (|| {
+            with_sim!(self.shared, |s| s
+                .velocity_at_point(entity.to_bits(), point))
+        })();
+        Ok(v)
+    }
 }

@@ -17,6 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `mask` | `number` | `0` | — | — | — | Layers to consider: a collider counts when its layers meet this; 0 means every layer. |
 | `includeSensors` | `boolean` | `false` | — | — | — | Also report sensors. |
 | `exclude` | `Entity \| null` | `null` | — | — | — | An entity to ignore, such as the caster itself. |
+| `kindFlags` | `number` | `0` | — | — | — | Body kinds to consider (QUERY_DYNAMIC \| QUERY_FIXED \| QUERY_KINEMATIC); 0 means all. |
 
 ```ogt
 struct QueryFilter {
@@ -26,7 +27,8 @@ struct QueryFilter {
   field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
   field includeSensors bool "Also report sensors."
   field exclude Option.Entity "An entity to ignore, such as the caster itself."
+  field kindFlags u32 "Body kinds to consider (QUERY_DYNAMIC | QUERY_FIXED | QUERY_KINEMATIC); 0 means all."
 }
 ```
 
-<sub>Module `physics` line 1854</sub>
+<sub>Module `physics` line 1921</sub>

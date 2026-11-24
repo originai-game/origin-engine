@@ -4,17 +4,18 @@
 //! (`v`, `pose`, `unpose`, `angvel`, ...) defined beside it.
 
 use super::{
-    PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, chunk_cache, field_chunk, flat,
-    from_heightfield, from_mesh, pose, primitive, rp, unangvel, unpose, unv, v,
+    DIM, PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, chunk_cache, field_chunk, flat,
+    from_heightfield, from_mesh, gyroscopic_builder, pose, primitive, principal_inertia, rp,
+    set_gyroscopic, unangvel, unpose, unv, v,
 };
 use super::{VehicleState, ext, platformers, ragdolls, vehicles};
 use crate::gather::{Body, Scene, Static, StaticRun};
 use crate::schema::*;
 use crate::stats::{Laps, Phase};
-use crate::{ContactHook, OverlapDesc, ShapeDesc};
+use crate::{ContactHook, MassProperties, OverlapDesc, PointOverlapDesc, ShapeDesc};
 use crate::{
-    Hole, QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT, ShapeCastDesc, ShapeCastHit, ShapeKey,
-    Shared, StepOut,
+    Hole, QUERY_DYNAMIC, QUERY_FIXED, QUERY_KINEMATIC, QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT,
+    ShapeCastDesc, ShapeCastHit, ShapeKey, Shared, StepOut,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, IdMap, Result};
@@ -445,5 +446,23 @@ impl Sim {
             points(&mut g.previous);
             points(&mut g.targets);
         }
+    }
+
+    /// The solver's computed mass properties for `entity`'s body.
+    pub(crate) fn mass_properties(&self, entity: u64) -> Option<MassProperties> {
+        let t = self.bodies.get(&entity)?;
+        let rb = self.world.bodies.get(t.handle)?;
+        Some(MassProperties {
+            mass: rb.mass(),
+            center_of_mass: unv(rb.center_of_mass()),
+            inertia: principal_inertia(rb),
+        })
+    }
+
+    /// World-space linear velocity of `entity`'s body at world point `point`.
+    pub(crate) fn velocity_at_point(&self, entity: u64, point: Vec3) -> Option<Vec3> {
+        let t = self.bodies.get(&entity)?;
+        let rb = self.world.bodies.get(t.handle)?;
+        Some(unv(rb.velocity_at_point(v(flat(point)))))
     }
 }

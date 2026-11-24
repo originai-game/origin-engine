@@ -8000,6 +8000,8 @@
         "RigidBody",
         "ColliderShape",
         "ColliderShape",
+        "CombineRule",
+        "CombineRule",
         "Collider",
         "ForceFieldKind",
         "ForceFieldKind",
@@ -8019,6 +8021,8 @@
         "JointType",
         "JointMotor",
         "JointMotor",
+        "JointMotorModel",
+        "JointMotorModel",
         "Joint",
         "CharacterController",
         "PlatformerController",
@@ -8053,8 +8057,11 @@
         "PointProjection",
         "ShapeDesc",
         "ShapeCastDesc",
+        "ShapeCastAllDesc",
         "ShapeCastHit",
         "OverlapDesc",
+        "PointOverlapDesc",
+        "MassProperties",
         "MeshDesc",
         "WheelPose",
         "RagdollBoneDesc",
@@ -8178,6 +8185,24 @@
           "type": "u32",
           "value": 8,
           "doc": "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+        },
+        {
+          "name": "QUERY_DYNAMIC",
+          "type": "u32",
+          "value": 1,
+          "doc": "QueryFilter.kindFlags bit: include dynamic bodies."
+        },
+        {
+          "name": "QUERY_FIXED",
+          "type": "u32",
+          "value": 2,
+          "doc": "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
+        },
+        {
+          "name": "QUERY_KINEMATIC",
+          "type": "u32",
+          "value": 4,
+          "doc": "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
         }
       ],
       "functions": [
@@ -8320,6 +8345,27 @@
           "publish": true
         },
         {
+          "name": "castShapeAll",
+          "doc": "Every collider a shape meets when swept along a direction, nearest first (ties in entity order), at most `maxHits`; the same view of the colliders as castRay.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "ShapeCastAllDesc",
+              "optional": true,
+              "doc": "The shape, its sweep, the filter and the cap."
+            }
+          ],
+          "returns": "Result<List<ShapeCastHit>>",
+          "returnsDoc": "The hits, nearest first; refused for a zero direction or an unknown mesh.",
+          "publish": true
+        },
+        {
           "name": "overlap",
           "doc": "Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay.",
           "params": [
@@ -8337,6 +8383,72 @@
             }
           ],
           "returns": "Result<List<Entity>>",
+          "publish": true
+        },
+        {
+          "name": "overlapPoint",
+          "doc": "Every collider containing a point, sorted by entity id; the same view of the colliders as castRay.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "PointOverlapDesc",
+              "optional": true,
+              "doc": "The point and the filter."
+            }
+          ],
+          "returns": "Result<List<Entity>>",
+          "publish": true
+        },
+        {
+          "name": "massProperties",
+          "doc": "The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The body's entity."
+            }
+          ],
+          "returns": "Result<Option<MassProperties>>",
+          "publish": true
+        },
+        {
+          "name": "velocityAtPoint",
+          "doc": "The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The body's entity."
+            },
+            {
+              "name": "point",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "The world-space point."
+            }
+          ],
+          "returns": "Result<Option<Vector3>>",
           "publish": true
         },
         {
@@ -34389,6 +34501,35 @@
           "type": "boolean",
           "description": "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is.",
           "default": false
+        },
+        "dominance": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Dominance group (-127..=127): a body in a higher group treats bodies in lower groups as having zero mass during contact resolution.",
+          "default": 0,
+          "minimum": -127,
+          "maximum": 127,
+          "x-og-tunable": true
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this body participates in simulation and collision.",
+          "default": true
+        },
+        "gyroscopic": {
+          "type": "boolean",
+          "description": "Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only).",
+          "default": true
+        },
+        "additionalSolverIterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Extra solver iterations applied to islands containing this body.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
         }
       },
       "additionalProperties": false
@@ -34407,7 +34548,9 @@
         "trimesh",
         "heightfield",
         "diamond",
-        "hexagon"
+        "hexagon",
+        "cone",
+        "polyline"
       ],
       "x-og-variants": {
         "box": "A box of `size` (both profiles).",
@@ -34416,9 +34559,29 @@
         "cylinder": "A cylinder along y of `radius` and `height` (3D only).",
         "convex": "The convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).",
         "trimesh": "The triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.",
-        "heightfield": "The height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).",
+        "heightfield": "The height field registered as `mesh`, centred on the entity (3D grid or 2D profile; a terrain: og.terrain.load's TerrainInfo.geometry).",
         "diamond": "A rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).",
-        "hexagon": "A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
+        "hexagon": "A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles).",
+        "cone": "A cone along y of base `radius` and `height` (3D only).",
+        "polyline": "An open or multi-segment polyline from `mesh` (both profiles)."
+      }
+    },
+    "CombineRule": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "How two colliders' friction or restitution coefficients combine.",
+      "type": "string",
+      "enum": [
+        "average",
+        "min",
+        "multiply",
+        "max"
+      ],
+      "x-og-variants": {
+        "average": "Arithmetic mean of both colliders.",
+        "min": "Minimum of both colliders.",
+        "multiply": "Product of both colliders.",
+        "max": "Maximum of both colliders."
       }
     },
     "Collider": {
@@ -34429,7 +34592,7 @@
       "properties": {
         "shape": {
           "$ref": "#/$defs/ColliderShape",
-          "description": "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles).",
+          "description": "What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a height field), diamond, hexagon, cone (3D) or polyline.",
           "default": "box",
           "x-og-label": "Shape"
         },
@@ -34447,7 +34610,7 @@
         },
         "radius": {
           "type": "number",
-          "description": "Radius of a sphere, circle, capsule or cylinder.",
+          "description": "Radius of a sphere, circle, capsule, cylinder or cone.",
           "default": 0.5,
           "minimum": 0,
           "x-og-unit": "m",
@@ -34455,7 +34618,7 @@
         },
         "height": {
           "type": "number",
-          "description": "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height.",
+          "description": "A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's or cone's height.",
           "default": 1,
           "minimum": 0,
           "x-og-unit": "m",
@@ -34463,7 +34626,7 @@
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
+          "description": "The geometry whose vertices a convex, triangle-mesh or polyline shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).",
           "default": 0
         },
         "offset": {
@@ -34488,7 +34651,7 @@
         },
         "friction": {
           "type": "number",
-          "description": "Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders.",
+          "description": "Coulomb friction (0 is ice, 1 rubber); combined according to `frictionCombine`.",
           "default": 0.5,
           "minimum": 0,
           "maximum": 2,
@@ -34496,7 +34659,7 @@
         },
         "restitution": {
           "type": "number",
-          "description": "Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders.",
+          "description": "Bounciness (0 no bounce, 1 elastic); combined according to `restitutionCombine`.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,
@@ -34528,6 +34691,43 @@
           "maximum": 4294967295,
           "description": "The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask.",
           "default": 4294967295
+        },
+        "roundRadius": {
+          "type": "number",
+          "description": "Rounding radius added around polygonal shapes (box, cylinder, cone, convex, diamond, hexagon); 0 is sharp.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "frictionCombine": {
+          "$ref": "#/$defs/CombineRule",
+          "description": "How friction combines with another collider: average, min, multiply or max.",
+          "default": "average"
+        },
+        "restitutionCombine": {
+          "$ref": "#/$defs/CombineRule",
+          "description": "How restitution combines with another collider: average, min, multiply or max.",
+          "default": "average"
+        },
+        "solverLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Solver layers (bits) for contact force resolution; 0 inherits `layers`.",
+          "default": 0
+        },
+        "solverMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Solver mask (bits) for contact force resolution; 0 inherits `mask`.",
+          "default": 0
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether this collider is active in collision detection and queries.",
+          "default": true
         }
       },
       "additionalProperties": false
@@ -34663,7 +34863,7 @@
         },
         "restSpeed": {
           "type": "number",
-          "description": "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it.",
+          "description": "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it.",
           "default": 0.02,
           "minimum": 0,
           "maximum": 1,
@@ -34964,7 +35164,8 @@
         "prismatic",
         "spring",
         "rope",
-        "ball"
+        "ball",
+        "generic"
       ],
       "x-og-variants": {
         "fixed": "The two bodies move as one.",
@@ -34972,7 +35173,8 @@
         "prismatic": "A slider along `axis`, with optional limits and a motor.",
         "spring": "A damped spring pulling the anchors to `restLength` apart.",
         "rope": "A rope: the anchors stay at most `length` apart, free inside it.",
-        "ball": "A ball and socket (3D; the 2D profile treats it as a hinge)."
+        "ball": "A ball and socket (3D; the 2D profile treats it as a hinge).",
+        "generic": "A 6-DOF generic joint whose locked axes are `lockAxes`."
       }
     },
     "JointMotor": {
@@ -34991,6 +35193,20 @@
         "position": "Spring towards `motorTarget` angle or position (a servo)."
       }
     },
+    "JointMotorModel": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "How a joint motor interprets stiffness and damping: Joint.motorModel.",
+      "type": "string",
+      "enum": [
+        "acceleration",
+        "force"
+      ],
+      "x-og-variants": {
+        "acceleration": "Stiffness and damping act as acceleration (mass-independent).",
+        "force": "Stiffness and damping act as force or torque (N/m or N·m/rad)."
+      }
+    },
     "Joint": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -34999,7 +35215,7 @@
       "properties": {
         "kind": {
           "$ref": "#/$defs/JointType",
-          "description": "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball.",
+          "description": "fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF).",
           "default": "fixed",
           "x-og-label": "Kind"
         },
@@ -35046,7 +35262,7 @@
         },
         "limits": {
           "type": "boolean",
-          "description": "Whether `min`..`max` bound the hinge angle (rad) or the slide (m).",
+          "description": "Whether `min`..`max` bound the hinge angle (rad), the slide (m) or a ball joint's swing/twist.",
           "default": false
         },
         "min": {
@@ -35134,7 +35350,7 @@
         },
         "breakForce": {
           "type": "number",
-          "description": "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks.",
+          "description": "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step. 0 never breaks.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "newton",
@@ -35152,6 +35368,20 @@
           "type": "boolean",
           "description": "Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now.",
           "default": false
+        },
+        "lockAxes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Locked axes for a `generic` joint, using the same LOCK_* bits as RigidBody.lock.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 63
+        },
+        "motorModel": {
+          "$ref": "#/$defs/JointMotorModel",
+          "description": "How motor stiffness and damping are interpreted: acceleration (mass-independent) or force.",
+          "default": "acceleration"
         }
       },
       "additionalProperties": false
@@ -37436,6 +37666,13 @@
           ],
           "description": "An entity to ignore, such as the caster itself.",
           "default": null
+        },
+        "kindFlags": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Body kinds to consider (QUERY_DYNAMIC | QUERY_FIXED | QUERY_KINEMATIC); 0 means all.",
+          "default": 0
         }
       },
       "additionalProperties": false
@@ -37471,6 +37708,11 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "solid": {
+          "type": "boolean",
+          "description": "A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface.",
+          "default": true
         },
         "filter": {
           "$ref": "#/$defs/QueryFilter",
@@ -37548,6 +37790,11 @@
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "solid": {
+          "type": "boolean",
+          "description": "A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface.",
+          "default": true
         },
         "filter": {
           "$ref": "#/$defs/QueryFilter",
@@ -37653,7 +37900,7 @@
       "properties": {
         "shape": {
           "$ref": "#/$defs/ColliderShape",
-          "description": "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh.",
+          "description": "The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, cone, convex, trimesh and polyline.",
           "default": "box"
         },
         "size": {
@@ -37668,19 +37915,19 @@
         },
         "radius": {
           "type": "number",
-          "description": "Radius of a sphere, circle, capsule or cylinder.",
+          "description": "Radius of a sphere, circle, capsule, cylinder or cone.",
           "default": 0.5,
           "x-og-unit": "m"
         },
         "height": {
           "type": "number",
-          "description": "Capsule or cylinder height.",
+          "description": "Capsule, cylinder or cone height.",
           "default": 1,
           "x-og-unit": "m"
         },
         "mesh": {
           "$ref": "#/$defs/Geometry",
-          "description": "The geometry of a convex or triangle-mesh shape.",
+          "description": "The geometry of a convex, triangle-mesh or polyline shape.",
           "default": 0
         }
       },
@@ -37741,15 +37988,83 @@
       },
       "additionalProperties": false
     },
+    "ShapeCastAllDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "A shape swept along a direction for og.physics.castShapeAll: castShape's fields and a cap on the hits.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "$ref": "#/$defs/ShapeDesc",
+          "description": "The swept shape.",
+          "default": {}
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the sweep starts.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "quaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "The shape's rotation; a zero quaternion is no rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it sweeps; it need not be normalised and must not be zero.",
+          "default": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          }
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "How far it sweeps; 0 is unbounded.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "filter": {
+          "$ref": "#/$defs/QueryFilter",
+          "description": "Which colliders count.",
+          "default": {}
+        },
+        "maxHits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
     "ShapeCastHit": {
       "x-og-kind": "struct",
       "x-og-module": "physics",
-      "description": "The first collider a swept shape meets.",
+      "description": "A collider a swept shape meets.",
       "type": "object",
       "properties": {
         "entity": {
           "$ref": "#/$defs/Entity",
           "description": "The collider's entity."
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The body the collider belongs to: its own entity, or for a compound child collider the ancestor body it is part of."
         },
         "distance": {
           "type": "number",
@@ -37767,6 +38082,7 @@
       },
       "required": [
         "entity",
+        "body",
         "distance",
         "point",
         "normal"
@@ -37812,10 +38128,62 @@
       },
       "additionalProperties": false
     },
+    "PointOverlapDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "A point placed in the world for og.physics.overlapPoint.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point to test (z is ignored in 2D).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "filter": {
+          "$ref": "#/$defs/QueryFilter",
+          "description": "Which colliders count.",
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "MassProperties": {
+      "x-og-kind": "struct",
+      "x-og-module": "physics",
+      "description": "A body's mass properties as computed by the solver.",
+      "type": "object",
+      "properties": {
+        "mass": {
+          "type": "number",
+          "description": "Total mass in kilograms (0 for static and kinematic bodies).",
+          "x-og-unit": "kg"
+        },
+        "centerOfMass": {
+          "$ref": "#/$defs/Vector3",
+          "description": "World-space centre of mass.",
+          "x-og-unit": "m"
+        },
+        "inertia": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Local principal angular inertia (in 2D only z is non-zero)."
+        }
+      },
+      "required": [
+        "mass",
+        "centerOfMass",
+        "inertia"
+      ],
+      "additionalProperties": false
+    },
     "MeshDesc": {
       "x-og-kind": "desc",
       "x-og-module": "physics",
-      "description": "Geometry for convex and triangle-mesh colliders, in the mesh's own space.",
+      "description": "Geometry for convex, triangle-mesh and polyline colliders, in the mesh's own space.",
       "type": "object",
       "properties": {
         "positions": {
@@ -37833,7 +38201,7 @@
             "minimum": 0,
             "maximum": 4294967295
           },
-          "description": "Triangles as triples of indices into positions; a convex hull ignores them.",
+          "description": "Triangles as triples of indices into positions; a convex hull ignores them; a polyline uses empty for an open chain or [a, b, a] triples per segment.",
           "default": []
         }
       },

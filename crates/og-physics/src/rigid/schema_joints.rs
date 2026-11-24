@@ -16,6 +16,8 @@ pub const JOINT_SPRING: u32 = 3;
 pub const JOINT_ROPE: u32 = 4;
 /// `Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge).
 pub const JOINT_BALL: u32 = 5;
+/// `Joint.kind`: a generic 6-DOF joint whose locked axes are `lockAxes`.
+pub const JOINT_GENERIC: u32 = 6;
 
 /// `Joint.motor`: no motor.
 pub const MOTOR_NONE: u32 = 0;
@@ -24,6 +26,11 @@ pub const MOTOR_VELOCITY: u32 = 1;
 /// `Joint.motor`: spring towards `motorTarget` angle or position (a servo).
 pub const MOTOR_POSITION: u32 = 2;
 
+/// `Joint.motorModel`: stiffness/damping act as acceleration (mass-independent).
+pub const MOTOR_MODEL_ACCELERATION: u32 = 0;
+/// `Joint.motorModel`: stiffness/damping act as force/torque (N/m or N·m/rad).
+pub const MOTOR_MODEL_FORCE: u32 = 1;
+
 /// A joint between two bodies (or a body and a point of the world). The
 /// component may sit on one of the bodies (`body` 0) or on an entity of its
 /// own, so one body can have several joints. Anchors are in each body's
@@ -31,11 +38,11 @@ pub const MOTOR_POSITION: u32 = 2;
 /// second anchor is a world point. A joint whose bodies are not both
 /// `og.RigidBody` entities does nothing until they are.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Joint", version = 3)]
+#[reflect(name = "og.Joint", version = 4)]
 pub struct Joint {
-    /// fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball: the `JOINT_*` codes.
+    /// fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF): the `JOINT_*` codes.
     #[reflect(
-        variants = ["fixed", "revolute", "prismatic", "spring", "rope", "ball"],
+        variants = ["fixed", "revolute", "prismatic", "spring", "rope", "ball", "generic"],
         label = "Kind"
     )]
     pub kind: u32,
@@ -102,6 +109,12 @@ pub struct Joint {
     /// holds nothing. Write false to mend it, rebuilt where its bodies are.
     #[serde(skip)]
     pub broken: bool,
+    /// Locked axes for a `generic` joint, using the same `LOCK_*` bits as `og.RigidBody.lock`.
+    #[reflect(name = "lockAxes", min = 0, max = 63)]
+    pub lock_axes: u32,
+    /// How motor stiffness and damping are interpreted: acceleration (mass-independent) or force.
+    #[reflect(name = "motorModel", variants = ["acceleration", "force"])]
+    pub motor_model: u32,
 }
 
 impl Default for Joint {
@@ -130,6 +143,8 @@ impl Default for Joint {
             break_force: 0.0,
             break_torque: 0.0,
             broken: false,
+            lock_axes: 0,
+            motor_model: MOTOR_MODEL_ACCELERATION,
         }
     }
 }

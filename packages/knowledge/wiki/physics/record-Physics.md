@@ -16,7 +16,7 @@ Token `og.Physics`, registered under the schema name `og.Physics`; its value typ
 | `gravity` | `Vector3` | `{ x: 0, y: -9.81, z: 0 }` | — | `mps2` | tunable | The acceleration of every dynamic body, times its gravityScale; 2D uses x and y. |
 | `substeps` | `number` | `1` | 1 … 16 | — | tunable | Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost. |
 | `solverIterations` | `number` | `4` | 1 … 32 | — | tunable | Solver iterations per step. |
-| `restSpeed` | `number` | `0.02` | 0 … 1 | `mps` | tunable | A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it. |
+| `restSpeed` | `number` | `0.02` | 0 … 1 | `mps` | tunable | A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it. |
 | `sleepTicks` | `number` | `0` | 0 … 3600 | — | tunable | Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps. See `physics §3`. |
 | `sleepSpeed` | `number` | `0.1` | 0 … 10 | `mps` | tunable | The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s). |
 
@@ -47,7 +47,7 @@ resource Physics {
     max 32
     tunable true
   }
-  field restSpeed f32 "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it." {
+  field restSpeed f32 "A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it." {
     default 0.02
     min 0
     max 1
@@ -70,4 +70,4 @@ resource Physics {
 }
 ```
 
-<sub>Module `physics` line 210</sub>
+<sub>Module `physics` line 254</sub>

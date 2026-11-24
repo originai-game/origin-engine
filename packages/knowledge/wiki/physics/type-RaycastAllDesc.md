@@ -15,6 +15,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `origin` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the ray starts. |
 | `direction` | `Vector3` | `{ x: 0, y: -1, z: 0 }` | — | — | — | Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy). |
 | `maxDistance` | `number` | `0` | ≥ 0 | `m` | — | How far it reaches; 0 is unbounded. |
+| `solid` | `boolean` | `true` | — | — | — | A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface. |
 | `filter` | `QueryFilter` | `{}` | — | — | — | Which colliders count. |
 | `maxHits` | `number` | `0` | 0 … 256 | — | — | The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it. |
 
@@ -32,6 +33,9 @@ struct RaycastAllDesc {
     min 0
     unit m
   }
+  field solid bool "A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface." {
+    default true
+  }
   field filter QueryFilter "Which colliders count."
   field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
     min 0
@@ -40,4 +44,4 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>Module `physics` line 1890</sub>
+<sub>Module `physics` line 1961</sub>

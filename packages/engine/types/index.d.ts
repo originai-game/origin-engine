@@ -273,12 +273,16 @@ export interface ColumnKinds {
   RigidBodyType: { readonly array: Uint32Array; readonly stride: 1; readonly value: RigidBodyType };
   /** A ColliderShape field: the variant's index. */
   ColliderShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: ColliderShape };
+  /** A CombineRule field: the variant's index. */
+  CombineRule: { readonly array: Uint32Array; readonly stride: 1; readonly value: CombineRule };
   /** A ForceFieldKind field: the variant's index. */
   ForceFieldKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: ForceFieldKind };
   /** A JointType field: the variant's index. */
   JointType: { readonly array: Uint32Array; readonly stride: 1; readonly value: JointType };
   /** A JointMotor field: the variant's index. */
   JointMotor: { readonly array: Uint32Array; readonly stride: 1; readonly value: JointMotor };
+  /** A JointMotorModel field: the variant's index. */
+  JointMotorModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: JointMotorModel };
   /** A VehicleDrive field: the variant's index. */
   VehicleDrive: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleDrive };
   /** A VehicleModel field: the variant's index. */
@@ -15475,6 +15479,31 @@ export interface RigidBody {
    * Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is.
    */
   sleeping: boolean;
+  /**
+   * Dominance group (-127..=127): a body in a higher group treats bodies in lower groups as having zero mass during contact resolution.
+   *
+   * @range -127..127
+   * @tunable
+   */
+  dominance: number;
+  /**
+   * Whether this body participates in simulation and collision.
+   *
+   * @default true
+   */
+  enabled: boolean;
+  /**
+   * Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only).
+   *
+   * @default true
+   */
+  gyroscopic: boolean;
+  /**
+   * Extra solver iterations applied to islands containing this body.
+   *
+   * @range 0..32
+   */
+  additionalSolverIterations: number;
 }
 
 /**
@@ -15486,11 +15515,13 @@ export interface RigidBody {
  * - `"cylinder"`: A cylinder along y of `radius` and `height` (3D only).
  * - `"convex"`: The convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).
  * - `"trimesh"`: The triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.
- * - `"heightfield"`: The height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry).
+ * - `"heightfield"`: The height field registered as `mesh`, centred on the entity (3D grid or 2D profile; a terrain: og.terrain.load's TerrainInfo.geometry).
  * - `"diamond"`: A rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).
  * - `"hexagon"`: A pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles).
+ * - `"cone"`: A cone along y of base `radius` and `height` (3D only).
+ * - `"polyline"`: An open or multi-segment polyline from `mesh` (both profiles).
  */
-export type ColliderShape = "box" | "sphere" | "capsule" | "cylinder" | "convex" | "trimesh" | "heightfield" | "diamond" | "hexagon";
+export type ColliderShape = "box" | "sphere" | "capsule" | "cylinder" | "convex" | "trimesh" | "heightfield" | "diamond" | "hexagon" | "cone" | "polyline";
 
 /**
  * A ColliderShape field: the variant's index.
@@ -15502,6 +15533,24 @@ export type ColliderShape = "box" | "sphere" | "capsule" | "cylinder" | "convex"
 export declare function ColliderShape(value?: ColliderShape, options?: FieldOptions): FieldSpec<"ColliderShape">;
 
 /**
+ * How two colliders' friction or restitution coefficients combine.
+ * - `"average"`: Arithmetic mean of both colliders.
+ * - `"min"`: Minimum of both colliders.
+ * - `"multiply"`: Product of both colliders.
+ * - `"max"`: Maximum of both colliders.
+ */
+export type CombineRule = "average" | "min" | "multiply" | "max";
+
+/**
+ * A CombineRule field: the variant's index.
+ *
+ * A `CombineRule` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function CombineRule(value?: CombineRule, options?: FieldOptions): FieldSpec<"CombineRule">;
+
+/**
  * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
  * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
  * See `physics §1`.
@@ -15510,7 +15559,7 @@ export declare function ColliderShape(value?: ColliderShape, options?: FieldOpti
  */
 export interface Collider {
   /**
-   * What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a terrain's height field, 3D), diamond or hexagon (in `size`, both profiles).
+   * What it is shaped as: box, sphere (a circle in 2D), capsule, cylinder (3D), convex (the hull of `mesh`; a polygon in 2D), trimesh (the triangles of `mesh`; its outline in 2D), heightfield (`mesh` is a height field), diamond, hexagon, cone (3D) or polyline.
    *
    * @label Shape
    */
@@ -15525,7 +15574,7 @@ export interface Collider {
    */
   size: Vector3;
   /**
-   * Radius of a sphere, circle, capsule or cylinder.
+   * Radius of a sphere, circle, capsule, cylinder or cone.
    *
    * @default 0.5
    * @range 0..
@@ -15534,7 +15583,7 @@ export interface Collider {
    */
   radius: number;
   /**
-   * A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's height.
+   * A capsule's distance between its cap centres (three.js CapsuleGeometry length); a cylinder's or cone's height.
    *
    * @default 1
    * @range 0..
@@ -15543,7 +15592,7 @@ export interface Collider {
    */
   height: number;
   /**
-   * The geometry whose vertices a convex or triangle-mesh shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
+   * The geometry whose vertices a convex, triangle-mesh or polyline shape uses: a loaded glTF's geometry (registered automatically) or one given to og.physics.setMesh; for a heightfield shape, a terrain's height field (og.terrain.load's TerrainInfo.geometry).
    */
   mesh: Geometry;
   /**
@@ -15555,7 +15604,7 @@ export interface Collider {
   /** Rotation of the shape relative to the entity. */
   quaternion: Quaternion;
   /**
-   * Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders.
+   * Coulomb friction (0 is ice, 1 rubber); combined according to `frictionCombine`.
    *
    * @default 0.5
    * @range 0..2
@@ -15563,7 +15612,7 @@ export interface Collider {
    */
   friction: number;
   /**
-   * Bounciness (0 no bounce, 1 elastic); a pair uses the mean of both colliders.
+   * Bounciness (0 no bounce, 1 elastic); combined according to `restitutionCombine`.
    *
    * @range 0..1
    * @tunable
@@ -15592,6 +15641,28 @@ export interface Collider {
    * @default 4294967295
    */
   mask: number;
+  /**
+   * Rounding radius added around polygonal shapes (box, cylinder, cone, convex, diamond, hexagon); 0 is sharp.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  roundRadius: number;
+  /** How friction combines with another collider: average, min, multiply or max. */
+  frictionCombine: CombineRule;
+  /** How restitution combines with another collider: average, min, multiply or max. */
+  restitutionCombine: CombineRule;
+  /** Solver layers (bits) for contact force resolution; 0 inherits `layers`. */
+  solverLayers: number;
+  /** Solver mask (bits) for contact force resolution; 0 inherits `mask`. */
+  solverMask: number;
+  /**
+   * Whether this collider is active in collision detection and queries.
+   *
+   * @default true
+   */
+  enabled: boolean;
 }
 
 /**
@@ -15704,7 +15775,7 @@ export interface Physics {
    */
   solverIterations: number;
   /**
-   * A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it.
+   * A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, loses its residual velocity (the same number in m/s and rad/s); 0 disables it.
    *
    * @default 0.02
    * @range 0..1
@@ -15915,8 +15986,9 @@ export interface Contact {
  * - `"spring"`: A damped spring pulling the anchors to `restLength` apart.
  * - `"rope"`: A rope: the anchors stay at most `length` apart, free inside it.
  * - `"ball"`: A ball and socket (3D; the 2D profile treats it as a hinge).
+ * - `"generic"`: A 6-DOF generic joint whose locked axes are `lockAxes`.
  */
-export type JointType = "fixed" | "revolute" | "prismatic" | "spring" | "rope" | "ball";
+export type JointType = "fixed" | "revolute" | "prismatic" | "spring" | "rope" | "ball" | "generic";
 
 /**
  * A JointType field: the variant's index.
@@ -15946,6 +16018,22 @@ export type JointMotor = "none" | "velocity" | "position";
 export declare function JointMotor(value?: JointMotor, options?: FieldOptions): FieldSpec<"JointMotor">;
 
 /**
+ * How a joint motor interprets stiffness and damping: Joint.motorModel.
+ * - `"acceleration"`: Stiffness and damping act as acceleration (mass-independent).
+ * - `"force"`: Stiffness and damping act as force or torque (N/m or N·m/rad).
+ */
+export type JointMotorModel = "acceleration" | "force";
+
+/**
+ * A JointMotorModel field: the variant's index.
+ *
+ * A `JointMotorModel` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function JointMotorModel(value?: JointMotorModel, options?: FieldOptions): FieldSpec<"JointMotorModel">;
+
+/**
  * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
  * See `physics §1`.
  *
@@ -15953,7 +16041,7 @@ export declare function JointMotor(value?: JointMotor, options?: FieldOptions): 
  */
 export interface Joint {
   /**
-   * fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball.
+   * fixed, revolute (a hinge), prismatic (a slider), spring, rope, ball or generic (6-DOF).
    *
    * @label Kind
    */
@@ -15982,7 +16070,9 @@ export interface Joint {
    * @default { x: 1, y: 0, z: 0 }
    */
   axis: Vector3;
-  /** Whether `min`..`max` bound the hinge angle (rad) or the slide (m). */
+  /**
+   * Whether `min`..`max` bound the hinge angle (rad), the slide (m) or a ball joint's swing/twist.
+   */
   limits: boolean;
   /** The lower limit: radians for a hinge, metres for a slider. */
   min: number;
@@ -16062,7 +16152,7 @@ export interface Joint {
    */
   readonly value: number;
   /**
-   * The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks.
+   * The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step. 0 never breaks.
    *
    * @range 0..
    * @unit newton (newtons: the force that gives a kilogram one metre per second squared)
@@ -16081,6 +16171,16 @@ export interface Joint {
    * Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now.
    */
   broken: boolean;
+  /**
+   * Locked axes for a `generic` joint, using the same LOCK_* bits as RigidBody.lock.
+   *
+   * @range 0..63
+   */
+  lockAxes: number;
+  /**
+   * How motor stiffness and damping are interpreted: acceleration (mass-independent) or force.
+   */
+  motorModel: JointMotorModel;
 }
 
 /**
@@ -18223,6 +18323,15 @@ export interface WaterPoint {
 
 
 
+/** QueryFilter.kindFlags bit: include dynamic bodies. */
+export declare const QUERY_DYNAMIC: 1;
+
+/** QueryFilter.kindFlags bit: include fixed bodies and static colliders. */
+export declare const QUERY_FIXED: 2;
+
+/** QueryFilter.kindFlags bit: include kinematic bodies and controllers. */
+export declare const QUERY_KINEMATIC: 4;
+
 /**
  * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
  * See `physics §4`.
@@ -18248,6 +18357,12 @@ export interface QueryFilter {
    * @default null
    */
   readonly exclude?: Entity | null;
+  /**
+   * Body kinds to consider (QUERY_DYNAMIC | QUERY_FIXED | QUERY_KINEMATIC); 0 means all.
+   *
+   * @default 0
+   */
+  readonly kindFlags?: number;
 }
 
 /**
@@ -18277,6 +18392,12 @@ export interface RaycastDesc {
    * @unit m (metres)
    */
   readonly maxDistance?: number;
+  /**
+   * A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface.
+   *
+   * @default true
+   */
+  readonly solid?: boolean;
   /**
    * Which colliders count.
    *
@@ -18332,6 +18453,12 @@ export interface RaycastAllDesc {
    * @unit m (metres)
    */
   readonly maxDistance?: number;
+  /**
+   * A ray starting inside a solid collider hits immediately at distance 0; false reports where it exits the surface.
+   *
+   * @default true
+   */
+  readonly solid?: boolean;
   /**
    * Which colliders count.
    *
@@ -18415,7 +18542,7 @@ export interface PointProjection {
  */
 export interface ShapeDesc {
   /**
-   * The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, convex and trimesh.
+   * The shape, as Collider.shape; a cast or an overlap is made for box, sphere, capsule, cylinder, cone, convex, trimesh and polyline.
    *
    * @default "box"
    */
@@ -18428,21 +18555,21 @@ export interface ShapeDesc {
    */
   readonly size?: Vector3;
   /**
-   * Radius of a sphere, circle, capsule or cylinder.
+   * Radius of a sphere, circle, capsule, cylinder or cone.
    *
    * @default 0.5
    * @unit m (metres)
    */
   readonly radius?: number;
   /**
-   * Capsule or cylinder height.
+   * Capsule, cylinder or cone height.
    *
    * @default 1
    * @unit m (metres)
    */
   readonly height?: number;
   /**
-   * The geometry of a convex or triangle-mesh shape.
+   * The geometry of a convex, triangle-mesh or polyline shape.
    *
    * @default 0
    */
@@ -18496,10 +18623,68 @@ export interface ShapeCastDesc {
   readonly filter?: QueryFilter;
 }
 
-/** The first collider a swept shape meets. */
+/**
+ * A shape swept along a direction for og.physics.castShapeAll: castShape's fields and a cap on the hits.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShapeCastAllDesc {
+  /**
+   * The swept shape.
+   *
+   * @default {}
+   */
+  readonly shape?: ShapeDesc;
+  /**
+   * Where the sweep starts.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * The shape's rotation; a zero quaternion is no rotation.
+   *
+   * @default { x: 0, y: 0, z: 0, w: 1 }
+   */
+  readonly quaternion?: Quaternion;
+  /**
+   * Where it sweeps; it need not be normalised and must not be zero.
+   *
+   * @default { x: 0, y: -1, z: 0 }
+   */
+  readonly direction?: Vector3;
+  /**
+   * How far it sweeps; 0 is unbounded.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+  /**
+   * The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it.
+   *
+   * @default 0
+   * @range 0..256
+   */
+  readonly maxHits?: number;
+}
+
+/** A collider a swept shape meets. */
 export interface ShapeCastHit {
   /** The collider's entity. */
   readonly entity: Entity;
+  /**
+   * The body the collider belongs to: its own entity, or for a compound child collider the ancestor body it is part of.
+   */
+  readonly body: Entity;
   /**
    * How far the shape travelled before touching.
    *
@@ -18546,7 +18731,46 @@ export interface OverlapDesc {
 }
 
 /**
- * Geometry for convex and triangle-mesh colliders, in the mesh's own space.
+ * A point placed in the world for og.physics.overlapPoint.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PointOverlapDesc {
+  /**
+   * The point to test (z is ignored in 2D).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly point?: Vector3;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/** A body's mass properties as computed by the solver. */
+export interface MassProperties {
+  /**
+   * Total mass in kilograms (0 for static and kinematic bodies).
+   *
+   * @unit kg (kilograms)
+   */
+  readonly mass: number;
+  /**
+   * World-space centre of mass.
+   *
+   * @unit m (metres)
+   */
+  readonly centerOfMass: Vector3;
+  /** Local principal angular inertia (in 2D only z is non-zero). */
+  readonly inertia: Vector3;
+}
+
+/**
+ * Geometry for convex, triangle-mesh and polyline colliders, in the mesh's own space.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -18558,12 +18782,16 @@ export interface MeshDesc {
    */
   readonly positions?: readonly Vector3[];
   /**
-   * Triangles as triples of indices into positions; a convex hull ignores them.
+   * Triangles as triples of indices into positions; a convex hull ignores them; a polyline uses empty for an open chain or [a, b, a] triples per segment.
    *
    * @default []
    */
   readonly indices?: readonly number[];
 }
+
+
+
+
 
 
 
@@ -38433,13 +38661,13 @@ export declare namespace og {
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
    * See `physics §1`.
    */
-  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly airDrag: FieldSpec<"f32">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly airDrag: FieldSpec<"f32">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool">; readonly dominance: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly gyroscopic: FieldSpec<"bool">; readonly additionalSolverIterations: FieldSpec<"u32"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
    * See `physics §1`.
    */
-  const Collider: ComponentType<{ readonly shape: FieldSpec<"ColliderShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  const Collider: ComponentType<{ readonly shape: FieldSpec<"ColliderShape">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly quaternion: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly roundRadius: FieldSpec<"f32">; readonly frictionCombine: FieldSpec<"CombineRule">; readonly restitutionCombine: FieldSpec<"CombineRule">; readonly solverLayers: FieldSpec<"u32">; readonly solverMask: FieldSpec<"u32">; readonly enabled: FieldSpec<"bool"> }, Collider>;
   /**
    * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
    * See `physics §8`.
@@ -38490,7 +38718,7 @@ export declare namespace og {
    * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
    * See `physics §1`.
    */
-  const Joint: ComponentType<{ readonly kind: FieldSpec<"JointType">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"JointMotor">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool"> }, Joint>;
+  const Joint: ComponentType<{ readonly kind: FieldSpec<"JointType">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"JointMotor">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool">; readonly lockAxes: FieldSpec<"u32">; readonly motorModel: FieldSpec<"JointMotorModel"> }, Joint>;
   /**
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
@@ -38623,12 +38851,42 @@ export declare namespace og {
      */
     function castShape(world: World, desc?: ShapeCastDesc): Result<ShapeCastHit | null>;
     /**
+     * Every collider a shape meets when swept along a direction, nearest first (ties in entity order), at most `maxHits`; the same view of the colliders as castRay.
+     *
+     * @param world The world.
+     * @param desc The shape, its sweep, the filter and the cap.
+     * @returns The hits, nearest first; refused for a zero direction or an unknown mesh.
+     */
+    function castShapeAll(world: World, desc?: ShapeCastAllDesc): Result<readonly ShapeCastHit[]>;
+    /**
      * Every collider overlapping a shape, sorted by entity id; the same view of the colliders as castRay.
      *
      * @param world The world.
      * @param desc The shape, its placement and the filter.
      */
     function overlap(world: World, desc?: OverlapDesc): Result<readonly Entity[]>;
+    /**
+     * Every collider containing a point, sorted by entity id; the same view of the colliders as castRay.
+     *
+     * @param world The world.
+     * @param desc The point and the filter.
+     */
+    function overlapPoint(world: World, desc?: PointOverlapDesc): Result<readonly Entity[]>;
+    /**
+     * The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body.
+     *
+     * @param world The world.
+     * @param entity The body's entity.
+     */
+    function massProperties(world: World, entity: Entity): Result<MassProperties | null>;
+    /**
+     * The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body.
+     *
+     * @param world The world.
+     * @param entity The body's entity.
+     * @param point The world-space point.
+     */
+    function velocityAtPoint(world: World, entity: Entity, point: Vector3): Result<Vector3 | null>;
     /**
      * Every entity inside a sensor now, each once, sorted by entity id: who stands on a pressure plate, what lies in a pickup zone, how many are in a capture area. It is what og.SensorEntered and og.SensorExited have added up to, read from og.Contact (the pairs of the last step), so inside a system the system lists og.Contact in its reads; it is world state, the same after a restore and while a hit stop holds the step. Something that passes through a sensor within one step is never in it, and sends neither event.
      * See `physics §5`.

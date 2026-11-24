@@ -47,8 +47,12 @@ impl PhysicsQuery {
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
         let max = max_distance(desc.max_distance)?;
         outside(|| match &*self.inner {
-            QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
-            QueryInner::D2(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
+            QueryInner::D3(q) => {
+                q.raycast(desc.origin, desc.direction, max, desc.solid, &desc.filter)
+            }
+            QueryInner::D2(q) => {
+                q.raycast(desc.origin, desc.direction, max, desc.solid, &desc.filter)
+            }
         })
     }
 
@@ -63,8 +67,8 @@ impl PhysicsQuery {
             n => n.min(MAX_RAYCAST_HITS),
         } as usize;
         outside(|| match &*self.inner {
-            QueryInner::D3(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
-            QueryInner::D2(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
+            QueryInner::D3(q) => q.raycast_all(r.origin, r.direction, max, r.solid, &r.filter, cap),
+            QueryInner::D2(q) => q.raycast_all(r.origin, r.direction, max, r.solid, &r.filter, cap),
         })
     }
 
@@ -92,6 +96,27 @@ impl PhysicsQuery {
         })
     }
 
+    /// Every collider a shape meets when swept along a direction, nearest first,
+    /// at most `max_hits` (0: [`MAX_RAYCAST_HITS`]).
+    pub fn shape_cast_all(&self, desc: &ShapeCastAllDesc) -> Result<Vec<ShapeCastHit>> {
+        let c = &desc.cast;
+        let max = max_distance(c.max_distance)?;
+        let cap = match desc.max_hits {
+            0 => MAX_RAYCAST_HITS,
+            n => n.min(MAX_RAYCAST_HITS),
+        } as usize;
+        outside(|| match &*self.inner {
+            QueryInner::D3(q) => {
+                let shape = dim3::query_shape(&c.shape, &mut lock(&self.shared))?;
+                q.shape_cast_all_with(c, max, &shape, cap)
+            }
+            QueryInner::D2(q) => {
+                let shape = dim2::query_shape(&c.shape, &mut lock(&self.shared))?;
+                q.shape_cast_all_with(c, max, &shape, cap)
+            }
+        })
+    }
+
     /// Every collider overlapping a shape, sorted by entity id.
     pub fn overlap(&self, desc: &OverlapDesc) -> Result<Vec<Entity>> {
         outside(|| match &*self.inner {
@@ -103,6 +128,14 @@ impl PhysicsQuery {
                 let shape = dim2::query_shape(&desc.shape, &mut lock(&self.shared))?;
                 q.overlap_with(desc, &shape)
             }
+        })
+    }
+
+    /// Every collider containing a point, sorted by entity id.
+    pub fn overlap_point(&self, desc: &PointOverlapDesc) -> Result<Vec<Entity>> {
+        outside(|| match &*self.inner {
+            QueryInner::D3(q) => q.overlap_point(desc),
+            QueryInner::D2(q) => q.overlap_point(desc),
         })
     }
 }

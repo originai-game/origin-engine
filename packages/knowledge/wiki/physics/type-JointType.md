@@ -20,6 +20,7 @@ A string: one of the variants below. The zero value is `"fixed"`.
 | `"spring"` | A damped spring pulling the anchors to `restLength` apart. |
 | `"rope"` | A rope: the anchors stay at most `length` apart, free inside it. |
 | `"ball"` | A ball and socket (3D; the 2D profile treats it as a hinge). |
+| `"generic"` | A 6-DOF generic joint whose locked axes are `lockAxes`. |
 
 ```ogt
 enum JointType {
@@ -31,7 +32,8 @@ enum JointType {
   variant spring "A damped spring pulling the anchors to `restLength` apart."
   variant rope "A rope: the anchors stay at most `length` apart, free inside it."
   variant ball "A ball and socket (3D; the 2D profile treats it as a hinge)."
+  variant generic "A 6-DOF generic joint whose locked axes are `lockAxes`."
 }
 ```
 
-<sub>Module `physics` line 349</sub>
+<sub>Module `physics` line 393</sub>

@@ -83,6 +83,15 @@ pub const PIN_LEFT: u32 = 4;
 /// `Cloth.pins` bit: every fourth point of the top row (curtain rings).
 pub const PIN_TOP_RINGS: u32 = 8;
 
+/// QueryFilter.kindFlags bit: include dynamic bodies.
+pub const QUERY_DYNAMIC: u32 = 1;
+
+/// QueryFilter.kindFlags bit: include fixed bodies and static colliders.
+pub const QUERY_FIXED: u32 = 2;
+
+/// QueryFilter.kindFlags bit: include kinematic bodies and controllers.
+pub const QUERY_KINEMATIC: u32 = 4;
+
 /// Weather.kind: clear.
 pub const WEATHER_NONE: u32 = 0;
 

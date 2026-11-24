@@ -38,6 +38,9 @@ export const PIN_TOP: typeof Api.PIN_TOP = 1;
 export const PIN_TOP_CORNERS: typeof Api.PIN_TOP_CORNERS = 2;
 export const PIN_LEFT: typeof Api.PIN_LEFT = 4;
 export const PIN_TOP_RINGS: typeof Api.PIN_TOP_RINGS = 8;
+export const QUERY_DYNAMIC: typeof Api.QUERY_DYNAMIC = 1;
+export const QUERY_FIXED: typeof Api.QUERY_FIXED = 2;
+export const QUERY_KINEMATIC: typeof Api.QUERY_KINEMATIC = 4;
 
 // atmosphere
 export const WEATHER_NONE: typeof Api.WEATHER_NONE = 0;

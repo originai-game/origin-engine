@@ -100,8 +100,27 @@ macro_rules! __og_host_bindings_simulation {
             fn og_physics_cast_shape(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_physics_shape_cast(world, desc))
             }
+            fn og_physics_cast_shape_all(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_physics_shape_cast_all(world, desc))
+            }
             fn og_physics_overlap(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_physics_overlap(world, desc))
+            }
+            fn og_physics_overlap_point(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_physics_overlap_point(world, desc))
+            }
+            fn og_physics_mass_properties(&self, world: u32, entity: f64) -> String {
+                $crate::host_impl::answer($crate::og_physics_mass_properties(world, entity))
+            }
+            fn og_physics_velocity_at_point(
+                &self,
+                world: u32,
+                entity: f64,
+                point: String,
+            ) -> String {
+                $crate::host_impl::answer($crate::og_physics_velocity_at_point(
+                    world, entity, point,
+                ))
             }
             fn og_physics_sensor_contents(&self, world: u32, sensor: f64) -> String {
                 $crate::host_impl::answer($crate::host_impl::og_physics_sensor_contents(

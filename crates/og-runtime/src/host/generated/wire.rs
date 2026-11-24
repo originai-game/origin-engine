@@ -10638,13 +10638,15 @@ pub enum ColliderShape {
     Heightfield,
     Diamond,
     Hexagon,
+    Cone,
+    Polyline,
 }
 
 impl ColliderShape {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["box", "sphere", "capsule", "cylinder", "convex", "trimesh", "heightfield", "diamond", "hexagon"];
+    pub const NAMES: &'static [&'static str] = &["box", "sphere", "capsule", "cylinder", "convex", "trimesh", "heightfield", "diamond", "hexagon", "cone", "polyline"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Box, Self::Sphere, Self::Capsule, Self::Cylinder, Self::Convex, Self::Trimesh, Self::Heightfield, Self::Diamond, Self::Hexagon];
+    pub const ALL: &'static [Self] = &[Self::Box, Self::Sphere, Self::Capsule, Self::Cylinder, Self::Convex, Self::Trimesh, Self::Heightfield, Self::Diamond, Self::Hexagon, Self::Cone, Self::Polyline];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -10665,6 +10667,46 @@ impl FromJson for ColliderShape {
 }
 
 impl ToJson for ColliderShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `CombineRule`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CombineRule {
+    #[default]
+    Average,
+    Min,
+    Multiply,
+    Max,
+}
+
+impl CombineRule {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["average", "min", "multiply", "max"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Average, Self::Min, Self::Multiply, Self::Max];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("CombineRule", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for CombineRule {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "CombineRule", Self::NAMES)?)
+    }
+}
+
+impl ToJson for CombineRule {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -10719,13 +10761,14 @@ pub enum JointType {
     Spring,
     Rope,
     Ball,
+    Generic,
 }
 
 impl JointType {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["fixed", "revolute", "prismatic", "spring", "rope", "ball"];
+    pub const NAMES: &'static [&'static str] = &["fixed", "revolute", "prismatic", "spring", "rope", "ball", "generic"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Fixed, Self::Revolute, Self::Prismatic, Self::Spring, Self::Rope, Self::Ball];
+    pub const ALL: &'static [Self] = &[Self::Fixed, Self::Revolute, Self::Prismatic, Self::Spring, Self::Rope, Self::Ball, Self::Generic];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -10785,6 +10828,44 @@ impl FromJson for JointMotor {
 }
 
 impl ToJson for JointMotor {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `JointMotorModel`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum JointMotorModel {
+    #[default]
+    Acceleration,
+    Force,
+}
+
+impl JointMotorModel {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["acceleration", "force"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Acceleration, Self::Force];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("JointMotorModel", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for JointMotorModel {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "JointMotorModel", Self::NAMES)?)
+    }
+}
+
+impl ToJson for JointMotorModel {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -11004,6 +11085,7 @@ pub struct QueryFilter {
     pub mask: u32,
     pub include_sensors: bool,
     pub exclude: Option<u64>,
+    pub kind_flags: u32,
 }
 
 impl Default for QueryFilter {
@@ -11012,6 +11094,7 @@ impl Default for QueryFilter {
             mask: Default::default(),
             include_sensors: Default::default(),
             exclude: Default::default(),
+            kind_flags: Default::default(),
         }
     }
 }
@@ -11026,6 +11109,7 @@ impl FromJson for QueryFilter {
             mask: field(o, "mask", d.mask)?,
             include_sensors: field(o, "includeSensors", d.include_sensors)?,
             exclude: field(o, "exclude", d.exclude)?,
+            kind_flags: field(o, "kindFlags", d.kind_flags)?,
         })
     }
 }
@@ -11036,6 +11120,7 @@ impl ToJson for QueryFilter {
         o.insert("mask".into(), self.mask.to_json());
         o.insert("includeSensors".into(), self.include_sensors.to_json());
         o.insert("exclude".into(), self.exclude.to_json());
+        o.insert("kindFlags".into(), self.kind_flags.to_json());
         Value::Object(o)
     }
 }
@@ -11046,6 +11131,7 @@ pub struct RaycastDesc {
     pub origin: Vec3,
     pub direction: Vec3,
     pub max_distance: f32,
+    pub solid: bool,
     pub filter: QueryFilter,
 }
 
@@ -11055,6 +11141,7 @@ impl Default for RaycastDesc {
             origin: Default::default(),
             direction: Vec3::new(0.0_f32, -1.0_f32, 0.0_f32),
             max_distance: Default::default(),
+            solid: true,
             filter: Default::default(),
         }
     }
@@ -11070,6 +11157,7 @@ impl FromJson for RaycastDesc {
             origin: field(o, "origin", d.origin)?,
             direction: field(o, "direction", d.direction)?,
             max_distance: field(o, "maxDistance", d.max_distance)?,
+            solid: field(o, "solid", d.solid)?,
             filter: field(o, "filter", d.filter)?,
         })
     }
@@ -11081,6 +11169,7 @@ impl ToJson for RaycastDesc {
         o.insert("origin".into(), self.origin.to_json());
         o.insert("direction".into(), self.direction.to_json());
         o.insert("maxDistance".into(), self.max_distance.to_json());
+        o.insert("solid".into(), self.solid.to_json());
         o.insert("filter".into(), self.filter.to_json());
         Value::Object(o)
     }
@@ -11142,6 +11231,7 @@ pub struct RaycastAllDesc {
     pub origin: Vec3,
     pub direction: Vec3,
     pub max_distance: f32,
+    pub solid: bool,
     pub filter: QueryFilter,
     pub max_hits: u32,
 }
@@ -11152,6 +11242,7 @@ impl Default for RaycastAllDesc {
             origin: Default::default(),
             direction: Vec3::new(0.0_f32, -1.0_f32, 0.0_f32),
             max_distance: Default::default(),
+            solid: true,
             filter: Default::default(),
             max_hits: Default::default(),
         }
@@ -11168,6 +11259,7 @@ impl FromJson for RaycastAllDesc {
             origin: field(o, "origin", d.origin)?,
             direction: field(o, "direction", d.direction)?,
             max_distance: field(o, "maxDistance", d.max_distance)?,
+            solid: field(o, "solid", d.solid)?,
             filter: field(o, "filter", d.filter)?,
             max_hits: field(o, "maxHits", d.max_hits)?,
         })
@@ -11180,6 +11272,7 @@ impl ToJson for RaycastAllDesc {
         o.insert("origin".into(), self.origin.to_json());
         o.insert("direction".into(), self.direction.to_json());
         o.insert("maxDistance".into(), self.max_distance.to_json());
+        o.insert("solid".into(), self.solid.to_json());
         o.insert("filter".into(), self.filter.to_json());
         o.insert("maxHits".into(), self.max_hits.to_json());
         Value::Object(o)
@@ -11390,10 +11483,69 @@ impl ToJson for ShapeCastDesc {
     }
 }
 
+/// `ShapeCastAllDesc`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShapeCastAllDesc {
+    pub shape: ShapeDesc,
+    pub position: Vec3,
+    pub quaternion: Quat,
+    pub direction: Vec3,
+    pub max_distance: f32,
+    pub filter: QueryFilter,
+    pub max_hits: u32,
+}
+
+impl Default for ShapeCastAllDesc {
+    fn default() -> Self {
+        Self {
+            shape: Default::default(),
+            position: Default::default(),
+            quaternion: Default::default(),
+            direction: Vec3::new(0.0_f32, -1.0_f32, 0.0_f32),
+            max_distance: Default::default(),
+            filter: Default::default(),
+            max_hits: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ShapeCastAllDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            shape: field(o, "shape", d.shape)?,
+            position: field(o, "position", d.position)?,
+            quaternion: field(o, "quaternion", d.quaternion)?,
+            direction: field(o, "direction", d.direction)?,
+            max_distance: field(o, "maxDistance", d.max_distance)?,
+            filter: field(o, "filter", d.filter)?,
+            max_hits: field(o, "maxHits", d.max_hits)?,
+        })
+    }
+}
+
+impl ToJson for ShapeCastAllDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("shape".into(), self.shape.to_json());
+        o.insert("position".into(), self.position.to_json());
+        o.insert("quaternion".into(), self.quaternion.to_json());
+        o.insert("direction".into(), self.direction.to_json());
+        o.insert("maxDistance".into(), self.max_distance.to_json());
+        o.insert("filter".into(), self.filter.to_json());
+        o.insert("maxHits".into(), self.max_hits.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `ShapeCastHit`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ShapeCastHit {
     pub entity: u64,
+    pub body: u64,
     pub distance: f32,
     pub point: Vec3,
     pub normal: Vec3,
@@ -11403,6 +11555,7 @@ impl Default for ShapeCastHit {
     fn default() -> Self {
         Self {
             entity: Default::default(),
+            body: Default::default(),
             distance: Default::default(),
             point: Default::default(),
             normal: Default::default(),
@@ -11418,6 +11571,7 @@ impl FromJson for ShapeCastHit {
         let o = object(v)?;
         Ok(Self {
             entity: field(o, "entity", d.entity)?,
+            body: field(o, "body", d.body)?,
             distance: field(o, "distance", d.distance)?,
             point: field(o, "point", d.point)?,
             normal: field(o, "normal", d.normal)?,
@@ -11429,6 +11583,7 @@ impl ToJson for ShapeCastHit {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
         o.insert("entity".into(), self.entity.to_json());
+        o.insert("body".into(), self.body.to_json());
         o.insert("distance".into(), self.distance.to_json());
         o.insert("point".into(), self.point.to_json());
         o.insert("normal".into(), self.normal.to_json());
@@ -11478,6 +11633,86 @@ impl ToJson for OverlapDesc {
         o.insert("position".into(), self.position.to_json());
         o.insert("quaternion".into(), self.quaternion.to_json());
         o.insert("filter".into(), self.filter.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `PointOverlapDesc`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PointOverlapDesc {
+    pub point: Vec3,
+    pub filter: QueryFilter,
+}
+
+impl Default for PointOverlapDesc {
+    fn default() -> Self {
+        Self {
+            point: Default::default(),
+            filter: Default::default(),
+        }
+    }
+}
+
+impl FromJson for PointOverlapDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            point: field(o, "point", d.point)?,
+            filter: field(o, "filter", d.filter)?,
+        })
+    }
+}
+
+impl ToJson for PointOverlapDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("point".into(), self.point.to_json());
+        o.insert("filter".into(), self.filter.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `MassProperties`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MassProperties {
+    pub mass: f32,
+    pub center_of_mass: Vec3,
+    pub inertia: Vec3,
+}
+
+impl Default for MassProperties {
+    fn default() -> Self {
+        Self {
+            mass: Default::default(),
+            center_of_mass: Default::default(),
+            inertia: Default::default(),
+        }
+    }
+}
+
+impl FromJson for MassProperties {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            mass: field(o, "mass", d.mass)?,
+            center_of_mass: field(o, "centerOfMass", d.center_of_mass)?,
+            inertia: field(o, "inertia", d.inertia)?,
+        })
+    }
+}
+
+impl ToJson for MassProperties {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("mass".into(), self.mass.to_json());
+        o.insert("centerOfMass".into(), self.center_of_mass.to_json());
+        o.insert("inertia".into(), self.inertia.to_json());
         Value::Object(o)
     }
 }
@@ -32246,6 +32481,10 @@ pub mod record {
         pub air_drag: f32,
         pub can_sleep: bool,
         pub sleeping: bool,
+        pub dominance: i32,
+        pub enabled: bool,
+        pub gyroscopic: bool,
+        pub additional_solver_iterations: u32,
     }
 
     impl Default for RigidBody {
@@ -32262,6 +32501,10 @@ pub mod record {
                 air_drag: Default::default(),
                 can_sleep: true,
                 sleeping: Default::default(),
+                dominance: Default::default(),
+                enabled: true,
+                gyroscopic: true,
+                additional_solver_iterations: Default::default(),
             }
         }
     }
@@ -32284,6 +32527,10 @@ pub mod record {
                 air_drag: field(o, "airDrag", d.air_drag)?,
                 can_sleep: field(o, "canSleep", d.can_sleep)?,
                 sleeping: field(o, "sleeping", d.sleeping)?,
+                dominance: field(o, "dominance", d.dominance)?,
+                enabled: field(o, "enabled", d.enabled)?,
+                gyroscopic: field(o, "gyroscopic", d.gyroscopic)?,
+                additional_solver_iterations: field(o, "additionalSolverIterations", d.additional_solver_iterations)?,
             })
         }
     }
@@ -32304,6 +32551,12 @@ pub mod record {
         pub sensor: bool,
         pub layers: u32,
         pub mask: u32,
+        pub round_radius: f32,
+        pub friction_combine: CombineRule,
+        pub restitution_combine: CombineRule,
+        pub solver_layers: u32,
+        pub solver_mask: u32,
+        pub enabled: bool,
     }
 
     impl Default for Collider {
@@ -32322,6 +32575,12 @@ pub mod record {
                 sensor: Default::default(),
                 layers: 1,
                 mask: 4294967295,
+                round_radius: Default::default(),
+                friction_combine: Default::default(),
+                restitution_combine: Default::default(),
+                solver_layers: Default::default(),
+                solver_mask: Default::default(),
+                enabled: true,
             }
         }
     }
@@ -32346,6 +32605,12 @@ pub mod record {
                 sensor: field(o, "sensor", d.sensor)?,
                 layers: field(o, "layers", d.layers)?,
                 mask: field(o, "mask", d.mask)?,
+                round_radius: field(o, "roundRadius", d.round_radius)?,
+                friction_combine: field(o, "frictionCombine", d.friction_combine)?,
+                restitution_combine: field(o, "restitutionCombine", d.restitution_combine)?,
+                solver_layers: field(o, "solverLayers", d.solver_layers)?,
+                solver_mask: field(o, "solverMask", d.solver_mask)?,
+                enabled: field(o, "enabled", d.enabled)?,
             })
         }
     }
@@ -32772,6 +33037,8 @@ pub mod record {
         pub break_force: f32,
         pub break_torque: f32,
         pub broken: bool,
+        pub lock_axes: u32,
+        pub motor_model: JointMotorModel,
     }
 
     impl Default for Joint {
@@ -32800,6 +33067,8 @@ pub mod record {
                 break_force: Default::default(),
                 break_torque: Default::default(),
                 broken: Default::default(),
+                lock_axes: Default::default(),
+                motor_model: Default::default(),
             }
         }
     }
@@ -32834,6 +33103,8 @@ pub mod record {
                 break_force: field(o, "breakForce", d.break_force)?,
                 break_torque: field(o, "breakTorque", d.break_torque)?,
                 broken: field(o, "broken", d.broken)?,
+                lock_axes: field(o, "lockAxes", d.lock_axes)?,
+                motor_model: field(o, "motorModel", d.motor_model)?,
             })
         }
     }

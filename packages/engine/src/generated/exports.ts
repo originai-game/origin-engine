@@ -81,14 +81,16 @@ export const Style = ((value = 0 as Api.Style, options) => spec("Style", value, 
 // physics
 export const RigidBodyType = ((value = "dynamic" as Api.RigidBodyType, options) => spec("RigidBodyType", value, options)) as typeof Api.RigidBodyType;
 export const ColliderShape = ((value = "box" as Api.ColliderShape, options) => spec("ColliderShape", value, options)) as typeof Api.ColliderShape;
+export const CombineRule = ((value = "average" as Api.CombineRule, options) => spec("CombineRule", value, options)) as typeof Api.CombineRule;
 export const ForceFieldKind = ((value = "directional" as Api.ForceFieldKind, options) => spec("ForceFieldKind", value, options)) as typeof Api.ForceFieldKind;
 export const JointType = ((value = "fixed" as Api.JointType, options) => spec("JointType", value, options)) as typeof Api.JointType;
 export const JointMotor = ((value = "none" as Api.JointMotor, options) => spec("JointMotor", value, options)) as typeof Api.JointMotor;
+export const JointMotorModel = ((value = "acceleration" as Api.JointMotorModel, options) => spec("JointMotorModel", value, options)) as typeof Api.JointMotorModel;
 export const VehicleDrive = ((value = "rear" as Api.VehicleDrive, options) => spec("VehicleDrive", value, options)) as typeof Api.VehicleDrive;
 export const VehicleModel = ((value = "arcade" as Api.VehicleModel, options) => spec("VehicleModel", value, options)) as typeof Api.VehicleModel;
 export const Simulation = ((value = "gameplay" as Api.Simulation, options) => spec("Simulation", value, options)) as typeof Api.Simulation;
 export const SoftBodyShape = ((value = "sphere" as Api.SoftBodyShape, options) => spec("SoftBodyShape", value, options)) as typeof Api.SoftBodyShape;
-export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS } from "./consts.ts";
+export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS, QUERY_DYNAMIC, QUERY_FIXED, QUERY_KINEMATIC } from "./consts.ts";
 
 // atmosphere
 export const CloudKind = ((value = "cumulus" as Api.CloudKind, options) => spec("CloudKind", value, options)) as typeof Api.CloudKind;

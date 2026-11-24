@@ -1935,10 +1935,34 @@ pub fn og_physics_cast_shape(env: Env, world: u32, desc: Option<String>) -> Stri
     <Host as PhysicsApi>::og_physics_cast_shape(&Host, world, desc)
 }
 
+#[napi(js_name = "og_physics_cast_shape_all")]
+pub fn og_physics_cast_shape_all(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_cast_shape_all(&Host, world, desc)
+}
+
 #[napi(js_name = "og_physics_overlap")]
 pub fn og_physics_overlap(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PhysicsApi>::og_physics_overlap(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_overlap_point")]
+pub fn og_physics_overlap_point(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_overlap_point(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_mass_properties")]
+pub fn og_physics_mass_properties(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_mass_properties(&Host, world, entity)
+}
+
+#[napi(js_name = "og_physics_velocity_at_point")]
+pub fn og_physics_velocity_at_point(env: Env, world: u32, entity: f64, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_velocity_at_point(&Host, world, entity, point)
 }
 
 #[napi(js_name = "og_physics_sensor_contents")]

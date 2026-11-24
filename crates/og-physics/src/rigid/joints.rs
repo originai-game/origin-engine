@@ -122,6 +122,7 @@ fn structure(j: &Joint) -> Joint {
         motor_stiffness: 0.0,
         motor_damping: 0.0,
         motor_max_force: 0.0,
+        motor_model: 0,
         rest_length: 0.0,
         stiffness: 0.0,
         damping: 0.0,
@@ -170,11 +171,27 @@ fn check_finite(j: &Joint) -> Result<()> {
     Ok(())
 }
 
-/// The free axis of a hinge or slider.
-fn free_axis(kind: u32) -> rp::JointAxis {
-    match kind {
+/// The primary driven/limited axis of a hinge, slider or generic joint.
+fn free_axis(j: &Joint) -> rp::JointAxis {
+    match j.kind {
         JOINT_PRISMATIC => rp::JointAxis::LinX,
+        JOINT_GENERIC => {
+            if j.lock_axes & LOCK_TRANSLATION_X == 0 {
+                rp::JointAxis::LinX
+            } else if j.lock_axes & LOCK_TRANSLATION_Y == 0 {
+                rp::JointAxis::LinY
+            } else {
+                rp::JointAxis::AngX
+            }
+        }
         _ => rp::JointAxis::AngX,
+    }
+}
+
+fn motor_model(code: u32) -> rp::MotorModel {
+    match code {
+        MOTOR_MODEL_FORCE => rp::MotorModel::ForceBased,
+        _ => rp::MotorModel::AccelerationBased,
     }
 }
 
@@ -182,8 +199,8 @@ fn patch_joint(data: &mut rp::GenericJoint, j: &Joint) -> Result<()> {
     check_finite(j)?;
     data.set_contacts_enabled(j.collide);
     match j.kind {
-        JOINT_REVOLUTE | JOINT_PRISMATIC => {
-            let axis = free_axis(j.kind);
+        JOINT_REVOLUTE | JOINT_PRISMATIC | JOINT_GENERIC => {
+            let axis = free_axis(j);
             if j.limits {
                 if j.min > j.max {
                     return Err(Error::new(
@@ -217,6 +234,7 @@ fn patch_joint(data: &mut rp::GenericJoint, j: &Joint) -> Result<()> {
                     return Ok(());
                 }
             }
+            data.set_motor_model(axis, motor_model(j.motor_model));
             data.set_motor_max_force(
                 axis,
                 if j.motor_max_force > 0.0 {
@@ -225,6 +243,22 @@ fn patch_joint(data: &mut rp::GenericJoint, j: &Joint) -> Result<()> {
                     f32::MAX
                 },
             );
+        }
+        JOINT_BALL => {
+            if j.limits {
+                if j.min > j.max {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!("og.Joint.min {} is above max {}", j.min, j.max),
+                    ));
+                }
+                super::super::set_ball_limits(data, j.min, j.max);
+            } else {
+                data.limit_axes.remove(rp::JointAxesMask::ANG_AXES);
+                for a in super::super::DIM..data.limits.len() {
+                    data.limits[a].impulse = 0.0;
+                }
+            }
         }
         JOINT_SPRING => {
             data.set_motor_position(
@@ -269,11 +303,12 @@ fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::Generi
             .local_anchor2(mine)
             .build()
             .into(),
-        JOINT_FIXED | JOINT_REVOLUTE | JOINT_PRISMATIC | JOINT_BALL => {
+        JOINT_FIXED | JOINT_REVOLUTE | JOINT_PRISMATIC | JOINT_BALL | JOINT_GENERIC => {
             let locked = match j.kind {
                 JOINT_FIXED => rp::JointAxesMask::LOCKED_FIXED_AXES,
                 JOINT_PRISMATIC => rp::JointAxesMask::LOCKED_PRISMATIC_AXES,
                 JOINT_BALL => super::super::ball_axes(),
+                JOINT_GENERIC => super::super::generic_lock_axes(j.lock_axes),
                 _ => rp::JointAxesMask::LOCKED_REVOLUTE_AXES,
             };
             let frame2 = rp::Pose::from_parts(mine, joint_frame(j.axis));
@@ -292,7 +327,7 @@ fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::Generi
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Joint.kind {other} is not a joint (0 fixed, 1 hinge, 2 slider, 3 spring, 4 rope, 5 ball)"
+                    "og.Joint.kind {other} is not a joint (0 fixed, 1 hinge, 2 slider, 3 spring, 4 rope, 5 ball, 6 generic)"
                 ),
             ));
         }

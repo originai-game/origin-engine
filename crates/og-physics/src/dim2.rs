@@ -87,10 +87,15 @@ pub(crate) fn baked(
 
 /// A primitive shape, or `None` for the mesh shapes.
 pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>> {
+    let r = c.round_radius.max(0.0);
     Ok(Some(match c.shape {
         SHAPE_BOX => {
             let h = c.size * s * 0.5;
-            rp::SharedShape::cuboid(h.x, h.y)
+            if r > 0.0 {
+                rp::SharedShape::round_cuboid(h.x, h.y, r)
+            } else {
+                rp::SharedShape::cuboid(h.x, h.y)
+            }
         }
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.x.max(s.y)),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x),
@@ -100,14 +105,19 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
                 .into_iter()
                 .map(|[x, y]| rp::Vector::new(x, y))
                 .collect();
-            rp::SharedShape::convex_polyline(points).ok_or_else(|| degenerate(c))?
+            let built = if r > 0.0 {
+                rp::SharedShape::round_convex_polyline(points, r)
+            } else {
+                rp::SharedShape::convex_polyline(points)
+            };
+            built.ok_or_else(|| degenerate(c))?
         }
-        SHAPE_CONVEX | SHAPE_TRIMESH => return Ok(None),
-        SHAPE_CYLINDER | SHAPE_HEIGHTFIELD => {
+        SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD | SHAPE_POLYLINE => return Ok(None),
+        SHAPE_CYLINDER | SHAPE_CONE => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 7 diamond, 8 hexagon",
+                    "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 6 heightfield, 7 diamond, 8 hexagon, 10 polyline",
                     c.shape
                 ),
             ));
@@ -116,7 +126,7 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 7 diamond, 8 hexagon)"
+                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 6 heightfield, 7 diamond, 8 hexagon, 10 polyline)"
                 ),
             ));
         }
@@ -133,34 +143,98 @@ fn degenerate(c: &Collider) -> Error {
     )
 }
 
-/// The convex polygon of a registered mesh's xy, scaled.
-/// Height fields are 3D only (refused by [`primitive`] before this).
-pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<rp::SharedShape> {
-    Err(Error::new(
-        ErrorKind::Invalid,
-        "og.Collider.shape heightfield is 3D only",
-    ))
+/// A 2D height field over the first row (`columns` samples) of `f`, scaled by `s.x` and `s.y`.
+pub(crate) fn from_heightfield(f: &crate::HeightfieldDesc, s: Vec3) -> Result<rp::SharedShape> {
+    let cols = f.columns as usize;
+    if cols < 2 || f.heights.len() < cols || s.x <= 0.0 {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "2D heightfield collider needs at least 2 samples and positive x scale",
+        ));
+    }
+    let heights: Vec<f32> = f.heights[..cols].to_vec();
+    let field =
+        rapier2d::parry::shape::HeightField::new(heights, rp::Vector::new(f.size.x * s.x, s.y));
+    Ok(rp::SharedShape::new(field))
 }
 
 pub(crate) fn field_chunk(_f: &crate::HeightfieldDesc, _s: Vec3, _k: u32) -> rp::SharedShape {
-    unreachable!("height fields are refused in 2D before they are built")
+    unreachable!("2D height fields are not chunked")
 }
 
 pub(crate) fn chunk_cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedShape> {
     &mut shared.chunks2
 }
 
-pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+pub(crate) fn from_mesh(
+    shape: u32,
+    mesh: &crate::MeshDesc,
+    s: Vec3,
+    round_radius: f32,
+) -> Result<rp::SharedShape> {
+    let r = round_radius.max(0.0);
     if shape == SHAPE_TRIMESH {
         return outline_shape(mesh, s);
     }
+    if shape == SHAPE_POLYLINE {
+        if mesh.positions.len() < 2 {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "a polyline collider needs at least 2 vertices",
+            ));
+        }
+        let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
+        let segs = crate::dim3::polyline_segments(mesh);
+        if segs.as_ref().is_some_and(|s| s.is_empty()) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "a polyline collider has no non-degenerate segments",
+            ));
+        }
+        return Ok(rp::SharedShape::polyline(points, segs));
+    }
     let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
-    rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+    let built = if r > 0.0 {
+        rp::SharedShape::round_convex_hull(&points, r)
+    } else {
+        rp::SharedShape::convex_hull(&points)
+    };
+    built.ok_or_else(|| {
         Error::new(
             ErrorKind::Invalid,
             "the mesh's convex polygon is degenerate (its xy are collinear or a single point)",
         )
     })
+}
+
+pub(crate) fn gyroscopic_builder(b: rp::RigidBodyBuilder, _enabled: bool) -> rp::RigidBodyBuilder {
+    b
+}
+
+pub(crate) fn set_gyroscopic(_rb: &mut rp::RigidBody, _enabled: bool) {}
+
+pub(crate) fn generic_lock_axes(lock: u32) -> rp::JointAxesMask {
+    let mut m = rp::JointAxesMask::empty();
+    if lock & LOCK_TRANSLATION_X != 0 {
+        m |= rp::JointAxesMask::LIN_X;
+    }
+    if lock & LOCK_TRANSLATION_Y != 0 {
+        m |= rp::JointAxesMask::LIN_Y;
+    }
+    if lock & LOCK_ROTATION_Z != 0 {
+        m |= rp::JointAxesMask::ANG_X;
+    }
+    m
+}
+
+pub(crate) fn set_ball_limits(data: &mut rp::GenericJoint, min: f32, max: f32) {
+    data.set_limits(rp::JointAxis::AngX, [min, max]);
+}
+
+pub(crate) fn principal_inertia(rb: &rp::RigidBody) -> Vec3 {
+    let inv = rb.mass_properties().local_mprops.inv_principal_inertia;
+    let z = if inv > 1e-20 { 1.0 / inv } else { 0.0 };
+    Vec3::new(0.0, 0.0, z)
 }
 
 /// A 2D triangle mesh: the polyline of its outline ([`crate::outline`]),

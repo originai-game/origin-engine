@@ -12,6 +12,8 @@ pub(crate) struct QueryWorld {
     fields: Vec<Vec<rp::ColliderHandle>>,
     /// By collider handle index: whether it is one of those chunks.
     chunk: Vec<bool>,
+    /// By collider handle index: its body kind bit (`QUERY_DYNAMIC`, `QUERY_FIXED`, `QUERY_KINEMATIC`).
+    kind: Vec<u8>,
     /// Contact hooks snapshot for symmetric `ContactHook.ignore` filtering
     /// when a query specifies `QueryFilter.exclude`.
     hooks: IdMap<u64, ContactHook>,
@@ -23,7 +25,37 @@ fn hook_ignores(hooks: &IdMap<u64, ContactHook>, a: u64, b: u64) -> bool {
         .is_some_and(|h| h.ignore.as_slice().iter().any(|&x| x != 0 && x == b))
 }
 
-fn keep(c: &rp::Collider, f: &QueryFilter, hooks: &IdMap<u64, ContactHook>) -> bool {
+fn body_kind_bit(b: &Body) -> u8 {
+    if b.control.is_some() {
+        QUERY_KINEMATIC as u8
+    } else {
+        match b.body.kind {
+            BODY_DYNAMIC => QUERY_DYNAMIC as u8,
+            BODY_KINEMATIC => QUERY_KINEMATIC as u8,
+            _ => QUERY_FIXED as u8,
+        }
+    }
+}
+
+fn keep(
+    h: rp::ColliderHandle,
+    c: &rp::Collider,
+    f: &QueryFilter,
+    kinds: &[u8],
+    hooks: &IdMap<u64, ContactHook>,
+) -> bool {
+    if !c.is_enabled() {
+        return false;
+    }
+    if f.kind_flags != 0 {
+        let bit = kinds
+            .get(h.into_raw_parts().0 as usize)
+            .copied()
+            .unwrap_or(QUERY_FIXED as u8) as u32;
+        if bit & f.kind_flags == 0 {
+            return false;
+        }
+    }
     if f.mask != 0 && c.collision_groups().memberships.bits() & f.mask == 0 {
         return false;
     }
@@ -60,16 +92,26 @@ impl QueryWorld {
             narrow: rp::NarrowPhase::new(),
             fields: Vec::new(),
             chunk: Vec::new(),
+            kind: Vec::new(),
             hooks: scene.hooks.clone(),
         };
         let mut placed = Vec::with_capacity(scene.bodies.len() + scene.statics.len());
         for b in &scene.bodies {
+            if !b.body.enabled {
+                continue;
+            }
+            let kb = body_kind_bit(b);
             let body_pose = pose(b.position, b.quaternion);
-            if let Some(c) = &b.collider {
+            if let Some(c) = &b.collider
+                && c.enabled
+            {
                 let at = body_pose * local_pose(c, b.scale);
-                placed.push((b.entity, None, at, b.scale, c));
+                placed.push((b.entity, None, at, b.scale, c, kb));
             }
             for child in &b.children {
+                if !child.collider.enabled {
+                    continue;
+                }
                 let at = body_pose
                     * pose(child.position, child.quaternion)
                     * local_pose(&child.collider, child.scale);
@@ -79,10 +121,14 @@ impl QueryWorld {
                     at,
                     child.scale,
                     &child.collider,
+                    kb,
                 ));
             }
         }
         for s in &scene.statics {
+            if !s.collider.enabled {
+                continue;
+            }
             // A field built in chunks is queried as its chunks, as stepped.
             if let Some(f) = chunked(&s.collider, shared) {
                 let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
@@ -99,15 +145,19 @@ impl QueryWorld {
                         q.chunk.resize(i + 1, false);
                     }
                     q.chunk[i] = true;
+                    if q.kind.len() <= i {
+                        q.kind.resize(i + 1, QUERY_FIXED as u8);
+                    }
+                    q.kind[i] = QUERY_FIXED as u8;
                     chunks.push(h);
                 }
                 q.fields.push(chunks);
                 continue;
             }
             let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
-            placed.push((s.entity, None, at, s.scale, &s.collider));
+            placed.push((s.entity, None, at, s.scale, &s.collider, QUERY_FIXED as u8));
         }
-        for (e, body, at, scale, c) in placed {
+        for (e, body, at, scale, c, kb) in placed {
             let mut built = collider(c, scale, at, e, 0.0, shared)?.build();
             if let Some(body) = body {
                 built.user_data |= (body.to_bits() as u128) << 64;
@@ -115,6 +165,11 @@ impl QueryWorld {
             let aabb = built.compute_aabb();
             let h = q.colliders.insert(built);
             q.broad.set_aabb(&params, h, aabb);
+            let i = h.into_raw_parts().0 as usize;
+            if q.kind.len() <= i {
+                q.kind.resize(i + 1, QUERY_FIXED as u8);
+            }
+            q.kind[i] = kb;
         }
         Ok(q)
     }
@@ -137,8 +192,9 @@ impl QueryWorld {
                     .get(h.into_raw_parts().0 as usize)
                     .is_some_and(|&c| c)
         };
-        let predicate =
-            |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f, &self.hooks);
+        let predicate = |h: rp::ColliderHandle, c: &rp::Collider| {
+            !chunk(h) && keep(h, c, f, &self.kind, &self.hooks)
+        };
         let mut filter = rp::QueryFilter::new().predicate(&predicate);
         if !f.include_sensors {
             filter = filter.exclude_sensors();
@@ -157,6 +213,7 @@ impl QueryWorld {
         origin: Vec3,
         direction: Vec3,
         max: f32,
+        solid: bool,
         f: &QueryFilter,
     ) -> Result<Option<RaycastHit>> {
         if !origin.is_finite() {
@@ -167,13 +224,14 @@ impl QueryWorld {
         }
         let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
         let ray = rp::Ray::new(v(origin), v(dir));
-        let mut best = self.pipeline(f, true, |p| p.cast_ray_and_get_normal(&ray, max, true));
+        let mut best = self.pipeline(f, true, |p| p.cast_ray_and_get_normal(&ray, max, solid));
         // A field's chunks in the order the ray enters them, each cast only
         // as far as the nearest hit so far.
         let mut order: Vec<(f32, rp::ColliderHandle)> = Vec::new();
         for chunks in &self.fields {
-            let c = &self.colliders[chunks[0]];
-            if !keep(c, f, &self.hooks) || (c.is_sensor() && !f.include_sensors) {
+            let h0 = chunks[0];
+            let c = &self.colliders[h0];
+            if !keep(h0, c, f, &self.kind, &self.hooks) || (c.is_sensor() && !f.include_sensors) {
                 continue;
             }
             for &h in chunks {
@@ -192,7 +250,7 @@ impl QueryWorld {
             let c = &self.colliders[h];
             if let Some(hit) = c
                 .shape()
-                .cast_ray_and_get_normal(c.position(), &ray, limit, true)
+                .cast_ray_and_get_normal(c.position(), &ray, limit, solid)
                 .filter(|hit| {
                     if best.is_some() {
                         hit.time_of_impact < limit
@@ -218,6 +276,7 @@ impl QueryWorld {
         origin: Vec3,
         direction: Vec3,
         max: f32,
+        solid: bool,
         f: &QueryFilter,
         cap: usize,
     ) -> Result<Vec<RaycastHit>> {
@@ -230,7 +289,7 @@ impl QueryWorld {
         let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
         let ray = rp::Ray::new(v(origin), v(dir));
         let mut hits = self.with(f, |p| {
-            p.intersect_ray(ray, max, true)
+            p.intersect_ray(ray, max, solid)
                 .map(|(_, c, hit)| RaycastHit {
                     entity: entity_of(c),
                     body: body_of(c),
@@ -312,13 +371,80 @@ impl QueryWorld {
         let options = ShapeCastOptions::with_max_time_of_impact(max);
         Ok(self.with(&d.filter, |p| {
             p.cast_shape(&at, v(dir), shape.as_ref(), options)
-                .map(|(h, hit)| ShapeCastHit {
-                    entity: entity_of(&self.colliders[h]),
-                    distance: hit.time_of_impact,
-                    point: unv(hit.witness1),
-                    normal: unv(hit.normal1),
+                .map(|(h, hit)| {
+                    let c = &self.colliders[h];
+                    ShapeCastHit {
+                        entity: entity_of(c),
+                        body: body_of(c),
+                        distance: hit.time_of_impact,
+                        point: unv(hit.witness1),
+                        normal: unv(hit.normal1),
+                    }
                 })
         }))
+    }
+
+    pub(crate) fn shape_cast_all_with(
+        &self,
+        d: &ShapeCastDesc,
+        max: f32,
+        shape: &rp::SharedShape,
+        cap: usize,
+    ) -> Result<Vec<ShapeCastHit>> {
+        if !d.position.is_finite() || !d.rotation.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "ShapeCastDesc.position and rotation must be finite, got {} / {}",
+                    d.position, d.rotation
+                ),
+            ));
+        }
+        let dir = crate::direction(flat(d.direction), "ShapeCastDesc", PROFILE_NAME)?;
+        let at = pose(d.position, d.rotation);
+        let options = ShapeCastOptions::with_max_time_of_impact(max);
+        let mut hits = Vec::new();
+        let mut seen_entities: BTreeSet<(u64, u64)> = BTreeSet::new();
+        let mut excluded: Vec<rp::ColliderHandle> = Vec::new();
+        for _ in 0..cap {
+            let predicate = |h: rp::ColliderHandle, c: &rp::Collider| {
+                !excluded.contains(&h)
+                    && !seen_entities.contains(&(entity_of(c).to_bits(), body_of(c).to_bits()))
+                    && keep(h, c, &d.filter, &self.kind, &self.hooks)
+            };
+            let mut filter = rp::QueryFilter::new().predicate(&predicate);
+            if !d.filter.include_sensors {
+                filter = filter.exclude_sensors();
+            }
+            let pipeline = self.broad.as_query_pipeline(
+                self.narrow.query_dispatcher(),
+                &self.bodies,
+                &self.colliders,
+                filter,
+            );
+            let Some((h, hit)) = pipeline.cast_shape(&at, v(dir), shape.as_ref(), options) else {
+                break;
+            };
+            let c = &self.colliders[h];
+            let entity = entity_of(c);
+            let body = body_of(c);
+            excluded.push(h);
+            seen_entities.insert((entity.to_bits(), body.to_bits()));
+            hits.push(ShapeCastHit {
+                entity,
+                body,
+                distance: hit.time_of_impact,
+                point: unv(hit.witness1),
+                normal: unv(hit.normal1),
+            });
+        }
+        hits.sort_unstable_by(|a, b| {
+            a.distance
+                .total_cmp(&b.distance)
+                .then(a.entity.to_bits().cmp(&b.entity.to_bits()))
+                .then(a.body.to_bits().cmp(&b.body.to_bits()))
+        });
+        Ok(hits)
     }
 
     pub(crate) fn overlap_with(
@@ -338,6 +464,24 @@ impl QueryWorld {
         let at = pose(d.position, d.rotation);
         let mut hits = self.with(&d.filter, |p| {
             p.intersect_shape(at, shape.as_ref())
+                .map(|(_, c)| entity_of(c))
+                .collect::<Vec<_>>()
+        });
+        og_core::sort::sort_by_key(&mut hits, |e| e.to_bits());
+        hits.dedup();
+        Ok(hits)
+    }
+
+    pub(crate) fn overlap_point(&self, d: &PointOverlapDesc) -> Result<Vec<Entity>> {
+        if !d.point.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("PointOverlapDesc.point must be finite, got {}", d.point),
+            ));
+        }
+        let at = v(flat(d.point));
+        let mut hits = self.with(&d.filter, |p| {
+            p.intersect_point(at)
                 .map(|(_, c)| entity_of(c))
                 .collect::<Vec<_>>()
         });

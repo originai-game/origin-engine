@@ -1614,8 +1614,28 @@ unsafe extern "C" fn og_physics_cast_shape(args: *const crate::OgValue, out: *mu
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_physics_cast_shape_all(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_cast_shape_all(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_physics_overlap(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as PhysicsApi>::og_physics_overlap(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_physics_overlap_point(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_overlap_point(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_physics_mass_properties(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_mass_properties(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_physics_velocity_at_point(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_velocity_at_point(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -3753,7 +3773,11 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_physics_cast_ray_all", arity: 2, call: og_physics_cast_ray_all },
     crate::Symbol { name: c"og_physics_project_point", arity: 2, call: og_physics_project_point },
     crate::Symbol { name: c"og_physics_cast_shape", arity: 2, call: og_physics_cast_shape },
+    crate::Symbol { name: c"og_physics_cast_shape_all", arity: 2, call: og_physics_cast_shape_all },
     crate::Symbol { name: c"og_physics_overlap", arity: 2, call: og_physics_overlap },
+    crate::Symbol { name: c"og_physics_overlap_point", arity: 2, call: og_physics_overlap_point },
+    crate::Symbol { name: c"og_physics_mass_properties", arity: 2, call: og_physics_mass_properties },
+    crate::Symbol { name: c"og_physics_velocity_at_point", arity: 3, call: og_physics_velocity_at_point },
     crate::Symbol { name: c"og_physics_sensor_contents", arity: 2, call: og_physics_sensor_contents },
     crate::Symbol { name: c"og_physics_apply_force", arity: 4, call: og_physics_apply_force },
     crate::Symbol { name: c"og_physics_apply_impulse", arity: 4, call: og_physics_apply_impulse },

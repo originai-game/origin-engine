@@ -233,6 +233,7 @@ fn evaluate(
                     mask: row.collision_mask,
                     include_sensors: false,
                     exclude: Some(follow.map_or(excluded, |(fe, _)| fe)),
+                    kind_flags: 0,
                 },
             };
             let clear = match q.shape_cast(&desc) {

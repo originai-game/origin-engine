@@ -29,6 +29,10 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 | `airDrag` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping. See `physics §1`. |
 | `canSleep` | `boolean` | `true` | — | — | — | Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick). |
 | `sleeping` | `boolean` | `false` | — | — | — | Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is. |
+| `dominance` | `number` | `0` | -127 … 127 | — | tunable | Dominance group (-127..=127): a body in a higher group treats bodies in lower groups as having zero mass during contact resolution. |
+| `enabled` | `boolean` | `true` | — | — | — | Whether this body participates in simulation and collision. |
+| `gyroscopic` | `boolean` | `true` | — | — | — | Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only). |
+| `additionalSolverIterations` | `number` | `0` | 0 … 32 | — | — | Extra solver iterations applied to islands containing this body. |
 
 ```ogt
 component RigidBody {
@@ -83,6 +87,21 @@ component RigidBody {
     default true
   }
   field sleeping bool "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is."
+  field dominance i32 "Dominance group (-127..=127): a body in a higher group treats bodies in lower groups as having zero mass during contact resolution." {
+    min -127
+    max 127
+    tunable true
+  }
+  field enabled bool "Whether this body participates in simulation and collision." {
+    default true
+  }
+  field gyroscopic bool "Enable gyroscopic torque (Dzhanibekov effect / spinning-top stability, 3D only)." {
+    default true
+  }
+  field additionalSolverIterations u32 "Extra solver iterations applied to islands containing this body." {
+    min 0
+    max 32
+  }
 }
 ```
 

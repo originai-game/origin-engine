@@ -669,8 +669,16 @@ export interface HostAbi<A, V> {
   og_physics_project_point(world: number, desc: string | undefined): string;
   /** `og.physics.castShape` */
   og_physics_cast_shape(world: number, desc: string | undefined): string;
+  /** `og.physics.castShapeAll` */
+  og_physics_cast_shape_all(world: number, desc: string | undefined): string;
   /** `og.physics.overlap` */
   og_physics_overlap(world: number, desc: string | undefined): string;
+  /** `og.physics.overlapPoint` */
+  og_physics_overlap_point(world: number, desc: string | undefined): string;
+  /** `og.physics.massProperties` */
+  og_physics_mass_properties(world: number, entity: number): string;
+  /** `og.physics.velocityAtPoint` */
+  og_physics_velocity_at_point(world: number, entity: number, point: string): string;
   /** `og.physics.sensorContents` */
   og_physics_sensor_contents(world: number, sensor: number): string;
   /** `og.physics.applyForce` */
@@ -1658,7 +1666,11 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_cast_ray_all",
   "og_physics_project_point",
   "og_physics_cast_shape",
+  "og_physics_cast_shape_all",
   "og_physics_overlap",
+  "og_physics_overlap_point",
+  "og_physics_mass_properties",
+  "og_physics_velocity_at_point",
   "og_physics_sensor_contents",
   "og_physics_apply_force",
   "og_physics_apply_impulse",
@@ -2132,6 +2144,14 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_water_height(world: number, entity: number, x: number, z: number) {
       if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);
       return abi.og_physics_water_height(world, entity, x, z);
+    },
+    og_physics_mass_properties(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.massProperties", "entity", entity);
+      return abi.og_physics_mass_properties(world, entity);
+    },
+    og_physics_velocity_at_point(world: number, entity: number, point: string) {
+      if (typeof entity !== "number") notEntity("og.physics.velocityAtPoint", "entity", entity);
+      return abi.og_physics_velocity_at_point(world, entity, point);
     },
     og_physics_sensor_contents(world: number, sensor: number) {
       if (typeof sensor !== "number") notEntity("og.physics.sensorContents", "sensor", sensor);

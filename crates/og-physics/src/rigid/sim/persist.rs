@@ -3,8 +3,10 @@ use super::*;
 /// Whether a collider's shape is built from a registered asset (a mesh or a
 /// height field), so a save carries its key instead of its geometry.
 fn from_asset(c: &Collider) -> bool {
-    matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
-        && c.mesh & crate::GENERATED_MESH == 0
+    matches!(
+        c.shape,
+        SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD | SHAPE_POLYLINE
+    ) && c.mesh & crate::GENERATED_MESH == 0
 }
 
 fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {
@@ -21,6 +23,7 @@ fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {
         shape: c.shape,
         mesh: c.mesh,
         scale: s.to_array().map(f32::to_bits),
+        round_radius: c.round_radius.max(0.0).to_bits(),
     }
 }
 
@@ -115,6 +118,7 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
         let c = Collider {
             shape: hole.key.shape,
             mesh: hole.key.mesh,
+            round_radius: f32::from_bits(hole.key.round_radius),
             ..Collider::default()
         };
         let scale = Vec3::from_array(hole.key.scale.map(f32::from_bits));

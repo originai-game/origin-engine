@@ -6,19 +6,21 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `ShapeCastHit` (struct)
 
-The first collider a swept shape meets.
+A collider a swept shape meets.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `entity` | `Entity` | `0` | — | — | — | The collider's entity. |
+| `body` | `Entity` | `0` | — | — | — | The body the collider belongs to: its own entity, or for a compound child collider the ancestor body it is part of. |
 | `distance` | `number` | `0` | — | `m` | — | How far the shape travelled before touching. |
 | `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The contact point on the hit collider, in world space. |
 | `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The hit collider's surface normal there, in world space. |
 
 ```ogt
 struct ShapeCastHit {
-  doc "The first collider a swept shape meets."
+  doc "A collider a swept shape meets."
   field entity Entity "The collider's entity."
+  field body Entity "The body the collider belongs to: its own entity, or for a compound child collider the ancestor body it is part of."
   field distance f32 "How far the shape travelled before touching." {
     unit m
   }
@@ -27,4 +29,4 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>Module `physics` line 1977</sub>
+<sub>Module `physics` line 2073</sub>
