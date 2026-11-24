@@ -337,42 +337,43 @@ export default og.game({
 
 Give a dynamic chassis (a box collider) an og.Vehicle and its real mass:
 `RigidBody.mass 1000` for the default road car. A car-sized box at the
-default density weighs a few kilograms, and the engine's and brakes'
-newtons would throw it. The chassis's forward is its local +Z, as every
-object's (`facing §1`). The suspension and grip scale with the chassis's
-mass (Bullet's units); the engine and the brakes do not, so a heavier car
-wants proportionally more `engineForce` and `brakeForce`.
+default density weighs a few kilograms, so car-sized torques would throw
+it. Forward is local +Z in 3D (`facing §1`) and +X in 2D. Suspension
+stiffness and damping scale with chassis mass; wheel torques do not.
 
-| Field | Default means | Change it |
-|---|---|---|
-| `engineForce` 2500 (per driven wheel) | two rear wheels push 1,000 kg at 5 m/s² | scale with mass |
-| `brakeForce` 2000 (per wheel) | four wheels stop 1,000 kg at 8 m/s² | scale with mass |
-| `grip` 2 | a road car holds a bend | below 1 slides like a drift car |
-| `rollInfluence` 0 | corners flat, never tips from steering | above 0 for body roll |
-| `handbrakeGrip` 0.2 | the tail steps out in a bend at speed | 1 holds the line |
-| `driftGrip` 1 | off | about 0.6 holds a slide that throttle and steering balance |
+Choose friction before power: on ground friction 1, tyre `grip` 1–1.5
+gives roughly 1–1.5 G of available traction, shared between braking,
+acceleration and cornering. Increasing engine torque beyond that spins the
+wheels rather than increasing acceleration. Drive and brake may act
+together. A handbrake turn is a pull and release; held, it slows the car
+and blends flagged wheels towards `handbrakeGrip`. Slides follow combined
+slip, not a second drift grip setting.
 
-`rollInfluence` puts the tyres' side force between the centre of mass's
-height (0) and the road (1). Rapier's own car uses 0.1, which rolls a
-1,000 kg car at full lock above about 20 m/s; raise it a little only with
-`centerOfMass` lowered.
+Start compression and rebound damping near 3–5 per chassis kilogram,
+then tune them separately over bumps and dips. Zero disables each damper.
+Use a sphere or cylinder wheel cast for kerbs and mesh seams; rays are
+cheaper. All casts include full droop and obey sensors, layers and contact
+hooks. Inspect wheel load and suspension compression: negative compression
+is droop, not penetration. Add bump stops for hard landings and anti-roll
+stiffness for cornering. `rollInfluence` moves the lateral force from
+centre-of-mass height (0) to the contact (1); lower the centre of mass
+before increasing it. Ackermann and speed-sensitive steering are opt-in.
 
-A handbrake turn is a pull and a release: held, the car slows and the slide
-dies with its speed. `driftGrip` applies while the handbrake is on or a
-handbrake wheel slid last step.
+The drivetrain model needs explicit engine inertia and clutch strength.
+The flywheel exchanges torque with measured wheel speeds, so neutral
+free-revs and closed throttle can engine-brake. Use open differential for
+equal torque, LSD to resist speed differences, or locked for a solid axle.
+AWD split and brake bias are off at zero; positive values specify front
+axle shares. ABS and traction control are also off at zero.
 
-The drivetrain model (`model: "drivetrain"`) replaces `engineForce` and
-`maxSpeed` with a torque curve, gears and an automatic or manual gearbox;
-`rpm` drives the engine sound and the tachometer.
-
-Draw the wheels from `og.physics.vehicleWheels`; the implicit wheels are not
-entities. Start smoke and skid marks at a wheel's `slip` above about 0.2 and
-fade a squeal in with it; `sideSpeed` sets its pitch. Vehicle.slip is the
-largest of them, for one sound without reading the wheels. og.VehicleWheel
-children give six-wheeled trucks, trikes and rear-wheel steering.
-
-The wheel rays use the chassis's layers and mask, so two cars on layers
-that do not meet (a ghost car beside the player) pass through each other.
+Draw wheels yourself by copying `vehicleWheels` poses to visual Transforms;
+the engine has no wheel draw path. Use explicit chassis-local mounts on
+VehicleWheel children for multi-axle vehicles in either profile. A zero
+mount captures the initial local Transform once, so subsequent visual
+animation cannot move the suspension hard point. Ground entity, contact
+point/normal, normal load and wheel angular velocity support tyre marks,
+smoke, suspension IK and surface sounds. Start effects at modest slip and
+scale them with load; airborne spin should not emit road smoke.
 
 ## 8. Soft bodies, cloth, fluids, ragdolls and buoyancy
 

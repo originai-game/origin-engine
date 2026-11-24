@@ -89,6 +89,7 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
         ids,
         &mut ids.kept(),
         &frames,
+        Some(&|d| ctx.query_with(d)),
     )?;
     if let Some(soft) = lazy.soft {
         scene.softs = gather::softs(

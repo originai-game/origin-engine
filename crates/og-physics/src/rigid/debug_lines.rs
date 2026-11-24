@@ -65,5 +65,6 @@ fn lines(sim: &Sim) -> Vec<DebugLine> {
         &w.narrow_phase,
         &w.soft_bodies,
     );
+    super::vehicle::debug_lines(sim, &mut out.0);
     out.0
 }

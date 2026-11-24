@@ -439,6 +439,18 @@
       "value": "VehicleModel"
     },
     {
+      "name": "VehicleWheelCast",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "VehicleWheelCast"
+    },
+    {
+      "name": "VehicleDifferential",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "VehicleDifferential"
+    },
+    {
       "name": "Simulation",
       "array": "Uint32Array",
       "stride": 1,
@@ -4077,15 +4089,33 @@
           "tunable": true
         },
         {
-          "name": "suspensionDamping",
+          "name": "compressionDamping",
           "column": "f32",
-          "default": 4,
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "reboundDamping",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "bumpStopStiffness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "antiRollStiffness",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {
           "name": "grip",
           "column": "f32",
-          "default": 2,
+          "default": 1,
           "tunable": true
         },
         {
@@ -4130,6 +4160,59 @@
           "tunable": true
         },
         {
+          "name": "wheelCast",
+          "column": "VehicleWheelCast",
+          "default": "ray"
+        },
+        {
+          "name": "brakeBias",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "aeroDrag",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "aeroDownforce",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "rollingResistance",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "ackermann",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "steeringFade",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "abs",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "tcs",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "speed",
           "column": "f32",
           "default": 0,
@@ -4161,12 +4244,6 @@
           "name": "handbrakeGrip",
           "column": "f32",
           "default": 0.2,
-          "tunable": true
-        },
-        {
-          "name": "driftGrip",
-          "column": "f32",
-          "default": 1,
           "tunable": true
         },
         {
@@ -4229,6 +4306,41 @@
           "tunable": true
         },
         {
+          "name": "engineInertia",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "clutchStrength",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "engineBraking",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "differential",
+          "column": "VehicleDifferential",
+          "default": "open"
+        },
+        {
+          "name": "differentialStrength",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "awdBias",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "gear",
           "column": "i32",
           "default": 0
@@ -4250,6 +4362,15 @@
         "physics"
       ],
       "fields": [
+        {
+          "name": "mount",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
         {
           "name": "radius",
           "column": "f32",
@@ -4275,15 +4396,21 @@
           "tunable": true
         },
         {
-          "name": "suspensionDamping",
+          "name": "compressionDamping",
           "column": "f32",
-          "default": 4,
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "reboundDamping",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {
           "name": "grip",
           "column": "f32",
-          "default": 2,
+          "default": 1,
           "tunable": true
         },
         {

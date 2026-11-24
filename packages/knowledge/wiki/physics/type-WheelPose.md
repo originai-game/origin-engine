@@ -13,9 +13,15 @@ A wheel of an og.Vehicle as the last step left it, for drawing.
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The wheel's centre in world space. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation (steering and spin) in world space. |
 | `contact` | `boolean` | `false` | — | — | — | Whether it touches the ground. |
-| `slip` | `number` | `0` | 0 … 1 | — | — | How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. See `physics §7`. |
+| `slip` | `number` | `0` | 0 … 1 | — | — | Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne. See `physics §7`. |
 | `sideSpeed` | `number` | `0` | — | `mps` | — | How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness. |
 | `entity` | `Entity` | `0` | — | — | — | The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels. |
+| `suspensionCompression` | `number` | `0` | — | `m` | — | Rest length minus current suspension length in metres; negative at droop. |
+| `load` | `number` | `0` | — | — | — | Normal load in newtons; zero airborne. |
+| `contactPoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Contact point in world space; zero airborne. |
+| `contactNormal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Ground normal in world space; zero airborne. |
+| `groundEntity` | `Entity` | `0` | — | — | — | Ground collider entity; zero airborne. |
+| `angularVelocity` | `number` | `0` | — | — | — | Wheel angular speed in rad/s, positive forwards in either profile. |
 
 ```ogt
 struct WheelPose {
@@ -25,7 +31,7 @@ struct WheelPose {
   }
   field quaternion Quaternion "Its rotation (steering and spin) in world space."
   field contact bool "Whether it touches the ground."
-  field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D." {
+  field slip f32 "Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne." {
     guide "physics §7"
     min 0
     max 1
@@ -34,7 +40,15 @@ struct WheelPose {
     unit mps
   }
   field entity Entity "The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels."
+  field suspensionCompression f32 "Rest length minus current suspension length in metres; negative at droop." {
+    unit m
+  }
+  field load f32 "Normal load in newtons; zero airborne."
+  field contactPoint Vector3 "Contact point in world space; zero airborne."
+  field contactNormal Vector3 "Ground normal in world space; zero airborne."
+  field groundEntity Entity "Ground collider entity; zero airborne."
+  field angularVelocity f32 "Wheel angular speed in rad/s, positive forwards in either profile."
 }
 ```
 
-<sub>Module `physics` line 2417</sub>
+<sub>Module `physics` line 2511</sub>

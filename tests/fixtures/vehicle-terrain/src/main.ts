@@ -83,7 +83,7 @@ function build(world: World): void {
   must(world.insert(car, og.RigidBody, { kind: "dynamic", mass: 1000, angularDamping: 0.4, ccd: true }));
   must(world.insert(car, og.Collider, { shape: "box", size: { x: 1.7, y: 0.25, z: 4 }, friction: 0.05 }));
   must(world.insert(car, og.Velocity, {}));
-  must(world.insert(car, og.Vehicle, { wheelBase: 2.6, track: 1.7, wheelRadius: 0.35, mountHeight: -0.3, suspensionRest: 0.3, suspensionTravel: 0.18, suspensionStiffness: 50, suspensionDamping: 4.5, maxSteer: 0.5, rollInfluence: 0.1, engineForce: 6000, maxSpeed: 30, grip: 1.2, driftGrip: 0.6 }));
+  must(world.insert(car, og.Vehicle, { wheelBase: 2.6, track: 1.7, wheelRadius: 0.35, mountHeight: -0.3, suspensionRest: 0.3, suspensionTravel: 0.18, suspensionStiffness: 50, compressionDamping: 4.5, reboundDamping: 4.5, maxSteer: 0.5, rollInfluence: 0.1, engineForce: 2100, maxSpeed: 30, grip: 1.2 }));
   const box = must(og.render.boxGeometry(world, {}));
   const paint = must(og.render.standardMaterial(world, { color: { r: 0.8, g: 0.15, b: 0.1 }, metalness: 0.3, roughness: 0.4 }));
   const body = must(world.spawn({ name: "body", parent: car, position: { x: 0, y: 0.25, z: 0 }, scale: { x: 1.7, y: 0.6, z: 4 } }));

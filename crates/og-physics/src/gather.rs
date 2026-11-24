@@ -323,6 +323,7 @@ fn ancestor_body(
 /// [`QUERIES`]); `get` reads the transforms of the parents soft bodies
 /// hang from. `kept` is what the last gather decoded, reused where the
 /// columns were not written since and renewed where they were.
+#[allow(clippy::type_complexity)] // A read-only optional query, matching q/get above.
 pub(crate) fn gather<'w>(
     q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
     get: GetBytes<'_>,
@@ -330,6 +331,7 @@ pub(crate) fn gather<'w>(
     ids: &Ids,
     kept: &mut Kept,
     frames: &og_core::IdMap<u64, Mat4>,
+    wheel_query: Option<&dyn Fn(&QueryDesc) -> Result<QueryIter<'w>>>,
 ) -> Result<Scene> {
     let mut colliders = ByEntity::new();
     for (at, a) in q(Q_BODY_COLLIDERS)?.enumerate() {
@@ -590,13 +592,25 @@ pub(crate) fn gather<'w>(
     }
     // og.VehicleWheel children (lazy): the parented entities that have one,
     // joined to the nearest vehicle up their chain.
-    if let Some(wheel_id) = lazy.wheel.filter(|_| !scene.vehicles.is_empty()) {
+    if let Some((wheel_id, query)) = lazy
+        .wheel
+        .zip(wheel_query)
+        .filter(|_| !scene.vehicles.is_empty())
+    {
         let mut cars = ByEntity::new();
         for (i, (e, _)) in scene.vehicles.iter().enumerate() {
             cars.insert(*e, i);
         }
         let mut found: Vec<(u64, WheelChild)> = Vec::new();
-        for e in parented {
+        let desc = QueryDesc {
+            read: vec![VehicleWheel::NAME.to_string()],
+            ..Default::default()
+        };
+        let mut wheel_entities = Vec::new();
+        for a in query(&desc)? {
+            wheel_entities.extend_from_slice(a.entities());
+        }
+        for e in wheel_entities {
             let Ok(bytes) = get(e, wheel_id) else {
                 continue;
             };
@@ -614,7 +628,11 @@ pub(crate) fn gather<'w>(
                     car.to_bits(),
                     WheelChild {
                         entity: e,
-                        mount: p * car_scale,
+                        mount: if wheel.mount == Vec3::ZERO {
+                            p
+                        } else {
+                            wheel.mount
+                        } * car_scale,
                         wheel,
                     },
                 ));

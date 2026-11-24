@@ -467,7 +467,6 @@ fn step_here(
     shared.air.axis = if sim.flat() { Vec3::Z } else { Vec3::Y };
     laps.lap(Phase::Sync);
     ext::sync_joints(scene, sim, &handles)?;
-    super::vehicles(scene, dt, sim, &handles, &mut out)?;
     laps.lap(Phase::Joints);
     super::ragdolls(scene, dt, sim, shared, &mut out)?;
     laps.lap(Phase::Ragdolls);
@@ -553,6 +552,7 @@ fn step_here(
             k + 1 == substeps,
             &mut forced_bodies,
         );
+        super::vehicles(scene, sub_dt, sim, &handles, &mut out)?;
         mark_forced(&mut had_force, &forced_bodies);
 
         motions = motions_now(&sim.world);
@@ -574,6 +574,7 @@ fn step_here(
             carry(&sim.world, &motions, &mut carried, &mut substep_seen);
         }
     }
+    super::vehicle_readback(scene, sim, &mut out);
     ext::record_water_wakes(sim, dt, tick, cuts);
     laps.lap(Phase::Rapier);
     if split {

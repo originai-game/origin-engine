@@ -1,61 +1,35 @@
-//! The reflected types of vehicles: og.Vehicle and og.VehicleWheel.
-
+//! Reflected vehicle configuration. Forces are SI; grip is a friction coefficient.
+use og_core::glam::Vec3;
 use og_core::{List, Reflect};
-use serde::{Deserialize, Serialize};
 
-/// `Vehicle.drive`: the rear wheels drive.
 pub const DRIVE_REAR: u32 = 0;
-/// `Vehicle.drive`: the front wheels drive.
 pub const DRIVE_FRONT: u32 = 1;
-/// `Vehicle.drive`: every wheel drives.
 pub const DRIVE_ALL: u32 = 2;
-/// `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed.
 pub const VEHICLE_ARCADE: u32 = 0;
-/// `Vehicle.model`: an engine with a torque curve driving through a gearbox.
 pub const VEHICLE_DRIVETRAIN: u32 = 1;
 
-/// A car on a dynamic chassis (the entity's og.RigidBody and og.Collider).
-/// 3D: a raycast car with four wheels (suspension, grip, steering on the
-/// front axle), or with its og.VehicleWheel children; its forward is the chassis's local +z (three.js
-/// Object3D.lookAt aims +z). 2D: two
-/// wheel bodies on sprung wheel joints (front at +x), driven by a motor.
-/// The implicit wheels are not entities: og.physics.vehicleWheels gives their poses
-/// for drawing. The defaults drive a road car of about 1,000 kg: give the
-/// chassis that mass (og.RigidBody.mass 1000), since a car-sized box at
-/// the collider's density 1 weighs a few kilograms and the forces, in
-/// newtons, would throw it. The suspension and the grip scale with the
-/// chassis's mass (Bullet's units); the engine and the brakes do not. The
-/// wheel rays meet what the chassis's collider would (its og.Collider
-/// layers and mask), so cars on layers that do not collide pass through
-/// each other.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Vehicle", version = 3)]
+/// A dynamic chassis with independent wheels, forward +z in 3D and +x in 2D.
+/// Suspension stiffness and damping are per chassis kg; drive and brake are
+/// wheel torques in N·m. Game code draws wheels using vehicleWheels poses.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Vehicle", version = 4)]
 pub struct Vehicle {
-    /// The accelerator, -1 (reverse) to 1. Set it every tick.
     #[reflect(min = -1, max = 1)]
     pub throttle: f32,
-    /// The steering, -1 (left) to 1 (right); 3D only.
     #[reflect(min = -1, max = 1)]
     pub steer: f32,
-    /// The brake, 0 to 1.
     #[reflect(min = 0, max = 1)]
     pub brake: f32,
-    /// The distance between the front and rear axles.
     #[reflect(name = "wheelBase", min = 0, unit = "m", default = 2.6, tunable)]
     pub wheel_base: f32,
-    /// The distance between the left and right wheels (3D).
     #[reflect(min = 0, unit = "m", default = 1.6, tunable)]
     pub track: f32,
-    /// The wheels' radius.
     #[reflect(name = "wheelRadius", min = 0.01, unit = "m", default = 0.4, tunable)]
     pub wheel_radius: f32,
-    /// The height of the wheel mounts below the chassis centre.
-    #[reflect(name = "mountHeight", unit = "m", default = 0.5, tunable)]
+    #[reflect(name = "mountHeight", unit = "m", default = 0.2, tunable)]
     pub mount_height: f32,
-    /// The suspension's length at rest.
     #[reflect(name = "suspensionRest", min = 0, unit = "m", default = 0.35, tunable)]
     pub suspension_rest: f32,
-    /// How far the suspension compresses or extends from rest.
     #[reflect(
         name = "suspensionTravel",
         min = 0,
@@ -64,25 +38,26 @@ pub struct Vehicle {
         tunable
     )]
     pub suspension_travel: f32,
-    /// The suspension's stiffness.
     #[reflect(name = "suspensionStiffness", min = 0, default = 30, tunable)]
     pub suspension_stiffness: f32,
-    /// The suspension's damping.
-    #[reflect(name = "suspensionDamping", min = 0, default = 4, tunable)]
-    pub suspension_damping: f32,
-    /// The tyres' grip (3D: the friction slip, how much of the load a tyre holds before it slides; 2D: the wheels' friction).
-    #[reflect(min = 0, default = 2, tunable)]
+    #[reflect(name = "compressionDamping", min = 0, tunable)]
+    pub compression_damping: f32,
+    #[reflect(name = "reboundDamping", min = 0, tunable)]
+    pub rebound_damping: f32,
+    #[reflect(name = "bumpStopStiffness", min = 0, tunable)]
+    pub bump_stop_stiffness: f32,
+    #[reflect(name = "antiRollStiffness", min = 0, tunable)]
+    pub anti_roll_stiffness: f32,
+    #[reflect(min = 0, default = 1, tunable)]
     pub grip: f32,
-    /// The engine's force at full throttle (3D: per driven wheel, N; 2D: the motor's torque, N·m).
+    /// Arcade torque per driven wheel, N·m.
     #[reflect(name = "engineForce", min = 0, default = 2500, tunable)]
     pub engine_force: f32,
-    /// The top speed: the engine's force fades out towards it (throttle against the motion brakes first).
-    #[reflect(name = "maxSpeed", min = 0, unit = "m/s", default = 40, tunable)]
+    #[reflect(name = "maxSpeed", min = 0, unit = "mps", default = 40, tunable)]
     pub max_speed: f32,
-    /// The brakes' force at full brake (3D: per wheel, N, every wheel braking; 2D: the wheels' braking torque).
+    /// Brake torque per wheel before brakeBias, N·m.
     #[reflect(name = "brakeForce", min = 0, default = 2000, tunable)]
     pub brake_force: f32,
-    /// The front wheels' largest steering angle (3D).
     #[reflect(
         name = "maxSteer",
         min = 0,
@@ -92,90 +67,83 @@ pub struct Vehicle {
         tunable
     )]
     pub max_steer: f32,
-    /// Which wheels drive: rear, front or all (the `DRIVE_*` codes).
     #[reflect(variants = ["rear", "front", "all"])]
     pub drive: u32,
-    /// The wheels' mass (2D: the wheel bodies; 3D ignores it).
     #[reflect(name = "wheelMass", min = 0.01, unit = "kg", default = 20, tunable)]
     pub wheel_mass: f32,
-    /// How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering (an arcade car); towards 1 at the road, the roll that tips a tall car over (rapier's own car uses 0.1, which rolls a 1,000 kg car at full lock above about 20 m/s). Raise it a little for body roll, with og.RigidBody.centerOfMass lowered to keep the car on its wheels.
     #[reflect(name = "rollInfluence", min = 0, max = 1, tunable)]
     pub roll_influence: f32,
-    /// Written: the forward speed (m/s; negative reversing).
-    #[reflect(unit = "m/s")]
+    #[reflect(name = "wheelCast", variants = ["ray", "sphere", "cylinder"])]
+    pub wheel_cast: u32,
+    /// Zero disables bias (equal wheel torque); otherwise front axle share.
+    #[reflect(name = "brakeBias", min = 0, max = 1, tunable)]
+    pub brake_bias: f32,
+    #[reflect(name = "aeroDrag", min = 0, tunable)]
+    pub aero_drag: f32,
+    #[reflect(name = "aeroDownforce", min = 0, tunable)]
+    pub aero_downforce: f32,
+    #[reflect(name = "rollingResistance", min = 0, tunable)]
+    pub rolling_resistance: f32,
+    #[reflect(min = 0, max = 1, tunable)]
+    pub ackermann: f32,
+    #[reflect(name = "steeringFade", min = 0, tunable)]
+    pub steering_fade: f32,
+    #[reflect(min = 0, max = 1, tunable)]
+    pub abs: f32,
+    #[reflect(min = 0, max = 1, tunable)]
+    pub tcs: f32,
+    #[reflect(unit = "mps")]
     pub speed: f32,
-    /// Written: how many wheels touch the ground.
     pub contacts: u32,
-    /// Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides (3D; 0 in 2D).
     #[reflect(min = 0, max = 1)]
     pub slip: f32,
-    /// arcade (engineForce, faded out towards maxSpeed) or drivetrain (an engine with a torque curve through a gearbox): the `VEHICLE_*` codes.
     #[reflect(variants = ["arcade", "drivetrain"])]
-    #[serde(skip)]
     pub model: u32,
-    /// The handbrake, 0 to 1: brakes the handbrake wheels (the rear pair, or the og.VehicleWheel children flagged `handbrake`) with brakeForce, takes their drive and loosens their grip.
     #[reflect(min = 0, max = 1)]
-    #[serde(skip)]
     pub handbrake: f32,
-    /// The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own.
     #[reflect(name = "handbrakeGrip", min = 0, max = 1, default = 0.2, tunable)]
-    #[serde(skip)]
     pub handbrake_grip: f32,
-    /// The handbrake wheels' sideways grip while the car drifts (the handbrake is on or one of them slides), as a share of their own: below 1 the tail stays out.
-    #[reflect(name = "driftGrip", min = 0, max = 1, default = 1, tunable)]
-    #[serde(skip)]
-    pub drift_grip: f32,
-    /// Drivetrain: the forward gears' ratios, first gear first (empty: 3.4, 2.2, 1.6, 1.25, 1.0, 0.82).
-    #[serde(skip)]
     pub gears: List<f32, 8>,
-    /// Drivetrain: the reverse gear's ratio.
     #[reflect(name = "reverseRatio", min = 0, default = 3.2, tunable)]
-    #[serde(skip)]
     pub reverse_ratio: f32,
-    /// Drivetrain: the final drive's ratio, after every gear.
     #[reflect(name = "finalDrive", min = 0, default = 3.6, tunable)]
-    #[serde(skip)]
     pub final_drive: f32,
-    /// Drivetrain: the engine's speed at rest, in revolutions per minute.
-    #[reflect(name = "idleRpm", min = 0, default = 900, tunable)]
-    #[serde(skip)]
+    #[reflect(name = "idleRpm", min = 0, unit = "rpm", default = 900, tunable)]
     pub idle_rpm: f32,
-    /// Drivetrain: the rev limit: the engine gives no torque at or above it.
-    #[reflect(name = "maxRpm", min = 1, default = 6800, tunable)]
-    #[serde(skip)]
+    #[reflect(name = "maxRpm", min = 1, unit = "rpm", default = 6800, tunable)]
     pub max_rpm: f32,
-    /// Drivetrain: the engine's torque (N·m) at full throttle, at evenly spaced speeds from 0 to maxRpm, interpolated between them (empty: 140, 170, 195, 210, 215, 205, 185, 150).
     #[reflect(name = "torqueCurve")]
-    #[serde(skip)]
     pub torque_curve: List<f32, 8>,
-    /// Drivetrain: the gearbox shifts by itself (and into reverse when throttle is negative at a standstill); false leaves `gear` to the game.
     #[reflect(default = 1)]
-    #[serde(skip)]
     pub automatic: bool,
-    /// Drivetrain, automatic: the engine speed it shifts up at.
-    #[reflect(name = "shiftUpRpm", min = 0, default = 6000, tunable)]
-    #[serde(skip)]
+    #[reflect(name = "shiftUpRpm", min = 0, unit = "rpm", default = 6000, tunable)]
     pub shift_up_rpm: f32,
-    /// Drivetrain, automatic: the engine speed it shifts down at.
-    #[reflect(name = "shiftDownRpm", min = 0, default = 2800, tunable)]
-    #[serde(skip)]
+    #[reflect(name = "shiftDownRpm", min = 0, unit = "rpm", default = 2800, tunable)]
     pub shift_down_rpm: f32,
-    /// Drivetrain: how long a gear change takes, the engine driving nothing meanwhile.
     #[reflect(name = "clutchTime", min = 0, unit = "s", default = 0.25, tunable)]
-    #[serde(skip)]
     pub clutch_time: f32,
-    /// Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. Written by an automatic gearbox; set by the game for a manual one.
+    #[reflect(name = "engineInertia", min = 0, tunable)]
+    pub engine_inertia: f32,
+    #[reflect(name = "clutchStrength", min = 0, tunable)]
+    pub clutch_strength: f32,
+    #[reflect(name = "engineBraking", min = 0, tunable)]
+    pub engine_braking: f32,
+    #[reflect(variants = ["open", "lsd", "locked"])]
+    pub differential: u32,
+    #[reflect(name = "differentialStrength", min = 0, tunable)]
+    pub differential_strength: f32,
+    /// Zero disables axle bias; otherwise the front axle's drive share.
+    #[reflect(name = "awdBias", min = 0, max = 1, tunable)]
+    pub awd_bias: f32,
     #[reflect(min = -1, max = 8)]
-    #[serde(skip)]
     pub gear: i32,
-    /// Written, drivetrain: the engine's speed (rpm), for the engine sound and the tachometer.
-    #[serde(skip)]
+    #[reflect(unit = "rpm")]
     pub rpm: f32,
 }
 
 impl Default for Vehicle {
     fn default() -> Self {
-        Vehicle {
+        Self {
             throttle: 0.0,
             steer: 0.0,
             brake: 0.0,
@@ -186,22 +154,33 @@ impl Default for Vehicle {
             suspension_rest: 0.35,
             suspension_travel: 0.25,
             suspension_stiffness: 30.0,
-            suspension_damping: 4.0,
-            grip: 2.0,
+            compression_damping: 0.0,
+            rebound_damping: 0.0,
+            bump_stop_stiffness: 0.0,
+            anti_roll_stiffness: 0.0,
+            grip: 1.0,
             engine_force: 2500.0,
             max_speed: 40.0,
             brake_force: 2000.0,
+            brake_bias: 0.0,
             max_steer: 0.55,
             drive: DRIVE_REAR,
             wheel_mass: 20.0,
             roll_influence: 0.0,
+            wheel_cast: 0,
+            aero_drag: 0.0,
+            aero_downforce: 0.0,
+            rolling_resistance: 0.0,
+            ackermann: 0.0,
+            steering_fade: 0.0,
+            abs: 0.0,
+            tcs: 0.0,
             speed: 0.0,
             contacts: 0,
             slip: 0.0,
             model: VEHICLE_ARCADE,
             handbrake: 0.0,
             handbrake_grip: 0.2,
-            drift_grip: 1.0,
             gears: List::new(),
             reverse_ratio: 3.2,
             final_drive: 3.6,
@@ -212,26 +191,29 @@ impl Default for Vehicle {
             shift_up_rpm: 6000.0,
             shift_down_rpm: 2800.0,
             clutch_time: 0.25,
+            engine_inertia: 0.0,
+            clutch_strength: 0.0,
+            engine_braking: 0.0,
+            differential: 0,
+            differential_strength: 0.0,
+            awd_bias: 0.0,
             gear: 0,
             rpm: 0.0,
         }
     }
 }
 
-/// A wheel of the og.Vehicle it is a child of (down its og.Parent chain),
-/// at its og.Transform relative to the chassis. A vehicle with
-/// og.VehicleWheel children (up to 16, in entity order) has those wheels in
-/// place of its four implicit ones; 3D only.
+/// An explicit wheel of its nearest Vehicle ancestor, in either profile.
+/// Mount is chassis-local and never follows the visual wheel Transform.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.VehicleWheel")]
 pub struct VehicleWheel {
-    /// The wheel's radius.
+    #[reflect(unit = "m")]
+    pub mount: Vec3,
     #[reflect(min = 0.01, unit = "m", default = 0.4, tunable)]
     pub radius: f32,
-    /// The suspension's length at rest, down from the wheel's position.
     #[reflect(name = "suspensionRest", min = 0, unit = "m", default = 0.35, tunable)]
     pub suspension_rest: f32,
-    /// How far the suspension compresses or extends from rest.
     #[reflect(
         name = "suspensionTravel",
         min = 0,
@@ -240,36 +222,33 @@ pub struct VehicleWheel {
         tunable
     )]
     pub suspension_travel: f32,
-    /// The suspension's stiffness.
     #[reflect(name = "suspensionStiffness", min = 0, default = 30, tunable)]
     pub suspension_stiffness: f32,
-    /// The suspension's damping.
-    #[reflect(name = "suspensionDamping", min = 0, default = 4, tunable)]
-    pub suspension_damping: f32,
-    /// The tyre's grip, as og.Vehicle's `grip`.
-    #[reflect(min = 0, default = 2, tunable)]
+    #[reflect(name = "compressionDamping", min = 0, tunable)]
+    pub compression_damping: f32,
+    #[reflect(name = "reboundDamping", min = 0, tunable)]
+    pub rebound_damping: f32,
+    #[reflect(min = 0, default = 1, tunable)]
     pub grip: f32,
-    /// How much of the vehicle's steering it takes: 1 a front wheel, 0 none, negative steers the other way (rear-wheel steering).
     #[reflect(min = -1, max = 1, tunable)]
     pub steer: f32,
-    /// Whether the engine drives it.
     pub drive: bool,
-    /// Whether the brake brakes it.
     #[reflect(default = 1)]
     pub brake: bool,
-    /// Whether the handbrake brakes it (and drift grip applies to it).
     pub handbrake: bool,
 }
 
 impl Default for VehicleWheel {
     fn default() -> Self {
-        VehicleWheel {
+        Self {
+            mount: Vec3::ZERO,
             radius: 0.4,
             suspension_rest: 0.35,
             suspension_travel: 0.25,
             suspension_stiffness: 30.0,
-            suspension_damping: 4.0,
-            grip: 2.0,
+            compression_damping: 0.0,
+            rebound_damping: 0.0,
+            grip: 1.0,
             steer: 0.0,
             drive: false,
             brake: true,

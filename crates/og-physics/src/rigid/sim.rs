@@ -8,7 +8,7 @@ use super::{
     from_heightfield, from_mesh, gyroscopic_builder, pose, primitive, principal_inertia, rp,
     set_gyroscopic, unangvel, unpose, unv, v,
 };
-use super::{VehicleState, ext, platformers, ragdolls, vehicles};
+use super::{VehicleState, ext, platformers, ragdolls, vehicle_readback, vehicles};
 use crate::gather::{Body, Scene, Static, StaticRun};
 use crate::schema::*;
 use crate::stats::{Laps, Phase};
@@ -160,9 +160,7 @@ pub(crate) struct SimExt {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(crate) struct VehicleExt {
     pub(crate) gearbox: crate::drivetrain::Gearbox,
-    /// The og.VehicleWheel children its wheels were built from, in order:
-    /// each one's entity and what building bakes in (its mount's x, y and
-    /// z, radius and suspension rest, as bits). Empty: its implicit wheels.
+    /// Wheel identities and current mount/radius/rest, for canonical save records.
     pub(crate) wheels: Vec<(u64, [u32; 5])>,
 }
 

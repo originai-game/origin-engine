@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 120 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 124 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -82,8 +82,12 @@ module physics {
 | [`VehicleDrive()`](#column-VehicleDrive) | column kind |  | A VehicleDrive field: the variant's index. |
 | [`VehicleModel`](physics/type-VehicleModel.md) | enum |  | How a vehicle's engine is modelled: Vehicle.model. |
 | [`VehicleModel()`](#column-VehicleModel) | column kind |  | A VehicleModel field: the variant's index. |
-| [`og.Vehicle`](physics/record-Vehicle.md) | component |  | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). |
-| [`og.VehicleWheel`](physics/record-VehicleWheel.md) | component |  | A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. |
+| [`og.Vehicle`](physics/record-Vehicle.md) | component |  | Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. |
+| [`og.VehicleWheel`](physics/record-VehicleWheel.md) | component |  | A wheel of its nearest Vehicle ancestor in either profile. |
+| [`VehicleWheelCast`](physics/type-VehicleWheelCast.md) | enum |  | The 3D wheel contact cast shape. |
+| [`VehicleWheelCast()`](#column-VehicleWheelCast) | column kind |  | A VehicleWheelCast variant index. |
+| [`VehicleDifferential`](physics/type-VehicleDifferential.md) | enum |  | Driven-wheel angular coupling. |
+| [`VehicleDifferential()`](#column-VehicleDifferential) | column kind |  | A VehicleDifferential variant index. |
 | [`og.Rope`](physics/record-Rope.md) | component |  | A small-step XPBD rope with explicit velocities and point masses. |
 | [`Simulation`](physics/type-Simulation.md) | enum |  | Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation. |
 | [`Simulation()`](#column-Simulation) | column kind |  | A Simulation field: the variant's index. |
@@ -172,6 +176,8 @@ Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a 
 | <a id="column-JointMotorModel"></a>`JointMotorModel` | `JointMotorModel` | `Uint32Array` | 1 | A JointMotorModel field: the variant's index. |
 | <a id="column-VehicleDrive"></a>`VehicleDrive` | `VehicleDrive` | `Uint32Array` | 1 | A VehicleDrive field: the variant's index. |
 | <a id="column-VehicleModel"></a>`VehicleModel` | `VehicleModel` | `Uint32Array` | 1 | A VehicleModel field: the variant's index. |
+| <a id="column-VehicleWheelCast"></a>`VehicleWheelCast` | `VehicleWheelCast` | `Uint32Array` | 1 | A VehicleWheelCast variant index. |
+| <a id="column-VehicleDifferential"></a>`VehicleDifferential` | `VehicleDifferential` | `Uint32Array` | 1 | A VehicleDifferential variant index. |
 | <a id="column-Simulation"></a>`Simulation` | `Simulation` | `Uint32Array` | 1 | A Simulation field: the variant's index. |
 | <a id="column-SoftBodyShape"></a>`SoftBodyShape` | `SoftBodyShape` | `Uint32Array` | 1 | A SoftBodyShape field: the variant's index. |
 
@@ -275,6 +281,28 @@ column VehicleModel {
 <sub>Module `physics` line 939</sub>
 
 ```ogt
+column VehicleWheelCast {
+  doc "A VehicleWheelCast variant index."
+  array Uint32Array
+  stride 1
+  value VehicleWheelCast
+}
+```
+
+<sub>Module `physics` line 1262</sub>
+
+```ogt
+column VehicleDifferential {
+  doc "A VehicleDifferential variant index."
+  array Uint32Array
+  stride 1
+  value VehicleDifferential
+}
+```
+
+<sub>Module `physics` line 1274</sub>
+
+```ogt
 column Simulation {
   doc "A Simulation field: the variant's index."
   array Uint32Array
@@ -283,7 +311,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1276</sub>
+<sub>Module `physics` line 1370</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -294,7 +322,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1508</sub>
+<sub>Module `physics` line 1602</sub>
 
 ## Constants
 
@@ -424,40 +452,40 @@ const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces cr
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1283</sub>
+<sub>Module `physics` line 1377</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1284</sub>
+<sub>Module `physics` line 1378</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1285</sub>
+<sub>Module `physics` line 1379</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1286</sub>
+<sub>Module `physics` line 1380</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2088</sub>
+<sub>Module `physics` line 2182</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2089</sub>
+<sub>Module `physics` line 2183</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2090</sub>
+<sub>Module `physics` line 2184</sub>

@@ -32,15 +32,23 @@ pub struct WheelPose {
     pub quaternion: Quat,
     /// Whether it touches the ground.
     pub contact: bool,
-    /// How much the tyre slides (rapier's skid info turned round): 0 it
-    /// grips, towards 1 it asks for more than its grip holds (0.5: twice
-    /// as much). 0 in the air and in 2D.
+    /// Regularised combined slip: zero gripping, towards one sliding.
+    /// Zero without ground contact, in both profiles.
     pub slip: f32,
     /// How fast the tyre's contact moves sideways over the ground, m/s
     /// (along the axle; 0 in the air and in 2D).
     pub side_speed: f32,
     /// Its og.VehicleWheel entity's bits; 0 for an implicit wheel.
     pub entity: u64,
+    /// Rest length minus current suspension length, metres (negative at droop).
+    pub suspension_compression: f32,
+    /// Normal load in newtons.
+    pub load: f32,
+    pub contact_point: Vec3,
+    pub contact_normal: Vec3,
+    pub ground_entity: u64,
+    /// Wheel speed in radians/second, positive forwards.
+    pub angular_velocity: f32,
 }
 
 /// A cloth's points as the last step left them, row-major.

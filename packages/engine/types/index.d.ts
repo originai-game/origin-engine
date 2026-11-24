@@ -287,6 +287,10 @@ export interface ColumnKinds {
   VehicleDrive: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleDrive };
   /** A VehicleModel field: the variant's index. */
   VehicleModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleModel };
+  /** A VehicleWheelCast variant index. */
+  VehicleWheelCast: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleWheelCast };
+  /** A VehicleDifferential variant index. */
+  VehicleDifferential: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleDifferential };
   /** A Simulation field: the variant's index. */
   Simulation: { readonly array: Uint32Array; readonly stride: 1; readonly value: Simulation };
   /** A SoftBodyShape field: the variant's index. */
@@ -16854,9 +16858,9 @@ export type VehicleModel = "arcade" | "drivetrain";
 export declare function VehicleModel(value?: VehicleModel, options?: FieldOptions): FieldSpec<"VehicleModel">;
 
 /**
- * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z. 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. og.physics.vehicleWheels gives the wheels' poses and slip.
- * The defaults are a road car of about 1,000 kg (og.RigidBody.mass 1000). The suspension and the grip scale with the chassis's mass, the engine and the brakes do not.
- * The wheel rays meet what the chassis's collider would.
+ * Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels.
+ * Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero.
+ * 3D wheels cast the full suspension droop, skip sensors and honour ContactHook.
  * See `physics §7`.
  *
  * The value of the `Vehicle` component (token `og.Vehicle`).
@@ -16942,24 +16946,44 @@ export interface Vehicle {
    */
   suspensionStiffness: number;
   /**
-   * The suspension's damping.
+   * Compression damping per chassis kilogram; zero disables it.
    *
-   * @default 4
    * @range 0..
    * @tunable
    */
-  suspensionDamping: number;
+  compressionDamping: number;
   /**
-   * The tyres' grip (3D: the friction slip, how much of its load a tyre holds before it slides; 2D: the wheels' friction).
+   * Rebound damping per chassis kilogram; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  reboundDamping: number;
+  /**
+   * Progressive bump stop coefficient, N/m²; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  bumpStopStiffness: number;
+  /**
+   * Opposite wheels on the same axle exchange this many N per metre of compression difference; zero disables it (3D).
+   *
+   * @range 0..
+   * @tunable
+   */
+  antiRollStiffness: number;
+  /**
+   * The real tyre friction coefficient, multiplied by the ground friction; no hidden scale.
    * See `physics §7`.
    *
-   * @default 2
+   * @default 1
    * @range 0..
    * @tunable
    */
   grip: number;
   /**
-   * The engine's force at full throttle (3D: per driven wheel, in newtons; 2D: the motor's torque, N·m).
+   * Arcade drive torque per driven wheel in N·m, faded towards maxSpeed.
    * See `physics §7`.
    *
    * @default 2500
@@ -16977,7 +17001,7 @@ export interface Vehicle {
    */
   maxSpeed: number;
   /**
-   * The brakes' force at full brake (3D: per wheel, in newtons, every wheel braking; 2D: the wheels' braking torque).
+   * Brake torque per wheel in N·m before brakeBias. Solved with drive and tyre reaction on wheel angular velocity.
    * See `physics §7`.
    *
    * @default 2000
@@ -16997,7 +17021,7 @@ export interface Vehicle {
   /** Which wheels drive: rear, front or all. */
   drive: VehicleDrive;
   /**
-   * The wheels' mass (2D: the wheel bodies; 3D ignores it).
+   * Wheel mass in both profiles; spin inertia is half the mass times radius squared.
    *
    * @default 20
    * @range 0.01..
@@ -17013,6 +17037,64 @@ export interface Vehicle {
    * @tunable
    */
   rollInfluence: number;
+  /** 3D wheel contact cast shape; cylinder axle follows steering, width is half its radius. */
+  wheelCast: VehicleWheelCast;
+  /**
+   * Zero disables bias (equal torque per wheel); otherwise the front axle share of service braking.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  brakeBias: number;
+  /**
+   * Quadratic drag coefficient in kg/m; zero disables drag.
+   *
+   * @range 0..
+   * @tunable
+   */
+  aeroDrag: number;
+  /**
+   * Downforce coefficient in kg/m along chassis down, times forward speed squared; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  aeroDownforce: number;
+  /**
+   * Rolling resistance force per wheel, N; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  rollingResistance: number;
+  /**
+   * 3D steering blend from parallel (zero) to Ackermann (one).
+   *
+   * @range 0..1
+   * @tunable
+   */
+  ackermann: number;
+  /**
+   * 3D steering angle divides by one plus this times absolute speed; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  steeringFade: number;
+  /**
+   * Service brake release at wheel slip, zero off to one full assistance; handbrake remains unassisted.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  abs: number;
+  /**
+   * Drive torque reduction at wheel slip, zero off to one full assistance.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  tcs: number;
   /**
    * Written: the forward speed (m/s; negative reversing).
    *
@@ -17027,39 +17109,31 @@ export interface Vehicle {
    */
   readonly contacts: number;
   /**
-   * Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D).
+   * Written after the step: largest regularised wheel slip, zero gripping towards one sliding, in either profile.
    *
    * @range 0..1
    * @readonly written by the engine
    */
   readonly slip: number;
   /**
-   * arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in.
+   * Arcade torque or an engine flywheel coupled through a clutch and gearbox to measured wheel angular velocities. Drivetrain requires nonzero engineInertia and clutchStrength.
    */
   model: VehicleModel;
   /**
-   * The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip.
+   * Extra brake torque on flagged wheels (implicit rear), independent of drive torque; blends their friction towards handbrakeGrip.
    * See `physics §7`.
    *
    * @range 0..1
    */
   handbrake: number;
   /**
-   * The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D); 1 keeps it.
+   * Handbrake wheels' friction multiplier at full handbrake, in either profile.
    *
    * @default 0.2
    * @range 0..1
    * @tunable
    */
   handbrakeGrip: number;
-  /**
-   * Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off.
-   *
-   * @default 1
-   * @range 0..1
-   * @tunable
-   */
-  driftGrip: number;
   /**
    * Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82.
    *
@@ -17131,7 +17205,7 @@ export interface Vehicle {
    */
   shiftDownRpm: number;
   /**
-   * Drivetrain: how long a gear change takes; the engine drives nothing meanwhile.
+   * Drivetrain: clutch re-engagement ramp after a gear change; first engagement has no delay.
    *
    * @default 0.25
    * @range 0..
@@ -17139,6 +17213,43 @@ export interface Vehicle {
    * @tunable
    */
   clutchTime: number;
+  /**
+   * Engine flywheel inertia in kg·m²; zero disables the engine.
+   *
+   * @range 0..
+   * @tunable
+   */
+  engineInertia: number;
+  /**
+   * Maximum clutch torque in N·m; zero disconnects the engine.
+   *
+   * @range 0..
+   * @tunable
+   */
+  clutchStrength: number;
+  /**
+   * Engine drag torque per rad/s above idle with closed throttle; zero disables drag.
+   *
+   * @range 0..
+   * @tunable
+   */
+  engineBraking: number;
+  /** Open equal-torque, limited slip, or locked wheel angular velocities. */
+  differential: VehicleDifferential;
+  /**
+   * LSD angular-speed convergence rate per second; zero disables LSD coupling.
+   *
+   * @range 0..
+   * @tunable
+   */
+  differentialStrength: number;
+  /**
+   * Zero disables axle bias (equal driven-wheel torque); otherwise front axle drive share when both axles drive.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  awdBias: number;
   /**
    * Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. An automatic gearbox writes it; for a manual one the game sets it, and each change takes clutchTime.
    *
@@ -17155,11 +17266,17 @@ export interface Vehicle {
 }
 
 /**
- * A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
+ * A wheel of its nearest Vehicle ancestor in either profile. Up to sixteen in entity order replace the implicit wheels. Mount is independent of the visual Transform, which game code may update from vehicleWheels.
  *
  * The value of the `VehicleWheel` component (token `og.VehicleWheel`).
  */
 export interface VehicleWheel {
+  /**
+   * Chassis-local suspension hard point. Zero captures the initial local Transform once, never the animated wheel pose.
+   *
+   * @unit m (metres)
+   */
+  mount: Vector3;
   /**
    * The wheel's radius.
    *
@@ -17196,17 +17313,23 @@ export interface VehicleWheel {
    */
   suspensionStiffness: number;
   /**
-   * The suspension's damping.
+   * Compression damping per chassis kilogram; zero disables it.
    *
-   * @default 4
    * @range 0..
    * @tunable
    */
-  suspensionDamping: number;
+  compressionDamping: number;
+  /**
+   * Rebound damping per chassis kilogram; zero disables it.
+   *
+   * @range 0..
+   * @tunable
+   */
+  reboundDamping: number;
   /**
    * The tyre's grip, as og.Vehicle's `grip`.
    *
-   * @default 2
+   * @default 1
    * @range 0..
    * @tunable
    */
@@ -17226,9 +17349,43 @@ export interface VehicleWheel {
    * @default true
    */
   brake: boolean;
-  /** Whether the handbrake brakes it, and driftGrip applies to it. */
+  /** Whether the handbrake brakes it and handbrakeGrip applies to it. */
   handbrake: boolean;
 }
+
+/**
+ * The 3D wheel contact cast shape.
+ * - `"ray"`: Ray through full droop plus wheel radius.
+ * - `"sphere"`: Sphere sweep through full droop.
+ * - `"cylinder"`: Steered cylinder sweep through full droop.
+ */
+export type VehicleWheelCast = "ray" | "sphere" | "cylinder";
+
+/**
+ * A VehicleWheelCast variant index.
+ *
+ * A `VehicleWheelCast` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VehicleWheelCast(value?: VehicleWheelCast, options?: FieldOptions): FieldSpec<"VehicleWheelCast">;
+
+/**
+ * Driven-wheel angular coupling.
+ * - `"open"`: Equal torque, independent wheel speed.
+ * - `"lsd"`: Limited-slip coupling at differentialStrength.
+ * - `"locked"`: Locked angular velocities.
+ */
+export type VehicleDifferential = "open" | "lsd" | "locked";
+
+/**
+ * A VehicleDifferential variant index.
+ *
+ * A `VehicleDifferential` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VehicleDifferential(value?: VehicleDifferential, options?: FieldOptions): FieldSpec<"VehicleDifferential">;
 
 /**
  * A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state.
@@ -19099,7 +19256,7 @@ export interface WheelPose {
   /** Whether it touches the ground. */
   readonly contact: boolean;
   /**
-   * How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D.
+   * Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne.
    * See `physics §7`.
    *
    * @range 0..1
@@ -19113,6 +19270,22 @@ export interface WheelPose {
   readonly sideSpeed: number;
   /** The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels. */
   readonly entity: Entity;
+  /**
+   * Rest length minus current suspension length in metres; negative at droop.
+   *
+   * @unit m (metres)
+   */
+  readonly suspensionCompression: number;
+  /** Normal load in newtons; zero airborne. */
+  readonly load: number;
+  /** Contact point in world space; zero airborne. */
+  readonly contactPoint: Vector3;
+  /** Ground normal in world space; zero airborne. */
+  readonly contactNormal: Vector3;
+  /** Ground collider entity; zero airborne. */
+  readonly groundEntity: Entity;
+  /** Wheel angular speed in rad/s, positive forwards in either profile. */
+  readonly angularVelocity: number;
 }
 
 /**
@@ -39016,16 +39189,16 @@ export declare namespace og {
    */
   const CharacterEvent: EventType<CharacterEvent>;
   /**
-   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z. 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. og.physics.vehicleWheels gives the wheels' poses and slip.
-   * The defaults are a road car of about 1,000 kg (og.RigidBody.mass 1000). The suspension and the grip scale with the chassis's mass, the engine and the brakes do not.
-   * The wheel rays meet what the chassis's collider would.
+   * Independent wheels on a dynamic chassis: forward +z in 3D, +x in 2D. Four implicit wheels in 3D, two physical wheels in 2D, or up to sixteen VehicleWheel children in either profile. Game code copies vehicleWheels poses to its own Transforms; the engine draws no wheels.
+   * Suspension stiffness and damping are per chassis kilogram. Drive and brake are wheel torques in N·m. Grip is the real friction coefficient multiplied by the ground friction. New numeric tuning fields are off at zero.
+   * 3D wheels cast the full suspension droop, skip sensors and honour ContactHook.
    * See `physics §7`.
    */
-  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"VehicleDrive">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"VehicleModel">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly driftGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
+  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly compressionDamping: FieldSpec<"f32">; readonly reboundDamping: FieldSpec<"f32">; readonly bumpStopStiffness: FieldSpec<"f32">; readonly antiRollStiffness: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"VehicleDrive">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly wheelCast: FieldSpec<"VehicleWheelCast">; readonly brakeBias: FieldSpec<"f32">; readonly aeroDrag: FieldSpec<"f32">; readonly aeroDownforce: FieldSpec<"f32">; readonly rollingResistance: FieldSpec<"f32">; readonly ackermann: FieldSpec<"f32">; readonly steeringFade: FieldSpec<"f32">; readonly abs: FieldSpec<"f32">; readonly tcs: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"VehicleModel">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly engineInertia: FieldSpec<"f32">; readonly clutchStrength: FieldSpec<"f32">; readonly engineBraking: FieldSpec<"f32">; readonly differential: FieldSpec<"VehicleDifferential">; readonly differentialStrength: FieldSpec<"f32">; readonly awdBias: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
   /**
-   * A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
+   * A wheel of its nearest Vehicle ancestor in either profile. Up to sixteen in entity order replace the implicit wheels. Mount is independent of the visual Transform, which game code may update from vehicleWheels.
    */
-  const VehicleWheel: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly brake: FieldSpec<"bool">; readonly handbrake: FieldSpec<"bool"> }, VehicleWheel>;
+  const VehicleWheel: ComponentType<{ readonly mount: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly compressionDamping: FieldSpec<"f32">; readonly reboundDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly brake: FieldSpec<"bool">; readonly handbrake: FieldSpec<"bool"> }, VehicleWheel>;
   /**
    * A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state.
    */

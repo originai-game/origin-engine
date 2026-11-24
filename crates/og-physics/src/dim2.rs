@@ -354,7 +354,7 @@ pub(crate) use platformer::platformers;
 
 #[path = "vehicle/vehicle2.rs"]
 mod vehicle;
-pub(crate) use vehicle::{VehicleState, vehicles, wheels};
+pub(crate) use vehicle::{VehicleState, readback as vehicle_readback, vehicles, wheels};
 
 #[allow(clippy::duplicate_mod)]
 #[path = "character/ragdoll.rs"]

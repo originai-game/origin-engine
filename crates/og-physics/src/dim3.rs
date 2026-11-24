@@ -5,8 +5,6 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
-#[path = "vehicle/raycast_vehicle.rs"]
-pub(crate) mod ctl;
 use rapier3d::parry::query::{ShapeCastOptions, contact};
 use rapier3d::prelude as rp;
 use std::collections::BTreeMap;
@@ -478,7 +476,7 @@ mod mover;
 
 #[path = "vehicle/vehicle3.rs"]
 mod vehicle;
-pub(crate) use vehicle::{VehicleState, vehicles, wheels};
+pub(crate) use vehicle::{VehicleState, readback as vehicle_readback, vehicles, wheels};
 
 #[allow(clippy::duplicate_mod)]
 #[path = "character/ragdoll.rs"]

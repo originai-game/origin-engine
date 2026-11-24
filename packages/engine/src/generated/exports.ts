@@ -88,6 +88,8 @@ export const JointMotor = ((value = "none" as Api.JointMotor, options) => spec("
 export const JointMotorModel = ((value = "acceleration" as Api.JointMotorModel, options) => spec("JointMotorModel", value, options)) as typeof Api.JointMotorModel;
 export const VehicleDrive = ((value = "rear" as Api.VehicleDrive, options) => spec("VehicleDrive", value, options)) as typeof Api.VehicleDrive;
 export const VehicleModel = ((value = "arcade" as Api.VehicleModel, options) => spec("VehicleModel", value, options)) as typeof Api.VehicleModel;
+export const VehicleWheelCast = ((value = "ray" as Api.VehicleWheelCast, options) => spec("VehicleWheelCast", value, options)) as typeof Api.VehicleWheelCast;
+export const VehicleDifferential = ((value = "open" as Api.VehicleDifferential, options) => spec("VehicleDifferential", value, options)) as typeof Api.VehicleDifferential;
 export const Simulation = ((value = "gameplay" as Api.Simulation, options) => spec("Simulation", value, options)) as typeof Api.Simulation;
 export const SoftBodyShape = ((value = "sphere" as Api.SoftBodyShape, options) => spec("SoftBodyShape", value, options)) as typeof Api.SoftBodyShape;
 export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, CHARACTER_CRUSHED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS, QUERY_DYNAMIC, QUERY_FIXED, QUERY_KINEMATIC } from "./consts.ts";

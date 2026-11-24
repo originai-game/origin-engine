@@ -81,6 +81,8 @@ mod schema;
 #[path = "soft/softbody.rs"]
 mod softbody;
 mod stats;
+#[path = "vehicle/wheels.rs"]
+mod vehicle_wheels;
 mod water;
 #[path = "soft/xpbd.rs"]
 mod xpbd;
@@ -301,6 +303,7 @@ impl PhysicsSystem {
                 &ids,
                 &mut ids.kept(),
                 &ctx.parent_frames()?,
+                None,
             )?;
             initialize_sim(&settings, ctx.time().dt(), &scene, &mut lock(&shared))
         };
@@ -636,6 +639,7 @@ impl PhysicsSystem {
             // Outside a system nothing kept can be relied on (`gather::Kept`).
             &mut gather::Kept::default(),
             &world.parent_frames()?,
+            Some(&|d| world.query(d)),
         )?;
         initialize_sim(
             &settings,

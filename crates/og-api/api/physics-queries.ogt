@@ -334,7 +334,7 @@
     }
     field quaternion Quaternion "Its rotation (steering and spin) in world space."
     field contact bool "Whether it touches the ground."
-    field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D." {
+    field slip f32 "Regularised combined slip in either profile: zero gripping, towards one sliding; zero airborne." {
       guide "physics §7"
       min 0
       max 1
@@ -343,6 +343,14 @@
       unit mps
     }
     field entity Entity "The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels."
+    field suspensionCompression f32 "Rest length minus current suspension length in metres; negative at droop." {
+      unit m
+    }
+    field load f32 "Normal load in newtons; zero airborne."
+    field contactPoint Vector3 "Contact point in world space; zero airborne."
+    field contactNormal Vector3 "Ground normal in world space; zero airborne."
+    field groundEntity Entity "Ground collider entity; zero airborne."
+    field angularVelocity f32 "Wheel angular speed in rad/s, positive forwards in either profile."
   }
 
   struct RagdollBoneDesc {

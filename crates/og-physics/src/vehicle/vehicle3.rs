@@ -1,469 +1,714 @@
-//! The 3D car (the 3D profile only): rapier's raycast vehicle
-//! (`DynamicRayCastVehicleController`, after Bullet's btRaycastVehicle) on
-//! the entity's dynamic chassis, four wheels at the corners of `wheelBase`
-//! by `track`, forward along the chassis's local +z (an object's forward,
-//! [`og_core::facing`]), steering on the front axle. Updated before the
-//! rigid-body step (it applies the suspension, drive and grip impulses).
-
+//! Independent wheel dynamics. Contacts are cast against current collider poses
+//! (including frame zero), then solved sequentially against both bodies.
 use super::sim::Sim;
 use super::{rp, unv, v};
-use crate::gather::{Scene, WheelChild};
+use crate::gather::Scene;
 use crate::schema::*;
+use crate::vehicle_wheels::{Spec, specs};
 use crate::{StepOut, WheelPose};
 use og_core::Result;
-use og_core::glam::{Quat, Vec3};
-use og_core::math::quat_from_axis_angle;
-use og_ecs::Entity;
+use og_core::glam::{Quat, Vec2, Vec3};
+use og_core::math::{atan, atan2, cos, exp, quat_from_axis_angle, sin, sin_cos};
+use rapier3d::parry::query::{ShapeCastOptions, cast_shapes};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+struct Wheel {
+    omega: f32,
+    inertia: f32,
+    spin_angle: f32,
+    compression: f32,
+    prev_compression: f32,
+    length: f32,
+    steering: f32,
+    ground: Option<rp::ColliderHandle>,
+    point: Vec3,
+    normal: Vec3,
+    load: f32,
+    slip: f32,
+    side_speed: f32,
+    tyre_force: Vec3,
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct VehicleState {
     chassis: rp::RigidBodyHandle,
-    layout: Vehicle,
-    controller: super::ctl::DynamicRayCastVehicleController,
+    specs: Vec<Spec>,
+    wheels: Vec<Wheel>,
 }
 
 impl VehicleState {
-    /// Moves the controller's world-space wheel points by `s.d`.
     pub(crate) fn shift(&mut self, s: &og_ecs::Shift) {
-        self.controller.shift(&|p| super::v(s.moved(super::unv(p))));
-    }
-}
-
-/// What rebuilds a vehicle: its geometry (inputs, tunables and outputs do not).
-fn layout(v: &Vehicle) -> [u32; 5] {
-    [
-        v.wheel_base.to_bits(),
-        v.track.to_bits(),
-        v.wheel_radius.to_bits(),
-        v.mount_height.to_bits(),
-        v.suspension_rest.to_bits(),
-    ]
-}
-
-/// One wheel as the controller is built and driven: the four implicit
-/// wheels from og.Vehicle's fields, or an og.VehicleWheel child's own.
-#[derive(Clone, Copy)]
-struct Spec {
-    /// The og.VehicleWheel entity; 0 for an implicit wheel.
-    entity: u64,
-    mount: Vec3,
-    radius: f32,
-    rest: f32,
-    travel: f32,
-    stiffness: f32,
-    damping: f32,
-    grip: f32,
-    /// The share of the steering it takes.
-    steer: f32,
-    drive: bool,
-    brake: bool,
-    handbrake: bool,
-}
-
-/// The wheels: front left, front right, rear left, rear right in chassis
-/// space, or the og.VehicleWheel children in entity order.
-fn specs(veh: &Vehicle, children: &[WheelChild]) -> Vec<Spec> {
-    if !children.is_empty() {
-        return children
-            .iter()
-            .map(|c| {
-                let w = &c.wheel;
-                Spec {
-                    entity: c.entity.to_bits(),
-                    mount: c.mount,
-                    radius: w.radius,
-                    rest: w.suspension_rest,
-                    travel: w.suspension_travel,
-                    stiffness: w.suspension_stiffness,
-                    damping: w.suspension_damping,
-                    grip: w.grip,
-                    steer: w.steer.clamp(-1.0, 1.0),
-                    drive: w.drive,
-                    brake: w.brake,
-                    handbrake: w.handbrake,
-                }
-            })
-            .collect();
-    }
-    let (z, x, y) = (veh.wheel_base * 0.5, veh.track * 0.5, -veh.mount_height);
-    [
-        Vec3::new(x, y, z),
-        Vec3::new(-x, y, z),
-        Vec3::new(x, y, -z),
-        Vec3::new(-x, y, -z),
-    ]
-    .into_iter()
-    .enumerate()
-    .map(|(i, mount)| {
-        let front = i < 2;
-        Spec {
-            entity: 0,
-            mount,
-            radius: veh.wheel_radius,
-            rest: veh.suspension_rest,
-            travel: veh.suspension_travel,
-            stiffness: veh.suspension_stiffness,
-            damping: veh.suspension_damping,
-            grip: veh.grip,
-            steer: if front { 1.0 } else { 0.0 },
-            drive: match veh.drive {
-                DRIVE_FRONT => front,
-                DRIVE_ALL => true,
-                _ => !front,
-            },
-            brake: true,
-            handbrake: !front,
+        for w in &mut self.wheels {
+            w.point = s.moved(w.point);
         }
-    })
-    .collect()
-}
-
-/// What building bakes in of the og.VehicleWheel children (their entity,
-/// mount, radius and rest); empty for the implicit wheels.
-fn baked(specs: &[Spec]) -> Vec<(u64, [u32; 5])> {
-    specs
-        .iter()
-        .filter(|s| s.entity != 0)
-        .map(|s| {
-            (
-                s.entity,
-                [
-                    s.mount.x.to_bits(),
-                    s.mount.y.to_bits(),
-                    s.mount.z.to_bits(),
-                    s.radius.to_bits(),
-                    s.rest.to_bits(),
-                ],
-            )
-        })
-        .collect()
-}
-
-fn tuning(s: &Spec) -> super::ctl::WheelTuning {
-    super::ctl::WheelTuning {
-        suspension_stiffness: s.stiffness.max(0.0),
-        suspension_compression: s.damping.max(0.0) * 0.83,
-        suspension_damping: s.damping.max(0.0),
-        max_suspension_travel: s.travel.max(0.0),
-        side_friction_stiffness: 1.0,
-        friction_slip: s.grip.max(0.0) * 5.0,
-        max_suspension_force: 1.0e5,
     }
 }
 
-fn build(
+fn collider_pose(w: &rp::PhysicsWorld, c: &rp::Collider) -> rp::Pose {
+    c.parent()
+        .zip(c.position_wrt_parent())
+        .map_or(*c.position(), |(h, p)| *w.bodies[h].position() * *p)
+}
+
+fn hook<'a>(scene: &'a Scene, c: &rp::Collider) -> Option<&'a ContactHook> {
+    scene
+        .hooks
+        .get(&(c.user_data as u64))
+        .or_else(|| scene.hooks.get(&((c.user_data >> 64) as u64)))
+}
+
+fn ground_body(w: &rp::PhysicsWorld, wheel: &Wheel) -> Option<rp::RigidBodyHandle> {
+    wheel
+        .ground
+        .and_then(|h| w.colliders.get(h))
+        .and_then(|c| c.parent())
+}
+
+fn relative(
+    w: &rp::PhysicsWorld,
     chassis: rp::RigidBodyHandle,
-    specs: &[Spec],
-) -> super::ctl::DynamicRayCastVehicleController {
-    let mut c = super::ctl::DynamicRayCastVehicleController::new(chassis);
-    c.index_up_axis = 1;
-    c.index_forward_axis = 2;
-    for s in specs {
-        c.add_wheel(
-            v(s.mount),
-            v(-Vec3::Y),
-            v(-Vec3::X),
-            s.rest.max(0.0),
-            s.radius.max(0.01),
-            &tuning(s),
-        );
-    }
-    c
+    wheel: &Wheel,
+    surface: Vec3,
+) -> Vec3 {
+    let ground = ground_body(w, wheel).map_or(Vec3::ZERO, |h| {
+        let body = &w.bodies[h];
+        if body.body_type() == rp::RigidBodyType::KinematicPositionBased {
+            let velocity = rp::RigidBodyPosition {
+                position: *body.position(),
+                next_position: *body.next_position(),
+            }
+            .interpolate_velocity(
+                w.integration_parameters.inv_dt(),
+                body.local_center_of_mass(),
+            );
+            unv(velocity.velocity_at_point(v(wheel.point), body.center_of_mass()))
+        } else {
+            unv(body.velocity_at_point(v(wheel.point)))
+        }
+    });
+    unv(w.bodies[chassis].velocity_at_point(v(wheel.point))) - ground - surface
 }
 
-/// Every og.Vehicle before the step: built or rebuilt with its chassis,
-/// its inputs and tunables applied (through its drivetrain for
-/// VEHICLE_DRIVETRAIN), then rapier's update (raycasts and impulses).
+/// Anticipate the continuous integration so static tyre friction can hold a
+/// slope rather than correcting gravity one substep late forever.
+fn acceleration(w: &rp::PhysicsWorld, h: rp::RigidBodyHandle, at: Vec3) -> Vec3 {
+    let rb = &w.bodies[h];
+    if !rb.is_dynamic() || rb.is_sleeping() {
+        return Vec3::ZERO;
+    }
+    let m = rb.mass_properties();
+    let linear = (w.gravity * rb.gravity_scale() + rb.user_force() / rb.mass().max(1.0e-6))
+        * (m.effective_inv_mass * rb.mass());
+    let angular = m.effective_world_inv_inertia * rb.user_torque();
+    unv(linear + angular.cross(v(at) - rb.center_of_mass()))
+}
+
+/// J M^-1 J^T, with a single inverse inertia, including locked axes.
+fn effective(rb: &rp::RigidBody, point: Vec3, axis: Vec3) -> f32 {
+    if !rb.is_dynamic() {
+        return 0.0;
+    }
+    let m = rb.mass_properties();
+    let j = v(point - unv(rb.center_of_mass())).cross(v(axis));
+    v(axis).dot(m.effective_inv_mass * v(axis)) + j.dot(m.effective_world_inv_inertia * j)
+}
+
+fn pair_mass(
+    w: &rp::PhysicsWorld,
+    chassis: rp::RigidBodyHandle,
+    wheel: &Wheel,
+    point: Vec3,
+    axis: Vec3,
+) -> f32 {
+    effective(&w.bodies[chassis], point, axis)
+        + ground_body(w, wheel).map_or(0.0, |h| effective(&w.bodies[h], wheel.point, axis))
+}
+
+fn impulse(
+    w: &mut rp::PhysicsWorld,
+    chassis: rp::RigidBodyHandle,
+    wheel: &Wheel,
+    at: Vec3,
+    j: Vec3,
+) {
+    w.bodies[chassis].apply_impulse_at_point(v(j), v(at), false);
+    if let Some(h) = ground_body(w, wheel)
+        && w.bodies[h].is_dynamic()
+    {
+        w.bodies[h].apply_impulse_at_point(v(-j), v(wheel.point), j.length_squared() > 0.0);
+    }
+}
+
+/// Cast the entire droop, testing hooks before selecting the closest contact.
+fn cast(
+    scene: &Scene,
+    world: &rp::PhysicsWorld,
+    chassis: rp::RigidBodyHandle,
+    s: &Spec,
+    wheel: &mut Wheel,
+    cast: u32,
+) {
+    let rb = &world.bodies[chassis];
+    let p = *rb.position();
+    let hard = p.transform_point(v(s.mount));
+    let down = p.rotation * v(Vec3::NEG_Y);
+    let max = s.rest + s.travel;
+    wheel.ground = None;
+    wheel.length = max;
+    wheel.load = 0.0;
+    wheel.tyre_force = Vec3::ZERO;
+    wheel.point = Vec3::ZERO;
+    wheel.normal = Vec3::ZERO;
+    wheel.side_speed = 0.0;
+    let own = rb.colliders().first().map(|h| &world.colliders[*h]);
+    let own_hook = own.and_then(|c| hook(scene, c));
+    let shape = if cast == 2 {
+        rp::SharedShape::cylinder(s.radius * 0.25, s.radius)
+    } else {
+        rp::SharedShape::ball(s.radius)
+    };
+    let orientation = p.rotation
+        * super::rot(quat_from_axis_angle(Vec3::Y, wheel.steering))
+        * super::rot(quat_from_axis_angle(Vec3::Z, std::f32::consts::FRAC_PI_2));
+    let start = rp::Pose::from_parts(hard, orientation);
+    let mut closest = f32::MAX;
+    for (handle, c) in world.colliders.iter() {
+        if !c.is_enabled()
+            || c.is_sensor()
+            || c.parent() == Some(chassis)
+            || own.is_some_and(|a| !a.collision_groups().test(c.collision_groups()))
+        {
+            continue;
+        }
+        let other_hook = hook(scene, c);
+        let ignored = |h: Option<&ContactHook>, other: &rp::Collider| {
+            h.is_some_and(|h| {
+                h.ignore.as_slice().iter().any(|&e| {
+                    e != 0 && (e == other.user_data as u64 || e == (other.user_data >> 64) as u64)
+                })
+            })
+        };
+        if ignored(own_hook, c) || own.is_some_and(|a| ignored(other_hook, a)) {
+            continue;
+        }
+        let pos = collider_pose(world, c);
+        let hit = if cast == 0 {
+            c.shape()
+                .cast_ray_and_get_normal(&pos, &rp::Ray::new(hard, down), max + s.radius, true)
+                .map(|h| {
+                    (
+                        h.time_of_impact - s.radius,
+                        hard + down * h.time_of_impact,
+                        h.normal,
+                    )
+                })
+        } else {
+            cast_shapes(
+                &pos,
+                rp::Vector::ZERO,
+                c.shape(),
+                &start,
+                down,
+                shape.as_ref(),
+                ShapeCastOptions {
+                    max_time_of_impact: max,
+                    compute_impact_geometry_on_penetration: true,
+                    ..Default::default()
+                },
+            )
+            .ok()
+            .flatten()
+            .map(|h| {
+                (
+                    h.time_of_impact,
+                    pos.transform_point(h.witness1),
+                    pos.rotation * h.normal1,
+                )
+            })
+        };
+        let Some((length, point, normal)) = hit else {
+            continue;
+        };
+        let normal = unv(normal).normalize_or_zero();
+        // A grazing wall is not a load-bearing suspension contact.
+        if normal.dot(-unv(down)) <= 0.1 || length >= closest {
+            continue;
+        }
+        let one_way = |h: Option<&ContactHook>, n: Vec3| {
+            h.is_none_or(|h| {
+                h.one_way == Vec3::ZERO
+                    || n.dot(h.one_way.normalize_or_zero()) >= std::f32::consts::FRAC_1_SQRT_2
+            })
+        };
+        if !one_way(other_hook, normal) || !one_way(own_hook, -normal) {
+            continue;
+        }
+        closest = length;
+        wheel.length = length.clamp((s.rest - s.travel).max(0.0), max);
+        wheel.ground = Some(handle);
+        wheel.point = unv(point);
+        wheel.normal = normal;
+    }
+    wheel.prev_compression = wheel.compression;
+    wheel.compression = s.rest - wheel.length;
+    if wheel.ground.is_none() {
+        wheel.slip = 0.0;
+    }
+}
+
 pub(crate) fn vehicles(
     scene: &Scene,
     dt: f32,
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
-    out: &mut StepOut,
+    _: &mut StepOut,
 ) -> Result<()> {
-    // Raycast wheels add no colliders. Query initialization must not run
-    // the drivetrain or apply suspension impulses before the first step.
     if dt == 0.0 {
         return Ok(());
     }
-    let live: BTreeSet<u64> = og_core::sort::set(scene.vehicles.iter().map(|v| v.0.to_bits()));
-    sim.vehicles.retain(|e, _| live.contains(e));
-    sim.ext.vehicles.retain(|e, _| live.contains(e));
-    for (e, veh) in &scene.vehicles {
-        let key = e.to_bits();
+    sim.vehicles.retain(|e, _| {
+        scene.vehicles.iter().any(|v| v.0.to_bits() == *e)
+            && handles
+                .get(e)
+                .is_some_and(|h| sim.world.bodies[*h].is_dynamic())
+    });
+    sim.ext.vehicles.retain(|e, _| sim.vehicles.contains_key(e));
+    for (entity, veh) in &scene.vehicles {
+        let key = entity.to_bits();
         let Some(&chassis) = handles.get(&key) else {
-            sim.vehicles.remove(&key);
-            sim.ext.vehicles.remove(&key);
             continue;
         };
         if !sim.world.bodies[chassis].is_dynamic() {
             continue;
         }
-        let children = scene.wheels.get(&key).map_or(&[][..], Vec::as_slice);
-        let specs = specs(veh, children);
-        let baked = baked(&specs);
-        let drivetrain = veh.model == VEHICLE_DRIVETRAIN;
-        let built_with = sim
-            .ext
-            .vehicles
-            .get(&key)
-            .map_or(&[][..], |x| x.wheels.as_slice());
-        let rebuild = sim.vehicles.get(&key).is_none_or(|s| {
-            s.chassis != chassis
-                || built_with != baked.as_slice()
-                || (baked.is_empty() && layout(&s.layout) != layout(veh))
+        let state = sim.vehicles.entry(key).or_insert_with(|| VehicleState {
+            chassis,
+            specs: Vec::new(),
+            wheels: Vec::new(),
         });
-        if rebuild {
-            sim.vehicles.insert(
-                key,
-                VehicleState {
-                    chassis,
-                    layout: *veh,
-                    controller: build(chassis, &specs),
-                },
+        if state.chassis != chassis {
+            state.chassis = chassis;
+            state.wheels.clear();
+            state.specs.clear();
+        }
+        let specs = specs(
+            veh,
+            scene.wheels.get(&key).map_or(&[], Vec::as_slice),
+            &state.specs,
+            false,
+        );
+        // Reconcile by identity, preserving wheel spin through all geometry edits.
+        let wheels = specs
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let old = if s.entity == 0 {
+                    Some(i)
+                } else {
+                    state.specs.iter().position(|a| a.entity == s.entity)
+                };
+                old.and_then(|i| state.wheels.get(i))
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect();
+        state.specs = specs;
+        state.wheels = wheels;
+        let rb = &mut sim.world.bodies[chassis];
+        if veh.throttle != 0.0 || veh.brake != 0.0 || veh.handbrake != 0.0 || veh.steer != 0.0 {
+            rb.wake_up(true);
+        }
+        if rb.is_sleeping() {
+            continue;
+        }
+        let up = unv(rb.rotation() * v(Vec3::Y));
+        let speed = unv(rb.linvel()).dot(unv(rb.rotation() * v(Vec3::Z)));
+        let velocity = unv(rb.linvel());
+        let aero = -velocity * velocity.length() * veh.aero_drag.max(0.0)
+            - up * speed * speed * veh.aero_downforce.max(0.0);
+        rb.apply_impulse(v(aero * dt), false);
+        let mass = rb.mass();
+        let base_steer = -veh.steer.clamp(-1.0, 1.0) * veh.max_steer
+            / (1.0 + veh.steering_fade.max(0.0) * speed.abs());
+        for (s, wheel) in state.specs.iter().zip(&mut state.wheels) {
+            let angle = base_steer * s.steer;
+            let ackermann = if angle.abs() > 1.0e-5 && veh.wheel_base > 0.0 {
+                let (sine, cosine) = sin_cos(angle);
+                atan(veh.wheel_base / (veh.wheel_base * cosine / sine - s.mount.x))
+            } else {
+                angle
+            };
+            wheel.steering = angle + (ackermann - angle) * veh.ackermann.clamp(0.0, 1.0);
+            wheel.inertia = 0.5 * veh.wheel_mass.max(0.01) * s.radius * s.radius;
+            cast(scene, &sim.world, chassis, s, wheel, veh.wheel_cast);
+        }
+        // Pair opposite mounts on each axle once, independent of child entity order.
+        let mut anti_roll = vec![0.0; state.wheels.len()];
+        for (i, a) in state.specs.iter().enumerate() {
+            if a.mount.x <= 0.0 {
+                continue;
+            }
+            if let Some(j) = state
+                .specs
+                .iter()
+                .position(|b| b.mount.x < 0.0 && (a.mount.z - b.mount.z).abs() < 1.0e-4)
+            {
+                let force = veh.anti_roll_stiffness.max(0.0)
+                    * (state.wheels[i].compression - state.wheels[j].compression);
+                anti_roll[i] += force;
+                anti_roll[j] -= force;
+            }
+        }
+        for ((s, wheel), arb) in state.specs.iter().zip(&mut state.wheels).zip(anti_roll) {
+            if wheel.ground.is_none() {
+                continue;
+            }
+            let relative = relative(&sim.world, chassis, wheel, Vec3::ZERO).dot(wheel.normal);
+            let damping = mass
+                * if relative < 0.0 {
+                    s.compression_damping
+                } else {
+                    s.rebound_damping
+                };
+            let bump = (wheel.compression - s.travel * 0.8).max(0.0);
+            let k = s.stiffness * mass;
+            let inv_mass = pair_mass(&sim.world, chassis, wheel, wheel.point, wheel.normal);
+            // Backward Euler spring/damper impulse: stable on light dynamic ground.
+            let force = (k * wheel.compression - (damping + k * dt) * relative
+                + veh.bump_stop_stiffness.max(0.0) * bump * bump
+                + arb)
+                / (1.0 + (damping + k * dt) * dt * inv_mass);
+            wheel.load = force.max(0.0);
+            impulse(
+                &mut sim.world,
+                chassis,
+                wheel,
+                wheel.point,
+                wheel.normal * wheel.load * dt,
             );
         }
-        // What it keeps beyond the controller, only when it has any.
-        if drivetrain || !baked.is_empty() {
-            let x = sim.ext.vehicles.entry(key).or_default();
-            x.wheels = baked;
-            if !drivetrain {
-                x.gearbox = Default::default();
-            }
-        } else {
-            sim.ext.vehicles.remove(&key);
-        }
-        let state = sim.vehicles.get_mut(&key).expect("inserted");
-        state.layout = *veh;
-        let steer = -veh.steer.clamp(-1.0, 1.0) * veh.max_steer;
-        let speed_now = {
-            let rb = &sim.world.bodies[chassis];
-            unv(rb.linvel()).dot(unv(rb.position().rotation * v(og_core::facing::FORWARD)))
-        };
-        let throttle = veh.throttle.clamp(-1.0, 1.0);
-        let driven = specs.iter().filter(|s| s.drive).count().max(1) as f32;
-        // The push at each driven wheel: the drivetrain's torque split
-        // across them as a force at each one's radius, or the arcade
-        // engine's force; and the share of the brake throttle adds.
-        let (torque, force, extra_brake) = if drivetrain {
-            let radius = specs
-                .iter()
-                .filter(|s| s.drive)
-                .map(|s| s.radius.max(0.01))
-                .sum::<f32>()
-                / driven;
-            let x = sim.ext.vehicles.get_mut(&key).expect("kept above");
-            let d = crate::drivetrain::step(veh, &mut x.gearbox, speed_now, radius, dt);
-            (Some(d.torque), 0.0, d.brake)
-        } else {
-            // The engine fades out towards maxSpeed; throttle against the
-            // motion brakes first (arcade reversing).
-            let against = throttle * speed_now < 0.0 && speed_now.abs() > 1.0;
-            let fade = (1.0 - speed_now.abs() / veh.max_speed.max(0.01)).clamp(0.0, 1.0);
-            let force = if against {
-                0.0
-            } else {
-                throttle * veh.engine_force * fade
-            };
-            (None, force, if against { throttle.abs() } else { 0.0 })
-        };
-        let force_at = |s: &Spec| match torque {
-            Some(t) => t / driven / s.radius.max(0.01),
-            None => force,
-        };
-        let gearbox = sim.ext.vehicles.get(&key).map(|x| x.gearbox);
-        let state = sim.vehicles.get_mut(&key).expect("inserted");
-        // rapier's brake is the most impulse a wheel's rolling friction
-        // takes in one update: the force over the tick.
-        let brake_force = veh.brake_force.max(0.0) * dt;
-        let brake = (veh.brake.clamp(0.0, 1.0) + extra_brake).min(1.0) * brake_force;
-        let handbrake = veh.handbrake.clamp(0.0, 1.0);
-        let hand_grip = 1.0 + (veh.handbrake_grip.clamp(0.0, 1.0) - 1.0) * handbrake;
-        // Drifting: the handbrake is on, or a handbrake wheel slid last step.
-        let drifting = handbrake > 0.0
-            || state
-                .controller
-                .wheels()
-                .iter()
-                .zip(&specs)
-                .any(|(w, s)| s.handbrake && slip_of(w) > 0.2);
-        let side = if drifting {
-            veh.drift_grip.clamp(0.0, 1.0)
-        } else {
-            1.0
-        };
-        let roll = if veh.roll_influence.is_finite() {
-            veh.roll_influence.clamp(0.0, 1.0)
-        } else {
-            0.1
-        };
-        for (w, s) in state.controller.wheels_mut().iter_mut().zip(&specs) {
-            let t = tuning(s);
-            let held = s.handbrake && handbrake > 0.0;
-            w.suspension_stiffness = t.suspension_stiffness;
-            w.damping_compression = t.suspension_compression;
-            w.damping_relaxation = t.suspension_damping;
-            w.max_suspension_travel = t.max_suspension_travel;
-            w.friction_slip = if s.handbrake {
-                t.friction_slip * hand_grip
-            } else {
-                t.friction_slip
-            };
-            // A held handbrake loosens the tyre sideways too (handbrakeGrip),
-            // drift grip on top: what lets the tail step out in a bend.
-            w.side_friction_stiffness = if s.handbrake { side * hand_grip } else { 1.0 };
-            w.roll_influence = roll;
-            // A wheel that does not steer keeps +0, as before wheels had shares.
-            w.steering = if s.steer == 0.0 { 0.0 } else { steer * s.steer };
-            w.engine_force = if s.drive && !held { force_at(s) } else { 0.0 };
-            w.brake = if s.brake { brake } else { 0.0 }
-                + if s.handbrake {
-                    handbrake * brake_force
-                } else {
-                    0.0
-                };
-        }
-        let w = &mut sim.world;
-        // The rays meet what the chassis's collider would: its layers
-        // against the other's mask and the other's layers against its own.
-        let groups = w.bodies[chassis]
-            .colliders()
-            .first()
-            .map(|&c| w.colliders[c].collision_groups())
-            .unwrap_or_default();
-        let filter = rp::QueryFilter::new()
-            .exclude_rigid_body(chassis)
-            .exclude_sensors()
-            .groups(groups);
-        let queries = w.broad_phase.as_query_pipeline_mut(
-            w.narrow_phase.query_dispatcher(),
-            &mut w.bodies,
-            &mut w.colliders,
-            filter,
-        );
-        state.controller.update_vehicle(dt, queries);
-        let rb = &sim.world.bodies[chassis];
-        let forward = unv(rb.position().rotation * v(og_core::facing::FORWARD));
-        let speed = unv(rb.linvel()).dot(forward);
-        let wheels = state.controller.wheels();
-        let contacts = wheels
+        let drive_wheels: Vec<_> = state
+            .specs
             .iter()
-            .filter(|w| w.raycast_info().is_in_contact)
-            .count() as u32;
-        let slip = wheels.iter().map(slip_of).fold(0.0, f32::max);
-        let (gear, rpm) = gearbox.map_or((veh.gear, veh.rpm), |g| (g.gear, g.rpm));
-        out.vehicles.push((
-            Entity::from_bits(key),
-            Vehicle {
-                speed,
-                contacts,
-                slip,
-                gear: if drivetrain { gear } else { veh.gear },
-                rpm: if drivetrain { rpm } else { veh.rpm },
-                ..*veh
-            },
-        ));
+            .zip(&state.wheels)
+            .map(|(s, w)| s.drive(veh, w.omega, w.slip, false))
+            .collect();
+        let ext = sim.ext.vehicles.entry(key).or_default();
+        ext.wheels = state
+            .specs
+            .iter()
+            .map(|s| {
+                (
+                    s.entity,
+                    [
+                        s.mount.x.to_bits(),
+                        s.mount.y.to_bits(),
+                        s.mount.z.to_bits(),
+                        s.radius.to_bits(),
+                        s.rest.to_bits(),
+                    ],
+                )
+            })
+            .collect();
+        let gearbox = &mut ext.gearbox;
+        let mut speeds = crate::drivetrain::step(veh, gearbox, speed, &drive_wheels, dt);
+        for (wheel, spin) in state.wheels.iter_mut().zip(&speeds) {
+            wheel.omega = spin.omega
+                - spin
+                    .omega
+                    .clamp(-spin.brake / wheel.inertia, spin.brake / wheel.inertia);
+        }
+        // Sequential projected impulses share the full chassis/ground mass matrix
+        // across all wheels. Each iteration sees the previous wheel's impulse.
+        let mut accumulated = vec![Vec2::ZERO; state.wheels.len()];
+        for _ in 0..16 {
+            for (i, (s, wheel)) in state.specs.iter().zip(&mut state.wheels).enumerate() {
+                let Some(ground) = wheel.ground.and_then(|h| sim.world.colliders.get(h)) else {
+                    continue;
+                };
+                let own = sim.world.bodies[chassis]
+                    .colliders()
+                    .first()
+                    .map(|h| &sim.world.colliders[*h]);
+                let h1 = own.and_then(|c| hook(scene, c));
+                let h2 = hook(scene, ground);
+                let surface = h2.map_or(Vec3::ZERO, |h| h.surface_velocity)
+                    - h1.map_or(Vec3::ZERO, |h| h.surface_velocity);
+                let friction = match (
+                    h1.filter(|h| h.friction >= 0.0),
+                    h2.filter(|h| h.friction >= 0.0),
+                ) {
+                    (Some(a), Some(b)) => (a.friction + b.friction) * 0.5,
+                    (Some(h), _) | (_, Some(h)) => h.friction,
+                    _ => ground.friction(),
+                };
+                let rb = &sim.world.bodies[chassis];
+                let forward = unv(rb.rotation()
+                    * super::rot(quat_from_axis_angle(Vec3::Y, wheel.steering))
+                    * v(Vec3::Z));
+                let longitudinal =
+                    (forward - wheel.normal * forward.dot(wheel.normal)).normalize_or_zero();
+                let lateral = wheel.normal.cross(longitudinal).normalize_or_zero();
+                let velocity = relative(&sim.world, chassis, wheel, surface)
+                    + (acceleration(&sim.world, chassis, wheel.point)
+                        - ground_body(&sim.world, wheel)
+                            .map_or(Vec3::ZERO, |h| acceleration(&sim.world, h, wheel.point)))
+                        * dt;
+                let vl = velocity.dot(longitudinal);
+                let vs = velocity.dot(lateral);
+                let rolling = wheel.omega * s.radius;
+                let regular = vl.abs().max(rolling.abs()).max(0.5);
+                let kappa = (rolling - vl) / regular;
+                let alpha = atan2(vs, vl.abs().max(0.5));
+                let slip = Vec2::new(kappa, alpha).length();
+                wheel.slip = (slip / (1.0 + slip)).clamp(0.0, 1.0);
+                wheel.side_speed = vs.abs();
+                let hand = if s.handbrake {
+                    1.0 + (veh.handbrake_grip - 1.0) * veh.handbrake.clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+                // Brush curve: peak at moderate slip, sliding approaches 75%.
+                // At low speed use static friction, continuous at 0.5 m/s.
+                let sliding = 0.75 + 0.25 * exp(-((slip - 0.12).max(0.0)) * 3.0);
+                let blend = (regular - 0.5).clamp(0.0, 1.0);
+                let capacity = s.grip * friction.max(0.0) * hand.max(0.0) * wheel.load * dt;
+                let limit = capacity * (1.0 + (sliding - 1.0) * blend);
+                let side_point = wheel.point
+                    - up * (up.dot(wheel.point - unv(rb.center_of_mass()))
+                        * (1.0 - veh.roll_influence.clamp(0.0, 1.0)));
+                let side_velocity = vs
+                    + unv(rb.angvel())
+                        .cross(side_point - wheel.point)
+                        .dot(lateral);
+                let kl = pair_mass(&sim.world, chassis, wheel, wheel.point, longitudinal);
+                let ks = pair_mass(&sim.world, chassis, wheel, side_point, lateral);
+                let old = accumulated[i];
+                // Implicit brush stiffness tends continuously to static friction
+                // below 0.5 m/s; its peak/slide envelope is the friction circle.
+                let softness = blend * regular / (16.5 * capacity).max(1.0e-6);
+                let spin = &speeds[i];
+                let locked_j = old.x - vl / kl.max(1.0e-6);
+                let required_brake = locked_j * s.radius - spin.omega * wheel.inertia;
+                let long_delta = if required_brake.abs() <= spin.brake {
+                    locked_j - old.x
+                } else {
+                    let brake = required_brake.clamp(-spin.brake, spin.brake);
+                    let rolling =
+                        (spin.omega + (brake - old.x * s.radius) / wheel.inertia) * s.radius;
+                    (rolling - vl - softness * old.x)
+                        / (kl + s.radius * s.radius / wheel.inertia + softness).max(1.0e-6)
+                };
+                let delta = Vec2::new(
+                    long_delta,
+                    (-side_velocity - softness * old.y) / (ks + softness).max(1.0e-6),
+                );
+                let next = (old + delta).clamp_length_max(limit);
+                let applied = next - old;
+                accumulated[i] = next;
+                impulse(
+                    &mut sim.world,
+                    chassis,
+                    wheel,
+                    wheel.point,
+                    longitudinal * applied.x,
+                );
+                impulse(
+                    &mut sim.world,
+                    chassis,
+                    wheel,
+                    side_point,
+                    lateral * applied.y,
+                );
+                let brake =
+                    (next.x * s.radius - spin.omega * wheel.inertia).clamp(-spin.brake, spin.brake);
+                wheel.omega = spin.omega + (brake - next.x * s.radius) / wheel.inertia;
+                wheel.tyre_force = (longitudinal * next.x + lateral * next.y) / dt;
+            }
+            if veh.differential == 2 {
+                let mut angular: Vec<_> = state.wheels.iter().map(|w| w.omega).collect();
+                crate::drivetrain::differential(veh, &drive_wheels, &mut angular, dt);
+                for ((wheel, spin), next) in state.wheels.iter_mut().zip(&mut speeds).zip(angular) {
+                    // Carry the angular constraint impulse into the next tyre
+                    // iteration; never reapply LSD's full-dt impulse per sweep.
+                    spin.omega += next - wheel.omega;
+                    wheel.omega = next;
+                }
+            }
+        }
+        for wheel in &mut state.wheels {
+            wheel.spin_angle =
+                (wheel.spin_angle + wheel.omega * dt).rem_euclid(std::f32::consts::TAU);
+        }
     }
     Ok(())
 }
 
-/// How much a wheel slides: 1 − its skid info on the ground (the share of
-/// its impulse the tyre held), 0 in the air.
-fn slip_of(w: &super::ctl::Wheel) -> f32 {
-    if w.raycast_info().is_in_contact {
-        (1.0 - w.skid_info).clamp(0.0, 1.0)
-    } else {
-        0.0
+pub(crate) fn readback(scene: &Scene, sim: &mut Sim, out: &mut StepOut) {
+    for (e, v) in &scene.vehicles {
+        let Some(s) = sim.vehicles.get_mut(&e.to_bits()) else {
+            continue;
+        };
+        for (spec, wheel) in s.specs.iter().zip(&mut s.wheels) {
+            let load = wheel.load;
+            let force = wheel.tyre_force;
+            let previous = wheel.prev_compression;
+            cast(scene, &sim.world, s.chassis, spec, wheel, v.wheel_cast);
+            wheel.prev_compression = previous;
+            if wheel.ground.is_some() {
+                wheel.load = load;
+                wheel.tyre_force = force;
+                let rb = &sim.world.bodies[s.chassis];
+                let forward = unv(rb.rotation()
+                    * super::rot(quat_from_axis_angle(Vec3::Y, wheel.steering))
+                    * super::v(Vec3::Z));
+                let longitudinal =
+                    (forward - wheel.normal * forward.dot(wheel.normal)).normalize_or_zero();
+                let own_surface = rb
+                    .colliders()
+                    .first()
+                    .and_then(|h| hook(scene, &sim.world.colliders[*h]))
+                    .map_or(Vec3::ZERO, |h| h.surface_velocity);
+                let surface = wheel
+                    .ground
+                    .and_then(|h| sim.world.colliders.get(h))
+                    .and_then(|c| hook(scene, c))
+                    .map_or(Vec3::ZERO, |h| h.surface_velocity)
+                    - own_surface;
+                let velocity = relative(&sim.world, s.chassis, wheel, surface);
+                let vl = velocity.dot(longitudinal);
+                let vs = velocity.dot(wheel.normal.cross(longitudinal));
+                let rolling = wheel.omega * spec.radius;
+                let slip = Vec2::new(
+                    (rolling - vl) / vl.abs().max(rolling.abs()).max(0.5),
+                    atan2(vs, vl.abs().max(0.5)),
+                )
+                .length();
+                wheel.slip = slip / (1.0 + slip);
+                wheel.side_speed = vs.abs();
+            }
+        }
+        let rb = &sim.world.bodies[s.chassis];
+        let g = sim
+            .ext
+            .vehicles
+            .get(&e.to_bits())
+            .map(|x| x.gearbox)
+            .unwrap_or_default();
+        out.vehicles.push((
+            *e,
+            Vehicle {
+                speed: unv(rb.linvel()).dot(unv(rb.rotation() * super::v(Vec3::Z))),
+                contacts: s.wheels.iter().filter(|w| w.ground.is_some()).count() as u32,
+                slip: s.wheels.iter().map(|w| w.slip).fold(0.0, f32::max),
+                gear: g.gear,
+                rpm: g.rpm,
+                ..*v
+            },
+        ));
     }
 }
 
-/// The wheels' poses for drawing, from the chassis as it is now.
 pub(crate) fn wheels(sim: &Sim, entity: u64) -> Option<Vec<WheelPose>> {
     let state = sim.vehicles.get(&entity)?;
-    let ext = sim.ext.vehicles.get(&entity);
     let rb = sim.world.bodies.get(state.chassis)?;
-    let p = *rb.position();
-    let q = p.rotation;
-    let chassis_q = Quat::from_xyzw(q.x, q.y, q.z, q.w);
+    let q = rb.rotation();
+    let q = Quat::from_xyzw(q.x, q.y, q.z, q.w);
     Some(
         state
-            .controller
-            .wheels()
+            .specs
             .iter()
-            .enumerate()
-            .map(|(i, w)| {
-                let hard = unv(p.transform_point(w.chassis_connection_point_cs));
-                let down = chassis_q * Vec3::NEG_Y;
-                let centre = hard + down * w.raycast_info().suspension_length;
-                let steer = quat_from_axis_angle(Vec3::Y, w.steering);
-                let spin = quat_from_axis_angle(Vec3::X, w.rotation);
-                let info = w.raycast_info();
-                let side_speed = if info.is_in_contact {
-                    let at = info.contact_point_ws;
-                    let ground = info
-                        .ground_object
-                        .and_then(|c| sim.world.colliders.get(c))
-                        .and_then(|c| c.parent())
-                        .and_then(|b| sim.world.bodies.get(b))
-                        .map_or(Vec3::ZERO, |b| unv(b.velocity_at_point(at)));
-                    let axle = chassis_q * steer * Vec3::X;
-                    (unv(rb.velocity_at_point(at)) - ground).dot(axle).abs()
-                } else {
-                    0.0
-                };
-                WheelPose {
-                    position: centre,
-                    quaternion: (chassis_q * steer * spin).normalize(),
-                    contact: info.is_in_contact,
-                    slip: slip_of(w),
-                    side_speed,
-                    entity: ext.and_then(|x| x.wheels.get(i)).map_or(0, |w| w.0),
-                }
+            .zip(&state.wheels)
+            .map(|(s, w)| WheelPose {
+                position: unv(rb.position().transform_point(v(s.mount))) - q * Vec3::Y * w.length,
+                quaternion: (q
+                    * quat_from_axis_angle(Vec3::Y, w.steering)
+                    * quat_from_axis_angle(Vec3::X, w.spin_angle))
+                .normalize(),
+                contact: w.ground.is_some(),
+                slip: w.slip,
+                side_speed: w.side_speed,
+                entity: s.entity,
+                suspension_compression: w.compression,
+                load: w.load,
+                contact_point: w.point,
+                contact_normal: w.normal,
+                ground_entity: w
+                    .ground
+                    .and_then(|h| sim.world.colliders.get(h))
+                    .map_or(0, |c| c.user_data as u64),
+                angular_velocity: w.omega,
             })
             .collect(),
     )
 }
 
+pub(crate) fn debug_lines(sim: &Sim, out: &mut Vec<super::debug_lines::DebugLine>) {
+    for (key, state) in &sim.vehicles {
+        let Some(poses) = wheels(sim, *key) else {
+            continue;
+        };
+        let rb = &sim.world.bodies[state.chassis];
+        for ((s, w), pose) in state.specs.iter().zip(&state.wheels).zip(poses) {
+            let hard = unv(rb.position().transform_point(v(s.mount)));
+            out.push((hard, pose.position, [0.2, 1.0, 0.3, 1.0]));
+            for i in 0..16 {
+                let angle = i as f32 * std::f32::consts::TAU / 16.0;
+                let next = (i + 1) as f32 * std::f32::consts::TAU / 16.0;
+                for side in [-1.0, 1.0] {
+                    let p = |a: f32| {
+                        pose.position
+                            + pose.quaternion
+                                * Vec3::new(
+                                    side * s.radius * 0.25,
+                                    cos(a) * s.radius,
+                                    sin(a) * s.radius,
+                                )
+                    };
+                    out.push((p(angle), p(next), [0.9, 0.7, 0.1, 1.0]));
+                }
+            }
+            if pose.contact {
+                let scale = 1.0 / rb.mass().max(0.01) / 9.81;
+                out.push((
+                    w.point,
+                    w.point + w.tyre_force * scale,
+                    [1.0, 0.2, 0.1, 1.0],
+                ));
+                out.push((
+                    w.point,
+                    w.point + w.normal * w.load * scale,
+                    [0.2, 0.5, 1.0, 1.0],
+                ));
+            }
+        }
+    }
+}
+
 impl VehicleState {
-    /// Its records by entity ([`Sim::form`]): the `vehicle` (og.Vehicle as
-    /// built, the controller's state, its chassis by entity) and a `wheel`
-    /// per controller wheel (keyed by index), the collider its ray last
-    /// hit by entity.
     pub(crate) fn form(
         &self,
         entity: u64,
-        w: &rp::PhysicsWorld,
+        world: &rp::PhysicsWorld,
         out: &mut Vec<og_core::block_form::Record>,
     ) {
-        use super::sim::owner;
-        use og_core::block_form::{Field, Record, members};
-        let chassis = w
-            .bodies
-            .get(self.chassis)
-            .map_or(Field::Entity(0), |b| owner(b.user_data));
-        let mut controller = members(&self.controller, &[]);
-        controller.retain(|(k, _)| k != "chassis" && k != "wheels");
-        let mut r = Record::new(entity, "vehicle")
-            .field("chassis", chassis)
-            .members(&self.layout, &[]);
-        r.fields.extend(controller);
-        out.push(r);
-        for (i, wheel) in self.controller.wheels().iter().enumerate() {
-            let info = wheel.raycast_info();
-            let ground = info
-                .ground_object
-                .and_then(|h| w.colliders.get(h))
-                .map_or(Field::Entity(0), |c| owner(c.user_data));
-            let mut r = Record::new(entity, "wheel")
+        use og_core::block_form::{Field, Record};
+        out.push(Record::new(entity, "vehicle").field(
+            "chassis",
+            super::sim::owner(world.bodies[self.chassis].user_data),
+        ));
+        for (i, (s, w)) in self.specs.iter().zip(&self.wheels).enumerate() {
+            let ground = w
+                .ground
+                .and_then(|h| world.colliders.get(h))
+                .map_or(Field::Entity(0), |c| super::sim::owner(c.user_data));
+            let mut record = Record::new(entity, "wheel")
                 .key(Field::of(&i))
-                .members(wheel, &[]);
-            r.fields.retain(|(k, _)| k != "raycast_info");
-            let mut ray = members(info, &[]);
-            ray.retain(|(k, _)| k != "ground_object");
-            r.fields.extend(ray);
-            out.push(r.field("ground", ground));
+                .members(s, &[])
+                .members(w, &[]);
+            record.fields.retain(|(name, _)| name != "ground");
+            out.push(record.field("ground", ground));
         }
     }
 }

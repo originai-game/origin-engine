@@ -268,6 +268,12 @@ pub fn og_physics_vehicle_wheels(
                     slip: w.slip,
                     side_speed: w.side_speed,
                     entity: w.entity,
+                    suspension_compression: w.suspension_compression,
+                    load: w.load,
+                    contact_point: w.contact_point,
+                    contact_normal: w.contact_normal,
+                    ground_entity: w.ground_entity,
+                    angular_velocity: w.angular_velocity,
                 })
                 .collect::<Vec<_>>()
         },

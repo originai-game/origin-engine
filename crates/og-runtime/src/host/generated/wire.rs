@@ -10944,6 +10944,84 @@ impl ToJson for VehicleModel {
     }
 }
 
+/// `VehicleWheelCast`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum VehicleWheelCast {
+    #[default]
+    Ray,
+    Sphere,
+    Cylinder,
+}
+
+impl VehicleWheelCast {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["ray", "sphere", "cylinder"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Ray, Self::Sphere, Self::Cylinder];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("VehicleWheelCast", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for VehicleWheelCast {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "VehicleWheelCast", Self::NAMES)?)
+    }
+}
+
+impl ToJson for VehicleWheelCast {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `VehicleDifferential`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum VehicleDifferential {
+    #[default]
+    Open,
+    Lsd,
+    Locked,
+}
+
+impl VehicleDifferential {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["open", "lsd", "locked"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Open, Self::Lsd, Self::Locked];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("VehicleDifferential", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for VehicleDifferential {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "VehicleDifferential", Self::NAMES)?)
+    }
+}
+
+impl ToJson for VehicleDifferential {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `Simulation`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Simulation {
@@ -11760,6 +11838,12 @@ pub struct WheelPose {
     pub slip: f32,
     pub side_speed: f32,
     pub entity: u64,
+    pub suspension_compression: f32,
+    pub load: f32,
+    pub contact_point: Vec3,
+    pub contact_normal: Vec3,
+    pub ground_entity: u64,
+    pub angular_velocity: f32,
 }
 
 impl Default for WheelPose {
@@ -11771,6 +11855,12 @@ impl Default for WheelPose {
             slip: Default::default(),
             side_speed: Default::default(),
             entity: Default::default(),
+            suspension_compression: Default::default(),
+            load: Default::default(),
+            contact_point: Default::default(),
+            contact_normal: Default::default(),
+            ground_entity: Default::default(),
+            angular_velocity: Default::default(),
         }
     }
 }
@@ -11788,6 +11878,12 @@ impl FromJson for WheelPose {
             slip: field(o, "slip", d.slip)?,
             side_speed: field(o, "sideSpeed", d.side_speed)?,
             entity: field(o, "entity", d.entity)?,
+            suspension_compression: field(o, "suspensionCompression", d.suspension_compression)?,
+            load: field(o, "load", d.load)?,
+            contact_point: field(o, "contactPoint", d.contact_point)?,
+            contact_normal: field(o, "contactNormal", d.contact_normal)?,
+            ground_entity: field(o, "groundEntity", d.ground_entity)?,
+            angular_velocity: field(o, "angularVelocity", d.angular_velocity)?,
         })
     }
 }
@@ -11801,6 +11897,12 @@ impl ToJson for WheelPose {
         o.insert("slip".into(), self.slip.to_json());
         o.insert("sideSpeed".into(), self.side_speed.to_json());
         o.insert("entity".into(), self.entity.to_json());
+        o.insert("suspensionCompression".into(), self.suspension_compression.to_json());
+        o.insert("load".into(), self.load.to_json());
+        o.insert("contactPoint".into(), self.contact_point.to_json());
+        o.insert("contactNormal".into(), self.contact_normal.to_json());
+        o.insert("groundEntity".into(), self.ground_entity.to_json());
+        o.insert("angularVelocity".into(), self.angular_velocity.to_json());
         Value::Object(o)
     }
 }
@@ -33442,7 +33544,10 @@ pub mod record {
         pub suspension_rest: f32,
         pub suspension_travel: f32,
         pub suspension_stiffness: f32,
-        pub suspension_damping: f32,
+        pub compression_damping: f32,
+        pub rebound_damping: f32,
+        pub bump_stop_stiffness: f32,
+        pub anti_roll_stiffness: f32,
         pub grip: f32,
         pub engine_force: f32,
         pub max_speed: f32,
@@ -33451,13 +33556,21 @@ pub mod record {
         pub drive: VehicleDrive,
         pub wheel_mass: f32,
         pub roll_influence: f32,
+        pub wheel_cast: VehicleWheelCast,
+        pub brake_bias: f32,
+        pub aero_drag: f32,
+        pub aero_downforce: f32,
+        pub rolling_resistance: f32,
+        pub ackermann: f32,
+        pub steering_fade: f32,
+        pub abs: f32,
+        pub tcs: f32,
         pub speed: f32,
         pub contacts: u32,
         pub slip: f32,
         pub model: VehicleModel,
         pub handbrake: f32,
         pub handbrake_grip: f32,
-        pub drift_grip: f32,
         pub gears: Vec<f32>,
         pub reverse_ratio: f32,
         pub final_drive: f32,
@@ -33468,6 +33581,12 @@ pub mod record {
         pub shift_up_rpm: f32,
         pub shift_down_rpm: f32,
         pub clutch_time: f32,
+        pub engine_inertia: f32,
+        pub clutch_strength: f32,
+        pub engine_braking: f32,
+        pub differential: VehicleDifferential,
+        pub differential_strength: f32,
+        pub awd_bias: f32,
         pub gear: i32,
         pub rpm: f32,
     }
@@ -33485,8 +33604,11 @@ pub mod record {
                 suspension_rest: 0.35_f32,
                 suspension_travel: 0.25_f32,
                 suspension_stiffness: 30.0_f32,
-                suspension_damping: 4.0_f32,
-                grip: 2.0_f32,
+                compression_damping: Default::default(),
+                rebound_damping: Default::default(),
+                bump_stop_stiffness: Default::default(),
+                anti_roll_stiffness: Default::default(),
+                grip: 1.0_f32,
                 engine_force: 2500.0_f32,
                 max_speed: 40.0_f32,
                 brake_force: 2000.0_f32,
@@ -33494,13 +33616,21 @@ pub mod record {
                 drive: Default::default(),
                 wheel_mass: 20.0_f32,
                 roll_influence: Default::default(),
+                wheel_cast: Default::default(),
+                brake_bias: Default::default(),
+                aero_drag: Default::default(),
+                aero_downforce: Default::default(),
+                rolling_resistance: Default::default(),
+                ackermann: Default::default(),
+                steering_fade: Default::default(),
+                abs: Default::default(),
+                tcs: Default::default(),
                 speed: Default::default(),
                 contacts: Default::default(),
                 slip: Default::default(),
                 model: Default::default(),
                 handbrake: Default::default(),
                 handbrake_grip: 0.2_f32,
-                drift_grip: 1.0_f32,
                 gears: Default::default(),
                 reverse_ratio: 3.2_f32,
                 final_drive: 3.6_f32,
@@ -33511,6 +33641,12 @@ pub mod record {
                 shift_up_rpm: 6000.0_f32,
                 shift_down_rpm: 2800.0_f32,
                 clutch_time: 0.25_f32,
+                engine_inertia: Default::default(),
+                clutch_strength: Default::default(),
+                engine_braking: Default::default(),
+                differential: Default::default(),
+                differential_strength: Default::default(),
+                awd_bias: Default::default(),
                 gear: Default::default(),
                 rpm: Default::default(),
             }
@@ -33534,7 +33670,10 @@ pub mod record {
                 suspension_rest: field(o, "suspensionRest", d.suspension_rest)?,
                 suspension_travel: field(o, "suspensionTravel", d.suspension_travel)?,
                 suspension_stiffness: field(o, "suspensionStiffness", d.suspension_stiffness)?,
-                suspension_damping: field(o, "suspensionDamping", d.suspension_damping)?,
+                compression_damping: field(o, "compressionDamping", d.compression_damping)?,
+                rebound_damping: field(o, "reboundDamping", d.rebound_damping)?,
+                bump_stop_stiffness: field(o, "bumpStopStiffness", d.bump_stop_stiffness)?,
+                anti_roll_stiffness: field(o, "antiRollStiffness", d.anti_roll_stiffness)?,
                 grip: field(o, "grip", d.grip)?,
                 engine_force: field(o, "engineForce", d.engine_force)?,
                 max_speed: field(o, "maxSpeed", d.max_speed)?,
@@ -33543,13 +33682,21 @@ pub mod record {
                 drive: field(o, "drive", d.drive)?,
                 wheel_mass: field(o, "wheelMass", d.wheel_mass)?,
                 roll_influence: field(o, "rollInfluence", d.roll_influence)?,
+                wheel_cast: field(o, "wheelCast", d.wheel_cast)?,
+                brake_bias: field(o, "brakeBias", d.brake_bias)?,
+                aero_drag: field(o, "aeroDrag", d.aero_drag)?,
+                aero_downforce: field(o, "aeroDownforce", d.aero_downforce)?,
+                rolling_resistance: field(o, "rollingResistance", d.rolling_resistance)?,
+                ackermann: field(o, "ackermann", d.ackermann)?,
+                steering_fade: field(o, "steeringFade", d.steering_fade)?,
+                abs: field(o, "abs", d.abs)?,
+                tcs: field(o, "tcs", d.tcs)?,
                 speed: field(o, "speed", d.speed)?,
                 contacts: field(o, "contacts", d.contacts)?,
                 slip: field(o, "slip", d.slip)?,
                 model: field(o, "model", d.model)?,
                 handbrake: field(o, "handbrake", d.handbrake)?,
                 handbrake_grip: field(o, "handbrakeGrip", d.handbrake_grip)?,
-                drift_grip: field(o, "driftGrip", d.drift_grip)?,
                 gears: field(o, "gears", d.gears)?,
                 reverse_ratio: field(o, "reverseRatio", d.reverse_ratio)?,
                 final_drive: field(o, "finalDrive", d.final_drive)?,
@@ -33560,6 +33707,12 @@ pub mod record {
                 shift_up_rpm: field(o, "shiftUpRpm", d.shift_up_rpm)?,
                 shift_down_rpm: field(o, "shiftDownRpm", d.shift_down_rpm)?,
                 clutch_time: field(o, "clutchTime", d.clutch_time)?,
+                engine_inertia: field(o, "engineInertia", d.engine_inertia)?,
+                clutch_strength: field(o, "clutchStrength", d.clutch_strength)?,
+                engine_braking: field(o, "engineBraking", d.engine_braking)?,
+                differential: field(o, "differential", d.differential)?,
+                differential_strength: field(o, "differentialStrength", d.differential_strength)?,
+                awd_bias: field(o, "awdBias", d.awd_bias)?,
                 gear: field(o, "gear", d.gear)?,
                 rpm: field(o, "rpm", d.rpm)?,
             })
@@ -33569,11 +33722,13 @@ pub mod record {
     /// `VehicleWheel`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct VehicleWheel {
+        pub mount: Vec3,
         pub radius: f32,
         pub suspension_rest: f32,
         pub suspension_travel: f32,
         pub suspension_stiffness: f32,
-        pub suspension_damping: f32,
+        pub compression_damping: f32,
+        pub rebound_damping: f32,
         pub grip: f32,
         pub steer: f32,
         pub drive: bool,
@@ -33584,12 +33739,14 @@ pub mod record {
     impl Default for VehicleWheel {
         fn default() -> Self {
             Self {
+                mount: Default::default(),
                 radius: 0.4_f32,
                 suspension_rest: 0.35_f32,
                 suspension_travel: 0.25_f32,
                 suspension_stiffness: 30.0_f32,
-                suspension_damping: 4.0_f32,
-                grip: 2.0_f32,
+                compression_damping: Default::default(),
+                rebound_damping: Default::default(),
+                grip: 1.0_f32,
                 steer: Default::default(),
                 drive: Default::default(),
                 brake: true,
@@ -33605,11 +33762,13 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
+                mount: field(o, "mount", d.mount)?,
                 radius: field(o, "radius", d.radius)?,
                 suspension_rest: field(o, "suspensionRest", d.suspension_rest)?,
                 suspension_travel: field(o, "suspensionTravel", d.suspension_travel)?,
                 suspension_stiffness: field(o, "suspensionStiffness", d.suspension_stiffness)?,
-                suspension_damping: field(o, "suspensionDamping", d.suspension_damping)?,
+                compression_damping: field(o, "compressionDamping", d.compression_damping)?,
+                rebound_damping: field(o, "reboundDamping", d.rebound_damping)?,
                 grip: field(o, "grip", d.grip)?,
                 steer: field(o, "steer", d.steer)?,
                 drive: field(o, "drive", d.drive)?,
