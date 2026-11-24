@@ -702,6 +702,30 @@ impl Next {
         self.store.apply(bytes)
     }
 
+    /// Snapshot of the UI tree's deterministic interactive state, when built.
+    pub(crate) fn tree_checkpoint(&self) -> Option<og_ui_next::tree::TreeCheckpoint> {
+        self.tree.as_ref().map(Tree::checkpoint)
+    }
+
+    /// Current deterministic PRNG state for `og.ui.feedback` cues.
+    pub(crate) fn feedback_rng(&self) -> u64 {
+        self.feedback_rng
+    }
+
+    /// Restores the UI tree's interactive state and feedback PRNG from a checkpoint.
+    pub(crate) fn restore_checkpoint(
+        &mut self,
+        tree: Option<&og_ui_next::tree::TreeCheckpoint>,
+        feedback_rng: Option<u64>,
+    ) {
+        if let Some(rng) = feedback_rng {
+            self.feedback_rng = rng;
+        }
+        if let (Some(cp), Some(t)) = (tree, self.tree.as_mut()) {
+            t.restore(cp);
+        }
+    }
+
     /// Makes the tree when there is none: its documents' mounts
     /// instantiated, ready for op batches. Its time and allocations are
     /// the build's.

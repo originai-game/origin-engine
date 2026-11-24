@@ -1551,6 +1551,9 @@ impl Tree {
                                         "edge-bottom",
                                         "edge-left",
                                         "occluded",
+                                        "lod-near",
+                                        "lod-mid",
+                                        "lod-far",
                                     ] {
                                         self.mark(e, name, false);
                                     }
@@ -1565,9 +1568,12 @@ impl Tree {
                         // geometry, `declutter` none, stack or hide over
                         // another, `priority` which keeps its place,
                         // `clamp` edge pins it inside the screen,
-                        // `clampMargin` px from its edge.
+                        // `clampMargin` px from its edge, `scaleAt` /
+                        // `scaleMin` / `scaleMax` distance scaling,
+                        // `maxDistance` depth culling, `lod` `[near, far]`.
                         "lift" | "occlusion" | "declutter" | "priority" | "clamp"
-                        | "clampMargin" => {
+                        | "clampMargin" | "scaleAt" | "scaleMin" | "scaleMax" | "maxDistance"
+                        | "lod" => {
                             let a = self.els[e as usize]
                                 .anchor
                                 .get_or_insert_with(|| Box::new(super::Anchor::new()));
@@ -1599,7 +1605,51 @@ impl Tree {
                                 }
                                 "priority" => a.priority = v.parse().unwrap_or(0.0),
                                 "clamp" => a.clamp = v == "edge",
-                                _ => a.margin = v.parse().unwrap_or(super::CLAMP_MARGIN),
+                                "clampMargin" => {
+                                    a.margin = v.parse().unwrap_or(super::CLAMP_MARGIN)
+                                }
+                                "scaleAt" => {
+                                    a.scale_at = v
+                                        .parse::<f32>()
+                                        .ok()
+                                        .filter(|n| n.is_finite() && *n > 0.0)
+                                        .unwrap_or(0.0);
+                                }
+                                "scaleMin" => {
+                                    a.scale_min = v
+                                        .parse::<f32>()
+                                        .ok()
+                                        .filter(|n| n.is_finite() && *n > 0.0)
+                                        .unwrap_or(0.5);
+                                }
+                                "scaleMax" => {
+                                    a.scale_max = v
+                                        .parse::<f32>()
+                                        .ok()
+                                        .filter(|n| n.is_finite() && *n > 0.0)
+                                        .unwrap_or(1.5);
+                                }
+                                "maxDistance" => {
+                                    a.max_distance = v
+                                        .parse::<f32>()
+                                        .ok()
+                                        .filter(|n| n.is_finite() && *n > 0.0)
+                                        .unwrap_or(0.0);
+                                }
+                                _ => {
+                                    a.lod = [0.0; 2];
+                                    for (slot, tok) in a
+                                        .lod
+                                        .iter_mut()
+                                        .zip(v.split([',', ' ']).filter(|t| !t.is_empty()))
+                                    {
+                                        *slot = tok
+                                            .parse::<f32>()
+                                            .ok()
+                                            .filter(|n| n.is_finite() && *n > 0.0)
+                                            .unwrap_or(0.0);
+                                    }
+                                }
                             }
                             self.paint = true;
                         }

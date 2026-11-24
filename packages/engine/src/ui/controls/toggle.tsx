@@ -38,7 +38,7 @@ export interface ToggleProps {
 /**
  * A button that is on or off (NSH base's `Toggle`), alone or in a
  * `ToggleGroup`: it owns its presses and its pressed state for screen
- * readers; the pack dresses it (`Toggle.item`, `aria-pressed:` while on).
+ * readers; the pack dresses it (`@Toggle.item`, `aria-pressed:` while on).
  */
 export function Toggle(props: ToggleProps) {
   return (

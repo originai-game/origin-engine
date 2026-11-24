@@ -90,6 +90,30 @@ pub(super) struct State {
     over: bool,
 }
 
+impl State {
+    pub(super) fn checkpoint(&self) -> super::VirtualCursorCheckpoint {
+        super::VirtualCursorCheckpoint {
+            pos: self.pos,
+            shown: self.shown,
+            placed: self.placed,
+            held: self.held,
+            down: self.down,
+            last: self.last,
+            over: self.over,
+        }
+    }
+
+    pub(super) fn restore(&mut self, cp: &super::VirtualCursorCheckpoint) {
+        self.pos = cp.pos;
+        self.shown = cp.shown;
+        self.placed = cp.placed;
+        self.held = cp.held;
+        self.down = cp.down;
+        self.last = cp.last;
+        self.over = cp.over;
+    }
+}
+
 /// The stick's dead zone, of its travel.
 const DEAD: f32 = 0.2;
 

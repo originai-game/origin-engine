@@ -261,7 +261,7 @@ pub(super) fn apply_keeping(
     refresh(eng, world, from, to);
     if let Some(saved) = &pending.ui {
         let mut rs = eng.render.borrow_mut();
-        saved.restore(rs.ui_next.as_deref_mut().map(|n| &mut n.store))?;
+        saved.restore(rs.ui_next.as_deref_mut())?;
     }
     Ok(())
 }

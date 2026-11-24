@@ -396,7 +396,7 @@ struct Held {
 /// Whether the keys moved focus last: then the focused element shows
 /// `focus-visible` (Rune's `Modality`).
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
-enum Modality {
+pub(super) enum Modality {
     #[default]
     Pointer,
     Keyboard,
@@ -425,10 +425,10 @@ pub struct Input {
     selecting: Option<u32>,
     /// The field whose text was last scrolled to its caret.
     caret_scrolled: Option<u32>,
-    focus: u32,
-    modality: Modality,
+    pub(super) focus: u32,
+    pub(super) modality: Modality,
     /// The open modals, innermost last, each with the focus it returns.
-    modals: Vec<(u32, u32)>,
+    pub(super) modals: Vec<(u32, u32)>,
     /// The elements with `modal`.
     pub(super) modal_els: Vec<u32>,
     /// Tab stops, made on a Tab or a move, and a move's candidates.
@@ -451,7 +451,7 @@ pub struct Input {
     holding: Option<Holding>,
     /// The player used a pad last: focus a node takes by itself
     /// (`autofocus`, a modal opening) shows its ring.
-    pad: bool,
+    pub(super) pad: bool,
     /// `autofocus` nodes waiting to show.
     pub(super) autofocus: Vec<u32>,
     /// The elements that are on-screen controls, and the zones last
@@ -471,7 +471,7 @@ pub struct Input {
     /// same).
     sounds: std::rc::Rc<SoundTable>,
     plays: Vec<Play>,
-    sound_rng: u64,
+    pub(super) sound_rng: u64,
     /// The pack's haptics and what this frame's UI interactions played.
     haptics_table: std::rc::Rc<HapticTable>,
     haptics: Vec<og_ui_model::Haptic>,
@@ -488,6 +488,21 @@ pub struct Input {
     pub(super) scrolled: Vec<u32>,
     /// The arena nodes of `pinned` elements (few: scroll bars).
     pub(super) pinned: Vec<Id>,
+}
+
+impl Input {
+    /// Clears transient pointer, fling, drag and hold interactions on checkpoint restore.
+    pub(super) fn clear_transient(&mut self) {
+        self.fling = None;
+        self.latch = None;
+        self.grab = None;
+        self.selecting = None;
+        self.field_press = None;
+        self.holding = None;
+        self.held = None;
+        self.drag = None;
+        self.capture = NONE;
+    }
 }
 
 /// The focused `Input` reported to the host shell (`packages/engine/src/web/text-input.ts`)
@@ -2509,6 +2524,32 @@ impl Tree {
                 self.drag_over(t, cx, cy);
             }
         }
+    }
+
+    /// Restores focus state bits for checkpoint restore without firing JS
+    /// `focus` or `blur` events or mutating focus-memory groups.
+    pub(super) fn set_focus_silent(&mut self, e: u32, visible: bool) {
+        let old = self.input.focus;
+        if old != NONE {
+            self.set_state(old, FOCUSED, false);
+            self.set_state(old, FOCUS_VISIBLE, false);
+            let mut a = old;
+            while a != NONE {
+                self.set_state(a, FOCUS_WITHIN, false);
+                a = self.els[a as usize].parent;
+            }
+        }
+        self.input.focus = e;
+        if e != NONE {
+            self.set_state(e, FOCUSED, true);
+            self.set_state(e, FOCUS_VISIBLE, visible);
+            let mut a = e;
+            while a != NONE {
+                self.set_state(a, FOCUS_WITHIN, true);
+                a = self.els[a as usize].parent;
+            }
+        }
+        self.paint = true;
     }
 
     /// The Tab stops in Tab order (Rune's `tab_order`): positive

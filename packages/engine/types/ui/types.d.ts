@@ -198,6 +198,16 @@ export interface HostProps {
      */
     clamp?: "none" | "edge" | undefined;
     clampMargin?: number | undefined;
+    /** World distance (in world units) at which the anchored element draws at 1× scale; 0 disables distance scaling. */
+    scaleAt?: number | undefined;
+    /** Lower clamp for distance scaling when `scaleAt > 0` (default 0.5). */
+    scaleMin?: number | undefined;
+    /** Upper clamp for distance scaling when `scaleAt > 0` (default 1.5). */
+    scaleMax?: number | undefined;
+    /** Hide the anchored element beyond this distance along the view axis in world units (0: unlimited). */
+    maxDistance?: number | undefined;
+    /** Distance thresholds `[near, far]` in world units: sets `data-lod-near`, `data-lod-mid`, or `data-lod-far` on the anchored element. */
+    lod?: readonly [number, number] | string | undefined;
     /**
      * What `anchor` and `spotlight` find it by. Of the live nodes that
      * share a name, the last made answers. An `Icon`'s `name` is its icon:

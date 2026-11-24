@@ -50,12 +50,17 @@ struct Checkpoint {
 }
 
 /// Portable UI presentation state, carried beside the simulation snapshot:
-/// the new core's stores. A save of an older engine also carries og-ui's
-/// `state` and `world`, which nothing reads now.
+/// the new core's stores, deterministic tree state (focus, scroll, text inputs,
+/// sound RNG, virtual cursor), and feedback cue PRNG. A save of an older engine
+/// also carries og-ui's `state` and `world`, which nothing reads now.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub(crate) struct UiCheckpoint {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     store: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    tree: Option<og_ui_next::tree::TreeCheckpoint>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    feedback_rng: Option<u64>,
 }
 
 /// The new core's stores in render state `rs`, when the game runs on it.
@@ -64,9 +69,11 @@ pub(crate) fn next_store(rs: &RenderState) -> Option<&og_reactive::reactive::ses
 }
 
 impl UiCheckpoint {
-    pub(crate) fn save(store: Option<&og_reactive::reactive::session::Session>) -> Self {
+    pub(crate) fn save(next: Option<&crate::present::ui_next::Next>) -> Self {
         Self {
-            store: store.map(|s| s.save()),
+            store: next.map(|n| n.store.save()),
+            tree: next.and_then(|n| n.tree_checkpoint()),
+            feedback_rng: next.map(|n| n.feedback_rng()),
         }
     }
 
@@ -87,11 +94,14 @@ impl UiCheckpoint {
 
     pub(crate) fn restore(
         &self,
-        store: Option<&mut og_reactive::reactive::session::Session>,
+        next: Option<&mut crate::present::ui_next::Next>,
     ) -> Result<(), String> {
-        self.validate(store.as_deref())?;
-        if let (Some(saved), Some(store)) = (&self.store, store) {
-            store.restore(saved)?;
+        self.validate(next.as_deref().map(|n| &n.store))?;
+        if let Some(next) = next {
+            if let Some(saved) = &self.store {
+                next.store.restore(saved)?;
+            }
+            next.restore_checkpoint(self.tree.as_ref(), self.feedback_rng);
         }
         Ok(())
     }
@@ -108,7 +118,7 @@ pub(crate) struct Checkpoints {
 pub(crate) fn save(rs: &mut RenderState) -> u64 {
     let renderer = rs.backend.as_mut().map_or(0, |b| b.save_state());
     let terrain = crate::bind::terrain::checkpoint(rs);
-    let ui = Some(UiCheckpoint::save(next_store(rs)));
+    let ui = Some(UiCheckpoint::save(rs.ui_next.as_deref()));
     let c = &mut rs.checkpoints;
     c.next += 1;
     c.kept.push_back((
@@ -157,7 +167,7 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             }
             if let Some(saved) = &c.ui {
                 saved
-                    .restore(rs.ui_next.as_deref_mut().map(|n| &mut n.store))
+                    .restore(rs.ui_next.as_deref_mut())
                     .expect("presentation checkpoint preflight passed");
             }
             rs.interp.restore(&c.interp);
@@ -182,8 +192,8 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
 
 /// The presentation hash: FNV-1a over the state a checkpoint keeps that the
 /// CPU holds (og.motion's, then each particle system's ticks, in id order, the
-/// UI's stores and the models fading in). Equal hashes on
-/// one host and backend mean the same frames from the same world.
+/// UI's stores, tree checkpoint and feedback RNG, and the models fading in).
+/// Equal hashes on one host and backend mean the same frames from the same world.
 pub(crate) fn hash(rs: &RenderState) -> u64 {
     let mut h = rs.motion.hash();
     let mut put = |bytes: &[u8]| {
@@ -206,8 +216,14 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
             put(&t.clock.scale.to_bits().to_le_bytes());
         }
     }
-    if let Some(store) = next_store(rs) {
-        put(store.save().to_string().as_bytes());
+    if let Some(next) = rs.ui_next.as_deref() {
+        put(next.store.save().to_string().as_bytes());
+        put(&next.feedback_rng().to_le_bytes());
+        if let Some(tree) = next.tree_checkpoint()
+            && let Ok(bytes) = serde_json::to_vec(&tree)
+        {
+            put(&bytes);
+        }
     }
     rs.reveal.hash(&mut put);
     h

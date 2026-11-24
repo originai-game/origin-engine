@@ -168,9 +168,7 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> Result<serde_json:
         Ok((bytes, tick)) => {
             let ui = (!is_selection(&bytes)).then(|| {
                 let rs = eng.render.borrow();
-                crate::present::presentation::UiCheckpoint::save(
-                    crate::present::presentation::next_store(&rs),
-                )
+                crate::present::presentation::UiCheckpoint::save(rs.ui_next.as_deref())
             });
             Ok(Value::String(encode(&bytes, tick, version, ui.as_ref())))
         }

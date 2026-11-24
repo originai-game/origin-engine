@@ -310,6 +310,15 @@ pub(crate) struct Anchor {
     pub(crate) clamp: bool,
     /// `clampMargin`: how far inside the surface's edge, CSS px.
     pub(crate) margin: f32,
+    /// `scaleAt`: world distance where scale is 1.0 (0: disabled).
+    pub(crate) scale_at: f32,
+    /// `scaleMin` / `scaleMax`: distance-scaling clamp bounds.
+    pub(crate) scale_min: f32,
+    pub(crate) scale_max: f32,
+    /// `maxDistance`: hide past this view-axis depth in world units (0: unlimited).
+    pub(crate) max_distance: f32,
+    /// `lod`: `[near, far]` thresholds in world units for `data-lod-{near,mid,far}`.
+    pub(crate) lod: [f32; 2],
     /// The last sighting, `None` when there was none (no camera, a dead
     /// entity).
     pub(crate) seen: Option<Sighting>,
@@ -322,6 +331,8 @@ pub(crate) struct Anchor {
     pub(crate) shown: bool,
     /// Shown where the tick's end placed it ([`Tree::place_anchors`]).
     pub(crate) ticked: bool,
+    /// Last distance scale applied at settle/paint, to detect scale-only changes.
+    pub(crate) last_scale: f32,
 }
 
 impl El {
@@ -341,12 +352,18 @@ impl Anchor {
             priority: 0.0,
             clamp: false,
             margin: CLAMP_MARGIN,
+            scale_at: 0.0,
+            scale_min: 0.5,
+            scale_max: 1.5,
+            max_distance: 0.0,
+            lod: [0.0; 2],
             seen: None,
             edge: None,
             occluded: false,
             at: [0.0; 2],
             shown: false,
             ticked: false,
+            last_scale: 1.0,
         }
     }
 
@@ -354,6 +371,20 @@ impl Anchor {
     pub(crate) fn alpha(&self) -> f32 {
         if self.occluded && self.occlusion == Occlusion::Fade {
             OCCLUDED_ALPHA
+        } else {
+            1.0
+        }
+    }
+
+    /// Distance-based scale factor when `scale_at > 0` and a positive depth is known.
+    pub(crate) fn dist_scale(&self) -> f32 {
+        if self.scale_at > 0.0
+            && let Some(s) = self.seen
+            && s.depth > 1e-4
+        {
+            let lo = self.scale_min.max(0.01);
+            let hi = self.scale_max.max(lo);
+            (self.scale_at / s.depth).clamp(lo, hi)
         } else {
             1.0
         }
@@ -610,6 +641,7 @@ struct Shown {
     fill: Option<Rgba>,
 }
 
+mod checkpoint;
 mod input;
 mod ops;
 mod para;
@@ -617,6 +649,7 @@ mod particles;
 mod stacking;
 mod thumb;
 mod vcursor;
+pub use checkpoint::{InputFieldState, TreeCheckpoint, VirtualCursorCheckpoint};
 pub use input::{Cue, HapticTable, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc};
@@ -893,6 +926,8 @@ impl Tree {
             }
             let ask = tick && a.occlusion != Occlusion::None;
             let seen = project(target, a.lift, ask);
+            let in_range = seen.is_some_and(|s| a.max_distance <= 0.0 || s.depth <= a.max_distance);
+            let seen = seen.filter(|_| in_range);
             // The last layout's drawn box (none before the first), for
             // whether it stays inside the clamp's margin; the settle
             // places it with this frame's.
@@ -912,8 +947,20 @@ impl Tree {
             } else {
                 a.occluded
             };
+            let visible_seen = seen.filter(|_| on || edge.is_some());
+            let lod = a.lod;
+            let (lod_near, lod_mid, lod_far) = match visible_seen {
+                Some(s) if lod[0] > 0.0 && lod[1] > lod[0] => (
+                    s.depth <= lod[0],
+                    s.depth > lod[0] && s.depth <= lod[1],
+                    s.depth > lod[1],
+                ),
+                Some(s) if lod[0] > 0.0 => (s.depth <= lod[0], false, s.depth > lod[0]),
+                Some(s) if lod[1] > 0.0 => (false, s.depth <= lod[1], s.depth > lod[1]),
+                _ => (false, false, false),
+            };
             let a = self.els[e as usize].anchor.as_mut().expect("anchored");
-            a.seen = seen.filter(|_| on || edge.is_some());
+            a.seen = visible_seen;
             a.edge = edge;
             a.occluded = occluded;
             if tick {
@@ -927,6 +974,9 @@ impl Tree {
                 self.mark(e, name, edge == Some(side as u8));
             }
             self.mark(e, "occluded", occluded);
+            self.mark(e, "lod-near", lod_near);
+            self.mark(e, "lod-mid", lod_mid);
+            self.mark(e, "lod-far", lod_far);
         }
         self.refresh_data();
     }
@@ -951,7 +1001,11 @@ impl Tree {
             .motion
             .box_of(el.node)
             .unwrap_or_else(|| self.arena.box_of(el.node));
-        let t = self.motion.skin(el.node, &el.record.skin).transform;
+        let mut t = self.motion.skin(el.node, &el.record.skin).transform;
+        if let Some(a) = el.anchored() {
+            let ds = a.dist_scale();
+            t.scale = [t.scale[0] * ds, t.scale[1] * ds];
+        }
         let [a, b2, c, d, tx, ty] = affine(&t, [0.0, 0.0, b.w, b.h]);
         let mut r = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
         for [x, y] in [[0.0, 0.0], [b.w, 0.0], [0.0, b.h], [b.w, b.h]] {
@@ -1047,8 +1101,9 @@ impl Tree {
             }
             let el = &mut self.els[e as usize];
             let a = el.anchor.as_deref_mut().expect("anchored");
-            if shown != a.shown || at != a.at {
-                (a.shown, a.at) = (shown, at);
+            let ds = a.dist_scale();
+            if shown != a.shown || at != a.at || (ds - a.last_scale).abs() > 1e-4 {
+                (a.shown, a.at, a.last_scale) = (shown, at, ds);
                 self.sem.place(el.node, shown.then_some(at));
                 self.paint = true;
             }
@@ -1853,6 +1908,10 @@ impl Tree {
             let [hx, hy] = self.thumb_shift(e as u32);
             let mut t = s.transform;
             t.translate = [t.translate[0] + kx + hx, t.translate[1] + ky + hy];
+            if let Some(a) = el.anchored() {
+                let ds = a.dist_scale();
+                t.scale = [t.scale[0] * ds, t.scale[1] * ds];
+            }
             let hole = self.hole(e as u32);
             // Its `blur-*` and `drop-shadow-*` draw it and its subtree
             // through a layer of their own, while the paint has room for

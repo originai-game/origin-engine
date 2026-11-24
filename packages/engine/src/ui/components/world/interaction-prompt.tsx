@@ -38,12 +38,9 @@ export interface InteractionPromptProps {
  * when it shows and what the input does; read only. The old SVG hold ring
  * becomes a nine-ring with the hold's share as its wipe (the 200 ms drain
  * on release is dropped); a nine-cut plate takes no rim (it paints as a
- * rectangle around the cut), so the glass's rim is dropped. The key cap's
- * action glyph has no TSX surface: the cap shows the game's key when it
- * gives one and keeps the action's name as a state otherwise, and the old
- * anchor's avoidance and max distance are dropped too. It keeps its place
- * over the plates and labels that stack (the anchor's declutter, priority
- * 1).
+ * rectangle around the cut), so the glass's rim is dropped. It hides past
+ * `maxDistance` and keeps its place over the plates and labels that stack
+ * (the anchor's declutter, priority 1).
  */
 export function InteractionPrompt(props: InteractionPromptProps) {
   const hold = () => props.hold ?? -1;
@@ -59,6 +56,7 @@ export function InteractionPrompt(props: InteractionPromptProps) {
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       priority={1}
+      maxDistance={props.maxDistance}
       class="-translate-x-1/2 -translate-y-full group flex-row items-center animate-pop text-fg"
       role="status"
       label={`${props.verb}${name() !== "" ? ` ${name()}` : ""}`}

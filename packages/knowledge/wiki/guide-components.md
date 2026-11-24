@@ -24,7 +24,7 @@ By kit (the directory a component is filed in):
 - `shooter`: `ShooterAbilities`, `CombatHud`, `ShooterDamage`, `ShooterEffects`, `Loadout`, `ShooterObjectives`, `ShooterPickups`, `ShooterPrompt`, `ShooterRadar`, `ShooterRound`, `ShooterSquad`, `ShooterVitals`
 - `strategy`: `StrategyAlerts`, `StrategyClock`, `StrategyCommands`, `StrategyGroups`, `StrategyMinimap`, `StrategyQueue`, `StrategyResources`, `StrategySelection`, `StrategyTower`, `StrategyWave`
 - `world`: `Compass`, `InteractionPrompt`, `LootLabel`, `MinimapView`, `Minimap`, `Nameplate`, `OverheadBars`, `SpeechBubble`, `Waypoint`
-- `controls`: `Art`, `Button`, `Checkbox`, `Counter`, `Dialog`, `Meter`, `Progress`, `Select`, `Slider`, `Switch`, `Tabs`, `Tooltip`
+- `controls`: `Art`, `Button`, `Checkbox`, `Accordion`, `Collapsible`, `Counter`, `Dialog`, `List`, `ContextMenu`, `DropdownMenu`, `MenuItem`, `MenuLabel`, `MenuSeparator`, `Meter`, `NumberInput`, `Popover`, `Progress`, `Radio`, `RadioGroup`, `Select`, `Sheet`, `Slider`, `Switch`, `Tab`, `Tabs`, `ToastStack`, `Toggle`, `ToggleGroup`, `Toolbar`, `ToolbarSeparator`, `Tooltip`
 - `screens`: `Banner`, `Calendar`, `CalibrationScreen`, `Card`, `Confirm`, `CreatorToolsScreen`, `CreditsScreen`, `DataList`, `FlowChaptersScreen`, `FlowChoices`, `FlowChartScreen`, `FlowGalleryScreen`, `FlowPicture`, `FlowScreen`, `GameOverScreen`, `HudEditorScreen`, `KeyValues`, `LeaderboardScreen`, `LoadingScreen`, `MainMenuScreen`, `ModeSelectScreen`, `NotificationsScreen`, `ObjectiveTracker`, `Pagination`, `PauseScreen`, `ResultsScreen`, `SaveLoadScreen`, `SettingsScreen`, `SplashScreen`, `StarRating`, `Subtitles`, `Table`, `TitleScreen`, `Tree`, `TutorialScreen`
 
 <a id="guide-components-1"></a>
@@ -847,7 +847,7 @@ One bar of a HUD, a block a plate is built from: it fills to value over max in i
 | `showValue?` | `boolean` | Its figure, value over max, upright over the bar; for a bar thick enough to hold a line of text. |
 | `name?` | `string` | What a screen reader calls it; empty is its kind (Health, Mana, Stamina, Experience). |
 
-Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.low`, `Bar.tone.…`, `Bar.trail`, `Bar.value`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.frame.thick`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.low`, `Bar.tone.…`, `Bar.trail`, `Bar.value`.
 
 Fixtures: `default`, `mana`, `cells`, `shield`, `figure`, `low`, `empty`, `overflow`.
 
@@ -950,7 +950,7 @@ The combo readout on its HUD plate: the heading, the count and its multiplier as
 | `state?` | `string` | idle, active or broken; zero remaining does not determine gameplay results. Default idle. |
 | `label?` | `string` | A custom heading; empty uses Combo. Default "". |
 
-Pack slots: `Combo.count`, `Combo.multiplier`, `Combo.plate`.
+Pack slots: `Combo.count`, `Combo.multiplier`, `Combo.plate`, `Count.roll`.
 
 Fixtures: `default`, `idle`, `broken`, `overflow`.
 
@@ -1546,7 +1546,7 @@ A stat with its bar: the icon and label before a leaning well that fills to valu
 | `bare?` | `boolean` | No HUD plate behind it. |
 | `name?` | `string` | What a screen reader calls it; empty is the label, else Health. |
 
-Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`, `Bar.trail`.
 
 Fixtures: `default`.
 
@@ -3675,7 +3675,7 @@ Each `SquadMember`:
 | `healthMax?` | `number` | Most health. |
 | `ghost?` | `number` | The health before the latest loss. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Bar.fill`, `Bar.trail`, `Plate.frame`.
 
 Fixtures: `default`, `down`, `empty`, `overflow`.
 
@@ -3699,7 +3699,7 @@ The player's vitals at the screen's bottom corner: the portrait in an octagon wi
 | `segment?` | `number` | Shield per cell of the shield bar (25: four cells for 100). Default 25. |
 | `low?` | `number` | The fraction of most health at or under which the health bar turns to danger (0.3). Default 0.3. |
 
-Pack slots: `Plate.frame`.
+Pack slots: `Bar.fill`, `Bar.trail`, `Plate.frame`.
 
 Fixtures: `default`, `full`, `low`, `critical`, `noshield`, `overflow`.
 
@@ -3933,7 +3933,7 @@ Fixtures: `default`.
 <a id="guide-components-169"></a>
 ### `components §169` InteractionPrompt
 
-What the player can do with what is in front of them: a key cap beside a glass plate, the verb in condensed capitals and the object under it; a hold's ring round the cap. It rises in when in range. The game decides when it shows and what the input does; read only. The old SVG hold ring becomes a nine-ring with the hold's share as its wipe (the 200 ms drain on release is dropped); a nine-cut plate takes no rim (it paints as a rectangle around the cut), so the glass's rim is dropped. The key cap's action glyph has no TSX surface: the cap shows the game's key when it gives one and keeps the action's name as a state otherwise, and the old anchor's avoidance and max distance are dropped too. It keeps its place over the plates and labels that stack (the anchor's declutter, priority 1).
+What the player can do with what is in front of them: a key cap beside a glass plate, the verb in condensed capitals and the object under it; a hold's ring round the cap. It rises in when in range. The game decides when it shows and what the input does; read only. The old SVG hold ring becomes a nine-ring with the hold's share as its wipe (the 200 ms drain on release is dropped); a nine-cut plate takes no rim (it paints as a rectangle around the cut), so the glass's rim is dropped. It hides past `maxDistance` and keeps its place over the plates and labels that stack (the anchor's declutter, priority 1).
 
 `import { InteractionPrompt } from "@origingame/engine/ui/components"` (kit `world`, `packages/engine/src/ui/components/world/interaction-prompt.tsx`).
 
@@ -4056,7 +4056,7 @@ Fixtures: `default`.
 <a id="guide-components-173"></a>
 ### `components §173` Nameplate
 
-A unit's plate over its head: the level chip and the name in its reaction's ink, its title in small capitals, its health as a bar cut in quarters (a cream ghost of a hit, the shield after the fill) and the cast row (the spell and its time over a thin bar), all on a HUD plate (compact, the bar alone, has none). Read only; the game owns every figure and state. The old style's lean (skewX), the wings' and the target brackets' clip-path arrows, the interrupted cast's hatch and the anchor's max distance have no TSX surface and are dropped; it stacks over the plates it overlaps and fades behind drawn geometry (the anchor's declutter and occlusion); the quarters are drawn as three notch marks, the plate does not scale when targeted, and the plate's room cap (a viewport measure) stands as max-w-full.
+A unit's plate over its head: the level chip and the name in its reaction's ink, its title in small capitals, its health as a bar cut in quarters (a cream ghost of a hit, the shield after the fill) and the cast row (the spell and its time over a thin bar), all on a HUD plate (compact, the bar alone, has none). Read only; the game owns every figure and state. The old style's lean (skewX), the wings' and the target brackets' clip-path arrows, and the interrupted cast's hatch have no TSX surface and are dropped; it stacks over the plates it overlaps, fades behind drawn geometry, and hides past `maxDistance` (the anchor's declutter, occlusion and maxDistance); the quarters are drawn as three notch marks, the plate does not scale when targeted, and the plate's room cap (a viewport measure) stands as max-w-full.
 
 `import { Nameplate } from "@origingame/engine/ui/components"` (kit `world`, `packages/engine/src/ui/components/world/nameplate.tsx`).
 
@@ -4091,13 +4091,13 @@ Fixtures: `default`, `friendly`, `neutral`, `hostile`, `player`, `boss`, `target
 <a id="guide-components-174"></a>
 ### `components §174` OverheadBars
 
-A health bar over every unit in the side's colour, a thin resource line under it. Read only. The old anchors were GPU mass elements (one instanced draw for a battle's thousands, a hit leaving a cream ghost): each bar is now a text-free pair of nodes and the ghost is dropped.
+A health bar over every unit in the side's colour with a draining trail ghost and an optional thin resource line grouped under one world anchor. Read only.
 
 `import { OverheadBars } from "@origingame/engine/ui/components"` (kit `world`, `packages/engine/src/ui/components/world/overhead-bars.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
-| `bars?` | `ReadonlyArray<OverheadBar>` | The units' bars, keyed rows of { id, entity, at, value, max, side, resource, resourceMax }: entity the unit by its bits (0: at, a world point x y z); value its health out of max; side whose it is, own (green), ally (blue), enemy (red) or neutral (yellow); resource out of resourceMax a thin line under the health (mana, energy), resourceMax 0 draws none. Thousands are fine: each bar is a GPU mass element of a fixed size (never under 30 × 3 px) that keeps the ghost of a hit. |
+| `bars?` | `ReadonlyArray<OverheadBar>` | The units' bars, keyed rows of { id, entity, at, value, max, side, resource, resourceMax }: entity the unit by its bits (0: at, a world point x y z); value its health out of max; side whose it is, own (green), ally (blue), enemy (red) or neutral (yellow); resource out of resourceMax a thin line under the health (mana, energy), resourceMax 0 draws none. |
 | `height?` | `number` | World units over each unit's point (its head). |
 
 Each `OverheadBar`:
@@ -4112,6 +4112,8 @@ Each `OverheadBar`:
 | `side?` | `string` | Whose it is: own (green), ally (blue), enemy (red) or neutral (yellow). |
 | `resource?` | `number` | A thin resource line under the health (mana, energy). |
 | `resourceMax?` | `number` |  |
+
+Pack slots: `Bar.fill`, `Bar.ghost`, `Bar.trail`.
 
 Fixtures: `default`, `sides`, `low`.
 
@@ -4233,9 +4235,61 @@ A piece of a panel: drawn on a panel's ground.
 Fixtures: `unchecked`, `checked`, `indeterminate`, `disabled`.
 
 <a id="guide-components-180"></a>
-### `components §180` Counter
+### `components §180` Accordion
 
-A number that counts to its value as it changes. The count itself is the motion head's (a value-change transition on the text); until it lands the number shows its value at once.
+Stacked sections that expand and collapse (NSH base's `Accordion`), one at a time unless `multiple`, each a `Collapsible` in the pack's `Accordion.item`; the arrows move between their headers.
+
+`import { Accordion } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/collapsible.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `value` | `readonly string[]` | The open sections' values. The game owns them: a press reports the next list with `onChange`. |
+| `sections` | `readonly AccordionSection[]` |  |
+| `multiple?` | `boolean \| undefined` | Several may be open at once; otherwise opening one closes the others. |
+| `class?` | `string \| undefined` | Classes of the document that uses it. |
+| `onChange?` | `((e: UiEvent, value: string[]) => void) \| undefined` |  |
+
+Each `AccordionSection`:
+
+| Field | Type | What |
+|---|---|---|
+| `value` | `string` |  |
+| `title` | `string` |  |
+| `disabled?` | `boolean \| undefined` |  |
+| `content` | `() => any` | What it shows while open. |
+
+Pack slots: `Accordion.item`, `Collapsible.chevron`, `Collapsible.panel`, `Collapsible.trigger`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `open`, `closed`.
+
+<a id="guide-components-181"></a>
+### `components §181` Collapsible
+
+A section whose content is shown or left out (NSH base's `Collapsible`): its header is a button that says whether it is expanded, and its content enters and leaves by the pack's `Collapsible.panel`. The pack draws the header (`Collapsible.trigger`) and the chevron that turns (`Collapsible.chevron`).
+
+`import { Collapsible } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/collapsible.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `open` | `boolean` | Its content is shown. The game owns it: a press on the header reports the next value with `onOpenChange`. |
+| `title` | `string` | The header's text. |
+| `disabled?` | `boolean \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it. |
+| `onOpenChange?` | `((e: UiEvent, open: boolean) => void) \| undefined` |  |
+| `children?` | `any` |  |
+
+Pack slots: `Accordion.item`, `Collapsible.chevron`, `Collapsible.panel`, `Collapsible.trigger`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `open`, `closed`.
+
+<a id="guide-components-182"></a>
+### `components §182` Counter
+
+A number that rolls to its value as it changes (`Count.roll`). When `from` is given, it draws `from` on its first tick and rolls to `value` on the next, deterministically on the world clock.
 
 `import { Counter } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/counter.tsx`).
 
@@ -4244,14 +4298,14 @@ A number that counts to its value as it changes. The count itself is the motion 
 | `value` | `number` | The number it shows. |
 | `format?` | `"grouped" \| "compact" \| "percent" \| undefined` | How it writes the number: grouped (1,234, the default), compact (1.2K) or percent (0 to 1). |
 | `decimals?` | `number \| undefined` | Digits after the point. |
-| `from?` | `number \| string \| undefined` | Where its first count starts (a score counting up as its screen opens); the count is the motion head's. |
-| `duration?` | `number \| string \| undefined` | How long a count takes, in ms; the motion head's. |
+| `from?` | `number \| string \| undefined` | Where its first count starts (a score counting up as its screen opens); rolls on the next tick. |
+| `duration?` | `number \| string \| undefined` | How long a count takes, in ms or CSS time; overrides Count.roll's duration. |
 | `class?` | `string \| undefined` |  |
 
-Pack slots: `Counter.value`.
+Pack slots: `Count.roll`, `Counter.value`.
 
-<a id="guide-components-181"></a>
-### `components §181` Dialog
+<a id="guide-components-183"></a>
+### `components §183` Dialog
 
 A dialog over a scrim (NSH base's `Dialog`; an alert dialog is one with buttons and no other content): modal for screen readers and focus, it pops in by `Modal.frame` over `Modal.scrim`. The pack draws its panel (`Dialog.frame`), heading (`Dialog.title`), text (`Dialog.body`) and button row (`Dialog.actions`). It fills its parent, so a game puts it on the `modal` layer or over the screen it covers.
 
@@ -4272,8 +4326,109 @@ Pack slots: `Dialog.actions`, `Dialog.body`, `Dialog.frame`, `Dialog.title`, `Mo
 
 Fixtures: `default`.
 
-<a id="guide-components-182"></a>
-### `components §182` Meter
+<a id="guide-components-184"></a>
+### `components §184` List
+
+A long list that makes only the rows near its view (NSH's `List`): a scroll view as tall as every row, whose rows in view, and `overscan` more each way, exist and stand at their place; as it scrolls, rows that leave the view go and those that come in are made. Its scroll view draws its own bar (`Scrollbar.*`), and the keys scroll a focused row into view as anywhere.
+
+`import { List } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/list.tsx`).
+
+Pack slots: `Row.frame`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `thousands`.
+
+<a id="guide-components-185"></a>
+### `components §185` ContextMenu
+
+The same menu opened by the secondary button (a right click), a finger held on its trigger, or Shift+F10 and the Menu key while the focus is in it (NSH base's `ContextMenu`), under the trigger at its start, the focus on its first item; the trigger's own presses keep working. A game that opens it otherwise sets `open` itself.
+
+`import { ContextMenu } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `open` | `boolean` | Shown or not. The game owns it: a right click, a finger held, Shift+F10 or the Menu key on the trigger reports `onOpenChange` with true; choosing an item, a press outside and `back` report false. |
+| `label?` | `string \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its popup. |
+| `onOpenChange?` | `((e: UiEvent, open: boolean) => void) \| undefined` |  |
+| `trigger?` | `any` | What it is the menu of (an item's slot, a unit's card); its own presses keep working. |
+| `children?` | `any` |  |
+
+Pack slots: `Menu.frame`, `Menu.indicator`, `Menu.item`, `Menu.item.danger`, `Menu.label`, `Menu.separator`, `Menu.shortcut`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `closed`.
+
+<a id="guide-components-186"></a>
+### `components §186` DropdownMenu
+
+(No doc comment.)
+
+`import { DropdownMenu } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
+
+Pack slots: `Menu.frame`, `Menu.indicator`, `Menu.item`, `Menu.item.danger`, `Menu.label`, `Menu.separator`, `Menu.shortcut`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `closed`.
+
+<a id="guide-components-187"></a>
+### `components §187` MenuItem
+
+An item of a menu (NSH base's `MenuItem`): a focus stop of its menu that reports `onSelect` and closes it. The pack draws it (`Menu.item`, `Menu.item.danger`), the check before a checkable item's text (`Menu.indicator`, shown by its `checked:` classes) and its hint (`Menu.shortcut`).
+
+`import { MenuItem } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `onSelect?` | `((e: UiEvent) => void) \| undefined` | It was chosen: a press, Enter or Space. The menu closes unless `closeOnSelect` is false. |
+| `disabled?` | `boolean \| undefined` |  |
+| `checked?` | `boolean \| undefined` | Checkable: a setting it shows (`menuitemcheckbox`), or with `radio` one choice of a group (`menuitemradio`). The game owns the value; `checked:` styles apply. |
+| `radio?` | `boolean \| undefined` |  |
+| `danger?` | `boolean \| undefined` | An action that destroys or cannot be undone: the pack's `Menu.item.danger`. |
+| `icon?` | `string \| undefined` | An icon name before its text. |
+| `shortcut?` | `string \| undefined` | A hint after its text: a key or a count. |
+| `closeOnSelect?` | `boolean \| undefined` | Keeps the menu open once chosen, so a setting shows its new value at once. |
+| `label?` | `string \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `children?` | `any` |  |
+
+Pack slots: `Menu.frame`, `Menu.indicator`, `Menu.item`, `Menu.item.danger`, `Menu.label`, `Menu.separator`, `Menu.shortcut`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `closed`.
+
+<a id="guide-components-188"></a>
+### `components §188` MenuLabel
+
+A group's heading in a menu (`Menu.label`), never a focus stop.
+
+`import { MenuLabel } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
+
+Pack slots: `Menu.frame`, `Menu.indicator`, `Menu.item`, `Menu.item.danger`, `Menu.label`, `Menu.separator`, `Menu.shortcut`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `closed`.
+
+<a id="guide-components-189"></a>
+### `components §189` MenuSeparator
+
+A line between groups of a menu's items (`Menu.separator`), never a focus stop.
+
+`import { MenuSeparator } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
+
+Pack slots: `Menu.frame`, `Menu.indicator`, `Menu.item`, `Menu.item.danger`, `Menu.label`, `Menu.separator`, `Menu.shortcut`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `closed`.
+
+<a id="guide-components-190"></a>
+### `components §190` Meter
 
 A track whose fill wears its value's region: good, middling or poor.
 
@@ -4292,8 +4447,55 @@ Pack slots: `Bar.fill`.
 
 Fixtures: `optimum`, `suboptimum`, `poor`.
 
-<a id="guide-components-183"></a>
-### `components §183` Progress
+<a id="guide-components-191"></a>
+### `components §191` NumberInput
+
+A number stepped up and down (NSH base's `NumberInput`: a quantity to buy, a count to send): a spin button for screen readers whose arrows, Page Up and Down, Home and End step it, between a decrement and an increment button. The pack draws its box (`NumberInput.frame`), its figure (`NumberInput.field`) and its buttons (`NumberInput.step`).
+
+`import { NumberInput } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/number-input.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `value` | `number` | The number. The game owns it: a step or a key reports the next one with `onChange`. |
+| `min?` | `number \| undefined` | The bounds a step holds it to; none by default. |
+| `max?` | `number \| undefined` |  |
+| `step?` | `number \| undefined` | What one step moves it by; default 1. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it ("Quantity"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, value: number) => void) \| undefined` |  |
+
+Pack slots: `NumberInput.field`, `NumberInput.frame`, `NumberInput.step`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`, `at min`, `disabled`.
+
+<a id="guide-components-192"></a>
+### `components §192` Popover
+
+Content by its trigger (NSH base's `Popover`: a filter, a quick detail): the trigger says whether it is expanded, and the panel follows the trigger's box wherever it moves (`anchor`). The pack draws the panel (`Popover.frame`), which pops in by its own `starting:`.
+
+`import { Popover } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/popover.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `open` | `boolean` | Shown or not. The game owns it: a press on the trigger reports `onOpenChange` with the next value, `back` with false. |
+| `placement?` | `"bottom" \| "top" \| undefined` | Where it stands by its trigger: `bottom` (the default) or `top`. |
+| `label?` | `string \| undefined` | What screen readers call it. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its panel. |
+| `onOpenChange?` | `((e: UiEvent, open: boolean) => void) \| undefined` |  |
+| `trigger?` | `any` | What opens it: a control its presses go to. |
+| `children?` | `any` |  |
+
+Pack slots: `Popover.frame`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-193"></a>
+### `components §193` Progress
 
 A linear progress bar (NSH base's `Progress`): it owns its role, its range 0 to 100 and the indicator's width by the value; the pack draws its track (`Progress.track`) and its indicator (`Bar.fill`, which eases as the value moves).
 
@@ -4312,8 +4514,49 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `empty`, `third`, `full`, `indeterminate`.
 
-<a id="guide-components-184"></a>
-### `components §184` Select
+<a id="guide-components-194"></a>
+### `components §194` Radio
+
+One option of a set the player picks one of (NSH base's `Radio`), in a `RadioGroup`: it owns its presses and state for screen readers; a checked radio reports nothing, as it cannot uncheck itself. The pack draws its circle (`Radio.indicator`) and the dot (`Radio.dot`).
+
+`import { Radio } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/radio.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `checked?` | `boolean \| undefined` | Checked or not. The game owns the value: a press on an unchecked radio, or the arrows of its group reaching it, asks for `true` with `onChange`. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it when its children have no text that says it. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, checked: true) => void) \| undefined` |  |
+| `children?` | `any` | The label after the circle. |
+
+Pack slots: `Radio.dot`, `Radio.indicator`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `unchecked`, `checked`, `disabled`.
+
+<a id="guide-components-195"></a>
+### `components §195` RadioGroup
+
+The set around `Radio`s (NSH base's `RadioGroup`): one stop of Tab, at the checked radio; the arrows move among its radios and check each one they reach (WAI-ARIA's radio group). It holds no value: the game keeps which radio is checked.
+
+`import { RadioGroup } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/radio.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `label?` | `string \| undefined` | What screen readers call the set ("Difficulty"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it: its layout (`flex-row` for a row). |
+| `children?` | `any` |  |
+
+Pack slots: `Radio.dot`, `Radio.indicator`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `unchecked`, `checked`, `disabled`.
+
+<a id="guide-components-196"></a>
+### `components §196` Select
 
 One value picked from a list (NSH base's `Select`): a combobox for screen readers whose arrows step the value while closed, and whose list opens under the trigger at its width, as one focus group the arrows move in. The pack draws the trigger (`Select.trigger`, `aria-expanded:` while open), the list (`Select.list`) and each option (`Select.option`, `selected:` for the chosen one).
 
@@ -4344,8 +4587,29 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `closed`, `open`.
 
-<a id="guide-components-185"></a>
-### `components §185` Slider
+<a id="guide-components-197"></a>
+### `components §197` Sheet
+
+A panel that rises from the bottom of the screen over a scrim (NSH base's `Sheet`, the phone's form of a menu or a picker): modal for screen readers and focus. The pack draws its panel (`Sheet.frame`, which slides in and out) and its handle (`Sheet.grabber`). It fills its parent, so a game puts it on the `modal` layer.
+
+`import { Sheet } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/sheet.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `open` | `boolean` | Shown or not. The game owns it: Escape, `back`, a press on the scrim or a swipe down reports `onClose`. |
+| `label?` | `string \| undefined` | What screen readers call it. |
+| `grabber?` | `boolean \| undefined` | The handle at its top (default true). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on its panel. |
+| `onClose?` | `((e: UiEvent) => void) \| undefined` |  |
+| `footer?` | `any` | What sits at its foot, under its content (the main action). |
+| `children?` | `any` |  |
+
+Pack slots: `Modal.scrim`, `Sheet.frame`, `Sheet.grabber`.
+
+Fixtures: `default`.
+
+<a id="guide-components-198"></a>
+### `components §198` Slider
 
 A value picked along a track (NSH base's `Slider`: a volume, a sensitivity): it owns its presses, drags, keys (the arrows by a step, Page Up and Down by a tenth, Home and End to the ends) and its range for screen readers; the pack draws its track (`Slider.track`), the filled range (`Slider.range`) and the thumb (`Slider.thumb`).
 
@@ -4370,8 +4634,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`, `empty`, `full`, `disabled`.
 
-<a id="guide-components-186"></a>
-### `components §186` Switch
+<a id="guide-components-199"></a>
+### `components §199` Switch
 
 A setting that is on or off and takes effect at once (NSH base's `Switch`): it owns its presses, keys and state for screen readers; the pack draws its track (`Switch.track`) and the thumb that moves along it (`Switch.thumb`), whose `checked:` and `disabled:` follow the switch.
 
@@ -4393,8 +4657,31 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `off`, `on`, `disabled`.
 
-<a id="guide-components-187"></a>
-### `components §187` Tabs
+<a id="guide-components-200"></a>
+### `components §200` Tab
+
+One tab of a tab list (NSH base's `Tab`), in `Tabs` with the others: it owns its presses and its selected state for screen readers; the pack dresses it (`Tab.item`) and the mark under the selected one (`Tab.mark`), which slides from the tab it replaces (`Tab.indicator`). A count beside its label is a `Text` of `packClass("Tab", "count")`, lit while selected.
+
+`import { Tab } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/tabs.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `selected?` | `boolean \| undefined` | The current tab of its list: screen readers say so, `selected:` styles apply and the list's mark sits under it. The game owns the value. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it when its children have no text that says it (an icon). |
+| `description?` | `string \| undefined` |  |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onPress?` | `((e: UiEvent) => void) \| undefined` | It was pressed, or the arrows of its list reached it: the game selects it. |
+| `children?` | `any` |  |
+
+Pack slots: `Tab.count`, `Tab.indicator`, `Tab.item`, `Tab.list`, `Tab.mark`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-201"></a>
+### `components §201` Tabs
 
 The tab list around `Tab`s (NSH base's `Tabs`): one stop of Tab, at the selected tab; the arrows move among its tabs and select each one they reach (WAI-ARIA's tab list, automatic activation). It holds no value and no content: the game shows the selected tab's content beside it.
 
@@ -4412,8 +4699,107 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-188"></a>
-### `components §188` Tooltip
+<a id="guide-components-202"></a>
+### `components §202` ToastStack
+
+Short messages that come and go at the top of the screen (NSH base's `ToastStack` and `Toast`): each is announced to screen readers as it arrives (a `status`, a danger one an `alert`), enters and leaves by the pack's `Toast.frame`, and a swipe sideways or up dismisses it. The stack (`Toast.stack`) clears the top safe area and passes presses through between toasts. A game puts it on the `toast` layer.
+
+`import { ToastStack } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toast.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `toasts` | `readonly ToastItem[]` | The toasts shown, newest last. The game owns the list and its timing: it drops a toast after its time, or when `onDismiss` reports a swipe. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, on the stack. |
+| `onDismiss?` | `((e: UiEvent, id: string) => void) \| undefined` |  |
+
+Each `ToastItem`:
+
+| Field | Type | What |
+|---|---|---|
+| `id` | `string` | Its key: a toast keeps its node while it stays in the list. |
+| `title` | `string` | What it says. |
+| `description?` | `string \| undefined` | A second, quieter line. |
+| `tone?` | `"success" \| "danger" \| undefined` | Its tone: plain, `success` or `danger` (the pack's `Toast.frame.<tone>`). |
+
+Pack slots: `Toast.frame.…`, `Toast.stack`.
+
+Fixtures: `default`.
+
+<a id="guide-components-203"></a>
+### `components §203` Toggle
+
+A button that is on or off (NSH base's `Toggle`), alone or in a `ToggleGroup`: it owns its presses and its pressed state for screen readers; the pack dresses it (`@Toggle.item`, `aria-pressed:` while on).
+
+`import { Toggle } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toggle.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `pressed?` | `boolean \| undefined` | On or off. The game owns the value: a press reports the opposite with `onChange`. |
+| `disabled?` | `boolean \| undefined` |  |
+| `label?` | `string \| undefined` | What a screen reader calls it when its children have no text that says it (an icon). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `onChange?` | `((e: UiEvent, pressed: boolean) => void) \| undefined` |  |
+| `children?` | `any` |  |
+
+Pack slots: `Toggle.item`, `ToggleGroup.frame`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `segmented`.
+
+<a id="guide-components-204"></a>
+### `components §204` ToggleGroup
+
+A row of `Toggle`s (NSH base's `ToggleGroup`); one pressed at a time is rune-kit's segmented control, which the game keeps by pressing the one asked for and letting go of the others. One stop of Tab, at its first pressed toggle; the arrows move among its toggles without pressing them (WAI-ARIA's toolbar). The pack draws its well (`ToggleGroup.frame`).
+
+`import { ToggleGroup } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toggle.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `label?` | `string \| undefined` | What screen readers call the group ("View"). |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `children?` | `any` |  |
+
+Pack slots: `Toggle.item`, `ToggleGroup.frame`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `segmented`.
+
+<a id="guide-components-205"></a>
+### `components §205` Toolbar
+
+A bar of controls (NSH base's `Toolbar`: a player's transport, a palette of tools): one stop of Tab, at the item the focus last left; the arrows move among its items without pressing them, a `ToggleGroup`'s inside it included (WAI-ARIA's toolbar). The pack draws its bar (`Toolbar.frame`).
+
+`import { Toolbar } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toolbar.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `label?` | `string \| undefined` | What screen readers call the toolbar ("Formatting"), when a screen has more than one. |
+| `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
+| `children?` | `any` | Its `Button`s, `Toggle`s, `ToggleGroup`s and `ToolbarSeparator`s. |
+
+Pack slots: `Toolbar.frame`, `Toolbar.separator`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-206"></a>
+### `components §206` ToolbarSeparator
+
+A line between runs of a toolbar's items (`Toolbar.separator`), never a focus stop.
+
+`import { ToolbarSeparator } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toolbar.tsx`).
+
+Pack slots: `Toolbar.frame`, `Toolbar.separator`.
+
+A piece of a panel: drawn on a panel's ground.
+
+Fixtures: `default`.
+
+<a id="guide-components-207"></a>
+### `components §207` Tooltip
 
 A hint over its trigger (NSH base's `Tooltip`): it shows while the pointer is over the trigger or the keyboard's focus is in it (WAI-ARIA's tooltip), and its text describes the trigger for screen readers. The pack draws the bubble (`Tooltip.frame`); it stands centred over the trigger's box wherever it moves (`anchor`).
 
@@ -4433,8 +4819,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-189"></a>
-### `components §189` Banner
+<a id="guide-components-208"></a>
+### `components §208` Banner
 
 A call across the scene with no plate: the headline in large HUD type (white, one stroke under the fill and a soft shadow), a lit gold rule under it and the line beneath in quieter HUD type. It rises in with the reward sound; under reduced motion it fades in place.
 
@@ -4449,8 +4835,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-190"></a>
-### `components §190` Calendar
+<a id="guide-components-209"></a>
+### `components §209` Calendar
 
 A HUD plate: the month between cut arrow keys, the days dark recesses, today lit in the accent and a marked day carrying a gold diamond.
 
@@ -4471,8 +4857,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous month), `next` (Next month), `pick` (Choose day).
 
-<a id="guide-components-191"></a>
-### `components §191` CalibrationScreen
+<a id="guide-components-210"></a>
+### `components §210` CalibrationScreen
 
 Calibration in three steps: brightness (gamma), the audio offset measured from taps, and the controller's dead zone, each with its slider and test. The game owns the values and writes them back from the events.
 
@@ -4502,8 +4888,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Next), `back` (Back).
 
-<a id="guide-components-192"></a>
-### `components §192` Card
+<a id="guide-components-211"></a>
+### `components §211` Card
 
 A card: a picture across its top, a heading, a line or two under it, a badge at its top end and the actions the caller supplies. It reports onOpen.
 
@@ -4524,8 +4910,8 @@ Fixtures: `default`.
 
 Actions: `open` (Open).
 
-<a id="guide-components-193"></a>
-### `components §193` Confirm
+<a id="guide-components-212"></a>
+### `components §212` Confirm
 
 A confirmation dialog on its own panel over the pack's scrim, which dims the screen while the panel pops in: the question as its heading, what follows from it, and Cancel and Confirm (the danger variant when confirming destroys something). The game closes it.
 
@@ -4548,8 +4934,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `confirm` (Confirm), `cancel` (Cancel).
 
-<a id="guide-components-194"></a>
-### `components §194` CreatorToolsScreen
+<a id="guide-components-213"></a>
+### `components §213` CreatorToolsScreen
 
 The creator's tools on the HUD's smoked glass: the four tools a segmented switch lit in the accent, the panels plates with tracked capital titles. On a phone the panel tabs are one strip that scrolls sideways, each a finger's target; a focus move scrolls its tab into view.
 
@@ -4580,8 +4966,8 @@ Fixtures: `default`.
 
 Actions: `back` (Exit).
 
-<a id="guide-components-195"></a>
-### `components §195` CreditsScreen
+<a id="guide-components-214"></a>
+### `components §214` CreditsScreen
 
 The credits: the sections' titles and names rolling over the key art's veil, the logo at the head, and the end and licences the caller supplies. The game moves the roll (offset); it reports onBack and onFaster.
 
@@ -4605,8 +4991,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Faster), `back` (Back).
 
-<a id="guide-components-196"></a>
-### `components §196` DataList
+<a id="guide-components-215"></a>
+### `components §215` DataList
 
 A HUD plate of rows: a name, its detail and its figure.
 
@@ -4626,8 +5012,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open).
 
-<a id="guide-components-197"></a>
-### `components §197` FlowChaptersScreen
+<a id="guide-components-216"></a>
+### `components §216` FlowChaptersScreen
 
 A chapter select: the story's chapters in order with their thumbnails, the selected one shown, and Back. It reports onSelect with the chapter's key.
 
@@ -4647,8 +5033,8 @@ Fixtures: `default`.
 
 Actions: `select` (Play the chapter), `back` (Back).
 
-<a id="guide-components-198"></a>
-### `components §198` FlowChoices
+<a id="guide-components-217"></a>
+### `components §217` FlowChoices
 
 An interactive film's choice window over its footage (flow guide §4): a thin bar over the choices drains with the time left; the choices are cut plates docked at the foot, the pending one ringed in the accent, one that cannot be taken dim, a quick-time one with its progress under its words. Hotspots are lit frames at the fractions of the picture the flow gives, so they land on it when the game draws the picture to fill the surface. Past the lock the choices stay and take nothing.
 
@@ -4663,8 +5049,8 @@ Pack slots: `Screen.frame`.
 
 Fixtures: `default`, `locked`, `closed`.
 
-<a id="guide-components-199"></a>
-### `components §199` FlowChartScreen
+<a id="guide-components-218"></a>
+### `components §218` FlowChartScreen
 
 The story so far over the dimmed flow: a band with Back and the title, the chart of flow nodes (seen ones done, the one playing current, the rest locked), and the picked node on a plate lit in the accent, its words beside Play from here, which drops under them where the plate is narrow.
 
@@ -4694,8 +5080,8 @@ Fixtures: `default`, `unseen`, `none`.
 
 Actions: `pick` (Pick a node), `play` (Play from here), `back` (Back).
 
-<a id="guide-components-200"></a>
-### `components §200` FlowGalleryScreen
+<a id="guide-components-219"></a>
+### `components §219` FlowGalleryScreen
 
 An endings gallery: the endings reached and locked, with their thumbnails, the selected one shown, and Back. It reports onSelect with the ending's key.
 
@@ -4715,8 +5101,8 @@ Fixtures: `default`.
 
 Actions: `select` (Watch the ending again), `back` (Back).
 
-<a id="guide-components-201"></a>
-### `components §201` FlowPicture
+<a id="guide-components-220"></a>
+### `components §220` FlowPicture
 
 The footage filling the surface, cropped to cover it, over a deep shade (so a live scene under the flow shows only where the footage has none): the previous picture under it while a dissolve runs. FlowChoices' hotspot fractions land on it because it fills the same surface.
 
@@ -4733,8 +5119,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-202"></a>
-### `components §202` FlowScreen
+<a id="guide-components-221"></a>
+### `components §221` FlowScreen
 
 A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with its dissolve (a segment with no footage leaves the live scene showing), the captions its timelines say, and its choice window with hotspots and quick-time progress, each press passed to og.flow.choose. Read from og.flow.view each tick; nothing of it is world state.
 
@@ -4748,8 +5134,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-203"></a>
-### `components §203` GameOverScreen
+<a id="guide-components-222"></a>
+### `components §222` GameOverScreen
 
 Game over: the defeat's line, the run's score and the best, an optional revive offer with its price and the seconds it stays, and Retry, Checkpoint and Quit. The game decides the offer and what each choice costs.
 
@@ -4779,10 +5165,10 @@ Fixtures: `default`.
 
 Actions: `confirm` (Retry).
 
-<a id="guide-components-204"></a>
-### `components §204` HudEditorScreen
+<a id="guide-components-223"></a>
+### `components §223` HudEditorScreen
 
-The HUD editor's frame: a hint at the top until the player moves something, over the editor the caller supplies.
+The HUD editor's frame: a hint at the top until the player moves something, an interactive safe-area stage with pointer-draggable and keyboard-nudgeable HUD regions, an inspector dock for scale, opacity and visibility, and any custom editor content the caller supplies.
 
 `import { HudEditorScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/hud-editor.tsx`).
 
@@ -4790,16 +5176,38 @@ The HUD editor's frame: a hint at the top until the player moves something, over
 |---|---|---|
 | `class?` | `string \| undefined` | Classes after the screen's own (a placement, an inset): the root fills the layer it is mounted in by default. |
 | `showHint?` | `boolean` | The hint at the top shows (false once the player has moved something). |
+| `regions?` | `ReadonlyArray<HudRegion> \| undefined` | Editable HUD regions; when provided, renders interactive draggable boxes and an inspector dock. |
+| `selected?` | `string \| undefined` | Currently selected region id; omit to let the screen track selection locally. |
+| `safeMargin?` | `boolean \| undefined` | Draw the safe-area guide frame around the editable stage (default true when regions are given). |
+| `gridSize?` | `number \| undefined` | Snap step for dragging and keyboard nudging: values >= 1 snap in CSS px; values in (0, 1) snap in normalized fraction; 0 disables snapping. Default 0.025. |
+| `onSelect?` | `((e: UiEvent, id: string) => void) \| undefined` | Called when a region is selected (or cleared with ""). |
+| `onRegionChange?` | `((e: UiEvent, region: HudRegion) => void) \| undefined` | Called whenever a region is dragged, nudged, scaled, faded or toggled. |
+| `onReset?` | `((e: UiEvent) => void) \| undefined` | Called when the player presses Reset. |
+| `onDone?` | `((e: UiEvent) => void) \| undefined` | Called when the player presses Done or the `back` action. |
 | `editorEditor?` | `(() => JSX.Element) \| undefined` | Content the caller supplies (was the editorEditor snippet). |
+
+Each `HudRegion`:
+
+| Field | Type | What |
+|---|---|---|
+| `id` | `string` |  |
+| `label` | `string` | Human-readable name shown on the editable tile and in the inspector. |
+| `x` | `number` | Horizontal centre across the editable safe area, 0 to 1. |
+| `y` | `number` | Vertical centre across the editable safe area, 0 to 1. |
+| `width?` | `number \| undefined` | Optional width fraction of the safe area, 0 to 1. |
+| `height?` | `number \| undefined` | Optional height fraction of the safe area, 0 to 1. |
+| `scale?` | `number \| undefined` | Display scale factor (default 1, inspector range 0.5 to 1.5). |
+| `opacity?` | `number \| undefined` | Display opacity (default 1, inspector range 0.2 to 1). |
+| `hidden?` | `boolean \| undefined` | When true, the HUD element is hidden in gameplay and shown dimmed in the editor. |
 
 Pack slots: `Panel.frame`, `Screen.frame`.
 
-Fixtures: `default`.
+Fixtures: `default`, `regions`.
 
 Actions: `back` (Done).
 
-<a id="guide-components-205"></a>
-### `components §205` KeyValues
+<a id="guide-components-224"></a>
+### `components §224` KeyValues
 
 A table of key and value rows, each with an optional change (a stat comparison). Read only.
 
@@ -4813,8 +5221,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-206"></a>
-### `components §206` LeaderboardScreen
+<a id="guide-components-225"></a>
+### `components §225` LeaderboardScreen
 
 A leaderboard: global, friends and league tabs, the period, the top rows with the player's own marked, the player's row pinned, and the league's promotion and demotion lines. The game owns the rows.
 
@@ -4841,8 +5249,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Profile), `back` (Back), `tabNext` (Next tab), `tabPrev` (Previous tab).
 
-<a id="guide-components-207"></a>
-### `components §207` LoadingScreen
+<a id="guide-components-226"></a>
+### `components §226` LoadingScreen
 
 The key art fills the screen. At its foot, over a shade that grows with the words: where the player is going (an eyebrow and the place), the tip on a cut smoked-glass plate, and the progress as the HUD's leaning bar with a spinner and the figure; once ready, Continue (or nothing, when the game does not wait). A press anywhere asks for the next tip.
 
@@ -4868,8 +5276,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-208"></a>
-### `components §208` MainMenuScreen
+<a id="guide-components-227"></a>
+### `components §227` MainMenuScreen
 
 The main menu over the key art: the logo or the name as a wordmark, Continue with the last save's line when a save exists, New game, Modes, Settings, Credits and Quit, each drawn only when the game passes its handler, a news card (pressable with onNews) and the version. It resolves in the dark scheme in both schemes.
 
@@ -4901,8 +5309,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select).
 
-<a id="guide-components-209"></a>
-### `components §209` ModeSelectScreen
+<a id="guide-components-228"></a>
+### `components §228` ModeSelectScreen
 
 A mode select: the modes as cards with their line, tag and picture, a locked mode's reason, the selected one's detail, and Play. It reports onSelect and onPlay; the game decides what is locked.
 
@@ -4925,8 +5333,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Play), `back` (Back).
 
-<a id="guide-components-210"></a>
-### `components §210` NotificationsScreen
+<a id="guide-components-229"></a>
+### `components §229` NotificationsScreen
 
 The notification stack in the HUD's top-right corner. A notification is a glass plate with two corners cut, a rail down its leading edge and a wash from it in its tone, the tone's mark in an octagon socket, its title in small capitals of the tone and its body in white, and a quiet close. A toast is the compact form: its mark and its words on a plate that slides back out when it leaves. Each tone has its own hue (warn an amber well apart from gold). Under reduced motion they appear in place.
 
@@ -4945,8 +5353,8 @@ Fixtures: `default`.
 
 Actions: `dismiss` (Dismiss).
 
-<a id="guide-components-211"></a>
-### `components §211` ObjectiveTracker
+<a id="guide-components-230"></a>
+### `components §230` ObjectiveTracker
 
 The tracked objectives over the scene, with no plate: the quest in gold small capitals, then each objective with a gold diamond (filled once done, its words struck and dimmed) over a thin leaning bar in a dark well, cut into cells when the game counts its steps. The first not done is lit; on a phone only it is shown. Read only.
 
@@ -4961,8 +5369,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-212"></a>
-### `components §212` Pagination
+<a id="guide-components-231"></a>
+### `components §231` Pagination
 
 A row of cut keys, the current page lit.
 
@@ -4982,8 +5390,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous page), `next` (Next page), `page` (Go to page).
 
-<a id="guide-components-213"></a>
-### `components §213` PauseScreen
+<a id="guide-components-232"></a>
+### `components §232` PauseScreen
 
 The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, Quit to menu and Quit game, each drawn only when the game passes its handler, and the game's own rows among them, with the current objective and the time played beside it. Each reports its event.
 
@@ -5023,8 +5431,8 @@ Fixtures: `default`, `ownRows`.
 
 Actions: `confirm` (Select), `back` (Resume).
 
-<a id="guide-components-214"></a>
-### `components §214` ResultsScreen
+<a id="guide-components-233"></a>
+### `components §233` ResultsScreen
 
 After a match: the verdict set large in a lit fill (gold for a win, red for a loss) over the dimmed scene, a rule with a lit diamond, the level in an octagon beside the XP gained and the leaning progress bar, the grade on a hexagon, then the tabs. Summary shows each stat on a cut plate (a best in gold) and each reward as octagon art with its amount on a tag and its name under it. The page scrolls over the actions.
 
@@ -5056,8 +5464,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-215"></a>
-### `components §215` SaveLoadScreen
+<a id="guide-components-234"></a>
+### `components §234` SaveLoadScreen
 
 Saving or loading: the slots with their title, place, time played, date and thumbnail (autosaves marked, empty slots offered for a new save), the selected one's preview, and Save or Load and Delete. The game writes the saves.
 
@@ -5083,8 +5491,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `details` (Delete).
 
-<a id="guide-components-216"></a>
-### `components §216` SettingsScreen
+<a id="guide-components-235"></a>
+### `components §235` SettingsScreen
 
 Settings: a tab per page and its entries (toggles, ranges, choices and key bindings), Apply and Revert while changes wait, and Defaults. The game owns every value and writes back what the events report.
 
@@ -5113,8 +5521,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `tabNext` (Next page), `tabPrev` (Previous page).
 
-<a id="guide-components-217"></a>
-### `components §217` SplashScreen
+<a id="guide-components-236"></a>
+### `components §236` SplashScreen
 
 The boot splash: the studio marks one after another (a texture, or the name set as type), boot progress and what is loading, and Skip. The game moves through the marks.
 
@@ -5136,8 +5544,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Skip).
 
-<a id="guide-components-218"></a>
-### `components §218` StarRating
+<a id="guide-components-237"></a>
+### `components §237` StarRating
 
 A row of rating stars, each lit once it is earned. The style draws the stars as SVG glyphs (an outlined empty star, a gold one with a lit edge and a glow); the engine draws no vector shapes, so each is the atlas star icon, one tint lit and a dim one unearned, landing with the pop entrance (the style's land, without its overshoot) delayed by the star's index.
 
@@ -5152,8 +5560,8 @@ A row of rating stars, each lit once it is earned. The style draws the stars as 
 
 Fixtures: `default`, `none`, `large`, `all`.
 
-<a id="guide-components-219"></a>
-### `components §219` Subtitles
+<a id="guide-components-238"></a>
+### `components §238` Subtitles
 
 The latest lines at the foot of the screen, centred in HUD type over a soft dark band: the speaker in gold small capitals over the words in white. An older line steps back, smaller. Nothing shows without a line.
 
@@ -5168,8 +5576,8 @@ Pack slots: `Plate.frame`, `Screen.frame`.
 
 Fixtures: `default`, `captions`.
 
-<a id="guide-components-220"></a>
-### `components §220` Table
+<a id="guide-components-239"></a>
+### `components §239` Table
 
 A HUD plate of plain rows: the first column a name, the others figures.
 
@@ -5188,8 +5596,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open row).
 
-<a id="guide-components-221"></a>
-### `components §221` TitleScreen
+<a id="guide-components-240"></a>
+### `components §240` TitleScreen
 
 The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen) when the game passes onStart, the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
 
@@ -5212,8 +5620,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Start).
 
-<a id="guide-components-222"></a>
-### `components §222` Tree
+<a id="guide-components-241"></a>
+### `components §241` Tree
 
 A HUD plate of rows, each indented by its depth with a faint guide down from its parent; the chosen row is washed in the accent from its leading edge. A leaf has no twisty and keeps its room, so its name lines up with its siblings' that open. A name longer than its row wraps inside it, at any word.
 
@@ -5232,8 +5640,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `toggle` (Open or close), `choose` (Select).
 
-<a id="guide-components-223"></a>
-### `components §223` TutorialScreen
+<a id="guide-components-242"></a>
+### `components §242` TutorialScreen
 
 A tutorial step: a card with the step's title, what to do, its art and the step count, and Next (hidden while the step waits for the player) and Skip. Given a target that shows, the screen dims around that element, which keeps its own presses, and the card stands under it; else (no target, or one not on screen) nothing dims and the card stands where the game puts it.
 

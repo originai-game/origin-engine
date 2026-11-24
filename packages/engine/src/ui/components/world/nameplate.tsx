@@ -54,12 +54,12 @@ export interface NameplateProps {
  * cast row (the spell and its time over a thin bar), all on a HUD plate
  * (compact, the bar alone, has none). Read only; the game
  * owns every figure and state. The old style's lean (skewX), the wings'
- * and the target brackets' clip-path arrows, the interrupted cast's hatch
- * and the anchor's max distance have no TSX surface and are dropped; it
- * stacks over the plates it overlaps and fades behind drawn geometry
- * (the anchor's declutter and occlusion); the quarters are drawn as
- * three notch marks, the plate does not scale when targeted, and the
- * plate's room cap (a viewport measure) stands as max-w-full.
+ * and the target brackets' clip-path arrows, and the interrupted cast's hatch
+ * have no TSX surface and are dropped; it stacks over the plates it overlaps,
+ * fades behind drawn geometry, and hides past `maxDistance` (the anchor's
+ * declutter, occlusion and maxDistance); the quarters are drawn as three notch
+ * marks, the plate does not scale when targeted, and the plate's room cap (a
+ * viewport measure) stands as max-w-full.
  */
 export function Nameplate(props: NameplateProps) {
   const reaction = () => ((props.reaction ?? "") == "" ? "neutral" : (props.reaction ?? ""));
@@ -81,6 +81,7 @@ export function Nameplate(props: NameplateProps) {
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       occlusion="fade"
+      maxDistance={props.maxDistance}
       class={`group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full text-fg leading-tight ${props.compact ? "" : `py-1 px-2 nine-plate-cut bg-glass ${packClass("Plate", "frame")}`}`}
       label={props.name}
       data-boss={props.boss}
