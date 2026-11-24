@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, packClass } from "@origingame/engine/ui";
 
 export interface ActionButtonProps {
   /** The og-input action it feeds while a touch holds it (jump). */
@@ -25,7 +25,7 @@ export interface ActionButtonProps {
 export function ActionButton(props: ActionButtonProps) {
   return (
     <View
-      class={`flex-row items-center justify-center gap-1 relative group/disc rounded-capsule border-regular border-rim-strong bg-raised-hi text-fg shadow-float disabled:opacity-dim duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent data-primary:text-accent-fg size-16`}
+      class={`flex-row items-center justify-center gap-1 relative group/disc ${packClass("Touch", "button")} ${props.primary ? packClass("Touch", "button", "primary") : ""}`}
       touchButton={props.action}
       data-primary={props.primary}
       disabled={props.disabled}
@@ -34,12 +34,12 @@ export function ActionButton(props: ActionButtonProps) {
     >
       <View class="size-full flex-row items-center justify-center absolute inset-0 bg-linear-to-b from-lit to-shade group-data-primary/disc:from-sheen group-data-primary/disc:to-shade rounded-capsule" />
       <Show when={(props.charge ?? -1) >= 0}>
-        <View class="absolute inset-0 nine-ring bg-gold" wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} data-charged={(props.charge ?? 0) >= 1} />
+        <View class={`absolute inset-0 ${packClass("Touch", "charge")} ${(props.charge ?? 0) >= 1 && !props.disabled ? packClass("Touch", "charge", "ready") : ""}`} wipe={Math.min(Math.max(props.charge ?? 0, 0), 1)} />
       </Show>
       <Show when={props.icon} fallback={
         <Text class="text-sm whitespace-nowrap">{props.label}</Text>
       }>
-        <Icon class="size-8" name={props.icon} />
+        <Icon class={packClass("Touch", "icon")} name={props.icon} />
       </Show>
     </View>
   );

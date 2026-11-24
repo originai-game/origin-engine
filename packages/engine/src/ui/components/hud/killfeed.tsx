@@ -45,7 +45,7 @@ export function Killfeed(props: KillfeedProps) {
             <Text class={`shrink min-w-0 py-0.75 whitespace-nowrap truncate ${packClass("Feed", "name")} text-ally-ink data-enemy:text-foe-ink data-self-ally:text-hud-accent-ink`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
               {r().killer}
             </Text>
-            <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted text-shadow-tag`}>{r().weapon ?? ""}</Text>
+            <Text class={`shrink-[4] min-w-0 whitespace-nowrap truncate ${packClass("Feed", "weapon")}`}>{r().weapon ?? ""}</Text>
             <Text class={`shrink min-w-0 py-0.75 whitespace-nowrap truncate ${packClass("Feed", "name")} text-foe-ink data-ally:text-ally-ink data-self-ally:text-hud-accent-ink`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
               {r().victim}
             </Text>

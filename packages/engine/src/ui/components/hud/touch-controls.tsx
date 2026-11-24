@@ -1,4 +1,4 @@
-import { For, Show, View, t } from "@origingame/engine/ui";
+import { For, Show, View, packClass, t } from "@origingame/engine/ui";
 import { ActionButton } from "./action-button";
 import "./touch-controls.en.ogt";
 
@@ -51,7 +51,7 @@ const ENGINE_DEAD_ZONE = 0.15;
 function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
   return (
     <View
-      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:bg-tile-pressed disabled:opacity-dim"
+      class={`relative shrink-0 ${packClass("Touch", "base")}`}
       role="slider"
       label={props.label}
       valueMin={-1}
@@ -61,7 +61,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
       touchStick={props.action}
       deadZone={props.deadZone}
     >
-      <View knob class="absolute size-2/5 rounded-full nine-disc bg-stick shadow-float -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2" />
+      <View knob class={`absolute -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${packClass("Touch", "knob")}`} />
     </View>
   );
 }
@@ -77,7 +77,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
 function Pad(props: { action: string; disabled: boolean; label: string }) {
   const arm = "absolute inset-0 nine-cross-arm bg-transparent";
   return (
-    <View class="group/pad relative size-40 compact:size-28 nine-cross bg-tile active:scale-97 disabled:opacity-dim" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
+    <View class={`group/pad relative shrink-0 nine-cross ${packClass("Touch", "pad")}`} role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
       <View class={`${arm} group-data-dir-up/pad:bg-accent`} />
       <View class={`${arm} rotate-90 group-data-dir-right/pad:bg-accent`} />
       <View class={`${arm} rotate-180 group-data-dir-down/pad:bg-accent`} />
@@ -98,7 +98,7 @@ export function TouchControls(props: TouchControlsProps) {
   const actions = () => props.actions ?? [];
   return (
     <View
-      class={`flex-row items-end justify-between gap-6 w-full p-4 compact:gap-4 compact:p-3 ${props.always ? "flex" : "hidden pointer-coarse:flex"}`}
+      class={`flex-row items-end justify-between w-full ${packClass("Touch", "bar")} ${props.always ? "flex" : "hidden pointer-coarse:flex"}`}
       role="group"
       label={t("component.touch-controls.name")}
     >
@@ -111,7 +111,7 @@ export function TouchControls(props: TouchControlsProps) {
       </Show>
       <View class="flex-row items-end justify-end gap-4 min-w-0">
         <Show when={actions().length > 0}>
-          <View class="flex-row-reverse flex-wrap-reverse content-end justify-end gap-3 min-w-0" style={{ maxWidth: "min(100%, 14rem)" }}>
+          <View class={`flex-row-reverse flex-wrap-reverse content-end justify-end min-w-0 ${packClass("Touch", "actions")}`}>
             <For each={actions()} key={(a) => a.id}>
               {(a) => (
                 <ActionButton

@@ -1,4 +1,4 @@
-import { Text, formatCompact, formatNumber } from "@origingame/engine/ui";
+import { Text, formatCompact, formatNumber, packClass } from "@origingame/engine/ui";
 
 export interface CounterProps {
   /** The number it shows. */
@@ -26,5 +26,5 @@ export function Counter(props: CounterProps) {
     if (props.format === "compact") return formatCompact(v);
     return formatNumber(v, { decimals: props.decimals ?? 0 });
   };
-  return <Text class={`tabular-nums ${props.class ?? ""}`}>{text()}</Text>;
+  return <Text class={`${packClass("Counter", "value")} ${props.class ?? ""}`}>{text()}</Text>;
 }

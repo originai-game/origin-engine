@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Spinner } from "./spinner";
 import "./pips.en.ogt";
 
@@ -15,7 +15,15 @@ export interface PipsProps {
   disabled?: boolean;
   /** The full units' colour: empty is the style's pip colour (a life's red); success, warn, danger, info or primary names another. */
   tone?: string;
+  class?: string;
 }
+
+const FILL: Record<string, string> = {
+  success: packClass("Pips", "fill", "success"),
+  warn: packClass("Pips", "fill", "warn"),
+  info: packClass("Pips", "fill", "info"),
+  primary: packClass("Pips", "fill", "primary"),
+};
 
 /**
  * A counted resource on one line: its name, then one icon per unit. An
@@ -25,8 +33,8 @@ export interface PipsProps {
  */
 export function Pips(props: PipsProps) {
   return (
-    <View class={`group/pips flex-row flex-wrap items-center text-fg max-w-full p-0 gap-2 disabled:text-fg-subtle`} role="group" label={props.label || t("base.pips.resource")} busy={(props.loading ?? false)} aria-disabled={(props.disabled ?? false)} data-off={(props.disabled ?? false)}>
-      <View class={`text-caption text-fg-muted shrink`}>
+    <View class={`group/pips flex-row flex-wrap items-center text-fg max-w-full p-0 gap-2 disabled:text-fg-subtle ${props.class ?? ""}`} role="group" label={props.label || t("base.pips.resource")} busy={(props.loading ?? false)} aria-disabled={(props.disabled ?? false)} data-off={(props.disabled ?? false)}>
+      <View class={`shrink ${packClass("Pips", "label")}`}>
         <Text>{props.label || t("base.pips.resource")}</Text>
       </View>
       <Show when={(props.loading ?? false)} fallback={
@@ -36,13 +44,13 @@ export function Pips(props: PipsProps) {
                 <Text>{t("base.pips.empty")}</Text>
               </View>
           }>
-            <View class={`flex-row flex-wrap items-center gap-0.5 shrink`}>
+            <View class={`flex-row flex-wrap items-center shrink ${packClass("Pips", "units")}`}>
               <For each={props.items ?? []}>
                 {(item) => (
-                <View class={`size-6 shrink`} role="meter" label={item().label || props.label || t("base.pips.resource")} valueMin={0} valueMax={1} valueNow={item().value < 0 ? 0 : item().value > 1 ? 1 : item().value} valueText={`${formatNumber((item().value < 0 ? 0 : item().value > 1 ? 1 : item().value) * 100, { decimals: 0 })}%`}>
-                  <Icon class={`absolute text-fg-subtle inset-0 size-full`} name={(props.icon ?? "heart")} />
-                  <View class="absolute inset-y-0 left-0 overflow-hidden transition-layout duration-base" style={{ width: `${Math.min(Math.max(item().value, 0), 1) * 100}%` }}>
-                    <Icon class={`text-danger size-6 group-data-off/pips:text-fg-muted`} name={(props.icon ?? "heart")} />
+                <View class={`shrink ${packClass("Pips", "pip")}`} role="meter" label={item().label || props.label || t("base.pips.resource")} valueMin={0} valueMax={1} valueNow={item().value < 0 ? 0 : item().value > 1 ? 1 : item().value} valueText={`${formatNumber((item().value < 0 ? 0 : item().value > 1 ? 1 : item().value) * 100, { decimals: 0 })}%`}>
+                  <Icon class={`absolute inset-0 size-full`} name={(props.icon ?? "heart")} />
+                  <View class={`absolute inset-y-0 left-0 overflow-hidden ${FILL[props.tone ?? ""] ?? packClass("Pips", "fill")}`} style={{ width: `${Math.min(Math.max(item().value, 0), 1) * 100}%` }}>
+                    <Icon class={`aspect-square h-full group-data-off/pips:text-fg-muted`} name={(props.icon ?? "heart")} />
                   </View>
                 </View>
                 )}

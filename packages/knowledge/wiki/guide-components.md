@@ -506,6 +506,9 @@ A counted resource on one line: its name, then one icon per unit. An empty unit 
 | `loading?` | `boolean` | Waiting for resource data; units are replaced by Loading. Default false. |
 | `disabled?` | `boolean` | The resource is unavailable; its values remain readable. Default false. |
 | `tone?` | `string` | The full units' colour: empty is the style's pip colour (a life's red); success, warn, danger, info or primary names another. |
+| `class?` | `string` |  |
+
+Pack slots: `Pips.fill`, `Pips.fill.info`, `Pips.fill.primary`, `Pips.fill.success`, `Pips.fill.warn`, `Pips.label`, `Pips.pip`, `Pips.units`.
 
 A piece of a panel: drawn on a panel's ground.
 
@@ -781,6 +784,8 @@ A touch disc: an action a finger holds, the primary one larger, an optional char
 | `primary?` | `boolean` | The main action: the primary fill and a larger disc. |
 | `charge?` | `number` | A charge round its rim, 0 to 1 (an ultimate); negative is none. Default -1. |
 | `disabled?` | `boolean` | It feeds nothing and shows faded. |
+
+Pack slots: `Touch.button`, `Touch.button.primary`, `Touch.charge`, `Touch.charge.ready`, `Touch.icon`.
 
 Fixtures: `default`.
 
@@ -1193,7 +1198,7 @@ Each `KillfeedRow`:
 | `self?` | `boolean` | The player took part (the row's edge is lit and the player's name takes the HUD's accent). |
 | `team?` | `string` | Ally or enemy, the killer's side (the victim takes the other). |
 
-Pack slots: `Chip.frame`, `Feed.name`, `Feed.row`, `Plate.frame`.
+Pack slots: `Chip.frame`, `Feed.name`, `Feed.row`, `Feed.weapon`, `Plate.frame`.
 
 Fixtures: `default`, `words`, `long`.
 
@@ -1601,6 +1606,8 @@ Each `TouchAction`:
 | `primary?` | `boolean` |  |
 | `charge?` | `number` | A charge round its rim, 0 to 1; negative is none. Default -1. |
 | `disabled?` | `boolean` |  |
+
+Pack slots: `Touch.actions`, `Touch.bar`, `Touch.base`, `Touch.knob`, `Touch.pad`.
 
 Fixtures: `default`, `pad`, `twin`, `many`, `disabled`.
 
@@ -4240,6 +4247,8 @@ A number that counts to its value as it changes. The count itself is the motion 
 | `from?` | `number \| string \| undefined` | Where its first count starts (a score counting up as its screen opens); the count is the motion head's. |
 | `duration?` | `number \| string \| undefined` | How long a count takes, in ms; the motion head's. |
 | `class?` | `string \| undefined` |  |
+
+Pack slots: `Counter.value`.
 
 <a id="guide-components-181"></a>
 ### `components §181` Dialog

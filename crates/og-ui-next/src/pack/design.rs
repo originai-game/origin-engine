@@ -1056,6 +1056,11 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "text-sm font-semibold text-shadow-tag",
     ),
     (
+        "Feed.weapon",
+        "the weapon between a feed row's names; it gives way before the names do",
+        "text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-tag",
+    ),
+    (
         "Feed.plate",
         "a pickup feed's plate",
         "gap-y-1 p-2 rounded-block border border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate",
@@ -1069,6 +1074,81 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Celebrate.halo",
         "the ring of light behind a level-up",
         "size-66 compact:size-23.75 rounded-full border-thick border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-glass animate-stamp",
+    ),
+    (
+        "Touch.base",
+        "a touch stick's ring, the stick zone's box",
+        "size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate opacity-soft active:opacity-100 active:bg-tile-pressed disabled:opacity-dim",
+    ),
+    (
+        "Touch.knob",
+        "a touch stick's knob, following the thumb",
+        "size-2/5 rounded-full nine-disc bg-stick shadow-float",
+    ),
+    (
+        "Touch.pad",
+        "a touch d-pad's cross, the d-pad zone's box",
+        "size-40 compact:size-28 bg-tile active:scale-press disabled:opacity-dim",
+    ),
+    (
+        "Touch.button",
+        "a touch action button",
+        "size-16 rounded-capsule border-regular border-rim-strong bg-raised-hi text-fg shadow-float transition duration-fast active:scale-press disabled:opacity-dim",
+    ),
+    (
+        "Touch.button.primary",
+        "the main touch action (attack, fire, jump): larger, in the accent",
+        "size-20 border-transparent bg-accent text-accent-fg",
+    ),
+    (
+        "Touch.charge",
+        "a touch action's charge, filling round its rim clockwise from the top",
+        "nine-ring bg-gold",
+    ),
+    (
+        "Touch.charge.ready",
+        "a touch action's charge when it is full: lit and breathing",
+        "shadow-glow shadow-gold animate-breathe rounded-full",
+    ),
+    (
+        "Touch.actions",
+        "the touch action cluster: its gap and how wide it wraps",
+        "gap-3 max-w-56",
+    ),
+    (
+        "Touch.bar",
+        "the touch controls' row: its padding and the gap between zones",
+        "gap-6 p-4 compact:gap-4 compact:p-3",
+    ),
+    ("Touch.icon", "a touch action's glyph", "size-8"),
+    (
+        "Pips.units",
+        "a pips row's units: the gap between them",
+        "gap-0.5",
+    ),
+    (
+        "Pips.pip",
+        "one pip's box and its empty socket's ink",
+        "size-6 text-fg-subtle",
+    ),
+    (
+        "Pips.fill",
+        "a pip's filled part: its ink, a life's red unless a tone names another",
+        "text-danger transition-layout duration-base",
+    ),
+    ("Pips.fill.success", "a success-toned pip", "text-success"),
+    ("Pips.fill.warn", "a warn-toned pip", "text-warn"),
+    ("Pips.fill.info", "an info-toned pip", "text-info"),
+    ("Pips.fill.primary", "a primary-toned pip", "text-accent"),
+    (
+        "Pips.label",
+        "a pips row's name",
+        "text-caption text-fg-muted",
+    ),
+    (
+        "Counter.value",
+        "a counter's number: tabular so a count does not jitter",
+        "tabular-nums",
     ),
     (
         "Hero.frame",

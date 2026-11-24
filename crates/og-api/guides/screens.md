@@ -73,6 +73,47 @@ Nothing is installed or copied to use them.
   used the same way and dressed by styles through its parts like the
   built-in ones.
 
+### A weapon level from Pips, Counter and Bar
+
+The engine has no weapon level: it is a game's rule, so a game composes it
+from three themeable parts. Pips counts the level (one bolt a level, in a
+tone), Counter writes it and HudBar times the power-up that holds it. Each
+reads its pack slots (`Pips.pip`, `Pips.fill`, `Counter.value`, `Bar.*`),
+so a theme dresses the composition with no code; `class` restyles one use.
+
+```ts recipe ticks=10
+import { og } from "@origingame/engine";
+import type { World } from "@origingame/engine";
+import { Text, View, mount } from "@origingame/engine/ui";
+import { Counter, HudBar, Pips } from "@origingame/engine/ui/components";
+
+const MAX = 5;
+
+function WeaponLevel(p: { level: number; timer: number }) {
+  const items = Array.from({ length: MAX }, (_, i) => ({ id: `lv${i}`, value: i < p.level ? 1 : 0 }));
+  og.assert.always(items.filter((u) => u.value === 1).length === p.level, "one lit bolt a level", { level: p.level });
+  return View({
+    class: "flex-col gap-1 w-40",
+    children: [
+      View({
+        class: "flex-row items-center gap-2",
+        children: [
+          Pips({ label: "Power", icon: "bolt", tone: "warn", items }),
+          Text({ class: "text-title", children: ["P", Counter({ value: p.level })] }),
+        ],
+      }),
+      HudBar({ value: p.timer, kind: "stamina", name: "Power-up time" }),
+    ],
+  });
+}
+
+export default og.game({
+  start(world: World) {
+    mount(world, WeaponLevel, { level: 3, timer: 0.6 }, { layer: "hud" });
+  },
+});
+```
+
 Change the look in the style (§3), never in a component: no literal
 colours, spacing, font paths or durations in a document's `<style>`.
 Structural ratios and data values are not visual tokens. Use the core
