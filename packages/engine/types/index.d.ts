@@ -2906,7 +2906,7 @@ export interface Rng {
 }
 
 // ── procgen ─────────────────────────────────────────────────────
-// Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire.
+// Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP dungeons, wave function collapse, eroded heightmaps, plants and Voronoi mesh fracture. Bulk buffers are TypedArrays.
 // Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
 // See `world §7`.
 
@@ -37781,7 +37781,7 @@ export declare namespace og {
    */
   const Rng: ResourceType<{ readonly seed: FieldSpec<"u32">; readonly state: FieldSpec<"u32"> }, Rng>;
   /**
-   * Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire.
+   * Procedural generation: deterministic noise and FBM, Poisson-disk sampling, BSP dungeons, wave function collapse, eroded heightmaps, plants and Voronoi mesh fracture. Bulk buffers are TypedArrays.
    * Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
    * See `world §7`.
    */
