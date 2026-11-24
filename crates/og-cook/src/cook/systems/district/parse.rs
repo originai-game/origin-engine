@@ -445,6 +445,8 @@ pub(crate) struct Material {
     pub weight: f64,
     /// The metres one texture covers, across and up.
     pub tile: [f64; 2],
+    /// Keep the raw metric v for ground-up aging, not a map's repeat and phase.
+    pub metric_height: bool,
     /// Each building's own brightness and warmth, up to these either way.
     pub value: f64,
     pub warmth: f64,
@@ -571,6 +573,11 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             labels,
             weight,
             tile,
+            metric_height: b
+                .get("grime")
+                .map(one)
+                .transpose()?
+                .is_some_and(|x| x > 0.0),
             value,
             warmth,
             brief,

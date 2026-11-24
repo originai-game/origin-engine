@@ -66,6 +66,11 @@ pub(crate) fn material(
     );
     set!(paintDetail, num("paintDetail", t.paint_detail));
     set!(weathering, num("weathering", t.weathering));
+    set!(grime, num("grime", t.grime));
+    set!(grimeColor, rgb("grimeColor", &t.grime_color));
+    set!(grimeHeight, num("grimeHeight", t.grime_height));
+    set!(stains, num("stains", t.stains));
+    set!(stochastic, num("stochastic", t.stochastic));
     set!(wireframeAngle, num("wireframeAngle", t.wireframe_angle));
     set!(wireframeColor, rgb("wireframeColor", &t.wireframe_color));
     // Patch within foliage too: only the members it names.

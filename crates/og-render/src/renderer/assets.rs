@@ -579,7 +579,7 @@ impl Renderer {
                 .get(i)
                 .filter(|m| m.shader == hooked.map(|h| h.0.index()))
                 .and_then(|m| m.params);
-            let (bind_group, array, factors) =
+            let (bind_group, array, factors, stochastic) =
                 self.material_bind_group(i, material, hooked.map(|h| h.1), previous_params)?;
             if previous_params.is_some_and(|p| Some(p) != hooked.map(|h| h.1)) {
                 params_moved.push(i as u32);
@@ -604,7 +604,7 @@ impl Renderer {
                     );
                     self.cache.physical_shaders.insert(sh.index(), module);
                 }
-                Some(self.physical_bind_group(i, material, &factors)?)
+                Some(self.physical_bind_group(i, material, &factors, &stochastic)?)
             } else {
                 None
             };
@@ -658,6 +658,7 @@ impl Renderer {
                     && gpu.physical.is_none()
                     && !gpu.effects
                     && !gpu.outline
+                    && !(material.grime > 0.0 && material.grimeHeight > 0.0)
                     && !(scene.look.stylise.material.surface_on()
                         && material.unlit == 0
                         && material.styled != 0)

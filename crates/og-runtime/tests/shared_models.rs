@@ -138,8 +138,13 @@ fn copies_of_a_model_share_their_mesh_but_not_their_materials() {
         s[0].2.color
     };
 
-    // Recolour model a's material: model b keeps its colour.
-    let red = json!({ "color": { "r": 1, "g": 0, "b": 0 } }).to_string();
+    // Recolour and age model a's material: model b keeps its surface.
+    let red = json!({
+        "color": { "r": 1, "g": 0, "b": 0 },
+        "grime": 0.65, "grimeColor": { "r": 0.12, "g": 0.08, "b": 0.02 },
+        "grimeHeight": 2.5, "stains": 0.4, "stochastic": 0.7
+    })
+    .to_string();
     value(og_runtime::host_impl::answer(og_render_update_material(
         engine,
         materials[0].as_f64().unwrap(),
@@ -151,4 +156,27 @@ fn copies_of_a_model_share_their_mesh_but_not_their_materials() {
     let mut want = [[1.0, 0.0, 0.0], before.to_array()];
     want.sort_by(|x, y| x.partial_cmp(y).unwrap());
     assert_eq!(colours, want, "one copy recoloured, the other as it was");
+    // A later partial update must keep every aging field, not reset them
+    // to their constructor defaults; both hosts use this wire path.
+    value(og_runtime::host_impl::answer(og_render_update_material(
+        engine,
+        materials[0].as_f64().unwrap(),
+        Some(json!({ "roughness": 0.8 }).to_string()),
+    )));
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let seen = seen.borrow();
+    for (_, _, m) in seen.iter() {
+        if m.color.x == 1.0 {
+            assert_eq!(m.grime, 0.65);
+            assert_eq!(m.grimeColor.to_array(), [0.12, 0.08, 0.02]);
+            assert_eq!(m.grimeHeight, 2.5);
+            assert_eq!(m.stains, 0.4);
+            assert_eq!(m.stochastic, 0.7);
+            assert_eq!(m.roughness, 0.8);
+        } else {
+            assert_eq!(m.grime, 0.0);
+            assert_eq!(m.stains, 0.0);
+            assert_eq!(m.stochastic, 0.0);
+        }
+    }
 }

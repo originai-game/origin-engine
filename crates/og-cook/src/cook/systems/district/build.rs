@@ -105,10 +105,19 @@ impl<'a> Library<'a> {
             [value * (1.0 + warmth), value, value * (1.0 - warmth)].map(|c| c.max(0.0) as f32);
         Ok(Look {
             material: m.name.clone(),
-            tile: DVec2::new(m.tile[0], m.tile[1]),
+            tile: DVec2::new(m.tile[0], if m.metric_height { 1.0 } else { m.tile[1] }),
             // Grammar v is negative height: a facade's bottom row is
             // at ground level (v=1), never slid to a random storey.
-            phase: DVec2::new(d.unit(), if m.facade { 1.0 } else { d.unit() }),
+            phase: DVec2::new(
+                d.unit(),
+                if m.metric_height {
+                    0.0
+                } else if m.facade {
+                    1.0
+                } else {
+                    d.unit()
+                },
+            ),
             color: [color[0], color[1], color[2], 1.0],
         })
     }

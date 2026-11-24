@@ -388,7 +388,8 @@ fn fs_volume_exit(in: PhysicalOut) -> @location(0) vec4<u32> {
   hook.eye = frame.view_pos.xyz;
   hook.front = -1.0;
   hook.wind = frame.foliage_wind[0][0];
-  let base = surface_color(hook, shader_params(), look_tint(material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, uv)) * in.color, in.look));
+  let at = material_uv(UV_MAP, uv);
+  let base = surface_color(hook, shader_params(), look_tint(material.base_color * base_texel(at, dpdxFine(at), dpdyFine(at)) * in.color, in.look));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || (EFFECTS && dissolve_at(uv, in.local_pos).w > 0.5) || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) { discard; }
   var n = normalize(in.normal);
   if ((u32(material.flags.w) & 1u) != 0u) { n = -normalize(cross(dpdxFine(in.world_pos), dpdyFine(in.world_pos))); }
@@ -585,7 +586,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     base_at = iris_uv(uv, t, bt, n_vertex * face, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
   }
   let base_uv = material_uv(UV_MAP, base_at);
-  let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
+  let base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
@@ -639,7 +640,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let f0 = ior_to_f0(ior, 1.0);
   s.f0 = mix(vec3<f32>(f0), s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
-  let normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
+  let normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -651,6 +652,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
   n = decal_shading_normal(n, decal_normal, decal_coverage);
+  s = material_wear(s, in.uv, normalize(n_vertex * face), in.world_pos, length(fwidthFine(in.world_pos)));
   let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
@@ -873,7 +875,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   var color = diffuse + specular;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_direct;
+  let emissive_uv = material_uv(UV_EMISSIVE, uv);
+  color += surface_emissive(hook, params, material.emissive.rgb * stochastic_texel(emissive_tex, emissive_uv, dpdxFine(emissive_uv), dpdyFine(emissive_uv), 4u).rgb) * ao_direct;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {

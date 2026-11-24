@@ -83,10 +83,26 @@ pub(super) fn write(
             }
             fields.push(e);
         }
-        mats.push(
-            model_text::material(&m.name, &fields, &mut images, 0)
-                .map_err(|e| format!("material `{}`: {e}", m.name))?,
-        );
+        let mut material = model_text::material(&m.name, &fields, &mut images, 0)
+            .map_err(|e| format!("material `{}`: {e}", m.name))?;
+        if m.metric_height {
+            // All maps still tile together, while the surface's original v
+            // stays in metres for grime, across every split and merged building.
+            for path in [
+                "/pbrMetallicRoughness/baseColorTexture",
+                "/pbrMetallicRoughness/metallicRoughnessTexture",
+                "/normalTexture",
+                "/occlusionTexture",
+            ] {
+                if let Some(info) = material.pointer_mut(path) {
+                    info["extensions"] = serde_json::json!({ "KHR_texture_transform": {
+                        "scale": [1.0, 1.0 / m.tile[1]],
+                        "offset": [0.0, if m.facade { 1.0 } else { 0.0 }],
+                    }});
+                }
+            }
+        }
+        mats.push(material);
     }
     let index = |name: &str| {
         materials

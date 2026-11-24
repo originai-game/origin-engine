@@ -26,4 +26,4 @@ enum HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1724</sub>
+<sub>Module `render` line 1742</sub>

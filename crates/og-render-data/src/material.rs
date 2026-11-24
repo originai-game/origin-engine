@@ -103,7 +103,7 @@ impl UvTransform {
 /// metalness 0, roughness 1, opaque, front side.
 #[allow(non_snake_case)]
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.StandardMaterial", version = 11)]
+#[reflect(name = "og.StandardMaterial", version = 12)]
 pub struct StandardMaterial {
     /// The base colour (linear RGB), multiplied with `map` and vertex colours.
     #[reflect(default = [1.0, 1.0, 1.0], min = 0.0, tunable)]
@@ -365,6 +365,21 @@ pub struct StandardMaterial {
     /// 0 none.
     #[reflect(min = 0.0, max = 1.0, default = 1.0, tunable)]
     pub weathering: f32,
+    /// Ground-up dirt, with height -TEXCOORD_0.v in metres before map transforms.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub grime: f32,
+    /// The dirt's linear colour.
+    #[reflect(min = 0.0, default = [0.0, 0.0, 0.0], tunable)]
+    pub grimeColor: Vec3,
+    /// Where ground-up dirt fades out (metres); zero disables it.
+    #[reflect(min = 0.0, default = 0.0, tunable)]
+    pub grimeHeight: f32,
+    /// Dry run marks, independent of the simulated weather.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub stains: f32,
+    /// Randomized texture tiling, for unstructured stochastic surfaces.
+    #[reflect(min = 0.0, max = 1.0, default = 0.0, tunable)]
+    pub stochastic: f32,
     /// 1: drawn as the edges of its triangles, one CSS pixel wide, in the
     /// colour its surface shows along each edge (`color` times `map` and
     /// the vertex colours, plus `emissive` times `emissiveMap`) or
@@ -516,6 +531,11 @@ impl Default for StandardMaterial {
             normalMapLayer: 0,
             styled: 1,
             weathering: 1.0,
+            grime: 0.0,
+            grimeColor: Vec3::ZERO,
+            grimeHeight: 0.0,
+            stains: 0.0,
+            stochastic: 0.0,
             wireframe: 0,
             wireframeAngle: 0.0,
             wireframeColor: Vec3::ZERO,

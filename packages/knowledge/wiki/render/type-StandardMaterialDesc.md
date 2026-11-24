@@ -146,6 +146,18 @@ Every map samples TEXCOORD_0; a glTF transform's own texCoord (a second uv set) 
 | `wireframeAngle` | `number` | `0` | 0 … 180 | `deg` | — | With wireframe: only the mesh's feature edges, its open borders and the edges whose two faces meet at more than this angle (welded by position, so uv seams and split hard edges do not show): a box's 12 edges, nothing across a smooth sphere but where it ends. 0 is every triangle edge. |
 | `wireframeColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's. |
 
+#### Surface variation
+
+Authored surface aging, independent of the weather. Zero amounts leave the surface unchanged.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `grime` | `number` | `0` | 0 … 1 | — | — | Ground-up dirt cover. Its height is -TEXCOORD_0.v in metres before texture transforms: v=0 at the base, negative upwards, as district grammars emit it. |
+| `grimeColor` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | The linear colour of the dirt; black when omitted. |
+| `grimeHeight` | `number` | `0` | ≥ 0 | `m` | — | The height in metres at which ground-up dirt fades out. Zero disables grime. |
+| `stains` | `number` | `0` | 0 … 1 | — | — | Dry rain-run stains on vertical surfaces, fixed in world space, even with weathering 0 and no WeatherState. |
+| `stochastic` | `number` | `0` | 0 … 1 | — | — | Histogram-preserving randomized tiling strength for ordinary 2D maps (not mapArray or normalMapArray). Fades to ordinary mip sampling under minification. Keep it zero on structured facade modules, lettering and atlases. |
+
 #### Leaves, paint and weather
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -423,6 +435,24 @@ struct StandardMaterialDesc {
     unit deg
   }
   field wireframeColor Color "With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's."
+  group "Surface variation" "Authored surface aging, independent of the weather. Zero amounts leave the surface unchanged."
+  field grime f32 "Ground-up dirt cover. Its height is -TEXCOORD_0.v in metres before texture transforms: v=0 at the base, negative upwards, as district grammars emit it." {
+    min 0
+    max 1
+  }
+  field grimeColor Color "The linear colour of the dirt; black when omitted."
+  field grimeHeight f32 "The height in metres at which ground-up dirt fades out. Zero disables grime." {
+    min 0
+    unit m
+  }
+  field stains f32 "Dry rain-run stains on vertical surfaces, fixed in world space, even with weathering 0 and no WeatherState." {
+    min 0
+    max 1
+  }
+  field stochastic f32 "Histogram-preserving randomized tiling strength for ordinary 2D maps (not mapArray or normalMapArray). Fades to ordinary mip sampling under minification. Keep it zero on structured facade modules, lettering and atlases." {
+    min 0
+    max 1
+  }
   group "Leaves, paint and weather"
   field foliage FoliageDesc "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y."
   field paintDetail f32 "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering)." {

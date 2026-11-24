@@ -42,7 +42,7 @@ const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point
 fn a_district_cooks_into_streaming_cells_of_its_own_models() {
     let root = project("cells");
     write(&root, "grammars/house.ogt", GRAMMAR);
-    let library = LIBRARY.replace("  tile 1 1", "  tile 1 12\n  brief \"red brick facade\"\n  facade true\n  relief 0.03\n  normalMap \"textures/brick-n.png\"\n  roughnessRange 0.3 0.9\n  metalnessMap \"textures/brick-mr.png\"\n  occlusion 0.7 2\n  aoMap \"textures/brick-ao.png\"");
+    let library = LIBRARY.replace("  tile 1 1", "  tile 1 12\n  grime 0.7\n  grimeColor 0.08 0.05 0.02\n  grimeHeight 1.8\n  stains 0.3\n  stochastic 0.6\n  brief \"red brick facade\"\n  facade true\n  relief 0.03\n  normalMap \"textures/brick-n.png\"\n  roughnessRange 0.3 0.9\n  metalnessMap \"textures/brick-mr.png\"\n  occlusion 0.7 2\n  aoMap \"textures/brick-ao.png\"");
     write(&root, "materials/town.ogt", &library);
     write(&root, "models/lamp.ogt", LAMP);
     write(&root, "districts/town.ogt", DISTRICT);
@@ -112,11 +112,30 @@ fn a_district_cooks_into_streaming_cells_of_its_own_models() {
                     .map(|v| v.uv[1])
                     .fold(f32::NEG_INFINITY, f32::max);
                 assert!(
-                    (bottom - 1.0).abs() < 1e-6,
-                    "a facade's bottom image row starts at ground level, not a random vertical phase: {bottom}"
+                    bottom.abs() < 1e-6,
+                    "grime reads metric height before texture transforms: {bottom}"
+                );
+                // A 12 m facade still tiles at 12 m after the UV-preserving
+                // cook, while the raw v is height above each building's base.
+                let brick = &m.materials[p.material];
+                let t = brick.uv_transforms[0];
+                assert_eq!(t.apply([0.0, 0.0])[1], 1.0);
+                assert!((t.apply([0.0, -12.0])[1]).abs() < 1e-6);
+                let raw_top = p.vertices.iter().map(|v| v.uv[1]).fold(0.0, f32::min);
+                assert!(
+                    raw_top < -5.0,
+                    "height was baked into texture units: {raw_top}"
                 );
             }
             let brick = m.materials.iter().find(|m| m.name == "brick").unwrap();
+            assert_eq!(brick.grime, 0.7);
+            assert_eq!(brick.grime_color, [0.08, 0.05, 0.02]);
+            assert_eq!(brick.grime_height, 1.8);
+            assert_eq!(brick.stains, 0.3);
+            assert_eq!(brick.stochastic, 0.6);
+            for slot in [0, 1, 2, 4] {
+                assert_eq!(brick.uv_transforms[slot], brick.uv_transforms[0]);
+            }
             // Each slot must survive the district's asset-id rewriting
             // and packing, not just the ordinary model parser.
             let mut slots = std::collections::BTreeSet::new();

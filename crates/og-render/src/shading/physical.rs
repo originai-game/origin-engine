@@ -313,6 +313,7 @@ impl PhysicalPipelines {
                 tex2d(5),
                 texture_entry(6, true, wgpu::TextureViewDimension::D2Array),
                 uniform_entry(7, wgpu::ShaderStages::FRAGMENT),
+                uniform_entry(8, wgpu::ShaderStages::FRAGMENT),
             ],
         });
         let decals = crate::decals::decal_layout_entries();

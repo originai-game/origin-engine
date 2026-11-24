@@ -32,7 +32,23 @@ struct PhysicalFactors {
 // branch on an argument is not in uniform control flow.
 fn pack_sample(layer: f32, uv: vec2<f32>) -> vec4<f32> {
   let texel = textureSample(material_pack, material_sampler, uv, i32(max(layer, 0.0)));
-  return select(texel, vec4<f32>(1.0), layer < 0.0);
+  let gx = dpdxFine(uv);
+  let gy = dpdyFine(uv);
+  let amount = stochastic_amount(textureDimensions(material_pack), gx, gy);
+  if (layer < 0.0) { return vec4<f32>(1.0); }
+  if (amount <= 0.0) { return texel; }
+  let grid = stochastic_grid(uv);
+  let a = textureSampleGrad(material_pack, material_sampler, uv + grid.a, i32(layer), gx, gy);
+  let b = textureSampleGrad(material_pack, material_sampler, uv + grid.b, i32(layer), gx, gy);
+  let c = textureSampleGrad(material_pack, material_sampler, uv + grid.c, i32(layer), gx, gy);
+  var blended = a * grid.weights.x + b * grid.weights.y + c * grid.weights.z;
+  if (layer == physical.layers.x) {
+    blended.r = stochastic_channel(a.r, b.r, c.r, grid.weights, 1u, 2u);
+    blended.g = stochastic_channel(a.g, b.g, c.g, grid.weights, 2u, 1u);
+    blended.b = stochastic_channel(a.b, b.b, c.b, grid.weights, 5u, 0u);
+    blended.a = texel.a; // the independent dissolve mask is not randomized
+  }
+  return mix(texel, blended, amount);
 }
 
 // The dissolve noise: the map's red channel (the first layer's alpha), or
@@ -44,4 +60,3 @@ fn dissolve_noise(uv: vec2<f32>, local_pos: vec3<f32>) -> f32 {
   let p = local_pos * material.dissolve.w;
   return 0.6 * value_noise3(p, 17u) + 0.4 * value_noise3(p * 2.7 + vec3<f32>(5.2, 1.3, 7.7), 91u);
 }
-

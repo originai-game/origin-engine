@@ -324,7 +324,41 @@ distinct PNG under `assets/`, and the tool does not follow asset symlinks.
 does not call an image model or replace this surface-image workflow.
 
 <a id="guide-districts-5"></a>
-### `districts §5` Pitfalls
+### `districts §5` Aging and tiling
+
+Keep the library's per-building colour and phase variation for differences
+between neighbours. For aging within a wall, add the authored surface
+fields to its material:
+
+```text
+  grime 0.4
+  grimeColor 0.07 0.05 0.025
+  grimeHeight 1.5
+  stains 0.3
+```
+
+Grime starts at each building's base, even when buildings merge in one
+cell. A library's tile height changes the image repeat, not the dirt's
+height. All its PBR maps keep the same transform. Dry stains stay fixed
+in world space with no weather simulation; simulated wet streaks remain
+separate and continue to follow the weather. Neither generates a texture.
+On a manually made model, provide metric UVs (v = negative height from the
+base) before map transforms if it needs ground-up grime.
+
+For unstructured plaster, gravel or mottled stone, `stochastic 1` breaks
+up ordinary 2D texture repetition using shared, unrotated patch offsets.
+Use matching map transforms and resolutions to keep the PBR maps aligned.
+Leave this off on bricks whose courses must line up, facade modules,
+windows, text, atlases and deliberately placed damage: random patches
+cannot preserve their structure. Array maps are not randomized. The
+histogram transforms are made once when the material's maps change, not
+each frame; no image model runs. The transform uses 12 KiB per randomized
+material, without another image copy. Under minification it fades back to
+ordinary filtered mip sampling to avoid shifting the distant colour
+distribution; this is not a guarantee of repetition-free distant walls.
+
+<a id="guide-districts-6"></a>
+### `districts §6` Pitfalls
 
 - A label no material covers fails the cook, naming the label and the
   grammar; a typo in a grammar's `label` is the usual cause.

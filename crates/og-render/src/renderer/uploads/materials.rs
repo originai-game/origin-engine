@@ -5,7 +5,7 @@ use super::*;
 impl Renderer {
     /// A material's standard group, its array-map group when it draws with
     /// array maps (made by the caller's [`material::ArrayMaps`]), and its
-    /// uniform buffer.
+    /// uniform buffer and the stochastic lookup shared with the physical pass.
     #[allow(clippy::type_complexity)]
     pub(crate) fn material_bind_group(
         &self,
@@ -13,7 +13,15 @@ impl Renderer {
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
         previous: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    ) -> Result<(wgpu::BindGroup, Option<wgpu::BindGroup>, wgpu::Buffer), RenderError> {
+    ) -> Result<
+        (
+            wgpu::BindGroup,
+            Option<wgpu::BindGroup>,
+            wgpu::Buffer,
+            wgpu::Buffer,
+        ),
+        RenderError,
+    > {
         let [
             map,
             metalness,
@@ -51,6 +59,22 @@ impl Renderer {
         let dissolve = view(dissolve, &self.default_white)?;
         let two_channel = normal_gpu.is_some_and(|g| g.format.two_channel());
         let mut uniform: MaterialUniform = material::uniform(m, two_channel);
+        let stochastic = self
+            .cache
+            .stochastic
+            .get_or_init(|| crate::shading::stochastic::Prepare::new(&self.device))
+            .lookup(
+                &self.device,
+                &self.queue,
+                (m.stochastic > 0.0 && !m.draws_array_maps()).then_some([
+                    &base,
+                    &metal,
+                    &rough,
+                    &normal_view,
+                    &emissive,
+                    &ao,
+                ]),
+            );
         if let Some(c) = custom {
             uniform.custom = c;
             // The parameters the frames before drew, read in this frame
@@ -125,6 +149,7 @@ impl Renderer {
             wgpu::BindingResource::Sampler(&self.material_sampler),
             wgpu::BindingResource::TextureView(&gradient),
             wgpu::BindingResource::TextureView(&dissolve),
+            stochastic.as_entire_binding(),
         ];
         let group = bind_group(&self.device, "material", &self.material_layout, &entries);
         let array = arrays.map(|(a, base, normal)| {
@@ -133,7 +158,7 @@ impl Renderer {
             entries[4] = wgpu::BindingResource::TextureView(&normal);
             bind_group(&self.device, "material (array maps)", &a.layout, &entries)
         });
-        Ok((group, array, factors))
+        Ok((group, array, factors, stochastic))
     }
 
     /// A physical material's group for its lit pass (`physical.rs`): its
@@ -145,6 +170,7 @@ impl Renderer {
         index: usize,
         m: &StandardMaterial,
         factors: &wgpu::Buffer,
+        stochastic: &wgpu::Buffer,
     ) -> Result<wgpu::BindGroup, RenderError> {
         if self.lit.physical.is_none() {
             self.lit.physical = Some(physical::PhysicalPipelines::new(
@@ -241,6 +267,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&gradient),
                 wgpu::BindingResource::TextureView(&pack),
                 uniform.as_entire_binding(),
+                stochastic.as_entire_binding(),
             ],
         ))
     }

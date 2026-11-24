@@ -35,12 +35,12 @@ fn analytic_grad(slot: u32, uv: vec2<f32>, d: vec2<f32>) -> vec2<f32> {
 }
 
 // A material map at slot `slot`'s uv (the analytic gradients with ANALYTIC).
-fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
+fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>, histogram: u32) -> vec4<f32> {
   let at = material_uv(slot, uv);
   if (ANALYTIC) {
-    return textureSampleGrad(t, material_sampler, at, analytic_grad(slot, uv, analytic_uv.xy), analytic_grad(slot, uv, analytic_uv.zw));
+    return stochastic_texel(t, at, analytic_grad(slot, uv, analytic_uv.xy), analytic_grad(slot, uv, analytic_uv.zw), histogram);
   }
-  return textureSample(t, material_sampler, at);
+  return stochastic_texel(t, at, dpdxFine(at), dpdyFine(at), histogram);
 }
 
 // How high a point lies in the material's relief for the weather (0 a
@@ -48,7 +48,7 @@ fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
 // crevices; 0.5 (none known) without one.
 fn weather_cavity(uv: vec2<f32>) -> f32 {
   if (material.flags.y < 0.0) { return 0.5; }
-  return 0.2 + 0.6 * material_sample(ao_tex, UV_AO, uv).r;
+  return 0.2 + 0.6 * material_sample(ao_tex, UV_AO, uv, 5u).r;
 }
 
 // A toon metal's reflection as bands: the environment along the reflected
@@ -145,9 +145,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (ANALYTIC) {
     let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
     let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
-    base_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
+    base_sample = base_texel(base_uv, gx, gy);
   } else {
-    base_sample = textureSample(base_color_tex, material_sampler, base_uv);
+    base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
   }
   // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
@@ -185,7 +185,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_color.w > 6.5) { return debug_unsupported(in.clip.xy); }
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
+    let e = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
@@ -198,8 +198,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
-  let metalness_sample = material_sample(metalness_tex, UV_METALNESS, uv);
-  let roughness_sample = material_sample(roughness_tex, UV_METALNESS, uv);
+  let metalness_sample = material_sample(metalness_tex, UV_METALNESS, uv, 1u);
+  let roughness_sample = material_sample(roughness_tex, UV_METALNESS, uv, 2u);
   let dpx = world_dx(in.world_pos);
   let dpy = world_dy(in.world_pos);
   var s: Surface;
@@ -235,9 +235,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (ANALYTIC) {
     let gx = analytic_grad(UV_NORMAL, uv, analytic_uv.xy);
     let gy = analytic_grad(UV_NORMAL, uv, analytic_uv.zw);
-    normal_sample = textureSampleGrad(normal_tex, material_sampler, normal_uv, gx, gy);
+    normal_sample = normal_texel(normal_uv, gx, gy);
   } else {
-    normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
+    normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
   }
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
@@ -328,6 +328,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
     }
   }
+  s = material_wear(s, in.uv, normalize(n_vertex * face), in.world_pos, length(world_dx(in.world_pos)) + length(world_dy(in.world_pos)));
   // Rain, streaks, puddles, snow and dust (weather_surface.wgsl): the
   // frame's uniforms, the material's weathering (uv[3].w) and its relief
   // from the AO map, whose crevices hold water and dust first.
@@ -474,10 +475,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // only that), with the style's shadow darkness.
   var ao = 1.0;
   if (material.flags.y >= 0.0) {
-    ao = mix(1.0, material_sample(ao_tex, UV_AO, uv).r, material.flags.y);
+    ao = mix(1.0, material_sample(ao_tex, UV_AO, uv, 5u).r, material.flags.y);
   }
   let kept = keep * clamp(surface_ao(hook, params, ao), 0.0, 1.0);
-  let emitted = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
+  let emitted = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb);
   let shaded = surface_sum(s, color, around, emitted, material.flags.z, kept);
   color = shaded_color(shaded);
 

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.render.StandardMaterialDesc / type model / type materials",
+      "summary": "Authored grime, grimeColor, grimeHeight and dry stains age surfaces without a WeatherState. District walls preserve height in metric UVs independently of image repeat, so grime rises from every building's base through cell merging. Stochastic tiling breaks up ordinary 2D PBR maps with histogram-preserving patch blending; array maps and structured facade modules are excluded, and minified surfaces fade to ordinary mip sampling. All amounts default to zero."
+    }
+  ]
+}

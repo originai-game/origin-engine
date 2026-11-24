@@ -68,4 +68,4 @@ component SpotLight {
 }
 ```
 
-<sub>Module `render` line 634</sub>
+<sub>Module `render` line 652</sub>

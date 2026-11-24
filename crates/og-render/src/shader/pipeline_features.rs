@@ -64,10 +64,10 @@ use std::cell::OnceCell;
 
 /// A set of the lit shaders' optional features.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Hash)]
-pub(crate) struct Features(u16);
+pub(crate) struct Features(u32);
 
 /// Each feature's bit and its override's name.
-const NAMES: [(Features, &str); 16] = [
+const NAMES: [(Features, &str); 18] = [
     (Features::WEATHER, "OG_WEATHER"),
     (Features::LOCAL_LIGHTS, "OG_LOCAL_LIGHTS"),
     (Features::DECALS, "OG_DECALS"),
@@ -84,6 +84,8 @@ const NAMES: [(Features, &str); 16] = [
     (Features::TOON, "OG_TOON"),
     (Features::DISSOLVE, "OG_DISSOLVE"),
     (Features::STATIC_FAR, "OG_STATIC_FAR"),
+    (Features::MATERIAL_WEAR, "OG_MATERIAL_WEAR"),
+    (Features::STOCHASTIC, "OG_STOCHASTIC"),
 ];
 
 impl Features {
@@ -119,11 +121,13 @@ impl Features {
     /// A material's dissolve (`StandardMaterial::dissolve`).
     pub(crate) const DISSOLVE: Features = Features(16384);
     /// The full variant's: every feature but [`Self::STATIC_FAR`].
-    pub(crate) const ALL: Features = Features(32767);
+    pub(crate) const ALL: Features = Features(32767 | 65536 | 131072);
     /// The static lights' far field (static_far.rs; surface_shade.wgsl
     /// `OG_STATIC_FAR`). Not in [`Self::ALL`]: a frame that draws it draws
     /// with its own full variant (see the module's documentation).
     pub(crate) const STATIC_FAR: Features = Features(32768);
+    pub(crate) const MATERIAL_WEAR: Features = Features(65536);
+    pub(crate) const STOCHASTIC: Features = Features(131072);
 
     pub(crate) fn contains(self, other: Features) -> bool {
         self.0 & other.0 == other.0
@@ -219,6 +223,14 @@ impl Features {
         Features::NONE
             .with(Features::TOON, m.toon != 0)
             .with(Features::DISSOLVE, m.dissolves())
+            .with(
+                Features::STOCHASTIC,
+                m.stochastic > 0.0 && !m.draws_array_maps(),
+            )
+            .with(
+                Features::MATERIAL_WEAR,
+                (m.grime > 0.0 && m.grimeHeight > 0.0) || m.stains > 0.0,
+            )
     }
 
     /// The pipeline constants that leave out what `self` lacks, for a

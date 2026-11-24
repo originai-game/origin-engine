@@ -255,6 +255,7 @@ pub(crate) fn rgba_texture_bytes(texture: &TextureData) -> u64 {
 /// GPU copies of one scene's resources, indexed like the scene's handles.
 #[derive(Default)]
 pub(crate) struct SceneCache {
+    pub(crate) stochastic: std::cell::OnceCell<crate::shading::stochastic::Prepare>,
     /// The scene's palettes (`add_palette`) as 256 x 1 textures (`None`:
     /// removed), and the scene's revision of each when it was uploaded.
     pub(crate) palettes: Vec<Option<wgpu::TextureView>>,

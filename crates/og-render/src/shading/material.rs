@@ -30,6 +30,10 @@ pub(crate) struct MaterialUniform {
     pub outline: [f32; 4],
     /// x: clearcoat, y: clearcoat roughness, zw: leaf translucency/dome normals.
     pub coat: [f32; 4],
+    /// rgb: ground dirt colour; w: ground dirt amount.
+    pub grime: [f32; 4],
+    /// x: grime fade height (m), y: dry stains, z: stochastic tiling, w unused.
+    pub variation: [f32; 4],
     /// Each slot's uv transform ([`StandardMaterial::uv_transforms`]'s
     /// order) as two rows: `[a, b, c, d]` (`u' = a u + b v`, `v' = c u +
     /// d v`) and `[tx, ty, 0, 0]`. Array materials use the base-map
@@ -197,6 +201,22 @@ pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> Materia
             m.foliage.x.clamp(0.0, 1.0),
             m.foliage.y.clamp(0.0, 1.0),
         ],
+        grime: [
+            m.grimeColor.x,
+            m.grimeColor.y,
+            m.grimeColor.z,
+            m.grime.clamp(0.0, 1.0),
+        ],
+        variation: [
+            m.grimeHeight.max(0.0),
+            m.stains.clamp(0.0, 1.0),
+            if m.draws_array_maps() {
+                0.0
+            } else {
+                m.stochastic.clamp(0.0, 1.0)
+            },
+            0.0,
+        ],
         uv: {
             let mut uv = uv_rows(&m.uv_transforms());
             uv[3][2] = m.paintDetail.clamp(0.0, 1.0);
@@ -254,7 +274,6 @@ fn sample_layer(text: &str, texture: &str, layer: &str) -> String {
         found += 1;
     }
     out.push_str(rest);
-    assert!(found > 0, "the standard module samples {texture} nowhere");
     // `textureSampleBias(<texture>, material_sampler, <coords>, <bias>)`
     // (the material style's surface) and `textureSampleGrad(<texture>,
     // material_sampler, <coords>, <ddx>, <ddy>)` (the visibility buffer's
@@ -274,9 +293,11 @@ fn sample_layer(text: &str, texture: &str, layer: &str) -> String {
             out.push_str(", ");
             out.push_str(layer);
             rest = &rest[comma..];
+            found += 1;
         }
         out.push_str(rest);
     }
+    assert!(found > 0, "the standard module samples {texture} nowhere");
     out
 }
 
@@ -460,6 +481,7 @@ impl ArrayMaps {
                 crate::sampler_entry(7, wgpu::SamplerBindingType::Filtering),
                 crate::tex2d(8),
                 crate::tex2d(9),
+                crate::uniform_entry(10, wgpu::ShaderStages::FRAGMENT),
             ],
         });
         let pipeline_layout = |label, groups: &[&wgpu::BindGroupLayout]| {
@@ -553,16 +575,23 @@ mod tests {
             ("base_color_tex", "map_layer"),
             ("normal_tex", "normal_layer"),
         ] {
-            let samples = standard
-                .matches(&format!("textureSample({texture}, "))
-                .count();
-            assert!(samples > 0);
-            let layered = array
-                .split(&format!("textureSample({texture}, material_sampler, "))
-                .skip(1)
-                .filter(|rest| rest.split(')').next().unwrap().ends_with(layer))
-                .count();
-            assert_eq!(layered, samples, "{texture}");
+            let mut total = 0;
+            for kind in ["", "Grad", "Bias"] {
+                let call = format!("textureSample{kind}({texture}, material_sampler, ");
+                let samples = standard.matches(&call).count();
+                let layered = array
+                    .split(&call)
+                    .skip(1)
+                    .filter(|rest| {
+                        rest.split([',', ')'])
+                            .nth(1)
+                            .is_some_and(|s| s.trim() == layer)
+                    })
+                    .count();
+                assert_eq!(layered, samples, "{texture} {kind}");
+                total += samples;
+            }
+            assert!(total > 0);
         }
         // The shadow variant renames its two plain vertex stages only.
         let shadow = array_shadow_source(&crate::shadow_source(&crate::hooks::default_hooks()));

@@ -36,6 +36,8 @@ mod hooks;
 mod light;
 #[path = "../lights.rs"]
 mod lights;
+#[path = "../material_variation.rs"]
+mod material_variation;
 #[path = "../materials.rs"]
 mod materials;
 #[path = "../moon.rs"]

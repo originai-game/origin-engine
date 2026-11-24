@@ -208,6 +208,11 @@ pub struct CookedMaterial {
     /// order, [`og_render_data::StandardMaterial::uv_transforms`]): identity
     /// where none, or where the cook baked it into the primitives' uvs.
     pub uv_transforms: [og_render_data::UvTransform; 5],
+    pub grime: f32,
+    pub grime_color: [f32; 3],
+    pub grime_height: f32,
+    pub stains: f32,
+    pub stochastic: f32,
 }
 
 impl CookedMaterial {
@@ -223,6 +228,9 @@ impl CookedMaterial {
         self.physical.present != 0
             || self.unlit
             || self.leaf()
+            || self.grime > 0.0
+            || self.stains > 0.0
+            || self.stochastic > 0.0
             || self.uv_transforms.iter().any(|t| !t.is_identity())
     }
 }
@@ -736,6 +744,11 @@ impl CookedModel {
                 unlit: m.unlit != 0,
                 translucency: m.translucency,
                 dome_normals: m.dome_normals,
+                grime: m.grime,
+                grime_color: [m.grime_r, m.grime_g, m.grime_b],
+                grime_height: m.grime_height,
+                stains: m.stains,
+                stochastic: m.stochastic,
                 season: og_render_data::foliage::LeafSeason {
                     season: m.season,
                     autumn_color: [m.autumn_r, m.autumn_g, m.autumn_b],
@@ -1041,6 +1054,11 @@ impl CookedModel {
             m.side = og_render_data::Side::Double as u32;
         }
         m.foliage = glam::Vec2::new(c.translucency, c.dome_normals);
+        m.grime = c.grime;
+        m.grimeColor = glam::Vec3::from(c.grime_color);
+        m.grimeHeight = c.grime_height;
+        m.stains = c.stains;
+        m.stochastic = c.stochastic;
         m.set_uv_transforms(c.uv_transforms);
         m
     }

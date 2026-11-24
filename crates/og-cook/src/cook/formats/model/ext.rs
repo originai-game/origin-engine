@@ -181,6 +181,16 @@ pub fn uv_plan(src: &GltfSource) -> UvPlan {
         .map(|a| a.iter().map(MaterialUv::of).collect())
         .unwrap_or_default();
     let mut baked: Vec<Option<UvTransform>> = mats.iter().map(MaterialUv::common).collect();
+    // Ground-up aging reads the original metric v, not a texture's transformed v.
+    for (i, transform) in baked.iter_mut().enumerate() {
+        if json["materials"][i]["extras"]["ogVariation"]["grime"]
+            .as_f64()
+            .unwrap_or(0.0)
+            > 0.0
+        {
+            *transform = None;
+        }
+    }
     let mut prims = Vec::new();
     for (mi, mesh) in json
         .get("meshes")

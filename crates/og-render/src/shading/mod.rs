@@ -25,3 +25,4 @@ pub(crate) mod shadows;
 pub(crate) mod ssgi;
 pub(crate) mod ssr;
 pub(crate) mod static_far;
+pub(crate) mod stochastic;

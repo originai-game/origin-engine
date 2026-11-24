@@ -138,7 +138,17 @@ pub fn cook(
             tex_of(Some(t), texture_kind(k), None)
         });
         let t = |x: Option<u32>| x.unwrap_or(NONE);
+        let variation = &src.json["materials"][m.index().unwrap_or(0)]["extras"]["ogVariation"];
+        let number = |k: &str| variation[k].as_f64().unwrap_or(0.0) as f32;
+        let colour = |i: usize| variation["grimeColor"][i].as_f64().unwrap_or(0.0) as f32;
         materials.push(MaterialRow {
+            grime: number("grime").clamp(0.0, 1.0),
+            grime_r: colour(0),
+            grime_g: colour(1),
+            grime_b: colour(2),
+            grime_height: number("grimeHeight").max(0.0),
+            stains: number("stains").clamp(0.0, 1.0),
+            stochastic: number("stochastic").clamp(0.0, 1.0),
             physical: p.present,
             clearcoat: p.clearcoat,
             clearcoat_roughness: p.clearcoat_roughness,

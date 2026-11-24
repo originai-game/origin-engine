@@ -61,6 +61,10 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     }
     add("physical", crate::physical_source(&hooks));
     add(
+        "stochastic histogram",
+        crate::shading::stochastic::WGSL.to_string(),
+    );
+    add(
         "meshlet cull",
         crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),
     );

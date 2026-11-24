@@ -627,6 +627,11 @@ fn a_skinned_model_under_a_scaled_armature_reports_bind_pose_texel_density() {
         unlit: false,
         translucency: 0.0,
         dome_normals: 0.0,
+        grime: 0.0,
+        grime_color: [0.0; 3],
+        grime_height: 0.0,
+        stains: 0.0,
+        stochastic: 0.0,
         season: Default::default(),
         uv_transforms: Default::default(),
     });

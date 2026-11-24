@@ -94,4 +94,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>Module `render` line 538</sub>
+<sub>Module `render` line 556</sub>

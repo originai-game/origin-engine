@@ -4272,6 +4272,11 @@ pub struct StandardMaterialDesc {
     pub wireframe: bool,
     pub wireframe_angle: f32,
     pub wireframe_color: Color,
+    pub grime: f32,
+    pub grime_color: Color,
+    pub grime_height: f32,
+    pub stains: f32,
+    pub stochastic: f32,
     pub foliage: FoliageDesc,
     pub paint_detail: f32,
     pub weathering: f32,
@@ -4369,6 +4374,11 @@ impl Default for StandardMaterialDesc {
             wireframe: Default::default(),
             wireframe_angle: Default::default(),
             wireframe_color: Default::default(),
+            grime: Default::default(),
+            grime_color: Default::default(),
+            grime_height: Default::default(),
+            stains: Default::default(),
+            stochastic: Default::default(),
             foliage: Default::default(),
             paint_detail: Default::default(),
             weathering: 1.0_f32,
@@ -4472,6 +4482,11 @@ impl FromJson for StandardMaterialDesc {
             wireframe: field(o, "wireframe", d.wireframe)?,
             wireframe_angle: field(o, "wireframeAngle", d.wireframe_angle)?,
             wireframe_color: field(o, "wireframeColor", d.wireframe_color)?,
+            grime: field(o, "grime", d.grime)?,
+            grime_color: field(o, "grimeColor", d.grime_color)?,
+            grime_height: field(o, "grimeHeight", d.grime_height)?,
+            stains: field(o, "stains", d.stains)?,
+            stochastic: field(o, "stochastic", d.stochastic)?,
             foliage: field(o, "foliage", d.foliage)?,
             paint_detail: field(o, "paintDetail", d.paint_detail)?,
             weathering: field(o, "weathering", d.weathering)?,
@@ -4571,6 +4586,11 @@ impl ToJson for StandardMaterialDesc {
         o.insert("wireframe".into(), self.wireframe.to_json());
         o.insert("wireframeAngle".into(), self.wireframe_angle.to_json());
         o.insert("wireframeColor".into(), self.wireframe_color.to_json());
+        o.insert("grime".into(), self.grime.to_json());
+        o.insert("grimeColor".into(), self.grime_color.to_json());
+        o.insert("grimeHeight".into(), self.grime_height.to_json());
+        o.insert("stains".into(), self.stains.to_json());
+        o.insert("stochastic".into(), self.stochastic.to_json());
         o.insert("foliage".into(), self.foliage.to_json());
         o.insert("paintDetail".into(), self.paint_detail.to_json());
         o.insert("weathering".into(), self.weathering.to_json());

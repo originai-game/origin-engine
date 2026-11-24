@@ -1061,6 +1061,11 @@ pub(crate) fn material(
             "autumnColor",
             "autumnColor2",
             "seasonShift",
+            "grime",
+            "grimeColor",
+            "grimeHeight",
+            "stains",
+            "stochastic",
         ],
     )?;
     let c = f.vec3("color", DVec3::ONE)?;
@@ -1170,6 +1175,25 @@ pub(crate) fn material(
         .map_err(|e| format!("material '{name}': {}", e.trim_start_matches("material.")))?;
     if let Some(extras) = foliage_extras(dome, &season) {
         m["extras"] = extras;
+    }
+    let grime = unit("grime", f.num("grime", 0.0)?)?;
+    let stains = unit("stains", f.num("stains", 0.0)?)?;
+    let stochastic = unit("stochastic", f.num("stochastic", 0.0)?)?;
+    let colour = f.vec3("grimeColor", DVec3::ZERO)?;
+    let height = f.num("grimeHeight", 0.0)?;
+    if height < 0.0 || colour.min_element() < 0.0 {
+        return Err(format!(
+            "material '{name}': grimeHeight and grimeColor are nonnegative"
+        ));
+    }
+    if grime > 0.0 || stains > 0.0 || stochastic > 0.0 {
+        if !m["extras"].is_object() {
+            m["extras"] = serde_json::json!({});
+        }
+        m["extras"]["ogVariation"] = serde_json::json!({
+            "grime": grime, "grimeColor": colour.to_array(), "grimeHeight": height,
+            "stains": stains, "stochastic": stochastic,
+        });
     }
     let coat = unit("clearcoat", f.num("clearcoat", 0.0)?)?;
     if coat > 0.0 {

@@ -27,9 +27,9 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   if (ANALYTIC) {
     let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
     let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
-    base_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
+    base_sample = base_texel(base_uv, gx, gy);
   } else {
-    base_sample = textureSample(base_color_tex, material_sampler, base_uv);
+    base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
   }
   // A material shader's colour (and alpha cut) as in the lit pass.
   var hook: Hook;
@@ -67,12 +67,18 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
   let unlit = (u32(material.flags.w) & 2u) != 0u;
-  var metalness = clamp(surface_metalness(hook, params, material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv).b), 0.0, 1.0);
-  var roughness = clamp(surface_roughness(hook, params, material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv).g), 0.04, 1.0);
+  var metalness = clamp(surface_metalness(hook, params, material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv, 1u).b), 0.0, 1.0);
+  var roughness = clamp(surface_roughness(hook, params, material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv, 2u).g), 0.04, 1.0);
   // Wet ground, streaks and puddles as the lit pass shades them
   // (weather_surface.wgsl weather_gloss): reflections see the puddles as
   // mirrors and their ripples, and the normal is the water's.
   if (!unlit) {
+    var surface: Surface;
+    surface.metallic = metalness;
+    surface.roughness = roughness;
+    let aged = material_wear(surface, in.uv, n, in.world_pos, length(world_dx(in.world_pos)) + length(world_dy(in.world_pos)));
+    metalness = aged.metallic;
+    roughness = aged.roughness;
     let wet = wet_decal_gloss(in.clip.xy, in.world_pos, n, n, clamp(roughness, 0.04, 1.0));
     let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
     roughness = g.s.roughness;

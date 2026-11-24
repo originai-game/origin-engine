@@ -13,6 +13,8 @@ struct MaterialFactors {
   dissolve: vec4<f32>,    // rgb: dissolve edge colour, w: noise scale (<0: dissolve map)
   outline: vec4<f32>,     // rgb: outline colour, w: outline width (px)
   coat: vec4<f32>,        // x: clearcoat (0 none), y: clearcoat roughness, zw: leaf translucency/dome normals
+  grime: vec4<f32>,       // rgb: dirt colour, w: cover
+  variation: vec4<f32>,   // x: grime fade height (m), y: dry stains, z: stochastic tiling
   uv: array<vec4<f32>, 10>,  // per slot (UV_MAP and on): [a, b, c, d], [tx, ty, 0, 0]; uv[1].zw holds base/normal array layers, uv[3].z paintDetail, uv[3].w weathering
   custom: array<vec4<f32>, 8>,  // a material shader's parameters (hooks.rs)
   previous_custom: array<vec4<f32>, 8>,  // the parameters the frame before `stamp.x` drew, not the last simulation tick

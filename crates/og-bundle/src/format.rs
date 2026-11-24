@@ -530,7 +530,7 @@ row!(
     /// model is the default one primitives without a material use.
     /// Version 4 added `translucency` and `dome_normals`, version 5 the
     /// leaf's season (`season` to `season_shift`).
-    MaterialRow, "og.ModelMaterial", 5 {
+    MaterialRow, "og.ModelMaterial", 6 {
         base_r: f32, base_g: f32, base_b: f32, base_a: f32,
         emissive_r: f32, emissive_g: f32, emissive_b: f32,
         metallic: f32,
@@ -608,6 +608,12 @@ row!(
         autumn_r: f32, autumn_g: f32, autumn_b: f32,
         autumn2_r: f32, autumn2_g: f32, autumn2_b: f32,
         season_shift: f32,
+        /// Authored surface aging and randomized tiling (extras.ogVariation).
+        grime: f32,
+        grime_r: f32, grime_g: f32, grime_b: f32,
+        grime_height: f32,
+        stains: f32,
+        stochastic: f32,
     }
 );
 

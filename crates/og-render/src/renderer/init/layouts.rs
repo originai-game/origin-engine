@@ -147,6 +147,7 @@ impl Renderer {
                 sampler_entry(7, wgpu::SamplerBindingType::Filtering),
                 tex2d(8),
                 tex2d(9),
+                uniform_entry(10, wgpu::ShaderStages::FRAGMENT),
             ],
         });
         // With two planar reflections the effect group carries the one

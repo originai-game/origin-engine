@@ -7229,6 +7229,43 @@ export interface StandardMaterialDesc {
    * @default { r: 0, g: 0, b: 0 }
    */
   readonly wireframeColor?: Color;
+  // ── Surface variation ──
+  // Authored surface aging, independent of the weather. Zero amounts leave the surface unchanged.
+  /**
+   * Ground-up dirt cover. Its height is -TEXCOORD_0.v in metres before texture transforms: v=0 at the base, negative upwards, as district grammars emit it.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly grime?: number;
+  /**
+   * The linear colour of the dirt; black when omitted.
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  readonly grimeColor?: Color;
+  /**
+   * The height in metres at which ground-up dirt fades out. Zero disables grime.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly grimeHeight?: number;
+  /**
+   * Dry rain-run stains on vertical surfaces, fixed in world space, even with weathering 0 and no WeatherState.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly stains?: number;
+  /**
+   * Histogram-preserving randomized tiling strength for ordinary 2D maps (not mapArray or normalMapArray). Fades to ordinary mip sampling under minification. Keep it zero on structured facade modules, lettering and atlases.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly stochastic?: number;
   // ── Leaves, paint and weather ──
   /**
    * Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y.

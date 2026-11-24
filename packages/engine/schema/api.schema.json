@@ -24771,6 +24771,43 @@
             "b": 0
           }
         },
+        "grime": {
+          "type": "number",
+          "description": "Ground-up dirt cover. Its height is -TEXCOORD_0.v in metres before texture transforms: v=0 at the base, negative upwards, as district grammars emit it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "grimeColor": {
+          "$ref": "#/$defs/Color",
+          "description": "The linear colour of the dirt; black when omitted.",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        "grimeHeight": {
+          "type": "number",
+          "description": "The height in metres at which ground-up dirt fades out. Zero disables grime.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "stains": {
+          "type": "number",
+          "description": "Dry rain-run stains on vertical surfaces, fixed in world space, even with weathering 0 and no WeatherState.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stochastic": {
+          "type": "number",
+          "description": "Histogram-preserving randomized tiling strength for ordinary 2D maps (not mapArray or normalMapArray). Fades to ordinary mip sampling under minification. Keep it zero on structured facade modules, lettering and atlases.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
         "foliage": {
           "$ref": "#/$defs/FoliageDesc",
           "description": "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y.",

@@ -180,7 +180,7 @@ fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) ve
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
-  let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a * in.color.a;
+  let alpha = material.base_color.a * base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv)).a * in.color.a;
   if (dissolve_at(in.uv, in.local_pos).w > 0.5 || dither_cut(in.hidden, in.clip.xy, shadow_pass.dither.x)) { discard; }
   if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
   return shadow_value(in, dx, dy, front);
@@ -193,7 +193,7 @@ fn fs_hooked(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
-  let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, base_uv) * in.color);
+  let base = surface_color(shadow_hook(in), shader_params(), material.base_color * base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv)) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5 || dither_cut(in.hidden, in.clip.xy, shadow_pass.dither.x);
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) { discard; }
   return shadow_value(in, dx, dy, front);

@@ -459,6 +459,11 @@ impl UncookedGltf {
                         num(t, "diffuseTransmissionFactor", 0.0).clamp(0.0, 1.0)
                     }),
                 dome_normals: num(&m["extras"]["ogFoliage"], "domeNormals", 0.0).clamp(0.0, 1.0),
+                grime: num(&m["extras"]["ogVariation"], "grime", 0.0).clamp(0.0, 1.0),
+                grime_color: floats(&m["extras"]["ogVariation"], "grimeColor", [0.0; 3]),
+                grime_height: num(&m["extras"]["ogVariation"], "grimeHeight", 0.0).max(0.0),
+                stains: num(&m["extras"]["ogVariation"], "stains", 0.0).clamp(0.0, 1.0),
+                stochastic: num(&m["extras"]["ogVariation"], "stochastic", 0.0).clamp(0.0, 1.0),
                 season: leaf_season(&m["extras"]["ogFoliage"]),
                 uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
             };
@@ -485,6 +490,11 @@ impl UncookedGltf {
             unlit: false,
             translucency: 0.0,
             dome_normals: 0.0,
+            grime: 0.0,
+            grime_color: [0.0; 3],
+            grime_height: 0.0,
+            stains: 0.0,
+            stochastic: 0.0,
             season: og_render_data::foliage::LeafSeason::EVERGREEN,
             uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
         });

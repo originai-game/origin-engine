@@ -117,6 +117,31 @@ fn cooked(name: &str, files: &[(&str, &[u8])]) -> PathBuf {
     root
 }
 
+#[test]
+fn authored_aging_reaches_the_renderer_through_cooked_and_uncooked_models() {
+    let source = "type model\nversion 1\n---\nmaterial \"stone\" {\n grime 0.6\n grimeColor 0.12 0.08 0.03\n grimeHeight 1.7\n stains 0.4\n stochastic 0.8\n}\npart \"wall\" {\n material \"stone\"\n boxGeometry {\n  width 3\n  height 7\n }\n}\n";
+    let root = cooked("og-cook-aging", &[("models/wall.ogt", source.as_bytes())]);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let cooked = bundle.load_model("models/wall.ogt").unwrap();
+    let glb = og_cook::cook::model_text::to_glb(source).unwrap();
+    let raw = og_cook::runtime::UncookedGltf::read("wall.glb", &glb).unwrap();
+    let primitives = (0..raw.primitive_count())
+        .map(|i| raw.primitive(i).unwrap())
+        .collect();
+    let uncooked = raw.finish(primitives);
+    for model in [cooked, uncooked] {
+        let mut scene = og_render::RenderScene::new();
+        model.add_to(&mut scene, &[]);
+        let material = scene.material_handles().next().unwrap();
+        let m = scene.standard_material(material).unwrap();
+        assert_eq!(m.grime, 0.6);
+        assert_eq!(m.grimeColor, Vec3::new(0.12, 0.08, 0.03));
+        assert_eq!(m.grimeHeight, 1.7);
+        assert_eq!(m.stains, 0.4);
+        assert_eq!(m.stochastic, 0.8);
+    }
+}
+
 /// A program file is a model of its own: it cooks, with levels of detail as
 /// a glTF's, and is not dropped as a file it read itself (it was: the
 /// program is the first file it reads, so it consumed itself and cooked to
