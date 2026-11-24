@@ -215,7 +215,7 @@ impl CrowdImpostors {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        encoder: &mut crate::Encoder,
+        encoder: &mut Option<crate::Encoder>,
         mips: &mut crate::mips::MipGenerator,
         key: &AtlasKey,
         bake: BakeGpu,
@@ -224,7 +224,14 @@ impl CrowdImpostors {
     ) -> &mut Atlas {
         let frame = self.frame;
         if !self.atlases.contains_key(key) {
-            let atlas = self.bake(device, queue, encoder, mips, bake, parts, palette);
+            let enc = encoder.get_or_insert_with(|| {
+                crate::Encoder::untimed(device.create_command_encoder(
+                    &wgpu::CommandEncoderDescriptor {
+                        label: Some("crowd impostors"),
+                    },
+                ))
+            });
+            let atlas = self.bake(device, queue, enc, mips, bake, parts, palette);
             self.atlases.insert(key.clone(), atlas);
         }
         let atlas = self.atlases.get_mut(key).expect("baked above");

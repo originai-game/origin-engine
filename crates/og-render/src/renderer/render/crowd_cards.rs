@@ -55,11 +55,7 @@ impl Renderer {
             CrowdImpostors::new(&self.device, &self.material_layout, &self.palette_layout)
         });
         imp.begin_frame();
-        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
-                label: Some("crowd impostors"),
-            },
-        ));
+        let mut encoder: Option<Encoder> = None;
         for (card, batch) in frame.cards.iter().zip(cards.iter_mut()) {
             let clip = &scene.objects.baked_clips[card.impostor.clip as usize];
             let (views, frames, size, elevation) = card.impostor.resolved();
@@ -182,6 +178,8 @@ impl Renderer {
             });
             batch.group = Some(group.clone());
         }
-        self.queue.submit(Some(encoder.finish()));
+        if let Some(encoder) = encoder {
+            self.queue.submit(Some(encoder.finish()));
+        }
     }
 }

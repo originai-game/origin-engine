@@ -325,7 +325,7 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
         if all(at >= vec(SINK_MIN)) && all(at <= vec(SINK_MAX)) {
             if head[EMITTING] != 0u {
                 // Back at the emitter, as a new particle would be.
-                at_emitter(i, i * 7919u + u32(p.v.x * 1e4));
+                at_emitter(i, (i * 7919u) ^ bitcast<u32>(p.v.x));
             } else {
                 particles[i].position.w = 0.0;
             }

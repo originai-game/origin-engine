@@ -637,7 +637,9 @@ impl Fluid3dRenderer {
         screen: (u32, u32),
         views: &Fluid3dViews,
     ) -> Option<Fluid3dFrame> {
-        let first = fluids.iter().find(|f| !f.particles.is_empty())?;
+        let first = fluids
+            .iter()
+            .find(|f| !f.particles.is_empty() || f.visual.is_some())?;
         let (gpu, blur) = camera_uniforms(first, camera, screen);
         let buffer = |label, contents: &[u8]| {
             crate::buffer_init(

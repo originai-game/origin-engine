@@ -152,16 +152,22 @@ fn weather_open(p: vec3<f32>, geo: vec3<f32>) -> f32 {
   if (abs(nc.z) > 1e-8) {
     gradient = vec2<f32>(-nc.x, nc.y) / nc.z * per_texel;
   }
-  var open = 0.0;
-  for (var j = -2; j <= 2; j++) {
-    for (var i = -2; i <= 2; i++) {
-      let tap = at + vec2<f32>(f32(i), f32(j)) * step;
-      let t = clamp(vec2<i32>(tap), vec2<i32>(0), vec2<i32>(side - 1));
-      let nearest = textureLoad(cascade_map, t, layer).r;
-      // (At most 8 m along the fall either way: a wall's plane is no guide.)
-      let plane = c.z + clamp(dot(gradient, tap - uv * ws.z), -0.01, 0.01);
-      open += select(0.0, 1.0, plane - ws.w <= nearest);
-    }
+  // Centre tap + 8-tap IGN-rotated Vogel disc over the same 2*step radius
+  // (9 loads instead of 25, with smoother drip-line edges and no 5x5 grid aliasing).
+  let radius = 2.0 * step;
+  let base_px = clamp(vec2<i32>(at), vec2<i32>(0), vec2<i32>(side - 1));
+  let base_plane = c.z + clamp(dot(gradient, at - uv * ws.z), -0.01, 0.01);
+  var open = select(0.0, 1.0, base_plane - ws.w <= textureLoad(cascade_map, base_px, layer).r);
+  let turn = ign(pw.xz * 19.3 + vec2<f32>(7.0, 13.0)) * 2.0 * PI;
+  for (var k = 0u; k < 8u; k++) {
+    let r = sqrt((f32(k) + 0.5) / 8.0) * radius;
+    let a = f32(k) * 2.3999632 + turn;
+    let tap = at + vec2<f32>(cos(a), sin(a)) * r;
+    let t = clamp(vec2<i32>(tap), vec2<i32>(0), vec2<i32>(side - 1));
+    let nearest = textureLoad(cascade_map, t, layer).r;
+    // (At most 8 m along the fall either way: a wall's plane is no guide.)
+    let plane = c.z + clamp(dot(gradient, tap - uv * ws.z), -0.01, 0.01);
+    open += select(0.0, 1.0, plane - ws.w <= nearest);
   }
-  return smoothstep(0.1, 0.9, open / 25.0);
+  return smoothstep(0.1, 0.9, open / 9.0);
 }

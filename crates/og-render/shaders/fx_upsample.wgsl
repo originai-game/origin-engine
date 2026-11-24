@@ -58,23 +58,45 @@ fn sample_bilateral(pos_xy: vec2<f32>) -> vec4<f32> {
   let c01 = textureLoad(fx_half, p01, 0);
   let c11 = textureLoad(fx_half, p11, 0);
 
-  let z00 = textureLoad(fx_half_depth, p00, 0).r;
-  let z10 = textureLoad(fx_half_depth, p10, 0).r;
-  let z01 = textureLoad(fx_half_depth, p01, 0).r;
-  let z11 = textureLoad(fx_half_depth, p11, 0).r;
+  let z00 = textureLoad(fx_half_depth, p00, 0).rg;
+  let z10 = textureLoad(fx_half_depth, p10, 0).rg;
+  let z01 = textureLoad(fx_half_depth, p01, 0).rg;
+  let z11 = textureLoad(fx_half_depth, p11, 0).rg;
 
-  let e00 = min(abs(d_full - z00) / max(min(d_full, z00), 0.25), 100.0);
-  let e10 = min(abs(d_full - z10) / max(min(d_full, z10), 0.25), 100.0);
-  let e01 = min(abs(d_full - z01) / max(min(d_full, z01), 0.25), 100.0);
-  let e11 = min(abs(d_full - z11) / max(min(d_full, z11), 0.25), 100.0);
+  let e00 = min(abs(d_full - z00.r) / max(min(d_full, z00.r), 0.25), 100.0);
+  let e10 = min(abs(d_full - z10.r) / max(min(d_full, z10.r), 0.25), 100.0);
+  let e01 = min(abs(d_full - z01.r) / max(min(d_full, z01.r), 0.25), 100.0);
+  let e11 = min(abs(d_full - z11.r) / max(min(d_full, z11.r), 0.25), 100.0);
 
-  let w00 = (1.0 - f.x) * (1.0 - f.y) / (1e-4 + e00 * e00 * 64.0);
-  let w10 = f.x * (1.0 - f.y) / (1e-4 + e10 * e10 * 64.0);
-  let w01 = (1.0 - f.x) * f.y / (1e-4 + e01 * e01 * 64.0);
-  let w11 = f.x * f.y / (1e-4 + e11 * e11 * 64.0);
+  // An edge cell (z.r > z.g * 1.15) shaded particles against d_max (background);
+  // if d_full is closer to d_min (foreground occluder), penalise background bleed.
+  let fg00 = z00.r > z00.g * 1.15 && abs(d_full - z00.g) < abs(d_full - z00.r);
+  let fg10 = z10.r > z10.g * 1.15 && abs(d_full - z10.g) < abs(d_full - z10.r);
+  let fg01 = z01.r > z01.g * 1.15 && abs(d_full - z01.g) < abs(d_full - z01.r);
+  let fg11 = z11.r > z11.g * 1.15 && abs(d_full - z11.g) < abs(d_full - z11.r);
+
+  let k00 = 1.0 / (1e-4 + e00 * e00 * 64.0) * select(1.0, 0.02, fg00);
+  let k10 = 1.0 / (1e-4 + e10 * e10 * 64.0) * select(1.0, 0.02, fg10);
+  let k01 = 1.0 / (1e-4 + e01 * e01 * 64.0) * select(1.0, 0.02, fg01);
+  let k11 = 1.0 / (1e-4 + e11 * e11 * 64.0) * select(1.0, 0.02, fg11);
+
+  let w00 = (1.0 - f.x) * (1.0 - f.y) * k00;
+  let w10 = f.x * (1.0 - f.y) * k10;
+  let w01 = (1.0 - f.x) * f.y * k01;
+  let w11 = f.x * f.y * k11;
 
   let wsum = max(w00 + w10 + w01 + w11, 1e-6);
-  return (c00 * w00 + c10 * w10 + c01 * w01 + c11 * w11) / wsum;
+  let out = (c00 * w00 + c10 * w10 + c01 * w01 + c11 * w11) / wsum;
+  // When every neighbour is an edge cell whose background depth is far behind
+  // this foreground pixel, blend toward transparent (0,0,0,1) instead of
+  // re-normalising background smoke to 100% opacity.
+  let fg_all = fg00 && fg10 && fg01 && fg11;
+  if (fg_all) {
+    let min_e = min(min(e00, e10), min(e01, e11));
+    let keep = clamp(1.0 - smoothstep(0.1, 0.5, min_e), 0.0, 1.0);
+    return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), out, keep);
+  }
+  return out;
 }
 
 @fragment

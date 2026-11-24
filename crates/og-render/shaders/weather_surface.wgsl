@@ -342,15 +342,3 @@ fn weather_snow_weight(p_frame: vec3<f32>) -> f32 {
   if (w <= 0.0) { return 0.0; }
   return smoothstep(0.0, 0.6, w) * weather_open(p_frame, vec3<f32>(0.0, 1.0, 0.0));
 }
-
-// How far lying snow lifts a surface facing `geo` at `p_frame`, in metres
-// (a terrain's grid, terrain_vertex.wgsl): the snow's depth where it
-// covers level, open ground, nothing on steep faces or under a roof. The
-// CPU's heights (collision, og.terrain.sample, picking, what stands on the
-// ground) do not follow it: centimetres, not metres.
-fn weather_snow_lift(p_frame: vec3<f32>, geo: vec3<f32>) -> f32 {
-  let w = frame.weather.z;
-  if (w <= 0.0 || frame.weather_depth.x <= 0.0) { return 0.0; }
-  let level = smoothstep(mix(1.0, 0.3, w), 1.0, geo.y);
-  return frame.weather_depth.x * smoothstep(0.0, 0.3, w) * level * weather_open(p_frame, geo);
-}

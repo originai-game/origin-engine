@@ -106,8 +106,9 @@ fn froxel_at(uv: vec2<f32>, d: f32) -> vec4<f32> {
   return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
 }
 
-// Samples each spot's light takes along a pixel ray (`spots_in`).
-const SPOT_TAPS: u32 = 16u;
+// Samples each spot's light takes along a pixel ray (`spots_in`): equi-angular
+// stratified + temporally IGN-jittered, so 8 taps reconstruct spot cones cleanly.
+const SPOT_TAPS: u32 = 8u;
 
 // Each spot's light scattered towards the eye along the pixel ray, inside
 // its finite cone only: a cone can be narrower than a froxel, so neither a
@@ -123,7 +124,7 @@ const SPOT_TAPS: u32 = 16u;
 // stratified in angle, jittered per pixel and per frame.
 fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
   var sum = vec3<f32>(0.0);
-  if (VOL_WATER) { return sum; }
+  if (VOL_WATER || frame.params.z < 0.5) { return sum; }
   let dir = view_ray(uv);
   let forward = max(dot(dir, frame.view_forward.xyz), 1e-3);
   let jitter = ign(uv * vol.extent.zw + vec2<f32>(47.0, 17.0) * vol.grid.w);

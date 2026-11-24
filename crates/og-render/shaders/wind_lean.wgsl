@@ -26,16 +26,24 @@ fn wind_field_level(tex: texture_2d<f32>, corner: vec2<f32>, cell: f32, n: f32, 
 // near the camera, its coarse one beyond, and og.Wind's analytic lean past
 // both (or everywhere when the field does not run: no compute).
 fn wind_lean(tex: texture_2d<f32>, w: WindField, rel: vec2<f32>) -> vec4<f32> {
+  if (w.grid.w < 0.5) {
+    let at = rel + w.time.zw;
+    return vec4<f32>(wind_lean_analytic(w, at, false), wind_lean_analytic(w, at, true));
+  }
+  let n = w.grid_outer.w;
+  let wf = clamp(wind_field_weight(w.grid.xy, w.grid.z, n, rel), 0.0, 1.0);
+  if (wf >= 1.0) {
+    return wind_field_level(tex, w.grid.xy, w.grid.z, n, 0.0, rel);
+  }
+  let fine = select(vec4<f32>(0.0), wind_field_level(tex, w.grid.xy, w.grid.z, n, 0.0, rel), wf > 0.0);
+  let wc = clamp(wind_field_weight(w.grid_outer.xy, w.grid_outer.z, n, rel), 0.0, 1.0);
+  if (wc >= 1.0) {
+    let coarse = wind_field_level(tex, w.grid_outer.xy, w.grid_outer.z, n, n, rel);
+    return fine + coarse * (1.0 - wf);
+  }
+  let coarse = select(vec4<f32>(0.0), wind_field_level(tex, w.grid_outer.xy, w.grid_outer.z, n, n, rel), wc > 0.0);
   let at = rel + w.time.zw;
   let analytic = vec4<f32>(wind_lean_analytic(w, at, false), wind_lean_analytic(w, at, true));
-  if (w.grid.w < 0.5) { return analytic; }
-  let n = w.grid_outer.w;
-  let fine = wind_field_level(tex, w.grid.xy, w.grid.z, n, 0.0, rel);
-  let coarse = wind_field_level(tex, w.grid_outer.xy, w.grid_outer.z, n, n, rel);
-  // The levels' weights (inside() scaled their values): the fine where it
-  // reaches, the coarse past it, the analytic past both.
-  let wf = clamp(wind_field_weight(w.grid.xy, w.grid.z, n, rel), 0.0, 1.0);
-  let wc = clamp(wind_field_weight(w.grid_outer.xy, w.grid_outer.z, n, rel), 0.0, 1.0);
   let far = coarse + analytic * (1.0 - wc);
   return fine + far * (1.0 - wf);
 }

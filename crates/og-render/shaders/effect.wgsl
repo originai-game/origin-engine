@@ -205,27 +205,34 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   let d = f.driven;
   let time = frame.time.x;
   // Flow: the map's red and green push the main UV in two crossfaded phases.
-  let uv_flow = effect_uv(3u, f.shape_uv);
-  let gf = effect_grads(3u, uv_flow);
-  let flow_tex = textureSampleGrad(effect_flow, effect_sampler, uv_flow, gf[0], gf[1]);
   var push = vec2<f32>(0.0);
   var phase = 0.0;
   if ((bits & FX_FLOW) != 0u) {
+    let uv_flow = effect_uv(3u, f.shape_uv);
+    let gf = effect_grads(3u, uv_flow);
+    let flow_tex = textureSampleGrad(effect_flow, effect_sampler, uv_flow, gf[0], gf[1]);
     push = (flow_tex.rg * 2.0 - 1.0) * effect.erosion.z;
     phase = fract(time * effect.erosion.w);
   }
   let uv_main = effect_uv(0u, f.uv) + d.a.xy;
   let gm = effect_grads(0u, uv_main);
   let uv_a = uv_main + push * phase;
-  let own_a = textureSampleGrad(effect_main, effect_sampler, uv_a, gm[0], gm[1]);
-  let surf_a = textureSampleGrad(surface, effect_sampler, uv_a, gm[0], gm[1]);
-  var tex = select(surf_a, own_a, (bits & FX_MAIN) != 0u);
+  var tex = vec4<f32>(1.0);
+  if ((bits & FX_MAIN) != 0u) {
+    tex = textureSampleGrad(effect_main, effect_sampler, uv_a, gm[0], gm[1]);
+  } else {
+    tex = textureSampleGrad(surface, effect_sampler, uv_a, gm[0], gm[1]);
+  }
   if ((bits & FX_FLOW) != 0u) {
     let uv_b = uv_main + push * fract(phase + 0.5);
-    let own_b = textureSampleGrad(effect_main, effect_sampler, uv_b, gm[0], gm[1]);
-    let surf_b = textureSampleGrad(surface, effect_sampler, uv_b, gm[0], gm[1]);
+    var tex_b = vec4<f32>(1.0);
+    if ((bits & FX_MAIN) != 0u) {
+      tex_b = textureSampleGrad(effect_main, effect_sampler, uv_b, gm[0], gm[1]);
+    } else {
+      tex_b = textureSampleGrad(surface, effect_sampler, uv_b, gm[0], gm[1]);
+    }
     let w = 1.0 - abs(phase * 2.0 - 1.0);
-    tex = mix(select(surf_b, own_b, (bits & FX_MAIN) != 0u), tex, w);
+    tex = mix(tex_b, tex, w);
   }
   let has_texture = (bits & FX_MAIN) != 0u || f.textured > 0.5;
   let ch = effect.flags.y;
@@ -241,21 +248,25 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   var c = f.color * main * effect.color;
   c = vec4<f32>(c.rgb * d.a.w, c.a * d.b.x);
   // The mask.
-  let uv_mask = effect_uv(1u, f.shape_uv);
-  let gk = effect_grads(1u, uv_mask);
-  let mask_tex = textureSampleGrad(effect_mask, effect_sampler, uv_mask, gk[0], gk[1]);
   if ((bits & FX_MASK) != 0u) {
+    let uv_mask = effect_uv(1u, f.shape_uv);
+    let gk = effect_grads(1u, uv_mask);
+    let mask_tex = textureSampleGrad(effect_mask, effect_sampler, uv_mask, gk[0], gk[1]);
     c.a *= effect_scalar(mask_tex, effect.flags.z);
   } else {
     c.a *= f.profile;
   }
   // Erosion: cut under the amount, a soft border, a coloured edge.
-  let uv_noise = effect_uv(2u, f.shape_uv);
-  let gn = effect_grads(2u, uv_noise);
-  let noise_tex = textureSampleGrad(effect_noise, effect_sampler, uv_noise, gn[0], gn[1]);
   if ((bits & FX_EROSION) != 0u) {
-    var n = effect_value_noise(uv_noise * 4.0);
-    if ((bits & FX_NOISE) != 0u) { n = effect_scalar(noise_tex, effect.flags.w); }
+    let uv_noise = effect_uv(2u, f.shape_uv);
+    var n = 0.0;
+    if ((bits & FX_NOISE) != 0u) {
+      let gn = effect_grads(2u, uv_noise);
+      let noise_tex = textureSampleGrad(effect_noise, effect_sampler, uv_noise, gn[0], gn[1]);
+      n = effect_scalar(noise_tex, effect.flags.w);
+    } else {
+      n = effect_value_noise(uv_noise * 4.0);
+    }
     let soft = max(effect.erosion.x, 1e-4);
     let edge = effect.erosion.y;
     let cut = d.a.z * (1.0 + soft + edge) - soft - edge;

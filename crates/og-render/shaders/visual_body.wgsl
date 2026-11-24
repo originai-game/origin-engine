@@ -156,7 +156,6 @@ fn air(p: vec3<f32>, t: f32) -> vec3<f32> {
     let w = vec(WIND);
     let speed = length(w);
     if speed <= 0.0 { return w; }
-    let along = w / speed;
     let g = word(GUST);
     let q = p - w * t;
     let swell = value_noise(q / 2.5 + vec3<f32>(0.0, 0.0, 0.3 * t), 1u);
@@ -176,6 +175,9 @@ fn aero(i: u32, h: f32, t: f32) -> vec3<f32> {
     let first = body[csr + i];
     let last = body[csr + i + 1u];
     let rows = csr + body[N] + 1u;
+    // Turbulent air varies over 0.35m..2.5m (much wider than a cloth triangle),
+    // so sampling once per vertex cuts aerodynamic noise evaluations by ~6x.
+    let wind_at = air(state[at_pos(i)].xyz, t);
     var force = vec3<f32>(0.0);
     var area = 0.0;
     for (var k = first; k < last; k++) {
@@ -189,7 +191,7 @@ fn aero(i: u32, h: f32, t: f32) -> vec3<f32> {
         let share = twice / 6.0;
         area += share;
         let v = (pa + pb + pc - state[at_prev(a)].xyz - state[at_prev(b)].xyz - state[at_prev(c)].xyz) / (3.0 * h);
-        let rel = air((pa + pb + pc) / 3.0, t) - v;
+        let rel = wind_at - v;
         let len = length(rel);
         if len < 1e-5 { continue; }
         let flow = rel / len;
