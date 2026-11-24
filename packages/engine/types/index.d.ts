@@ -2903,31 +2903,35 @@ export interface Rng {
 }
 
 // ── procgen ─────────────────────────────────────────────────────
-// Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore.
-// Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer.
+// Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire.
+// Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
 // See `world §7`.
 
 /**
- * Which gradient noise.
- * - `"perlin"`: Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between.
+ * Which procedural noise basis or fractal shaping.
+ * - `"perlin"`: C2 quintic gradient noise (Perlin 2002): 0 on lattice points, smooth between.
  * - `"simplex"`: Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D.
+ * - `"worley"`: Cellular Worley F1 distance noise, remapped to [-1, 1].
+ * - `"worleyEdge"`: Cellular Worley F2 - F1 edge/ridge distance, remapped to [-1, 1].
+ * - `"ridged"`: Ridged multifractal gradient noise (sharp mountain ridges and cracks).
+ * - `"billow"`: Billowy turbulence gradient noise (puffy cumulus/rolling hills).
  */
-export type NoiseKind = "perlin" | "simplex";
+export type NoiseKind = "perlin" | "simplex" | "worley" | "worleyEdge" | "ridged" | "billow";
 
 /**
- * Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise.
+ * Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. Optional domain warping displaces coordinates before sampling.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
 export interface FbmDesc {
   /**
-   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave reads its own table derived from it.
+   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave hashes independently from it.
    *
    * @default 0
    */
   readonly seed?: number;
   /**
-   * Perlin or simplex.
+   * Noise basis or fractal shaping.
    *
    * @default "perlin"
    */
@@ -2966,6 +2970,27 @@ export interface FbmDesc {
    * @default false
    */
   readonly threeD?: boolean;
+  /**
+   * Domain warp displacement amplitude (0: no warp).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly warp?: number;
+  /**
+   * Domain warp frequency multiplier.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly warpFrequency?: number;
+  /**
+   * Octaves in the domain warp field.
+   *
+   * @default 2
+   * @range 1..8
+   */
+  readonly warpOctaves?: number;
 }
 
 /**
@@ -3021,6 +3046,23 @@ export interface NoiseGridDesc {
   readonly step?: number;
 }
 
+/**
+ * Noise value together with its analytical partial derivatives `(dx, dy, dz)` (dz is 0 in 2D).
+ */
+export interface NoiseGrad {
+  /** Noise sample at the point, about -1 to 1. */
+  readonly value: number;
+  /** Partial derivative along x. */
+  readonly dx: number;
+  /** Partial derivative along y. */
+  readonly dy: number;
+  /** Partial derivative along z (0 for 2D noise). */
+  readonly dz: number;
+}
+
+
+
+
 
 
 /**
@@ -3073,6 +3115,12 @@ export interface PoissonDesc {
    * @range 0..1048576
    */
   readonly maxPoints?: number;
+  /**
+   * Wrap distances toroidally across opposite edges for seamless tileable scatter.
+   *
+   * @default false
+   */
+  readonly wrap?: boolean;
 }
 
 
@@ -3089,7 +3137,7 @@ export interface CellRect {
 }
 
 /**
- * A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor.
+ * A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor (plus optional extra loop corridors).
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -3148,18 +3196,28 @@ export interface BspDesc {
    * @range 1..
    */
   readonly corridor?: number;
+  /**
+   * Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops).
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly loops?: number;
 }
 
 /** What og.procgen.bsp made. */
 export interface BspResult {
   /** One room per leaf, left before right down the tree. */
   readonly rooms: readonly CellRect[];
-  /** Corridor segments, two per split. */
+  /** Corridor segments, two per split plus loop corridors. */
   readonly corridors: readonly CellRect[];
+  /** Room adjacency graph edges `[roomA, roomB]` connecting rooms joined by corridors. */
+  readonly edges: readonly [number, number][];
   /**
-   * width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first).
+   * width × height, row-major from the top: 0 wall, 1 room, 2 corridor (native Uint8Array over binary wire).
    */
-  readonly cells: readonly number[];
+  readonly cells: Uint8Array;
 }
 
 
@@ -3201,7 +3259,7 @@ export interface WfcCell {
 }
 
 /**
- * Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed.
+ * Wave function collapse, the simple tiled model with AC-4 constraint propagation and Shannon entropy cell selection: a grid filled with tiles whose edges all fit; a dead end restarts on a fork of the seed.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -3253,14 +3311,939 @@ export interface WfcDesc {
   readonly attempts?: number;
 }
 
-/** What og.procgen.wfc made, row-major from the top. */
+/**
+ * What og.procgen.wfc made, row-major from the top, returned as native TypedArrays over binary wire.
+ */
 export interface WfcResult {
   /** Each cell's tile index. */
-  readonly tiles: readonly number[];
-  /** Each cell's quarter turns clockwise. */
-  readonly rotations: readonly number[];
+  readonly tiles: Uint32Array;
+  /** Each cell's quarter turns clockwise (0 to 3). */
+  readonly rotations: Uint8Array;
   /** The try that succeeded, from 1. */
   readonly attempt: number;
+}
+
+
+/**
+ * Macro shaping mask applied to generated terrain heights.
+ * - `"none"`: No mask (raw domain-warped FBM).
+ * - `"island"`: Radial coastal falloff pushing edges down to sea level.
+ * - `"ridge"`: Ridged mountain shaping blending sharp crests into the base FBM.
+ */
+export type HeightmapMask = "none" | "island" | "ridge";
+
+/**
+ * Droplet-based hydraulic erosion pass (deterministic seeded drops).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HydraulicErosionDesc {
+  /**
+   * Number of simulated rain drops.
+   *
+   * @default 40000
+   * @range 0..2000000
+   */
+  readonly drops?: number;
+  /**
+   * Maximum simulation steps per drop.
+   *
+   * @default 30
+   * @range 1..256
+   */
+  readonly lifetime?: number;
+  /**
+   * Erosion brush radius in height samples.
+   *
+   * @default 3
+   * @range 1..12
+   */
+  readonly radius?: number;
+  /**
+   * Directional momentum retained per step.
+   *
+   * @default 0.05
+   * @range 0..0.99
+   */
+  readonly inertia?: number;
+  /**
+   * Sediment carrying capacity factor.
+   *
+   * @default 4
+   * @range 0.01..64
+   */
+  readonly capacity?: number;
+  /**
+   * Excess sediment deposition speed.
+   *
+   * @default 0.3
+   * @range 0.01..1
+   */
+  readonly deposition?: number;
+  /**
+   * Terrain erosion speed.
+   *
+   * @default 0.3
+   * @range 0.01..1
+   */
+  readonly erosion?: number;
+  /**
+   * Water evaporation fraction per step.
+   *
+   * @default 0.01
+   * @range 0.001..0.5
+   */
+  readonly evaporation?: number;
+  /**
+   * Downslope acceleration factor.
+   *
+   * @default 4
+   * @range 0.1..32
+   */
+  readonly gravity?: number;
+}
+
+/**
+ * CFL-stable mass-conserving talus thermal erosion pass.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ThermalErosionDesc {
+  /**
+   * Angle of repose above which rock/soil slumps.
+   *
+   * @default 35
+   * @range 5..85
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly talus?: number;
+  /**
+   * Relaxation passes.
+   *
+   * @default 20
+   * @range 0..500
+   */
+  readonly iterations?: number;
+  /**
+   * Fraction of excess height moved per pass.
+   *
+   * @default 0.5
+   * @range 0.01..1
+   */
+  readonly rate?: number;
+}
+
+/**
+ * Drainage-accumulation river carving pass.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RiverCarveDesc {
+  /**
+   * Upstream sample count required before carving a channel.
+   *
+   * @default 400
+   * @range 1..
+   */
+  readonly threshold?: number;
+  /**
+   * Maximum carved channel depth.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly depth?: number;
+  /**
+   * Half-width of carved river channels.
+   *
+   * @default 6
+   * @range 0.1..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+}
+
+/**
+ * Moisture field weights for biome painting.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MoistureDesc {
+  /**
+   * Weight of drainage flow accumulation.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly flow?: number;
+  /**
+   * Flow count at which moisture reaches saturation.
+   *
+   * @default 64
+   * @range 1..
+   */
+  readonly scale?: number;
+  /**
+   * Weight of procedural moisture noise.
+   *
+   * @default 0.5
+   * @range 0..
+   */
+  readonly noise?: number;
+  /**
+   * Moisture noise frequency across the terrain.
+   *
+   * @default 6
+   * @range 0.01..
+   */
+  readonly frequency?: number;
+}
+
+/**
+ * One biome painting rule mapping altitude, slope and moisture bands onto a terrain layer index.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BiomeRuleDesc {
+  /**
+   * Target terrain layer index (0 to 15).
+   *
+   * @default 0
+   * @range ..15
+   */
+  readonly layer?: number;
+  /**
+   * Relative rule weight.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly weight?: number;
+  /**
+   * Minimum altitude.
+   *
+   * @default -1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMin?: number;
+  /**
+   * Maximum altitude.
+   *
+   * @default 1000000
+   * @unit m (metres)
+   */
+  readonly altitudeMax?: number;
+  /**
+   * Fade band outside altitude range.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly altitudeFade?: number;
+  /**
+   * Minimum slope.
+   *
+   * @default 0
+   * @range 0..90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly slopeMin?: number;
+  /**
+   * Maximum slope.
+   *
+   * @default 90
+   * @range 0..90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly slopeMax?: number;
+  /**
+   * Fade band outside slope range.
+   *
+   * @default 4
+   * @range 0..90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly slopeFade?: number;
+  /**
+   * Minimum moisture (0 to 1).
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly moistureMin?: number;
+  /**
+   * Maximum moisture (0 to 1).
+   *
+   * @default 1
+   * @range 0..1
+   */
+  readonly moistureMax?: number;
+  /**
+   * Fade band outside moisture range.
+   *
+   * @default 0.1
+   * @range 0..1
+   */
+  readonly moistureFade?: number;
+}
+
+/**
+ * Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HeightmapDesc {
+  /**
+   * World extent along x and z.
+   *
+   * @default { x: 256, y: 256 }
+   * @unit m (metres)
+   */
+  readonly size?: Vector2;
+  /**
+   * Samples along x.
+   *
+   * @default 257
+   * @range 2..2049
+   */
+  readonly columns?: number;
+  /**
+   * Samples along z.
+   *
+   * @default 257
+   * @range 2..2049
+   */
+  readonly rows?: number;
+  /**
+   * Lowest base height before erosion.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly minHeight?: number;
+  /**
+   * Highest base height before erosion.
+   *
+   * @default 48
+   * @unit m (metres)
+   */
+  readonly maxHeight?: number;
+  /**
+   * Deterministic seed.
+   *
+   * @default 1
+   */
+  readonly seed?: number;
+  /**
+   * Fractal noise octaves.
+   *
+   * @default 6
+   * @range 1..12
+   */
+  readonly octaves?: number;
+  /**
+   * Base noise periods across the terrain.
+   *
+   * @default 3
+   * @range 0.01..
+   */
+  readonly frequency?: number;
+  /**
+   * Frequency multiplier per octave.
+   *
+   * @default 2
+   * @range 1..
+   */
+  readonly lacunarity?: number;
+  /**
+   * Amplitude multiplier per octave.
+   *
+   * @default 0.5
+   * @range 0..1
+   */
+  readonly gain?: number;
+  /**
+   * Domain warp strength (0: none).
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly warp?: number;
+  /**
+   * Macro terrain shaping mask.
+   *
+   * @default "none"
+   */
+  readonly mask?: HeightmapMask;
+  /**
+   * Island coast falloff width (0..1) or ridge blend factor (0..1).
+   *
+   * @default 0.4
+   * @range 0..1
+   */
+  readonly maskStrength?: number;
+  /**
+   * Optional hydraulic droplet erosion pass.
+   *
+   * @default null
+   */
+  readonly erosion?: HydraulicErosionDesc | null;
+  /**
+   * Optional thermal talus erosion pass.
+   *
+   * @default null
+   */
+  readonly thermal?: ThermalErosionDesc | null;
+  /**
+   * Terrace step height in metres (0: disabled).
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly terraceStep?: number;
+  /**
+   * Terrace edge sharpness (0 to 1).
+   *
+   * @default 0.6
+   * @range 0..1
+   */
+  readonly terraceSharpness?: number;
+  /**
+   * Optional sea level height for coastal shore flattening and river outlets.
+   *
+   * @default null
+   * @unit m (metres)
+   */
+  readonly seaLevel?: number | null;
+  /**
+   * Shore flattening margin above sea level.
+   *
+   * @default 2
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly shore?: number;
+  /**
+   * Optional drainage river carving pass.
+   *
+   * @default null
+   */
+  readonly rivers?: RiverCarveDesc | null;
+  /**
+   * Moisture settings for biome painting.
+   *
+   * @default {}
+   */
+  readonly moisture?: MoistureDesc;
+  /**
+   * Biome control-map rules (empty omits the control map).
+   *
+   * @default []
+   */
+  readonly biomes?: readonly BiomeRuleDesc[];
+}
+
+/**
+ * Generated procedural heightfield and optional biome control map, ready for og.terrain.create.
+ */
+export interface HeightmapResult {
+  /** Samples along x. */
+  readonly columns: number;
+  /** Samples along z. */
+  readonly rows: number;
+  /**
+   * Lowest generated height.
+   *
+   * @unit m (metres)
+   */
+  readonly minHeight: number;
+  /**
+   * Highest generated height.
+   *
+   * @unit m (metres)
+   */
+  readonly maxHeight: number;
+  /**
+   * Total length of carved river channels.
+   *
+   * @unit m (metres)
+   */
+  readonly riverLength: number;
+  /** Row-major heights in metres (`columns * rows`). */
+  readonly heights: Float32Array;
+  /**
+   * RGBA8 biome control-map pages (`columns * rows * 4 * pages`), or null when no biomes were given.
+   */
+  readonly control: Uint8Array | null;
+}
+
+
+/**
+ * Branching architecture of a procedural plant.
+ * - `"deciduous"`: Broadleaf branching: every branch continues into deeper child levels.
+ * - `"evergreen"`: Conifer branching: tapered stem with whorls shortening towards the apex.
+ */
+export type PlantGrowth = "deciduous" | "evergreen";
+
+/**
+ * Geometry built for each leaf.
+ * - `"blade"`: Six-vertex cupped pointed leaf blade (no texture required).
+ * - `"card"`: Single UV-mapped quad for a leaf alpha card.
+ * - `"cross"`: Two crossed UV-mapped quads.
+ */
+export type PlantLeafShape = "blade" | "card" | "cross";
+
+/**
+ * Growth parameters for one branch level (level 0 is the trunk).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantLevelDesc {
+  /**
+   * Branch length.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly length?: number;
+  /**
+   * Trunk base radius in metres, or child radius as a share of parent radius.
+   *
+   * @default 0.6
+   * @range 0..
+   */
+  readonly radius?: number;
+  /**
+   * Segments along the branch length.
+   *
+   * @default 4
+   * @range 1..32
+   */
+  readonly sections?: number;
+  /**
+   * Radial sides around the branch.
+   *
+   * @default 4
+   * @range 3..32
+   */
+  readonly segments?: number;
+  /**
+   * Radius loss towards branch tip (0..1).
+   *
+   * @default 0.6
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly taper?: number;
+  /**
+   * Random angular wander per section (radians).
+   *
+   * @default 0.1
+   * @range 0..2
+   */
+  readonly gnarliness?: number;
+  /**
+   * Axial twist per section (radians).
+   *
+   * @default 0
+   * @range -3.1416..3.1416
+   */
+  readonly twist?: number;
+  /**
+   * Child branches spawned per parent branch.
+   *
+   * @default 3
+   * @range ..64
+   */
+  readonly children?: number;
+  /**
+   * Branching angle from parent.
+   *
+   * @default 50
+   * @range 0..175
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly angle?: number;
+  /**
+   * Fractional distance along parent where children begin (0..1).
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly start?: number;
+}
+
+/**
+ * Leaf foliage configuration on terminal branches.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantLeavesDesc {
+  /**
+   * Leaf geometry kind.
+   *
+   * @default "blade"
+   */
+  readonly shape?: PlantLeafShape;
+  /**
+   * Leaves per terminal branch.
+   *
+   * @default 10
+   * @range ..256
+   */
+  readonly count?: number;
+  /**
+   * Start fraction along terminal branch (0..1).
+   *
+   * @default 0.1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly start?: number;
+  /**
+   * End fraction along terminal branch (0..1).
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly end?: number;
+  /**
+   * Leaf angle from branch.
+   *
+   * @default 45
+   * @range 0..175
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly angle?: number;
+  /**
+   * How much leaves turn flat towards the sky (0..1).
+   *
+   * @default 0.8
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly facing?: number;
+  /**
+   * Leaf phyllotaxis rows around the branch (0: spiral/random, 2: frond).
+   *
+   * @default 0
+   * @range ..16
+   */
+  readonly rows?: number;
+  /**
+   * Leaf length.
+   *
+   * @default 0.4
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  readonly size?: number;
+  /**
+   * Leaf width as a share of length.
+   *
+   * @default 0.5
+   * @range 0.05..4
+   */
+  readonly width?: number;
+  /**
+   * Per-leaf random size variation share (0..1).
+   *
+   * @default 0.4
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sizeVariance?: number;
+  /**
+   * Primary linear leaf colour.
+   *
+   * @default { r: 0.09, g: 0.24, b: 0.04 }
+   */
+  readonly color?: Color;
+  /**
+   * Secondary linear leaf colour.
+   *
+   * @default { r: 0.17, g: 0.33, b: 0.06 }
+   */
+  readonly color2?: Color;
+  /**
+   * Per-leaf brightness variation (0..1).
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly colorVariation?: number;
+}
+
+/**
+ * Blossom/flower configuration on terminal branches.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantFlowersDesc {
+  /**
+   * Share of branch tips that flower (0..1).
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly share?: number;
+  /**
+   * Extra flowers along each terminal branch.
+   *
+   * @default 0
+   * @range ..64
+   */
+  readonly count?: number;
+  /**
+   * Petals per flower.
+   *
+   * @default 5
+   * @range 3..24
+   */
+  readonly petals?: number;
+  /**
+   * Petal length.
+   *
+   * @default 0.04
+   * @range 0.001..
+   * @unit m (metres)
+   */
+  readonly size?: number;
+  /**
+   * Petal width as a share of length.
+   *
+   * @default 0.6
+   * @range 0.05..4
+   */
+  readonly width?: number;
+  /**
+   * Petal cup lift angle.
+   *
+   * @default 20
+   * @range 0..85
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly cup?: number;
+  /**
+   * Primary petal colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color?: Color;
+  /**
+   * Secondary petal colour.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  readonly color2?: Color;
+  /**
+   * Flower centre colour.
+   *
+   * @default { r: 1, g: 0.7, b: 0.05 }
+   */
+  readonly centerColor?: Color;
+}
+
+/**
+ * Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). Omitting `levelsSpec` uses a default ~6 m broadleaf tree.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlantDesc {
+  /**
+   * Deterministic seed.
+   *
+   * @default 1
+   */
+  readonly seed?: number;
+  /**
+   * Branching habit (deciduous or evergreen).
+   *
+   * @default "deciduous"
+   */
+  readonly growth?: PlantGrowth;
+  /**
+   * Branching levels beyond the trunk (0 to 3).
+   *
+   * @default 2
+   * @range ..3
+   */
+  readonly levels?: number;
+  /**
+   * Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults).
+   *
+   * @default []
+   */
+  readonly levelsSpec?: readonly PlantLevelDesc[];
+  /**
+   * Tropism / gravity bend direction.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  readonly forceDirection?: Vector3;
+  /**
+   * Tropism bend strength (negative droops boughs downward).
+   *
+   * @default 0.01
+   * @range -2..2
+   */
+  readonly forceStrength?: number;
+  /**
+   * Optional foliage leaves (pass {} for standard broadleaf leaves; omit or null for bare winter wood).
+   *
+   * @default null
+   */
+  readonly leaves?: PlantLeavesDesc | null;
+  /**
+   * Optional flowers on terminal shoots.
+   *
+   * @default null
+   */
+  readonly flowers?: PlantFlowersDesc | null;
+}
+
+/**
+ * One mesh part of a procedural plant (wood or foliage) with vertex and foliage-wind TypedArrays ready for og.render.bufferGeometry.
+ */
+export interface PlantMeshPart {
+  /** Vertex positions, x y z per vertex. */
+  readonly positions: Float32Array;
+  /** Unit normals, x y z per vertex. */
+  readonly normals: Float32Array;
+  /** UV coordinates, u v per vertex. */
+  readonly uvs: Float32Array;
+  /** Linear RGBA vertex colours (r g b a per vertex; empty when uniform white). */
+  readonly colors: Float32Array;
+  /** Counter-clockwise triangle indices. */
+  readonly indices: Uint32Array;
+  /** Limb sway pivot and stiffness (px py pz stiffness per vertex). */
+  readonly windPivot: Float32Array;
+  /** Leaf attachment anchor and flutter weight (ax ay az flutter per vertex). */
+  readonly windLeaf: Float32Array;
+}
+
+/** Generated procedural plant meshes and statistics. */
+export interface PlantMeshResult {
+  /** Trunk and branch geometry. */
+  readonly wood: PlantMeshPart;
+  /** Leaves and flowers geometry, or null if none grew. */
+  readonly leaves: PlantMeshPart | null;
+  /** Total branch count generated. */
+  readonly branches: number;
+  /** Total leaf count generated. */
+  readonly leafCount: number;
+  /** Total flower count generated. */
+  readonly flowerCount: number;
+}
+
+
+/**
+ * Deterministic 3D Voronoi fracture of a closed triangle mesh into solid pieces and Blast-style contact bonds.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FractureDesc {
+  /** Closed mesh vertex positions, x y z per vertex. */
+  readonly positions?: Float32Array;
+  /** Counter-clockwise triangle indices (multiple of 3). */
+  readonly indices?: Uint32Array;
+  /**
+   * Target number of Voronoi seed cells.
+   *
+   * @default 8
+   * @range 2..128
+   */
+  readonly chunks?: number;
+  /**
+   * Deterministic RNG seed for cell centres.
+   *
+   * @default 1
+   */
+  readonly seed?: number;
+  /**
+   * Anisotropic Voronoi distance metric (smaller component stretches shards along that axis, e.g. wood splinters).
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   */
+  readonly metric?: Vector3;
+  /**
+   * Optional impact point in mesh space to cluster smaller shards nearby.
+   *
+   * @default null
+   * @unit m (metres)
+   */
+  readonly impact?: Vector3 | null;
+  /**
+   * Cluster radius around `impact` (0 uses half the mesh size).
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly impactRadius?: number;
+  /**
+   * Box-projection UV repeats per metre on interior cut faces.
+   *
+   * @default 1
+   * @range 0.001..
+   */
+  readonly uvScale?: number;
+}
+
+/** One solid fractured shard mesh in the input mesh's coordinate space. */
+export interface FracturePiece {
+  /** Voronoi cell index. */
+  readonly cell: number;
+  /** Vertex positions, x y z per vertex. */
+  readonly positions: Float32Array;
+  /** Vertex normals, x y z per vertex. */
+  readonly normals: Float32Array;
+  /** UV coordinates, u v per vertex. */
+  readonly uvs: Float32Array;
+  /** Counter-clockwise triangle indices. */
+  readonly indices: Uint32Array;
+  /** Enclosed volume. */
+  readonly volume: number;
+  /**
+   * Centre of mass in input space.
+   *
+   * @unit m (metres)
+   */
+  readonly centroid: Vector3;
+}
+
+/** A shared contact face between two touching fracture pieces. */
+export interface FractureBond {
+  /** First piece index (`a < b`). */
+  readonly a: number;
+  /** Second piece index. */
+  readonly b: number;
+  /**
+   * Area-weighted contact centroid.
+   *
+   * @unit m (metres)
+   */
+  readonly centroid: Vector3;
+  /** Unit contact normal from piece `a` towards piece `b`. */
+  readonly normal: Vector3;
+  /** Contact surface area. */
+  readonly area: number;
+}
+
+/** Solid pieces and structural contact bonds produced by og.procgen.fracture. */
+export interface FractureResult {
+  /** Closed shard meshes (hand each to og.render.bufferGeometry). */
+  readonly pieces: readonly FracturePiece[];
+  /** Contact bonds between adjacent shards. */
+  readonly bonds: readonly FractureBond[];
 }
 
 
@@ -18413,6 +19396,12 @@ export interface Clouds {
    * @range 8..256
    */
   steps: number;
+  /**
+   * Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout.
+   *
+   * @default 1
+   */
+  seed: number;
 }
 
 /**
@@ -22183,11 +23172,11 @@ export interface FillDesc {
    */
   readonly width?: number;
   /**
-   * The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written).
+   * The cells, as og.tilemap.setTile's `tile`: an Int32Array (zero-JSON binary transfer) or number array of tile ids or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written).
    *
-   * @default []
+   * @default null
    */
-  readonly tiles?: readonly number[];
+  readonly tiles?: Int32Array | readonly number[] | null;
 }
 
 
@@ -23294,6 +24283,278 @@ export interface AudioFeedbackDesc {
 
 
 
+/**
+ * Oscillator waveform for procedural SFX synthesis.
+ * - `"square"`: PolyBLEP band-limited pulse/square wave (controlled by duty).
+ * - `"saw"`: PolyBLEP band-limited sawtooth wave.
+ * - `"sine"`: Pure sine wave.
+ * - `"triangle"`: Triangle wave.
+ * - `"noise"`: Deterministic white or sample-and-hold noise (SplitMix64).
+ */
+export type SfxWave = "square" | "saw" | "sine" | "triangle" | "noise";
+
+/**
+ * One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SfxLayerDesc {
+  /**
+   * Oscillator waveform.
+   *
+   * @default "square"
+   */
+  readonly wave?: SfxWave;
+  /**
+   * Start frequency (for noise, >= 24000 or 0 runs full-rate white noise; lower values sample-and-hold at freq).
+   *
+   * @default 440
+   * @range 0..48000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly freq?: number;
+  /**
+   * Optional target end frequency overriding slide when > 0 (0: use slide).
+   *
+   * @default 0
+   * @range 0..48000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly freqEnd?: number;
+  /**
+   * Pitch slide in octaves per second.
+   *
+   * @default 0
+   * @range -24..24
+   */
+  readonly slide?: number;
+  /**
+   * Seconds in when the frequency multiplies by arp (0: never).
+   *
+   * @default 0
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly arpAt?: number;
+  /**
+   * Frequency multiplier applied at arpAt.
+   *
+   * @default 0
+   * @range 0..16
+   */
+  readonly arp?: number;
+  /**
+   * Vibrato depth in octaves.
+   *
+   * @default 0
+   * @range 0..4
+   */
+  readonly vibDepth?: number;
+  /**
+   * Vibrato modulation rate.
+   *
+   * @default 0
+   * @range 0..100
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly vibRate?: number;
+  /**
+   * Attack ramp duration.
+   *
+   * @default 0.002
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly attack?: number;
+  /**
+   * Sustain duration.
+   *
+   * @default 0.05
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly sustain?: number;
+  /**
+   * Decay duration.
+   *
+   * @default 0.15
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly decay?: number;
+  /**
+   * Envelope sustain level (1 keeps attack-sustain-decay; below 1 enables ADSR decay to sustainLevel).
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly sustainLevel?: number;
+  /**
+   * Release tail duration after sustain.
+   *
+   * @default 0
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly release?: number;
+  /**
+   * Smoothed initial punch boost over sustain.
+   *
+   * @default 0
+   * @range 0..2
+   */
+  readonly punch?: number;
+  /**
+   * Square pulse duty cycle.
+   *
+   * @default 0.5
+   * @range 0.02..0.98
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly duty?: number;
+  /**
+   * Low-pass filter cutoff (0: off).
+   *
+   * @default 0
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly lowpass?: number;
+  /**
+   * Low-pass cutoff slide in octaves per second.
+   *
+   * @default 0
+   * @range -24..24
+   */
+  readonly lpSlide?: number;
+  /**
+   * Low-pass resonance Q (> 0 uses a Cytomic 2-pole SVF; 0 uses one-pole).
+   *
+   * @default 0
+   * @range 0..20
+   */
+  readonly q?: number;
+  /**
+   * High-pass filter cutoff (0: off).
+   *
+   * @default 0
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly highpass?: number;
+  /**
+   * FM modulator frequency (0: off).
+   *
+   * @default 0
+   * @range 0..20000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly fmFreq?: number;
+  /**
+   * FM modulation index in radians (0: off).
+   *
+   * @default 0
+   * @range 0..32
+   */
+  readonly fmIndex?: number;
+  /**
+   * Soft-clip saturation drive (> 0 enables tanh waveshaping).
+   *
+   * @default 0
+   * @range 0..32
+   */
+  readonly drive?: number;
+  /**
+   * Layer output gain.
+   *
+   * @default 0.5
+   * @range 0..4
+   */
+  readonly gain?: number;
+  /**
+   * Start delay from time 0.
+   *
+   * @default 0
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
+}
+
+/**
+ * Procedural sound effect synthesis specification: name a built-in `preset` (coin, pickup, powerup, jump, land, footstep, hit, hurt, explosion, laser, whoosh, door, death, click, select, back, error, levelup) or supply custom `layers` (or both; `layers` takes precedence when non-empty). Deterministic on every host.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SfxDesc {
+  /**
+   * Built-in preset name; ignored when `layers` is non-empty.
+   *
+   * @default ""
+   */
+  readonly preset?: string;
+  /**
+   * Custom oscillator layers to mix.
+   *
+   * @default []
+   */
+  readonly layers?: readonly SfxLayerDesc[];
+  /**
+   * Deterministic RNG seed for noise and variation.
+   *
+   * @default 1
+   */
+  readonly seed?: number;
+  /**
+   * Global pitch multiplier.
+   *
+   * @default 1
+   * @range 0.1..10
+   */
+  readonly pitch?: number;
+  /**
+   * Global envelope duration multiplier.
+   *
+   * @default 1
+   * @range 0.05..20
+   */
+  readonly duration?: number;
+  /**
+   * Global output volume multiplier.
+   *
+   * @default 1
+   * @range 0..4
+   */
+  readonly volume?: number;
+  /**
+   * Randomised per-seed pitch/duration jitter share.
+   *
+   * @default 0
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly vary?: number;
+}
+
+/**
+ * Synthesised PCM audio samples (og.audio.synth), returned as a native Float32Array over binary wire.
+ */
+export interface SfxSamples {
+  /** Mono floating-point PCM samples in [-1, 1]. */
+  readonly samples: Float32Array;
+  /**
+   * Sample rate.
+   *
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly rate: number;
+  /** Channel count (1 mono). */
+  readonly channels: number;
+}
+
+
+
 
 // ── nav ─────────────────────────────────────────────────────────
 // Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch.
@@ -23917,11 +25178,11 @@ export interface NavGridDesc {
    */
   readonly origin?: Vector2;
   /**
-   * Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1.
+   * Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid) as a Uint8Array (zero-JSON binary transfer) or number array; omitted or empty: every cell 1.
    *
-   * @default []
+   * @default null
    */
-  readonly costs?: readonly number[];
+  readonly costs?: Uint8Array | readonly number[] | null;
 }
 
 /**
@@ -29340,6 +30601,10 @@ export interface TerrainSample {
    * Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from.
    */
   readonly hole: boolean;
+  /**
+   * The dominant material layer index at this point from the control map (0 when the terrain has no control map).
+   */
+  readonly layer: number;
 }
 
 /** A terrain's box in world space. */
@@ -29659,6 +30924,96 @@ export interface TerrainLayerDesc {
    */
   readonly altitudeFade?: number;
 }
+
+/**
+ * Create a terrain directly at run time from a heightmap Float32Array (for example from og.procgen.heightmap or og.procgen.noiseGrid), with optional biome control map, holes, material layers and height-field collision. Drawn, sampled, edited, stamped and collided with exactly like a cooked terrain.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TerrainCreateDesc {
+  /**
+   * World extent along x and z.
+   *
+   * @default { x: 64, y: 64 }
+   * @unit m (metres)
+   */
+  readonly size?: Vector2;
+  /**
+   * Height samples along x (at least 2).
+   *
+   * @default 65
+   * @range 2..4096
+   */
+  readonly columns?: number;
+  /**
+   * Height samples along z (at least 2).
+   *
+   * @default 65
+   * @range 2..4096
+   */
+  readonly rows?: number;
+  /** Row-major heights in metres (`columns * rows` values, -z to +z, -x to +x). */
+  readonly heights?: Float32Array;
+  /**
+   * Optional RGBA8 control map pages (`controlWidth * controlHeight * 4 * pages` bytes, 4 layers per page).
+   *
+   * @default null
+   */
+  readonly control?: Uint8Array | null;
+  /**
+   * Control map width in texels (0 defaults to `columns`).
+   *
+   * @default 0
+   * @range ..4096
+   */
+  readonly controlWidth?: number;
+  /**
+   * Control map height in texels (0 defaults to `rows`).
+   *
+   * @default 0
+   * @range ..4096
+   */
+  readonly controlHeight?: number;
+  /**
+   * Optional per-cell hole mask (`(columns - 1) * (rows - 1)` bytes; non-zero cuts a hole).
+   *
+   * @default null
+   */
+  readonly holes?: Uint8Array | null;
+  /**
+   * Material layers (up to 16; empty creates one default neutral layer).
+   *
+   * @default []
+   */
+  readonly layers?: readonly TerrainLayerDesc[];
+  /**
+   * Height-blend transition window between layers (0: linear weights).
+   *
+   * @default 0.15
+   * @range 0..1
+   */
+  readonly heightBlend?: number;
+  /**
+   * Reference sea level height reported in TerrainInfo.seaLevel.
+   *
+   * @default 0
+   * @unit m (metres)
+   */
+  readonly seaLevel?: number;
+  /**
+   * Register a physics height-field collider under TerrainInfo.geometry.
+   *
+   * @default true
+   */
+  readonly collision?: boolean;
+  /**
+   * Whether the terrain casts shadows by default.
+   *
+   * @default true
+   */
+  readonly castShadows?: boolean;
+}
+
 
 
 
@@ -35488,8 +36843,8 @@ export declare namespace og {
    */
   const Rng: ResourceType<{ readonly seed: FieldSpec<"u32">; readonly state: FieldSpec<"u32"> }, Rng>;
   /**
-   * Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore.
-   * Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer.
+   * Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire.
+   * Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.
    * See `world §7`.
    */
   namespace procgen {
@@ -35503,12 +36858,40 @@ export declare namespace og {
      */
     function noise(desc: FbmDesc, x: number, y: number, z: number): number;
     /**
-     * Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step).
+     * Analytical value and gradient of Perlin FBM at one point (exact chain-rule derivatives, no finite-difference jitter).
+     *
+     * @param desc The seed and fractal settings.
+     * @param x x.
+     * @param y y.
+     * @param z z (3D only).
+     */
+    function noiseGrad(desc: FbmDesc, x: number, y: number, z: number): NoiseGrad;
+    /**
+     * Divergence-free curl vector field from analytical noise gradients: 2D returns `(dN/dy, -dN/dx, 0)`, 3D returns the full 3D curl of three independent potentials.
+     *
+     * @param desc The seed, frequency and fractal settings.
+     * @param x x.
+     * @param y y.
+     * @param z z (3D only).
+     */
+    function curlNoise(desc: FbmDesc, x: number, y: number, z: number): Vector3;
+    /**
+     * Cellular Worley noise distances at a point: `x` is F1 (nearest feature distance) and `y` is F2 (second-nearest feature distance).
+     *
+     * @param seed Seed.
+     * @param x x.
+     * @param y y.
+     * @param z z (3D only).
+     * @param threeD Sample 3D cellular lattice when true, 2D when false.
+     */
+    function worley(seed: number, x: number, y: number, z: number, threeD: boolean): Vector2;
+    /**
+     * Noise over a grid in one call, row-major as a native Float32Array: `values[j * width + i]` is the sample at (x + i * step, y + j * step).
      *
      * @param desc The grid and its noise.
      * @returns Refused for more than 16,777,216 samples.
      */
-    function noiseGrid(desc?: NoiseGridDesc): Result<readonly number[]>;
+    function noiseGrid(desc?: NoiseGridDesc): Result<Float32Array>;
     /**
      * Poisson-disk points in [0, width) × [0, height), in the order they were placed.
      *
@@ -35530,6 +36913,27 @@ export declare namespace og {
      * @returns Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at).
      */
     function wfc(desc?: WfcDesc): Result<WfcResult>;
+    /**
+     * Generate a deterministic eroded terrain heightmap and optional biome control map as native TypedArrays (hand directly to og.terrain.create).
+     *
+     * @param desc Size, noise, erosion, river and biome rules.
+     * @returns Refused for invalid dimensions or non-finite parameters.
+     */
+    function heightmap(desc?: HeightmapDesc): Result<HeightmapResult>;
+    /**
+     * Grow a deterministic procedural tree, shrub or flower into GPU-ready TypedArray mesh buffers (pass directly to og.render.bufferGeometry).
+     *
+     * @param desc Growth habit, branch levels, leaves and flowers.
+     * @returns Refused if parameters are invalid or exceed branch/leaf limits.
+     */
+    function plant(desc?: PlantDesc): Result<PlantMeshResult>;
+    /**
+     * Fracture a closed mesh deterministically into solid Voronoi shards and contact bonds, returned as TypedArrays.
+     *
+     * @param desc Input closed mesh buffers and fracture settings.
+     * @returns Refused for an open/zero-volume mesh, invalid indices or out-of-range settings.
+     */
+    function fracture(desc?: FractureDesc): Result<FractureResult>;
   }
   /**
    * An engine gameplay intent: apply scale at the next tick boundary. UI pause layers send this through the same recorded intent path as game controls.
@@ -37376,7 +38780,7 @@ export declare namespace og {
    * Volumetric clouds of one kind (`kind`: cumulus by default) over any background, including an authored LDR or HDR Environment, plus thin high cirrus. The same curved-shell march works above, inside or below the deck: above top, see sunlit tops fading with distance. Lit by the DirectionalLight (aim from og.load.environmentSun for an authored sky) and the environment's SH ambient; procedural skies keep their clear-sky lighting. Wind drifts shapes deterministically. Cover dims scene lighting and the clouds cast shadows. Alone clouds bring the built-in sky. Visual only.
    * See `render §7`.
    */
-  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly kind: FieldSpec<"CloudKind">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
+  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly kind: FieldSpec<"CloudKind">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32"> }, Clouds>;
   /**
    * The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling waves and curled by a Kelvin-Helmholtz instability, glowing by height as the electrons' energy deposits (green oxygen near 114 km, a nitrogen border below, red oxygen above 200 km; Whiter et al. 2023). Emission only, under the clouds; invisible against a daylight sky. It follows the tick's clock. Drawn over the procedural sky. Visual only.
    * See `render §7`.
@@ -37869,6 +39273,21 @@ export declare namespace og {
      * @returns Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite.
      */
     function createSound(world: World, desc?: SoundDesc): Result<Sound>;
+    /**
+     * Synthesise a deterministic procedural sound effect into a Float32Array (48 kHz mono PCM), without mutating world state.
+     *
+     * @param desc The preset or custom oscillator layers and variation settings.
+     * @returns Refused when neither a known preset nor any layer is provided, or when a parameter is not finite.
+     */
+    function synth(desc?: SfxDesc): Result<SfxSamples>;
+    /**
+     * Synthesise a deterministic procedural sound effect and register it directly into the world's sound bank, answering a playable Sound handle.
+     *
+     * @param world The world that owns the sound.
+     * @param desc The preset or custom oscillator layers and variation settings.
+     * @returns Refused when synthesis fails or the engine has no audio bank.
+     */
+    function createSynthSound(world: World, desc?: SfxDesc): Result<Sound>;
     /**
      * How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency and the mixer's buffer; 0 headless. Host input, written to og.Audio between ticks, so a replay carries it.
      * Inside a system og.Audio must be among its reads or writes.
@@ -39092,6 +40511,14 @@ export declare namespace og {
      */
     function load(world: World, path: string): Result<TerrainInfo>;
     /**
+     * Create a procedural terrain at run time from height, control and hole TypedArrays, ready for og.Terrain, og.Collider (shape heightfield), og.Grass, og.TerrainScatter, og.terrain.sample, edit and stamp.
+     *
+     * @param world The world.
+     * @param desc Dimensions, heights, optional control/holes and layers.
+     * @returns Refused for invalid dimensions, mismatched array lengths, non-finite heights or more than 16 layers.
+     */
+    function create(world: World, desc?: TerrainCreateDesc): Result<TerrainInfo>;
+    /**
      * The surface under a world point: its height, normal and slope. Each height-field cell splits along the diagonal whose corner heights differ less; ties keep the (-x, -z) to (+x, +z) diagonal. Sampling, rendering at the finest level and the native height-field collider use this same rule. Callable inside systems (it reads the terrain, not the world).
      *
      * @param world The world.
@@ -39128,7 +40555,7 @@ export declare namespace og {
      */
     function stamp(world: World, desc?: TerrainStampDesc): Result<TerrainEdit>;
     /**
-     * Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.
+     * Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made.
      *
      * @param world The world.
      * @param data The terrain.

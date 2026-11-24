@@ -25,6 +25,9 @@ pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option
         .collect();
     move |k, c, r| {
         let t = (*loaded.get(k)?)?;
+        if t.cooked.is_none() {
+            return None;
+        }
         Some(((t.tile_sampler().sample)(c, r), t.hole_at(c, r)))
     }
 }
@@ -146,7 +149,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             displacement_distance: v.displacement_distance.max(0.0),
         });
         rs.ids.terrains.push(e);
-        if !t.edited {
+        if t.cooked.is_some() && !t.edited {
             streamed.push((i, rs.scene.world.terrains.len() - 1));
         }
     }
@@ -513,12 +516,15 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let st = &mut rs.terrain;
         let drawn: Vec<crate::bind::terrain_stream::Drawn> = streamed
             .iter()
-            .map(|&(i, k)| crate::bind::terrain_stream::Drawn {
-                index: i,
-                render: st.loaded[i].render,
-                cooked: &st.loaded[i].cooked,
-                terrain: &terrains[k],
-                detail: details[k],
+            .filter_map(|&(i, k)| {
+                let cooked = st.loaded[i].cooked.as_ref()?;
+                Some(crate::bind::terrain_stream::Drawn {
+                    index: i,
+                    render: st.loaded[i].render,
+                    cooked,
+                    terrain: &terrains[k],
+                    detail: details[k],
+                })
             })
             .collect();
         let hooks = crate::engine::hooks();
@@ -566,7 +572,7 @@ pub(crate) fn seabed_grid(
     if !(hi.x > lo.x && hi.y > lo.y) {
         return None;
     }
-    let l = terrain.cooked.layout;
+    let l = terrain.layout;
     let spacing = (size.x / (l.columns.max(2) - 1) as f32) * along;
     let extent = (hi - lo).max_element();
     let cell = spacing.max(extent / 1024.0).max(1e-3);

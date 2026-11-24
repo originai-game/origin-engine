@@ -6,7 +6,7 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 ### `BspDesc` (desc struct)
 
-A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor.
+A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor (plus optional extra loop corridors).
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -20,10 +20,11 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `depth` | `number` | `5` | ≤ 16 | — | — | The most splits, down any branch (up to 2^depth rooms). |
 | `padding` | `number` | `1` | — | — | — | Wall cells kept between a room and its leaf's edge. |
 | `corridor` | `number` | `1` | ≥ 1 | — | — | Corridor width, in cells. |
+| `loops` | `number` | `0` | 0 … 1 | `ratio` | — | Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops). |
 
 ```ogt
 struct BspDesc {
-  doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor."
+  doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor (plus optional extra loop corridors)."
   desc true
   field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed`."
   field width u32 "Columns." {
@@ -55,7 +56,12 @@ struct BspDesc {
     default 1
     min 1
   }
+  field loops f32 "Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops)." {
+    min 0
+    max 1
+    unit ratio
+  }
 }
 ```
 
-<sub>Module `procgen` line 120</sub>
+<sub>Module `procgen` line 173</sub>

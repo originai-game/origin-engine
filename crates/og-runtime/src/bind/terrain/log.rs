@@ -192,7 +192,7 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
     let count = eng.render.borrow().terrain.loaded.len();
     let mut replayed = std::collections::BTreeMap::new();
     for i in 0..count {
-        let (render, layout, range, collision, field) = {
+        let (render, cooked_reset, collision, field) = {
             let mut rs = eng.render.borrow_mut();
             let Some(t) = rs.terrain.loaded.get_mut(i) else {
                 continue;
@@ -203,23 +203,32 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
             t.edited = false;
             t.generation = next_generation();
             t.tiles.borrow_mut().clear();
-            t.field = if t.collision {
-                Some(t.cooked.field().map_err(|e| e.to_string())?)
+            let cooked_reset = if let Some(cooked) = &t.cooked {
+                t.field = if t.collision {
+                    Some(cooked.field().map_err(|e| e.to_string())?)
+                } else {
+                    None
+                };
+                Some((cooked.layout, cooked.range))
             } else {
+                t.field = t.initial.clone();
                 None
             };
-            (
-                t.render,
-                t.cooked.layout,
-                t.cooked.range,
-                t.collision,
-                t.field.clone(),
-            )
+            (t.render, cooked_reset, t.collision, t.field.clone())
         };
         {
             let mut rs = eng.render.borrow_mut();
-            rs.scene.set_terrain_stream(render, layout, range);
-            rs.terrain.streamer.forget(i);
+            match cooked_reset {
+                Some((layout, range)) => {
+                    rs.scene.set_terrain_stream(render, layout, range);
+                    rs.terrain.streamer.forget(i);
+                }
+                None => {
+                    if let Some(ref f) = field {
+                        rs.scene.set_terrain(render, f.clone());
+                    }
+                }
+            }
         }
         if collision {
             replayed.insert(i, field);

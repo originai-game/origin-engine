@@ -4,12 +4,12 @@
 // getters, since the modules import the generated classes they extend.
 
 import type { Custom } from "../generated/calls.ts";
-import { debugCustom, geometryCustom } from "../depth.ts";
+import { debugCustom } from "../depth.ts";
 import { shapeCustom } from "../geom.ts";
 import { platformCustom } from "../platform-rooms.ts";
 import { defineGame, defineHook, defineRecord, defineSystem, type FieldSpec } from "./declare.ts";
 import { engineProbeCustom, runtimeProbeCustom } from "./engine.ts";
-import { audioCustom, commandsCustom, loadCustom, tweenTimelineCustom } from "./modules.ts";
+import { audioCustom, commandsCustom, tweenTimelineCustom } from "./modules.ts";
 import { rngCustom } from "./resources.ts";
 import { saveEditCustom, worldCustom } from "./world.ts";
 
@@ -33,10 +33,9 @@ export const custom: Custom = {
   get TweenTimeline() { return tweenTimelineCustom; },
   get audio() { return audioCustom; },
   get commands() { return commandsCustom; },
-  get load() { return loadCustom; },
   get debug() { return debugCustom; },
   get platform() { return platformCustom; },
-  get render() { return { ...geometryCustom, ...shapeCustom }; },
+  get render() { return shapeCustom; },
   get game() { return { game: (desc?: unknown) => defineGame(desc as never) }; },
   get reflect() { return reflect; },
   get system() { return system; },

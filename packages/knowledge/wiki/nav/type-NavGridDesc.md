@@ -16,7 +16,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `height` | `number` | `32` | 1 … 4096 | — | — | Cells up. |
 | `cellSize` | `number` | `1` | 0.01 … 100 | `m` | — | A cell's side. |
 | `origin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D). |
-| `costs` | `readonly number[]` | `[]` | — | — | — | Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1. |
+| `costs` | `Uint8Array \| readonly number[] \| null` | `null` | — | — | — | Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid) as a Uint8Array (zero-JSON binary transfer) or number array; omitted or empty: every cell 1. |
 
 ```ogt
 struct NavGridDesc {
@@ -41,7 +41,7 @@ struct NavGridDesc {
   field origin Vector2 "Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D)." {
     unit m
   }
-  field costs List.u32 "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1."
+  field costs Option.OneOf.Uint8Array.List.u32 "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid) as a Uint8Array (zero-JSON binary transfer) or number array; omitted or empty: every cell 1."
 }
 ```
 

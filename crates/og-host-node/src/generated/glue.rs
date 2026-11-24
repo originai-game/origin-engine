@@ -837,8 +837,26 @@ pub fn og_procgen_noise(env: Env, desc: String, x: f64, y: f64, z: f64) -> f64 {
     <Host as ProcgenApi>::og_procgen_noise(&Host, desc, x, y, z)
 }
 
+#[napi(js_name = "og_procgen_noise_grad")]
+pub fn og_procgen_noise_grad(env: Env, desc: String, x: f64, y: f64, z: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_noise_grad(&Host, desc, x, y, z)
+}
+
+#[napi(js_name = "og_procgen_curl_noise")]
+pub fn og_procgen_curl_noise(env: Env, desc: String, x: f64, y: f64, z: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_curl_noise(&Host, desc, x, y, z)
+}
+
+#[napi(js_name = "og_procgen_worley")]
+pub fn og_procgen_worley(env: Env, seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d)
+}
+
 #[napi(js_name = "og_procgen_noise_grid")]
-pub fn og_procgen_noise_grid(env: Env, desc: Option<String>) -> String {
+pub fn og_procgen_noise_grid(env: Env, desc: Option<String>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_noise_grid(&Host, desc)
 }
@@ -850,15 +868,33 @@ pub fn og_procgen_poisson_disk(env: Env, desc: Option<String>) -> String {
 }
 
 #[napi(js_name = "og_procgen_bsp")]
-pub fn og_procgen_bsp(env: Env, desc: Option<String>) -> String {
+pub fn og_procgen_bsp(env: Env, desc: Option<String>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
 }
 
 #[napi(js_name = "og_procgen_wfc")]
-pub fn og_procgen_wfc(env: Env, desc: Option<String>) -> String {
+pub fn og_procgen_wfc(env: Env, desc: Option<String>) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_heightmap")]
+pub fn og_procgen_heightmap(env: Env, desc: Option<String>) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_heightmap(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_plant")]
+pub fn og_procgen_plant(env: Env, desc: Option<String>) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_plant(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_fracture")]
+pub fn og_procgen_fracture(env: Env, desc: Option<crate::NodeBytes>) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_fracture(&Host, desc)
 }
 
 #[napi(js_name = "og_input_intent")]
@@ -1390,13 +1426,13 @@ pub fn og_render_text(env: Env, world: u32, desc: Option<String>) -> String {
 }
 
 #[napi(js_name = "og_render_buffer_geometry")]
-pub fn og_render_buffer_geometry(env: Env, world: u32, desc: Option<String>) -> String {
+pub fn og_render_buffer_geometry(env: Env, world: u32, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as RenderApi>::og_render_buffer_geometry(&Host, world, desc)
 }
 
 #[napi(js_name = "og_render_update_geometry")]
-pub fn og_render_update_geometry(env: Env, world: u32, geometry: f64, desc: Option<String>) -> String {
+pub fn og_render_update_geometry(env: Env, world: u32, geometry: f64, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as RenderApi>::og_render_update_geometry(&Host, world, geometry, desc)
 }
@@ -1822,7 +1858,7 @@ pub fn og_load_data_json(env: Env, world: u32, asset: f64) -> String {
 }
 
 #[napi(js_name = "og_load_data_bytes")]
-pub fn og_load_data_bytes(env: Env, world: u32, asset: f64) -> String {
+pub fn og_load_data_bytes(env: Env, world: u32, asset: f64) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_data_bytes(&Host, world, asset)
 }
@@ -2260,7 +2296,7 @@ pub fn og_tilemap_set_tile(env: Env, world: u32, desc: Option<String>) -> String
 }
 
 #[napi(js_name = "og_tilemap_fill")]
-pub fn og_tilemap_fill(env: Env, world: u32, desc: Option<String>) -> String {
+pub fn og_tilemap_fill(env: Env, world: u32, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TilemapApi>::og_tilemap_fill(&Host, world, desc)
 }
@@ -2308,9 +2344,21 @@ pub fn og_audio_play_feedback(env: Env, world: u32, sound: f64, desc: Option<Str
 }
 
 #[napi(js_name = "og_audio_create_sound")]
-pub fn og_audio_create_sound(env: Env, world: u32, desc: Option<String>) -> String {
+pub fn og_audio_create_sound(env: Env, world: u32, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as AudioApi>::og_audio_create_sound(&Host, world, desc)
+}
+
+#[napi(js_name = "og_audio_synth")]
+pub fn og_audio_synth(env: Env, desc: Option<String>) -> crate::NodeBytes {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_synth(&Host, desc)
+}
+
+#[napi(js_name = "og_audio_create_synth_sound")]
+pub fn og_audio_create_synth_sound(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_create_synth_sound(&Host, world, desc)
 }
 
 #[napi(js_name = "og_audio_output_latency")]
@@ -2320,7 +2368,7 @@ pub fn og_audio_output_latency(env: Env, world: u32) -> f64 {
 }
 
 #[napi(js_name = "og_nav_grid")]
-pub fn og_nav_grid(env: Env, world: u32, desc: Option<String>) -> String {
+pub fn og_nav_grid(env: Env, world: u32, desc: Option<crate::NodeBytes>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as NavApi>::og_nav_grid(&Host, world, desc)
 }
@@ -3353,6 +3401,12 @@ pub fn og_engine_probe_get(env: Env, engine_probe: u32, target: String) -> Strin
 pub fn og_terrain_load(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_terrain_create")]
+pub fn og_terrain_create(env: Env, world: u32, desc: Option<crate::NodeBytes>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TerrainApi>::og_terrain_create(&Host, world, desc)
 }
 
 #[napi(js_name = "og_terrain_sample")]

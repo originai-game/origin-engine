@@ -266,16 +266,20 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> Result<(), Strin
     })()
 }
 
-pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> Result<(), String> {
+pub fn og_tilemap_fill(world: u32, desc: Option<Vec<u8>>) -> Result<(), String> {
     (|| {
-        let d: FillDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
+        let d: FillDesc = crate::host::bin::arg(desc, "desc")?;
         if d.entity == 0 {
             return Err("desc.entity is the entity with the og.Tilemap".into());
         }
+        let tiles: &[i32] = match &d.tiles {
+            None => &[],
+            Some(crate::host::wire::OneOf::A(v) | crate::host::wire::OneOf::B(v)) => v.as_slice(),
+        };
         with_live(world, d.entity as f64, |live| {
             let layer = layer_index(live, &d.layer)?;
             live.state
-                .fill(layer, d.x, d.y, d.width, &d.tiles)
+                .fill(layer, d.x, d.y, d.width, tiles)
                 .map_err(err)?;
             if live.state.asset().layers[layer].collision {
                 live.dirty = true;

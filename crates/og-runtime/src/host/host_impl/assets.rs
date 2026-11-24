@@ -194,8 +194,10 @@ macro_rules! __og_host_bindings_assets {
                 $crate::host_impl::answer($crate::og_load_data_json(world, asset))
             }
 
-            fn og_load_data_bytes(&self, world: u32, asset: f64) -> String {
-                $crate::host_impl::answer($crate::og_load_data_bytes(world, asset))
+            fn og_load_data_bytes(&self, world: u32, asset: f64) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out(
+                    $crate::host_impl::answer_bin_bytes($crate::og_load_data_bytes(world, asset)),
+                )
             }
 
             fn og_load_pack(&self, world: u32, entry: Option<String>) -> String {
@@ -288,17 +290,56 @@ macro_rules! __og_host_bindings_assets {
             fn og_procgen_noise(&self, desc: String, x: f64, y: f64, z: f64) -> f64 {
                 $crate::og_procgen_noise(desc, x, y, z)
             }
-            fn og_procgen_noise_grid(&self, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_procgen_noise_grid(desc))
+            fn og_procgen_noise_grad(&self, desc: String, x: f64, y: f64, z: f64) -> String {
+                $crate::host_impl::json($crate::og_procgen_noise_grad(desc, x, y, z))
+            }
+            fn og_procgen_curl_noise(&self, desc: String, x: f64, y: f64, z: f64) -> String {
+                $crate::host_impl::json($crate::og_procgen_curl_noise(desc, x, y, z))
+            }
+            fn og_procgen_worley(
+                &self,
+                seed: u32,
+                x: f64,
+                y: f64,
+                z: f64,
+                three_d: bool,
+            ) -> String {
+                $crate::host_impl::json($crate::og_procgen_worley(seed, x, y, z, three_d))
+            }
+            fn og_procgen_noise_grid(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out(
+                    $crate::host_impl::answer_bin_f32s($crate::og_procgen_noise_grid(desc)),
+                )
             }
             fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_procgen_poisson_disk(desc))
             }
-            fn og_procgen_bsp(&self, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_procgen_bsp(desc))
+            fn og_procgen_bsp(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_procgen_bsp(desc),
+                ))
             }
-            fn og_procgen_wfc(&self, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_procgen_wfc(desc))
+            fn og_procgen_wfc(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_procgen_wfc(desc),
+                ))
+            }
+            fn og_procgen_heightmap(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_procgen_heightmap(desc),
+                ))
+            }
+            fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_procgen_plant(desc),
+                ))
+            }
+            fn og_procgen_fracture(&self, desc: Option<Self::Bytes>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_procgen_fracture(
+                        desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                    ),
+                ))
             }
         }
 

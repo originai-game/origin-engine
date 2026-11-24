@@ -176,8 +176,11 @@ macro_rules! __og_host_bindings_simulation {
         }
 
         impl $crate::host_impl::api::NavApi for $host {
-            fn og_nav_grid(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_nav_grid(world, desc))
+            fn og_nav_grid(&self, world: u32, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_nav_grid(
+                    world,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
             }
             fn og_nav_grid_from_tilemap(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_nav_grid_from_tilemap(world, desc))
@@ -300,8 +303,11 @@ macro_rules! __og_host_bindings_simulation {
             fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_tilemap_set_tile(world, desc))
             }
-            fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_tilemap_fill(world, desc))
+            fn og_tilemap_fill(&self, world: u32, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_tilemap_fill(
+                    world,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
             }
             fn og_tilemap_create(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_tilemap_create(world, desc))

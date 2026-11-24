@@ -28,6 +28,7 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 | `layerAltitude` | `number` | `8000` | ≥ 0 | `m` | tunable | The high layer's height (kept above the cumulus). |
 | `shadows` | `number` | `1` | 0 … 1 | `ratio` | tunable | How dark the cumulus's shadows fall on the world, drifting with the clouds: 1 the shadows they cast, 0 none (the sun a little dimmer everywhere instead). They fall where the sun casts shadows and fade as the cover closes into an overcast. See `render §7`. |
 | `steps` | `number` | `48` | 8 … 256 | — | — | Samples along each view ray through the cumulus: more is smoother and costs more. |
+| `seed` | `number` | `1` | — | — | — | Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout. |
 
 ```ogt
 resource Clouds {
@@ -106,6 +107,9 @@ resource Clouds {
     default 48
     min 8
     max 256
+  }
+  field seed u32 "Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout." {
+    default 1
   }
 }
 ```

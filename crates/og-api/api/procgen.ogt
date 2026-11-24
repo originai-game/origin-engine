@@ -1,19 +1,23 @@
 module procgen {
-  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore."
-  doc "Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer."
+  doc "Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire."
+  doc "Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes."
   guide "world §7"
 
   enum NoiseKind {
-    doc "Which gradient noise."
-    variant perlin "Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between."
+    doc "Which procedural noise basis or fractal shaping."
+    variant perlin "C2 quintic gradient noise (Perlin 2002): 0 on lattice points, smooth between."
     variant simplex "Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D."
+    variant worley "Cellular Worley F1 distance noise, remapped to [-1, 1]."
+    variant worleyEdge "Cellular Worley F2 - F1 edge/ridge distance, remapped to [-1, 1]."
+    variant ridged "Ridged multifractal gradient noise (sharp mountain ridges and cracks)."
+    variant billow "Billowy turbulence gradient noise (puffy cumulus/rolling hills)."
   }
 
   struct FbmDesc {
-    doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise."
+    doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. Optional domain warping displaces coordinates before sampling."
     desc true
-    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
-    field kind NoiseKind "Perlin or simplex."
+    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave hashes independently from it."
+    field kind NoiseKind "Noise basis or fractal shaping."
     field octaves u32 "Layers summed." {
       default 1
       min 1
@@ -33,6 +37,18 @@ module procgen {
       max 1
     }
     field threeD bool "Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z."
+    field warp f32 "Domain warp displacement amplitude (0: no warp)." {
+      min 0
+    }
+    field warpFrequency f32 "Domain warp frequency multiplier." {
+      default 1
+      min 0
+    }
+    field warpOctaves u32 "Octaves in the domain warp field." {
+      default 2
+      min 1
+      max 8
+    }
   }
 
   struct NoiseGridDesc {
@@ -58,6 +74,14 @@ module procgen {
     }
   }
 
+  struct NoiseGrad {
+    doc "Noise value together with its analytical partial derivatives `(dx, dy, dz)` (dz is 0 in 2D)."
+    field value f32 "Noise sample at the point, about -1 to 1."
+    field dx f32 "Partial derivative along x."
+    field dy f32 "Partial derivative along y."
+    field dz f32 "Partial derivative along z (0 for 2D noise)."
+  }
+
   fn noise {
     doc "Noise at one point, about -1 to 1: a pure function of the desc and the point."
     param desc FbmDesc "The seed, kind and fractal settings."
@@ -67,10 +91,38 @@ module procgen {
     returns f32
   }
 
+  fn noiseGrad {
+    doc "Analytical value and gradient of Perlin FBM at one point (exact chain-rule derivatives, no finite-difference jitter)."
+    param desc FbmDesc "The seed and fractal settings."
+    param x f32 "x."
+    param y f32 "y."
+    param z f32 "z (3D only)."
+    returns NoiseGrad
+  }
+
+  fn curlNoise {
+    doc "Divergence-free curl vector field from analytical noise gradients: 2D returns `(dN/dy, -dN/dx, 0)`, 3D returns the full 3D curl of three independent potentials."
+    param desc FbmDesc "The seed, frequency and fractal settings."
+    param x f32 "x."
+    param y f32 "y."
+    param z f32 "z (3D only)."
+    returns Vector3
+  }
+
+  fn worley {
+    doc "Cellular Worley noise distances at a point: `x` is F1 (nearest feature distance) and `y` is F2 (second-nearest feature distance)."
+    param seed u32 "Seed."
+    param x f32 "x."
+    param y f32 "y."
+    param z f32 "z (3D only)."
+    param threeD bool "Sample 3D cellular lattice when true, 2D when false."
+    returns Vector2
+  }
+
   fn noiseGrid {
-    doc "Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step)."
+    doc "Noise over a grid in one call, row-major as a native Float32Array: `values[j * width + i]` is the sample at (x + i * step, y + j * step)."
     param desc NoiseGridDesc "The grid and its noise."
-    returns Result.List.f32 "Refused for more than 16,777,216 samples."
+    returns Result.Float32Array "Refused for more than 16,777,216 samples."
   }
 
   struct PoissonDesc {
@@ -100,6 +152,7 @@ module procgen {
       min 0
       max 1048576
     }
+    field wrap bool "Wrap distances toroidally across opposite edges for seamless tileable scatter."
   }
 
   fn poissonDisk {
@@ -118,7 +171,7 @@ module procgen {
   }
 
   struct BspDesc {
-    doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor."
+    doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor (plus optional extra loop corridors)."
     desc true
     field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed`."
     field width u32 "Columns." {
@@ -150,13 +203,19 @@ module procgen {
       default 1
       min 1
     }
+    field loops f32 "Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops)." {
+      min 0
+      max 1
+      unit ratio
+    }
   }
 
   struct BspResult {
     doc "What og.procgen.bsp made."
     field rooms List.CellRect "One room per leaf, left before right down the tree."
-    field corridors List.CellRect "Corridor segments, two per split."
-    field cells List.u32 "width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first)."
+    field corridors List.CellRect "Corridor segments, two per split plus loop corridors."
+    field edges List.Array.u32.2 "Room adjacency graph edges `[roomA, roomB]` connecting rooms joined by corridors."
+    field cells Uint8Array "width × height, row-major from the top: 0 wall, 1 room, 2 corridor (native Uint8Array over binary wire)."
   }
 
   fn bsp {
@@ -187,7 +246,7 @@ module procgen {
   }
 
   struct WfcDesc {
-    doc "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed."
+    doc "Wave function collapse, the simple tiled model with AC-4 constraint propagation and Shannon entropy cell selection: a grid filled with tiles whose edges all fit; a dead end restarts on a fork of the seed."
     desc true
     field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"village\").seed`."
     field width u32 "Columns." {
@@ -211,9 +270,9 @@ module procgen {
   }
 
   struct WfcResult {
-    doc "What og.procgen.wfc made, row-major from the top."
-    field tiles List.u32 "Each cell's tile index."
-    field rotations List.u32 "Each cell's quarter turns clockwise."
+    doc "What og.procgen.wfc made, row-major from the top, returned as native TypedArrays over binary wire."
+    field tiles Uint32Array "Each cell's tile index."
+    field rotations Uint8Array "Each cell's quarter turns clockwise (0 to 3)."
     field attempt u32 "The try that succeeded, from 1."
   }
 
@@ -222,6 +281,583 @@ module procgen {
     aliases "wave function collapse, WFC, wavefunction collapse, tile constraint solver, socket tiles, procedural tilemap"
     param desc WfcDesc "The grid, the tiles and the seed."
     returns Result.WfcResult "Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at)."
+  }
+
+  # ── procedural heightmap & erosion ────────────────────────────────────────
+
+  enum HeightmapMask {
+    doc "Macro shaping mask applied to generated terrain heights."
+    variant none "No mask (raw domain-warped FBM)."
+    variant island "Radial coastal falloff pushing edges down to sea level."
+    variant ridge "Ridged mountain shaping blending sharp crests into the base FBM."
+  }
+
+  struct HydraulicErosionDesc {
+    doc "Droplet-based hydraulic erosion pass (deterministic seeded drops)."
+    desc true
+    field drops u32 "Number of simulated rain drops." {
+      default 40000
+      min 0
+      max 2000000
+    }
+    field lifetime u32 "Maximum simulation steps per drop." {
+      default 30
+      min 1
+      max 256
+    }
+    field radius u32 "Erosion brush radius in height samples." {
+      default 3
+      min 1
+      max 12
+    }
+    field inertia f32 "Directional momentum retained per step." {
+      default 0.05
+      min 0
+      max 0.99
+    }
+    field capacity f32 "Sediment carrying capacity factor." {
+      default 4
+      min 0.01
+      max 64
+    }
+    field deposition f32 "Excess sediment deposition speed." {
+      default 0.3
+      min 0.01
+      max 1
+    }
+    field erosion f32 "Terrain erosion speed." {
+      default 0.3
+      min 0.01
+      max 1
+    }
+    field evaporation f32 "Water evaporation fraction per step." {
+      default 0.01
+      min 0.001
+      max 0.5
+    }
+    field gravity f32 "Downslope acceleration factor." {
+      default 4
+      min 0.1
+      max 32
+    }
+  }
+
+  struct ThermalErosionDesc {
+    doc "CFL-stable mass-conserving talus thermal erosion pass."
+    desc true
+    field talus f32 "Angle of repose above which rock/soil slumps." {
+      default 35
+      min 5
+      max 85
+      unit deg
+    }
+    field iterations u32 "Relaxation passes." {
+      default 20
+      min 0
+      max 500
+    }
+    field rate f32 "Fraction of excess height moved per pass." {
+      default 0.5
+      min 0.01
+      max 1
+    }
+  }
+
+  struct RiverCarveDesc {
+    doc "Drainage-accumulation river carving pass."
+    desc true
+    field threshold u32 "Upstream sample count required before carving a channel." {
+      default 400
+      min 1
+    }
+    field depth f32 "Maximum carved channel depth." {
+      default 2
+      min 0
+      unit m
+    }
+    field width f32 "Half-width of carved river channels." {
+      default 6
+      min 0.1
+      unit m
+    }
+  }
+
+  struct MoistureDesc {
+    doc "Moisture field weights for biome painting."
+    desc true
+    field flow f32 "Weight of drainage flow accumulation." {
+      default 1
+      min 0
+    }
+    field scale f32 "Flow count at which moisture reaches saturation." {
+      default 64
+      min 1
+    }
+    field noise f32 "Weight of procedural moisture noise." {
+      default 0.5
+      min 0
+    }
+    field frequency f32 "Moisture noise frequency across the terrain." {
+      default 6
+      min 0.01
+    }
+  }
+
+  struct BiomeRuleDesc {
+    doc "One biome painting rule mapping altitude, slope and moisture bands onto a terrain layer index."
+    desc true
+    field layer u32 "Target terrain layer index (0 to 15)." {
+      max 15
+    }
+    field weight f32 "Relative rule weight." {
+      default 1
+      min 0
+    }
+    field altitudeMin f32 "Minimum altitude." {
+      default -1000000
+      unit m
+    }
+    field altitudeMax f32 "Maximum altitude." {
+      default 1000000
+      unit m
+    }
+    field altitudeFade f32 "Fade band outside altitude range." {
+      default 2
+      min 0
+      unit m
+    }
+    field slopeMin f32 "Minimum slope." {
+      min 0
+      max 90
+      unit deg
+    }
+    field slopeMax f32 "Maximum slope." {
+      default 90
+      min 0
+      max 90
+      unit deg
+    }
+    field slopeFade f32 "Fade band outside slope range." {
+      default 4
+      min 0
+      max 90
+      unit deg
+    }
+    field moistureMin f32 "Minimum moisture (0 to 1)." {
+      min 0
+      max 1
+    }
+    field moistureMax f32 "Maximum moisture (0 to 1)." {
+      default 1
+      min 0
+      max 1
+    }
+    field moistureFade f32 "Fade band outside moisture range." {
+      default 0.1
+      min 0
+      max 1
+    }
+  }
+
+  struct HeightmapDesc {
+    doc "Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit)."
+    desc true
+    field size Vector2 "World extent along x and z." {
+      default 256 256
+      unit m
+    }
+    field columns u32 "Samples along x." {
+      default 257
+      min 2
+      max 2049
+    }
+    field rows u32 "Samples along z." {
+      default 257
+      min 2
+      max 2049
+    }
+    field minHeight f32 "Lowest base height before erosion." {
+      default 0
+      unit m
+    }
+    field maxHeight f32 "Highest base height before erosion." {
+      default 48
+      unit m
+    }
+    field seed u32 "Deterministic seed." {
+      default 1
+    }
+    field octaves u32 "Fractal noise octaves." {
+      default 6
+      min 1
+      max 12
+    }
+    field frequency f32 "Base noise periods across the terrain." {
+      default 3
+      min 0.01
+    }
+    field lacunarity f32 "Frequency multiplier per octave." {
+      default 2
+      min 1
+    }
+    field gain f32 "Amplitude multiplier per octave." {
+      default 0.5
+      min 0
+      max 1
+    }
+    field warp f32 "Domain warp strength (0: none)." {
+      min 0
+    }
+    field mask HeightmapMask "Macro terrain shaping mask."
+    field maskStrength f32 "Island coast falloff width (0..1) or ridge blend factor (0..1)." {
+      default 0.4
+      min 0
+      max 1
+    }
+    field erosion Option.HydraulicErosionDesc "Optional hydraulic droplet erosion pass."
+    field thermal Option.ThermalErosionDesc "Optional thermal talus erosion pass."
+    field terraceStep f32 "Terrace step height in metres (0: disabled)." {
+      min 0
+      unit m
+    }
+    field terraceSharpness f32 "Terrace edge sharpness (0 to 1)." {
+      default 0.6
+      min 0
+      max 1
+    }
+    field seaLevel Option.f32 "Optional sea level height for coastal shore flattening and river outlets." {
+      unit m
+    }
+    field shore f32 "Shore flattening margin above sea level." {
+      default 2
+      min 0
+      unit m
+    }
+    field rivers Option.RiverCarveDesc "Optional drainage river carving pass."
+    field moisture MoistureDesc "Moisture settings for biome painting."
+    field biomes List.BiomeRuleDesc "Biome control-map rules (empty omits the control map)."
+  }
+
+  struct HeightmapResult {
+    doc "Generated procedural heightfield and optional biome control map, ready for og.terrain.create."
+    field columns u32 "Samples along x."
+    field rows u32 "Samples along z."
+    field minHeight f32 "Lowest generated height." {
+      unit m
+    }
+    field maxHeight f32 "Highest generated height." {
+      unit m
+    }
+    field riverLength f32 "Total length of carved river channels." {
+      unit m
+    }
+    field heights Float32Array "Row-major heights in metres (`columns * rows`)."
+    field control Option.Uint8Array "RGBA8 biome control-map pages (`columns * rows * 4 * pages`), or null when no biomes were given."
+  }
+
+  fn heightmap {
+    doc "Generate a deterministic eroded terrain heightmap and optional biome control map as native TypedArrays (hand directly to og.terrain.create)."
+    aliases "generate terrain, hydraulic erosion, thermal erosion, procedural heightmap, biome map"
+    param desc HeightmapDesc "Size, noise, erosion, river and biome rules."
+    returns Result.HeightmapResult "Refused for invalid dimensions or non-finite parameters."
+  }
+
+  # ── procedural plant generator ────────────────────────────────────────────
+
+  enum PlantGrowth {
+    doc "Branching architecture of a procedural plant."
+    variant deciduous "Broadleaf branching: every branch continues into deeper child levels."
+    variant evergreen "Conifer branching: tapered stem with whorls shortening towards the apex."
+  }
+
+  enum PlantLeafShape {
+    doc "Geometry built for each leaf."
+    variant blade "Six-vertex cupped pointed leaf blade (no texture required)."
+    variant card "Single UV-mapped quad for a leaf alpha card."
+    variant cross "Two crossed UV-mapped quads."
+  }
+
+  struct PlantLevelDesc {
+    doc "Growth parameters for one branch level (level 0 is the trunk)."
+    desc true
+    field length f32 "Branch length." {
+      default 1
+      min 0
+      unit m
+    }
+    field radius f32 "Trunk base radius in metres, or child radius as a share of parent radius." {
+      default 0.6
+      min 0
+    }
+    field sections u32 "Segments along the branch length." {
+      default 4
+      min 1
+      max 32
+    }
+    field segments u32 "Radial sides around the branch." {
+      default 4
+      min 3
+      max 32
+    }
+    field taper f32 "Radius loss towards branch tip (0..1)." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
+    }
+    field gnarliness f32 "Random angular wander per section (radians)." {
+      default 0.1
+      min 0
+      max 2
+    }
+    field twist f32 "Axial twist per section (radians)." {
+      min -3.1416
+      max 3.1416
+    }
+    field children u32 "Child branches spawned per parent branch." {
+      default 3
+      max 64
+    }
+    field angle f32 "Branching angle from parent." {
+      default 50
+      min 0
+      max 175
+      unit deg
+    }
+    field start f32 "Fractional distance along parent where children begin (0..1)." {
+      default 0.3
+      min 0
+      max 1
+      unit ratio
+    }
+  }
+
+  struct PlantLeavesDesc {
+    doc "Leaf foliage configuration on terminal branches."
+    desc true
+    field shape PlantLeafShape "Leaf geometry kind."
+    field count u32 "Leaves per terminal branch." {
+      default 10
+      max 256
+    }
+    field start f32 "Start fraction along terminal branch (0..1)." {
+      default 0.1
+      min 0
+      max 1
+      unit ratio
+    }
+    field end f32 "End fraction along terminal branch (0..1)." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field angle f32 "Leaf angle from branch." {
+      default 45
+      min 0
+      max 175
+      unit deg
+    }
+    field facing f32 "How much leaves turn flat towards the sky (0..1)." {
+      default 0.8
+      min 0
+      max 1
+      unit ratio
+    }
+    field rows u32 "Leaf phyllotaxis rows around the branch (0: spiral/random, 2: frond)." {
+      max 16
+    }
+    field size f32 "Leaf length." {
+      default 0.4
+      min 0.001
+      unit m
+    }
+    field width f32 "Leaf width as a share of length." {
+      default 0.5
+      min 0.05
+      max 4
+    }
+    field sizeVariance f32 "Per-leaf random size variation share (0..1)." {
+      default 0.4
+      min 0
+      max 1
+      unit ratio
+    }
+    field color Color "Primary linear leaf colour." {
+      default 0.09 0.24 0.04
+    }
+    field color2 Color "Secondary linear leaf colour." {
+      default 0.17 0.33 0.06
+    }
+    field colorVariation f32 "Per-leaf brightness variation (0..1)." {
+      default 0.3
+      min 0
+      max 1
+      unit ratio
+    }
+  }
+
+  struct PlantFlowersDesc {
+    doc "Blossom/flower configuration on terminal branches."
+    desc true
+    field share f32 "Share of branch tips that flower (0..1)." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field count u32 "Extra flowers along each terminal branch." {
+      max 64
+    }
+    field petals u32 "Petals per flower." {
+      default 5
+      min 3
+      max 24
+    }
+    field size f32 "Petal length." {
+      default 0.04
+      min 0.001
+      unit m
+    }
+    field width f32 "Petal width as a share of length." {
+      default 0.6
+      min 0.05
+      max 4
+    }
+    field cup f32 "Petal cup lift angle." {
+      default 20
+      min 0
+      max 85
+      unit deg
+    }
+    field color Color "Primary petal colour." {
+      default 1 1 1
+    }
+    field color2 Color "Secondary petal colour." {
+      default 1 1 1
+    }
+    field centerColor Color "Flower centre colour." {
+      default 1 0.7 0.05
+    }
+  }
+
+  struct PlantDesc {
+    doc "Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). Omitting `levelsSpec` uses a default ~6 m broadleaf tree."
+    desc true
+    field seed u32 "Deterministic seed." {
+      default 1
+    }
+    field growth PlantGrowth "Branching habit (deciduous or evergreen)."
+    field levels u32 "Branching levels beyond the trunk (0 to 3)." {
+      default 2
+      max 3
+    }
+    field levelsSpec List.PlantLevelDesc "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults)."
+    field forceDirection Vector3 "Tropism / gravity bend direction." {
+      default 0 1 0
+    }
+    field forceStrength f32 "Tropism bend strength (negative droops boughs downward)." {
+      default 0.01
+      min -2
+      max 2
+    }
+    field leaves Option.PlantLeavesDesc "Optional foliage leaves (pass {} for standard broadleaf leaves; omit or null for bare winter wood)."
+    field flowers Option.PlantFlowersDesc "Optional flowers on terminal shoots."
+  }
+
+  struct PlantMeshPart {
+    doc "One mesh part of a procedural plant (wood or foliage) with vertex and foliage-wind TypedArrays ready for og.render.bufferGeometry."
+    field positions Float32Array "Vertex positions, x y z per vertex."
+    field normals Float32Array "Unit normals, x y z per vertex."
+    field uvs Float32Array "UV coordinates, u v per vertex."
+    field colors Float32Array "Linear RGBA vertex colours (r g b a per vertex; empty when uniform white)."
+    field indices Uint32Array "Counter-clockwise triangle indices."
+    field windPivot Float32Array "Limb sway pivot and stiffness (px py pz stiffness per vertex)."
+    field windLeaf Float32Array "Leaf attachment anchor and flutter weight (ax ay az flutter per vertex)."
+  }
+
+  struct PlantMeshResult {
+    doc "Generated procedural plant meshes and statistics."
+    field wood PlantMeshPart "Trunk and branch geometry."
+    field leaves Option.PlantMeshPart "Leaves and flowers geometry, or null if none grew."
+    field branches u32 "Total branch count generated."
+    field leafCount u32 "Total leaf count generated."
+    field flowerCount u32 "Total flower count generated."
+  }
+
+  fn plant {
+    doc "Grow a deterministic procedural tree, shrub or flower into GPU-ready TypedArray mesh buffers (pass directly to og.render.bufferGeometry)."
+    aliases "procedural tree, generate plant, foliage mesh, ez-tree, bush"
+    param desc PlantDesc "Growth habit, branch levels, leaves and flowers."
+    returns Result.PlantMeshResult "Refused if parameters are invalid or exceed branch/leaf limits."
+  }
+
+  # ── procedural Voronoi fracture ───────────────────────────────────────────
+
+  struct FractureDesc {
+    doc "Deterministic 3D Voronoi fracture of a closed triangle mesh into solid pieces and Blast-style contact bonds."
+    desc true
+    field positions Float32Array "Closed mesh vertex positions, x y z per vertex."
+    field indices Uint32Array "Counter-clockwise triangle indices (multiple of 3)."
+    field chunks u32 "Target number of Voronoi seed cells." {
+      default 8
+      min 2
+      max 128
+    }
+    field seed u32 "Deterministic RNG seed for cell centres." {
+      default 1
+    }
+    field metric Vector3 "Anisotropic Voronoi distance metric (smaller component stretches shards along that axis, e.g. wood splinters)." {
+      default 1 1 1
+    }
+    field impact Option.Vector3 "Optional impact point in mesh space to cluster smaller shards nearby." {
+      unit m
+    }
+    field impactRadius f32 "Cluster radius around `impact` (0 uses half the mesh size)." {
+      min 0
+      unit m
+    }
+    field uvScale f32 "Box-projection UV repeats per metre on interior cut faces." {
+      default 1
+      min 0.001
+    }
+  }
+
+  struct FracturePiece {
+    doc "One solid fractured shard mesh in the input mesh's coordinate space."
+    field cell u32 "Voronoi cell index."
+    field positions Float32Array "Vertex positions, x y z per vertex."
+    field normals Float32Array "Vertex normals, x y z per vertex."
+    field uvs Float32Array "UV coordinates, u v per vertex."
+    field indices Uint32Array "Counter-clockwise triangle indices."
+    field volume f32 "Enclosed volume."
+    field centroid Vector3 "Centre of mass in input space." {
+      unit m
+    }
+  }
+
+  struct FractureBond {
+    doc "A shared contact face between two touching fracture pieces."
+    field a u32 "First piece index (`a < b`)."
+    field b u32 "Second piece index."
+    field centroid Vector3 "Area-weighted contact centroid." {
+      unit m
+    }
+    field normal Vector3 "Unit contact normal from piece `a` towards piece `b`."
+    field area f32 "Contact surface area."
+  }
+
+  struct FractureResult {
+    doc "Solid pieces and structural contact bonds produced by og.procgen.fracture."
+    field pieces List.FracturePiece "Closed shard meshes (hand each to og.render.bufferGeometry)."
+    field bonds List.FractureBond "Contact bonds between adjacent shards."
+  }
+
+  fn fracture {
+    doc "Fracture a closed mesh deterministically into solid Voronoi shards and contact bonds, returned as TypedArrays."
+    aliases "voronoi fracture, shatter mesh, breakable chunks, destructible pieces"
+    param desc FractureDesc "Input closed mesh buffers and fracture settings."
+    returns Result.FractureResult "Refused for an open/zero-volume mesh, invalid indices or out-of-range settings."
   }
 }
 

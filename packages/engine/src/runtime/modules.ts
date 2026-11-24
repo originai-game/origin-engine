@@ -2,34 +2,17 @@ import type * as Api from "@origingame/engine";
 import { type Custom, TweenTimeline } from "../generated/calls.ts";
 import { registerCommand } from "./declare.ts";
 import { abi } from "./host.ts";
-import { fromBase64, json, parse } from "./result.ts";
+import { json, parse } from "./result.ts";
 import { checkAccess } from "./views.ts";
 import { uiReactor } from "./world.ts";
 import { math } from "../math.ts";
 
 type W = { readonly id: number };
 
-// ── the `custom` members of the plain modules (IDL `load`, `audio`, `commands`, `tween`) ──
-
-export const loadCustom: Custom["load"] = {
-  // Bytes cross as base64, as a room message's do.
-  dataBytes: (world, asset) => {
-    const r = parse<{ ok: true; value: string } | { ok: false; reason: string }>(abi().og_load_data_bytes(world.id, asset));
-    return r.ok ? { ok: true, value: fromBase64(r.value) } : r;
-  },
-};
+// ── the `custom` members of the plain modules (IDL `audio`, `commands`, `tween`) ──
 
 export const audioCustom: Custom["audio"] = {
   outputLatency: (world) => (checkAccess("read", "og.Audio"), abi().og_audio_output_latency(world.id)),
-  // A typed array of samples crosses as a plain array.
-  createSound: (world, desc) => {
-    const d = desc !== null && typeof desc === "object" ? { ...(desc as Record<string, unknown>) } : desc;
-    if (d !== null && typeof d === "object" && ArrayBuffer.isView((d as Record<string, unknown>).samples)) {
-      const r = d as Record<string, unknown>;
-      r.samples = Array.from(r.samples as ArrayLike<number>);
-    }
-    return parse(abi().og_audio_create_sound(world.id, json(d)));
-  },
 };
 
 export const commandsCustom: Custom["commands"] = {

@@ -699,7 +699,22 @@ pub fn og_procgen_noise(desc: String, x: f64, y: f64, z: f64) -> f64 {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_noise_grid(desc: Option<String>) -> String {
+pub fn og_procgen_noise_grad(desc: String, x: f64, y: f64, z: f64) -> String {
+    <Host as ProcgenApi>::og_procgen_noise_grad(&Host, desc, x, y, z)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_curl_noise(desc: String, x: f64, y: f64, z: f64) -> String {
+    <Host as ProcgenApi>::og_procgen_curl_noise(&Host, desc, x, y, z)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_worley(seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String {
+    <Host as ProcgenApi>::og_procgen_worley(&Host, seed, x, y, z, three_d)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_noise_grid(desc: Option<String>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_noise_grid(&Host, desc)
 }
 
@@ -709,13 +724,28 @@ pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_bsp(desc: Option<String>) -> String {
+pub fn og_procgen_bsp(desc: Option<String>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
 }
 
 #[wasm_bindgen]
-pub fn og_procgen_wfc(desc: Option<String>) -> String {
+pub fn og_procgen_wfc(desc: Option<String>) -> Vec<u8> {
     <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_heightmap(desc: Option<String>) -> Vec<u8> {
+    <Host as ProcgenApi>::og_procgen_heightmap(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_plant(desc: Option<String>) -> Vec<u8> {
+    <Host as ProcgenApi>::og_procgen_plant(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Vec<u8> {
+    <Host as ProcgenApi>::og_procgen_fracture(&Host, desc)
 }
 
 #[wasm_bindgen]
@@ -1159,12 +1189,12 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_render_buffer_geometry(world: u32, desc: Option<String>) -> String {
+pub fn og_render_buffer_geometry(world: u32, desc: Option<Vec<u8>>) -> String {
     <Host as RenderApi>::og_render_buffer_geometry(&Host, world, desc)
 }
 
 #[wasm_bindgen]
-pub fn og_render_update_geometry(world: u32, geometry: f64, desc: Option<String>) -> String {
+pub fn og_render_update_geometry(world: u32, geometry: f64, desc: Option<Vec<u8>>) -> String {
     <Host as RenderApi>::og_render_update_geometry(&Host, world, geometry, desc)
 }
 
@@ -1519,7 +1549,7 @@ pub fn og_load_data_json(world: u32, asset: f64) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_load_data_bytes(world: u32, asset: f64) -> String {
+pub fn og_load_data_bytes(world: u32, asset: f64) -> Vec<u8> {
     <Host as LoadApi>::og_load_data_bytes(&Host, world, asset)
 }
 
@@ -1884,7 +1914,7 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
+pub fn og_tilemap_fill(world: u32, desc: Option<Vec<u8>>) -> String {
     <Host as TilemapApi>::og_tilemap_fill(&Host, world, desc)
 }
 
@@ -1924,8 +1954,18 @@ pub fn og_audio_play_feedback(world: u32, sound: f64, desc: Option<String>) -> S
 }
 
 #[wasm_bindgen]
-pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
+pub fn og_audio_create_sound(world: u32, desc: Option<Vec<u8>>) -> String {
     <Host as AudioApi>::og_audio_create_sound(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_audio_synth(desc: Option<String>) -> Vec<u8> {
+    <Host as AudioApi>::og_audio_synth(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_audio_create_synth_sound(world: u32, desc: Option<String>) -> String {
+    <Host as AudioApi>::og_audio_create_synth_sound(&Host, world, desc)
 }
 
 #[wasm_bindgen]
@@ -1934,7 +1974,7 @@ pub fn og_audio_output_latency(world: u32) -> f64 {
 }
 
 #[wasm_bindgen]
-pub fn og_nav_grid(world: u32, desc: Option<String>) -> String {
+pub fn og_nav_grid(world: u32, desc: Option<Vec<u8>>) -> String {
     <Host as NavApi>::og_nav_grid(&Host, world, desc)
 }
 
@@ -2800,6 +2840,11 @@ pub fn og_engine_probe_get(engine_probe: u32, target: String) -> String {
 #[wasm_bindgen]
 pub fn og_terrain_load(world: u32, path: String) -> String {
     <Host as TerrainApi>::og_terrain_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_terrain_create(world: u32, desc: Option<Vec<u8>>) -> String {
+    <Host as TerrainApi>::og_terrain_create(&Host, world, desc)
 }
 
 #[wasm_bindgen]

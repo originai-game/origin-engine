@@ -322,14 +322,46 @@ pub fn og_audio_output_latency(world: u32) -> f64 {
 
 /// `og.audio.createSound`: PCM from the game, clamped to 16 bits and put in
 /// the bank resident, and listed among the loaded sounds so soundInfo,
+/// Shared PCM registration helper for og.audio.createSound and og.audio.createSynthSound.
+fn register_pcm_sound(
+    eng: &Engine,
+    prefix: &str,
+    rate: u32,
+    channels: u32,
+    pcm: &[i16],
+) -> Result<serde_json::Value, String> {
+    let link = og_audio::link(eng.id).ok_or("this engine has no audio")?;
+    let id = format!("{prefix}#{}", eng.assets.borrow().sounds.len());
+    let handle = link
+        .bank()
+        .insert_pcm(&id, rate, channels as usize, pcm)
+        .map_err(|e| e.reason().to_string())?;
+    let mut a = eng.assets.borrow_mut();
+    a.sounds.push(og_bundle::runtime::CookedSound {
+        id,
+        meta: og_bundle::format::SoundMeta {
+            sample_rate: rate,
+            channels,
+            frames: (pcm.len() / channels as usize) as u32,
+            chunk_frames: 0,
+            chunk_count: 0,
+            codec: og_bundle::format::sound_codec::QOA,
+        },
+        qoa: Vec::new(),
+        opus: Vec::new(),
+    });
+    a.sound_handles.push(handle);
+    Ok(json!(handle as f64))
+}
+
 /// timelines and themes find it by handle.
 pub fn og_audio_create_sound(
     world: u32,
-    desc: Option<String>,
+    desc: Option<Vec<u8>>,
 ) -> Result<serde_json::Value, String> {
     (|| {
         let eng = engine(world)?;
-        let d: wire::SoundDesc = wire::arg(desc.as_deref(), "desc")?;
+        let d: wire::SoundDesc = crate::host::bin::arg(desc, "desc")?;
         let (rate, channels) = (d.rate, d.channels);
         if !(8_000..=192_000).contains(&rate) {
             return Err(format!("rate {rate} is out of range: 8000 to 192000"));
@@ -350,29 +382,144 @@ pub fn og_audio_create_sound(
                 pcm.len()
             ));
         }
-        let link = og_audio::link(eng.id).ok_or("this engine has no audio")?;
-        let id = format!("og.audio.createSound#{}", eng.assets.borrow().sounds.len());
-        let handle = link
-            .bank()
-            .insert_pcm(&id, rate, channels as usize, &pcm)
-            .map_err(|e| e.reason().to_string())?;
-        let mut a = eng.assets.borrow_mut();
-        a.sounds.push(og_bundle::runtime::CookedSound {
-            id,
-            meta: og_bundle::format::SoundMeta {
-                sample_rate: rate,
-                channels,
-                frames: (pcm.len() / channels as usize) as u32,
-                chunk_frames: 0,
-                chunk_count: 0,
-                codec: og_bundle::format::sound_codec::QOA,
-            },
-            qoa: Vec::new(),
-            opus: Vec::new(),
-        });
-        a.sound_handles.push(handle);
-        Ok(json!(handle as f64))
+        register_pcm_sound(&eng, "og.audio.createSound", rate, channels, &pcm)
     })()
+}
+
+fn synth_render(d: &wire::SfxDesc) -> Result<Vec<f32>, String> {
+    use og_audio::synth::{Layer, Variation, Wave, preset_layers, render_layers_f32};
+    for (name, val) in [
+        ("pitch", d.pitch),
+        ("duration", d.duration),
+        ("volume", d.volume),
+        ("vary", d.vary),
+    ] {
+        if !val.is_finite() {
+            return Err(format!("desc.{name} must be finite"));
+        }
+    }
+    let layers: Vec<Layer> = if !d.layers.is_empty() {
+        let mut out = Vec::with_capacity(d.layers.len());
+        for (i, l) in d.layers.iter().enumerate() {
+            let nums = [
+                l.freq,
+                l.freq_end,
+                l.slide,
+                l.arp_at,
+                l.arp,
+                l.vib_depth,
+                l.vib_rate,
+                l.attack,
+                l.sustain,
+                l.decay,
+                l.sustain_level,
+                l.release,
+                l.punch,
+                l.duty,
+                l.lowpass,
+                l.lp_slide,
+                l.q,
+                l.highpass,
+                l.fm_freq,
+                l.fm_index,
+                l.drive,
+                l.gain,
+                l.delay,
+            ];
+            if nums.iter().any(|x| !x.is_finite()) {
+                return Err(format!("desc.layers[{i}] contains a non-finite parameter"));
+            }
+            out.push(Layer {
+                wave: match l.wave {
+                    wire::SfxWave::Square => Wave::Square,
+                    wire::SfxWave::Saw => Wave::Saw,
+                    wire::SfxWave::Sine => Wave::Sine,
+                    wire::SfxWave::Triangle => Wave::Triangle,
+                    wire::SfxWave::Noise => Wave::Noise,
+                },
+                freq: f64::from(l.freq),
+                freq_end: (l.freq_end > 0.0).then(|| f64::from(l.freq_end)),
+                slide: f64::from(l.slide),
+                arp_at: f64::from(l.arp_at),
+                arp: f64::from(l.arp),
+                vib_depth: f64::from(l.vib_depth),
+                vib_rate: f64::from(l.vib_rate),
+                attack: f64::from(l.attack).max(0.0),
+                sustain: f64::from(l.sustain).max(0.0),
+                decay: f64::from(l.decay).max(0.0),
+                sustain_level: f64::from(l.sustain_level).clamp(0.0, 1.0),
+                release: f64::from(l.release).max(0.0),
+                punch: f64::from(l.punch).clamp(0.0, 1.0),
+                duty: f64::from(l.duty).clamp(0.01, 0.99),
+                lowpass: f64::from(l.lowpass).max(0.0),
+                lp_slide: f64::from(l.lp_slide),
+                q: f64::from(l.q).max(0.0),
+                highpass: f64::from(l.highpass).max(0.0),
+                fm_freq: f64::from(l.fm_freq).max(0.0),
+                fm_index: f64::from(l.fm_index).max(0.0),
+                drive: f64::from(l.drive).max(0.0),
+                gain: f64::from(l.gain).max(0.0),
+                delay: f64::from(l.delay).max(0.0),
+            });
+        }
+        out
+    } else if !d.preset.is_empty() {
+        preset_layers(&d.preset).ok_or_else(|| {
+            let names: Vec<&str> = og_audio::synth::PRESETS.iter().map(|(n, _)| *n).collect();
+            format!(
+                "unknown sfx preset {:?}; available presets: {}",
+                d.preset,
+                names.join(", ")
+            )
+        })?
+    } else {
+        return Err("desc requires either a built-in preset or at least one layer".into());
+    };
+    let vary = f64::from(d.vary).clamp(0.0, 1.0);
+    let mut pitch = f64::from(d.pitch).clamp(0.1, 10.0);
+    let mut length = f64::from(d.duration).clamp(0.05, 20.0);
+    if vary > 0.0 {
+        let mut r = Rng::new(d.seed ^ 0x51a3_c0de);
+        pitch *= 1.0 + r.range(-vary, vary) * 0.25;
+        length *= 1.0 + r.range(-vary, vary) * 0.25;
+    }
+    let v = Variation {
+        seed: d.seed,
+        pitch,
+        length,
+        volume: f64::from(d.volume).clamp(0.0, 4.0),
+    };
+    Ok(render_layers_f32(&layers, v))
+}
+
+pub fn og_audio_synth(desc: Option<String>) -> Result<wire::SfxSamples, String> {
+    let d: wire::SfxDesc = wire::arg(desc.as_deref(), "desc")?;
+    let samples = synth_render(&d)?;
+    Ok(wire::SfxSamples {
+        samples,
+        rate: og_audio::synth::RATE,
+        channels: 1,
+    })
+}
+
+pub fn og_audio_create_synth_sound(
+    world: u32,
+    desc: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let eng = engine(world)?;
+    let d: wire::SfxDesc = wire::arg(desc.as_deref(), "desc")?;
+    let samples = synth_render(&d)?;
+    let pcm: Vec<i16> = samples
+        .into_iter()
+        .map(|x| (f64::from(x).clamp(-1.0, 1.0) * 32767.0).round() as i16)
+        .collect();
+    register_pcm_sound(
+        &eng,
+        "og.audio.createSynthSound",
+        og_audio::synth::RATE,
+        1,
+        &pcm,
+    )
 }
 
 /// The host's sink reports its output latency (seconds from a sample's world

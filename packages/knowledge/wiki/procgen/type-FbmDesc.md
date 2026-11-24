@@ -6,26 +6,29 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 ### `FbmDesc` (desc struct)
 
-Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise.
+Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. Optional domain warping displaces coordinates before sampling.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave reads its own table derived from it. |
-| `kind` | `NoiseKind` | `"perlin"` | — | — | — | Perlin or simplex. |
+| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave hashes independently from it. |
+| `kind` | `NoiseKind` | `"perlin"` | — | — | — | Noise basis or fractal shaping. |
 | `octaves` | `number` | `1` | 1 … 16 | — | — | Layers summed. |
 | `frequency` | `number` | `1` | ≥ 0 | — | — | The first octave's frequency: features about 1 / frequency apart. |
 | `lacunarity` | `number` | `2` | ≥ 1 | — | — | Each octave's frequency over the last's. |
 | `gain` | `number` | `0.5` | 0 … 1 | — | — | Each octave's amplitude over the last's (persistence). |
 | `threeD` | `boolean` | `false` | — | — | — | Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z. |
+| `warp` | `number` | `0` | ≥ 0 | — | — | Domain warp displacement amplitude (0: no warp). |
+| `warpFrequency` | `number` | `1` | ≥ 0 | — | — | Domain warp frequency multiplier. |
+| `warpOctaves` | `number` | `2` | 1 … 8 | — | — | Octaves in the domain warp field. |
 
 ```ogt
 struct FbmDesc {
-  doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise."
+  doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. Optional domain warping displaces coordinates before sampling."
   desc true
-  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
-  field kind NoiseKind "Perlin or simplex."
+  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave hashes independently from it."
+  field kind NoiseKind "Noise basis or fractal shaping."
   field octaves u32 "Layers summed." {
     default 1
     min 1
@@ -45,7 +48,19 @@ struct FbmDesc {
     max 1
   }
   field threeD bool "Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z."
+  field warp f32 "Domain warp displacement amplitude (0: no warp)." {
+    min 0
+  }
+  field warpFrequency f32 "Domain warp frequency multiplier." {
+    default 1
+    min 0
+  }
+  field warpOctaves u32 "Octaves in the domain warp field." {
+    default 2
+    min 1
+    max 8
+  }
 }
 ```
 
-<sub>Module `procgen` line 12</sub>
+<sub>Module `procgen` line 16</sub>

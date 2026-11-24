@@ -494,11 +494,11 @@ pub fn og_load_data_json(world: u32, asset: f64) -> Result<serde_json::Value, St
     })
 }
 
-/// The bytes as base64 (bytes cross the wire so, as a room message's do).
-pub fn og_load_data_bytes(world: u32, asset: f64) -> Result<serde_json::Value, String> {
+/// Raw bytes of a ready og.load.data file (transferred over OGB1 binary wire).
+pub fn og_load_data_bytes(world: u32, asset: f64) -> Result<Vec<u8>, String> {
     engine(world).and_then(|eng| {
         crate::world::data::with(&eng, asset, |path, d| match d {
-            crate::world::data::Loaded::Bytes(b) => Ok(json!(og_core::base64::encode(b))),
+            crate::world::data::Loaded::Bytes(b) => Ok(b.to_vec()),
             crate::world::data::Loaded::Json(_) => Err(format!(
                 "{path} was read as json: og.load.dataJson gives its value"
             )),

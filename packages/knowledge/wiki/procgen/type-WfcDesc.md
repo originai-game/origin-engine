@@ -6,7 +6,7 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 ### `WfcDesc` (desc struct)
 
-Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed.
+Wave function collapse, the simple tiled model with AC-4 constraint propagation and Shannon entropy cell selection: a grid filled with tiles whose edges all fit; a dead end restarts on a fork of the seed.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -22,7 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct WfcDesc {
-  doc "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed."
+  doc "Wave function collapse, the simple tiled model with AC-4 constraint propagation and Shannon entropy cell selection: a grid filled with tiles whose edges all fit; a dead end restarts on a fork of the seed."
   desc true
   field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"village\").seed`."
   field width u32 "Columns." {
@@ -46,4 +46,4 @@ struct WfcDesc {
 }
 ```
 
-<sub>Module `procgen` line 189</sub>
+<sub>Module `procgen` line 248</sub>

@@ -10,7 +10,7 @@ See `world §1`.
 
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 19 more are advanced (`og api show terrain --all`).
+- **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 21 more are advanced (`og api show terrain --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -45,12 +45,14 @@ module terrain {
 | [`TerrainEdit`](terrain/type-TerrainEdit.md) | struct |  | What an edit changed. |
 | [`TerrainStampDesc`](terrain/type-TerrainStampDesc.md) | desc struct |  | One stamp of a mesh into a terrain (og.terrain.stamp). |
 | [`TerrainLayerDesc`](terrain/type-TerrainLayerDesc.md) | desc struct |  | One material layer of a terrain: its look and the rules that place it. |
+| [`TerrainCreateDesc`](terrain/type-TerrainCreateDesc.md) | desc struct |  | Create a terrain directly at run time from a heightmap Float32Array (for example from og.procgen.heightmap or og.procgen.noiseGrid), with optional biome control map, holes, material layers and height… |
 | [`og.terrain.load`](terrain/fn-load.md) | function | `(world: World, path: string): Result<TerrainInfo>` | Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInf… |
+| [`og.terrain.create`](terrain/fn-create.md) | function | `(world: World, desc?: TerrainCreateDesc): Result<TerrainInfo>` | Create a procedural terrain at run time from height, control and hole TypedArrays, ready for og.Terrain, og.Collider (shape heightfield), og.Grass, og.TerrainScatter, og.terrain.sample, edit and stam… |
 | [`og.terrain.sample`](terrain/fn-sample.md) | function | `(world: World, desc?: TerrainSampleDesc): Result<TerrainSample>` | The surface under a world point: its height, normal and slope. |
 | [`og.terrain.bounds`](terrain/fn-bounds.md) | function | `(world: World, data: TerrainData, origin?: Vector3, quaternion?: Quaternion, scale?: Vector3): Result<TerrainBounds>` | A terrain's box in world space when it stands at `origin`, turned by `quaternion` and scaled by `scale` (its entity's world transform): the box around its turned corners. |
 | [`og.terrain.edit`](terrain/fn-edit.md) | function | `(world: World, data: TerrainData, brush?: TerrainBrush): Result<TerrainEdit>` | Change a terrain under a round brush: raise, lower, flatten or smooth its heights (the renderer, physics and og.terrain.sample see the change from the next frame and tick), or paint a layer into its … |
 | [`og.terrain.stamp`](terrain/fn-stamp.md) | function | `(world: World, desc?: TerrainStampDesc): Result<TerrainEdit>` | Carve a terrain under a mesh (its og.TerrainStamp's), or cut holes under it: the triangles are rasterised from above over the height samples, deterministically, and what changed is world state like o… |
-| [`og.terrain.unstamp`](terrain/fn-unstamp.md) | function | `(world: World, data: TerrainData, stamp: number): Result<TerrainEdit>` | Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made. |
+| [`og.terrain.unstamp`](terrain/fn-unstamp.md) | function | `(world: World, data: TerrainData, stamp: number): Result<TerrainEdit>` | Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made. |
 | [`og.terrain.layer`](terrain/fn-layer.md) | function | `(world: World, data: TerrainData, index: number): Result<TerrainLayerDesc>` | A terrain's layer as it is now (for a tuning tool: read it, change it, setLayer it). |
 | [`og.terrain.setLayer`](terrain/fn-setLayer.md) | function | `(world: World, data: TerrainData, index: number, layer?: TerrainLayerDesc): Result<void>` | Replace a terrain's layer look and rules (its textures stay). |
 

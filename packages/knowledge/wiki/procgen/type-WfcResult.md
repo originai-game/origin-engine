@@ -6,21 +6,21 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 ### `WfcResult` (struct)
 
-What og.procgen.wfc made, row-major from the top.
+What og.procgen.wfc made, row-major from the top, returned as native TypedArrays over binary wire.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `tiles` | `readonly number[]` | `[]` | — | — | — | Each cell's tile index. |
-| `rotations` | `readonly number[]` | `[]` | — | — | — | Each cell's quarter turns clockwise. |
+| `tiles` | `Uint32Array` | — | — | — | — | Each cell's tile index. |
+| `rotations` | `Uint8Array` | — | — | — | — | Each cell's quarter turns clockwise (0 to 3). |
 | `attempt` | `number` | `0` | — | — | — | The try that succeeded, from 1. |
 
 ```ogt
 struct WfcResult {
-  doc "What og.procgen.wfc made, row-major from the top."
-  field tiles List.u32 "Each cell's tile index."
-  field rotations List.u32 "Each cell's quarter turns clockwise."
+  doc "What og.procgen.wfc made, row-major from the top, returned as native TypedArrays over binary wire."
+  field tiles Uint32Array "Each cell's tile index."
+  field rotations Uint8Array "Each cell's quarter turns clockwise (0 to 3)."
   field attempt u32 "The try that succeeded, from 1."
 }
 ```
 
-<sub>Module `procgen` line 213</sub>
+<sub>Module `procgen` line 272</sub>

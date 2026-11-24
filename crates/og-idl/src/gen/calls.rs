@@ -21,6 +21,9 @@ use std::fmt::Write;
 /// language's and the file's own names.
 const RESERVED: &[&str] = &[
     "abi",
+    "bin",
+    "binDecode",
+    "binOpt",
     "custom",
     "json",
     "self",
@@ -120,7 +123,7 @@ fn param_ts(w: Wire) -> &'static str {
         Wire::Bool => "boolean",
         Wire::I32 | Wire::U32 | Wire::F64 => "number",
         Wire::Text => "string",
-        Wire::Json | Wire::Views => "unknown",
+        Wire::Json | Wire::Binary | Wire::Views => "unknown",
         Wire::Token => "{ readonly name: string }",
         Wire::Object => "{ readonly id: number }",
         Wire::Callback => "Function",
@@ -153,6 +156,16 @@ fn args(ix: &Index<'_>, f: Option<&Function>) -> Vec<Arg> {
                     match empty {
                         Some(d) => format!("JSON.stringify({name} ?? {d})"),
                         None => format!("JSON.stringify({name})"),
+                    }
+                }
+                (Wire::Binary, true) => format!("binOpt({name})"),
+                (Wire::Binary, false) => {
+                    let empty = default_json(ix, &p.ty, None)
+                        .map(|d| d.compact())
+                        .filter(|d| matches!(d.as_str(), "null" | "{}" | "[]"));
+                    match empty {
+                        Some(d) => format!("bin({name} ?? {d})"),
+                        None => format!("bin({name})"),
                     }
                 }
                 (Wire::Token, true) => format!("{name}?.name"),
@@ -191,6 +204,7 @@ fn answer(ix: &Index<'_>, b: &Binding<'_>, call: &str, receiver: Option<&str>) -
     let (_, ret) = signature(ix, b);
     match ret {
         Wire::Json => ("unknown".into(), format!("JSON.parse({call}) as unknown")),
+        Wire::Binary => ("unknown".into(), format!("binDecode({call})")),
         Wire::Object => {
             let ty = b
                 .function
@@ -356,6 +370,7 @@ pub fn calls_ts(ix: &Index<'_>) -> String {
          // binding symbol's call (src/generated/abi.ts) with the wire's conversions;\n\
          // a member the IDL marks `custom` calls src/runtime/custom.ts instead.\n\n\
          import { abi } from \"../runtime/host.ts\";\n\
+         import { bin, binDecode, binOpt } from \"../runtime/binary.ts\";\n\
          import { custom } from \"../runtime/custom.ts\";\n\
          import { json } from \"../runtime/result.ts\";\n",
     );

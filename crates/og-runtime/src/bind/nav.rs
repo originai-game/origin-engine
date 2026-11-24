@@ -175,26 +175,49 @@ fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-pub fn og_nav_grid(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+pub fn og_nav_grid(world: u32, desc: Option<Vec<u8>>) -> Result<serde_json::Value, String> {
     (|| {
         engine(world)?;
-        let d: NavGridDesc = wire::arg(desc.as_deref(), "desc")?;
+        let d: NavGridDesc = crate::host::bin::arg(desc, "desc")?;
         let w = d.width.clamp(1, 4096);
         let h = d.height.clamp(1, 4096);
         let (cs, origin) = (d.cell_size, d.origin);
-        let grid = if d.costs.is_empty() {
-            Grid::new(w, h, cs, origin)
-        } else {
-            let c = &d.costs;
-            if c.len() != (w * h) as usize {
-                return Err(format!(
-                    "costs has {} values; a {w} × {h} grid needs {} (or none)",
-                    c.len(),
-                    w * h
-                ));
+        let costs_opt: Option<Vec<u8>> = match d.costs {
+            None => None,
+            Some(wire::OneOf::A(bytes)) => {
+                if bytes.is_empty() {
+                    None
+                } else {
+                    if bytes.len() != (w * h) as usize {
+                        return Err(format!(
+                            "costs has {} values; a {w} × {h} grid needs {} (or none)",
+                            bytes.len(),
+                            w * h
+                        ));
+                    }
+                    Some(bytes)
+                }
             }
-            let costs = c.iter().map(|&x| x.min(255) as u8).collect();
-            Grid::from_costs(w, h, cs, origin, costs).ok_or("the costs do not fit the grid")?
+            Some(wire::OneOf::B(nums)) => {
+                if nums.is_empty() {
+                    None
+                } else {
+                    if nums.len() != (w * h) as usize {
+                        return Err(format!(
+                            "costs has {} values; a {w} × {h} grid needs {} (or none)",
+                            nums.len(),
+                            w * h
+                        ));
+                    }
+                    Some(nums.into_iter().map(|x| x.min(255) as u8).collect())
+                }
+            }
+        };
+        let grid = match costs_opt {
+            None => Grid::new(w, h, cs, origin),
+            Some(costs) => {
+                Grid::from_costs(w, h, cs, origin, costs).ok_or("the costs do not fit the grid")?
+            }
         };
         let n = navs(world)?;
         let h = lock(&n).insert(Nav::Grid(grid));

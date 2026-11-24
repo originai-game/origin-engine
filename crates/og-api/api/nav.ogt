@@ -369,7 +369,7 @@ module nav {
     field origin Vector2 "Where cell (0, 0)'s lower corner is (x, y in 2D; x, z in 3D)." {
       unit m
     }
-    field costs List.u32 "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1."
+    field costs Option.OneOf.Uint8Array.List.u32 "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid) as a Uint8Array (zero-JSON binary transfer) or number array; omitted or empty: every cell 1."
   }
 
   struct TilemapGridDesc {

@@ -729,11 +729,193 @@ module audio {
   }
 
   fn createSound {
-    custom true
     doc "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves."
     param world World "The world that owns the sound."
     param desc SoundDesc "The samples and their format."
     returns Result.Sound "Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite."
+  }
+
+  enum SfxWave {
+    doc "Oscillator waveform for procedural SFX synthesis."
+    variant square "PolyBLEP band-limited pulse/square wave (controlled by duty)."
+    variant saw "PolyBLEP band-limited sawtooth wave."
+    variant sine "Pure sine wave."
+    variant triangle "Triangle wave."
+    variant noise "Deterministic white or sample-and-hold noise (SplitMix64)."
+  }
+
+  struct SfxLayerDesc {
+    doc "One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound)."
+    desc true
+    field wave SfxWave "Oscillator waveform." {
+      default square
+    }
+    field freq f32 "Start frequency (for noise, >= 24000 or 0 runs full-rate white noise; lower values sample-and-hold at freq)." {
+      default 440
+      min 0
+      max 48000
+      unit hz
+    }
+    field freqEnd f32 "Optional target end frequency overriding slide when > 0 (0: use slide)." {
+      min 0
+      max 48000
+      unit hz
+    }
+    field slide f32 "Pitch slide in octaves per second." {
+      min -24
+      max 24
+    }
+    field arpAt f32 "Seconds in when the frequency multiplies by arp (0: never)." {
+      min 0
+      max 30
+      unit s
+    }
+    field arp f32 "Frequency multiplier applied at arpAt." {
+      min 0
+      max 16
+    }
+    field vibDepth f32 "Vibrato depth in octaves." {
+      min 0
+      max 4
+    }
+    field vibRate f32 "Vibrato modulation rate." {
+      min 0
+      max 100
+      unit hz
+    }
+    field attack f32 "Attack ramp duration." {
+      default 0.002
+      min 0
+      max 30
+      unit s
+    }
+    field sustain f32 "Sustain duration." {
+      default 0.05
+      min 0
+      max 30
+      unit s
+    }
+    field decay f32 "Decay duration." {
+      default 0.15
+      min 0
+      max 30
+      unit s
+    }
+    field sustainLevel f32 "Envelope sustain level (1 keeps attack-sustain-decay; below 1 enables ADSR decay to sustainLevel)." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field release f32 "Release tail duration after sustain." {
+      min 0
+      max 30
+      unit s
+    }
+    field punch f32 "Smoothed initial punch boost over sustain." {
+      min 0
+      max 2
+    }
+    field duty f32 "Square pulse duty cycle." {
+      default 0.5
+      min 0.02
+      max 0.98
+      unit ratio
+    }
+    field lowpass f32 "Low-pass filter cutoff (0: off)." {
+      min 0
+      max 20000
+      unit hz
+    }
+    field lpSlide f32 "Low-pass cutoff slide in octaves per second." {
+      min -24
+      max 24
+    }
+    field q f32 "Low-pass resonance Q (> 0 uses a Cytomic 2-pole SVF; 0 uses one-pole)." {
+      min 0
+      max 20
+    }
+    field highpass f32 "High-pass filter cutoff (0: off)." {
+      min 0
+      max 20000
+      unit hz
+    }
+    field fmFreq f32 "FM modulator frequency (0: off)." {
+      min 0
+      max 20000
+      unit hz
+    }
+    field fmIndex f32 "FM modulation index in radians (0: off)." {
+      min 0
+      max 32
+    }
+    field drive f32 "Soft-clip saturation drive (> 0 enables tanh waveshaping)." {
+      min 0
+      max 32
+    }
+    field gain f32 "Layer output gain." {
+      default 0.5
+      min 0
+      max 4
+    }
+    field delay f32 "Start delay from time 0." {
+      min 0
+      max 30
+      unit s
+    }
+  }
+
+  struct SfxDesc {
+    doc "Procedural sound effect synthesis specification: name a built-in `preset` (coin, pickup, powerup, jump, land, footstep, hit, hurt, explosion, laser, whoosh, door, death, click, select, back, error, levelup) or supply custom `layers` (or both; `layers` takes precedence when non-empty). Deterministic on every host."
+    desc true
+    field preset String "Built-in preset name; ignored when `layers` is non-empty."
+    field layers List.SfxLayerDesc "Custom oscillator layers to mix."
+    field seed u32 "Deterministic RNG seed for noise and variation." {
+      default 1
+    }
+    field pitch f32 "Global pitch multiplier." {
+      default 1
+      min 0.1
+      max 10
+    }
+    field duration f32 "Global envelope duration multiplier." {
+      default 1
+      min 0.05
+      max 20
+    }
+    field volume f32 "Global output volume multiplier." {
+      default 1
+      min 0
+      max 4
+    }
+    field vary f32 "Randomised per-seed pitch/duration jitter share." {
+      min 0
+      max 1
+      unit ratio
+    }
+  }
+
+  struct SfxSamples {
+    doc "Synthesised PCM audio samples (og.audio.synth), returned as a native Float32Array over binary wire."
+    field samples Float32Array "Mono floating-point PCM samples in [-1, 1]."
+    field rate u32 "Sample rate." {
+      unit hz
+    }
+    field channels u32 "Channel count (1 mono)."
+  }
+
+  fn synth {
+    doc "Synthesise a deterministic procedural sound effect into a Float32Array (48 kHz mono PCM), without mutating world state."
+    aliases "procedural sound, sfx synthesizer, generate audio, chiptune, sound effect"
+    param desc SfxDesc "The preset or custom oscillator layers and variation settings."
+    returns Result.SfxSamples "Refused when neither a known preset nor any layer is provided, or when a parameter is not finite."
+  }
+
+  fn createSynthSound {
+    doc "Synthesise a deterministic procedural sound effect and register it directly into the world's sound bank, answering a playable Sound handle."
+    param world World "The world that owns the sound."
+    param desc SfxDesc "The preset or custom oscillator layers and variation settings."
+    returns Result.Sound "Refused when synthesis fails or the engine has no audio bank."
   }
 
   fn outputLatency {

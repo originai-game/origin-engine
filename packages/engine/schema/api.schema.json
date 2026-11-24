@@ -3755,13 +3755,14 @@
     },
     {
       "name": "procgen",
-      "doc": "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore.\nWeighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer.\nSee `world §7`.",
+      "doc": "Procedural generation: deterministic noise (Perlin, simplex, Worley, ridged, billow, domain-warped FBM, analytical gradients, curl), toroidal/bounded Poisson-disk sampling, BSP dungeons with optional loops, AC-4 wave function collapse, heightmap & hydraulic/thermal erosion generation, procedural plants, and Voronoi mesh fracture. All bulk numeric buffers cross as zero-JSON TypedArrays over binary wire.\nWeighted picks and shuffles are og.Rng's own; og.tilemap.fill writes Int32Array grids into tilemap layers, og.terrain.create turns Float32Array heightmaps into live terrains, and og.render.bufferGeometry turns procedural mesh TypedArrays into GPU/physics meshes.\nSee `world §7`.",
       "place": "namespace",
       "publish": true,
       "types": [
         "NoiseKind",
         "FbmDesc",
         "NoiseGridDesc",
+        "NoiseGrad",
         "PoissonDesc",
         "CellRect",
         "BspDesc",
@@ -3769,7 +3770,27 @@
         "WfcTile",
         "WfcCell",
         "WfcDesc",
-        "WfcResult"
+        "WfcResult",
+        "HeightmapMask",
+        "HydraulicErosionDesc",
+        "ThermalErosionDesc",
+        "RiverCarveDesc",
+        "MoistureDesc",
+        "BiomeRuleDesc",
+        "HeightmapDesc",
+        "HeightmapResult",
+        "PlantGrowth",
+        "PlantLeafShape",
+        "PlantLevelDesc",
+        "PlantLeavesDesc",
+        "PlantFlowersDesc",
+        "PlantDesc",
+        "PlantMeshPart",
+        "PlantMeshResult",
+        "FractureDesc",
+        "FracturePiece",
+        "FractureBond",
+        "FractureResult"
       ],
       "consts": [],
       "functions": [
@@ -3806,8 +3827,110 @@
           "publish": true
         },
         {
+          "name": "noiseGrad",
+          "doc": "Analytical value and gradient of Perlin FBM at one point (exact chain-rule derivatives, no finite-difference jitter).",
+          "params": [
+            {
+              "name": "desc",
+              "type": "FbmDesc",
+              "optional": false,
+              "doc": "The seed and fractal settings."
+            },
+            {
+              "name": "x",
+              "type": "f32",
+              "optional": false,
+              "doc": "x."
+            },
+            {
+              "name": "y",
+              "type": "f32",
+              "optional": false,
+              "doc": "y."
+            },
+            {
+              "name": "z",
+              "type": "f32",
+              "optional": false,
+              "doc": "z (3D only)."
+            }
+          ],
+          "returns": "NoiseGrad",
+          "publish": true
+        },
+        {
+          "name": "curlNoise",
+          "doc": "Divergence-free curl vector field from analytical noise gradients: 2D returns `(dN/dy, -dN/dx, 0)`, 3D returns the full 3D curl of three independent potentials.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "FbmDesc",
+              "optional": false,
+              "doc": "The seed, frequency and fractal settings."
+            },
+            {
+              "name": "x",
+              "type": "f32",
+              "optional": false,
+              "doc": "x."
+            },
+            {
+              "name": "y",
+              "type": "f32",
+              "optional": false,
+              "doc": "y."
+            },
+            {
+              "name": "z",
+              "type": "f32",
+              "optional": false,
+              "doc": "z (3D only)."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "worley",
+          "doc": "Cellular Worley noise distances at a point: `x` is F1 (nearest feature distance) and `y` is F2 (second-nearest feature distance).",
+          "params": [
+            {
+              "name": "seed",
+              "type": "u32",
+              "optional": false,
+              "doc": "Seed."
+            },
+            {
+              "name": "x",
+              "type": "f32",
+              "optional": false,
+              "doc": "x."
+            },
+            {
+              "name": "y",
+              "type": "f32",
+              "optional": false,
+              "doc": "y."
+            },
+            {
+              "name": "z",
+              "type": "f32",
+              "optional": false,
+              "doc": "z (3D only)."
+            },
+            {
+              "name": "threeD",
+              "type": "bool",
+              "optional": false,
+              "doc": "Sample 3D cellular lattice when true, 2D when false."
+            }
+          ],
+          "returns": "Vector2",
+          "publish": true
+        },
+        {
           "name": "noiseGrid",
-          "doc": "Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step).",
+          "doc": "Noise over a grid in one call, row-major as a native Float32Array: `values[j * width + i]` is the sample at (x + i * step, y + j * step).",
           "params": [
             {
               "name": "desc",
@@ -3816,7 +3939,7 @@
               "doc": "The grid and its noise."
             }
           ],
-          "returns": "Result<List<f32>>",
+          "returns": "Result<Float32Array>",
           "returnsDoc": "Refused for more than 16,777,216 samples.",
           "publish": true
         },
@@ -3863,6 +3986,51 @@
           ],
           "returns": "Result<WfcResult>",
           "returnsDoc": "Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at).",
+          "publish": true
+        },
+        {
+          "name": "heightmap",
+          "doc": "Generate a deterministic eroded terrain heightmap and optional biome control map as native TypedArrays (hand directly to og.terrain.create).",
+          "params": [
+            {
+              "name": "desc",
+              "type": "HeightmapDesc",
+              "optional": true,
+              "doc": "Size, noise, erosion, river and biome rules."
+            }
+          ],
+          "returns": "Result<HeightmapResult>",
+          "returnsDoc": "Refused for invalid dimensions or non-finite parameters.",
+          "publish": true
+        },
+        {
+          "name": "plant",
+          "doc": "Grow a deterministic procedural tree, shrub or flower into GPU-ready TypedArray mesh buffers (pass directly to og.render.bufferGeometry).",
+          "params": [
+            {
+              "name": "desc",
+              "type": "PlantDesc",
+              "optional": true,
+              "doc": "Growth habit, branch levels, leaves and flowers."
+            }
+          ],
+          "returns": "Result<PlantMeshResult>",
+          "returnsDoc": "Refused if parameters are invalid or exceed branch/leaf limits.",
+          "publish": true
+        },
+        {
+          "name": "fracture",
+          "doc": "Fracture a closed mesh deterministically into solid Voronoi shards and contact bonds, returned as TypedArrays.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "FractureDesc",
+              "optional": true,
+              "doc": "Input closed mesh buffers and fracture settings."
+            }
+          ],
+          "returns": "Result<FractureResult>",
+          "returnsDoc": "Refused for an open/zero-volume mesh, invalid indices or out-of-range settings.",
           "publish": true
         }
       ],
@@ -9819,7 +9987,11 @@
         "MusicBeat",
         "SoundStarted",
         "SoundEnded",
-        "AudioFeedbackDesc"
+        "AudioFeedbackDesc",
+        "SfxWave",
+        "SfxLayerDesc",
+        "SfxDesc",
+        "SfxSamples"
       ],
       "consts": [
         {
@@ -9906,6 +10078,42 @@
           ],
           "returns": "Result<Sound>",
           "returnsDoc": "Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "synth",
+          "doc": "Synthesise a deterministic procedural sound effect into a Float32Array (48 kHz mono PCM), without mutating world state.",
+          "params": [
+            {
+              "name": "desc",
+              "type": "SfxDesc",
+              "optional": true,
+              "doc": "The preset or custom oscillator layers and variation settings."
+            }
+          ],
+          "returns": "Result<SfxSamples>",
+          "returnsDoc": "Refused when neither a known preset nor any layer is provided, or when a parameter is not finite.",
+          "publish": true
+        },
+        {
+          "name": "createSynthSound",
+          "doc": "Synthesise a deterministic procedural sound effect and register it directly into the world's sound bank, answering a playable Sound handle.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the sound."
+            },
+            {
+              "name": "desc",
+              "type": "SfxDesc",
+              "optional": true,
+              "doc": "The preset or custom oscillator layers and variation settings."
+            }
+          ],
+          "returns": "Result<Sound>",
+          "returnsDoc": "Refused when synthesis fails or the engine has no audio bank.",
           "publish": true
         },
         {
@@ -13963,7 +14171,8 @@
         "TerrainBrush",
         "TerrainEdit",
         "TerrainStampDesc",
-        "TerrainLayerDesc"
+        "TerrainLayerDesc",
+        "TerrainCreateDesc"
       ],
       "consts": [],
       "functions": [
@@ -13986,6 +14195,27 @@
           ],
           "returns": "Result<TerrainInfo>",
           "returnsDoc": "Refused for a path that is not a cooked terrain, or a layer texture that does not load.",
+          "publish": true
+        },
+        {
+          "name": "create",
+          "doc": "Create a procedural terrain at run time from height, control and hole TypedArrays, ready for og.Terrain, og.Collider (shape heightfield), og.Grass, og.TerrainScatter, og.terrain.sample, edit and stamp.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TerrainCreateDesc",
+              "optional": true,
+              "doc": "Dimensions, heights, optional control/holes and layers."
+            }
+          ],
+          "returns": "Result<TerrainInfo>",
+          "returnsDoc": "Refused for invalid dimensions, mismatched array lengths, non-finite heights or more than 16 layers.",
           "publish": true
         },
         {
@@ -14098,7 +14328,7 @@
         },
         {
           "name": "unstamp",
-          "doc": "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.",
+          "doc": "Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made.",
           "params": [
             {
               "name": "world",
@@ -19145,33 +19375,41 @@
     "NoiseKind": {
       "x-og-kind": "enum",
       "x-og-module": "procgen",
-      "description": "Which gradient noise.",
+      "description": "Which procedural noise basis or fractal shaping.",
       "type": "string",
       "enum": [
         "perlin",
-        "simplex"
+        "simplex",
+        "worley",
+        "worleyEdge",
+        "ridged",
+        "billow"
       ],
       "x-og-variants": {
-        "perlin": "Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between.",
-        "simplex": "Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D."
+        "perlin": "C2 quintic gradient noise (Perlin 2002): 0 on lattice points, smooth between.",
+        "simplex": "Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D.",
+        "worley": "Cellular Worley F1 distance noise, remapped to [-1, 1].",
+        "worleyEdge": "Cellular Worley F2 - F1 edge/ridge distance, remapped to [-1, 1].",
+        "ridged": "Ridged multifractal gradient noise (sharp mountain ridges and cracks).",
+        "billow": "Billowy turbulence gradient noise (puffy cumulus/rolling hills)."
       }
     },
     "FbmDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
-      "description": "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise.",
+      "description": "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. Optional domain warping displaces coordinates before sampling.",
       "type": "object",
       "properties": {
         "seed": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave reads its own table derived from it.",
+          "description": "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave hashes independently from it.",
           "default": 0
         },
         "kind": {
           "$ref": "#/$defs/NoiseKind",
-          "description": "Perlin or simplex.",
+          "description": "Noise basis or fractal shaping.",
           "default": "perlin"
         },
         "octaves": {
@@ -19206,6 +19444,27 @@
           "type": "boolean",
           "description": "Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z.",
           "default": false
+        },
+        "warp": {
+          "type": "number",
+          "description": "Domain warp displacement amplitude (0: no warp).",
+          "default": 0,
+          "minimum": 0
+        },
+        "warpFrequency": {
+          "type": "number",
+          "description": "Domain warp frequency multiplier.",
+          "default": 1,
+          "minimum": 0
+        },
+        "warpOctaves": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Octaves in the domain warp field.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 8
         }
       },
       "additionalProperties": false
@@ -19263,6 +19522,37 @@
       },
       "additionalProperties": false
     },
+    "NoiseGrad": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "Noise value together with its analytical partial derivatives `(dx, dy, dz)` (dz is 0 in 2D).",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "description": "Noise sample at the point, about -1 to 1."
+        },
+        "dx": {
+          "type": "number",
+          "description": "Partial derivative along x."
+        },
+        "dy": {
+          "type": "number",
+          "description": "Partial derivative along y."
+        },
+        "dz": {
+          "type": "number",
+          "description": "Partial derivative along z (0 for 2D noise)."
+        }
+      },
+      "required": [
+        "value",
+        "dx",
+        "dy",
+        "dz"
+      ],
+      "additionalProperties": false
+    },
     "PoissonDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
@@ -19314,6 +19604,11 @@
           "default": 4096,
           "minimum": 0,
           "maximum": 1048576
+        },
+        "wrap": {
+          "type": "boolean",
+          "description": "Wrap distances toroidally across opposite edges for seamless tileable scatter.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -19360,7 +19655,7 @@
     "BspDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
-      "description": "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor.",
+      "description": "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor (plus optional extra loop corridors).",
       "type": "object",
       "properties": {
         "seed": {
@@ -19426,6 +19721,14 @@
           "description": "Corridor width, in cells.",
           "default": 1,
           "minimum": 1
+        },
+        "loops": {
+          "type": "number",
+          "description": "Share of nearby non-tree room pairs also connected by loop corridors (0: pure spanning tree, 0.25: rich dungeon loops).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
         }
       },
       "additionalProperties": false
@@ -19448,21 +19751,34 @@
           "items": {
             "$ref": "#/$defs/CellRect"
           },
-          "description": "Corridor segments, two per split."
+          "description": "Corridor segments, two per split plus loop corridors."
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "description": "Room adjacency graph edges `[roomA, roomB]` connecting rooms joined by corridors."
         },
         "cells": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
+            "type": "number"
           },
-          "description": "width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first)."
+          "description": "width × height, row-major from the top: 0 wall, 1 room, 2 corridor (native Uint8Array over binary wire)."
         }
       },
       "required": [
         "rooms",
         "corridors",
+        "edges",
         "cells"
       ],
       "additionalProperties": false
@@ -19560,7 +19876,7 @@
     "WfcDesc": {
       "x-og-kind": "desc",
       "x-og-module": "procgen",
-      "description": "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed.",
+      "description": "Wave function collapse, the simple tiled model with AC-4 constraint propagation and Shannon entropy cell selection: a grid filled with tiles whose edges all fit; a dead end restarts on a fork of the seed.",
       "type": "object",
       "properties": {
         "seed": {
@@ -19624,26 +19940,22 @@
     "WfcResult": {
       "x-og-kind": "struct",
       "x-og-module": "procgen",
-      "description": "What og.procgen.wfc made, row-major from the top.",
+      "description": "What og.procgen.wfc made, row-major from the top, returned as native TypedArrays over binary wire.",
       "type": "object",
       "properties": {
         "tiles": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
+            "type": "number"
           },
           "description": "Each cell's tile index."
         },
         "rotations": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
+            "type": "number"
           },
-          "description": "Each cell's quarter turns clockwise."
+          "description": "Each cell's quarter turns clockwise (0 to 3)."
         },
         "attempt": {
           "type": "integer",
@@ -19656,6 +19968,1239 @@
         "tiles",
         "rotations",
         "attempt"
+      ],
+      "additionalProperties": false
+    },
+    "HeightmapMask": {
+      "x-og-kind": "enum",
+      "x-og-module": "procgen",
+      "description": "Macro shaping mask applied to generated terrain heights.",
+      "type": "string",
+      "enum": [
+        "none",
+        "island",
+        "ridge"
+      ],
+      "x-og-variants": {
+        "none": "No mask (raw domain-warped FBM).",
+        "island": "Radial coastal falloff pushing edges down to sea level.",
+        "ridge": "Ridged mountain shaping blending sharp crests into the base FBM."
+      }
+    },
+    "HydraulicErosionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Droplet-based hydraulic erosion pass (deterministic seeded drops).",
+      "type": "object",
+      "properties": {
+        "drops": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Number of simulated rain drops.",
+          "default": 40000,
+          "minimum": 0,
+          "maximum": 2000000
+        },
+        "lifetime": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Maximum simulation steps per drop.",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 256
+        },
+        "radius": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Erosion brush radius in height samples.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 12
+        },
+        "inertia": {
+          "type": "number",
+          "description": "Directional momentum retained per step.",
+          "default": 0.05,
+          "minimum": 0,
+          "maximum": 0.99
+        },
+        "capacity": {
+          "type": "number",
+          "description": "Sediment carrying capacity factor.",
+          "default": 4,
+          "minimum": 0.01,
+          "maximum": 64
+        },
+        "deposition": {
+          "type": "number",
+          "description": "Excess sediment deposition speed.",
+          "default": 0.3,
+          "minimum": 0.01,
+          "maximum": 1
+        },
+        "erosion": {
+          "type": "number",
+          "description": "Terrain erosion speed.",
+          "default": 0.3,
+          "minimum": 0.01,
+          "maximum": 1
+        },
+        "evaporation": {
+          "type": "number",
+          "description": "Water evaporation fraction per step.",
+          "default": 0.01,
+          "minimum": 0.001,
+          "maximum": 0.5
+        },
+        "gravity": {
+          "type": "number",
+          "description": "Downslope acceleration factor.",
+          "default": 4,
+          "minimum": 0.1,
+          "maximum": 32
+        }
+      },
+      "additionalProperties": false
+    },
+    "ThermalErosionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "CFL-stable mass-conserving talus thermal erosion pass.",
+      "type": "object",
+      "properties": {
+        "talus": {
+          "type": "number",
+          "description": "Angle of repose above which rock/soil slumps.",
+          "default": 35,
+          "minimum": 5,
+          "maximum": 85,
+          "x-og-unit": "deg"
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Relaxation passes.",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 500
+        },
+        "rate": {
+          "type": "number",
+          "description": "Fraction of excess height moved per pass.",
+          "default": 0.5,
+          "minimum": 0.01,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "RiverCarveDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Drainage-accumulation river carving pass.",
+      "type": "object",
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Upstream sample count required before carving a channel.",
+          "default": 400,
+          "minimum": 1
+        },
+        "depth": {
+          "type": "number",
+          "description": "Maximum carved channel depth.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "width": {
+          "type": "number",
+          "description": "Half-width of carved river channels.",
+          "default": 6,
+          "minimum": 0.1,
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MoistureDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Moisture field weights for biome painting.",
+      "type": "object",
+      "properties": {
+        "flow": {
+          "type": "number",
+          "description": "Weight of drainage flow accumulation.",
+          "default": 1,
+          "minimum": 0
+        },
+        "scale": {
+          "type": "number",
+          "description": "Flow count at which moisture reaches saturation.",
+          "default": 64,
+          "minimum": 1
+        },
+        "noise": {
+          "type": "number",
+          "description": "Weight of procedural moisture noise.",
+          "default": 0.5,
+          "minimum": 0
+        },
+        "frequency": {
+          "type": "number",
+          "description": "Moisture noise frequency across the terrain.",
+          "default": 6,
+          "minimum": 0.01
+        }
+      },
+      "additionalProperties": false
+    },
+    "BiomeRuleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "One biome painting rule mapping altitude, slope and moisture bands onto a terrain layer index.",
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Target terrain layer index (0 to 15).",
+          "default": 0,
+          "maximum": 15
+        },
+        "weight": {
+          "type": "number",
+          "description": "Relative rule weight.",
+          "default": 1,
+          "minimum": 0
+        },
+        "altitudeMin": {
+          "type": "number",
+          "description": "Minimum altitude.",
+          "default": -1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeMax": {
+          "type": "number",
+          "description": "Maximum altitude.",
+          "default": 1000000,
+          "x-og-unit": "m"
+        },
+        "altitudeFade": {
+          "type": "number",
+          "description": "Fade band outside altitude range.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "slopeMin": {
+          "type": "number",
+          "description": "Minimum slope.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeMax": {
+          "type": "number",
+          "description": "Maximum slope.",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "slopeFade": {
+          "type": "number",
+          "description": "Fade band outside slope range.",
+          "default": 4,
+          "minimum": 0,
+          "maximum": 90,
+          "x-og-unit": "deg"
+        },
+        "moistureMin": {
+          "type": "number",
+          "description": "Minimum moisture (0 to 1).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "moistureMax": {
+          "type": "number",
+          "description": "Maximum moisture (0 to 1).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "moistureFade": {
+          "type": "number",
+          "description": "Fade band outside moisture range.",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "HeightmapDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Deterministic procedural terrain heightmap, erosion, rivers and biome control map generator (matching `og cook`'s terrain generator bit for bit).",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "World extent along x and z.",
+          "default": {
+            "x": 256,
+            "y": 256
+          },
+          "x-og-unit": "m"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples along x.",
+          "default": 257,
+          "minimum": 2,
+          "maximum": 2049
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples along z.",
+          "default": 257,
+          "minimum": 2,
+          "maximum": 2049
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Lowest base height before erosion.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "Highest base height before erosion.",
+          "default": 48,
+          "x-og-unit": "m"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Deterministic seed.",
+          "default": 1
+        },
+        "octaves": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Fractal noise octaves.",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 12
+        },
+        "frequency": {
+          "type": "number",
+          "description": "Base noise periods across the terrain.",
+          "default": 3,
+          "minimum": 0.01
+        },
+        "lacunarity": {
+          "type": "number",
+          "description": "Frequency multiplier per octave.",
+          "default": 2,
+          "minimum": 1
+        },
+        "gain": {
+          "type": "number",
+          "description": "Amplitude multiplier per octave.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "warp": {
+          "type": "number",
+          "description": "Domain warp strength (0: none).",
+          "default": 0,
+          "minimum": 0
+        },
+        "mask": {
+          "$ref": "#/$defs/HeightmapMask",
+          "description": "Macro terrain shaping mask.",
+          "default": "none"
+        },
+        "maskStrength": {
+          "type": "number",
+          "description": "Island coast falloff width (0..1) or ridge blend factor (0..1).",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "erosion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HydraulicErosionDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional hydraulic droplet erosion pass.",
+          "default": null
+        },
+        "thermal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ThermalErosionDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional thermal talus erosion pass.",
+          "default": null
+        },
+        "terraceStep": {
+          "type": "number",
+          "description": "Terrace step height in metres (0: disabled).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "terraceSharpness": {
+          "type": "number",
+          "description": "Terrace edge sharpness (0 to 1).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "seaLevel": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional sea level height for coastal shore flattening and river outlets.",
+          "default": null,
+          "x-og-unit": "m"
+        },
+        "shore": {
+          "type": "number",
+          "description": "Shore flattening margin above sea level.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "rivers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiverCarveDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional drainage river carving pass.",
+          "default": null
+        },
+        "moisture": {
+          "$ref": "#/$defs/MoistureDesc",
+          "description": "Moisture settings for biome painting.",
+          "default": {}
+        },
+        "biomes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BiomeRuleDesc"
+          },
+          "description": "Biome control-map rules (empty omits the control map).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "HeightmapResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "Generated procedural heightfield and optional biome control map, ready for og.terrain.create.",
+      "type": "object",
+      "properties": {
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples along x."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples along z."
+        },
+        "minHeight": {
+          "type": "number",
+          "description": "Lowest generated height.",
+          "x-og-unit": "m"
+        },
+        "maxHeight": {
+          "type": "number",
+          "description": "Highest generated height.",
+          "x-og-unit": "m"
+        },
+        "riverLength": {
+          "type": "number",
+          "description": "Total length of carved river channels.",
+          "x-og-unit": "m"
+        },
+        "heights": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Row-major heights in metres (`columns * rows`)."
+        },
+        "control": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "RGBA8 biome control-map pages (`columns * rows * 4 * pages`), or null when no biomes were given."
+        }
+      },
+      "required": [
+        "columns",
+        "rows",
+        "minHeight",
+        "maxHeight",
+        "riverLength",
+        "heights",
+        "control"
+      ],
+      "additionalProperties": false
+    },
+    "PlantGrowth": {
+      "x-og-kind": "enum",
+      "x-og-module": "procgen",
+      "description": "Branching architecture of a procedural plant.",
+      "type": "string",
+      "enum": [
+        "deciduous",
+        "evergreen"
+      ],
+      "x-og-variants": {
+        "deciduous": "Broadleaf branching: every branch continues into deeper child levels.",
+        "evergreen": "Conifer branching: tapered stem with whorls shortening towards the apex."
+      }
+    },
+    "PlantLeafShape": {
+      "x-og-kind": "enum",
+      "x-og-module": "procgen",
+      "description": "Geometry built for each leaf.",
+      "type": "string",
+      "enum": [
+        "blade",
+        "card",
+        "cross"
+      ],
+      "x-og-variants": {
+        "blade": "Six-vertex cupped pointed leaf blade (no texture required).",
+        "card": "Single UV-mapped quad for a leaf alpha card.",
+        "cross": "Two crossed UV-mapped quads."
+      }
+    },
+    "PlantLevelDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Growth parameters for one branch level (level 0 is the trunk).",
+      "type": "object",
+      "properties": {
+        "length": {
+          "type": "number",
+          "description": "Branch length.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "radius": {
+          "type": "number",
+          "description": "Trunk base radius in metres, or child radius as a share of parent radius.",
+          "default": 0.6,
+          "minimum": 0
+        },
+        "sections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Segments along the branch length.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 32
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Radial sides around the branch.",
+          "default": 4,
+          "minimum": 3,
+          "maximum": 32
+        },
+        "taper": {
+          "type": "number",
+          "description": "Radius loss towards branch tip (0..1).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "gnarliness": {
+          "type": "number",
+          "description": "Random angular wander per section (radians).",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "twist": {
+          "type": "number",
+          "description": "Axial twist per section (radians).",
+          "default": 0,
+          "minimum": -3.1416,
+          "maximum": 3.1416
+        },
+        "children": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Child branches spawned per parent branch.",
+          "default": 3,
+          "maximum": 64
+        },
+        "angle": {
+          "type": "number",
+          "description": "Branching angle from parent.",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 175,
+          "x-og-unit": "deg"
+        },
+        "start": {
+          "type": "number",
+          "description": "Fractional distance along parent where children begin (0..1).",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlantLeavesDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Leaf foliage configuration on terminal branches.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "$ref": "#/$defs/PlantLeafShape",
+          "description": "Leaf geometry kind.",
+          "default": "blade"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Leaves per terminal branch.",
+          "default": 10,
+          "maximum": 256
+        },
+        "start": {
+          "type": "number",
+          "description": "Start fraction along terminal branch (0..1).",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "end": {
+          "type": "number",
+          "description": "End fraction along terminal branch (0..1).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "angle": {
+          "type": "number",
+          "description": "Leaf angle from branch.",
+          "default": 45,
+          "minimum": 0,
+          "maximum": 175,
+          "x-og-unit": "deg"
+        },
+        "facing": {
+          "type": "number",
+          "description": "How much leaves turn flat towards the sky (0..1).",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Leaf phyllotaxis rows around the branch (0: spiral/random, 2: frond).",
+          "default": 0,
+          "maximum": 16
+        },
+        "size": {
+          "type": "number",
+          "description": "Leaf length.",
+          "default": 0.4,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "width": {
+          "type": "number",
+          "description": "Leaf width as a share of length.",
+          "default": 0.5,
+          "minimum": 0.05,
+          "maximum": 4
+        },
+        "sizeVariance": {
+          "type": "number",
+          "description": "Per-leaf random size variation share (0..1).",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "Primary linear leaf colour.",
+          "default": {
+            "r": 0.09,
+            "g": 0.24,
+            "b": 0.04
+          }
+        },
+        "color2": {
+          "$ref": "#/$defs/Color",
+          "description": "Secondary linear leaf colour.",
+          "default": {
+            "r": 0.17,
+            "g": 0.33,
+            "b": 0.06
+          }
+        },
+        "colorVariation": {
+          "type": "number",
+          "description": "Per-leaf brightness variation (0..1).",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlantFlowersDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Blossom/flower configuration on terminal branches.",
+      "type": "object",
+      "properties": {
+        "share": {
+          "type": "number",
+          "description": "Share of branch tips that flower (0..1).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Extra flowers along each terminal branch.",
+          "default": 0,
+          "maximum": 64
+        },
+        "petals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Petals per flower.",
+          "default": 5,
+          "minimum": 3,
+          "maximum": 24
+        },
+        "size": {
+          "type": "number",
+          "description": "Petal length.",
+          "default": 0.04,
+          "minimum": 0.001,
+          "x-og-unit": "m"
+        },
+        "width": {
+          "type": "number",
+          "description": "Petal width as a share of length.",
+          "default": 0.6,
+          "minimum": 0.05,
+          "maximum": 4
+        },
+        "cup": {
+          "type": "number",
+          "description": "Petal cup lift angle.",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 85,
+          "x-og-unit": "deg"
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "Primary petal colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "color2": {
+          "$ref": "#/$defs/Color",
+          "description": "Secondary petal colour.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "centerColor": {
+          "$ref": "#/$defs/Color",
+          "description": "Flower centre colour.",
+          "default": {
+            "r": 1,
+            "g": 0.7,
+            "b": 0.05
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlantDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Deterministic procedural tree, shrub or flower mesh specification (og-shape's growth engine). Omitting `levelsSpec` uses a default ~6 m broadleaf tree.",
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Deterministic seed.",
+          "default": 1
+        },
+        "growth": {
+          "$ref": "#/$defs/PlantGrowth",
+          "description": "Branching habit (deciduous or evergreen).",
+          "default": "deciduous"
+        },
+        "levels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Branching levels beyond the trunk (0 to 3).",
+          "default": 2,
+          "maximum": 3
+        },
+        "levelsSpec": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlantLevelDesc"
+          },
+          "description": "Per-level branch descriptors (up to 4 entries, index 0 = trunk; omitted levels take defaults).",
+          "default": []
+        },
+        "forceDirection": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Tropism / gravity bend direction.",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "forceStrength": {
+          "type": "number",
+          "description": "Tropism bend strength (negative droops boughs downward).",
+          "default": 0.01,
+          "minimum": -2,
+          "maximum": 2
+        },
+        "leaves": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlantLeavesDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional foliage leaves (pass {} for standard broadleaf leaves; omit or null for bare winter wood).",
+          "default": null
+        },
+        "flowers": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlantFlowersDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional flowers on terminal shoots.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlantMeshPart": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "One mesh part of a procedural plant (wood or foliage) with vertex and foliage-wind TypedArrays ready for og.render.bufferGeometry.",
+      "type": "object",
+      "properties": {
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Vertex positions, x y z per vertex."
+        },
+        "normals": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Unit normals, x y z per vertex."
+        },
+        "uvs": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "UV coordinates, u v per vertex."
+        },
+        "colors": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Linear RGBA vertex colours (r g b a per vertex; empty when uniform white)."
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Counter-clockwise triangle indices."
+        },
+        "windPivot": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Limb sway pivot and stiffness (px py pz stiffness per vertex)."
+        },
+        "windLeaf": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Leaf attachment anchor and flutter weight (ax ay az flutter per vertex)."
+        }
+      },
+      "required": [
+        "positions",
+        "normals",
+        "uvs",
+        "colors",
+        "indices",
+        "windPivot",
+        "windLeaf"
+      ],
+      "additionalProperties": false
+    },
+    "PlantMeshResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "Generated procedural plant meshes and statistics.",
+      "type": "object",
+      "properties": {
+        "wood": {
+          "$ref": "#/$defs/PlantMeshPart",
+          "description": "Trunk and branch geometry."
+        },
+        "leaves": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlantMeshPart"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Leaves and flowers geometry, or null if none grew."
+        },
+        "branches": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Total branch count generated."
+        },
+        "leafCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Total leaf count generated."
+        },
+        "flowerCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Total flower count generated."
+        }
+      },
+      "required": [
+        "wood",
+        "leaves",
+        "branches",
+        "leafCount",
+        "flowerCount"
+      ],
+      "additionalProperties": false
+    },
+    "FractureDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "procgen",
+      "description": "Deterministic 3D Voronoi fracture of a closed triangle mesh into solid pieces and Blast-style contact bonds.",
+      "type": "object",
+      "properties": {
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Closed mesh vertex positions, x y z per vertex."
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Counter-clockwise triangle indices (multiple of 3)."
+        },
+        "chunks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Target number of Voronoi seed cells.",
+          "default": 8,
+          "minimum": 2,
+          "maximum": 128
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Deterministic RNG seed for cell centres.",
+          "default": 1
+        },
+        "metric": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Anisotropic Voronoi distance metric (smaller component stretches shards along that axis, e.g. wood splinters).",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "impact": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector3"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional impact point in mesh space to cluster smaller shards nearby.",
+          "default": null,
+          "x-og-unit": "m"
+        },
+        "impactRadius": {
+          "type": "number",
+          "description": "Cluster radius around `impact` (0 uses half the mesh size).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "uvScale": {
+          "type": "number",
+          "description": "Box-projection UV repeats per metre on interior cut faces.",
+          "default": 1,
+          "minimum": 0.001
+        }
+      },
+      "additionalProperties": false
+    },
+    "FracturePiece": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "One solid fractured shard mesh in the input mesh's coordinate space.",
+      "type": "object",
+      "properties": {
+        "cell": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Voronoi cell index."
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Vertex positions, x y z per vertex."
+        },
+        "normals": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Vertex normals, x y z per vertex."
+        },
+        "uvs": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "UV coordinates, u v per vertex."
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Counter-clockwise triangle indices."
+        },
+        "volume": {
+          "type": "number",
+          "description": "Enclosed volume."
+        },
+        "centroid": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Centre of mass in input space.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "cell",
+        "positions",
+        "normals",
+        "uvs",
+        "indices",
+        "volume",
+        "centroid"
+      ],
+      "additionalProperties": false
+    },
+    "FractureBond": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "A shared contact face between two touching fracture pieces.",
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "First piece index (`a < b`)."
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Second piece index."
+        },
+        "centroid": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Area-weighted contact centroid.",
+          "x-og-unit": "m"
+        },
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Unit contact normal from piece `a` towards piece `b`."
+        },
+        "area": {
+          "type": "number",
+          "description": "Contact surface area."
+        }
+      },
+      "required": [
+        "a",
+        "b",
+        "centroid",
+        "normal",
+        "area"
+      ],
+      "additionalProperties": false
+    },
+    "FractureResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "procgen",
+      "description": "Solid pieces and structural contact bonds produced by og.procgen.fracture.",
+      "type": "object",
+      "properties": {
+        "pieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FracturePiece"
+          },
+          "description": "Closed shard meshes (hand each to og.render.bufferGeometry)."
+        },
+        "bonds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FractureBond"
+          },
+          "description": "Contact bonds between adjacent shards."
+        }
+      },
+      "required": [
+        "pieces",
+        "bonds"
       ],
       "additionalProperties": false
     },
@@ -37202,6 +38747,13 @@
           "default": 48,
           "minimum": 8,
           "maximum": 256
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout.",
+          "default": 1
         }
       },
       "additionalProperties": false
@@ -41722,14 +43274,31 @@
           "default": 0
         },
         "tiles": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": -2147483648,
-            "maximum": 2147483647
-          },
-          "description": "The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written).",
-          "default": []
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": -2147483648,
+                    "maximum": 2147483647
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The cells, as og.tilemap.setTile's `tile`: an Int32Array (zero-JSON binary transfer) or number array of tile ids or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written).",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -42907,6 +44476,307 @@
       },
       "additionalProperties": false
     },
+    "SfxWave": {
+      "x-og-kind": "enum",
+      "x-og-module": "audio",
+      "description": "Oscillator waveform for procedural SFX synthesis.",
+      "type": "string",
+      "enum": [
+        "square",
+        "saw",
+        "sine",
+        "triangle",
+        "noise"
+      ],
+      "x-og-variants": {
+        "square": "PolyBLEP band-limited pulse/square wave (controlled by duty).",
+        "saw": "PolyBLEP band-limited sawtooth wave.",
+        "sine": "Pure sine wave.",
+        "triangle": "Triangle wave.",
+        "noise": "Deterministic white or sample-and-hold noise (SplitMix64)."
+      }
+    },
+    "SfxLayerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "audio",
+      "description": "One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound).",
+      "type": "object",
+      "properties": {
+        "wave": {
+          "$ref": "#/$defs/SfxWave",
+          "description": "Oscillator waveform.",
+          "default": "square"
+        },
+        "freq": {
+          "type": "number",
+          "description": "Start frequency (for noise, >= 24000 or 0 runs full-rate white noise; lower values sample-and-hold at freq).",
+          "default": 440,
+          "minimum": 0,
+          "maximum": 48000,
+          "x-og-unit": "hz"
+        },
+        "freqEnd": {
+          "type": "number",
+          "description": "Optional target end frequency overriding slide when > 0 (0: use slide).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 48000,
+          "x-og-unit": "hz"
+        },
+        "slide": {
+          "type": "number",
+          "description": "Pitch slide in octaves per second.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24
+        },
+        "arpAt": {
+          "type": "number",
+          "description": "Seconds in when the frequency multiplies by arp (0: never).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        },
+        "arp": {
+          "type": "number",
+          "description": "Frequency multiplier applied at arpAt.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 16
+        },
+        "vibDepth": {
+          "type": "number",
+          "description": "Vibrato depth in octaves.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "vibRate": {
+          "type": "number",
+          "description": "Vibrato modulation rate.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "x-og-unit": "hz"
+        },
+        "attack": {
+          "type": "number",
+          "description": "Attack ramp duration.",
+          "default": 0.002,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        },
+        "sustain": {
+          "type": "number",
+          "description": "Sustain duration.",
+          "default": 0.05,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        },
+        "decay": {
+          "type": "number",
+          "description": "Decay duration.",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        },
+        "sustainLevel": {
+          "type": "number",
+          "description": "Envelope sustain level (1 keeps attack-sustain-decay; below 1 enables ADSR decay to sustainLevel).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "release": {
+          "type": "number",
+          "description": "Release tail duration after sustain.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        },
+        "punch": {
+          "type": "number",
+          "description": "Smoothed initial punch boost over sustain.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "duty": {
+          "type": "number",
+          "description": "Square pulse duty cycle.",
+          "default": 0.5,
+          "minimum": 0.02,
+          "maximum": 0.98,
+          "x-og-unit": "ratio"
+        },
+        "lowpass": {
+          "type": "number",
+          "description": "Low-pass filter cutoff (0: off).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz"
+        },
+        "lpSlide": {
+          "type": "number",
+          "description": "Low-pass cutoff slide in octaves per second.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24
+        },
+        "q": {
+          "type": "number",
+          "description": "Low-pass resonance Q (> 0 uses a Cytomic 2-pole SVF; 0 uses one-pole).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20
+        },
+        "highpass": {
+          "type": "number",
+          "description": "High-pass filter cutoff (0: off).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz"
+        },
+        "fmFreq": {
+          "type": "number",
+          "description": "FM modulator frequency (0: off).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 20000,
+          "x-og-unit": "hz"
+        },
+        "fmIndex": {
+          "type": "number",
+          "description": "FM modulation index in radians (0: off).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
+        },
+        "drive": {
+          "type": "number",
+          "description": "Soft-clip saturation drive (> 0 enables tanh waveshaping).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 32
+        },
+        "gain": {
+          "type": "number",
+          "description": "Layer output gain.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "delay": {
+          "type": "number",
+          "description": "Start delay from time 0.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SfxDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "audio",
+      "description": "Procedural sound effect synthesis specification: name a built-in `preset` (coin, pickup, powerup, jump, land, footstep, hit, hurt, explosion, laser, whoosh, door, death, click, select, back, error, levelup) or supply custom `layers` (or both; `layers` takes precedence when non-empty). Deterministic on every host.",
+      "type": "object",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "description": "Built-in preset name; ignored when `layers` is non-empty.",
+          "default": ""
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SfxLayerDesc"
+          },
+          "description": "Custom oscillator layers to mix.",
+          "default": []
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Deterministic RNG seed for noise and variation.",
+          "default": 1
+        },
+        "pitch": {
+          "type": "number",
+          "description": "Global pitch multiplier.",
+          "default": 1,
+          "minimum": 0.1,
+          "maximum": 10
+        },
+        "duration": {
+          "type": "number",
+          "description": "Global envelope duration multiplier.",
+          "default": 1,
+          "minimum": 0.05,
+          "maximum": 20
+        },
+        "volume": {
+          "type": "number",
+          "description": "Global output volume multiplier.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4
+        },
+        "vary": {
+          "type": "number",
+          "description": "Randomised per-seed pitch/duration jitter share.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SfxSamples": {
+      "x-og-kind": "struct",
+      "x-og-module": "audio",
+      "description": "Synthesised PCM audio samples (og.audio.synth), returned as a native Float32Array over binary wire.",
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Mono floating-point PCM samples in [-1, 1]."
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Sample rate.",
+          "x-og-unit": "hz"
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Channel count (1 mono)."
+        }
+      },
+      "required": [
+        "samples",
+        "rate",
+        "channels"
+      ],
+      "additionalProperties": false
+    },
     "Navigation": {
       "x-og-kind": "handle",
       "x-og-module": "nav",
@@ -43616,14 +45486,31 @@
           "x-og-unit": "m"
         },
         "costs": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 4294967295
-          },
-          "description": "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid); empty: every cell 1.",
-          "default": []
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4294967295
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Row-major cell costs from row 0 (0 blocked, 1 normal, up to 255 to avoid) as a Uint8Array (zero-JSON binary transfer) or number array; omitted or empty: every cell 1.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -52450,6 +54337,12 @@
         "hole": {
           "type": "boolean",
           "description": "Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from."
+        },
+        "layer": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The dominant material layer index at this point from the control map (0 when the terrain has no control map)."
         }
       },
       "required": [
@@ -52457,7 +54350,8 @@
         "normal",
         "slope",
         "inside",
-        "hole"
+        "hole",
+        "layer"
       ],
       "additionalProperties": false
     },
@@ -52824,6 +54718,126 @@
           "default": 4,
           "minimum": 0,
           "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "TerrainCreateDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "terrain",
+      "description": "Create a terrain directly at run time from a heightmap Float32Array (for example from og.procgen.heightmap or og.procgen.noiseGrid), with optional biome control map, holes, material layers and height-field collision. Drawn, sampled, edited, stamped and collided with exactly like a cooked terrain.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector2",
+          "description": "World extent along x and z.",
+          "default": {
+            "x": 64,
+            "y": 64
+          },
+          "x-og-unit": "m"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along x (at least 2).",
+          "default": 65,
+          "minimum": 2,
+          "maximum": 4096
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height samples along z (at least 2).",
+          "default": 65,
+          "minimum": 2,
+          "maximum": 4096
+        },
+        "heights": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Row-major heights in metres (`columns * rows` values, -z to +z, -x to +x)."
+        },
+        "control": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional RGBA8 control map pages (`controlWidth * controlHeight * 4 * pages` bytes, 4 layers per page).",
+          "default": null
+        },
+        "controlWidth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Control map width in texels (0 defaults to `columns`).",
+          "default": 0,
+          "maximum": 4096
+        },
+        "controlHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Control map height in texels (0 defaults to `rows`).",
+          "default": 0,
+          "maximum": 4096
+        },
+        "holes": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Optional per-cell hole mask (`(columns - 1) * (rows - 1)` bytes; non-zero cuts a hole).",
+          "default": null
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TerrainLayerDesc"
+          },
+          "description": "Material layers (up to 16; empty creates one default neutral layer).",
+          "default": []
+        },
+        "heightBlend": {
+          "type": "number",
+          "description": "Height-blend transition window between layers (0: linear weights).",
+          "default": 0.15,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "seaLevel": {
+          "type": "number",
+          "description": "Reference sea level height reported in TerrainInfo.seaLevel.",
+          "default": 0,
+          "x-og-unit": "m"
+        },
+        "collision": {
+          "type": "boolean",
+          "description": "Register a physics height-field collider under TerrainInfo.geometry.",
+          "default": true
+        },
+        "castShadows": {
+          "type": "boolean",
+          "description": "Whether the terrain casts shadows by default.",
+          "default": true
         }
       },
       "additionalProperties": false

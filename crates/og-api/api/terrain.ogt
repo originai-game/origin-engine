@@ -481,6 +481,7 @@ module terrain {
     }
     field inside bool "Whether the point is over the terrain (outside, the nearest edge answers)."
     field hole bool "Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from."
+    field layer u32 "The dominant material layer index at this point from the control map (0 when the terrain has no control map)."
   }
 
   struct TerrainBounds {
@@ -653,11 +654,62 @@ module terrain {
     }
   }
 
+  struct TerrainCreateDesc {
+    doc "Create a terrain directly at run time from a heightmap Float32Array (for example from og.procgen.heightmap or og.procgen.noiseGrid), with optional biome control map, holes, material layers and height-field collision. Drawn, sampled, edited, stamped and collided with exactly like a cooked terrain."
+    desc true
+    field size Vector2 "World extent along x and z." {
+      default 64 64
+      unit m
+    }
+    field columns u32 "Height samples along x (at least 2)." {
+      default 65
+      min 2
+      max 4096
+    }
+    field rows u32 "Height samples along z (at least 2)." {
+      default 65
+      min 2
+      max 4096
+    }
+    field heights Float32Array "Row-major heights in metres (`columns * rows` values, -z to +z, -x to +x)."
+    field control Option.Uint8Array "Optional RGBA8 control map pages (`controlWidth * controlHeight * 4 * pages` bytes, 4 layers per page)."
+    field controlWidth u32 "Control map width in texels (0 defaults to `columns`)." {
+      max 4096
+    }
+    field controlHeight u32 "Control map height in texels (0 defaults to `rows`)." {
+      max 4096
+    }
+    field holes Option.Uint8Array "Optional per-cell hole mask (`(columns - 1) * (rows - 1)` bytes; non-zero cuts a hole)."
+    field layers List.TerrainLayerDesc "Material layers (up to 16; empty creates one default neutral layer)."
+    field heightBlend f32 "Height-blend transition window between layers (0: linear weights)." {
+      default 0.15
+      min 0
+      max 1
+    }
+    field seaLevel f32 "Reference sea level height reported in TerrainInfo.seaLevel." {
+      unit m
+    }
+    field collision bool "Register a physics height-field collider under TerrainInfo.geometry." {
+      default true
+    }
+    field castShadows bool "Whether the terrain casts shadows by default." {
+      default true
+    }
+  }
+
   fn load {
     doc "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
     param world World "The world."
     param path String "The terrain file, such as `terrain/island.ogt`."
     returns Result.TerrainInfo "Refused for a path that is not a cooked terrain, or a layer texture that does not load."
+  }
+
+  fn create {
+    doc "Create a procedural terrain at run time from height, control and hole TypedArrays, ready for og.Terrain, og.Collider (shape heightfield), og.Grass, og.TerrainScatter, og.terrain.sample, edit and stamp."
+    aliases "procedural terrain, runtime heightmap, generate terrain, create heightfield"
+    param world World "The world."
+    param desc TerrainCreateDesc "Dimensions, heights, optional control/holes and layers."
+    returns Result.TerrainInfo "Refused for invalid dimensions, mismatched array lengths, non-finite heights or more than 16 layers."
   }
 
   fn sample {
@@ -700,7 +752,7 @@ module terrain {
   }
 
   fn unstamp {
-    doc "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made."
+    doc "Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made."
     param world World "The world."
     param data TerrainData "The terrain."
     param stamp u32 "The id og.terrain.stamp answered."

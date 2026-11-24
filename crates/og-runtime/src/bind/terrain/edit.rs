@@ -67,7 +67,11 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
         }
     }
     if t.field.is_none() {
-        t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
+        let cooked = t
+            .cooked
+            .as_ref()
+            .ok_or("runtime terrain is missing its heightfield")?;
+        t.field = Some(cooked.field().map_err(|e| e.to_string())?);
     }
     t.edited = true;
     t.generation = next_generation();
@@ -251,7 +255,11 @@ fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, Str
             let t = &mut rs.terrain.loaded[i];
             let (n, region) = if b.get("stamp").is_some() {
                 if t.field.is_none() {
-                    t.field = Some(t.cooked.field().map_err(|e| e.to_string())?);
+                    let cooked = t
+                        .cooked
+                        .as_ref()
+                        .ok_or("runtime terrain is missing its heightfield")?;
+                    t.field = Some(cooked.field().map_err(|e| e.to_string())?);
                 }
                 let res = stamp::apply(t.field.as_mut().expect("decoded above"), b)?;
                 t.edited = true;

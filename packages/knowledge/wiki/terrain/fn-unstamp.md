@@ -6,7 +6,7 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 ### `og.terrain.unstamp`
 
-Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made.
+Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made.
 
 ```ts
 og.terrain.unstamp(world: World, data: TerrainData, stamp: number): Result<TerrainEdit>
@@ -24,7 +24,7 @@ Binding symbol `og_terrain_unstamp` · publish builds: kept
 
 ```ogt
 fn unstamp {
-  doc "Take a stamp back: the terrain is rebuilt from its cook with every other edit and stamp replayed in order, as if it had never been made."
+  doc "Take a stamp back: the terrain is rebuilt from its initial heights with every other edit and stamp replayed in order, as if it had never been made."
   param world World "The world."
   param data TerrainData "The terrain."
   param stamp u32 "The id og.terrain.stamp answered."
@@ -32,4 +32,4 @@ fn unstamp {
 }
 ```
 
-<sub>Module `terrain` line 702</sub>
+<sub>Module `terrain` line 754</sub>

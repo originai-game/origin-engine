@@ -10,7 +10,7 @@
 // Which imports are used depends on what the IDL declares.
 #![allow(unused_imports)]
 
-use super::{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant, variant};
+use super::{FromJson, OneOf, ToJson, at, field, object, text, to_bin_f32, to_bin_f64, to_bin_i32, to_bin_u8, to_bin_u32, unknown_variant, variant};
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
@@ -1029,13 +1029,17 @@ pub enum NoiseKind {
     #[default]
     Perlin,
     Simplex,
+    Worley,
+    WorleyEdge,
+    Ridged,
+    Billow,
 }
 
 impl NoiseKind {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["perlin", "simplex"];
+    pub const NAMES: &'static [&'static str] = &["perlin", "simplex", "worley", "worleyEdge", "ridged", "billow"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Perlin, Self::Simplex];
+    pub const ALL: &'static [Self] = &[Self::Perlin, Self::Simplex, Self::Worley, Self::WorleyEdge, Self::Ridged, Self::Billow];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -1071,6 +1075,9 @@ pub struct FbmDesc {
     pub lacunarity: f32,
     pub gain: f32,
     pub three_d: bool,
+    pub warp: f32,
+    pub warp_frequency: f32,
+    pub warp_octaves: u32,
 }
 
 impl Default for FbmDesc {
@@ -1083,6 +1090,9 @@ impl Default for FbmDesc {
             lacunarity: 2.0_f32,
             gain: 0.5_f32,
             three_d: Default::default(),
+            warp: Default::default(),
+            warp_frequency: 1.0_f32,
+            warp_octaves: 2,
         }
     }
 }
@@ -1101,6 +1111,9 @@ impl FromJson for FbmDesc {
             lacunarity: field(o, "lacunarity", d.lacunarity)?,
             gain: field(o, "gain", d.gain)?,
             three_d: field(o, "threeD", d.three_d)?,
+            warp: field(o, "warp", d.warp)?,
+            warp_frequency: field(o, "warpFrequency", d.warp_frequency)?,
+            warp_octaves: field(o, "warpOctaves", d.warp_octaves)?,
         })
     }
 }
@@ -1115,6 +1128,9 @@ impl ToJson for FbmDesc {
         o.insert("lacunarity".into(), self.lacunarity.to_json());
         o.insert("gain".into(), self.gain.to_json());
         o.insert("threeD".into(), self.three_d.to_json());
+        o.insert("warp".into(), self.warp.to_json());
+        o.insert("warpFrequency".into(), self.warp_frequency.to_json());
+        o.insert("warpOctaves".into(), self.warp_octaves.to_json());
         Value::Object(o)
     }
 }
@@ -1177,6 +1193,52 @@ impl ToJson for NoiseGridDesc {
     }
 }
 
+/// `NoiseGrad`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NoiseGrad {
+    pub value: f32,
+    pub dx: f32,
+    pub dy: f32,
+    pub dz: f32,
+}
+
+impl Default for NoiseGrad {
+    fn default() -> Self {
+        Self {
+            value: Default::default(),
+            dx: Default::default(),
+            dy: Default::default(),
+            dz: Default::default(),
+        }
+    }
+}
+
+impl FromJson for NoiseGrad {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            value: field(o, "value", d.value)?,
+            dx: field(o, "dx", d.dx)?,
+            dy: field(o, "dy", d.dy)?,
+            dz: field(o, "dz", d.dz)?,
+        })
+    }
+}
+
+impl ToJson for NoiseGrad {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("value".into(), self.value.to_json());
+        o.insert("dx".into(), self.dx.to_json());
+        o.insert("dy".into(), self.dy.to_json());
+        o.insert("dz".into(), self.dz.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `PoissonDesc`: packages/knowledge/wiki/procgen.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PoissonDesc {
@@ -1186,6 +1248,7 @@ pub struct PoissonDesc {
     pub radius: f32,
     pub attempts: u32,
     pub max_points: u32,
+    pub wrap: bool,
 }
 
 impl Default for PoissonDesc {
@@ -1197,6 +1260,7 @@ impl Default for PoissonDesc {
             radius: 1.0_f32,
             attempts: 30,
             max_points: 4096,
+            wrap: Default::default(),
         }
     }
 }
@@ -1214,6 +1278,7 @@ impl FromJson for PoissonDesc {
             radius: field(o, "radius", d.radius)?,
             attempts: field(o, "attempts", d.attempts)?,
             max_points: field(o, "maxPoints", d.max_points)?,
+            wrap: field(o, "wrap", d.wrap)?,
         })
     }
 }
@@ -1227,6 +1292,7 @@ impl ToJson for PoissonDesc {
         o.insert("radius".into(), self.radius.to_json());
         o.insert("attempts".into(), self.attempts.to_json());
         o.insert("maxPoints".into(), self.max_points.to_json());
+        o.insert("wrap".into(), self.wrap.to_json());
         Value::Object(o)
     }
 }
@@ -1288,6 +1354,7 @@ pub struct BspDesc {
     pub depth: u32,
     pub padding: u32,
     pub corridor: u32,
+    pub loops: f32,
 }
 
 impl Default for BspDesc {
@@ -1301,6 +1368,7 @@ impl Default for BspDesc {
             depth: 5,
             padding: 1,
             corridor: 1,
+            loops: Default::default(),
         }
     }
 }
@@ -1320,6 +1388,7 @@ impl FromJson for BspDesc {
             depth: field(o, "depth", d.depth)?,
             padding: field(o, "padding", d.padding)?,
             corridor: field(o, "corridor", d.corridor)?,
+            loops: field(o, "loops", d.loops)?,
         })
     }
 }
@@ -1335,6 +1404,7 @@ impl ToJson for BspDesc {
         o.insert("depth".into(), self.depth.to_json());
         o.insert("padding".into(), self.padding.to_json());
         o.insert("corridor".into(), self.corridor.to_json());
+        o.insert("loops".into(), self.loops.to_json());
         Value::Object(o)
     }
 }
@@ -1344,7 +1414,8 @@ impl ToJson for BspDesc {
 pub struct BspResult {
     pub rooms: Vec<CellRect>,
     pub corridors: Vec<CellRect>,
-    pub cells: Vec<u32>,
+    pub edges: Vec<[u32; 2]>,
+    pub cells: Vec<u8>,
 }
 
 impl Default for BspResult {
@@ -1352,6 +1423,7 @@ impl Default for BspResult {
         Self {
             rooms: Default::default(),
             corridors: Default::default(),
+            edges: Default::default(),
             cells: Default::default(),
         }
     }
@@ -1366,6 +1438,7 @@ impl FromJson for BspResult {
         Ok(Self {
             rooms: field(o, "rooms", d.rooms)?,
             corridors: field(o, "corridors", d.corridors)?,
+            edges: field(o, "edges", d.edges)?,
             cells: field(o, "cells", d.cells)?,
         })
     }
@@ -1376,7 +1449,8 @@ impl ToJson for BspResult {
         let mut o = Map::new();
         o.insert("rooms".into(), self.rooms.to_json());
         o.insert("corridors".into(), self.corridors.to_json());
-        o.insert("cells".into(), self.cells.to_json());
+        o.insert("edges".into(), self.edges.to_json());
+        o.insert("cells".into(), to_bin_u8(&self.cells));
         Value::Object(o)
     }
 }
@@ -1543,7 +1617,7 @@ impl ToJson for WfcDesc {
 #[derive(Clone, Debug, PartialEq)]
 pub struct WfcResult {
     pub tiles: Vec<u32>,
-    pub rotations: Vec<u32>,
+    pub rotations: Vec<u8>,
     pub attempt: u32,
 }
 
@@ -1574,9 +1648,1167 @@ impl FromJson for WfcResult {
 impl ToJson for WfcResult {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("tiles".into(), self.tiles.to_json());
-        o.insert("rotations".into(), self.rotations.to_json());
+        o.insert("tiles".into(), to_bin_u32(&self.tiles));
+        o.insert("rotations".into(), to_bin_u8(&self.rotations));
         o.insert("attempt".into(), self.attempt.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `HeightmapMask`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HeightmapMask {
+    #[default]
+    None,
+    Island,
+    Ridge,
+}
+
+impl HeightmapMask {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "island", "ridge"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Island, Self::Ridge];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("HeightmapMask", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for HeightmapMask {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "HeightmapMask", Self::NAMES)?)
+    }
+}
+
+impl ToJson for HeightmapMask {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `HydraulicErosionDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HydraulicErosionDesc {
+    pub drops: u32,
+    pub lifetime: u32,
+    pub radius: u32,
+    pub inertia: f32,
+    pub capacity: f32,
+    pub deposition: f32,
+    pub erosion: f32,
+    pub evaporation: f32,
+    pub gravity: f32,
+}
+
+impl Default for HydraulicErosionDesc {
+    fn default() -> Self {
+        Self {
+            drops: 40000,
+            lifetime: 30,
+            radius: 3,
+            inertia: 0.05_f32,
+            capacity: 4.0_f32,
+            deposition: 0.3_f32,
+            erosion: 0.3_f32,
+            evaporation: 0.01_f32,
+            gravity: 4.0_f32,
+        }
+    }
+}
+
+impl FromJson for HydraulicErosionDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            drops: field(o, "drops", d.drops)?,
+            lifetime: field(o, "lifetime", d.lifetime)?,
+            radius: field(o, "radius", d.radius)?,
+            inertia: field(o, "inertia", d.inertia)?,
+            capacity: field(o, "capacity", d.capacity)?,
+            deposition: field(o, "deposition", d.deposition)?,
+            erosion: field(o, "erosion", d.erosion)?,
+            evaporation: field(o, "evaporation", d.evaporation)?,
+            gravity: field(o, "gravity", d.gravity)?,
+        })
+    }
+}
+
+impl ToJson for HydraulicErosionDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("drops".into(), self.drops.to_json());
+        o.insert("lifetime".into(), self.lifetime.to_json());
+        o.insert("radius".into(), self.radius.to_json());
+        o.insert("inertia".into(), self.inertia.to_json());
+        o.insert("capacity".into(), self.capacity.to_json());
+        o.insert("deposition".into(), self.deposition.to_json());
+        o.insert("erosion".into(), self.erosion.to_json());
+        o.insert("evaporation".into(), self.evaporation.to_json());
+        o.insert("gravity".into(), self.gravity.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ThermalErosionDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ThermalErosionDesc {
+    pub talus: f32,
+    pub iterations: u32,
+    pub rate: f32,
+}
+
+impl Default for ThermalErosionDesc {
+    fn default() -> Self {
+        Self {
+            talus: 35.0_f32,
+            iterations: 20,
+            rate: 0.5_f32,
+        }
+    }
+}
+
+impl FromJson for ThermalErosionDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            talus: field(o, "talus", d.talus)?,
+            iterations: field(o, "iterations", d.iterations)?,
+            rate: field(o, "rate", d.rate)?,
+        })
+    }
+}
+
+impl ToJson for ThermalErosionDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("talus".into(), self.talus.to_json());
+        o.insert("iterations".into(), self.iterations.to_json());
+        o.insert("rate".into(), self.rate.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `RiverCarveDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RiverCarveDesc {
+    pub threshold: u32,
+    pub depth: f32,
+    pub width: f32,
+}
+
+impl Default for RiverCarveDesc {
+    fn default() -> Self {
+        Self {
+            threshold: 400,
+            depth: 2.0_f32,
+            width: 6.0_f32,
+        }
+    }
+}
+
+impl FromJson for RiverCarveDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            threshold: field(o, "threshold", d.threshold)?,
+            depth: field(o, "depth", d.depth)?,
+            width: field(o, "width", d.width)?,
+        })
+    }
+}
+
+impl ToJson for RiverCarveDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("threshold".into(), self.threshold.to_json());
+        o.insert("depth".into(), self.depth.to_json());
+        o.insert("width".into(), self.width.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `MoistureDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MoistureDesc {
+    pub flow: f32,
+    pub scale: f32,
+    pub noise: f32,
+    pub frequency: f32,
+}
+
+impl Default for MoistureDesc {
+    fn default() -> Self {
+        Self {
+            flow: 1.0_f32,
+            scale: 64.0_f32,
+            noise: 0.5_f32,
+            frequency: 6.0_f32,
+        }
+    }
+}
+
+impl FromJson for MoistureDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            flow: field(o, "flow", d.flow)?,
+            scale: field(o, "scale", d.scale)?,
+            noise: field(o, "noise", d.noise)?,
+            frequency: field(o, "frequency", d.frequency)?,
+        })
+    }
+}
+
+impl ToJson for MoistureDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("flow".into(), self.flow.to_json());
+        o.insert("scale".into(), self.scale.to_json());
+        o.insert("noise".into(), self.noise.to_json());
+        o.insert("frequency".into(), self.frequency.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `BiomeRuleDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BiomeRuleDesc {
+    pub layer: u32,
+    pub weight: f32,
+    pub altitude_min: f32,
+    pub altitude_max: f32,
+    pub altitude_fade: f32,
+    pub slope_min: f32,
+    pub slope_max: f32,
+    pub slope_fade: f32,
+    pub moisture_min: f32,
+    pub moisture_max: f32,
+    pub moisture_fade: f32,
+}
+
+impl Default for BiomeRuleDesc {
+    fn default() -> Self {
+        Self {
+            layer: Default::default(),
+            weight: 1.0_f32,
+            altitude_min: -1000000.0_f32,
+            altitude_max: 1000000.0_f32,
+            altitude_fade: 2.0_f32,
+            slope_min: Default::default(),
+            slope_max: 90.0_f32,
+            slope_fade: 4.0_f32,
+            moisture_min: Default::default(),
+            moisture_max: 1.0_f32,
+            moisture_fade: 0.1_f32,
+        }
+    }
+}
+
+impl FromJson for BiomeRuleDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            layer: field(o, "layer", d.layer)?,
+            weight: field(o, "weight", d.weight)?,
+            altitude_min: field(o, "altitudeMin", d.altitude_min)?,
+            altitude_max: field(o, "altitudeMax", d.altitude_max)?,
+            altitude_fade: field(o, "altitudeFade", d.altitude_fade)?,
+            slope_min: field(o, "slopeMin", d.slope_min)?,
+            slope_max: field(o, "slopeMax", d.slope_max)?,
+            slope_fade: field(o, "slopeFade", d.slope_fade)?,
+            moisture_min: field(o, "moistureMin", d.moisture_min)?,
+            moisture_max: field(o, "moistureMax", d.moisture_max)?,
+            moisture_fade: field(o, "moistureFade", d.moisture_fade)?,
+        })
+    }
+}
+
+impl ToJson for BiomeRuleDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("layer".into(), self.layer.to_json());
+        o.insert("weight".into(), self.weight.to_json());
+        o.insert("altitudeMin".into(), self.altitude_min.to_json());
+        o.insert("altitudeMax".into(), self.altitude_max.to_json());
+        o.insert("altitudeFade".into(), self.altitude_fade.to_json());
+        o.insert("slopeMin".into(), self.slope_min.to_json());
+        o.insert("slopeMax".into(), self.slope_max.to_json());
+        o.insert("slopeFade".into(), self.slope_fade.to_json());
+        o.insert("moistureMin".into(), self.moisture_min.to_json());
+        o.insert("moistureMax".into(), self.moisture_max.to_json());
+        o.insert("moistureFade".into(), self.moisture_fade.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `HeightmapDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeightmapDesc {
+    pub size: Vec2,
+    pub columns: u32,
+    pub rows: u32,
+    pub min_height: f32,
+    pub max_height: f32,
+    pub seed: u32,
+    pub octaves: u32,
+    pub frequency: f32,
+    pub lacunarity: f32,
+    pub gain: f32,
+    pub warp: f32,
+    pub mask: HeightmapMask,
+    pub mask_strength: f32,
+    pub erosion: Option<HydraulicErosionDesc>,
+    pub thermal: Option<ThermalErosionDesc>,
+    pub terrace_step: f32,
+    pub terrace_sharpness: f32,
+    pub sea_level: Option<f32>,
+    pub shore: f32,
+    pub rivers: Option<RiverCarveDesc>,
+    pub moisture: MoistureDesc,
+    pub biomes: Vec<BiomeRuleDesc>,
+}
+
+impl Default for HeightmapDesc {
+    fn default() -> Self {
+        Self {
+            size: Vec2::new(256.0_f32, 256.0_f32),
+            columns: 257,
+            rows: 257,
+            min_height: 0.0_f32,
+            max_height: 48.0_f32,
+            seed: 1,
+            octaves: 6,
+            frequency: 3.0_f32,
+            lacunarity: 2.0_f32,
+            gain: 0.5_f32,
+            warp: Default::default(),
+            mask: Default::default(),
+            mask_strength: 0.4_f32,
+            erosion: Default::default(),
+            thermal: Default::default(),
+            terrace_step: Default::default(),
+            terrace_sharpness: 0.6_f32,
+            sea_level: Default::default(),
+            shore: 2.0_f32,
+            rivers: Default::default(),
+            moisture: Default::default(),
+            biomes: Default::default(),
+        }
+    }
+}
+
+impl FromJson for HeightmapDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            size: field(o, "size", d.size)?,
+            columns: field(o, "columns", d.columns)?,
+            rows: field(o, "rows", d.rows)?,
+            min_height: field(o, "minHeight", d.min_height)?,
+            max_height: field(o, "maxHeight", d.max_height)?,
+            seed: field(o, "seed", d.seed)?,
+            octaves: field(o, "octaves", d.octaves)?,
+            frequency: field(o, "frequency", d.frequency)?,
+            lacunarity: field(o, "lacunarity", d.lacunarity)?,
+            gain: field(o, "gain", d.gain)?,
+            warp: field(o, "warp", d.warp)?,
+            mask: field(o, "mask", d.mask)?,
+            mask_strength: field(o, "maskStrength", d.mask_strength)?,
+            erosion: field(o, "erosion", d.erosion)?,
+            thermal: field(o, "thermal", d.thermal)?,
+            terrace_step: field(o, "terraceStep", d.terrace_step)?,
+            terrace_sharpness: field(o, "terraceSharpness", d.terrace_sharpness)?,
+            sea_level: field(o, "seaLevel", d.sea_level)?,
+            shore: field(o, "shore", d.shore)?,
+            rivers: field(o, "rivers", d.rivers)?,
+            moisture: field(o, "moisture", d.moisture)?,
+            biomes: field(o, "biomes", d.biomes)?,
+        })
+    }
+}
+
+impl ToJson for HeightmapDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("size".into(), self.size.to_json());
+        o.insert("columns".into(), self.columns.to_json());
+        o.insert("rows".into(), self.rows.to_json());
+        o.insert("minHeight".into(), self.min_height.to_json());
+        o.insert("maxHeight".into(), self.max_height.to_json());
+        o.insert("seed".into(), self.seed.to_json());
+        o.insert("octaves".into(), self.octaves.to_json());
+        o.insert("frequency".into(), self.frequency.to_json());
+        o.insert("lacunarity".into(), self.lacunarity.to_json());
+        o.insert("gain".into(), self.gain.to_json());
+        o.insert("warp".into(), self.warp.to_json());
+        o.insert("mask".into(), self.mask.to_json());
+        o.insert("maskStrength".into(), self.mask_strength.to_json());
+        o.insert("erosion".into(), self.erosion.to_json());
+        o.insert("thermal".into(), self.thermal.to_json());
+        o.insert("terraceStep".into(), self.terrace_step.to_json());
+        o.insert("terraceSharpness".into(), self.terrace_sharpness.to_json());
+        o.insert("seaLevel".into(), self.sea_level.to_json());
+        o.insert("shore".into(), self.shore.to_json());
+        o.insert("rivers".into(), self.rivers.to_json());
+        o.insert("moisture".into(), self.moisture.to_json());
+        o.insert("biomes".into(), self.biomes.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `HeightmapResult`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeightmapResult {
+    pub columns: u32,
+    pub rows: u32,
+    pub min_height: f32,
+    pub max_height: f32,
+    pub river_length: f32,
+    pub heights: Vec<f32>,
+    pub control: Option<Vec<u8>>,
+}
+
+impl Default for HeightmapResult {
+    fn default() -> Self {
+        Self {
+            columns: Default::default(),
+            rows: Default::default(),
+            min_height: Default::default(),
+            max_height: Default::default(),
+            river_length: Default::default(),
+            heights: Default::default(),
+            control: Default::default(),
+        }
+    }
+}
+
+impl FromJson for HeightmapResult {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            columns: field(o, "columns", d.columns)?,
+            rows: field(o, "rows", d.rows)?,
+            min_height: field(o, "minHeight", d.min_height)?,
+            max_height: field(o, "maxHeight", d.max_height)?,
+            river_length: field(o, "riverLength", d.river_length)?,
+            heights: field(o, "heights", d.heights)?,
+            control: field(o, "control", d.control)?,
+        })
+    }
+}
+
+impl ToJson for HeightmapResult {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("columns".into(), self.columns.to_json());
+        o.insert("rows".into(), self.rows.to_json());
+        o.insert("minHeight".into(), self.min_height.to_json());
+        o.insert("maxHeight".into(), self.max_height.to_json());
+        o.insert("riverLength".into(), self.river_length.to_json());
+        o.insert("heights".into(), to_bin_f32(&self.heights));
+        o.insert("control".into(), self.control.as_deref().map_or(Value::Null, to_bin_u8));
+        Value::Object(o)
+    }
+}
+
+/// `PlantGrowth`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PlantGrowth {
+    #[default]
+    Deciduous,
+    Evergreen,
+}
+
+impl PlantGrowth {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["deciduous", "evergreen"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Deciduous, Self::Evergreen];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("PlantGrowth", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for PlantGrowth {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "PlantGrowth", Self::NAMES)?)
+    }
+}
+
+impl ToJson for PlantGrowth {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `PlantLeafShape`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PlantLeafShape {
+    #[default]
+    Blade,
+    Card,
+    Cross,
+}
+
+impl PlantLeafShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["blade", "card", "cross"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Blade, Self::Card, Self::Cross];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("PlantLeafShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for PlantLeafShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "PlantLeafShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for PlantLeafShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `PlantLevelDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantLevelDesc {
+    pub length: f32,
+    pub radius: f32,
+    pub sections: u32,
+    pub segments: u32,
+    pub taper: f32,
+    pub gnarliness: f32,
+    pub twist: f32,
+    pub children: u32,
+    pub angle: f32,
+    pub start: f32,
+}
+
+impl Default for PlantLevelDesc {
+    fn default() -> Self {
+        Self {
+            length: 1.0_f32,
+            radius: 0.6_f32,
+            sections: 4,
+            segments: 4,
+            taper: 0.6_f32,
+            gnarliness: 0.1_f32,
+            twist: Default::default(),
+            children: 3,
+            angle: 50.0_f32,
+            start: 0.3_f32,
+        }
+    }
+}
+
+impl FromJson for PlantLevelDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            length: field(o, "length", d.length)?,
+            radius: field(o, "radius", d.radius)?,
+            sections: field(o, "sections", d.sections)?,
+            segments: field(o, "segments", d.segments)?,
+            taper: field(o, "taper", d.taper)?,
+            gnarliness: field(o, "gnarliness", d.gnarliness)?,
+            twist: field(o, "twist", d.twist)?,
+            children: field(o, "children", d.children)?,
+            angle: field(o, "angle", d.angle)?,
+            start: field(o, "start", d.start)?,
+        })
+    }
+}
+
+impl ToJson for PlantLevelDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("length".into(), self.length.to_json());
+        o.insert("radius".into(), self.radius.to_json());
+        o.insert("sections".into(), self.sections.to_json());
+        o.insert("segments".into(), self.segments.to_json());
+        o.insert("taper".into(), self.taper.to_json());
+        o.insert("gnarliness".into(), self.gnarliness.to_json());
+        o.insert("twist".into(), self.twist.to_json());
+        o.insert("children".into(), self.children.to_json());
+        o.insert("angle".into(), self.angle.to_json());
+        o.insert("start".into(), self.start.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `PlantLeavesDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantLeavesDesc {
+    pub shape: PlantLeafShape,
+    pub count: u32,
+    pub start: f32,
+    pub end: f32,
+    pub angle: f32,
+    pub facing: f32,
+    pub rows: u32,
+    pub size: f32,
+    pub width: f32,
+    pub size_variance: f32,
+    pub color: Color,
+    pub color2: Color,
+    pub color_variation: f32,
+}
+
+impl Default for PlantLeavesDesc {
+    fn default() -> Self {
+        Self {
+            shape: Default::default(),
+            count: 10,
+            start: 0.1_f32,
+            end: 1.0_f32,
+            angle: 45.0_f32,
+            facing: 0.8_f32,
+            rows: Default::default(),
+            size: 0.4_f32,
+            width: 0.5_f32,
+            size_variance: 0.4_f32,
+            color: Color { r: 0.09_f32, g: 0.24_f32, b: 0.04_f32 },
+            color2: Color { r: 0.17_f32, g: 0.33_f32, b: 0.06_f32 },
+            color_variation: 0.3_f32,
+        }
+    }
+}
+
+impl FromJson for PlantLeavesDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            shape: field(o, "shape", d.shape)?,
+            count: field(o, "count", d.count)?,
+            start: field(o, "start", d.start)?,
+            end: field(o, "end", d.end)?,
+            angle: field(o, "angle", d.angle)?,
+            facing: field(o, "facing", d.facing)?,
+            rows: field(o, "rows", d.rows)?,
+            size: field(o, "size", d.size)?,
+            width: field(o, "width", d.width)?,
+            size_variance: field(o, "sizeVariance", d.size_variance)?,
+            color: field(o, "color", d.color)?,
+            color2: field(o, "color2", d.color2)?,
+            color_variation: field(o, "colorVariation", d.color_variation)?,
+        })
+    }
+}
+
+impl ToJson for PlantLeavesDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("shape".into(), self.shape.to_json());
+        o.insert("count".into(), self.count.to_json());
+        o.insert("start".into(), self.start.to_json());
+        o.insert("end".into(), self.end.to_json());
+        o.insert("angle".into(), self.angle.to_json());
+        o.insert("facing".into(), self.facing.to_json());
+        o.insert("rows".into(), self.rows.to_json());
+        o.insert("size".into(), self.size.to_json());
+        o.insert("width".into(), self.width.to_json());
+        o.insert("sizeVariance".into(), self.size_variance.to_json());
+        o.insert("color".into(), self.color.to_json());
+        o.insert("color2".into(), self.color2.to_json());
+        o.insert("colorVariation".into(), self.color_variation.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `PlantFlowersDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantFlowersDesc {
+    pub share: f32,
+    pub count: u32,
+    pub petals: u32,
+    pub size: f32,
+    pub width: f32,
+    pub cup: f32,
+    pub color: Color,
+    pub color2: Color,
+    pub center_color: Color,
+}
+
+impl Default for PlantFlowersDesc {
+    fn default() -> Self {
+        Self {
+            share: 1.0_f32,
+            count: Default::default(),
+            petals: 5,
+            size: 0.04_f32,
+            width: 0.6_f32,
+            cup: 20.0_f32,
+            color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+            color2: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+            center_color: Color { r: 1.0_f32, g: 0.7_f32, b: 0.05_f32 },
+        }
+    }
+}
+
+impl FromJson for PlantFlowersDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            share: field(o, "share", d.share)?,
+            count: field(o, "count", d.count)?,
+            petals: field(o, "petals", d.petals)?,
+            size: field(o, "size", d.size)?,
+            width: field(o, "width", d.width)?,
+            cup: field(o, "cup", d.cup)?,
+            color: field(o, "color", d.color)?,
+            color2: field(o, "color2", d.color2)?,
+            center_color: field(o, "centerColor", d.center_color)?,
+        })
+    }
+}
+
+impl ToJson for PlantFlowersDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("share".into(), self.share.to_json());
+        o.insert("count".into(), self.count.to_json());
+        o.insert("petals".into(), self.petals.to_json());
+        o.insert("size".into(), self.size.to_json());
+        o.insert("width".into(), self.width.to_json());
+        o.insert("cup".into(), self.cup.to_json());
+        o.insert("color".into(), self.color.to_json());
+        o.insert("color2".into(), self.color2.to_json());
+        o.insert("centerColor".into(), self.center_color.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `PlantDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantDesc {
+    pub seed: u32,
+    pub growth: PlantGrowth,
+    pub levels: u32,
+    pub levels_spec: Vec<PlantLevelDesc>,
+    pub force_direction: Vec3,
+    pub force_strength: f32,
+    pub leaves: Option<PlantLeavesDesc>,
+    pub flowers: Option<PlantFlowersDesc>,
+}
+
+impl Default for PlantDesc {
+    fn default() -> Self {
+        Self {
+            seed: 1,
+            growth: Default::default(),
+            levels: 2,
+            levels_spec: Default::default(),
+            force_direction: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+            force_strength: 0.01_f32,
+            leaves: Default::default(),
+            flowers: Default::default(),
+        }
+    }
+}
+
+impl FromJson for PlantDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            seed: field(o, "seed", d.seed)?,
+            growth: field(o, "growth", d.growth)?,
+            levels: field(o, "levels", d.levels)?,
+            levels_spec: field(o, "levelsSpec", d.levels_spec)?,
+            force_direction: field(o, "forceDirection", d.force_direction)?,
+            force_strength: field(o, "forceStrength", d.force_strength)?,
+            leaves: field(o, "leaves", d.leaves)?,
+            flowers: field(o, "flowers", d.flowers)?,
+        })
+    }
+}
+
+impl ToJson for PlantDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("seed".into(), self.seed.to_json());
+        o.insert("growth".into(), self.growth.to_json());
+        o.insert("levels".into(), self.levels.to_json());
+        o.insert("levelsSpec".into(), self.levels_spec.to_json());
+        o.insert("forceDirection".into(), self.force_direction.to_json());
+        o.insert("forceStrength".into(), self.force_strength.to_json());
+        o.insert("leaves".into(), self.leaves.to_json());
+        o.insert("flowers".into(), self.flowers.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `PlantMeshPart`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantMeshPart {
+    pub positions: Vec<f32>,
+    pub normals: Vec<f32>,
+    pub uvs: Vec<f32>,
+    pub colors: Vec<f32>,
+    pub indices: Vec<u32>,
+    pub wind_pivot: Vec<f32>,
+    pub wind_leaf: Vec<f32>,
+}
+
+impl Default for PlantMeshPart {
+    fn default() -> Self {
+        Self {
+            positions: Default::default(),
+            normals: Default::default(),
+            uvs: Default::default(),
+            colors: Default::default(),
+            indices: Default::default(),
+            wind_pivot: Default::default(),
+            wind_leaf: Default::default(),
+        }
+    }
+}
+
+impl FromJson for PlantMeshPart {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            positions: field(o, "positions", d.positions)?,
+            normals: field(o, "normals", d.normals)?,
+            uvs: field(o, "uvs", d.uvs)?,
+            colors: field(o, "colors", d.colors)?,
+            indices: field(o, "indices", d.indices)?,
+            wind_pivot: field(o, "windPivot", d.wind_pivot)?,
+            wind_leaf: field(o, "windLeaf", d.wind_leaf)?,
+        })
+    }
+}
+
+impl ToJson for PlantMeshPart {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("positions".into(), to_bin_f32(&self.positions));
+        o.insert("normals".into(), to_bin_f32(&self.normals));
+        o.insert("uvs".into(), to_bin_f32(&self.uvs));
+        o.insert("colors".into(), to_bin_f32(&self.colors));
+        o.insert("indices".into(), to_bin_u32(&self.indices));
+        o.insert("windPivot".into(), to_bin_f32(&self.wind_pivot));
+        o.insert("windLeaf".into(), to_bin_f32(&self.wind_leaf));
+        Value::Object(o)
+    }
+}
+
+/// `PlantMeshResult`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlantMeshResult {
+    pub wood: PlantMeshPart,
+    pub leaves: Option<PlantMeshPart>,
+    pub branches: u32,
+    pub leaf_count: u32,
+    pub flower_count: u32,
+}
+
+impl Default for PlantMeshResult {
+    fn default() -> Self {
+        Self {
+            wood: Default::default(),
+            leaves: Default::default(),
+            branches: Default::default(),
+            leaf_count: Default::default(),
+            flower_count: Default::default(),
+        }
+    }
+}
+
+impl FromJson for PlantMeshResult {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            wood: field(o, "wood", d.wood)?,
+            leaves: field(o, "leaves", d.leaves)?,
+            branches: field(o, "branches", d.branches)?,
+            leaf_count: field(o, "leafCount", d.leaf_count)?,
+            flower_count: field(o, "flowerCount", d.flower_count)?,
+        })
+    }
+}
+
+impl ToJson for PlantMeshResult {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("wood".into(), self.wood.to_json());
+        o.insert("leaves".into(), self.leaves.to_json());
+        o.insert("branches".into(), self.branches.to_json());
+        o.insert("leafCount".into(), self.leaf_count.to_json());
+        o.insert("flowerCount".into(), self.flower_count.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FractureDesc`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FractureDesc {
+    pub positions: Vec<f32>,
+    pub indices: Vec<u32>,
+    pub chunks: u32,
+    pub seed: u32,
+    pub metric: Vec3,
+    pub impact: Option<Vec3>,
+    pub impact_radius: f32,
+    pub uv_scale: f32,
+}
+
+impl Default for FractureDesc {
+    fn default() -> Self {
+        Self {
+            positions: Default::default(),
+            indices: Default::default(),
+            chunks: 8,
+            seed: 1,
+            metric: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+            impact: Default::default(),
+            impact_radius: Default::default(),
+            uv_scale: 1.0_f32,
+        }
+    }
+}
+
+impl FromJson for FractureDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            positions: field(o, "positions", d.positions)?,
+            indices: field(o, "indices", d.indices)?,
+            chunks: field(o, "chunks", d.chunks)?,
+            seed: field(o, "seed", d.seed)?,
+            metric: field(o, "metric", d.metric)?,
+            impact: field(o, "impact", d.impact)?,
+            impact_radius: field(o, "impactRadius", d.impact_radius)?,
+            uv_scale: field(o, "uvScale", d.uv_scale)?,
+        })
+    }
+}
+
+impl ToJson for FractureDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("positions".into(), to_bin_f32(&self.positions));
+        o.insert("indices".into(), to_bin_u32(&self.indices));
+        o.insert("chunks".into(), self.chunks.to_json());
+        o.insert("seed".into(), self.seed.to_json());
+        o.insert("metric".into(), self.metric.to_json());
+        o.insert("impact".into(), self.impact.to_json());
+        o.insert("impactRadius".into(), self.impact_radius.to_json());
+        o.insert("uvScale".into(), self.uv_scale.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FracturePiece`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FracturePiece {
+    pub cell: u32,
+    pub positions: Vec<f32>,
+    pub normals: Vec<f32>,
+    pub uvs: Vec<f32>,
+    pub indices: Vec<u32>,
+    pub volume: f32,
+    pub centroid: Vec3,
+}
+
+impl Default for FracturePiece {
+    fn default() -> Self {
+        Self {
+            cell: Default::default(),
+            positions: Default::default(),
+            normals: Default::default(),
+            uvs: Default::default(),
+            indices: Default::default(),
+            volume: Default::default(),
+            centroid: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FracturePiece {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            cell: field(o, "cell", d.cell)?,
+            positions: field(o, "positions", d.positions)?,
+            normals: field(o, "normals", d.normals)?,
+            uvs: field(o, "uvs", d.uvs)?,
+            indices: field(o, "indices", d.indices)?,
+            volume: field(o, "volume", d.volume)?,
+            centroid: field(o, "centroid", d.centroid)?,
+        })
+    }
+}
+
+impl ToJson for FracturePiece {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("cell".into(), self.cell.to_json());
+        o.insert("positions".into(), to_bin_f32(&self.positions));
+        o.insert("normals".into(), to_bin_f32(&self.normals));
+        o.insert("uvs".into(), to_bin_f32(&self.uvs));
+        o.insert("indices".into(), to_bin_u32(&self.indices));
+        o.insert("volume".into(), self.volume.to_json());
+        o.insert("centroid".into(), self.centroid.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FractureBond`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FractureBond {
+    pub a: u32,
+    pub b: u32,
+    pub centroid: Vec3,
+    pub normal: Vec3,
+    pub area: f32,
+}
+
+impl Default for FractureBond {
+    fn default() -> Self {
+        Self {
+            a: Default::default(),
+            b: Default::default(),
+            centroid: Default::default(),
+            normal: Default::default(),
+            area: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FractureBond {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            a: field(o, "a", d.a)?,
+            b: field(o, "b", d.b)?,
+            centroid: field(o, "centroid", d.centroid)?,
+            normal: field(o, "normal", d.normal)?,
+            area: field(o, "area", d.area)?,
+        })
+    }
+}
+
+impl ToJson for FractureBond {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("a".into(), self.a.to_json());
+        o.insert("b".into(), self.b.to_json());
+        o.insert("centroid".into(), self.centroid.to_json());
+        o.insert("normal".into(), self.normal.to_json());
+        o.insert("area".into(), self.area.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `FractureResult`: packages/knowledge/wiki/procgen.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FractureResult {
+    pub pieces: Vec<FracturePiece>,
+    pub bonds: Vec<FractureBond>,
+}
+
+impl Default for FractureResult {
+    fn default() -> Self {
+        Self {
+            pieces: Default::default(),
+            bonds: Default::default(),
+        }
+    }
+}
+
+impl FromJson for FractureResult {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            pieces: field(o, "pieces", d.pieces)?,
+            bonds: field(o, "bonds", d.bonds)?,
+        })
+    }
+}
+
+impl ToJson for FractureResult {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("pieces".into(), self.pieces.to_json());
+        o.insert("bonds".into(), self.bonds.to_json());
         Value::Object(o)
     }
 }
@@ -6662,12 +7894,12 @@ impl FromJson for BufferGeometryDesc {
 impl ToJson for BufferGeometryDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("positions".into(), self.positions.to_json());
-        o.insert("normals".into(), self.normals.to_json());
-        o.insert("uvs".into(), self.uvs.to_json());
-        o.insert("colors".into(), self.colors.to_json());
-        o.insert("tangents".into(), self.tangents.to_json());
-        o.insert("indices".into(), self.indices.to_json());
+        o.insert("positions".into(), to_bin_f32(&self.positions));
+        o.insert("normals".into(), self.normals.as_deref().map_or(Value::Null, to_bin_f32));
+        o.insert("uvs".into(), self.uvs.as_deref().map_or(Value::Null, to_bin_f32));
+        o.insert("colors".into(), self.colors.as_deref().map_or(Value::Null, to_bin_f32));
+        o.insert("tangents".into(), self.tangents.as_deref().map_or(Value::Null, to_bin_f32));
+        o.insert("indices".into(), self.indices.as_deref().map_or(Value::Null, to_bin_u32));
         o.insert("dynamic".into(), self.dynamic.to_json());
         o.insert("physics".into(), self.physics.to_json());
         Value::Object(o)
@@ -12754,7 +13986,7 @@ pub struct FillDesc {
     pub x: u32,
     pub y: u32,
     pub width: u32,
-    pub tiles: Vec<i32>,
+    pub tiles: Option<OneOf<Vec<i32>, Vec<i32>>>,
 }
 
 impl Default for FillDesc {
@@ -12990,7 +14222,7 @@ impl FromJson for SoundDesc {
 impl ToJson for SoundDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("samples".into(), self.samples.to_json());
+        o.insert("samples".into(), to_bin_f32(&self.samples));
         o.insert("rate".into(), self.rate.to_json());
         o.insert("channels".into(), self.channels.to_json());
         Value::Object(o)
@@ -13031,6 +14263,273 @@ impl ToJson for AudioFeedbackDesc {
         let mut o = Map::new();
         o.insert("volume".into(), self.volume.to_json());
         o.insert("playbackRate".into(), self.playback_rate.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SfxWave`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SfxWave {
+    #[default]
+    Square,
+    Saw,
+    Sine,
+    Triangle,
+    Noise,
+}
+
+impl SfxWave {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["square", "saw", "sine", "triangle", "noise"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Square, Self::Saw, Self::Sine, Self::Triangle, Self::Noise];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SfxWave", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SfxWave {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SfxWave", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SfxWave {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `SfxLayerDesc`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SfxLayerDesc {
+    pub wave: SfxWave,
+    pub freq: f32,
+    pub freq_end: f32,
+    pub slide: f32,
+    pub arp_at: f32,
+    pub arp: f32,
+    pub vib_depth: f32,
+    pub vib_rate: f32,
+    pub attack: f32,
+    pub sustain: f32,
+    pub decay: f32,
+    pub sustain_level: f32,
+    pub release: f32,
+    pub punch: f32,
+    pub duty: f32,
+    pub lowpass: f32,
+    pub lp_slide: f32,
+    pub q: f32,
+    pub highpass: f32,
+    pub fm_freq: f32,
+    pub fm_index: f32,
+    pub drive: f32,
+    pub gain: f32,
+    pub delay: f32,
+}
+
+impl Default for SfxLayerDesc {
+    fn default() -> Self {
+        Self {
+            wave: SfxWave::Square,
+            freq: 440.0_f32,
+            freq_end: Default::default(),
+            slide: Default::default(),
+            arp_at: Default::default(),
+            arp: Default::default(),
+            vib_depth: Default::default(),
+            vib_rate: Default::default(),
+            attack: 0.002_f32,
+            sustain: 0.05_f32,
+            decay: 0.15_f32,
+            sustain_level: 1.0_f32,
+            release: Default::default(),
+            punch: Default::default(),
+            duty: 0.5_f32,
+            lowpass: Default::default(),
+            lp_slide: Default::default(),
+            q: Default::default(),
+            highpass: Default::default(),
+            fm_freq: Default::default(),
+            fm_index: Default::default(),
+            drive: Default::default(),
+            gain: 0.5_f32,
+            delay: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SfxLayerDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            wave: field(o, "wave", d.wave)?,
+            freq: field(o, "freq", d.freq)?,
+            freq_end: field(o, "freqEnd", d.freq_end)?,
+            slide: field(o, "slide", d.slide)?,
+            arp_at: field(o, "arpAt", d.arp_at)?,
+            arp: field(o, "arp", d.arp)?,
+            vib_depth: field(o, "vibDepth", d.vib_depth)?,
+            vib_rate: field(o, "vibRate", d.vib_rate)?,
+            attack: field(o, "attack", d.attack)?,
+            sustain: field(o, "sustain", d.sustain)?,
+            decay: field(o, "decay", d.decay)?,
+            sustain_level: field(o, "sustainLevel", d.sustain_level)?,
+            release: field(o, "release", d.release)?,
+            punch: field(o, "punch", d.punch)?,
+            duty: field(o, "duty", d.duty)?,
+            lowpass: field(o, "lowpass", d.lowpass)?,
+            lp_slide: field(o, "lpSlide", d.lp_slide)?,
+            q: field(o, "q", d.q)?,
+            highpass: field(o, "highpass", d.highpass)?,
+            fm_freq: field(o, "fmFreq", d.fm_freq)?,
+            fm_index: field(o, "fmIndex", d.fm_index)?,
+            drive: field(o, "drive", d.drive)?,
+            gain: field(o, "gain", d.gain)?,
+            delay: field(o, "delay", d.delay)?,
+        })
+    }
+}
+
+impl ToJson for SfxLayerDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("wave".into(), self.wave.to_json());
+        o.insert("freq".into(), self.freq.to_json());
+        o.insert("freqEnd".into(), self.freq_end.to_json());
+        o.insert("slide".into(), self.slide.to_json());
+        o.insert("arpAt".into(), self.arp_at.to_json());
+        o.insert("arp".into(), self.arp.to_json());
+        o.insert("vibDepth".into(), self.vib_depth.to_json());
+        o.insert("vibRate".into(), self.vib_rate.to_json());
+        o.insert("attack".into(), self.attack.to_json());
+        o.insert("sustain".into(), self.sustain.to_json());
+        o.insert("decay".into(), self.decay.to_json());
+        o.insert("sustainLevel".into(), self.sustain_level.to_json());
+        o.insert("release".into(), self.release.to_json());
+        o.insert("punch".into(), self.punch.to_json());
+        o.insert("duty".into(), self.duty.to_json());
+        o.insert("lowpass".into(), self.lowpass.to_json());
+        o.insert("lpSlide".into(), self.lp_slide.to_json());
+        o.insert("q".into(), self.q.to_json());
+        o.insert("highpass".into(), self.highpass.to_json());
+        o.insert("fmFreq".into(), self.fm_freq.to_json());
+        o.insert("fmIndex".into(), self.fm_index.to_json());
+        o.insert("drive".into(), self.drive.to_json());
+        o.insert("gain".into(), self.gain.to_json());
+        o.insert("delay".into(), self.delay.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SfxDesc`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SfxDesc {
+    pub preset: String,
+    pub layers: Vec<SfxLayerDesc>,
+    pub seed: u32,
+    pub pitch: f32,
+    pub duration: f32,
+    pub volume: f32,
+    pub vary: f32,
+}
+
+impl Default for SfxDesc {
+    fn default() -> Self {
+        Self {
+            preset: Default::default(),
+            layers: Default::default(),
+            seed: 1,
+            pitch: 1.0_f32,
+            duration: 1.0_f32,
+            volume: 1.0_f32,
+            vary: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SfxDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            preset: field(o, "preset", d.preset)?,
+            layers: field(o, "layers", d.layers)?,
+            seed: field(o, "seed", d.seed)?,
+            pitch: field(o, "pitch", d.pitch)?,
+            duration: field(o, "duration", d.duration)?,
+            volume: field(o, "volume", d.volume)?,
+            vary: field(o, "vary", d.vary)?,
+        })
+    }
+}
+
+impl ToJson for SfxDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("preset".into(), self.preset.to_json());
+        o.insert("layers".into(), self.layers.to_json());
+        o.insert("seed".into(), self.seed.to_json());
+        o.insert("pitch".into(), self.pitch.to_json());
+        o.insert("duration".into(), self.duration.to_json());
+        o.insert("volume".into(), self.volume.to_json());
+        o.insert("vary".into(), self.vary.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SfxSamples`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SfxSamples {
+    pub samples: Vec<f32>,
+    pub rate: u32,
+    pub channels: u32,
+}
+
+impl Default for SfxSamples {
+    fn default() -> Self {
+        Self {
+            samples: Default::default(),
+            rate: Default::default(),
+            channels: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SfxSamples {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            samples: field(o, "samples", d.samples)?,
+            rate: field(o, "rate", d.rate)?,
+            channels: field(o, "channels", d.channels)?,
+        })
+    }
+}
+
+impl ToJson for SfxSamples {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("samples".into(), to_bin_f32(&self.samples));
+        o.insert("rate".into(), self.rate.to_json());
+        o.insert("channels".into(), self.channels.to_json());
         Value::Object(o)
     }
 }
@@ -13326,7 +14825,7 @@ pub struct NavGridDesc {
     pub height: u32,
     pub cell_size: f32,
     pub origin: Vec2,
-    pub costs: Vec<u32>,
+    pub costs: Option<OneOf<Vec<u8>, Vec<u32>>>,
 }
 
 impl Default for NavGridDesc {
@@ -21654,6 +23153,7 @@ pub struct TerrainSample {
     pub slope: f32,
     pub inside: bool,
     pub hole: bool,
+    pub layer: u32,
 }
 
 impl Default for TerrainSample {
@@ -21664,6 +23164,7 @@ impl Default for TerrainSample {
             slope: Default::default(),
             inside: Default::default(),
             hole: Default::default(),
+            layer: Default::default(),
         }
     }
 }
@@ -21680,6 +23181,7 @@ impl FromJson for TerrainSample {
             slope: field(o, "slope", d.slope)?,
             inside: field(o, "inside", d.inside)?,
             hole: field(o, "hole", d.hole)?,
+            layer: field(o, "layer", d.layer)?,
         })
     }
 }
@@ -21692,6 +23194,7 @@ impl ToJson for TerrainSample {
         o.insert("slope".into(), self.slope.to_json());
         o.insert("inside".into(), self.inside.to_json());
         o.insert("hole".into(), self.hole.to_json());
+        o.insert("layer".into(), self.layer.to_json());
         Value::Object(o)
     }
 }
@@ -22010,6 +23513,88 @@ impl ToJson for TerrainLayerDesc {
         o.insert("altitudeMin".into(), self.altitude_min.to_json());
         o.insert("altitudeMax".into(), self.altitude_max.to_json());
         o.insert("altitudeFade".into(), self.altitude_fade.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `TerrainCreateDesc`: packages/knowledge/wiki/terrain.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TerrainCreateDesc {
+    pub size: Vec2,
+    pub columns: u32,
+    pub rows: u32,
+    pub heights: Vec<f32>,
+    pub control: Option<Vec<u8>>,
+    pub control_width: u32,
+    pub control_height: u32,
+    pub holes: Option<Vec<u8>>,
+    pub layers: Vec<TerrainLayerDesc>,
+    pub height_blend: f32,
+    pub sea_level: f32,
+    pub collision: bool,
+    pub cast_shadows: bool,
+}
+
+impl Default for TerrainCreateDesc {
+    fn default() -> Self {
+        Self {
+            size: Vec2::new(64.0_f32, 64.0_f32),
+            columns: 65,
+            rows: 65,
+            heights: Default::default(),
+            control: Default::default(),
+            control_width: Default::default(),
+            control_height: Default::default(),
+            holes: Default::default(),
+            layers: Default::default(),
+            height_blend: 0.15_f32,
+            sea_level: Default::default(),
+            collision: true,
+            cast_shadows: true,
+        }
+    }
+}
+
+impl FromJson for TerrainCreateDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            size: field(o, "size", d.size)?,
+            columns: field(o, "columns", d.columns)?,
+            rows: field(o, "rows", d.rows)?,
+            heights: field(o, "heights", d.heights)?,
+            control: field(o, "control", d.control)?,
+            control_width: field(o, "controlWidth", d.control_width)?,
+            control_height: field(o, "controlHeight", d.control_height)?,
+            holes: field(o, "holes", d.holes)?,
+            layers: field(o, "layers", d.layers)?,
+            height_blend: field(o, "heightBlend", d.height_blend)?,
+            sea_level: field(o, "seaLevel", d.sea_level)?,
+            collision: field(o, "collision", d.collision)?,
+            cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+        })
+    }
+}
+
+impl ToJson for TerrainCreateDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("size".into(), self.size.to_json());
+        o.insert("columns".into(), self.columns.to_json());
+        o.insert("rows".into(), self.rows.to_json());
+        o.insert("heights".into(), to_bin_f32(&self.heights));
+        o.insert("control".into(), self.control.as_deref().map_or(Value::Null, to_bin_u8));
+        o.insert("controlWidth".into(), self.control_width.to_json());
+        o.insert("controlHeight".into(), self.control_height.to_json());
+        o.insert("holes".into(), self.holes.as_deref().map_or(Value::Null, to_bin_u8));
+        o.insert("layers".into(), self.layers.to_json());
+        o.insert("heightBlend".into(), self.height_blend.to_json());
+        o.insert("seaLevel".into(), self.sea_level.to_json());
+        o.insert("collision".into(), self.collision.to_json());
+        o.insert("castShadows".into(), self.cast_shadows.to_json());
         Value::Object(o)
     }
 }
@@ -32727,6 +34312,7 @@ pub mod record {
         pub layer_altitude: f32,
         pub shadows: f32,
         pub steps: u32,
+        pub seed: u32,
     }
 
     impl Default for Clouds {
@@ -32746,6 +34332,7 @@ pub mod record {
                 layer_altitude: 8000.0_f32,
                 shadows: 1.0_f32,
                 steps: 48,
+                seed: 1,
             }
         }
     }
@@ -32771,6 +34358,7 @@ pub mod record {
                 layer_altitude: field(o, "layerAltitude", d.layer_altitude)?,
                 shadows: field(o, "shadows", d.shadows)?,
                 steps: field(o, "steps", d.steps)?,
+                seed: field(o, "seed", d.seed)?,
             })
         }
     }

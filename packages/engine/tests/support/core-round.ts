@@ -106,8 +106,14 @@ if (which === "rng") {
     bsp: { seed: number };
     wfc: { seed: number; width: number; height: number; wrap: boolean; attempts: number; tiles: { weight: number; sockets: [number, number, number, number]; rotations: boolean }[] };
   };
-  const f32s = (v: readonly number[]) => new Uint8Array(new Float32Array(v).buffer);
-  const u32s = (v: readonly number[]) => new Uint8Array(new Uint32Array(v).buffer);
+  const f32s = (v: ArrayLike<number>) =>
+    v instanceof Float32Array
+      ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
+      : new Uint8Array(new Float32Array(v).buffer);
+  const u32s = (v: ArrayLike<number>) =>
+    v instanceof Uint32Array
+      ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
+      : new Uint8Array(new Uint32Array(v).buffer);
   const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
     if (!r.ok) throw new Error(r.reason);
     return r.value;
@@ -116,7 +122,7 @@ if (which === "rng") {
     must(og.procgen.noiseGrid({
       noise: { seed: pin.noise.seed, kind, octaves: pin.noise.octaves, frequency: pin.noise.frequency, threeD },
       ...pin.noise.grid,
-    })) as number[];
+    }));
   const wfc = must(
     og.procgen.wfc({
       seed: pin.wfc.seed, width: pin.wfc.width, height: pin.wfc.height, wrap: pin.wfc.wrap, attempts: pin.wfc.attempts,
@@ -127,6 +133,8 @@ if (which === "rng") {
   const engine = start(og.game({ tick: 60, seed: 42 }));
   const rng = must(engine.world.resource(og.Rng));
   const picks = rng.fork("picks");
+  const wfcBytes = new Uint8Array(wfc.tiles.length);
+  for (let i = 0; i < wfc.tiles.length; i++) wfcBytes[i] = wfc.tiles[i]! * 4 + wfc.rotations[i]!;
   out.hashes = {
     perlin2: fnv(f32s(grid("perlin", false))),
     perlin3: fnv(f32s(grid("perlin", true))),
@@ -134,7 +142,7 @@ if (which === "rng") {
     simplex3: fnv(f32s(grid("simplex", true))),
     poisson: fnv(f32s(poisson.flatMap((p) => [p.x, p.y]))),
     bsp: fnv(must(og.procgen.bsp({ seed: pin.bsp.seed })).cells),
-    wfc: fnv(wfc.tiles.map((t, i) => t * 4 + wfc.rotations[i]!)),
+    wfc: fnv(wfcBytes),
     weighted: fnv(Array.from({ length: 64 }, () => picks.weighted([1, 0, 3, 0.5]))),
     permutation: fnv(u32s(picks.permutation(32))),
     mainWeighted: rng.weighted([0, 0, 1]),

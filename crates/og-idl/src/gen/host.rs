@@ -167,6 +167,9 @@ pub enum Wire {
     /// Bytes handed to the engine (`Bytes`, a `Uint8Array`): copied across
     /// as the host's `Self::Bytes`.
     Bytes,
+    /// Structured data carrying TypedArrays or raw Bytes as an 8-byte-aligned
+    /// `OGB1` binary packet (`Self::Bytes` / `Uint8Array`).
+    Binary,
 }
 
 impl Wire {
@@ -180,7 +183,7 @@ impl Wire {
             Wire::Text | Wire::Json | Wire::Token => "String",
             Wire::Array => "Self::Array",
             Wire::Views => "Self::Views",
-            Wire::Bytes => "Self::Bytes",
+            Wire::Bytes | Wire::Binary => "Self::Bytes",
         }
     }
 
@@ -192,8 +195,58 @@ impl Wire {
             Wire::Text | Wire::Json | Wire::Token => "string",
             Wire::Array => "A",
             Wire::Views => "V",
-            Wire::Bytes => "Uint8Array",
+            Wire::Bytes | Wire::Binary => "Uint8Array",
         }
+    }
+}
+
+/// Whether `ty` (or any struct/union/generic argument it reaches) contains a
+/// TypedArray or `Bytes` payload that should travel via `OGB1` binary wire.
+fn has_binary<'a>(
+    ix: &Index<'a>,
+    f: Option<&Function>,
+    ty: &TypeRef,
+    seen: &mut std::collections::BTreeSet<&'a str>,
+) -> bool {
+    let name = ty.name();
+    if f.is_some_and(|f| f.generics.iter().any(|g| g.name == name)) {
+        return false;
+    }
+    if matches!(
+        name,
+        "Float32Array" | "Float64Array" | "Uint32Array" | "Int32Array" | "Uint8Array" | "Bytes"
+    ) {
+        return true;
+    }
+    if matches!(
+        name,
+        "Value" | "Partial" | "View" | "HandleField" | "FieldValue"
+    ) {
+        return false;
+    }
+    if ty.args().iter().any(|a| has_binary(ix, f, a, seen)) {
+        return true;
+    }
+    match ix.decl(name) {
+        Some(TypeDecl::Struct(s)) => {
+            if !seen.insert(s.name.as_str()) {
+                return false;
+            }
+            s.fields
+                .iter()
+                .any(|fld| has_binary(ix, None, &fld.ty, seen))
+        }
+        Some(TypeDecl::Union(u)) => {
+            if !seen.insert(u.name.as_str()) {
+                return false;
+            }
+            u.cases.iter().any(|c| {
+                c.payload
+                    .as_ref()
+                    .is_some_and(|p| has_binary(ix, None, &TypeRef::named(p), seen))
+            })
+        }
+        _ => false,
     }
 }
 
@@ -223,7 +276,15 @@ pub fn wire(ix: &Index<'_>, f: Option<&Function>, ty: &TypeRef) -> Wire {
             Some(TypeDecl::Enum(_)) => Wire::Text,
             Some(TypeDecl::Interface(_)) => Wire::Object,
             Some(TypeDecl::Callback(_)) => Wire::Callback,
-            _ => Wire::Json,
+            _ => {
+                let is_custom = f.is_some_and(|f| f.custom);
+                let mut seen = std::collections::BTreeSet::new();
+                if !is_custom && has_binary(ix, f, ty, &mut seen) {
+                    Wire::Binary
+                } else {
+                    Wire::Json
+                }
+            }
         },
     }
 }
@@ -900,6 +961,9 @@ pub enum Target {
 }
 
 fn glue_type(target: Target, w: &str) -> String {
+    if let Some(inner) = w.strip_prefix("Option<").and_then(|s| s.strip_suffix('>')) {
+        return format!("Option<{}>", glue_type(target, inner));
+    }
     match (target, w) {
         (Target::Web, "Self::Array") => "Vec<u32>".into(),
         (Target::Web, "Self::Views") => "Vec<u32>".into(),

@@ -124,3 +124,25 @@ pub fn no_audio(engine: u32) -> String {
 pub fn json<T: crate::host::wire::ToJson>(value: T) -> String {
     value.to_json().to_string()
 }
+
+/// The binary `OGB1` answer of a binding returning `Result<T>` where `T`
+/// contains TypedArrays.
+pub fn answer_bin<T: crate::host::wire::ToJson>(r: Result<T, String>) -> Vec<u8> {
+    crate::host::bin::answer(r)
+}
+
+/// The binary `OGB1` answer of a binding returning `Result<Float32Array>`.
+pub fn answer_bin_f32s(r: Result<Vec<f32>, String>) -> Vec<u8> {
+    crate::host::bin::answer_f32s(r)
+}
+
+/// The binary `OGB1` answer of a binding returning `Result<Bytes>` (`Uint8Array`).
+pub fn answer_bin_bytes(r: Result<Vec<u8>, String>) -> Vec<u8> {
+    crate::host::bin::answer_bytes(r)
+}
+
+/// The binary `OGB1` answer of a binding returning a structured value with
+/// TypedArrays directly.
+pub fn value_bin<T: crate::host::wire::ToJson>(value: T) -> Vec<u8> {
+    crate::host::bin::value(&value)
+}

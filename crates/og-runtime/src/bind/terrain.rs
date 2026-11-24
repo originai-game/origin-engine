@@ -19,8 +19,9 @@
 
 use crate::engine::{Engine, engine};
 use crate::host::wire::{
-    self, Color, FromJson, TerrainBounds, TerrainBrush, TerrainEdit, TerrainInfo, TerrainLayerDesc,
-    TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson, record,
+    self, Color, FromJson, TerrainBounds, TerrainBrush, TerrainCreateDesc, TerrainEdit,
+    TerrainInfo, TerrainLayerDesc, TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson,
+    record,
 };
 use crate::parse;
 use crate::present::extract::{Hierarchy, RenderState};
@@ -28,7 +29,7 @@ use crate::present::fx::{f, kept_rows};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
-use og_render::{TerrainData, TerrainLayer, TerrainLod};
+use og_render::{TerrainControl, TerrainData, TerrainLayer, TerrainLayout, TerrainLod};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -49,13 +50,21 @@ pub(crate) use release::free_released;
 /// beside glTF geometries' (`assets::handle`).
 const GEOMETRY_BASE: u64 = 0x7e << 32;
 
-/// One loaded terrain.
+/// One loaded terrain (cooked streamed or runtime-created).
 pub(crate) struct LoadedTerrain {
     pub render: og_render::TerrainHandle,
-    /// The cooked tiles, still compressed.
-    pub cooked: og_bundle::runtime::CookedTerrain,
-    /// The whole field in memory: physics' (a collider terrain) or an
-    /// edited one's. `None`: only the tiles below are decoded.
+    /// The cooked tiles, still compressed (`None` for runtime-created terrains).
+    pub cooked: Option<og_bundle::runtime::CookedTerrain>,
+    /// Initial heightfield for runtime-created terrains (restored on replay/unstamp).
+    pub initial: Option<TerrainData>,
+    /// Layout metadata (always populated for both cooked and runtime terrains).
+    pub layout: TerrainLayout,
+    /// Height range before edits.
+    pub initial_range: (f32, f32),
+    /// Sea level height for coastal cues.
+    pub sea_level: Option<f32>,
+    /// The whole field in memory: physics' (a collider terrain), a runtime
+    /// terrain, or an edited one's. `None`: only the tiles below are decoded.
     pub field: Option<TerrainData>,
     /// Edited: `field` holds the edits and the renderer draws it.
     pub edited: bool,
@@ -77,7 +86,7 @@ pub(crate) struct LoadedTerrain {
     /// ([`seabed_grid`]).
     pub generation: u64,
     /// The runtime bundle it was loaded from (an asset entry index); `None`
-    /// for the boot bundle's, which never closes.
+    /// for the boot bundle's or runtime-created terrains.
     pub bundle: Option<usize>,
     /// Its layer textures and arrays with the bundle each came from
     /// (`None`: the boot bundle): what goes with it when it is freed.
@@ -169,16 +178,34 @@ pub(crate) struct TerrainState {
     pub shores: crate::bind::seabed::Shores,
 }
 
+fn band_weight(v: f32, lo: f32, hi: f32, fade: f32) -> f32 {
+    let below = if fade > 0.0 {
+        ((v - (lo - fade)) / fade).clamp(0.0, 1.0)
+    } else if v >= lo {
+        1.0
+    } else {
+        0.0
+    };
+    let above = if fade > 0.0 {
+        (((hi + fade) - v) / fade).clamp(0.0, 1.0)
+    } else if v <= hi {
+        1.0
+    } else {
+        0.0
+    };
+    below * above
+}
+
 impl LoadedTerrain {
     /// The field's extent, samples and current height range.
     fn size(&self) -> Vec2 {
-        self.cooked.layout.size
+        self.layout.size
     }
 
     pub(crate) fn range(&self) -> (f32, f32) {
         match (&self.field, self.edited) {
             (Some(f), true) => f.range(),
-            _ => self.cooked.range,
+            _ => self.initial_range,
         }
     }
 
@@ -203,13 +230,64 @@ impl LoadedTerrain {
         f(&|p| sampler.height(p))
     }
 
+    /// Dominant terrain layer index at terrain-local point `p`, world height
+    /// `height`, and slope `slope_deg`: reads the control map when resident,
+    /// otherwise evaluates layer altitude/slope rules.
+    fn dominant_layer(&self, p: Vec2, height: f32, slope_deg: f32) -> u32 {
+        if let Some(d) = &self.field
+            && let Some(ctrl) = &d.control
+            && ctrl.width > 0
+            && ctrl.height > 0
+        {
+            let u = (p.x / d.size.x.max(1e-6) + 0.5).clamp(0.0, 1.0);
+            let v = (p.y / d.size.y.max(1e-6) + 0.5).clamp(0.0, 1.0);
+            let cx = ((u * ctrl.width.saturating_sub(1) as f32).round() as u32).min(ctrl.width - 1);
+            let cy =
+                ((v * ctrl.height.saturating_sub(1) as f32).round() as u32).min(ctrl.height - 1);
+            let page_bytes = ctrl.width as usize * ctrl.height as usize * 4;
+            let px = (cy as usize * ctrl.width as usize + cx as usize) * 4;
+            let pages = ctrl.pages() as usize;
+            let mut best = 0u32;
+            let mut best_w = 0u8;
+            for page in 0..pages {
+                let base = page * page_bytes + px;
+                if base + 4 > ctrl.rgba.len() {
+                    break;
+                }
+                for ch in 0..4usize {
+                    let idx = (page * 4 + ch) as u32;
+                    let w = ctrl.rgba[base + ch];
+                    if w > best_w {
+                        best_w = w;
+                        best = idx;
+                    }
+                }
+            }
+            return best;
+        }
+        if self.layers.len() <= 1 {
+            return 0;
+        }
+        let mut best = 0u32;
+        let mut best_w = -1.0f32;
+        for (idx, l) in self.layers.iter().enumerate() {
+            let w = band_weight(slope_deg, l.slope[0], l.slope[1], l.slope_fade)
+                * band_weight(height, l.altitude[0], l.altitude[1], l.altitude_fade);
+            if w > best_w {
+                best_w = w;
+                best = idx as u32;
+            }
+        }
+        best
+    }
+
     /// Whether the cell under `p` (the terrain's space) is a hole: the
     /// field's hole map, or its level-0 tile's.
     fn hole(&self, p: Vec2) -> bool {
         if let Some(d) = &self.field {
             return d.hole(p);
         }
-        if !self.cooked.layout.holes {
+        if !self.layout.holes || self.cooked.is_none() {
             return false;
         }
         self.tile_sampler()
@@ -220,7 +298,7 @@ impl LoadedTerrain {
     /// The level-0 tile holding field sample (`c`, `r`), decoded once, and
     /// the sample's place in its `(tile + 3)²` samples.
     fn sampled(&self, c: u32, r: u32) -> (SampledTile, usize) {
-        let l = self.cooked.layout;
+        let l = self.layout;
         let (t, side) = (l.tile, l.heights_side());
         let (tx, tz) = l.tiles(0);
         let (x, z) = ((c / t).min(tx - 1), (r / t).min(tz - 1));
@@ -229,10 +307,12 @@ impl LoadedTerrain {
         let mut cache = self.tiles.borrow_mut();
         let tile = cache
             .entry(index)
-            .or_insert_with(|| match self.cooked.tile_heights(index) {
-                Ok((h, m)) => (Arc::from(h), m.map(Arc::from)),
-                Err(_) => (Arc::from(vec![0.0; (side * side) as usize]), None),
-            })
+            .or_insert_with(
+                || match self.cooked.as_ref().map(|ck| ck.tile_heights(index)) {
+                    Some(Ok((h, m))) => (Arc::from(h), m.map(Arc::from)),
+                    _ => (Arc::from(vec![0.0; (side * side) as usize]), None),
+                },
+            )
             .clone();
         (tile, at)
     }
@@ -246,7 +326,7 @@ impl LoadedTerrain {
 
     /// The level-0 tiles as a sampler, decoded as they are read.
     fn tile_sampler(&self) -> og_render::TerrainSampler<impl Fn(u32, u32) -> f32 + '_> {
-        let l = self.cooked.layout;
+        let l = self.layout;
         og_render::TerrainSampler {
             size: l.size,
             columns: l.columns,
@@ -374,18 +454,18 @@ fn info(index: usize, t: &LoadedTerrain) -> TerrainInfo {
         data: handle(index),
         geometry: GEOMETRY_BASE + index as u64,
         size: t.size(),
-        columns: t.cooked.layout.columns,
-        rows: t.cooked.layout.rows,
+        columns: t.layout.columns,
+        rows: t.layout.rows,
         min_height: lo,
         max_height: hi,
         layers: t.layers.len() as u32,
         collision: t.collision,
         cast_shadows: t.cast_shadows,
-        sea_level: t.cooked.sea_level,
+        sea_level: t.sea_level,
         holes: t
             .field
             .as_ref()
-            .map_or(t.cooked.layout.holes, |f| f.holes.is_some()),
+            .map_or(t.layout.holes, |f| f.holes.is_some()),
     }
 }
 
@@ -464,9 +544,16 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
     };
     let mut rs = eng.render.borrow_mut();
     let render = rs.scene.add_terrain_stream(cooked.layout, cooked.range);
+    let layout = cooked.layout;
+    let initial_range = cooked.range;
+    let sea_level = cooked.sea_level;
     let t = LoadedTerrain {
         render,
-        cooked: cooked.clone(),
+        cooked: Some(cooked.clone()),
+        initial: None,
+        layout,
+        initial_range,
+        sea_level,
         field,
         edited: false,
         tiles: Default::default(),
@@ -488,6 +575,184 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
 
 pub fn og_terrain_load(world: u32, path: String) -> Result<crate::host::wire::TerrainInfo, String> {
     engine(world).and_then(|eng| load(&eng, &path))
+}
+
+fn layer_from_desc(v: &TerrainLayerDesc) -> TerrainLayer {
+    TerrainLayer {
+        albedo: None,
+        normal: None,
+        albedo_layer: None,
+        normal_layer: None,
+        color: Vec3::new(v.color.r, v.color.g, v.color.b),
+        roughness: v.roughness.clamp(0.04, 1.0),
+        tile: v.tile.max(0.01),
+        triplanar: v.triplanar,
+        normal_strength: v.normal_strength,
+        slope: [v.slope_min, v.slope_max],
+        slope_fade: v.slope_fade.max(0.0),
+        altitude: [v.altitude_min, v.altitude_max],
+        altitude_fade: v.altitude_fade.max(0.0),
+        project_slope: v.project_slope.clamp(0.0, 90.0),
+        anti_tiling: v.anti_tiling.clamp(0.0, 1.0),
+        height_contrast: v.height_contrast.clamp(0.0, 1.0),
+        macro_variation: v.macro_variation.clamp(0.0, 1.0),
+        displacement: v.displacement.clamp(0.0, 4.0),
+        cell_variation: v.cell_variation.clamp(0.0, 1.0),
+    }
+}
+
+/// `og.terrain.create`: creates a live procedural terrain from TypedArrays.
+pub fn og_terrain_create(
+    world: u32,
+    desc: Option<Vec<u8>>,
+) -> Result<crate::host::wire::TerrainInfo, String> {
+    let eng = engine(world)?;
+    let d: TerrainCreateDesc = crate::host::bin::arg(desc, "desc")?;
+    if d.columns < 2 || d.rows < 2 || d.columns > 2049 || d.rows > 2049 {
+        return Err(format!(
+            "desc.columns x desc.rows is {} x {}: each must be 2 to 2049",
+            d.columns, d.rows
+        ));
+    }
+    if !(d.size.x.is_finite() && d.size.x > 0.0 && d.size.y.is_finite() && d.size.y > 0.0) {
+        return Err("desc.size components must be finite and > 0".into());
+    }
+    let expected_heights = (d.columns as usize) * (d.rows as usize);
+    if d.heights.len() != expected_heights {
+        return Err(format!(
+            "desc.heights has {} values; {} x {} requires {expected_heights}",
+            d.heights.len(),
+            d.columns,
+            d.rows
+        ));
+    }
+    if d.heights.iter().any(|h| !h.is_finite()) {
+        return Err("desc.heights contains a non-finite value".into());
+    }
+    if d.layers.len() > og_render::MAX_TERRAIN_LAYERS {
+        return Err(format!(
+            "desc.layers has {} entries; maximum is {}",
+            d.layers.len(),
+            og_render::MAX_TERRAIN_LAYERS
+        ));
+    }
+    let (control, ctrl_side, pages) = match d.control {
+        None => (None, 0u32, 1u32),
+        Some(bytes) if bytes.is_empty() => (None, 0u32, 1u32),
+        Some(bytes) => {
+            let cw = if d.control_width > 0 {
+                d.control_width
+            } else {
+                d.columns
+            };
+            let ch = if d.control_height > 0 {
+                d.control_height
+            } else {
+                d.rows
+            };
+            let page_bytes = (cw as usize)
+                .checked_mul(ch as usize)
+                .and_then(|n| n.checked_mul(4))
+                .ok_or("desc.control dimensions overflow")?;
+            if page_bytes == 0 || !bytes.len().is_multiple_of(page_bytes) {
+                return Err(format!(
+                    "desc.control has {} bytes; expected a multiple of {} ({} x {} x 4)",
+                    bytes.len(),
+                    page_bytes,
+                    cw,
+                    ch
+                ));
+            }
+            let pages = (bytes.len() / page_bytes) as u32;
+            if !(1..=4).contains(&pages) {
+                return Err(format!("desc.control has {pages} pages; expected 1 to 4"));
+            }
+            (
+                Some(TerrainControl {
+                    width: cw,
+                    height: ch,
+                    rgba: Arc::from(bytes),
+                }),
+                cw.max(ch),
+                pages,
+            )
+        }
+    };
+    let holes = match d.holes {
+        None => None,
+        Some(bytes) if bytes.is_empty() => None,
+        Some(bytes) => {
+            let expected_cells = (d.columns as usize - 1) * (d.rows as usize - 1);
+            if bytes.len() != expected_cells {
+                return Err(format!(
+                    "desc.holes has {} bytes; ({} - 1) x ({} - 1) requires {expected_cells}",
+                    bytes.len(),
+                    d.columns,
+                    d.rows
+                ));
+            }
+            Some(Arc::from(bytes))
+        }
+    };
+    let layers: Vec<TerrainLayer> = if d.layers.is_empty() {
+        vec![TerrainLayer::default()]
+    } else {
+        d.layers.iter().map(layer_from_desc).collect()
+    };
+    let data = TerrainData {
+        size: d.size,
+        columns: d.columns,
+        rows: d.rows,
+        heights: Arc::from(d.heights),
+        control,
+        holes,
+    };
+    let initial_range = data.range();
+    let index = eng.render.borrow().terrain.loaded.len();
+    if d.collision {
+        set_heightfield(&eng, GEOMETRY_BASE + index as u64, &data)?;
+    }
+    let layout = TerrainLayout {
+        size: d.size,
+        columns: d.columns,
+        rows: d.rows,
+        tile: 64,
+        control: ctrl_side,
+        levels: 1,
+        holes: data.holes.is_some(),
+        pages,
+    };
+    let mut rs = eng.render.borrow_mut();
+    let render = rs.scene.add_terrain(data.clone());
+    let id = format!("og.terrain.create#{index}");
+    let t = LoadedTerrain {
+        render,
+        cooked: None,
+        initial: Some(data.clone()),
+        layout,
+        initial_range,
+        sea_level: d.sea_level.is_finite().then_some(d.sea_level),
+        field: Some(data),
+        edited: false,
+        tiles: Default::default(),
+        layers,
+        layer_arrays: [None; 2],
+        height_blend: if d.height_blend.is_finite() {
+            d.height_blend.clamp(0.0, 1.0)
+        } else {
+            0.15
+        },
+        lod: TerrainLod::default(),
+        cast_shadows: d.cast_shadows,
+        collision: d.collision,
+        generation: next_generation(),
+        bundle: None,
+        owned: Vec::new(),
+    };
+    let value = info(index, &t);
+    rs.terrain.loaded.push(t);
+    rs.terrain.by_id.insert(id, index);
+    Ok(value)
 }
 
 /// The point in the terrain's space (relative to its centre) of world `x`,
@@ -582,12 +847,19 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> Result<TerrainSamp
         let (h, n) = t.with_sampler(|s| s(p));
         let n = (Mat3::from_mat4(m).inverse().transpose() * n).normalize_or(Vec3::Y);
         let surface = m.transform_point3(Vec3::new(p.x, h, p.y));
+        let slope = og_core::math::acos(n.y.clamp(-1.0, 1.0)).to_degrees();
+        let layer = if inside {
+            t.dominant_layer(p, h, slope)
+        } else {
+            0
+        };
         Ok(TerrainSample {
             height: surface.y,
             normal: n,
-            slope: og_core::math::acos(n.y.clamp(-1.0, 1.0)).to_degrees(),
+            slope,
             inside,
             hole: inside && t.hole(p),
+            layer,
         })
     })()
 }

@@ -246,9 +246,9 @@ pub(crate) fn stamp(eng: &Engine, desc: &TerrainStampDesc, given: &Value) -> Res
         let t = &rs.terrain.loaded[i];
         t.field.as_ref().map_or(
             Grid {
-                size: t.cooked.layout.size,
-                columns: t.cooked.layout.columns,
-                rows: t.cooked.layout.rows,
+                size: t.layout.size,
+                columns: t.layout.columns,
+                rows: t.layout.rows,
             },
             Grid::of,
         )

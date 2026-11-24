@@ -18,6 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The least distance between two points. |
 | `attempts` | `number` | `30` | 1 … 256 | — | — | Candidates tried around a point before it is done (more fills tighter). |
 | `maxPoints` | `number` | `4096` | 0 … 1048576 | — | — | The most points made. |
+| `wrap` | `boolean` | `false` | — | — | — | Wrap distances toroidally across opposite edges for seamless tileable scatter. |
 
 ```ogt
 struct PoissonDesc {
@@ -47,7 +48,8 @@ struct PoissonDesc {
     min 0
     max 1048576
   }
+  field wrap bool "Wrap distances toroidally across opposite edges for seamless tileable scatter."
 }
 ```
 
-<sub>Module `procgen` line 76</sub>
+<sub>Module `procgen` line 128</sub>

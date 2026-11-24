@@ -303,14 +303,26 @@ export interface HostAbi<A, V> {
   og_rng_reset(world: number): void;
   /** `og.procgen.noise` */
   og_procgen_noise(desc: string, x: number, y: number, z: number): number;
+  /** `og.procgen.noiseGrad` */
+  og_procgen_noise_grad(desc: string, x: number, y: number, z: number): string;
+  /** `og.procgen.curlNoise` */
+  og_procgen_curl_noise(desc: string, x: number, y: number, z: number): string;
+  /** `og.procgen.worley` */
+  og_procgen_worley(seed: number, x: number, y: number, z: number, three_d: boolean): string;
   /** `og.procgen.noiseGrid` */
-  og_procgen_noise_grid(desc: string | undefined): string;
+  og_procgen_noise_grid(desc: string | undefined): Uint8Array;
   /** `og.procgen.poissonDisk` */
   og_procgen_poisson_disk(desc: string | undefined): string;
   /** `og.procgen.bsp` */
-  og_procgen_bsp(desc: string | undefined): string;
+  og_procgen_bsp(desc: string | undefined): Uint8Array;
   /** `og.procgen.wfc` */
-  og_procgen_wfc(desc: string | undefined): string;
+  og_procgen_wfc(desc: string | undefined): Uint8Array;
+  /** `og.procgen.heightmap` */
+  og_procgen_heightmap(desc: string | undefined): Uint8Array;
+  /** `og.procgen.plant` */
+  og_procgen_plant(desc: string | undefined): Uint8Array;
+  /** `og.procgen.fracture` */
+  og_procgen_fracture(desc: Uint8Array | undefined): Uint8Array;
   /** `og.input.intent` */
   og_input_intent(world: number, event: string, payload: string): string;
   /** `og.input.takeIntents` */
@@ -488,9 +500,9 @@ export interface HostAbi<A, V> {
   /** `og.render.text` */
   og_render_text(world: number, desc: string | undefined): string;
   /** `og.render.bufferGeometry` */
-  og_render_buffer_geometry(world: number, desc: string | undefined): string;
+  og_render_buffer_geometry(world: number, desc: Uint8Array | undefined): string;
   /** `og.render.updateGeometry` */
-  og_render_update_geometry(world: number, geometry: number, desc: string | undefined): string;
+  og_render_update_geometry(world: number, geometry: number, desc: Uint8Array | undefined): string;
   /** `og.render.geometryInfo` */
   og_render_geometry_info(world: number, geometry: number): string;
   /** `og.render.cylinderGeometry` */
@@ -632,7 +644,7 @@ export interface HostAbi<A, V> {
   /** `og.load.dataJson` */
   og_load_data_json(world: number, asset: number): string;
   /** `og.load.dataBytes` */
-  og_load_data_bytes(world: number, asset: number): string;
+  og_load_data_bytes(world: number, asset: number): Uint8Array;
   /** `og.load.pack` */
   og_load_pack(world: number, entry: string | undefined): string;
   /** `og.load.environmentInfo` */
@@ -778,7 +790,7 @@ export interface HostAbi<A, V> {
   /** `og.tilemap.setTile` */
   og_tilemap_set_tile(world: number, desc: string | undefined): string;
   /** `og.tilemap.fill` */
-  og_tilemap_fill(world: number, desc: string | undefined): string;
+  og_tilemap_fill(world: number, desc: Uint8Array | undefined): string;
   /** `og.tilemap.create` */
   og_tilemap_create(world: number, desc: string | undefined): string;
   /** `og.tilemap.resize` */
@@ -794,11 +806,15 @@ export interface HostAbi<A, V> {
   /** `og.audio.playFeedback` */
   og_audio_play_feedback(world: number, sound: number, desc: string | undefined): string;
   /** `og.audio.createSound` */
-  og_audio_create_sound(world: number, desc: string | undefined): string;
+  og_audio_create_sound(world: number, desc: Uint8Array | undefined): string;
+  /** `og.audio.synth` */
+  og_audio_synth(desc: string | undefined): Uint8Array;
+  /** `og.audio.createSynthSound` */
+  og_audio_create_synth_sound(world: number, desc: string | undefined): string;
   /** `og.audio.outputLatency` */
   og_audio_output_latency(world: number): number;
   /** `og.nav.grid` */
-  og_nav_grid(world: number, desc: string | undefined): string;
+  og_nav_grid(world: number, desc: Uint8Array | undefined): string;
   /** `og.nav.gridFromTilemap` */
   og_nav_grid_from_tilemap(world: number, desc: string | undefined): string;
   /** `og.nav.setCost` */
@@ -1131,6 +1147,8 @@ export interface HostAbi<A, V> {
   og_engine_probe_get(engine_probe: number, target: string): string;
   /** `og.terrain.load` */
   og_terrain_load(world: number, path: string): string;
+  /** `og.terrain.create` */
+  og_terrain_create(world: number, desc: Uint8Array | undefined): string;
   /** `og.terrain.sample` */
   og_terrain_sample(world: number, desc: string | undefined): string;
   /** `og.terrain.bounds` */
@@ -1457,10 +1475,16 @@ export const SYMBOLS: readonly string[] = [
   "og_rng_fork",
   "og_rng_reset",
   "og_procgen_noise",
+  "og_procgen_noise_grad",
+  "og_procgen_curl_noise",
+  "og_procgen_worley",
   "og_procgen_noise_grid",
   "og_procgen_poisson_disk",
   "og_procgen_bsp",
   "og_procgen_wfc",
+  "og_procgen_heightmap",
+  "og_procgen_plant",
+  "og_procgen_fracture",
   "og_input_intent",
   "og_input_take_intents",
   "og_input_replay_intent",
@@ -1703,6 +1727,8 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_cell_center",
   "og_audio_play_feedback",
   "og_audio_create_sound",
+  "og_audio_synth",
+  "og_audio_create_synth_sound",
   "og_audio_output_latency",
   "og_nav_grid",
   "og_nav_grid_from_tilemap",
@@ -1871,6 +1897,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_probe_set",
   "og_engine_probe_get",
   "og_terrain_load",
+  "og_terrain_create",
   "og_terrain_sample",
   "og_terrain_bounds",
   "og_terrain_edit",

@@ -699,6 +699,21 @@ unsafe extern "C" fn og_procgen_noise(args: *const crate::OgValue, out: *mut cra
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_procgen_noise_grad(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_noise_grad(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_procgen_curl_noise(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_curl_noise(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_procgen_worley(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_worley(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) }, unsafe { crate::arg(args, 4) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_procgen_noise_grid(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as ProcgenApi>::og_procgen_noise_grid(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -716,6 +731,21 @@ unsafe extern "C" fn og_procgen_bsp(args: *const crate::OgValue, out: *mut crate
 
 unsafe extern "C" fn og_procgen_wfc(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as ProcgenApi>::og_procgen_wfc(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_procgen_heightmap(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_heightmap(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_procgen_plant(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_plant(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_procgen_fracture(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as ProcgenApi>::og_procgen_fracture(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -1929,6 +1959,16 @@ unsafe extern "C" fn og_audio_create_sound(args: *const crate::OgValue, out: *mu
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_audio_synth(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as AudioApi>::og_audio_synth(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_audio_create_synth_sound(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as AudioApi>::og_audio_create_synth_sound(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_audio_output_latency(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as AudioApi>::og_audio_output_latency(&Host, unsafe { crate::arg(args, 0) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -2803,6 +2843,11 @@ unsafe extern "C" fn og_terrain_load(args: *const crate::OgValue, out: *mut crat
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_terrain_create(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as TerrainApi>::og_terrain_create(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_terrain_sample(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as TerrainApi>::og_terrain_sample(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3525,10 +3570,16 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_rng_fork", arity: 2, call: og_rng_fork },
     crate::Symbol { name: c"og_rng_reset", arity: 1, call: og_rng_reset },
     crate::Symbol { name: c"og_procgen_noise", arity: 4, call: og_procgen_noise },
+    crate::Symbol { name: c"og_procgen_noise_grad", arity: 4, call: og_procgen_noise_grad },
+    crate::Symbol { name: c"og_procgen_curl_noise", arity: 4, call: og_procgen_curl_noise },
+    crate::Symbol { name: c"og_procgen_worley", arity: 5, call: og_procgen_worley },
     crate::Symbol { name: c"og_procgen_noise_grid", arity: 1, call: og_procgen_noise_grid },
     crate::Symbol { name: c"og_procgen_poisson_disk", arity: 1, call: og_procgen_poisson_disk },
     crate::Symbol { name: c"og_procgen_bsp", arity: 1, call: og_procgen_bsp },
     crate::Symbol { name: c"og_procgen_wfc", arity: 1, call: og_procgen_wfc },
+    crate::Symbol { name: c"og_procgen_heightmap", arity: 1, call: og_procgen_heightmap },
+    crate::Symbol { name: c"og_procgen_plant", arity: 1, call: og_procgen_plant },
+    crate::Symbol { name: c"og_procgen_fracture", arity: 1, call: og_procgen_fracture },
     crate::Symbol { name: c"og_input_intent", arity: 3, call: og_input_intent },
     crate::Symbol { name: c"og_input_take_intents", arity: 1, call: og_input_take_intents },
     crate::Symbol { name: c"og_input_replay_intent", arity: 2, call: og_input_replay_intent },
@@ -3771,6 +3822,8 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_tilemap_cell_center", arity: 4, call: og_tilemap_cell_center },
     crate::Symbol { name: c"og_audio_play_feedback", arity: 3, call: og_audio_play_feedback },
     crate::Symbol { name: c"og_audio_create_sound", arity: 2, call: og_audio_create_sound },
+    crate::Symbol { name: c"og_audio_synth", arity: 1, call: og_audio_synth },
+    crate::Symbol { name: c"og_audio_create_synth_sound", arity: 2, call: og_audio_create_synth_sound },
     crate::Symbol { name: c"og_audio_output_latency", arity: 1, call: og_audio_output_latency },
     crate::Symbol { name: c"og_nav_grid", arity: 2, call: og_nav_grid },
     crate::Symbol { name: c"og_nav_grid_from_tilemap", arity: 2, call: og_nav_grid_from_tilemap },
@@ -3973,6 +4026,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_engine_probe_get", arity: 2, call: og_engine_probe_get },
     crate::Symbol { name: c"og_terrain_load", arity: 2, call: og_terrain_load },
+    crate::Symbol { name: c"og_terrain_create", arity: 2, call: og_terrain_create },
     crate::Symbol { name: c"og_terrain_sample", arity: 2, call: og_terrain_sample },
     crate::Symbol { name: c"og_terrain_bounds", arity: 5, call: og_terrain_bounds },
     crate::Symbol { name: c"og_terrain_edit", arity: 3, call: og_terrain_edit },

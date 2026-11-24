@@ -339,14 +339,26 @@ pub trait RngApi: Wire {
 pub trait ProcgenApi: Wire {
     /// `og.procgen.noise`
     fn og_procgen_noise(&self, desc: String, x: f64, y: f64, z: f64) -> f64;
+    /// `og.procgen.noiseGrad`
+    fn og_procgen_noise_grad(&self, desc: String, x: f64, y: f64, z: f64) -> String;
+    /// `og.procgen.curlNoise`
+    fn og_procgen_curl_noise(&self, desc: String, x: f64, y: f64, z: f64) -> String;
+    /// `og.procgen.worley`
+    fn og_procgen_worley(&self, seed: u32, x: f64, y: f64, z: f64, three_d: bool) -> String;
     /// `og.procgen.noiseGrid`
-    fn og_procgen_noise_grid(&self, desc: Option<String>) -> String;
+    fn og_procgen_noise_grid(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.poissonDisk`
     fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String;
     /// `og.procgen.bsp`
-    fn og_procgen_bsp(&self, desc: Option<String>) -> String;
+    fn og_procgen_bsp(&self, desc: Option<String>) -> Self::Bytes;
     /// `og.procgen.wfc`
-    fn og_procgen_wfc(&self, desc: Option<String>) -> String;
+    fn og_procgen_wfc(&self, desc: Option<String>) -> Self::Bytes;
+    /// `og.procgen.heightmap`
+    fn og_procgen_heightmap(&self, desc: Option<String>) -> Self::Bytes;
+    /// `og.procgen.plant`
+    fn og_procgen_plant(&self, desc: Option<String>) -> Self::Bytes;
+    /// `og.procgen.fracture`
+    fn og_procgen_fracture(&self, desc: Option<Self::Bytes>) -> Self::Bytes;
 }
 
 /// `input`: packages/knowledge/wiki/input.md.
@@ -536,9 +548,9 @@ pub trait RenderApi: Wire {
     /// `og.render.text`
     fn og_render_text(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.bufferGeometry`
-    fn og_render_buffer_geometry(&self, world: u32, desc: Option<String>) -> String;
+    fn og_render_buffer_geometry(&self, world: u32, desc: Option<Self::Bytes>) -> String;
     /// `og.render.updateGeometry`
-    fn og_render_update_geometry(&self, world: u32, geometry: f64, desc: Option<String>) -> String;
+    fn og_render_update_geometry(&self, world: u32, geometry: f64, desc: Option<Self::Bytes>) -> String;
     /// `og.render.geometryInfo`
     fn og_render_geometry_info(&self, world: u32, geometry: f64) -> String;
     /// `og.render.cylinderGeometry`
@@ -684,7 +696,7 @@ pub trait LoadApi: Wire {
     /// `og.load.dataJson`
     fn og_load_data_json(&self, world: u32, asset: f64) -> String;
     /// `og.load.dataBytes`
-    fn og_load_data_bytes(&self, world: u32, asset: f64) -> String;
+    fn og_load_data_bytes(&self, world: u32, asset: f64) -> Self::Bytes;
     /// `og.load.pack`
     fn og_load_pack(&self, world: u32, entry: Option<String>) -> String;
     /// `og.load.environmentInfo`
@@ -850,7 +862,7 @@ pub trait TilemapApi: Wire {
     /// `og.tilemap.setTile`
     fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tilemap.fill`
-    fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String;
+    fn og_tilemap_fill(&self, world: u32, desc: Option<Self::Bytes>) -> String;
     /// `og.tilemap.create`
     fn og_tilemap_create(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tilemap.resize`
@@ -870,7 +882,11 @@ pub trait AudioApi: Wire {
     /// `og.audio.playFeedback`
     fn og_audio_play_feedback(&self, world: u32, sound: f64, desc: Option<String>) -> String;
     /// `og.audio.createSound`
-    fn og_audio_create_sound(&self, world: u32, desc: Option<String>) -> String;
+    fn og_audio_create_sound(&self, world: u32, desc: Option<Self::Bytes>) -> String;
+    /// `og.audio.synth`
+    fn og_audio_synth(&self, desc: Option<String>) -> Self::Bytes;
+    /// `og.audio.createSynthSound`
+    fn og_audio_create_synth_sound(&self, world: u32, desc: Option<String>) -> String;
     /// `og.audio.outputLatency`
     fn og_audio_output_latency(&self, world: u32) -> f64;
 }
@@ -878,7 +894,7 @@ pub trait AudioApi: Wire {
 /// `nav`: packages/knowledge/wiki/nav.md.
 pub trait NavApi: Wire {
     /// `og.nav.grid`
-    fn og_nav_grid(&self, world: u32, desc: Option<String>) -> String;
+    fn og_nav_grid(&self, world: u32, desc: Option<Self::Bytes>) -> String;
     /// `og.nav.gridFromTilemap`
     fn og_nav_grid_from_tilemap(&self, world: u32, desc: Option<String>) -> String;
     /// `og.nav.setCost`
@@ -1243,6 +1259,8 @@ pub trait ProbeApi: Wire {
 pub trait TerrainApi: Wire {
     /// `og.terrain.load`
     fn og_terrain_load(&self, world: u32, path: String) -> String;
+    /// `og.terrain.create`
+    fn og_terrain_create(&self, world: u32, desc: Option<Self::Bytes>) -> String;
     /// `og.terrain.sample`
     fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String;
     /// `og.terrain.bounds`
@@ -1642,10 +1660,16 @@ pub const SYMBOLS: &[&str] = &[
     "og_rng_fork",
     "og_rng_reset",
     "og_procgen_noise",
+    "og_procgen_noise_grad",
+    "og_procgen_curl_noise",
+    "og_procgen_worley",
     "og_procgen_noise_grid",
     "og_procgen_poisson_disk",
     "og_procgen_bsp",
     "og_procgen_wfc",
+    "og_procgen_heightmap",
+    "og_procgen_plant",
+    "og_procgen_fracture",
     "og_input_intent",
     "og_input_take_intents",
     "og_input_replay_intent",
@@ -1888,6 +1912,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_tilemap_cell_center",
     "og_audio_play_feedback",
     "og_audio_create_sound",
+    "og_audio_synth",
+    "og_audio_create_synth_sound",
     "og_audio_output_latency",
     "og_nav_grid",
     "og_nav_grid_from_tilemap",
@@ -2056,6 +2082,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_engine_probe_set",
     "og_engine_probe_get",
     "og_terrain_load",
+    "og_terrain_create",
     "og_terrain_sample",
     "og_terrain_bounds",
     "og_terrain_edit",

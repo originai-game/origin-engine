@@ -439,6 +439,9 @@ module atmosphere {
       min 8
       max 256
     }
+    field seed u32 "Seed for the procedural cloud weather map, 3D billows and detail noise: changing it generates a distinct deterministic sky layout." {
+      default 1
+    }
   }
 
   resource Aurora {

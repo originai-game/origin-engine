@@ -17,7 +17,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `x` | `number` | `0` | — | — | — | The block's left column. |
 | `y` | `number` | `0` | — | — | — | The block's top row. |
 | `width` | `number` | `0` | — | — | — | The block's width in cells: `tiles` is row-major, `width` per row. |
-| `tiles` | `readonly number[]` | `[]` | — | — | — | The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written). |
+| `tiles` | `Int32Array \| readonly number[] \| null` | `null` | — | — | — | The cells, as og.tilemap.setTile's `tile`: an Int32Array (zero-JSON binary transfer) or number array of tile ids or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written). |
 
 ```ogt
 struct FillDesc {
@@ -28,7 +28,7 @@ struct FillDesc {
   field x u32 "The block's left column."
   field y u32 "The block's top row."
   field width u32 "The block's width in cells: `tiles` is row-major, `width` per row."
-  field tiles List.i32 "The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written)."
+  field tiles Option.OneOf.Int32Array.List.i32 "The cells, as og.tilemap.setTile's `tile`: an Int32Array (zero-JSON binary transfer) or number array of tile ids or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written)."
 }
 ```
 

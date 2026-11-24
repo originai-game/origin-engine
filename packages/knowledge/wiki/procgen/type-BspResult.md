@@ -11,16 +11,18 @@ What og.procgen.bsp made.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `rooms` | `readonly CellRect[]` | `[]` | — | — | — | One room per leaf, left before right down the tree. |
-| `corridors` | `readonly CellRect[]` | `[]` | — | — | — | Corridor segments, two per split. |
-| `cells` | `readonly number[]` | `[]` | — | — | — | width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first). |
+| `corridors` | `readonly CellRect[]` | `[]` | — | — | — | Corridor segments, two per split plus loop corridors. |
+| `edges` | `readonly [number, number][]` | `[]` | — | — | — | Room adjacency graph edges `[roomA, roomB]` connecting rooms joined by corridors. |
+| `cells` | `Uint8Array` | — | — | — | — | width × height, row-major from the top: 0 wall, 1 room, 2 corridor (native Uint8Array over binary wire). |
 
 ```ogt
 struct BspResult {
   doc "What og.procgen.bsp made."
   field rooms List.CellRect "One room per leaf, left before right down the tree."
-  field corridors List.CellRect "Corridor segments, two per split."
-  field cells List.u32 "width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first)."
+  field corridors List.CellRect "Corridor segments, two per split plus loop corridors."
+  field edges List.Array.u32.2 "Room adjacency graph edges `[roomA, roomB]` connecting rooms joined by corridors."
+  field cells Uint8Array "width × height, row-major from the top: 0 wall, 1 room, 2 corridor (native Uint8Array over binary wire)."
 }
 ```
 
-<sub>Module `procgen` line 155</sub>
+<sub>Module `procgen` line 213</sub>

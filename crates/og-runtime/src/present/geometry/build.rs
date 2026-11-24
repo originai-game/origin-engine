@@ -30,10 +30,10 @@ fn make(
 
 pub fn og_render_buffer_geometry(
     world: u32,
-    desc: Option<String>,
+    desc: Option<Vec<u8>>,
 ) -> Result<serde_json::Value, String> {
     (|| {
-        let d: wire::BufferGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
+        let d: wire::BufferGeometryDesc = crate::host::bin::arg(desc, "desc")?;
         let mesh = mesh_of_desc(&d)?;
         make(world, mesh, d.physics, d.dynamic)
     })()
@@ -42,11 +42,11 @@ pub fn og_render_buffer_geometry(
 pub fn og_render_update_geometry(
     world: u32,
     geometry: f64,
-    desc: Option<String>,
+    desc: Option<Vec<u8>>,
 ) -> Result<(), String> {
     (|| {
         let eng = engine(world)?;
-        let d: wire::BufferGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
+        let d: wire::BufferGeometryDesc = crate::host::bin::arg(desc, "desc")?;
         let index = index_of(geometry).ok_or_else(|| format!("{geometry} is not a geometry"))?;
         let mesh_data = mesh_of_desc(&d)?;
         let physics = {

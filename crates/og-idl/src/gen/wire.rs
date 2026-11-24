@@ -435,20 +435,51 @@ impl<'a> Gen<'a, '_> {
         for f in fields {
             let n = field_name(&f.name);
             if f.optional && f.ty.name() != "Option" {
+                let expr = Self::to_json_expr(&f.ty, "x");
                 let _ = writeln!(
                     out,
-                    "        if let Some(x) = &self.{n} {{\n            o.insert({:?}.into(), x.to_json());\n        }}",
+                    "        if let Some(x) = &self.{n} {{\n            o.insert({:?}.into(), {expr});\n        }}",
                     f.name
                 );
             } else {
-                let _ = writeln!(
-                    out,
-                    "        o.insert({:?}.into(), self.{n}.to_json());",
-                    f.name
-                );
+                let expr = Self::to_json_expr(&f.ty, &format!("self.{n}"));
+                let _ = writeln!(out, "        o.insert({:?}.into(), {expr});", f.name);
             }
         }
         let _ = writeln!(out, "        Value::Object(o)\n    }}\n}}\n");
+    }
+
+    fn bin_helper(name: &str) -> Option<&'static str> {
+        match name {
+            "Float32Array" => Some("to_bin_f32"),
+            "Float64Array" => Some("to_bin_f64"),
+            "Uint32Array" => Some("to_bin_u32"),
+            "Int32Array" => Some("to_bin_i32"),
+            "Uint8Array" => Some("to_bin_u8"),
+            _ => None,
+        }
+    }
+
+    fn to_json_expr(ty: &TypeRef, expr: &str) -> String {
+        let name = ty.name();
+        if let Some(helper) = Self::bin_helper(name) {
+            return format!("{helper}(&{expr})");
+        }
+        if name == "Option"
+            && let Some(inner) = ty.args().first()
+            && let Some(helper) = Self::bin_helper(inner.name())
+        {
+            return format!("{expr}.as_deref().map_or(Value::Null, {helper})");
+        }
+        if name == "OneOf"
+            && let [a, b] = ty.args()
+            && (Self::bin_helper(a.name()).is_some() || Self::bin_helper(b.name()).is_some())
+        {
+            let ea = Self::to_json_expr(a, "a");
+            let eb = Self::to_json_expr(b, "b");
+            return format!("match &{expr} {{ OneOf::A(a) => {ea}, OneOf::B(b) => {eb} }}");
+        }
+        format!("{expr}.to_json()")
     }
 
     fn enumeration(&self, out: &mut String, module: &str, e: &Enum) {
@@ -656,7 +687,7 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
     );
     let _ = writeln!(
         out,
-        "use super::{{FromJson, OneOf, ToJson, at, field, object, text, unknown_variant, variant}};"
+        "use super::{{FromJson, OneOf, ToJson, at, field, object, text, to_bin_f32, to_bin_f64, to_bin_i32, to_bin_u8, to_bin_u32, unknown_variant, variant}};"
     );
     let _ = writeln!(out, "use glam::{{Mat4, Quat, Vec2, Vec3, Vec4}};");
     let _ = writeln!(out, "use serde_json::{{Map, Value}};");

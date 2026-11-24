@@ -17,12 +17,14 @@ use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
+pub use crate::host::bin::{to_bin_f32, to_bin_f64, to_bin_i32, to_bin_u8, to_bin_u32};
+
 #[rustfmt::skip]
 #[path = "generated/wire.rs"]
 mod types;
 pub use types::*;
 
-/// A value read from its JSON wire form.
+/// A value read from its JSON or OGB1 binary wire form.
 pub trait FromJson: Sized {
     fn from_json(v: &Value) -> Result<Self, String>;
     /// `v` read over `base`: an object's absent fields keep `base`'s, so a
@@ -44,6 +46,15 @@ pub trait FromJson: Sized {
     /// `null` is how the wire carries a JavaScript NaN.
     fn from_null(default: Self) -> Self {
         default
+    }
+    /// The OGB1 blob tag matching `Vec<Self>`, when `Self` is a TypedArray scalar.
+    fn bin_tag() -> Option<u32> {
+        None
+    }
+    /// Decodes a raw little-endian OGB1 blob into `Vec<Self>`.
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        let _ = (tag, bytes);
+        None
     }
 }
 
@@ -171,6 +182,22 @@ impl FromJson for f32 {
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v).map(|n| n as f32)
     }
+    fn bin_tag() -> Option<u32> {
+        Some(crate::host::bin::TAG_F32)
+    }
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        if tag != crate::host::bin::TAG_F32 {
+            return Some(Err(format!(
+                "expected a Float32Array, got {}",
+                crate::host::bin::tag_name(tag)
+            )));
+        }
+        let mut out = Vec::with_capacity(bytes.len() / 4);
+        for chunk in bytes.chunks_exact(4) {
+            out.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+        }
+        Some(Ok(out))
+    }
 }
 
 impl FromJson for f64 {
@@ -182,6 +209,24 @@ impl FromJson for f64 {
     }
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v)
+    }
+    fn bin_tag() -> Option<u32> {
+        Some(crate::host::bin::TAG_F64)
+    }
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        if tag != crate::host::bin::TAG_F64 {
+            return Some(Err(format!(
+                "expected a Float64Array, got {}",
+                crate::host::bin::tag_name(tag)
+            )));
+        }
+        let mut out = Vec::with_capacity(bytes.len() / 8);
+        for chunk in bytes.chunks_exact(8) {
+            out.push(f64::from_le_bytes([
+                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
+            ]));
+        }
+        Some(Ok(out))
     }
 }
 
@@ -198,6 +243,22 @@ impl FromJson for u32 {
         )
         .map(|n| n as u32)
     }
+    fn bin_tag() -> Option<u32> {
+        Some(crate::host::bin::TAG_U32)
+    }
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        if tag != crate::host::bin::TAG_U32 {
+            return Some(Err(format!(
+                "expected a Uint32Array, got {}",
+                crate::host::bin::tag_name(tag)
+            )));
+        }
+        let mut out = Vec::with_capacity(bytes.len() / 4);
+        for chunk in bytes.chunks_exact(4) {
+            out.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+        }
+        Some(Ok(out))
+    }
 }
 
 impl FromJson for i32 {
@@ -213,14 +274,43 @@ impl FromJson for i32 {
         )
         .map(|n| n as i32)
     }
+    fn bin_tag() -> Option<u32> {
+        Some(crate::host::bin::TAG_I32)
+    }
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        if tag != crate::host::bin::TAG_I32 {
+            return Some(Err(format!(
+                "expected an Int32Array, got {}",
+                crate::host::bin::tag_name(tag)
+            )));
+        }
+        let mut out = Vec::with_capacity(bytes.len() / 4);
+        for chunk in bytes.chunks_exact(4) {
+            out.push(i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+        }
+        Some(Ok(out))
+    }
 }
 
 impl FromJson for u8 {
     fn reads(v: &Value) -> bool {
-        v.is_number()
+        v.as_f64()
+            .is_some_and(|n| n.fract() == 0.0 && (0.0..=255.0).contains(&n))
     }
     fn from_json(v: &Value) -> Result<Self, String> {
         whole(v, 0.0, 255.0, "a whole number from 0 to 255").map(|n| n as u8)
+    }
+    fn bin_tag() -> Option<u32> {
+        Some(crate::host::bin::TAG_U8)
+    }
+    fn from_bin_blob(tag: u32, bytes: &[u8]) -> Option<Result<Vec<Self>, String>> {
+        if tag != crate::host::bin::TAG_U8 {
+            return Some(Err(format!(
+                "expected a Uint8Array, got {}",
+                crate::host::bin::tag_name(tag)
+            )));
+        }
+        Some(Ok(bytes.to_vec()))
     }
 }
 
@@ -273,6 +363,13 @@ impl<T: FromJson> FromJson for Option<T> {
 
 impl<T: FromJson> FromJson for Vec<T> {
     fn from_json(v: &Value) -> Result<Self, String> {
+        if let Some(idx) = crate::host::bin::blob_index(v)
+            && let Some(res) =
+                crate::host::bin::with_blob(idx, |tag, bytes| T::from_bin_blob(tag, bytes))
+                    .flatten()
+        {
+            return res;
+        }
         let a = v
             .as_array()
             .ok_or_else(|| format!("expected a list, got {}", shown(v)))?;
@@ -282,6 +379,11 @@ impl<T: FromJson> FromJson for Vec<T> {
             .collect()
     }
     fn reads(v: &Value) -> bool {
+        if let Some(idx) = crate::host::bin::blob_index(v)
+            && let Some(tag) = crate::host::bin::blob_tag(idx)
+        {
+            return T::bin_tag() == Some(tag);
+        }
         v.as_array().is_some_and(|a| a.iter().all(T::reads))
     }
 }

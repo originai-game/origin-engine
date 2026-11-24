@@ -4,6 +4,7 @@
 //! [`ui_cursor`]).
 
 pub(crate) mod api;
+pub mod bin;
 pub(crate) mod codec;
 pub mod host_impl;
 pub(crate) mod platform;

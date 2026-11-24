@@ -100,8 +100,9 @@ pub mod exports {
     };
     pub use super::play::og_play_candidates;
     pub use super::procgen::{
-        og_procgen_bsp, og_procgen_noise, og_procgen_noise_grid, og_procgen_poisson_disk,
-        og_procgen_wfc,
+        og_procgen_bsp, og_procgen_curl_noise, og_procgen_fracture, og_procgen_heightmap,
+        og_procgen_noise, og_procgen_noise_grad, og_procgen_noise_grid, og_procgen_plant,
+        og_procgen_poisson_disk, og_procgen_wfc, og_procgen_worley,
     };
     pub use super::season::og_atmosphere_season;
     pub use super::shared::{
@@ -124,8 +125,8 @@ pub mod exports {
         og_table_rows,
     };
     pub use super::terrain::{
-        og_terrain_bounds, og_terrain_edit, og_terrain_layer, og_terrain_load, og_terrain_sample,
-        og_terrain_set_layer, og_terrain_stamp, og_terrain_unstamp,
+        og_terrain_bounds, og_terrain_create, og_terrain_edit, og_terrain_layer, og_terrain_load,
+        og_terrain_sample, og_terrain_set_layer, og_terrain_stamp, og_terrain_unstamp,
     };
     pub use super::timeline::{
         og_load_timeline, og_path_create, og_path_find, og_path_length, og_path_nearest,

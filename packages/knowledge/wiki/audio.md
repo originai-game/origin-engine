@@ -10,7 +10,7 @@ See `audio`.
 
 - **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.AudioSource`, `SoundDesc`, `og.audio.createSound`; 28 more are advanced (`og api show audio --all`).
+- **Core** (what most games use): `og.AudioSource`, `SoundDesc`, `og.audio.createSound`; 34 more are advanced (`og api show audio --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -56,6 +56,12 @@ module audio {
 | [`AudioFeedbackDesc`](audio/type-AudioFeedbackDesc.md) | desc struct |  | Presentation-only one-shot parameters. |
 | [`og.audio.playFeedback`](audio/fn-playFeedback.md) | function | `(world: World, sound: Sound, desc?: AudioFeedbackDesc): Result<void>` | Play a presentation-only one-shot on the UI bus in this tick (the next tick when called between ticks). |
 | [`og.audio.createSound`](audio/fn-createSound.md) | function | `(world: World, desc?: SoundDesc): Result<Sound>` | Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. |
+| [`SfxWave`](audio/type-SfxWave.md) | enum |  | Oscillator waveform for procedural SFX synthesis. |
+| [`SfxLayerDesc`](audio/type-SfxLayerDesc.md) | desc struct |  | One oscillator layer of a procedural sound effect (og.audio.synth, og.audio.createSynthSound). |
+| [`SfxDesc`](audio/type-SfxDesc.md) | desc struct |  | Procedural sound effect synthesis specification: name a built-in `preset` (coin, pickup, powerup, jump, land, footstep, hit, hurt, explosion, laser, whoosh, door, death, click, select, back, error, l… |
+| [`SfxSamples`](audio/type-SfxSamples.md) | struct |  | Synthesised PCM audio samples (og.audio.synth), returned as a native Float32Array over binary wire. |
+| [`og.audio.synth`](audio/fn-synth.md) | function | `(desc?: SfxDesc): Result<SfxSamples>` | Synthesise a deterministic procedural sound effect into a Float32Array (48 kHz mono PCM), without mutating world state. |
+| [`og.audio.createSynthSound`](audio/fn-createSynthSound.md) | function | `(world: World, desc?: SfxDesc): Result<Sound>` | Synthesise a deterministic procedural sound effect and register it directly into the world's sound bank, answering a playable Sound handle. |
 | [`og.audio.outputLatency`](audio/fn-outputLatency.md) | function | `(world: World): number` | How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's lat… |
 
 ## Column kinds

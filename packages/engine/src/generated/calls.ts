@@ -5,6 +5,7 @@
 // a member the IDL marks `custom` calls src/runtime/custom.ts instead.
 
 import { abi } from "../runtime/host.ts";
+import { bin, binDecode, binOpt } from "../runtime/binary.ts";
 import { custom } from "../runtime/custom.ts";
 import { json } from "../runtime/result.ts";
 
@@ -507,10 +508,16 @@ export const og = Object.freeze({
   }),
   procgen: Object.freeze({
     noise: (desc: unknown, x: number, y: number, z: number): number => abi().og_procgen_noise(JSON.stringify(desc ?? {}), x, y, z),
-    noiseGrid: (desc?: unknown): unknown => JSON.parse(abi().og_procgen_noise_grid(json(desc))) as unknown,
+    noiseGrad: (desc: unknown, x: number, y: number, z: number): unknown => JSON.parse(abi().og_procgen_noise_grad(JSON.stringify(desc ?? {}), x, y, z)) as unknown,
+    curlNoise: (desc: unknown, x: number, y: number, z: number): unknown => JSON.parse(abi().og_procgen_curl_noise(JSON.stringify(desc ?? {}), x, y, z)) as unknown,
+    worley: (seed: number, x: number, y: number, z: number, threeD: boolean): unknown => JSON.parse(abi().og_procgen_worley(seed, x, y, z, threeD)) as unknown,
+    noiseGrid: (desc?: unknown): unknown => binDecode(abi().og_procgen_noise_grid(json(desc))),
     poissonDisk: (desc?: unknown): unknown => JSON.parse(abi().og_procgen_poisson_disk(json(desc))) as unknown,
-    bsp: (desc?: unknown): unknown => JSON.parse(abi().og_procgen_bsp(json(desc))) as unknown,
-    wfc: (desc?: unknown): unknown => JSON.parse(abi().og_procgen_wfc(json(desc))) as unknown,
+    bsp: (desc?: unknown): unknown => binDecode(abi().og_procgen_bsp(json(desc))),
+    wfc: (desc?: unknown): unknown => binDecode(abi().og_procgen_wfc(json(desc))),
+    heightmap: (desc?: unknown): unknown => binDecode(abi().og_procgen_heightmap(json(desc))),
+    plant: (desc?: unknown): unknown => binDecode(abi().og_procgen_plant(json(desc))),
+    fracture: (desc?: unknown): unknown => binDecode(abi().og_procgen_fracture(binOpt(desc))),
   }),
   input: Object.freeze({
     intent: (world: { readonly id: number }, event: { readonly name: string }, payload: unknown): unknown => JSON.parse(abi().og_input_intent(world.id, event.name, JSON.stringify(payload))) as unknown,
@@ -583,8 +590,8 @@ export const og = Object.freeze({
     look: (world: { readonly id: number }): unknown => JSON.parse(abi().og_render_look(world.id)) as unknown,
     capabilities: (world: { readonly id: number }): unknown => JSON.parse(abi().og_render_capabilities(world.id)) as unknown,
     text: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_render_text(world.id, json(desc))) as unknown,
-    bufferGeometry: (world: { readonly id: number }, desc?: unknown): unknown => custom.render.bufferGeometry(world, desc),
-    updateGeometry: (world: { readonly id: number }, geometry: number, desc?: unknown): unknown => custom.render.updateGeometry(world, geometry, desc),
+    bufferGeometry: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_render_buffer_geometry(world.id, binOpt(desc))) as unknown,
+    updateGeometry: (world: { readonly id: number }, geometry: number, desc?: unknown): unknown => JSON.parse(abi().og_render_update_geometry(world.id, geometry, binOpt(desc))) as unknown,
     geometryInfo: (world: { readonly id: number }, geometry: number): unknown => JSON.parse(abi().og_render_geometry_info(world.id, geometry)) as unknown,
     cylinderGeometry: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_render_cylinder_geometry(world.id, json(desc))) as unknown,
     coneGeometry: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_render_cone_geometry(world.id, json(desc))) as unknown,
@@ -657,7 +664,7 @@ export const og = Object.freeze({
     environmentData: (world: { readonly id: number }, name: string, bytes: Uint8Array, desc?: unknown): unknown => JSON.parse(abi().og_load_environment_data(world.id, name, bytes, json(desc))) as unknown,
     data: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_load_data(world.id, json(desc))) as unknown,
     dataJson: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_data_json(world.id, asset)) as unknown,
-    dataBytes: (world: { readonly id: number }, asset: number): unknown => custom.load.dataBytes(world, asset),
+    dataBytes: (world: { readonly id: number }, asset: number): unknown => binDecode(abi().og_load_data_bytes(world.id, asset)),
     pack: (world: { readonly id: number }, entry?: unknown): unknown => JSON.parse(abi().og_load_pack(world.id, json(entry))) as unknown,
     environmentInfo: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_environment_info(world.id, asset)) as unknown,
     release: (world: { readonly id: number }, asset: number): unknown => JSON.parse(abi().og_load_release(world.id, asset)) as unknown,
@@ -719,7 +726,7 @@ export const og = Object.freeze({
   }),
   tilemap: Object.freeze({
     setTile: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_tilemap_set_tile(world.id, json(desc))) as unknown,
-    fill: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_tilemap_fill(world.id, json(desc))) as unknown,
+    fill: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_tilemap_fill(world.id, binOpt(desc))) as unknown,
     create: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_tilemap_create(world.id, json(desc))) as unknown,
     resize: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_tilemap_resize(world.id, json(desc))) as unknown,
     neighbours: (world: { readonly id: number }, map: number, x: number, y: number): unknown => JSON.parse(abi().og_tilemap_neighbours(world.id, map, x, y)) as unknown,
@@ -729,11 +736,13 @@ export const og = Object.freeze({
   }),
   audio: Object.freeze({
     playFeedback: (world: { readonly id: number }, sound: number, desc?: unknown): unknown => JSON.parse(abi().og_audio_play_feedback(world.id, sound, json(desc))) as unknown,
-    createSound: (world: { readonly id: number }, desc?: unknown): unknown => custom.audio.createSound(world, desc),
+    createSound: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_audio_create_sound(world.id, binOpt(desc))) as unknown,
+    synth: (desc?: unknown): unknown => binDecode(abi().og_audio_synth(json(desc))),
+    createSynthSound: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_audio_create_synth_sound(world.id, json(desc))) as unknown,
     outputLatency: (world: { readonly id: number }): unknown => custom.audio.outputLatency(world),
   }),
   nav: Object.freeze({
-    grid: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_nav_grid(world.id, json(desc))) as unknown,
+    grid: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_nav_grid(world.id, binOpt(desc))) as unknown,
     gridFromTilemap: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_nav_grid_from_tilemap(world.id, json(desc))) as unknown,
     setCost: (world: { readonly id: number }, grid: number, x: number, y: number, cost: number): unknown => JSON.parse(abi().og_nav_set_cost(world.id, grid, x, y, cost)) as unknown,
     cellAt: (world: { readonly id: number }, grid: number, point: unknown): unknown => JSON.parse(abi().og_nav_cell_at(world.id, grid, JSON.stringify(point))) as unknown,
@@ -876,6 +885,7 @@ export const og = Object.freeze({
   }),
   terrain: Object.freeze({
     load: (world: { readonly id: number }, path: string): unknown => JSON.parse(abi().og_terrain_load(world.id, path)) as unknown,
+    create: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_terrain_create(world.id, binOpt(desc))) as unknown,
     sample: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_terrain_sample(world.id, json(desc))) as unknown,
     bounds: (world: { readonly id: number }, data: number, origin?: unknown, quaternion?: unknown, scale?: unknown): unknown => JSON.parse(abi().og_terrain_bounds(world.id, data, json(origin), json(quaternion), json(scale))) as unknown,
     edit: (world: { readonly id: number }, data: number, brush?: unknown): unknown => JSON.parse(abi().og_terrain_edit(world.id, data, json(brush))) as unknown,
@@ -1073,7 +1083,6 @@ export interface Custom {
     restore(self: World, save: string, desc?: unknown): unknown;
   };
   readonly audio: {
-    createSound(world: { readonly id: number }, desc?: unknown): unknown;
     outputLatency(world: { readonly id: number }): unknown;
   };
   readonly commands: {
@@ -1085,9 +1094,6 @@ export interface Custom {
   readonly game: {
     game(desc?: unknown): unknown;
   };
-  readonly load: {
-    dataBytes(world: { readonly id: number }, asset: number): unknown;
-  };
   readonly platform: {
     roomSend(world: { readonly id: number }, data: unknown, to?: number): unknown;
     roomMessage(world: { readonly id: number }, message: number): unknown;
@@ -1098,8 +1104,6 @@ export interface Custom {
     defineEvent(name: string, fields: unknown): unknown;
   };
   readonly render: {
-    bufferGeometry(world: { readonly id: number }, desc?: unknown): unknown;
-    updateGeometry(world: { readonly id: number }, geometry: number, desc?: unknown): unknown;
     shapeGeometry(world: { readonly id: number }, desc?: unknown): unknown;
     extrudeGeometry(world: { readonly id: number }, desc?: unknown): unknown;
     sweepGeometry(world: { readonly id: number }, desc?: unknown): unknown;

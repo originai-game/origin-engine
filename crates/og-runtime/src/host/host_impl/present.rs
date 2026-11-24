@@ -65,16 +65,23 @@ macro_rules! __og_host_bindings_present {
             fn og_render_sphere_geometry(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_render_sphere_geometry(world, desc))
             }
-            fn og_render_buffer_geometry(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_render_buffer_geometry(world, desc))
+            fn og_render_buffer_geometry(&self, world: u32, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_render_buffer_geometry(
+                    world,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
             }
             fn og_render_update_geometry(
                 &self,
                 world: u32,
                 geometry: f64,
-                desc: Option<String>,
+                desc: Option<Self::Bytes>,
             ) -> String {
-                $crate::host_impl::answer($crate::og_render_update_geometry(world, geometry, desc))
+                $crate::host_impl::answer($crate::og_render_update_geometry(
+                    world,
+                    geometry,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
             }
             fn og_render_geometry_info(&self, world: u32, geometry: f64) -> String {
                 $crate::host_impl::answer($crate::og_render_geometry_info(world, geometry))
@@ -246,6 +253,12 @@ macro_rules! __og_host_bindings_present {
             fn og_terrain_load(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_terrain_load(world, path))
             }
+            fn og_terrain_create(&self, world: u32, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_terrain_create(
+                    world,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
+            }
             fn og_terrain_sample(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_terrain_sample(world, desc))
             }
@@ -311,8 +324,19 @@ macro_rules! __og_host_bindings_present {
             fn og_audio_output_latency(&self, world: u32) -> f64 {
                 $crate::og_audio_output_latency(world)
             }
-            fn og_audio_create_sound(&self, world: u32, desc: Option<String>) -> String {
-                $crate::host_impl::answer($crate::og_audio_create_sound(world, desc))
+            fn og_audio_create_sound(&self, world: u32, desc: Option<Self::Bytes>) -> String {
+                $crate::host_impl::answer($crate::og_audio_create_sound(
+                    world,
+                    desc.map(<Self as $crate::host_impl::HostWire>::bytes_in),
+                ))
+            }
+            fn og_audio_synth(&self, desc: Option<String>) -> Self::Bytes {
+                <Self as $crate::host_impl::HostWire>::bytes_out($crate::host_impl::answer_bin(
+                    $crate::og_audio_synth(desc),
+                ))
+            }
+            fn og_audio_create_synth_sound(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_audio_create_synth_sound(world, desc))
             }
         }
     };

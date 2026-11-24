@@ -15,6 +15,7 @@ The terrain under a point.
 | `slope` | `number` | `0` | — | `deg` | — | The normal's angle from straight up. |
 | `inside` | `boolean` | `false` | — | — | — | Whether the point is over the terrain (outside, the nearest edge answers). |
 | `hole` | `boolean` | `false` | — | — | — | Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from. |
+| `layer` | `number` | `0` | — | — | — | The dominant material layer index at this point from the control map (0 when the terrain has no control map). |
 
 ```ogt
 struct TerrainSample {
@@ -28,6 +29,7 @@ struct TerrainSample {
   }
   field inside bool "Whether the point is over the terrain (outside, the nearest edge answers)."
   field hole bool "Whether the point is over one of its holes: nothing collides there, and `height` is the surface the hole was cut from."
+  field layer u32 "The dominant material layer index at this point from the control map (0 when the terrain has no control map)."
 }
 ```
 
