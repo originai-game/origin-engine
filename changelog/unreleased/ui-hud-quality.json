@@ -17,12 +17,16 @@
   "fixed": [
     {
       "member": "og.ui",
+      "summary": "Unified the default UI pack and built-in components under a modern rounded clean glass language (Panel.frame, Plate.frame, Slot.frame, Chip.frame, Row.frame, overlays, buttons, and HUD bars), removing hardcoded cut-corner nine-slices, Tailwind fixed radii, asymmetric corners, double borders, and widthless border colour classes."
+    },
+    {
+      "member": "og.ui",
       "summary": "Fixed reactivity freezes, semantic ink ordering over Plate.frame, SVG/Line viewBox geometry, contrast, layout, focusGroup navigation, safe-area insets, and broken group-data-* selectors across built-in HUD, world, genre, and menu components."
     },
     {
       "member": "World.snapshot",
       "summary": "UI presentation checkpoints now save and restore Tree interactive state (focus, keyboard modality, open modal stack, focusMemory, scroll offsets, Input text/caret, UI sound PRNG, and virtual cursor) alongside stores and feedback PRNG."
     },
-    "og check (OG9105) now loads the project look's UI theme/style and game theme.json when checking TSX class names; og style list/add discovers pack.json packs and templates/themes recipes; og ui eject copies sibling locale .ogt tables and rewires all exported symbols and barrel aliases."
+    "og check (OG9105) now loads the project look's UI theme/style and game theme.json when checking TSX class names; og style list/add discovers pack.json packs and templates/themes recipes; og ui eject copies and imports sibling locale .ogt tables and rewires all exported symbols and barrel aliases."
   ]
 }

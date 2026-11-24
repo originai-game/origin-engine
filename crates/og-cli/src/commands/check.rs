@@ -1710,11 +1710,29 @@ mod tests {
     /// A class that fixes a visual value no theme reaches: a duration,
     /// delay, opacity, line width or scale given as a number instead of
     /// the theme's names (`duration-base`, `opacity-dim`, `ring-regular`,
-    /// `scale-press`). `0`, `100` (opacity, scale) and arbitrary values,
+    /// `scale-press`), a fixed Tailwind radius (`rounded`, `rounded-sm`..`3xl`)
+    /// outside `theme.radius`, or a hardcoded cut-corner nine-slice
+    /// (`nine-panel-cut`, `nine-plate-cut`, `nine-chip-cut`) that bypasses the
+    /// pack's shape slots. `0`, `100` (opacity, scale) and arbitrary values,
     /// which [`literal_text`] counts, are not.
     fn literal_class(class: &str) -> bool {
         let utility = class.rsplit(':').next().unwrap_or(class);
         let utility = utility.trim_start_matches('-');
+        if matches!(
+            utility,
+            "rounded"
+                | "rounded-sm"
+                | "rounded-md"
+                | "rounded-lg"
+                | "rounded-xl"
+                | "rounded-2xl"
+                | "rounded-3xl"
+                | "nine-panel-cut"
+                | "nine-plate-cut"
+                | "nine-chip-cut"
+        ) {
+            return true;
+        }
         let Some((name, value)) = utility.rsplit_once('-') else {
             return false;
         };
@@ -1842,7 +1860,7 @@ mod tests {
     fn literals_are_numbers_no_theme_names() {
         let found: Vec<_> = "duration-317 duration-base hover:opacity-45 opacity-dim opacity-100 \
              inset-ring-2 ring-regular ring-accent border-l-3 border-0 scale-96 scale-press \
-             rounded-2 p-4 size-12 rotate-45 delay-75"
+             rounded-2 rounded-md rounded-control nine-plate-cut nine-ring p-4 size-12 rotate-45 delay-75"
             .split(' ')
             .filter(|c| literal_class(c))
             .collect();
@@ -1854,6 +1872,8 @@ mod tests {
                 "inset-ring-2",
                 "border-l-3",
                 "scale-96",
+                "rounded-md",
+                "nine-plate-cut",
                 "delay-75"
             ]
         );
@@ -1911,9 +1931,25 @@ mod tests {
             }
         };
         let mut twice = Vec::new();
-        // The pack slots a component puts on a framed element
-        // (`packClass("Row", "frame", "selected")` beside `nine-*`).
-        let mut framed_slots = std::collections::BTreeSet::new();
+        // The pack slots a theme frames with nine-slice art (plus any slot a
+        // component still puts beside `nine-*`).
+        let mut framed_slots: std::collections::BTreeSet<String> = [
+            "Button.plate",
+            "Button.plate.primary",
+            "Button.plate.danger",
+            "Panel.frame",
+            "Plate.frame",
+            "Chip.frame",
+            "Slot.frame",
+            "Field.frame",
+            "Field.area",
+            "Row.frame",
+            "Row.frame.selected",
+            "Row.frame.muted",
+        ]
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
         for path in files {
             let text = std::fs::read_to_string(&path).unwrap();
             for line in text.lines().filter(|l| l.contains("nine-")) {
@@ -1943,12 +1979,8 @@ mod tests {
             }
         }
         // A slot carries the look a theme gives it, so it is held to the
-        // same rule over a frame: the slots components frame, and any
-        // slot that draws a frame itself.
-        assert!(
-            framed_slots.contains("Row.frame.selected"),
-            "slots are found"
-        );
+        // same rule over a frame: the slots themes frame, and any slot that
+        // draws a frame itself.
         for (key, value) in pack.variants() {
             let framed = framed_slots.contains(key) || value.contains("nine-");
             for e in edges(&format!("nine-plate-cut {value}")) {
