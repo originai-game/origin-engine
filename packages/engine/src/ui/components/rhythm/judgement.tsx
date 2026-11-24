@@ -29,17 +29,17 @@ export interface RhythmJudgementProps {
  * this only shows what it was told. Read only; not a live region.
  */
 export function RhythmJudgement(props: RhythmJudgementProps) {
-  const judgement = props.judgement ?? "none";
+  const judgement = () => props.judgement ?? "none";
   return (
     <View
       class={`flex-col items-center w-full`}
       role="group"
       label={t("rhythm.judge.name")}
-      data-judgement-perfect={judgement === "perfect"}
-      data-judgement-great={judgement === "great"}
-      data-judgement-good={judgement === "good"}
-      data-judgement-bad={judgement === "bad"}
-      data-judgement-miss={judgement === "miss"}
+      data-judgement-perfect={judgement() === "perfect"}
+      data-judgement-great={judgement() === "great"}
+      data-judgement-good={judgement() === "good"}
+      data-judgement-bad={judgement() === "bad"}
+      data-judgement-miss={judgement() === "miss"}
       data-mark-fullcombo={props.mark === "fullCombo"}
       data-mark-allperfect={props.mark === "allPerfect"}
     >
@@ -73,25 +73,25 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           </View>
         </View>
       </Show>
-      <Show when={judgement !== "none" ? Math.max(props.hit, 1) : 0} keyed>
+      <Show when={judgement() !== "none" ? Math.max(props.hit, 1) : 0} keyed>
         {() => (
         <View
           class={`flex-col items-center max-w-full mt-6 compact:mt-3 animate-stamp`}
-          data-judgement-perfect={judgement === "perfect"}
-          data-judgement-great={judgement === "great"}
-          data-judgement-good={judgement === "good"}
-          data-judgement-bad={judgement === "bad"}
-          data-judgement-miss={judgement === "miss"}
+          data-judgement-perfect={judgement() === "perfect"}
+          data-judgement-great={judgement() === "great"}
+          data-judgement-good={judgement() === "good"}
+          data-judgement-bad={judgement() === "bad"}
+          data-judgement-miss={judgement() === "miss"}
         >
           <Text
             class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
-            data-judgement-perfect={judgement === "perfect"}
-            data-judgement-great={judgement === "great"}
-            data-judgement-good={judgement === "good"}
-            data-judgement-bad={judgement === "bad"}
-            data-judgement-miss={judgement === "miss"}
+            data-judgement-perfect={judgement() === "perfect"}
+            data-judgement-great={judgement() === "great"}
+            data-judgement-good={judgement() === "good"}
+            data-judgement-bad={judgement() === "bad"}
+            data-judgement-miss={judgement() === "miss"}
           >
-            {props.label !== "" ? props.label : (judgement === "perfect" ? t("rhythm.judge.perfect") : (judgement === "great" ? t("rhythm.judge.great") : (judgement === "good" ? t("rhythm.judge.good") : (judgement === "bad" ? t("rhythm.judge.bad") : t("rhythm.judge.miss")))))}
+            {props.label !== "" ? props.label : (judgement() === "perfect" ? t("rhythm.judge.perfect") : (judgement() === "great" ? t("rhythm.judge.great") : (judgement() === "good" ? t("rhythm.judge.good") : (judgement() === "bad" ? t("rhythm.judge.bad") : t("rhythm.judge.miss")))))}
           </Text>
           <Show when={props.timing !== "" || props.offset !== ""}>
             <View class={`flex-row items-baseline justify-center gap-1`}>

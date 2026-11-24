@@ -157,13 +157,11 @@ export function MinimapView(props: MinimapViewProps) {
             style={{ transform: `translate(-50%, -50%) ${props.rotate ? "" : `rotate(${heading()}deg)`}` }}
           />
           <View
-            class="absolute"
+            class="absolute left-1/2 top-1/2"
             style={{
               width: `${ARROW_BOX}px`,
               height: `${ARROW_BOX}px`,
-              left: `calc(6rem - ${PIP_BIG * 0.75}rem)`,
-              top: `calc(6rem - ${PIP_BIG * 0.75}rem)`,
-              transform: props.rotate ? undefined : `rotate(${heading()}deg)`,
+              transform: `translate(-50%, -50%)${props.rotate ? "" : ` rotate(${heading()}deg)`}`,
             }}
           >
             <Line
@@ -174,9 +172,20 @@ export function MinimapView(props: MinimapViewProps) {
           </View>
           <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-hairline inset-ring-rim data-square:rounded-card" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-glow shadow-foe ring-regular ring-key-fg text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
-          {t("component.minimap-view.north")}
-        </Text>
+        <View
+          class="absolute inset-0 pointer-events-none"
+          style={{
+            transform: props.rotate ? `rotate(${heading() * -1}deg)` : undefined,
+            transformOrigin: "50% 50%",
+          }}
+        >
+          <Text
+            class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-glow shadow-foe ring-regular ring-key-fg text-caption font-bold leading-none text-foe-fg whitespace-nowrap"
+            style={{ transform: props.rotate ? `rotate(${heading()}deg)` : undefined }}
+          >
+            {t("component.minimap-view.north")}
+          </Text>
+        </View>
       </View>
       <Show when={(props.zone ?? "") !== ""}>
         <Text class={`py-0.5 px-2 text-caption font-semibold tracking-label uppercase whitespace-nowrap text-fg nine-plate-cut bg-plate-hi ${packClass("Plate", "frame")}`}>

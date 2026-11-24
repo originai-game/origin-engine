@@ -34,20 +34,21 @@ const VARIANT: Record<string, "danger" | "primary" | undefined> = {
  * progress runs along the button's foot and the words swap while held.
  */
 export function HoldButton(props: HoldButtonProps) {
-  const variant = props.variant ?? "danger";
+  const variant = () => props.variant ?? "danger";
   const progress = createSignal(0);
   const held = () => progress() > 0;
+  const action = () => (props.action ?? "").trim();
   return (
     <View class="flex-col items-center max-w-full">
       <Button
-        variant={VARIANT[variant] ?? undefined}
+        variant={VARIANT[variant()] ?? undefined}
         hold={1.2}
         onHold={(e) => progress.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1))}
         onPress={(e) => {
           progress.set(0);
           props.onConfirm?.(e);
         }}
-        onAction={props.action ? { confirm: (e) => props.onConfirm?.(e) } : undefined}
+        onAction={action() && action() !== "confirm" ? { [action()]: (e) => props.onConfirm?.(e) } : undefined}
         label={props.label}
         disabled={props.disabled}
         class="relative overflow-hidden max-w-full"
@@ -59,11 +60,11 @@ export function HoldButton(props: HoldButtonProps) {
           <Text class="text-center">{props.holding}</Text>
         </Show>
         <Show when={held()}>
-          <View class={`absolute bottom-0 left-0 ${packClass("Hold", "fill")} ${variant === "danger" || variant === "primary" ? packClass("Hold", "fill", variant) : ""}`} style={{ width: `${progress() * 100}%` }} />
+          <View class={`absolute bottom-0 left-0 ${packClass("Hold", "fill")} ${variant() === "danger" || variant() === "primary" ? packClass("Hold", "fill", variant()) : ""}`} style={{ width: `${progress() * 100}%` }} />
         </Show>
       </Button>
       <Show when={props.hint}>
-        <Text class={`text-center text-caption text-fg-muted mt-1 py-0 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.hint}</Text>
+        <Text class={`text-center text-caption mt-1 py-0 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{props.hint}</Text>
       </Show>
     </View>
   );

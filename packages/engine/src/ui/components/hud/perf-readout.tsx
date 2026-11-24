@@ -22,12 +22,12 @@ export interface PerfReadoutProps {
  * samples no clocks or network. Read only.
  */
 export function PerfReadout(props: PerfReadoutProps) {
-  const status = props.status ?? "offline";
-  const state = () => status === "degraded" ? "text-warn" : status === "online" ? "text-success" : "text-fg-muted";
+  const status = () => props.status ?? "offline";
+  const state = () => status() === "degraded" ? "text-warn" : status() === "online" ? "text-success" : "text-fg-muted";
   return (
     <View class={`flex-col max-w-full gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2`} role="group" label={t("hud.perf-readout.name")}>
       <Text class={`text-caption text-shadow-tag ${state()}`} role="status">
-        {status === "online" ? t("hud.perf-readout.online") : status === "connecting" ? t("hud.perf-readout.connecting") : status === "degraded" ? t("hud.perf-readout.degraded") : t("hud.perf-readout.offline")}
+        {status() === "online" ? t("hud.perf-readout.online") : status() === "connecting" ? t("hud.perf-readout.connecting") : status() === "degraded" ? t("hud.perf-readout.degraded") : t("hud.perf-readout.offline")}
       </Text>
       <View class="flex-row flex-wrap gap-x-3 gap-y-2">
         <View class="flex-col gap-y-0.5">

@@ -24,17 +24,17 @@ export interface HeroButtonProps {
  * and charge are the Hero component's pack slots.
  */
 export function HeroButton(props: HeroButtonProps) {
-  const tone = props.tone ?? "";
+  const tone = () => props.tone ?? "";
   const charge = () => props.charge ?? -1;
   return (
     <View
-      class={`group/hero relative flex-row items-center justify-center ${packClass("Hero", "frame")} ${tone && tone !== "primary" ? packClass("Hero", "frame", tone) : ""} ${charge() >= 1 && !props.disabled ? packClass("Hero", "frame", "ready") : ""}`}
+      class={`group/hero relative flex-row items-center justify-center ${packClass("Hero", "frame")} ${tone() && tone() !== "primary" ? packClass("Hero", "frame", tone()) : ""} ${charge() >= 1 && !props.disabled ? packClass("Hero", "frame", "ready") : ""}`}
       role="button"
       label={props.label}
       disabled={props.disabled}
       onPress={(e) => props.onPress?.(e)}
-      data-premium={tone === "premium"}
-      data-secondary={tone === "secondary"}
+      data-premium={tone() === "premium"}
+      data-secondary={tone() === "secondary"}
     >
       <Text class={`whitespace-nowrap text-accent-fg group-data-premium/hero:text-fg-inverse group-data-secondary/hero:text-fg-inverse ${packClass("Hero", "label")}`}>{props.label}</Text>
       <Show when={props.key}>

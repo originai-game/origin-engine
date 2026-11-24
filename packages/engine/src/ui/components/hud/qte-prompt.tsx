@@ -33,49 +33,68 @@ export interface QtePromptProps {
  * the respond.
  */
 export function QtePrompt(props: QtePromptProps) {
-  const state = props.state ?? "active";
-  const hold = (props.mode ?? "press") === "hold";
-  const active = () => state === "active" && !props.disabled;
-  const stateInk = () => state === "success" ? "text-success" : state === "failure" || state === "expired" ? "text-danger" : "text-fg-muted";
+  const state = () => props.state ?? "active";
+  const hold = () => (props.mode ?? "press") === "hold";
+  const active = () => state() === "active" && !props.disabled;
+  const remaining = () => Math.min(Math.max(props.remaining ?? 0, 0), 1);
+  const stateInk = () => state() === "success" ? "text-success" : state() === "failure" || state() === "expired" ? "text-danger" : "text-fg-muted";
   const holdFill = createSignal(0);
   const held = () => holdFill() > 0;
+  const action = () => (props.action ?? "").trim();
   return (
     <View
-      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col max-w-full gap-y-2 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2 text-fg data-state-failed:animate-shake data-state-success:animate-beat ${packClass("Plate", "frame")}`}
       label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
-      busy={state === "waiting"}
-      data-state-success={state === "success"}
-      data-state-failed={state === "failure" || state === "expired"}
+      busy={state() === "waiting"}
+      data-state-success={state() === "success"}
+      data-state-failed={state() === "failure" || state() === "expired"}
     >
       <Text class="text-caption font-semibold text-shadow-xs">{(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}</Text>
-      <View
-        class={`relative flex-row items-center justify-center min-h-11 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-dim`}
-        role="button"
-        label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
-        {...(hold ? { hold: Math.max(props.holdMs ?? 600, 1) / 1000, onHold: (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) } : {})}
-        onPress={(e) => {
-          holdFill.set(0);
-          props.onRespond?.(e);
-        }}
-        disabled={!active()}
-        data-action={(props.action ?? "") !== "" ? props.action : undefined}
-      >
-        <Show when={(props.keyLabel ?? "") !== ""}>
-          <Text class="shrink-0 text-caption leading-loose font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap text-shadow-none px-1">{props.keyLabel}</Text>
-        </Show>
-        <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-shadow-xs">
-          {hold ? t("hud.qte-prompt.hold") : (props.mode ?? "press") === "mash" ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}
-        </Text>
-        <Show when={held()}>
-          <View class="absolute bottom-0 left-0 h-0.5 bg-accent" style={{ width: `${holdFill() * 100}%` }} />
-        </Show>
+      <View class="relative flex-row items-center justify-center gap-x-2 max-w-full">
+        <View class="relative shrink-0 size-10 items-center justify-center">
+          <View class="absolute inset-0 rounded-full nine-ring bg-track" />
+          <View
+            class="absolute inset-0 rounded-full nine-ring bg-accent transition-layout duration-fast ease-out"
+            wipe={remaining()}
+          />
+          <Show
+            when={(props.keyLabel ?? "") !== ""}
+            fallback={
+              <Show when={action() !== ""}>
+                <Text class="text-caption font-bold text-fg whitespace-nowrap" glyph={action()} />
+              </Show>
+            }
+          >
+            <Text class="text-caption leading-none font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap text-shadow-none px-1">{props.keyLabel}</Text>
+          </Show>
+        </View>
+        <View
+          class={`relative flex-1 flex-row items-center justify-center min-h-11 min-w-0 max-w-full py-2 px-3 gap-x-2 border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button border overflow-hidden active:bg-none active:bg-tile-pressed disabled:opacity-dim`}
+          role="button"
+          label={(props.label ?? "") !== "" ? props.label : t("hud.qte-prompt.respond")}
+          hold={hold() ? Math.max(props.holdMs ?? 600, 1) / 1000 : undefined}
+          onHold={hold() ? (e: UiEvent) => holdFill.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) : undefined}
+          onPress={(e) => {
+            holdFill.set(0);
+            props.onRespond?.(e);
+          }}
+          onAction={action() !== "" && !hold() ? { [action()]: (e) => props.onRespond?.(e) } : undefined}
+          disabled={!active()}
+        >
+          <Text class="min-w-0 text-xs font-semibold tracking-label uppercase text-shadow-xs">
+            {hold() ? t("hud.qte-prompt.hold") : (props.mode ?? "press") === "mash" ? t("hud.qte-prompt.mash") : t("hud.qte-prompt.press")}
+          </Text>
+          <Show when={held()}>
+            <View class="absolute bottom-0 left-0 h-0.5 bg-accent" style={{ width: `${holdFill() * 100}%` }} />
+          </Show>
+        </View>
       </View>
       <Text class={`text-caption text-shadow-xs ${stateInk()}`} role="status">
-        {state === "success" ? t("hud.qte-prompt.success") : state === "failure" ? t("hud.qte-prompt.failure") : state === "expired" ? t("hud.qte-prompt.expired") : state === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
+        {state() === "success" ? t("hud.qte-prompt.success") : state() === "failure" ? t("hud.qte-prompt.failure") : state() === "expired" ? t("hud.qte-prompt.expired") : state() === "waiting" ? t("hud.qte-prompt.waiting") : props.disabled ? t("hud.qte-prompt.disabled") : t("hud.qte-prompt.active")}
       </Text>
       <Text class="text-caption opacity-quiet text-shadow-xs">{t("hud.qte-prompt.time")}</Text>
-      <View class="relative w-full h-2 overflow-hidden bg-track shadow-plate ring ring-rim" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}>
-        <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-control ease-out" style={{ width: `${Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100}%` }} />
+      <View class="relative w-full h-2 overflow-hidden bg-track shadow-plate ring ring-rim" role="progressbar" label={t("hud.qte-prompt.time")} valueMin={0} valueMax={100} valueNow={remaining() * 100}>
+        <View class="absolute left-0 top-0 h-full bg-accent transition-layout duration-control ease-out" style={{ width: `${remaining() * 100}%` }} />
       </View>
       <Show when={(props.mode ?? "press") === "mash"}>
         <Text class="text-caption opacity-quiet text-shadow-xs">{t("hud.qte-prompt.progress")}</Text>

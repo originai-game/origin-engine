@@ -98,7 +98,7 @@ export function Compass(props: CompassProps) {
           {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
         </Text>
       </View>
-      <View class="relative w-full h-12.5 overflow-hidden">
+      <View class="relative w-full h-18 overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
         <View class="absolute inset-x-0 top-0 h-9 bg-glass" />
         <View
           class="absolute top-0 bottom-0 left-1/2 w-9/1"
@@ -106,12 +106,14 @@ export function Compass(props: CompassProps) {
         >
           <For each={POINTS.flatMap((p) => [0, 3, 6, 9].map((lap) => ({ at: p.at + lap, cardinal: p.cardinal, key: p.key, lap })))} key={(p) => `${p.key}-${p.lap}`}>
             {(p) => {
-              const d = Math.abs(p().at - heading() * K - 3);
-              const opacity = Math.min(Math.max((d - 0.05) * 25, 0), 1);
+              const opacity = () => {
+                const d = Math.abs(p().at - heading() * K - 3);
+                return Math.min(Math.max((d - 0.05) * 25, 0), 1);
+              };
               return (
                 <Text
                   class={`absolute top-0 -translate-x-1/2 whitespace-nowrap ${p().cardinal ? "text-xl leading-none text-fg" : "text-base leading-tight text-fg-muted"}`}
-                  style={{ left: `${(p().at / 9) * 100}%`, opacity }}
+                  style={{ left: `${(p().at / 9) * 100}%`, opacity: opacity() }}
                 >
                   {t(p().key)}
                 </Text>

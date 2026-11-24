@@ -47,16 +47,17 @@ export function DamageDirection(props: DamageDirectionProps) {
     <View class="relative w-full h-full min-w-24 min-h-24 pointer-events-none" role="image" label={t("shooter.damage.name")}>
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h) => {
-          const strength = Math.min(Math.max(h().strength ?? 0, 0), 1);
+          const strength = () => Math.min(Math.max(h().strength ?? 0, 0), 1);
           return (
             <View
               class="absolute inset-0 flex-row items-center justify-center"
-              style={{ opacity: 0.5 + strength * 0.5 }}
+              style={{ opacity: 0.5 + strength() * 0.5 }}
             >
               <View class={`relative ${packClass("Hit", "ring")}`}>
                 <Line
-                  points={arcPoints(h().angle, strength)}
-                  class={`${packClass("Hit", "arc")} ${h().kind === "shield" || h().kind === "critical" ? packClass("Hit", "arc", h().kind) : ""}`}
+                  viewBox="0 0 100 100"
+                  points={arcPoints(h().angle, strength())}
+                  class={`w-full h-full ${packClass("Hit", "arc")} ${h().kind === "shield" || h().kind === "critical" ? packClass("Hit", "arc", h().kind) : ""}`}
                 />
               </View>
             </View>

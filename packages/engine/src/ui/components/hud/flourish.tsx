@@ -162,11 +162,12 @@ export function Flourish(props: FlourishProps) {
                 <For each={COINS}>
                   {(coin) => {
                     const [dx, dy, at] = coin();
-                    const from = props.from ?? [0, 240];
-                    const fx0 = from[0], fy0 = from[1];
                     const ms = (s: number) => Math.round(s * 1000);
+                    const snap = (v: number) => Math.round(v / 8) * 8;
+                    const startX = () => snap((props.from?.[0] ?? 0) + dx);
+                    const startY = () => snap((props.from?.[1] ?? 240) + dy);
                     return (
-                      <View class={`absolute items-center justify-center transition-transform duration-[${ms(FLIGHT)}ms] delay-[${ms(at)}ms] ease-in starting:translate-x-[${fx0 + dx}px] starting:translate-y-[${fy0 + dy}px] starting:scale-swell`}>
+                      <View class={`absolute items-center justify-center transition-transform duration-[${ms(FLIGHT)}ms] delay-[${ms(at)}ms] ease-in starting:translate-x-[${startX()}px] starting:translate-y-[${startY()}px] starting:scale-swell`}>
                         <Icon class={`size-7 transition-opacity duration-instant delay-[${ms(at + FLIGHT)}ms] starting:opacity-100 opacity-0`} name={props.icon ?? "coin"} />
                       </View>
                     );

@@ -97,8 +97,9 @@ export function TouchControls(props: TouchControlsProps) {
   const dz = () => Math.min(Math.max(props.deadZone ?? 0, 0), 0.95) || ENGINE_DEAD_ZONE;
   const actions = () => props.actions ?? [];
   return (
+    <View class={`w-full pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)] ${props.always ? "flex" : "hidden pointer-coarse:flex"}`}>
     <View
-      class={`flex-row items-end justify-between w-full ${packClass("Touch", "bar")} ${props.always ? "flex" : "hidden pointer-coarse:flex"}`}
+      class={`flex-row items-end justify-between w-full ${packClass("Touch", "bar")}`}
       role="group"
       label={t("component.touch-controls.name")}
     >
@@ -130,6 +131,7 @@ export function TouchControls(props: TouchControlsProps) {
           <Stick action={props.look ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.look")} />
         </Show>
       </View>
+    </View>
     </View>
   );
 }

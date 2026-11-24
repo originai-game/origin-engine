@@ -71,12 +71,12 @@ export function RadialMenu(props: RadialMenuProps) {
           <View class="group/radialmenu absolute inset-0" data-chosen={item().id === chosen()}>
             <View class="absolute inset-0 flex-row items-center justify-center">
               <View class="relative size-70">
-                <Line points={wedgePoints(item().at, span())} class="stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-86" />
+                <Line viewBox="0 0 320 320" points={wedgePoints(item().at, span())} class="w-full h-full stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-86" />
               </View>
             </View>
             <View
-              class="absolute top-4 left-26.25 size-20"
-              style={{ transform: `rotate(${item().at * 360}deg)`, transformOrigin: "50% 180%" }}
+              class="absolute top-3 left-25 size-20"
+              style={{ transform: `rotate(${item().at * 360}deg)`, transformOrigin: "50% 160%" }}
             >
               <View
                 class="size-full flex-col items-center justify-center gap-y-0.5"

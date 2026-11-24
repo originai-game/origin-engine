@@ -64,14 +64,15 @@ export function InteractionPrompt(props: InteractionPromptProps) {
       label={`${props.verb}${name() !== "" ? ` ${name()}` : ""}`}
       description={props.disabled && reason() !== "" ? reason() : ""}
       data-pad={props.pad}
+      data-pressed={lit()}
       data-disabled={props.disabled}
     >
       <View class="relative z-1 shrink-0 flex-row items-center justify-center size-9">
         <Show when={hold() >= 0}>
           <View class="absolute inset-0 rounded-full bg-fg-muted" />
-          <View class="absolute inset-0 nine-ring bg-sheen" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
+          <View class="absolute inset-0 nine-ring bg-sheen transition-layout duration-fast ease-out" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
         </Show>
-        <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong" data-action={action() || undefined}>{key()}</Text>
+        <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong" glyph={key() === "" && action() !== "" ? action() : undefined}>{key()}</Text>
       </View>
       <View class="flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 nine-plate-cut bg-plate-hi">
         <Text class="text-reading leading-tight font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>

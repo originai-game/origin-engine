@@ -16,7 +16,7 @@ export interface RhythmSongProgressProps {
  * keeps time; read only.
  */
 export function RhythmSongProgress(props: RhythmSongProgressProps) {
-  const full = props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value;
+  const full = () => (props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value);
   return (
     <View
       class={`flex-col w-full`}
@@ -24,14 +24,14 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
       label={t("rhythm.hud.progress")}
       valueMin={0}
       valueMax={100}
-      valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
-      valueText={props.elapsed !== "" ? t("rhythm.progress.time", { elapsed: props.elapsed, length: props.length }) : `${formatNumber(full * 100, { decimals: 0 })}%`}
+      valueNow={full() * 100}
+      valueText={props.elapsed !== "" ? t("rhythm.progress.time", { elapsed: props.elapsed, length: props.length }) : `${formatNumber(full() * 100, { decimals: 0 })}%`}
     >
       <View class={`relative w-full h-1.25 bg-well`}>
-        <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-hud-accent to-sheen shadow-glow`} style={{ width: `${full * 100}%` }} />
+        <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-hud-accent to-sheen shadow-glow`} style={{ width: `${full() * 100}%` }} />
       </View>
       <Show when={props.elapsed !== ""}>
-        <Show when={full < 0.9} fallback={
+        <Show when={full() < 0.9} fallback={
           <View class={`flex-row w-full px-3 mt-1 justify-end`}>
             <View class={`flex-row items-baseline gap-0.5 shrink`}>
               <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
@@ -44,7 +44,7 @@ export function RhythmSongProgress(props: RhythmSongProgressProps) {
           </View>
         }>
           <View class={`flex-row w-full px-3 mt-1`}>
-            <View class={`flex-row items-baseline gap-0.5 shrink`} style={{ marginLeft: `${full * 100}%` }}>
+            <View class={`flex-row items-baseline gap-0.5 shrink`} style={{ marginLeft: `${full() * 100}%` }}>
               <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg`}>{props.elapsed}</Text>
               <Show when={props.length !== ""}>
                 <Text class={`text-caption font-bold tabular-nums whitespace-nowrap text-fg-muted text-stroke-3 text-stroke-bg`}>

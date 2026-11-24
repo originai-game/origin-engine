@@ -76,7 +76,7 @@ export function RpgConversation(props: RpgConversationProps) {
     }
   });
   return (
-    <View class={`nine-plate-cut bg-plate-hi text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 disabled:text-fg-subtle ${packClass("Plate", "frame")}`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
+    <View class={`nine-plate-cut bg-plate-hi text-fg flex-row grow shrink basis-0 flex-wrap overflow-y-auto p-4 gap-4 ${packClass("Plate", "frame")} disabled:text-fg-subtle`} label={props.speaker ? props.speaker : t("rpg.talk.narration")}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-gold to-transparent pointer-events-none" />
       <Show when={props.portrait}>
         <Image class="w-40 object-cover object-top compact:size-24 shrink-0" src={props.portrait} />

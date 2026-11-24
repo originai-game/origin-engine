@@ -26,7 +26,7 @@ export interface RhythmGaugeProps {
  * gives it. The game owns the value and every verdict; read only.
  */
 export function RhythmGauge(props: RhythmGaugeProps) {
-  const full = props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value;
+  const full = () => (props.value <= 0 ? 0 : props.value >= 1 ? 1 : props.value);
   return (
     <View
       class={`group/gauge flex-col items-center gap-1 h-full min-h-30 compact:min-h-0 max-w-24 w-full text-fg`}
@@ -41,19 +41,19 @@ export function RhythmGauge(props: RhythmGaugeProps) {
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}
         valueMax={100}
-        valueNow={props.value <= 0 ? 0 : props.value >= 1 ? 100 : props.value * 100}
+        valueNow={full() * 100}
         data-danger={props.danger}
         data-ready={props.ready}
       >
         <View
           class={`absolute bottom-0 left-0 w-full bg-boon shadow-glow-sm shadow-fill-strong group-data-kind-fever/gauge:bg-fever group-data-kind-fever/gauge:shadow-glow-sm group-data-kind-fever/gauge:shadow-fill-strong group-data-danger/gauge:bg-critical`}
-          style={{ height: `${full * 100}%` }}
+          style={{ height: `${full() * 100}%` }}
         />
         <For each={Array.from({ length: 9 }, (_, i) => i)}>
           {(i) => <View class={`absolute left-0 right-0 h-0.75 -translate-y-1/2 bg-shade-deep`} style={{ top: `${(i() + 1) * 10}%` }} />}
         </For>
       </View>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted group-data-kind-fever/gauge:text-fever-ink py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted group-data-kind-fever/gauge:text-fever-ink`}>
         {(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
       </Text>
       <Show when={props.failed} fallback={

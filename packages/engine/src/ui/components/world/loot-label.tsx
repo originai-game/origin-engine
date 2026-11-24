@@ -65,7 +65,7 @@ export function LootLabel(props: LootLabelProps) {
       data-legendary={rarity() === "legendary"}
     >
       <View
-        class={`group/chip relative flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap nine-chip-cut bg-raised-pressed animate-pop hover:scale-lift hover:bg-fg group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile group-data-hovered:scale-lift group-data-hovered:bg-fg text-fg ${packClass("Chip", "frame")}`}
+        class={`group/chip relative flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap nine-chip-cut bg-raised-pressed animate-pop hover:scale-lift hover:bg-tile group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile data-hovered:scale-lift data-hovered:bg-tile text-fg ${packClass("Chip", "frame")}`}
         data-more={more() > 0}
         data-hovered={props.hovered}
         role="button"
@@ -73,6 +73,9 @@ export function LootLabel(props: LootLabelProps) {
         onPress={(e) => props.onPick?.(e)}
       >
         <View class="absolute left-0 top-0 bottom-0 w-0.75 bg-fg-subtle group-data-uncommon:bg-uncommon group-data-rare:bg-rare group-data-epic:bg-epic group-data-legendary:bg-gold" />
+        <Show when={props.hovered && action() !== ""}>
+          <Text class="shrink-0 px-1 rounded-control bg-linear-to-b from-key-hi to-key-lo text-key-fg text-2xs font-bold leading-snug shadow-key" glyph={action()} />
+        </Show>
         <Show when={more() > 0}>
           <Text class="shrink-0 font-bold tabular-nums">{t("world.loot.more", { n: more() })}</Text>
           <For each={props.tiers ?? []} key={(d) => d.id}>

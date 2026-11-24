@@ -26,7 +26,7 @@ export function RacingBonus(props: RacingBonusProps) {
     <View class={`flex-col items-center gap-y-5.5 w-fit max-w-full text-fg compact:flex-row compact:justify-center compact:gap-x-3`} role="group" label={t("racing.bonus.name")}>
       <Show when={props.meter !== ""}>
         <View class={`flex-col items-center gap-y-1.5 max-w-full compact:flex-[0_1_auto] compact:min-w-0`} role="meter" label={props.meter} valueMin={0} valueMax={100} valueNow={share() * 100}>
-          <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-kicker uppercase whitespace-nowrap overflow-hidden text-hud-accent-ink compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.meter}</Text>
+          <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-kicker uppercase whitespace-nowrap overflow-hidden compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-hud-accent-ink`}>{props.meter}</Text>
           <View class={`relative w-45 max-w-full h-1.75 overflow-hidden bg-well shadow-plate ring ring-rim compact:w-25 compact:h-1.25`}>
             <View class="absolute left-0 top-0 h-full bg-hud-accent shadow-glow" style={{ width: `${share() * 100}%` }} />
           </View>
@@ -38,7 +38,7 @@ export function RacingBonus(props: RacingBonusProps) {
             <View class={`flex-col items-center gap-y-0.5 max-w-full min-w-0 compact:items-start compact:flex-[0_1_auto] animate-stamp`} role="status">
               <Text class={`pl-1 pr-2 text-display-md leading-none italic font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg compact:pl-0 compact:pr-1.5 compact:text-base`}>{props.points}</Text>
               <Show when={props.detail !== ""}>
-                <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-gold compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.detail}</Text>
+                <Text class={`max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-gold`}>{props.detail}</Text>
               </Show>
             </View>
           )}

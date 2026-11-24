@@ -83,7 +83,7 @@ export function StatBar(props: StatBarProps) {
         </Show>
         <View class={`relative min-w-0 flex-1 ${packClass("Bar", "frame")} h-4.5 ${critical() ? packClass("Bar", "frame", "low") : ""}`}>
           <View class="absolute left-0 top-0 h-full bg-fg-muted" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
-          <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold" style={{ width: `${fraction() * 100}%` }} />
+          <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold ${packClass("Bar", "trail")}`} style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>
             <View class="absolute left-0 top-0 h-full bg-success" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
           </Show>

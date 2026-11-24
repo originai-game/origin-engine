@@ -108,7 +108,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         </View>
       </Show>
       <Show when={props.magazine <= 0 && (props.reloading ?? -1) < 0}>
-        <Text class={`py-0.5 px-1.5 text-xs font-semibold tracking-label uppercase text-foe-ink animate-pulse nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{t("shooter.ammo.empty")}</Text>
+        <Text class={`py-0.5 px-1.5 text-xs font-semibold tracking-label uppercase animate-pulse nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-foe-ink`}>{t("shooter.ammo.empty")}</Text>
       </Show>
     </View>
   );

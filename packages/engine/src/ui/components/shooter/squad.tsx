@@ -71,7 +71,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 <View class="flex-1 flex-row items-baseline gap-x-2 min-w-0">
                   <Text class={`min-w-0 text-reading font-semibold whitespace-nowrap truncate text-fg compact:text-caption py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{m().name}</Text>
                   <Show when={(m().status ?? "") != ""}>
-                    <Text class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted data-reviving:text-ally-ink data-down:text-danger py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}
+                    <Text class={`shrink-0 max-w-full min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted data-reviving:text-ally-ink data-down:text-danger`}
                       data-reviving={m().state == "reviving"}
                       data-down={down()}
                     >
@@ -82,7 +82,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
               </View>
               <Show when={(m().shieldMax ?? 0) > 0}>
                 <View class="relative self-center w-full h-1.5 compact:h-1 overflow-hidden -skew-x-22 bg-track shadow-plate ring ring-rim">
-                  <View class="absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally" style={{ width: `${shieldShare() * 100}%` }}>
+                  <View class={`absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally ${packClass("Bar", "fill")}`} style={{ width: `${shieldShare() * 100}%` }}>
                     <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
                   </View>
                   <View class="absolute inset-0 pointer-events-none">
@@ -100,8 +100,8 @@ export function ShooterSquad(props: ShooterSquadProps) {
                 valueMax={m().healthMax ?? 0}
                 valueNow={m().health ?? 0}
               >
-                <View class="absolute left-0 top-0 h-full bg-gold" style={{ width: `${ghostShare() * 100}%` }} />
-                <View class="absolute left-0 top-0 h-full bg-material-regular" style={{ width: `${healthShare() * 100}%` }}>
+                <View class={`absolute left-0 top-0 h-full bg-gold ${packClass("Bar", "trail")}`} style={{ width: `${ghostShare() * 100}%` }} />
+                <View class={`absolute left-0 top-0 h-full bg-health ${packClass("Bar", "fill")}`} style={{ width: `${healthShare() * 100}%` }}>
                   <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
                 </View>
               </View>

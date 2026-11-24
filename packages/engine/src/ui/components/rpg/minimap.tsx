@@ -32,13 +32,10 @@ export function RpgMinimap(props: RpgMinimapProps) {
   return (
     <View class={`flex-col items-center gap-y-2 max-w-full shrink-0 text-fg compact:gap-y-1.5`} role="group" label={props.place !== "" ? props.place : t("rpg.map.name")}>
       <View class="relative size-38.5 compact:size-25.5">
-        <View class="absolute inset-0 overflow-hidden rounded-full bg-tile shadow-minimap" role="image" label={t("rpg.map.name")}>
+        <View class="absolute inset-0 overflow-hidden rounded-full bg-well shadow-minimap" role="image" label={t("rpg.map.name")}>
           <Show when={props.map}>
             <Image class="absolute" style={{ width: `${100 / zoom()}%`, height: `${100 / zoom()}%`, left: `${50 - (props.centerX ?? 0.5) * 100 / zoom()}%`, top: `${50 - (props.centerY ?? 0.5) * 100 / zoom()}%` }} src={props.map} />
           </Show>
-          {/* The sweep: its conic gradient and radial mask stand in as a
-              plain veil. */}
-          <View class="absolute inset-0 bg-well" />
           <For each={props.blips ?? []} key={(b) => b.id}>
             {(b) => (
             <View class="absolute" style={{ left: `${50 + (b().x - (props.centerX ?? 0.5)) * 100 / zoom()}%`, top: `${50 + (b().y - (props.centerY ?? 0.5)) * 100 / zoom()}%` }}>

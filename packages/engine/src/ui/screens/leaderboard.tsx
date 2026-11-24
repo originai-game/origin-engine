@@ -82,7 +82,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </View>
       </Show>
       <Scroll class="w-full max-w-264 shrink min-h-0 mx-auto">
-        <View class={`gap-0.5 ${packClass("List", "cascade")}`} focus-group="stop">
+        <View class={`gap-0.5 ${packClass("List", "cascade")}`} focusGroup="stop">
           <View>{props.board?.()}</View>
           <For each={props.rows}>
             {(r) => (

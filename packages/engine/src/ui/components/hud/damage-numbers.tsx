@@ -33,20 +33,20 @@ const KINDS = ["crit", "heal", "shield", "weak", "miss"];
 
 export function DamageNumbers(props: DamageNumbersProps) {
   return (
-    <For each={props.hits ?? []} key={(h) => h.id}>
-      {(h) => {
-        const point = h().at.split(/\s+/).map(Number) as [number, number, number];
-        return (
-          <Text
-            anchor={h().entity ? (h().entity as Entity) : point}
-            class={`-translate-x-1/2 whitespace-nowrap ${packClass("Damage", "number")} ${KINDS.includes(h().kind ?? "") ? packClass("Damage", "number", h().kind) : ""}`}
-            style={{ color: h().color || undefined }}
-          >
-            {formatNumber(h().amount)}
-          </Text>
-        );
-      }}
-    </For>
+      <For each={props.hits ?? []} key={(h) => h.id}>
+        {(h) => {
+          const point = () => h().at.split(/\s+/).map(Number) as [number, number, number];
+          return (
+            <Text
+              anchor={h().entity ? (h().entity as Entity) : point()}
+              class={`-translate-x-1/2 whitespace-nowrap ${packClass("Damage", "number")} ${KINDS.includes(h().kind ?? "") ? packClass("Damage", "number", h().kind) : ""}`}
+              style={{ color: h().color || undefined }}
+            >
+              {formatNumber(h().amount)}
+            </Text>
+          );
+        }}
+      </For>
   );
 }
 

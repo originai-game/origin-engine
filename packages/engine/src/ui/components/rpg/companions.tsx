@@ -37,32 +37,34 @@ export function RpgCompanions(props: RpgCompanionsProps) {
       <For each={props.members ?? []} key={(m) => m.id}>
         {(m) => (
         <View
-          class={`group/member grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2.5 gap-y-1 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-0.75 data-fallen:opacity-muted`}
+          class={`group/member flex-row gap-x-2.5 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-0.75 data-fallen:opacity-muted`}
           role="group"
           label={m().fallen ? t("rpg.companions.member", { name: m().name, state: t("rpg.companions.fallen") }) : m().name}
           data-fallen={m().fallen}
           data-low={isLow(props, m())}
         >
-          <View class={`row-span-3 self-center compact:hidden`}>
+          <View class={`shrink-0 self-center compact:hidden`}>
             <HudPortrait portrait={m().portrait} dimmed={m().fallen} />
           </View>
-          <View class={`flex-row items-baseline min-w-0 gap-1`}>
-            <Text class={`shrink text-reading font-semibold whitespace-nowrap overflow-hidden text-ellipsis compact:text-caption`}>
-              {m().name}
-            </Text>
-            <Show when={m().fallen}>
-              <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap compact:tracking-normal`}>
-                {t("rpg.companions.fallen")}
+          <View class={`flex-1 min-w-0 flex-col gap-y-1`}>
+            <View class={`flex-row items-baseline min-w-0 gap-1`}>
+              <Text class={`shrink text-reading font-semibold whitespace-nowrap overflow-hidden text-ellipsis compact:text-caption`}>
+                {m().name}
               </Text>
+              <Show when={m().fallen}>
+                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase text-danger whitespace-nowrap compact:tracking-normal`}>
+                  {t("rpg.companions.fallen")}
+                </Text>
+              </Show>
+            </View>
+            <HudBar value={m().health} max={m().healthMax} ghost={m().ghost} low={isLow(props, m())} />
+            <Show when={m().manaMax > 0 && !m().fallen}>
+              <HudBar value={m().mana} max={m().manaMax} kind="mana" />
             </Show>
           </View>
-          <HudBar value={m().health} max={m().healthMax} ghost={m().ghost} low={isLow(props, m())} />
-          <Show when={m().manaMax > 0 && !m().fallen}>
-            <HudBar value={m().mana} max={m().manaMax} kind="mana" />
-          </Show>
           <Show when={m().key}>
             <Text
-              class={`row-span-3 self-center min-w-5.5 max-w-18 px-1 text-xs leading-normal font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
+              class={`shrink-0 self-center min-w-5.5 max-w-18 px-1 text-xs leading-normal font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
             >
               {m().key}
             </Text>

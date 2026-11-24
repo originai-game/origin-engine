@@ -24,7 +24,7 @@ export function RacingCar(props: RacingCarProps) {
   return (
     <View class={`group/car flex-col gap-y-1.5 w-fit max-w-full items-start text-fg compact:gap-y-0.75`} role="group" label={t("racing.car.name")} data-pit={props.pit} data-low={props.fuelLow}>
       <Show when={(props.tyres ?? []).length}>
-        <Text class={`max-w-full text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted compact:hidden compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{t("racing.car.tyres")}</Text>
+        <Text class={`max-w-full text-xs font-semibold tracking-label uppercase whitespace-nowrap compact:hidden compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{t("racing.car.tyres")}</Text>
         <View class={`grid grid-cols-2 gap-1.25 max-w-full compact:gap-0.75`} role="list" label={t("racing.car.tyres")}>
           <For each={props.tyres ?? []} key={(y) => y.id}>
             {(y) => (
@@ -49,7 +49,7 @@ export function RacingCar(props: RacingCarProps) {
           valueNow={(props.fuel ?? 0) >= 1 ? 100 : (props.fuel ?? 0) * 100}
           valueText={props.fuelText}
         >
-          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted group-data-low/car:text-foe-ink compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+          <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted group-data-low/car:text-foe-ink`}>
             {props.fuelLow ? t("racing.car.fuelLow") : t("racing.car.fuel")}
           </Text>
           <View class={`shrink-0 relative w-17.5 h-1.5 overflow-hidden bg-well shadow-plate ring ring-rim group-data-low/car:shadow-glow group-data-low/car:shadow-foe group-data-low/car:ring group-data-low/car:ring-foe compact:w-11`}>

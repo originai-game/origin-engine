@@ -50,7 +50,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 compact:hidden" />
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4 narrow:pb-6">
-        <View class="grid grid-cols-3 auto-rows-[1fr] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-auto narrow:h-auto narrow:gap-3" focus-group="wrap">
+        <View class="grid grid-cols-3 auto-rows-[1fr] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-auto narrow:h-auto narrow:gap-3" focusGroup="wrap">
           <For each={props.modes}>
             {(mode) => (
             <View class={`group/mode min-h-80 narrow:min-h-42.5 text-fg transition duration-control data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-dim hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>

@@ -32,7 +32,7 @@ export interface AvatarProps {
 export function Avatar(props: AvatarProps) {
   return (
     <View class={`text-fg items-center w-24 p-0 m-0 gap-1 disabled:text-fg-subtle`} data-frame={props.frame} data-status={props.status} label={props.name || t("base.avatar.unnamed")} busy={(props.loading ?? false)}>
-      <View class={`bg-tile shadow-sunk w-full aspect-square mb-1 gap-2 rounded-capsule`}>
+      <View class={`relative bg-tile shadow-sunk w-full aspect-square mb-1 gap-2 rounded-capsule`}>
         <View class={`grow shrink basis-0 border-rim justify-center items-center gap-0 size-full rounded-capsule border-regular overflow-hidden`}>
           <Show when={(props.loading ?? false)} fallback={
               <Show when={(props.portrait ?? 0)} fallback={

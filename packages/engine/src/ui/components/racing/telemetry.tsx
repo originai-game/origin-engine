@@ -97,7 +97,7 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         >
           <Show when={(props.lights ?? -1) >= 0}>
             <View
-              class={`w-2/5 h-1.5 mb-0.5 overflow-hidden bg-track compact:h-1`}
+              class={`relative w-2/5 h-1.5 mb-0.5 overflow-hidden bg-track compact:h-1`}
               role="meter"
               label={t("racing.telemetry.lights")}
               valueMin={0}

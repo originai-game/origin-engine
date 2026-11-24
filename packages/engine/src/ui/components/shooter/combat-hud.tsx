@@ -68,42 +68,46 @@ export function CombatHud(props: CombatHudProps) {
           />
         </View>
       </View>
-      <View class="absolute top-4 right-4 max-w-full compact:top-3 compact:right-3">
-        <Killfeed rows={props.feed ?? []} />
-      </View>
-      <View
-        class={`absolute left-4 bottom-4 py-2 px-3 w-70 max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto ${packClass("Plate", "frame")}`}
-      >
-        <StatBar
-          value={props.health ?? 0}
-          max={props.healthMax ?? 1}
-          kind="health"
-          segment={25}
-          shield={props.shield ?? 0}
-          shieldMax={props.shieldMax ?? 0}
-          heal={0}
-          recoverable={0}
-          label=""
-          icon="heart"
-          showValue={true}
-          valueInside={false}
-          valueText=""
-          low={0.3}
-          critical={0.15}
-          bare={true}
-          name={t("shooter.hud.health")}
-        />
-      </View>
-      <View class="absolute right-4 bottom-4 compact:right-3 compact:bottom-16.75">
-        <AmmoCounter
-          weapon={props.weapon ?? ""}
-          mode={props.mode ?? "auto"}
-          magazine={props.magazine ?? 0}
-          capacity={props.capacity ?? 0}
-          reserve={props.reserve ?? 0}
-          reloading={props.reloading ?? -1}
-          low={0.25}
-        />
+      <View class="absolute inset-0 pt-[env(hud-inset-top)] pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)]">
+        <View class="relative w-full h-full">
+          <View class="absolute top-4 right-4 max-w-full compact:top-3 compact:right-3">
+            <Killfeed rows={props.feed ?? []} />
+          </View>
+          <View
+            class={`absolute left-4 bottom-4 py-2 px-3 w-70 max-w-full border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate compact:left-3 compact:right-3 compact:bottom-3 compact:w-auto ${packClass("Plate", "frame")}`}
+          >
+            <StatBar
+              value={props.health ?? 0}
+              max={props.healthMax ?? 1}
+              kind="health"
+              segment={25}
+              shield={props.shield ?? 0}
+              shieldMax={props.shieldMax ?? 0}
+              heal={0}
+              recoverable={0}
+              label=""
+              icon="heart"
+              showValue={true}
+              valueInside={false}
+              valueText=""
+              low={0.3}
+              critical={0.15}
+              bare={true}
+              name={t("shooter.hud.health")}
+            />
+          </View>
+          <View class="absolute right-4 bottom-4 compact:right-3 compact:bottom-16.75">
+            <AmmoCounter
+              weapon={props.weapon ?? ""}
+              mode={props.mode ?? "auto"}
+              magazine={props.magazine ?? 0}
+              capacity={props.capacity ?? 0}
+              reserve={props.reserve ?? 0}
+              reloading={props.reloading ?? -1}
+              low={0.25}
+            />
+          </View>
+        </View>
       </View>
     </View>
   );

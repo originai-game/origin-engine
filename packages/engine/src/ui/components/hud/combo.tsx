@@ -22,22 +22,22 @@ export interface ComboProps {
  * game owns the count and the window.
  */
 export function Combo(props: ComboProps) {
-  const state = props.state ?? "idle";
+  const state = () => props.state ?? "idle";
   return (
     <View
       class={`group/combo flex-col max-w-full ${packClass("Combo", "plate")}`}
       role="status"
-      data-active={state == "active"}
-      data-broken={state == "broken"}
-      data-idle={state == "idle"}
+      data-active={state() === "active"}
+      data-broken={state() === "broken"}
+      data-idle={state() === "idle"}
     >
       <Text class="text-base text-fg text-shadow-tag">{props.label || t("hud.combo.name")}</Text>
       <View class="flex-row flex-wrap items-baseline gap-x-2">
-        <Text class={`transition-count duration-base ${packClass("Combo", "count")}`}>{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
+        <Text class={`${packClass("Count", "roll")} ${packClass("Combo", "count")}`}>{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
         <Text class={packClass("Combo", "multiplier")}>{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
       </View>
       <Text class="text-caption text-fg-muted group-data-active/combo:text-success group-data-broken/combo:text-danger text-shadow-tag">
-        {state == "broken" ? t("hud.combo.broken") : state == "active" ? t("hud.combo.active") : t("hud.combo.idle")}
+        {state() === "broken" ? t("hud.combo.broken") : state() === "active" ? t("hud.combo.active") : t("hud.combo.idle")}
       </Text>
       <Show when={(props.remaining ?? -1) >= 0}>
         <Progress value={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100} label={t("hud.combo.window")} class="w-full" />

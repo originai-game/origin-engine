@@ -133,7 +133,7 @@ export function Nameplate(props: NameplateProps) {
               <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-control delay-slow ease-out" style={{ width: `${hp() * 100}%` }} />
               <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-hud-accent" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
-                <View class="absolute top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-42% bg-info" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />
+                <View class="absolute top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-42% bg-info" style={{ left: `${Math.min(hp(), 1 - Math.min(props.shield ?? 0, 1)) * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />
               </Show>
               <For each={[1, 2, 3]} key={(i) => i}>
                 {(i) => <View class="absolute top-0 bottom-0 w-px bg-fg-muted" style={{ left: `${i() * 25}%` }} />}
@@ -150,21 +150,21 @@ export function Nameplate(props: NameplateProps) {
       </Show>
       <Show when={castName() !== "" && !props.compact && !props.dead}>
         <View
-          class="flex-col gap-y-px min-w-36 max-w-64 mt-px"
+          class="group/cast flex-col gap-y-px min-w-36 max-w-64 mt-px"
           role="status"
           label={castState() === "locked" ? t("world.nameplate.uninterruptible", { spell: castName() }) : castState() === "interrupted" ? t("world.nameplate.interrupted") : t("world.nameplate.casting", { spell: castName() })}
           data-state-locked={castState() === "locked"}
           data-state-interrupted={castState() === "interrupted"}
         >
-          <View class="group/cast flex-row items-center gap-x-1.5 min-w-0 text-2xs leading-tight font-bold tracking-md uppercase whitespace-nowrap text-warn group-data-state-locked:text-fg-muted group-data-state-interrupted:text-fg">
+          <View class="flex-row items-center gap-x-1.5 min-w-0 text-2xs leading-tight font-bold tracking-md uppercase whitespace-nowrap text-warn group-data-state-locked/cast:text-fg-muted group-data-state-interrupted/cast:text-fg">
             <Icon class="shrink-0 -mr-0.75 size-2.75" name={castState() === "locked" ? "shield" : castState() === "interrupted" ? "close" : "bolt"} />
             <Text class="grow min-w-0 max-w-42.5 truncate">{castState() === "interrupted" ? t("world.nameplate.interrupted") : castName()}</Text>
             <Show when={castTime() !== "" && castState() !== "interrupted"}>
               <Text class="shrink-0 tracking-normal tabular-nums text-fg">{castTime()}</Text>
             </Show>
           </View>
-          <View class="relative h-1.25 overflow-hidden bg-track ring ring-warn group-data-state-locked:ring group-data-state-locked:ring-entry-grain group-data-state-interrupted:shadow-glow group-data-state-interrupted:shadow-foe group-data-state-interrupted:ring group-data-state-interrupted:ring-foe">
-            <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn via-warn via-80% to-sheen shadow-glow-sm shadow-warn group-data-state-locked:bg-linear-to-r group-data-state-locked:from-fg-muted group-data-state-locked:via-fg group-data-state-locked:via-85% group-data-state-locked:to-sheen group-data-state-locked:shadow-none group-data-state-interrupted:bg-danger group-data-state-interrupted:shadow-none" style={{ width: `${castFill() * 100}%` }} />
+          <View class="relative h-1.25 overflow-hidden bg-track ring ring-warn group-data-state-locked/cast:ring group-data-state-locked/cast:ring-entry-grain group-data-state-interrupted/cast:shadow-glow group-data-state-interrupted/cast:shadow-foe group-data-state-interrupted/cast:ring group-data-state-interrupted/cast:ring-foe">
+            <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn via-warn via-80% to-sheen shadow-glow-sm shadow-warn group-data-state-locked/cast:bg-linear-to-r group-data-state-locked/cast:from-fg-muted group-data-state-locked/cast:via-fg group-data-state-locked/cast:via-85% group-data-state-locked/cast:to-sheen group-data-state-locked/cast:shadow-none group-data-state-interrupted/cast:bg-danger group-data-state-interrupted/cast:shadow-none" style={{ width: `${castFill() * 100}%` }} />
           </View>
         </View>
       </Show>

@@ -110,20 +110,20 @@ export function PauseScreen(props: PauseScreenProps) {
             {t("screen.pause.Played", { played: formatDuration(props.played) })}
           </Text>
         </View>
-        <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focus-group="wrap">
+        <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focusGroup="wrap">
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
                 <Show when={r().rule}>
                   <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6 short:hidden" />
                 </Show>
-                <View class={`flex-row items-center justify-center gap-1 group/row w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent ${r().danger ? "hover:text-danger" : "hover:text-hud-accent-fg"} active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" name={r().name} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
+                <View class={`flex-row items-center justify-center gap-1 group/row w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent focus-visible:bg-hud-accent ${r().danger ? "hover:text-danger focus-visible:text-danger" : "hover:text-hud-accent-fg focus-visible:text-hud-accent-fg"} active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" name={r().name} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
                   <View class="flex-row items-center gap-x-3 w-full">
                     <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                       {r().label}
                     </Text>
                     <Show when={!r().minor}>
-                      <Icon class="text-hud-accent-ink opacity-0 size-4 group-hover/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+                      <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
                     </Show>
                   </View>
                 </View>

@@ -52,13 +52,14 @@ export function ProgressRing(props: ProgressRingProps) {
           </View>
         </>
       }>
-        <View class={`absolute inset-0 ${packClass("Ring", "spin")} border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info`}>
+        <>
+          <View class={`absolute inset-0 ${packClass("Ring", "spin")} border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info`} />
           <Show when={(props.label ?? "") !== ""}>
-            <View class="absolute inset-0 flex-row items-center justify-center">
+            <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
               <Text class={`whitespace-nowrap ${packClass("Ring", "label")}`}>{props.label}</Text>
             </View>
           </Show>
-        </View>
+        </>
       </Show>
     </View>
   );

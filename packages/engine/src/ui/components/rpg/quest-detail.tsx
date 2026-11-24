@@ -75,7 +75,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.objectives ?? []} key={(o) => o.id}>
                     {(o, i) => (
                       <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-rim`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
-                        <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-regular inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-regular group-data-current/obj:inset-ring-gold data-done:bg-success data-done:shadow-glow-sm data-done:shadow-health data-done:inset-ring-regular data-done:inset-ring-health`} />
+                        <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-regular inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-regular group-data-current/obj:inset-ring-gold group-data-done/obj:bg-success group-data-done/obj:shadow-glow-sm group-data-done/obj:shadow-health group-data-done/obj:inset-ring-regular group-data-done/obj:inset-ring-health`} />
                         <Text class={`grow min-w-0 group-data-step1/obj:text-fg-muted group-data-step1/obj:font-semibold group-data-done/obj:text-fg-subtle group-data-done/obj:line-through`}>
                           {o().text}
                         </Text>

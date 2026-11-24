@@ -45,7 +45,7 @@ export function HudBar(props: HudBarProps) {
   };
   return (
     <View
-      class={`group/bar relative w-full ${packClass("Bar", "frame")} ${props.low ? packClass("Bar", "frame", "low") : ""}`}
+      class={`group/bar relative w-full ${packClass("Bar", "frame")} ${props.showValue ? packClass("Bar", "frame", "thick") : ""} ${props.low ? packClass("Bar", "frame", "low") : ""}`}
       role="meter"
       label={props.name != "" && props.name != undefined ? props.name : (props.kind ?? "health") == "mana" ? t("hud.bar.mana") : (props.kind ?? "health") == "stamina" ? t("hud.bar.stamina") : (props.kind ?? "health") == "shield" ? t("hud.bar.shield") : (props.kind ?? "health") == "xp" ? t("hud.bar.xp") : t("hud.bar.health")}
       valueMin={0}

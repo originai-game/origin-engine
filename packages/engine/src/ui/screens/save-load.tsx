@@ -61,7 +61,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
       </View>
       <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 narrow:grid-cols-1 narrow:grid-rows-[minmax(0,1fr)_auto] narrow:gap-y-3">
         <Scroll class="p-1 -m-1">
-          <View class="gap-y-2" focus-group="stop">
+          <View class="gap-y-2" focusGroup="stop">
             <For each={props.slots}>
               {(s) => (
               <View class={`flex-row group/slot nine-plate-cut text-fg transition duration-control items-center gap-x-4 p-2 hover:bg-surface-hover data-empty-slot:justify-center data-empty-slot:min-h-26 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${s().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} onPress={(e) => props.onSelect?.(e, s().id)} tabIndex={0} data-selection-off={s().id !== props.selected} data-selection-on={s().id === props.selected} data-empty-slot={s().empty}>

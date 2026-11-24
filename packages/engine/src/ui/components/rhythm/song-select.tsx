@@ -74,10 +74,10 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                         data-previewing={s().id === props.previewing}
                         data-locked={s().locked}
                         data-selected={s().id === props.selected}
-                        class={`transition duration-control self-stretch min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-muted disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-regular data-selected:inset-ring-hud-accent`}
+                        class={`group/song transition duration-control self-stretch min-w-0 min-h-11 py-1 pl-1 pr-3 compact:data-selected:pl-1 nine-plate-cut bg-tile hover:bg-surface disabled:opacity-muted disabled:bg-tile data-selected:ml-6 compact:data-selected:ml-0 data-selected:py-2 data-selected:bg-surface-hover data-selected:inset-ring-regular data-selected:inset-ring-hud-accent`}
                       >
                         <View class={`flex-row items-center gap-4 w-full min-w-0`}>
-                          <View class={`shrink-0 size-15 compact:size-12 data-selected:size-20 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 data-selected:from-rim-strong data-selected:via-rim data-selected:to-hud-accent`}>
+                          <View class={`shrink-0 size-15 compact:size-12 group-data-selected/song:size-20 rounded-panel bg-linear-to-b from-rim-strong via-rim to-rim-soft p-0.5 group-data-selected/song:from-rim-strong group-data-selected/song:via-rim group-data-selected/song:to-hud-accent`}>
                             <Show when={s().jacket} fallback={
                               <View class={`size-full rounded-card bg-glass flex-row items-center justify-center`}>
                                 <Icon class={`size-11/25 text-hud-accent-ink`} name="music" />
@@ -87,7 +87,7 @@ export function RhythmSongSelect(props: RhythmSongSelectProps) {
                             </Show>
                           </View>
                           <View class={`flex-col items-start gap-0.5 min-w-0 grow`}>
-                            <Text class={`max-w-full text-start text-xl compact:text-base leading-tight font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg data-selected:text-3xl compact:data-selected:text-base data-selected:font-bold`}>
+                            <Text class={`max-w-full text-start text-xl compact:text-base leading-tight font-semibold whitespace-nowrap text-ellipsis overflow-hidden text-fg group-data-selected/song:text-3xl compact:group-data-selected/song:text-base group-data-selected/song:font-bold`}>
                               {s().title}
                             </Text>
                             <Text class={`max-w-full text-start text-caption whitespace-nowrap text-ellipsis overflow-hidden text-fg-muted`}>

@@ -38,7 +38,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
-        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focus-group="wrap">
+        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focusGroup="wrap">
           <For each={props.chapters}>
             {(c) => (
             <View class={`group/card transition duration-control gap-y-2 p-0 data-selected:border-accent data-down:opacity-dim`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>

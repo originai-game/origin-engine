@@ -27,7 +27,7 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-boon" style={{ height: `${(props.throttle <= 0 ? 0 : props.throttle >= 1 ? 1 : props.throttle) * 100}%` }} />
         </View>
-        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{t("racing.pedals.throttle")}</Text>
+        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{t("racing.pedals.throttle")}</Text>
       </View>
       <View class="flex-col items-center gap-y-1.25">
         <View
@@ -40,7 +40,7 @@ export function RacingPedals(props: RacingPedalsProps) {
         >
           <View class="absolute bottom-0 left-0 w-full bg-foe" style={{ height: `${(props.brake <= 0 ? 0 : props.brake >= 1 ? 1 : props.brake) * 100}%` }} />
         </View>
-        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{t("racing.pedals.brake")}</Text>
+        <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap compact:tracking-normal py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>{t("racing.pedals.brake")}</Text>
       </View>
     </View>
   );

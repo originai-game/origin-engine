@@ -56,7 +56,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
                   <View class={`absolute left-0 right-0 top-0 h-1.25 bg-chart-normal group-data-tier-easy/difficulty:bg-chart-easy group-data-tier-hard/difficulty:bg-chart-hard group-data-tier-expert/difficulty:bg-chart-expert group-data-tier-master/difficulty:bg-chart-master group-data-tier-special/difficulty:bg-fever`} />
                   <View class={`flex-col items-start grow gap-0.5 compact:flex-row compact:flex-wrap compact:items-center compact:gap-x-1`}>
                     <View class={`flex-row items-center flex-wrap gap-y-0.5 gap-x-1 max-w-full min-w-0 compact:flex-1 compact:basis-full`}>
-                      <Text class={`text-xs font-bold tracking-label uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal group-data-tier-easy/difficulty:text-chart-easy group-data-tier-hard/difficulty:text-chart-hard group-data-tier-expert/difficulty:text-chart-expert group-data-tier-master/difficulty:text-chart-master group-data-tier-special/difficulty:text-fever-ink data-selected:text-fg`}>
+                      <Text class={`text-xs font-bold tracking-label uppercase min-w-0 max-w-full whitespace-nowrap text-ellipsis overflow-hidden text-chart-normal group-data-tier-easy/difficulty:text-chart-easy group-data-tier-hard/difficulty:text-chart-hard group-data-tier-expert/difficulty:text-chart-expert group-data-tier-master/difficulty:text-chart-master group-data-tier-special/difficulty:text-fever-ink group-data-selected/difficulty:text-fg`}>
                         {l().label}
                       </Text>
                       <Show when={l().locked}>

@@ -70,7 +70,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
     <View class="flex-col items-center gap-y-6 max-w-full min-w-0 pointer-events-none text-fg compact:gap-y-4" role="group" label={t("arena.round.name")}>
       <View class="flex-row items-stretch justify-center gap-x-0.5 max-w-full min-w-0 compact:w-full compact:flex-wrap">
         <View
-          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 nine-panel-cut bg-glass py-1 px-4 compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2 ${packClass("Plate", "frame")}`}
+          class={`shrink basis-auto min-w-0 flex-row items-center justify-end gap-x-2 rounded-tl-card py-1 px-4 ${TEAM_PLATE} ${TEAM_A_PLATE} compact:flex-1 compact:basis-0 compact:flex-wrap compact:content-center compact:gap-x-1 compact:py-0.5 compact:px-2`}
           role="group"
           label={nameA()}
           data-local={props.localTeam == "a"}
@@ -107,8 +107,8 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
         </View>
       </View>
       <View class="w-full flex-row justify-center" role="status" live="assertive">
-        <Show when={ended()}>
-          <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 bg-glass nine-panel-cut compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
+        <Show when={ended() ? `${props.outcome}:${props.at ?? 0}` : false} keyed>
+          <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 bg-glass nine-panel-cut animate-stamp compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
             <Text
               class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold shadow-glow-lg shadow-gold data-lost:text-danger data-lost:shadow-glow-lg data-lost:shadow-critical`}
               data-lost={props.outcome == "lost"}

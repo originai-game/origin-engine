@@ -22,7 +22,7 @@ export interface RhythmScoreHudProps {
 export function RhythmScoreHud(props: RhythmScoreHudProps) {
   return (
     <View class={`flex-col items-end gap-0 max-w-full`} role="group" label={t("rhythm.hud.name")}>
-      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+      <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
         {t("rhythm.hud.score")}
       </Text>
       <Text class={`text-8xl compact:text-5xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg ${packClass("Count", "roll")}`}>
@@ -50,10 +50,10 @@ export function RhythmScoreHud(props: RhythmScoreHudProps) {
       </Show>
       <Show when={(props.best ?? 0) > 0}>
         <View class={`flex-row items-baseline justify-end gap-1 mt-0.5`}>
-          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+          <Text class={`text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
             {t("rhythm.hud.best")}
           </Text>
-          <Text class={`text-base font-bold tabular-nums whitespace-nowrap text-fg-muted py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+          <Text class={`text-base font-bold tabular-nums whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-fg-muted`}>
             {formatNumber(props.best ?? 0)}
           </Text>
           <Text

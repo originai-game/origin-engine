@@ -65,7 +65,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                     class={`shrink-0 w-1.25 h-5 bg-sheen compact:h-3.5`}
                     style={{ backgroundColor: r().color || undefined }}
                   />
-                  <Text class={`flex-1 min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg compact:text-caption`}>{r().name}</Text>
+                  <Text class={`flex-1 min-w-0 text-reading font-semibold whitespace-nowrap overflow-hidden text-fg group-data-player/srow:text-hud-accent-fg compact:text-caption`}>{r().name}</Text>
                   <Show when={r().state !== "racing"}>
                     <Text
                       class={`shrink-0 py-0 px-1.25 text-xs font-bold tracking-label uppercase whitespace-nowrap text-fg bg-well nine-chip-cut data-pitting:text-gold data-retired:text-foe-ink ${packClass("Chip", "frame")}`}
@@ -77,7 +77,7 @@ export function RacingStandings(props: RacingStandingsProps) {
                     </Text>
                   </Show>
                   <Show when={r().gap !== "" || (r().position === 1 && r().state !== "retired")}>
-                    <Text class={`shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg group-data-player/srow:text-gold-fg data-leader:text-fg-muted compact:text-caption`} data-leader={r().gap === ""}>
+                    <Text class={`shrink-0 text-reading font-bold tabular-nums whitespace-nowrap text-fg data-leader:text-fg-muted group-data-player/srow:text-hud-accent-fg compact:text-caption`} data-leader={r().gap === ""}>
                       {r().gap !== "" ? r().gap : t("racing.standings.leader")}
                     </Text>
                   </Show>

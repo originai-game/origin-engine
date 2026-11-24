@@ -67,7 +67,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
               <Text class={`min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{props.name}</Text>
             </Show>
             <Show when={(props.level ?? 0) > 0}>
-              <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-hud-accent-ink py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
+              <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")} text-hud-accent-ink`}>
                 {t("shooter.vitals.level", { level: props.level ?? 0 })}
               </Text>
             </Show>
@@ -90,7 +90,7 @@ export function ShooterVitals(props: ShooterVitalsProps) {
             valueMax={shieldMax()}
             valueNow={props.shield ?? 0}
           >
-            <View class="absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally" style={{ width: `${shieldShare() * 100}%` }}>
+            <View class={`absolute left-0 top-0 h-full bg-ally shadow-glow shadow-ally ${packClass("Bar", "fill")}`} style={{ width: `${shieldShare() * 100}%` }}>
               <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />
             </View>
             <View class="absolute inset-0 pointer-events-none">
@@ -108,9 +108,9 @@ export function ShooterVitals(props: ShooterVitalsProps) {
           valueMax={healthMax()}
           valueNow={props.health}
         >
-          <View class="absolute left-0 top-0 h-full bg-gold" style={{ width: `${ghostShare() * 100}%` }} />
+          <View class={`absolute left-0 top-0 h-full bg-gold ${packClass("Bar", "trail")}`} style={{ width: `${ghostShare() * 100}%` }} />
           <View
-            class={`absolute left-0 top-0 h-full bg-material-regular shadow-glow shadow-material-regular group-data-low/vitals:bg-danger group-data-low/vitals:shadow-glow group-data-low/vitals:shadow-foe`}
+            class={`absolute left-0 top-0 h-full bg-health shadow-glow shadow-health ${packClass("Bar", "fill")} group-data-low/vitals:bg-danger group-data-low/vitals:shadow-glow group-data-low/vitals:shadow-foe`}
             style={{ width: `${healthShare() * 100}%` }}
           >
             <View class="absolute left-0 right-0 top-0 h-21/50 bg-linear-to-b from-sheen to-transparent to-42%" />

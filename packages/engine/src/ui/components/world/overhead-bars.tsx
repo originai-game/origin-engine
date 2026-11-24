@@ -1,4 +1,4 @@
-import { For, Show, View, t } from "@origingame/engine/ui";
+import { For, Show, View, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
 
@@ -19,17 +19,16 @@ export interface OverheadBar {
 }
 
 export interface OverheadBarsProps {
-  /** The units' bars, keyed rows of { id, entity, at, value, max, side, resource, resourceMax }: entity the unit by its bits (0: at, a world point x y z); value its health out of max; side whose it is, own (green), ally (blue), enemy (red) or neutral (yellow); resource out of resourceMax a thin line under the health (mana, energy), resourceMax 0 draws none. Thousands are fine: each bar is a GPU mass element of a fixed size (never under 30 × 3 px) that keeps the ghost of a hit. */
+  /** The units' bars, keyed rows of { id, entity, at, value, max, side, resource, resourceMax }: entity the unit by its bits (0: at, a world point x y z); value its health out of max; side whose it is, own (green), ally (blue), enemy (red) or neutral (yellow); resource out of resourceMax a thin line under the health (mana, energy), resourceMax 0 draws none. */
   bars?: ReadonlyArray<OverheadBar>;
   /** World units over each unit's point (its head). */
   height?: number;
 }
 
 /**
- * A health bar over every unit in the side's colour, a thin resource line
- * under it. Read only. The old anchors were GPU mass elements (one
- * instanced draw for a battle's thousands, a hit leaving a cream ghost):
- * each bar is now a text-free pair of nodes and the ghost is dropped.
+ * A health bar over every unit in the side's colour with a draining trail
+ * ghost and an optional thin resource line grouped under one world anchor.
+ * Read only.
  */
 export function OverheadBars(props: OverheadBarsProps) {
   const height = () => props.height ?? 0;
@@ -37,18 +36,28 @@ export function OverheadBars(props: OverheadBarsProps) {
     <View role="group" label={t("world.bars.name")}>
       <For each={props.bars ?? []} key={(b) => b.id}>
         {(b) => {
-          const point = b().at.split(/\s+/).map(Number) as [number, number, number];
-          const anchor = b().entity ? (b().entity as Entity) : point;
+          const point = () => b().at.split(/\s+/).map(Number) as [number, number, number];
+          const anchor = () => (b().entity ? (b().entity as Entity) : point());
           const share = () => (b().max > 0 ? Math.min(Math.max(b().value / b().max, 0), 1) : 0);
+          const resourceShare = () =>
+            (b().resourceMax ?? 0) > 0
+              ? Math.min(Math.max((b().resource ?? 0) / (b().resourceMax ?? 1), 0), 1)
+              : 0;
           return (
-            <View>
-              <View
-                anchor={anchor}
-                lift={[0, height(), 0]}
-                class="-translate-x-1/2 relative h-1.25 w-11.5 bg-track ring ring-rim"
-              >
+            <View
+              anchor={anchor()}
+              lift={[0, height(), 0]}
+              occlusion="fade"
+              declutter="stack"
+              class="-translate-x-1/2 flex-col items-center gap-y-0.5"
+            >
+              <View class="relative h-1.25 w-11.5 overflow-hidden bg-track ring ring-rim">
                 <View
-                  class="absolute left-0 top-0 h-full bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold"
+                  class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`}
+                  style={{ width: `${share() * 100}%` }}
+                />
+                <View
+                  class={`absolute left-0 top-0 h-full bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold ${packClass("Bar", "fill")}`}
                   data-ally={b().side === "ally"}
                   data-enemy={b().side === "enemy"}
                   data-neutral={b().side === "neutral"}
@@ -56,14 +65,10 @@ export function OverheadBars(props: OverheadBarsProps) {
                 />
               </View>
               <Show when={(b().resourceMax ?? 0) > 0}>
-                <View
-                  anchor={anchor}
-                  lift={[0, height() - 0.12, 0]}
-                  class="-translate-x-1/2 relative h-0.75 w-9.25 bg-track ring ring-rim"
-                >
+                <View class="relative h-0.75 w-9.25 overflow-hidden bg-track ring ring-rim">
                   <View
-                    class="absolute left-0 top-0 h-full bg-mana"
-                    style={{ width: `${(b().resourceMax ?? 0) > 0 ? Math.min(Math.max((b().resource ?? 0) / (b().resourceMax ?? 1), 0), 1) * 100 : 0}%` }}
+                    class={`absolute left-0 top-0 h-full bg-mana ${packClass("Bar", "fill")}`}
+                    style={{ width: `${resourceShare() * 100}%` }}
                   />
                 </View>
               </Show>

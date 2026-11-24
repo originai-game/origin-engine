@@ -58,11 +58,24 @@ export function Waypoint(props: WaypointProps) {
       data-way-left={edge() === "left"}
       data-way-right={edge() === "right"}
     >
-      <View class="relative m-1 size-4.25 rotate-45 bg-gold shadow-glow shadow-gold ring-regular ring-well group-data-danger:bg-danger group-data-danger:shadow-glow group-data-danger:shadow-foe group-data-danger:ring-regular group-data-danger:ring-well group-data-ally:bg-success group-data-ally:shadow-glow group-data-ally:shadow-boon group-data-ally:ring-regular group-data-ally:ring-well group-data-loot:bg-epic group-data-loot:shadow-glow group-data-loot:shadow-xp group-data-loot:ring-regular group-data-loot:ring-well group-data-ping:bg-rare group-data-ping:shadow-glow group-data-ping:shadow-info group-data-ping:ring-regular group-data-ping:ring-well group-data-ping:animate-ping group-data-near:shadow-glow-lg group-data-near:shadow-gold group-data-near:ring-regular group-data-near:ring-well">
-        <View class="absolute inset-8/25 bg-tile" />
+      <View class="relative flex-row items-center justify-center gap-x-1">
+        <View class="hidden group-data-way-left:block group-data-edge-left:block size-2 rotate-45 border-l-regular border-b-regular border-gold group-data-danger:border-danger group-data-ally:border-success group-data-loot:border-epic group-data-ping:border-rare" />
+        <View class="relative flex-col items-center justify-center gap-y-1">
+          <View class="hidden group-data-edge-top:block size-2 rotate-45 border-l-regular border-t-regular border-gold group-data-danger:border-danger group-data-ally:border-success group-data-loot:border-epic group-data-ping:border-rare" />
+          <View class="relative m-1 size-4.25">
+            <Show when={kind() === "ping"}>
+              <View class="absolute inset-0 rotate-45 bg-rare opacity-soft animate-ping pointer-events-none" />
+            </Show>
+            <View class="absolute inset-0 rotate-45 bg-gold shadow-glow shadow-gold ring-regular ring-well group-data-danger:bg-danger group-data-danger:shadow-glow group-data-danger:shadow-foe group-data-danger:ring-regular group-data-danger:ring-well group-data-ally:bg-success group-data-ally:shadow-glow group-data-ally:shadow-boon group-data-ally:ring-regular group-data-ally:ring-well group-data-loot:bg-epic group-data-loot:shadow-glow group-data-loot:shadow-xp group-data-loot:ring-regular group-data-loot:ring-well group-data-ping:bg-rare group-data-ping:shadow-glow group-data-ping:shadow-info group-data-ping:ring-regular group-data-ping:ring-well group-data-near:shadow-glow-lg group-data-near:shadow-gold group-data-near:ring-regular group-data-near:ring-well">
+              <View class="absolute inset-8/25 bg-tile" />
+            </View>
+          </View>
+          <View class="hidden group-data-edge-bottom:block size-2 rotate-45 border-r-regular border-b-regular border-gold group-data-danger:border-danger group-data-ally:border-success group-data-loot:border-epic group-data-ping:border-rare" />
+        </View>
+        <View class="hidden group-data-way-right:block group-data-edge-right:block size-2 rotate-45 border-r-regular border-t-regular border-gold group-data-danger:border-danger group-data-ally:border-success group-data-loot:border-epic group-data-ping:border-rare" />
       </View>
       <Show when={(label() !== "" && range() !== "far") || (distance() !== "")}>
-        <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-way-right:items-end">
+        <View class="flex-col items-center gap-y-0.5 min-w-0 group-data-way-left:items-start group-data-edge-left:items-start group-data-way-right:items-end group-data-edge-right:items-end">
           <Show when={label() !== "" && range() !== "far"}>
             <Text class={`min-w-0 max-w-50 py-0.25 px-1.5 text-2xs leading-tight font-bold tracking-wide uppercase whitespace-nowrap truncate text-fg nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>{label()}</Text>
           </Show>
