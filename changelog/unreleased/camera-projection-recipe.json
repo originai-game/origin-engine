@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "The physical projection guide recipe now checks lens shift from a system after the camera tick, so its assertion is recorded by og test."
+  ]
+}

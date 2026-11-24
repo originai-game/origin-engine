@@ -297,9 +297,21 @@ existing height and do not become thin-lens cameras. `lensStatus` reports
 artistic, physical, invalid or orthographic after the camera system runs.
 
 ```ts recipe ticks=2
-import { og } from "@origingame/engine";
+import { defineSystem, og } from "@origingame/engine";
+
+const Check = defineSystem("CheckShift", { reads: [og.Camera], writes: [] }, (_q, time, world) => {
+  if (time.tick === 0) return;
+  const result = world.resource(og.Camera);
+  if (!result.ok) throw new Error(result.reason);
+  const axis = result.value.worldToScreen({ x: 0, y: 0, z: -5 })!;
+  const view = og.ui.viewport(world);
+  og.assert.always(Math.abs(axis.x / view.width - 0.3) < 0.001
+    && Math.abs(axis.y / view.height - 0.4) < 0.001,
+    "positive shift moves the viewed window, not the camera", { axis });
+});
 
 export default og.game({
+  systems: [Check],
   start(world) {
     const result = world.resource(og.Camera);
     if (!result.ok) throw new Error(result.reason);
@@ -311,11 +323,6 @@ export default og.game({
     camera.sensorSize = { x: 36, y: 24 };
     camera.gateFit = "vertical";
     camera.lensShift = { x: 0.2, y: -0.1 };
-    const axis = camera.worldToScreen({ x: 0, y: 0, z: -5 })!;
-    const view = og.ui.viewport(world);
-    og.assert.always(Math.abs(axis.x / view.width - 0.3) < 0.001
-      && Math.abs(axis.y / view.height - 0.4) < 0.001,
-      "positive shift moves the viewed window, not the camera", { axis });
   },
 });
 ```
