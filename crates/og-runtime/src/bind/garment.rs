@@ -20,7 +20,9 @@ use crate::present::fx::{FxState, SkinnedModel};
 use glam::{Mat4, Vec3};
 use og_core::Reflect;
 use og_ecs::{Entity, QueryDesc, SystemDesc, World};
-use og_physics::{Garment, GarmentPose, GarmentRig, Parent, PhysicsSystem, Transform};
+use og_physics::{
+    Garment, GarmentCapsule, GarmentPose, GarmentRig, Parent, PhysicsSystem, Transform,
+};
 use og_render::{MeshHandle, RenderScene, SkinData};
 use std::collections::BTreeMap;
 
@@ -273,6 +275,35 @@ pub(crate) fn schedule(
                     );
                     let world = Mat4::from_scale_rotation_translation(s, r, p);
                     let (points, normals) = pose(w, &out.palette);
+                    let mut capsules = Vec::new();
+                    if g.body_radius > 0.0 {
+                        let skeleton = ctx.get::<og_anim::Skeleton>(e)?;
+                        if let Some(skeleton) = anim.skeleton(skeleton.asset)
+                            && let Some(skin) = skeleton.skins.get(out.skin as usize)
+                        {
+                            let radius = g.body_radius * s.abs().max_element();
+                            for &i in &skin.joints {
+                                let mut parent = skeleton.nodes[i as usize].parent;
+                                while parent != og_anim::NONE && !skin.joints.contains(&parent) {
+                                    parent = skeleton.nodes[parent as usize].parent;
+                                }
+                                if parent == og_anim::NONE {
+                                    continue;
+                                }
+                                let (Some(a), Some(b)) =
+                                    (out.nodes.get(parent as usize), out.nodes.get(i as usize))
+                                else {
+                                    continue;
+                                };
+                                capsules.push(GarmentCapsule {
+                                    a: world.transform_point3(a.w_axis.truncate()),
+                                    b: world.transform_point3(b.w_axis.truncate()),
+                                    radius_a: radius,
+                                    radius_b: radius,
+                                });
+                            }
+                        }
+                    }
                     physics.set_garment_pose(
                         e,
                         GarmentPose {
@@ -282,6 +313,7 @@ pub(crate) fn schedule(
                                 .map(|n| (r * *n).normalize_or_zero())
                                 .collect(),
                             scale: s.abs().max_element(),
+                            capsules,
                         },
                     );
                     rs.fx.garments.posed.insert(e.to_bits(), (asset, g.mesh, g));

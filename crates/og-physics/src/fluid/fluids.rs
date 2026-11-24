@@ -14,34 +14,22 @@ pub(super) fn fluid_set(
     taken: &mut [(u64, FluidState)],
     dt: f32,
     g: Vec2,
-    forces: &og_env::force::Forces,
-    colliders: &rp::ColliderSet,
+    colliders: &PointWorld<'_>,
 ) {
     let grouped = members.len() > 1;
-    let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
-    let (mut z, mut reach) = (0.0f32, 0.0f32);
+    let mut z = 0.0;
     for (slot, ((_, state), &k)) in taken.iter_mut().zip(members).enumerate() {
-        let (_, position, fluid) = &scene.fluids[k];
+        let (_, position, _) = &scene.fluids[k];
         if grouped {
             state.join(slot as u32);
         } else {
             state.leave();
         }
-        for p in &state.positions {
-            min = min.min(*p);
-            max = max.max(*p);
-        }
         if slot == 0 {
             z = position.z;
         }
-        reach = reach.max(fluid.radius * 2.0);
     }
-    let near = Near::around(
-        colliders,
-        Vec3::new(min.x, min.y, z),
-        Vec3::new(max.x, max.y, z),
-        reach,
-    );
+    let near = Near::new(colliders);
     let mut list: Vec<crate::fluid::Body<'_, Vec2>> = taken
         .iter_mut()
         .zip(members.iter())
@@ -50,14 +38,6 @@ pub(super) fn fluid_set(
             state.body(fluid, Vec2::new(position.x, position.y))
         })
         .collect();
-    // The force fields at the middle of the set, with gravity.
-    let field = if min.x > max.x {
-        Vec3::ZERO
-    } else {
-        let middle = (min + max) * 0.5;
-        forces.at(Vec3::new(middle.x, middle.y, z))
-    };
-    let g = g + Vec2::new(field.x, field.y);
     crate::fluid::step(&mut list, dt, g, z, &near);
 }
 
@@ -69,7 +49,9 @@ pub(super) fn fluids3(
     scene: &Scene,
     settings: &Physics,
     forces: &og_env::force::Forces,
+    air: &og_env::air::Air,
     dt: f32,
+    reactions: &Reactions,
     sim: &mut Sim,
 ) {
     use crate::fluid::Fluid3State;
@@ -104,7 +86,7 @@ pub(super) fn fluids3(
         let rebuild = sim
             .fluids3
             .get(&key)
-            .is_none_or(|s| s.count != fluid.count || s.seed != fluid.seed);
+            .is_none_or(|s| s.count != fluid.count || s.seed != fluid.seed || s.size != fluid.size);
         if rebuild {
             sim.fluids3.insert(key, Fluid3State::new(fluid, *position));
         }
@@ -156,44 +138,34 @@ pub(super) fn fluids3(
         })
         .sum();
     let per_task = crate::lanes::now().fluid_work;
-    let colliders = &sim.world.colliders;
+    let point_world = PointWorld {
+        world: &sim.world,
+        forces,
+        air,
+        reactions,
+    };
+    let colliders = &point_world;
     let gravity = flat(settings.gravity);
     let soft = crate::lanes::Soft::Fluids3d;
     crate::lanes::soft_each(soft, &mut jobs, work, per_task, |job| {
         let (members, taken) = (job.0, &mut job.1);
         let grouped = members.len() > 1;
-        let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-        let mut reach = 0.0f32;
         for (slot, ((_, state), &k)) in taken.iter_mut().zip(members).enumerate() {
-            let (_, position, fluid) = &scene.fluids3[k];
+            let (e, position, fluid) = &scene.fluids3[k];
             if grouped {
                 state.join(slot as u32);
             } else {
                 state.leave();
             }
-            for p in &state.positions {
-                min = min.min(*p);
-                max = max.max(*p);
-            }
-            // The emitter's particles appear this tick: its cube too.
-            if fluid.emit_rate > 0.0 {
-                let at = *position + fluid.emit_offset;
-                let r = Vec3::splat(fluid.emit_radius.max(0.0));
-                min = min.min(at - r);
-                max = max.max(at + r);
-            }
-            reach = reach.max(fluid.radius.max(crate::fluid::MIN_RADIUS) * 2.0);
+            let rotation = scene
+                .fluid_rotations
+                .get(&e.to_bits())
+                .copied()
+                .unwrap_or(Quat::IDENTITY);
+            // Truncation must run even for an empty, disabled emitter.
+            state.emit(fluid, *position, rotation, dt);
         }
-        if min.x > max.x {
-            return;
-        }
-        // A particle moves at most half the radius a substep.
-        let substeps = substeps_of(members) as f32;
-        let near = Near::around(colliders, min, max, reach * (1.0 + substeps * 0.25));
-        for ((_, state), &k) in taken.iter_mut().zip(members.iter()) {
-            let (_, position, fluid) = &scene.fluids3[k];
-            state.emit(fluid, *position, dt);
-        }
+        let near = Near::new(colliders);
         let mut list: Vec<crate::fluid::Body<'_, Vec3>> = taken
             .iter_mut()
             .zip(members.iter())
@@ -202,13 +174,16 @@ pub(super) fn fluids3(
                 state.body(fluid, *position)
             })
             .collect();
-        // The force fields at the middle of the set, with gravity.
-        let gravity = gravity + forces.at((min + max) * 0.5);
         crate::fluid::step(&mut list, dt, gravity, 0.0, &near);
         drop(list);
         for ((_, state), &k) in taken.iter_mut().zip(members.iter()) {
-            let (_, position, fluid) = &scene.fluids3[k];
-            state.sink(fluid, *position);
+            let (e, position, fluid) = &scene.fluids3[k];
+            let rotation = scene
+                .fluid_rotations
+                .get(&e.to_bits())
+                .copied()
+                .unwrap_or(Quat::IDENTITY);
+            state.sink(fluid, *position, rotation);
         }
     });
     for (_, taken) in jobs {

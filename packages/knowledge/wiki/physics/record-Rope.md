@@ -6,9 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Rope` (component)
 
-A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state.
 
-Also known as: chain, cable, swinging lantern, hanging rope, Verlet rope
+Also known as: chain, cable, swinging lantern, hanging rope, XPBD rope
 
 Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `Rope`.
 
@@ -19,8 +19,13 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 | `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The start's offset from the entity's position (world axes). |
 | `end` | `Entity` | `0` | — | — | — | The entity the far end is tied to; 0 leaves it free. |
 | `endOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | The far end's offset from `end`'s position. |
-| `iterations` | `number` | `12` | 1 … 64 | — | tunable | Constraint passes per step: more is stiffer, at more cost. |
-| `damping` | `number` | `0.6` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
+| `stiffness` | `number` | `100000` | ≥ 0 | — | tunable | Physical XPBD axial stiffness in N/m; compliance is 1/stiffness (0: constraints off). |
+| `mass` | `number` | `0.1` | ≥ 0 | `kg` | — | Mass of each free point in kg (0: fixed). |
+| `substeps` | `number` | `4` | 0 … 16 | — | — | Small steps per tick (0: simulation off). |
+| `coupling` | `boolean` | `false` | — | — | — | Apply endpoint and solid contact reactions to dynamic bodies. |
+| `breakForce` | `number` | `0` | ≥ 0 | — | — | Break links above this force in N (0: unbreakable). Broken links stay broken until rebuilt. |
+| `iterations` | `number` | `12` | 1 … 64 | — | tunable | XPBD constraint passes per substep; stiffness sets physical compliance. |
+| `damping` | `number` | `0.6` | 0 … 100 | `perSecond` | tunable | Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second). |
 | `radius` | `number` | `0.05` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
@@ -30,8 +35,8 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 
 ```ogt
 component Rope {
-  aliases "chain, cable, swinging lantern, hanging rope, Verlet rope"
-  doc "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`."
+  aliases "chain, cable, swinging lantern, hanging rope, XPBD rope"
+  doc "A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state."
   field segments u32 "The number of links (points minus one)." {
     default 16
     min 1
@@ -51,13 +56,32 @@ component Rope {
     worldspace none
     unit m
   }
-  field iterations u32 "Constraint passes per step: more is stiffer, at more cost." {
+  field stiffness f32 "Physical XPBD axial stiffness in N/m; compliance is 1/stiffness (0: constraints off)." {
+    default 100000
+    min 0
+    tunable true
+  }
+  field mass f32 "Mass of each free point in kg (0: fixed)." {
+    default 0.1
+    min 0
+    unit kg
+  }
+  field substeps u32 "Small steps per tick (0: simulation off)." {
+    default 4
+    min 0
+    max 16
+  }
+  field coupling bool "Apply endpoint and solid contact reactions to dynamic bodies."
+  field breakForce f32 "Break links above this force in N (0: unbreakable). Broken links stay broken until rebuilt." {
+    min 0
+  }
+  field iterations u32 "XPBD constraint passes per substep; stiffness sets physical compliance." {
     default 12
     min 1
     max 64
     tunable true
   }
-  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+  field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
     default 0.6
     min 0
     max 100

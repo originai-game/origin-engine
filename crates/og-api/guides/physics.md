@@ -376,27 +376,40 @@ that do not meet (a ghost car beside the player) pass through each other.
 
 ## 8. Soft bodies, cloth, fluids, ragdolls and buoyancy
 
-Every one of these is one-way: it is pushed by colliders and pushes nothing
-back (tie bodies together with a rope joint, not og.Rope).
+CPU soft bodies and particle fluids exchange contact momentum with dynamic
+bodies. Enable a rope's coupling when it must carry a rigid load; a purely
+decorative rope can leave coupling off. Visual simulations never feed back
+into gameplay.
 
 | Component | Use for | Cost |
 |---|---|---|
-| Rope | cables, vines, chains drawn as a strip | segments × iterations; cheap |
+| Rope | cables, vines, chains drawn as a strip | segments × iterations × substeps |
 | Cloth | flags, banners, curtains, sails | columns × rows × iterations × substeps; self-collision (`thickness`) costs most |
 | Garment | skirts, capes, coat tails on a skinned character | the mesh's points × iterations |
 | SoftBody | jelly, water balloons, slimes | points × iterations × substeps |
 | Fluid2D | 2D water, lava, mixing liquids | grows with `count` |
-| Fluid3D | pools, pours, dam breaks | about 0.9 ms CPU a tick for 2,000 particles at 1 substep, 1.8 ms at 2, native and wasm alike; the surface about 1.1 ms GPU (Apple M4 Pro, a third of a 1280×720 frame), growing with the pixels it covers |
+| Fluid3D | pools, pours, dam breaks | particles × neighbours × solver iterations × substeps; the drawn surface also grows with screen coverage |
 | Ragdoll | death falls, hit reactions | a capsule body per bone |
 | Buoyancy | boats, crates and barrels floating | `samples`³ points per body |
 
 Fluid3D draws as a screen-space surface: the particles' depth smoothed into
 one surface that refracts what is behind by its thickness, reflects the sky
 and is lit by the scene's lights. Keep a scene's 3D fluids to a few thousand
-simulated particles; the interaction
-`radius` does not change the cost, the particle count and `substeps` do.
-A SoftBody at detail 3 (642 points) with stiffness below 1 needs more than
-the default 8 iterations to hold its shape.
+simulated particles. Larger interaction radii increase the neighbour count.
+The CPU solver uses PBF density projection followed by stable XSPH velocity
+smoothing; use more small steps for fast motion and more density iterations
+for deep columns. Rest density is a weighted particle count, including the
+particle itself; multiplying it by material density gives the target mass
+density. Retune materials rather than copying DDR coefficients.
+
+CPU cloth, garments, ropes and soft volumes use small-step XPBD. Tune the
+material's physical stiffness rather than using iteration count as a
+stiffness control; substeps and iterations still determine how well coupled
+constraints converge. Air forces depend on relative velocity and the
+chosen drag/lift coefficients, so a sheet can move through still air.
+Self-contact has no speed cap: choose steps small enough to resolve folds.
+Local tetrahedral volume constraints are useful for a compressed soft
+volume; the surface-centroid fan should have its centroid inside the body.
 
 **Simulated or visual.** Cloth, SoftBody, Garment and Fluid3D take
 `simulation`. `gameplay` (the default) runs in the tick, on the CPU:
@@ -442,9 +455,10 @@ a tick, took 4.9 ms of GPU a frame with its surface.
 alpha 0 stays on the skinned pose, red times alpha between 0 and 1 scales
 `maxDistance`, white frees it. For a textured garment paint the alpha over a
 white colour, since the red would tint it and an opaque material does not
-show the alpha. `backstop` 0 keeps it out of the body; with `radius` above 0
-the character's own collider counts, so keep that collider inside the body
-or leave `radius` 0. The model draws the garment where the simulation leaves
+show the alpha. Use spherical backstops for local skin clearance and
+skeleton capsules for limbs and the torso. Leave their radii zero when
+those contacts are not wanted. With solid collision enabled the character's
+own collider counts, so keep that collider inside the body. The model draws the garment where the simulation leaves
 it, with motion vectors for TAA.
 
 **Ragdolls.** Build the rig once with `og.physics.ragdollRigFromSkeleton`

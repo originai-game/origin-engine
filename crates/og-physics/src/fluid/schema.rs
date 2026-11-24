@@ -6,20 +6,19 @@ use og_core::glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 
 /// A 2D particle fluid (any profile, in the xy plane): `count` particles
-/// spawned in a `size` box centred on the entity, simulated with double
-/// density relaxation (Clavet et al. 2005: pressure, near pressure,
-/// viscosity) on a fixed grid in a fixed order, so it is deterministic and
-/// part of the og.physics state block. Particles collide with every solid
-/// collider (pushed out of bodies; they push nothing back) and stay inside
+/// spawned in a `size` box centred on the entity, simulated with PBF
+/// (Macklin & Müller 2013), XSPH viscosity and vorticity confinement in
+/// canonical particle order. Particles exchange impulses with dynamic
+/// colliders and stay inside
 /// `bounds` around the entity when it is set. Fluids of one `group`
 /// interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the
 /// particles blurred into a field the renderer thresholds into one surface
 /// of `color`, on sprite layer `layer`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Fluid2D")]
+#[reflect(name = "og.Fluid2D", version = 2)]
 pub struct Fluid2D {
     /// How many particles (spawned when the component appears or count changes).
-    #[reflect(min = 1, max = 8192, default = 1000)]
+    #[reflect(min = 0, max = 8192, default = 1000)]
     pub count: u32,
     /// The spawn box, centred on the entity.
     #[reflect(unit = "m", default = [4, 3])]
@@ -30,16 +29,16 @@ pub struct Fluid2D {
     /// The interaction radius: particles closer than this push and drag each other.
     #[reflect(min = 0.01, unit = "m", default = 0.18, tunable)]
     pub radius: f32,
-    /// The density it settles at (neighbours within radius, weighted).
-    #[reflect(name = "restDensity", min = 0, default = 1, tunable)]
+    /// Target poly6 count including self, multiplied by material density (0: pressure off).
+    #[reflect(name = "restDensity", min = 0, default = 2, tunable)]
     pub rest_density: f32,
-    /// The pressure's strength (above about 0.15 it gets springy, then unstable).
-    #[reflect(min = 0, default = 0.1, tunable)]
+    /// PBF density relaxation fraction per iteration (0: off).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
     pub stiffness: f32,
-    /// The near pressure's strength (keeps particles apart, gives surface tension).
-    #[reflect(name = "nearStiffness", min = 0, default = 0.5, tunable)]
+    /// Dimensionless PBF artificial pressure s_corr coefficient (0: off).
+    #[reflect(name = "nearStiffness", min = 0, default = 0.001, tunable)]
     pub near_stiffness: f32,
-    /// Linear viscosity (honey above 1).
+    /// Stable, mass-conserving XSPH velocity smoothing rate.
     #[reflect(min = 0, max = 4, default = 0.15, tunable)]
     pub viscosity: f32,
     /// Fluids sharing a group above 0 push, drag and (by `mixing`) mix with
@@ -62,6 +61,12 @@ pub struct Fluid2D {
     /// Simulation steps per tick.
     #[reflect(min = 1, max = 8, default = 2)]
     pub substeps: u32,
+    /// PBF density projection passes per substep (0: pressure off).
+    #[reflect(name = "solverIterations", min = 0, max = 64, default = 3)]
+    pub solver_iterations: u32,
+    /// Vorticity confinement acceleration coefficient (0: off).
+    #[reflect(min = 0, tunable)]
+    pub vorticity: f32,
     /// The seed of the spawn jitter.
     pub seed: u32,
     /// The surface's linear colour.
@@ -90,15 +95,17 @@ impl Default for Fluid2D {
             size: Vec2::new(4.0, 3.0),
             bounds: Vec2::ZERO,
             radius: 0.18,
-            rest_density: 1.0,
-            stiffness: 0.1,
-            near_stiffness: 0.5,
+            rest_density: 2.0,
+            stiffness: 1.0,
+            near_stiffness: 0.001,
             viscosity: 0.15,
             group: 0,
             density: 1.0,
             mixing: 0.0,
             gravity_scale: 1.0,
             substeps: 2,
+            solver_iterations: 3,
+            vorticity: 0.0,
             seed: 0,
             color: Vec3::new(0.15, 0.45, 0.95),
             opacity: 0.9,
@@ -111,12 +118,9 @@ impl Default for Fluid2D {
 }
 
 /// A 3D particle fluid (the 3D profile): `count` particles spawned in a
-/// `size` box centred on the entity, simulated with double density
-/// relaxation (Clavet et al. 2005: pressure, near pressure that gives
-/// surface tension, viscosity) over a spatial hash in a fixed order, so it
-/// is deterministic and part of the og.physics state block. Particles
-/// collide with every solid collider, the terrain's height field included
-/// (pushed out; they push nothing back), and stay inside `bounds` around
+/// `size` box centred on the entity, simulated with deterministic PBF,
+/// XSPH viscosity and vorticity confinement. Particles exchange impulses
+/// with dynamic colliders, the terrain's height field included, and stay inside `bounds` around
 /// the entity when it is set. An emitter adds particles at `emitRate` up
 /// to `maxCount`; a sink box removes those that enter it. Fluids of one
 /// `group` interact: by `density` they layer, by `mixing` they blend.
@@ -124,7 +128,7 @@ impl Default for Fluid2D {
 /// surface, refracting what is behind by its thickness and reflecting the
 /// sky, lit by the scene's lights.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Fluid3D", version = 3)]
+#[reflect(name = "og.Fluid3D", version = 4)]
 pub struct Fluid3D {
     /// How many particles to spawn in the box (when the component appears
     /// or count or seed changes; 0: none, the emitter fills it). The tick
@@ -140,18 +144,18 @@ pub struct Fluid3D {
     pub bounds: Vec3,
     /// The interaction radius: particles closer than this push and drag
     /// each other. Cost grows with the particles, not the radius.
-    #[reflect(min = 0.02, unit = "m", default = 0.5, tunable)]
+    #[reflect(min = 0.02, unit = "m", default = 0.2, tunable)]
     pub radius: f32,
-    /// The density it settles at (neighbours within radius, weighted).
-    #[reflect(name = "restDensity", min = 0, default = 10, tunable)]
+    /// Target poly6 count including self, multiplied by material density (0: pressure off).
+    #[reflect(name = "restDensity", min = 0, default = 2, tunable)]
     pub rest_density: f32,
-    /// The pressure's strength (above about 0.05 it jitters, then springs apart).
-    #[reflect(min = 0, default = 0.02, tunable)]
+    /// PBF density relaxation fraction per iteration (0: off).
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
     pub stiffness: f32,
-    /// The near pressure's strength (keeps particles apart, gives surface tension).
-    #[reflect(name = "nearStiffness", min = 0, default = 0.4, tunable)]
+    /// Dimensionless PBF artificial pressure s_corr coefficient (0: off).
+    #[reflect(name = "nearStiffness", min = 0, default = 0.001, tunable)]
     pub near_stiffness: f32,
-    /// Linear viscosity (it also calms the surface; honey above 1).
+    /// Stable, mass-conserving XSPH velocity smoothing rate.
     #[reflect(min = 0, max = 4, default = 0.4, tunable)]
     pub viscosity: f32,
     /// Fluids sharing a group above 0 push, drag and (by `mixing`) mix with
@@ -173,24 +177,30 @@ pub struct Fluid3D {
     /// Simulation steps per tick (each costs a full pass over the particles).
     #[reflect(min = 1, max = 8, default = 2)]
     pub substeps: u32,
+    /// PBF density projection passes per substep (0: pressure off).
+    #[reflect(name = "solverIterations", min = 0, max = 64, default = 3)]
+    pub solver_iterations: u32,
+    /// Vorticity confinement acceleration coefficient (0: off).
+    #[reflect(min = 0, tunable)]
+    pub vorticity: f32,
     /// The seed of the spawn and emitter jitter.
     pub seed: u32,
     /// The most particles alive at once (the emitter stops there).
-    #[reflect(name = "maxCount", min = 1, max = 262144, default = 8192)]
+    #[reflect(name = "maxCount", min = 0, max = 262144, default = 8192)]
     pub max_count: u32,
     /// Particles the emitter adds per second (0: no emitter).
     #[reflect(name = "emitRate", min = 0, max = 20000, tunable)]
     pub emit_rate: f32,
-    /// Where the emitter is, from the entity (world axes).
+    /// The emitter's offset in entity-local axes.
     #[reflect(name = "emitOffset", unit = "m")]
     pub emit_offset: Vec3,
-    /// The velocity emitted particles start with.
+    /// Emitted velocity in entity-local axes, rotated into the world.
     #[reflect(name = "emitVelocity", unit = "m/s", tunable)]
     pub emit_velocity: Vec3,
     /// The half-size of the cube new particles appear in around the emitter.
     #[reflect(name = "emitRadius", min = 0, unit = "m", default = 0.1, tunable)]
     pub emit_radius: f32,
-    /// The sink's centre, from the entity (world axes).
+    /// The sink's centre in entity-local axes; the box rotates with it.
     #[reflect(name = "sinkOffset", unit = "m")]
     pub sink_offset: Vec3,
     /// The sink box: particles that enter it are removed (0 0 0: no sink).
@@ -229,15 +239,17 @@ impl Default for Fluid3D {
             size: Vec3::new(2.0, 1.0, 2.0),
             bounds: Vec3::ZERO,
             radius: 0.2,
-            rest_density: 10.0,
-            stiffness: 0.02,
-            near_stiffness: 0.4,
+            rest_density: 2.0,
+            stiffness: 1.0,
+            near_stiffness: 0.001,
             viscosity: 0.4,
             group: 0,
             density: 1.0,
             mixing: 0.0,
             gravity_scale: 1.0,
             substeps: 2,
+            solver_iterations: 3,
+            vorticity: 0.0,
             seed: 0,
             max_count: 8192,
             emit_rate: 0.0,

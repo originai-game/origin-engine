@@ -10,4 +10,4 @@ mod solve;
 
 pub(crate) use fluid2d::FluidState;
 pub(crate) use fluid3d::Fluid3State;
-pub(crate) use solve::{Body, GROUP_SIZE, MIN_RADIUS, step};
+pub(crate) use solve::{Body, GROUP_SIZE, step};

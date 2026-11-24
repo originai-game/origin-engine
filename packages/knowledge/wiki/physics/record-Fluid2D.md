@@ -6,25 +6,27 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Fluid2D` (component)
 
-A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`.
+Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix; solid contacts exchange impulses with dynamic bodies. Count, seed or size changes rebuild the spawn lattice. Particles and mix are world state; drawn as metaballs on layer.
 
 Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value type is `Fluid2D`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `count` | `number` | `1000` | 1 … 8192 | — | — | How many particles (spawned when the component appears or count changes). |
+| `count` | `number` | `1000` | 0 … 8192 | — | — | How many particles (spawned when the component appears or count changes). |
 | `size` | `Vector2` | `{ x: 4, y: 3 }` | — | `m` | — | The spawn box, centred on the entity. |
 | `bounds` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `none` | The container around the entity (0 0: none; colliders still hold it). |
 | `radius` | `number` | `0.18` | ≥ 0.01 | `m` | tunable | The interaction radius: particles closer than this push and drag each other. |
-| `restDensity` | `number` | `1` | ≥ 0 | — | tunable | The density it settles at (neighbours within radius, weighted). |
-| `stiffness` | `number` | `0.1` | ≥ 0 | — | tunable | The pressure's strength (above about 0.15 it gets springy, then unstable). |
-| `nearStiffness` | `number` | `0.5` | ≥ 0 | — | tunable | The near pressure's strength (keeps particles apart, gives surface tension). |
-| `viscosity` | `number` | `0.15` | 0 … 4 | — | tunable | Linear viscosity (honey above 1). |
+| `restDensity` | `number` | `2` | ≥ 0 | — | tunable | Target poly6 count including self, multiplied by material density (0: pressure off). |
+| `stiffness` | `number` | `1` | 0 … 1 | — | tunable | PBF density relaxation fraction per iteration (0: off). |
+| `nearStiffness` | `number` | `0.001` | ≥ 0 | — | tunable | Dimensionless PBF artificial pressure s_corr coefficient (0: off). |
+| `viscosity` | `number` | `0.15` | 0 … 4 | — | tunable | Stable, mass-conserving XSPH velocity smoothing rate. |
 | `group` | `number` | `0` | — | — | — | Fluids sharing a group above 0 push, drag and (by `mixing`) mix with each other as one fluid, at most four to a group (in entity order; a fifth is simulated alone), and are drawn as one surface whose colour follows the mix; 0 keeps the fluid to itself. |
 | `density` | `number` | `1` | 0.05 … 20 | — | tunable | How heavy its particles are against the group's other fluids: a heavier fluid sinks under a lighter one. |
 | `mixing` | `number` | `0` | 0 … 1 | — | tunable | How readily it mixes with the group's other fluids: 0 keeps them apart in layers (the boundary held), 1 blends them where they touch (their mix, colour and weight even out). |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `substeps` | `number` | `2` | 1 … 8 | — | — | Simulation steps per tick. |
+| `solverIterations` | `number` | `3` | 0 … 64 | — | — | PBF density projection passes per substep (0: pressure off). |
+| `vorticity` | `number` | `0` | ≥ 0 | — | tunable | Vorticity confinement acceleration coefficient (0: off). |
 | `seed` | `number` | `0` | — | — | — | The seed of the spawn jitter. |
 | `color` | `Color` | `{ r: 0.15, g: 0.45, b: 0.95 }` | — | — | — | The surface's colour. |
 | `opacity` | `number` | `0.9` | 0 … 1 | — | — | The surface's opacity. |
@@ -35,10 +37,10 @@ Token `og.Fluid2D`, registered under the schema name `og.Fluid2D`; its value typ
 
 ```ogt
 component Fluid2D {
-  doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`."
+  doc "Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix; solid contacts exchange impulses with dynamic bodies. Count, seed or size changes rebuild the spawn lattice. Particles and mix are world state; drawn as metaballs on layer."
   field count u32 "How many particles (spawned when the component appears or count changes)." {
     default 1000
-    min 1
+    min 0
     max 8192
   }
   field size Vector2 "The spawn box, centred on the entity." {
@@ -55,22 +57,23 @@ component Fluid2D {
     unit m
     tunable true
   }
-  field restDensity f32 "The density it settles at (neighbours within radius, weighted)." {
+  field restDensity f32 "Target poly6 count including self, multiplied by material density (0: pressure off)." {
+    default 2
+    min 0
+    tunable true
+  }
+  field stiffness f32 "PBF density relaxation fraction per iteration (0: off)." {
     default 1
     min 0
+    max 1
     tunable true
   }
-  field stiffness f32 "The pressure's strength (above about 0.15 it gets springy, then unstable)." {
-    default 0.1
+  field nearStiffness f32 "Dimensionless PBF artificial pressure s_corr coefficient (0: off)." {
+    default 0.001
     min 0
     tunable true
   }
-  field nearStiffness f32 "The near pressure's strength (keeps particles apart, gives surface tension)." {
-    default 0.5
-    min 0
-    tunable true
-  }
-  field viscosity f32 "Linear viscosity (honey above 1)." {
+  field viscosity f32 "Stable, mass-conserving XSPH velocity smoothing rate." {
     default 0.15
     min 0
     max 4
@@ -99,6 +102,15 @@ component Fluid2D {
     min 1
     max 8
   }
+  field solverIterations u32 "PBF density projection passes per substep (0: pressure off)." {
+    default 3
+    min 0
+    max 64
+  }
+  field vorticity f32 "Vorticity confinement acceleration coefficient (0: off)." {
+    min 0
+    tunable true
+  }
   field seed u32 "The seed of the spawn jitter."
   field color Color "The surface's colour." {
     default 0.15 0.45 0.95
@@ -125,4 +137,4 @@ component Fluid2D {
 }
 ```
 
-<sub>Module `physics` line 1546</sub>
+<sub>Module `physics` line 1619</sub>

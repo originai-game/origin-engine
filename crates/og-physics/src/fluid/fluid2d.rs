@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct FluidState {
     pub count: u32,
     pub seed: u32,
+    pub size: Vec2,
     pub positions: Vec<Vec2>,
     pub velocities: Vec<Vec2>,
     /// The fluid's lane in its group (`u32::MAX`: in none).
@@ -23,7 +24,7 @@ pub(crate) struct FluidState {
 impl FluidState {
     /// `count` particles on a jittered grid filling the spawn box.
     pub fn new(fluid: &Fluid2D, centre: Vec2) -> FluidState {
-        let n = fluid.count.clamp(1, 8192);
+        let n = fluid.count.min(8192);
         let size = fluid.size.max(Vec2::splat(0.01));
         // Columns and rows in the box's aspect.
         let aspect = size.x / size.y;
@@ -45,6 +46,7 @@ impl FluidState {
         FluidState {
             count: fluid.count,
             seed: fluid.seed,
+            size: fluid.size,
             positions,
             velocities: vec![Vec2::ZERO; n as usize],
             slot: u32::MAX,
@@ -67,6 +69,8 @@ impl FluidState {
         Body {
             rule: Rule {
                 substeps: fluid.substeps,
+                solver_iterations: fluid.solver_iterations,
+                vorticity: fluid.vorticity,
                 radius: fluid.radius,
                 gravity_scale: fluid.gravity_scale,
                 viscosity: fluid.viscosity,
@@ -80,7 +84,6 @@ impl FluidState {
             positions: &mut self.positions,
             velocities: &mut self.velocities,
             mix: &mut self.mix,
-            slot: self.slot,
             centre,
         }
     }

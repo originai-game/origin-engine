@@ -20,7 +20,7 @@ pub fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
     } else {
         mesh.indices.clone()
     };
-    rp::SharedShape::trimesh(points, indices).map_err(|e| {
+    rp::SharedShape::trimesh_with_flags(points, indices, rp::TriMeshFlags::ORIENTED).map_err(|e| {
         Error::new(
             ErrorKind::Invalid,
             format!("the mesh is not a valid triangle mesh: {e}"),
@@ -31,7 +31,7 @@ pub fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
 /// What starts a baked triangle mesh's bytes: the format and its version,
 /// moved with any rapier or parry update that changes `TriMesh`'s
 /// serialisation (`a_baked_trimesh_is_the_build_bit_for_bit` pins a bake).
-pub const BAKED: &[u8; 8] = b"OGTM\x01\x00\x00\x00";
+pub const BAKED: &[u8; 8] = b"OGTM\x02\x00\x00\x00";
 
 /// [`crate::bake_trimesh`].
 pub fn bake(mesh: &crate::MeshDesc) -> Result<Vec<u8>> {

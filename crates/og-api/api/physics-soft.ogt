@@ -1,6 +1,6 @@
   component Rope {
-    aliases "chain, cable, swinging lantern, hanging rope, Verlet rope"
-    doc "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`."
+    aliases "chain, cable, swinging lantern, hanging rope, XPBD rope"
+    doc "A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state."
     field segments u32 "The number of links (points minus one)." {
       default 16
       min 1
@@ -20,13 +20,32 @@
       worldspace none
       unit m
     }
-    field iterations u32 "Constraint passes per step: more is stiffer, at more cost." {
+    field stiffness f32 "Physical XPBD axial stiffness in N/m; compliance is 1/stiffness (0: constraints off)." {
+      default 100000
+      min 0
+      tunable true
+    }
+    field mass f32 "Mass of each free point in kg (0: fixed)." {
+      default 0.1
+      min 0
+      unit kg
+    }
+    field substeps u32 "Small steps per tick (0: simulation off)." {
+      default 4
+      min 0
+      max 16
+    }
+    field coupling bool "Apply endpoint and solid contact reactions to dynamic bodies."
+    field breakForce f32 "Break links above this force in N (0: unbreakable). Broken links stay broken until rebuilt." {
+      min 0
+    }
+    field iterations u32 "XPBD constraint passes per substep; stiffness sets physical compliance." {
       default 12
       min 1
       max 64
       tunable true
     }
-    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
       default 0.6
       min 0
       max 100
@@ -82,7 +101,7 @@
   const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 
   component Cloth {
-    doc "A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour)."
+    doc "A small-step XPBD cloth: a columns by rows grid, pinned to its entity, with stretch, dihedral bending, long-range attachments, relative-air drag and lift, and self-collision. Velocities and area-lumped inverse masses are explicit world state; there is no self-collision speed cap."
     aliases "flag, banner, curtain, sail, Unity Cloth, Unreal Chaos Cloth"
     field columns u32 "Points across." {
       default 12
@@ -103,13 +122,38 @@
     field pins u32 "Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings)." {
       default 1
     }
-    field iterations u32 "Constraint passes per step." {
+    field stiffness f32 "Physical XPBD stretch stiffness in N/m (0: off)." {
+      default 100000
+      min 0
+      tunable true
+    }
+    field bending f32 "Physical XPBD dihedral stiffness (0: off)." {
+      min 0
+      tunable true
+    }
+    field tether f32 "Long-range attachment stiffness in N/m (0: off)." {
+      min 0
+      tunable true
+    }
+    field density f32 "Surface mass density in kg/m² (0: fixed)." {
+      default 1
+      min 0
+    }
+    field drag f32 "Quadratic relative-air drag coefficient (0: off)." {
+      min 0
+      tunable true
+    }
+    field lift f32 "Relative-air lift coefficient (0: off)." {
+      min 0
+      tunable true
+    }
+    field iterations u32 "XPBD constraint passes per substep." {
       default 8
       min 1
       max 64
       tunable true
     }
-    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
       default 0.9
       min 0
       max 100
@@ -122,9 +166,9 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (simulation visual) takes the sum as air moving at its magnitude in m/s." {
+    field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces." {
       guide "physics §8"
-      unit mps2
+      unit mps
       tunable true
     }
     field gust f32 "How much the wind varies over the cloth and the tick (0: steady)." {
@@ -144,9 +188,9 @@
       unit m
       tunable true
     }
-    field substeps u32 "Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step)." {
+    field substeps u32 "Small steps per tick, each integrating explicit velocity and solving iterations XPBD passes (0: off)." {
       default 1
-      min 1
+      min 0
       max 16
     }
     field friction f32 "How much of its sliding a point touching a solid loses each step (0: it slides freely; near 1 it sticks where it lands, so a cloth lowered onto the floor folds instead of spreading)." {
@@ -164,7 +208,7 @@
   }
 
   component Garment {
-    doc "Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied."
+    doc "A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied."
     guide "physics §8"
     field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
     field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
@@ -179,21 +223,43 @@
       unit m
       tunable true
     }
-    field backstop f32 "How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body)." {
+    field backstop f32 "Offset of the spherical backstop behind the skin, scaled by the pose; used with backstopRadius." {
       min 0
       unit m
       tunable true
     }
-    field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches." {
+    field backstopRadius f32 "Spherical backstop radius, scaled by the pose (0: off)." {
+      min 0
+      unit m
+    }
+    field bodyRadius f32 "Radius of skeleton bone capsules in model metres, scaled by the character (0: off). Hosts may supply tapered capsules through GarmentPose." {
+      min 0
+      unit m
+    }
+    field teleportDistance f32 "Reset on target translations larger than this, scaled by the pose (0: off)." {
+      min 0
+      unit m
+    }
+    field density f32 "Surface mass density in kg/m² (0: fixed)." {
       default 1
       min 0
-      max 1
+    }
+    field drag f32 "Quadratic relative-air drag coefficient (0: off)." {
+      min 0
       tunable true
     }
-    field bending f32 "How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather." {
+    field lift f32 "Relative-air lift coefficient (0: off)." {
+      min 0
+      tunable true
+    }
+    field stiffness f32 "Physical XPBD edge stiffness in N/m (0: off)." {
+      default 100000
+      min 0
+      tunable true
+    }
+    field bending f32 "Physical XPBD dihedral stiffness (0: off)." {
       default 0.1
       min 0
-      max 1
       tunable true
     }
     field iterations u32 "Constraint passes per substep." {
@@ -207,7 +273,7 @@
       min 1
       max 16
     }
-    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
       default 1.85
       min 0
       max 100
@@ -220,9 +286,9 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s." {
+    field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off)." {
       guide "physics §8"
-      unit mps2
+      unit mps
       tunable true
     }
     field gust f32 "How much the wind varies over the garment and the tick (0: steady)." {
@@ -262,7 +328,8 @@
   }
 
   component SoftBody {
-    doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
+    doc "An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface."
+    guide "physics §8"
     field shape SoftBodyShape "sphere, box or mesh."
     field radius f32 "A sphere's radius." {
       default 0.5
@@ -282,10 +349,9 @@
       max 7
     }
     field mesh Geometry "The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
-    field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble." {
-      default 1
+    field stiffness f32 "Physical XPBD edge stiffness in N/m; compliance is 1/stiffness (0: off)." {
+      default 100000
       min 0
-      max 1
       tunable true
     }
     field pressure f32 "The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth)." {
@@ -294,11 +360,18 @@
       max 4
       tunable true
     }
-    field volumeStiffness f32 "How much of its volume a pass restores, 0 to 1." {
+    field volumeStiffness f32 "Physical XPBD volume stiffness (0: off). Volume and gradients use centroid-relative coordinates." {
+      default 100000
+      min 0
+      tunable true
+    }
+    field tetraStiffness f32 "Per-tetrahedron hydrostatic volume stiffness about the centroid (0: off)." {
+      min 0
+      tunable true
+    }
+    field density f32 "Surface mass density in kg/m² (0: fixed)." {
       default 1
       min 0
-      max 1
-      tunable true
     }
     field iterations u32 "Constraint passes per substep." {
       default 8
@@ -311,7 +384,7 @@
       min 1
       max 16
     }
-    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
       default 0.3
       min 0
       max 100
@@ -359,10 +432,10 @@
   }
 
   component Fluid2D {
-    doc "A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`."
+    doc "Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix; solid contacts exchange impulses with dynamic bodies. Count, seed or size changes rebuild the spawn lattice. Particles and mix are world state; drawn as metaballs on layer."
     field count u32 "How many particles (spawned when the component appears or count changes)." {
       default 1000
-      min 1
+      min 0
       max 8192
     }
     field size Vector2 "The spawn box, centred on the entity." {
@@ -379,22 +452,23 @@
       unit m
       tunable true
     }
-    field restDensity f32 "The density it settles at (neighbours within radius, weighted)." {
+    field restDensity f32 "Target poly6 count including self, multiplied by material density (0: pressure off)." {
+      default 2
+      min 0
+      tunable true
+    }
+    field stiffness f32 "PBF density relaxation fraction per iteration (0: off)." {
       default 1
       min 0
+      max 1
       tunable true
     }
-    field stiffness f32 "The pressure's strength (above about 0.15 it gets springy, then unstable)." {
-      default 0.1
+    field nearStiffness f32 "Dimensionless PBF artificial pressure s_corr coefficient (0: off)." {
+      default 0.001
       min 0
       tunable true
     }
-    field nearStiffness f32 "The near pressure's strength (keeps particles apart, gives surface tension)." {
-      default 0.5
-      min 0
-      tunable true
-    }
-    field viscosity f32 "Linear viscosity (honey above 1)." {
+    field viscosity f32 "Stable, mass-conserving XSPH velocity smoothing rate." {
       default 0.15
       min 0
       max 4
@@ -423,6 +497,15 @@
       min 1
       max 8
     }
+    field solverIterations u32 "PBF density projection passes per substep (0: pressure off)." {
+      default 3
+      min 0
+      max 64
+    }
+    field vorticity f32 "Vorticity confinement acceleration coefficient (0: off)." {
+      min 0
+      tunable true
+    }
     field seed u32 "The seed of the spawn jitter."
     field color Color "The surface's colour." {
       default 0.15 0.45 0.95
@@ -449,7 +532,7 @@
   }
 
   component Fluid3D {
-    doc "A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects."
+    doc "Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface."
     guide "physics §8"
     field count u32 "How many particles to spawn in the box (when the component appears or count or seed changes; 0: none, the emitter fills it). The tick simulates at most 32768; a visual fluid (simulation visual) up to 262144." {
       default 2000
@@ -469,22 +552,23 @@
       unit m
       tunable true
     }
-    field restDensity f32 "The density it settles at (neighbours within radius, weighted)." {
-      default 10
+    field restDensity f32 "Target poly6 count including self, multiplied by material density (0: pressure off)." {
+      default 2
       min 0
       tunable true
     }
-    field stiffness f32 "The pressure's strength (above about 0.05 it jitters, then springs apart)." {
-      default 0.02
+    field stiffness f32 "PBF density relaxation fraction per iteration (0: off)." {
+      default 1
+      min 0
+      max 1
+      tunable true
+    }
+    field nearStiffness f32 "Dimensionless PBF artificial pressure s_corr coefficient (0: off)." {
+      default 0.001
       min 0
       tunable true
     }
-    field nearStiffness f32 "The near pressure's strength (keeps particles apart, gives surface tension)." {
-      default 0.4
-      min 0
-      tunable true
-    }
-    field viscosity f32 "Linear viscosity (it also calms the surface; honey above 1)." {
+    field viscosity f32 "Stable, mass-conserving XSPH velocity smoothing rate." {
       default 0.4
       min 0
       max 4
@@ -513,10 +597,19 @@
       min 1
       max 8
     }
+    field solverIterations u32 "PBF density projection passes per substep (0: pressure off)." {
+      default 3
+      min 0
+      max 64
+    }
+    field vorticity f32 "Vorticity confinement acceleration coefficient (0: off)." {
+      min 0
+      tunable true
+    }
     field seed u32 "The seed of the spawn and emitter jitter."
     field maxCount u32 "The most particles alive at once (the emitter stops there)." {
       default 8192
-      min 1
+      min 0
       max 262144
     }
     field emitRate f32 "Particles the emitter adds per second (0: no emitter)." {
@@ -524,10 +617,10 @@
       max 20000
       tunable true
     }
-    field emitOffset Vector3 "Where the emitter is, from the entity (world axes)." {
+    field emitOffset Vector3 "The emitter's offset in entity-local axes." {
       unit m
     }
-    field emitVelocity Vector3 "The velocity emitted particles start with." {
+    field emitVelocity Vector3 "Emitted velocity in entity-local axes, rotated into the world." {
       unit mps
       tunable true
     }
@@ -537,7 +630,7 @@
       unit m
       tunable true
     }
-    field sinkOffset Vector3 "The sink's centre, from the entity (world axes)." {
+    field sinkOffset Vector3 "The sink's centre in entity-local axes; the box rotates with it." {
       unit m
     }
     field sinkSize Vector3 "The sink box: particles that enter it are removed (0 0 0: no sink)." {
@@ -624,4 +717,3 @@
       readonly true
     }
   }
-

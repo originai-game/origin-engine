@@ -1,5 +1,4 @@
-//! The reflected types of soft things: PBD soft volumes, garments on
-//! skinned characters, Verlet ropes and cloth.
+//! Reflected small-step XPBD soft volumes, skinned garments, ropes and cloth.
 
 use super::SIMULATION_GAMEPLAY;
 use og_core::Reflect;
@@ -13,15 +12,15 @@ pub const SOFT_BOX: u32 = 1;
 /// `SoftBody.shape`: the closed mesh registered under `mesh` (og.physics.setMesh).
 pub const SOFT_MESH: u32 = 2;
 
-/// A PBD soft volume: a closed surface of points (2D: a ring) held by
+/// An XPBD soft volume: a closed surface of points (2D: a ring) held by
 /// distance constraints along its edges and one constraint on the volume it
 /// encloses (2D: its area), dropped under gravity and pushed out of solid
-/// colliders. It moves nothing (one-way, as cloth). Built at the entity's
+/// colliders, with reaction impulses on dynamic bodies. Built at the entity's
 /// world pose when it appears or its shape changes; its points are world
 /// state (the og.physics block's trailer), og.physics.softBodyPoints reads
 /// them and the renderer draws the surface.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.SoftBody", version = 4)]
+#[reflect(name = "og.SoftBody", version = 5)]
 pub struct SoftBody {
     /// sphere, box or mesh: SOFT_SPHERE, SOFT_BOX and SOFT_MESH, in order.
     #[reflect(variants = ["sphere", "box", "mesh"])]
@@ -37,15 +36,21 @@ pub struct SoftBody {
     pub detail: u32,
     /// The registered mesh for SOFT_MESH (closed, its vertices shared by its triangles).
     pub mesh: u64,
-    /// How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches.
-    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    /// Physical XPBD edge stiffness in N/m (0: off), compliance is 1/stiffness.
+    #[reflect(min = 0, default = 100000, tunable)]
     pub stiffness: f32,
     /// The volume it keeps, as a share of its rest volume (the pressure inside): 1 holds it, above inflates, 0 none (it collapses like cloth).
     #[reflect(min = 0, max = 4, default = 1, tunable)]
     pub pressure: f32,
-    /// How firmly a pass restores the volume, 0 to 1.
-    #[reflect(name = "volumeStiffness", min = 0, max = 1, default = 1, tunable)]
+    /// Physical XPBD volume stiffness (0: off).
+    #[reflect(name = "volumeStiffness", min = 0, default = 100000, tunable)]
     pub volume_stiffness: f32,
+    /// Per-tetrahedron volume stiffness about the centroid (0: off).
+    #[reflect(name = "tetraStiffness", min = 0, tunable)]
+    pub tetra_stiffness: f32,
+    /// Surface mass density in kg/m² (0: fixed).
+    #[reflect(min = 0, default = 1)]
+    pub density: f32,
     /// Constraint passes per substep.
     #[reflect(min = 1, max = 64, default = 8, tunable)]
     pub iterations: u32,
@@ -91,9 +96,11 @@ impl Default for SoftBody {
             size: Vec3::ONE,
             detail: 2,
             mesh: 0,
-            stiffness: 1.0,
+            stiffness: 100000.0,
             pressure: 1.0,
-            volume_stiffness: 1.0,
+            volume_stiffness: 100000.0,
+            tetra_stiffness: 0.0,
+            density: 1.0,
             iterations: 8,
             substeps: 2,
             damping: 0.3,
@@ -114,13 +121,13 @@ impl Default for SoftBody {
 /// posed by its skeleton each tick and simulated from there. Each point
 /// stays within `maxDistance` of where its skin puts it (scaled by its
 /// vertex colour's red times its alpha; 0 and points within `pinTop` of the
-/// top stay on the skin), never further than `backstop` behind it, and keeps its edges'
-/// lengths; with `radius` it collides with solids. One-way, as cloth. The
+/// top stay on the skin), with spherical backstops, skeleton capsules and
+/// compliant stretch and dihedral bending. Solid contacts transfer momentum. The
 /// runtime hands the skinned pose to [`crate::PhysicsSystem::set_garment_pose`]
 /// before each step; its points are world state (the og.physics block's
 /// trailer).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Garment", version = 4)]
+#[reflect(name = "og.Garment", version = 5)]
 pub struct Garment {
     /// The glTF mesh of the entity's model that is the garment.
     pub mesh: u32,
@@ -130,14 +137,32 @@ pub struct Garment {
     /// Points within this height of the garment's top at rest stay on the skin.
     #[reflect(name = "pinTop", min = 0, unit = "m", default = 0.04, tunable)]
     pub pin_top: f32,
-    /// How far a point may go behind where its skin puts it (0: never).
+    /// Offset behind the skinned target of an enabled spherical backstop.
     #[reflect(min = 0, unit = "m", tunable)]
     pub backstop: f32,
-    /// How stiff its edges are, 0 to 1 a pass.
-    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    /// Spherical backstop radius, scaled by the pose (0: off).
+    #[reflect(name = "backstopRadius", min = 0, unit = "m")]
+    pub backstop_radius: f32,
+    /// Radius of skeleton bone capsules in model metres (0: off).
+    #[reflect(name = "bodyRadius", min = 0, unit = "m")]
+    pub body_radius: f32,
+    /// Reset on target translations larger than this, scaled by the pose (0: off).
+    #[reflect(name = "teleportDistance", min = 0, unit = "m")]
+    pub teleport_distance: f32,
+    /// Surface mass density in kg/m² (0: fixed).
+    #[reflect(min = 0, default = 1)]
+    pub density: f32,
+    /// Relative-air quadratic drag (0: off).
+    #[reflect(min = 0, tunable)]
+    pub drag: f32,
+    /// Relative-air lift (0: off).
+    #[reflect(min = 0, tunable)]
+    pub lift: f32,
+    /// Physical XPBD edge stiffness in N/m (0: off).
+    #[reflect(min = 0, default = 100000, tunable)]
     pub stiffness: f32,
-    /// How much it resists folding, 0 to 1 a pass.
-    #[reflect(min = 0, max = 1, default = 0.1, tunable)]
+    /// Physical XPBD dihedral stiffness (0: off).
+    #[reflect(min = 0, default = 0.1, tunable)]
     pub bending: f32,
     /// Constraint passes per substep.
     #[reflect(min = 1, max = 64, default = 6, tunable)]
@@ -151,8 +176,8 @@ pub struct Garment {
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
     pub gravity_scale: f32,
-    /// A steady acceleration (wind).
-    #[reflect(unit = "mps2", tunable)]
+    /// Air velocity added to the per-point wind field.
+    #[reflect(unit = "m/s", tunable)]
     pub wind: Vec3,
     /// How much the wind varies over the garment and the tick.
     #[reflect(min = 0, max = 2, default = 0.6, tunable)]
@@ -175,7 +200,13 @@ impl Default for Garment {
             max_distance: 0.2,
             pin_top: 0.04,
             backstop: 0.0,
-            stiffness: 1.0,
+            backstop_radius: 0.0,
+            body_radius: 0.0,
+            teleport_distance: 0.0,
+            density: 1.0,
+            drag: 0.0,
+            lift: 0.0,
+            stiffness: 100000.0,
             bending: 0.1,
             iterations: 6,
             substeps: 1,
@@ -190,15 +221,15 @@ impl Default for Garment {
     }
 }
 
-/// A Verlet rope: `segments` links from the entity's world position (its
+/// An XPBD rope: `segments` links from the entity's world position (its
 /// og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung
 /// by gravity and wind, colliding with every solid collider at `radius`.
-/// It moves nothing (one-way: a rope joint ties bodies together, og.Joint
-/// JOINT_ROPE). Its points are world state (the og.physics state block);
+/// With `coupling` it transfers constraint and contact impulses to dynamic
+/// bodies. Its points are world state (the og.physics state block);
 /// og.physics.ropePoints reads them and the renderer draws the rope as a
 /// strip of `width` and `color`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Rope", version = 2)]
+#[reflect(name = "og.Rope", version = 3)]
 pub struct Rope {
     /// The number of links (points minus one).
     #[reflect(min = 1, max = 256, default = 16)]
@@ -214,7 +245,21 @@ pub struct Rope {
     /// The far end's offset from `end`'s position.
     #[reflect(name = "endOffset", unit = "m")]
     pub end_offset: Vec3,
-    /// Constraint passes per step: more is stiffer, at more cost.
+    /// XPBD axial stiffness in N/m (0: constraints off).
+    #[reflect(min = 0, default = 100000, tunable)]
+    pub stiffness: f32,
+    /// Mass of each free point in kg (0: fixed).
+    #[reflect(min = 0, default = 0.1)]
+    pub mass: f32,
+    /// Small steps per tick (0: simulation off).
+    #[reflect(min = 0, max = 16, default = 4)]
+    pub substeps: u32,
+    /// Apply endpoint and solid contact reactions to dynamic bodies.
+    pub coupling: bool,
+    /// Break force in N (0: unbreakable); broken links stay broken in state.
+    #[reflect(name = "breakForce", min = 0)]
+    pub break_force: f32,
+    /// XPBD constraint passes per substep (compliance stays physical).
     #[reflect(min = 1, max = 64, default = 12, tunable)]
     pub iterations: u32,
     /// How fast its points' velocity decays (0: none lost).
@@ -248,6 +293,11 @@ impl Default for Rope {
             offset: Vec3::ZERO,
             end: 0,
             end_offset: Vec3::ZERO,
+            stiffness: 100000.0,
+            mass: 0.1,
+            substeps: 4,
+            coupling: false,
+            break_force: 0.0,
             iterations: 12,
             damping: 0.6,
             gravity_scale: 1.0,
@@ -269,17 +319,17 @@ pub const PIN_LEFT: u32 = 4;
 /// `Cloth.pins` bit: every fourth point of the top row (curtain rings).
 pub const PIN_TOP_RINGS: u32 = 8;
 
-/// A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart,
+/// An XPBD cloth: a `columns` × `rows` grid of points, `spacing` apart,
 /// hanging from the entity's world position (its og.Transform after its
 /// parents': its top-left corner, the grid laid out along the entity's
 /// local x and down -y), pinned by `pins` (pinned
 /// points follow the entity), with stretch and shear constraints, gravity,
 /// wind, collision against every solid collider and, with `thickness`,
-/// against itself. One-way like og.Rope;
+/// against itself. Contacts transfer momentum to dynamic bodies;
 /// its points are world state. Drawn as a double-sided mesh with
 /// `material` (og.render.standardMaterial; 0: a plain cloth colour).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Cloth", version = 4)]
+#[reflect(name = "og.Cloth", version = 5)]
 pub struct Cloth {
     /// Points across.
     #[reflect(min = 2, max = 64, default = 12)]
@@ -293,6 +343,24 @@ pub struct Cloth {
     /// Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings).
     #[reflect(default = 1)]
     pub pins: u32,
+    /// XPBD stretch stiffness in N/m (0: off).
+    #[reflect(min = 0, default = 100000, tunable)]
+    pub stiffness: f32,
+    /// XPBD dihedral stiffness (0: bending off).
+    #[reflect(min = 0, tunable)]
+    pub bending: f32,
+    /// Long-range attachment stiffness in N/m (0: off).
+    #[reflect(min = 0, tunable)]
+    pub tether: f32,
+    /// Surface mass density in kg/m² (0: fixed).
+    #[reflect(min = 0, default = 1)]
+    pub density: f32,
+    /// Quadratic relative-air drag coefficient (0: off).
+    #[reflect(min = 0, tunable)]
+    pub drag: f32,
+    /// Relative-air lift coefficient (0: off).
+    #[reflect(min = 0, tunable)]
+    pub lift: f32,
     /// Constraint passes per step.
     #[reflect(min = 1, max = 64, default = 8, tunable)]
     pub iterations: u32,
@@ -302,8 +370,8 @@ pub struct Cloth {
     /// Multiplies og.Physics.gravity.
     #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
     pub gravity_scale: f32,
-    /// A steady acceleration (wind); the cloth flutters with it.
-    #[reflect(unit = "m/s2", tunable)]
+    /// Air velocity added to the per-point wind field; drag/lift enable it.
+    #[reflect(unit = "m/s", tunable)]
     pub wind: Vec3,
     /// How much the wind varies over the cloth and the tick (0: steady).
     #[reflect(min = 0, max = 2, default = 0.6, tunable)]
@@ -317,10 +385,9 @@ pub struct Cloth {
     #[reflect(min = 0, unit = "m", tunable)]
     pub thickness: f32,
     /// Simulation steps per tick, each integrating and then solving
-    /// `iterations` passes; with self-collision enough that a point moves
-    /// less than `thickness` per step (a point moves at most half the
-    /// thickness a step).
-    #[reflect(min = 1, max = 16, default = 1)]
+    /// `iterations` passes; choose enough to resolve self-contact. There
+    /// is no artificial speed limit. Zero pauses simulation.
+    #[reflect(min = 0, max = 16, default = 1)]
     pub substeps: u32,
     /// How much of its sliding a point touching a solid loses each step
     /// (0: it slides freely; near 1 it sticks where it lands, so a cloth
@@ -344,6 +411,12 @@ impl Default for Cloth {
             rows: 12,
             spacing: 0.15,
             pins: PIN_TOP,
+            stiffness: 100000.0,
+            bending: 0.0,
+            tether: 0.0,
+            density: 1.0,
+            drag: 0.0,
+            lift: 0.0,
             iterations: 8,
             damping: 0.9,
             gravity_scale: 1.0,

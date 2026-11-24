@@ -89,7 +89,7 @@ pub use water::{Wakes, WaterAt, WaterBody, WaterCut, WaterMesh};
 mod dim2;
 mod dim3;
 
-pub use garment::{GarmentPoints, GarmentPose, GarmentRig};
+pub use garment::{GarmentCapsule, GarmentPoints, GarmentPose, GarmentRig};
 pub use lanes::{Grains, PhysicsLanes, grains, pool_bodies};
 pub use outline::outline;
 pub use schema::*;

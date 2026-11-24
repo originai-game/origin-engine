@@ -84,20 +84,20 @@ module physics {
 | [`VehicleModel()`](#column-VehicleModel) | column kind |  | A VehicleModel field: the variant's index. |
 | [`og.Vehicle`](physics/record-Vehicle.md) | component |  | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). |
 | [`og.VehicleWheel`](physics/record-VehicleWheel.md) | component |  | A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. |
-| [`og.Rope`](physics/record-Rope.md) | component |  | A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind… |
+| [`og.Rope`](physics/record-Rope.md) | component |  | A small-step XPBD rope with explicit velocities and point masses. |
 | [`Simulation`](physics/type-Simulation.md) | enum |  | Where a cloth, a garment, a soft body or a 3D fluid is simulated: Cloth.simulation, Garment.simulation, SoftBody.simulation and Fluid3D.simulation. |
 | [`Simulation()`](#column-Simulation) | column kind |  | A Simulation field: the variant's index. |
 | [`PIN_TOP`](#const-PIN_TOP) | constant |  | `Cloth.pins` bit: the whole top row is pinned. |
 | [`PIN_TOP_CORNERS`](#const-PIN_TOP_CORNERS) | constant |  | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | [`PIN_LEFT`](#const-PIN_LEFT) | constant |  | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant |  | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
-| [`og.Cloth`](physics/record-Cloth.md) | component |  | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the e… |
-| [`og.Garment`](physics/record-Garment.md) | component |  | Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. |
+| [`og.Cloth`](physics/record-Cloth.md) | component |  | A small-step XPBD cloth: a columns by rows grid, pinned to its entity, with stretch, dihedral bending, long-range attachments, relative-air drag and lift, and self-collision. |
+| [`og.Garment`](physics/record-Garment.md) | component |  | A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. |
 | [`SoftBodyShape`](physics/type-SoftBodyShape.md) | enum |  | What a soft body is built as: SoftBody.shape. |
 | [`SoftBodyShape()`](#column-SoftBodyShape) | column kind |  | A SoftBodyShape field: the variant's index. |
-| [`og.SoftBody`](physics/record-SoftBody.md) | component |  | A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under g… |
-| [`og.Fluid2D`](physics/record-Fluid2D.md) | component |  | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. |
-| [`og.Fluid3D`](physics/record-Fluid3D.md) | component |  | A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. |
+| [`og.SoftBody`](physics/record-SoftBody.md) | component |  | An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). |
+| [`og.Fluid2D`](physics/record-Fluid2D.md) | component |  | Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorti… |
+| [`og.Fluid3D`](physics/record-Fluid3D.md) | component |  | Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confine… |
 | [`og.Ragdoll`](physics/record-Ragdoll.md) | component |  | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy pl… |
 | [`og.WaterSurface`](physics/record-WaterSurface.md) | component |  | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. |
 | [`og.WaterLine`](physics/record-WaterLine.md) | component |  | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and p… |
@@ -283,7 +283,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1257</sub>
+<sub>Module `physics` line 1276</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -294,7 +294,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1442</sub>
+<sub>Module `physics` line 1508</sub>
 
 ## Constants
 
@@ -424,40 +424,40 @@ const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces cr
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1264</sub>
+<sub>Module `physics` line 1283</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1265</sub>
+<sub>Module `physics` line 1284</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1266</sub>
+<sub>Module `physics` line 1285</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1267</sub>
+<sub>Module `physics` line 1286</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 1996</sub>
+<sub>Module `physics` line 2088</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 1997</sub>
+<sub>Module `physics` line 2089</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 1998</sub>
+<sub>Module `physics` line 2090</sub>

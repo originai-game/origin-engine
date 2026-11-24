@@ -16,6 +16,7 @@ fn position_of(scene: &Scene, entity: u64) -> Option<Vec3> {
                 .find(|s| s.entity.to_bits() == entity)
                 .map(|s| s.position)
         })
+        .or_else(|| scene.anchors.get(&entity).copied())
 }
 
 /// The bodies' final positions this tick, by entity (controllers moved).
@@ -51,19 +52,27 @@ pub(crate) fn soft(
     let grains = crate::lanes::now();
     let flat2 = DIM == 2;
     let gravity = flat(settings.gravity);
-    // The world's air pushes each beside its own wind, as it blows where
-    // the body hangs (the middle of its points).
+    // Every integrator samples fields and air at each point.
     let air = shared.air.clone();
     let air = &air;
     // The force fields accelerate each as gravity does, where it is.
     let forces = shared.forces.clone();
     let forces = &forces;
+    let reactions = Reactions::default();
+    let point_world = PointWorld {
+        world: &sim.world,
+        forces,
+        air,
+        reactions: &reactions,
+    };
+    let colliders = &point_world;
     // Ropes.
     let live: BTreeSet<u64> = og_core::sort::set(scene.ropes.iter().map(|r| r.0.to_bits()));
     sim.ropes.retain(|e, _| live.contains(e));
     let mut ropes: IdMap<u64, (&Rope, Vec3, Option<Vec3>)> = IdMap::new();
     for (e, position, rope) in &scene.ropes {
-        let start = flat_keep(*position + rope.offset, position.z, flat2);
+        let position = final_position(scene, out, e.to_bits()).unwrap_or(*position);
+        let start = flat_keep(position + rope.offset, position.z, flat2);
         let end = if rope.end != 0 {
             final_position(scene, out, rope.end)
                 .map(|p| flat_keep(p + rope.end_offset, position.z, flat2))
@@ -74,29 +83,26 @@ pub(crate) fn soft(
         let rebuild = sim
             .ropes
             .get(&key)
-            .is_none_or(|s| s.segments != rope.segments || s.length != rope.length);
+            .is_none_or(|s| s.segments != rope.segments);
         if rebuild {
             sim.ropes.insert(key, RopeState::new(rope, start, end));
         }
         ropes.insert(key, (rope, start, end));
     }
-    let colliders = &sim.world.colliders;
-    let mut jobs: Vec<_> = sim.ropes.iter_mut().map(|(k, s)| (s, &ropes[k])).collect();
+    let mut jobs: Vec<_> = sim
+        .ropes
+        .iter_mut()
+        .map(|(k, s)| (s, &ropes[k], *k))
+        .collect();
     let work = jobs
         .iter()
-        .map(|(s, (rope, ..))| s.points.len() * rope.iterations.clamp(1, 64) as usize)
+        .map(|(s, (rope, ..), _)| s.points.len() * rope.iterations.clamp(1, 64) as usize)
         .sum();
     soft_each(Soft::Ropes, &mut jobs, work, grains.rope_work, |job| {
         let (rope, start, end) = *job.1;
         let state = &mut *job.0;
-        let (min, max) = bounds(&state.points, rope.length);
-        let near = Near::around(colliders, min, max, rope.radius * 2.0 + 0.1);
-        let middle = (min + max) * 0.5;
-        let rope = &Rope {
-            wind: rope.wind + flat(air.at(middle) + forces.at(middle)),
-            ..*rope
-        };
-        state.step(rope, dt, gravity, start, end, flat2, &near);
+        let near = Near::new(colliders);
+        state.step(rope, dt, gravity, job.2, start, end, flat2, &near);
     });
     // Cloth.
     let live: BTreeSet<u64> = og_core::sort::set(scene.cloths.iter().map(|c| c.0.to_bits()));
@@ -125,7 +131,6 @@ pub(crate) fn soft(
         }
         cloths.insert(key, (cloth, *position, rotation));
     }
-    let colliders = &sim.world.colliders;
     let mut jobs: Vec<_> = sim
         .cloths
         .iter_mut()
@@ -142,14 +147,7 @@ pub(crate) fn soft(
     soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
         let (cloth, position, rotation) = *job.1;
         let state = &mut *job.0;
-        let size = cloth.spacing * (cloth.columns.max(cloth.rows)) as f32;
-        let (min, max) = bounds(&state.points, size);
-        let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
-        let middle = (min + max) * 0.5;
-        let cloth = &Cloth {
-            wind: cloth.wind + flat(air.at(middle) + forces.at(middle)),
-            ..*cloth
-        };
+        let near = Near::new(colliders);
         state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
     });
     // Soft volumes (og.SoftBody), kept in the block's trailer.
@@ -158,15 +156,12 @@ pub(crate) fn soft(
     let mut softs: IdMap<u64, (&SoftBody, Vec3, Quat)> = IdMap::new();
     for (e, position, rotation, body) in &scene.softs {
         let key = e.to_bits();
-        let rebuild = sim
-            .ext
-            .softs
-            .get(&key)
-            .is_none_or(|s| s.key != crate::softbody::SoftKey::of(body));
+        let mesh = (body.shape == SOFT_MESH)
+            .then(|| super::super::sim::mesh(shared, body.mesh))
+            .flatten();
+        let shape_key = crate::softbody::SoftKey::of(body, mesh.as_deref());
+        let rebuild = sim.ext.softs.get(&key).is_none_or(|s| s.key != shape_key);
         if rebuild {
-            let mesh = (body.shape == SOFT_MESH)
-                .then(|| super::super::sim::mesh(shared, body.mesh))
-                .flatten();
             let state =
                 crate::softbody::SoftState::new(body, *position, *rotation, flat2, mesh.as_deref())
                     .map_err(|e| e.context(format!("og.SoftBody of entity {key}")))?;
@@ -182,7 +177,6 @@ pub(crate) fn soft(
             softs.insert(key, (body, *position, *rotation));
         }
     }
-    let colliders = &sim.world.colliders;
     let mut jobs: Vec<_> = sim
         .ext
         .softs
@@ -200,9 +194,7 @@ pub(crate) fn soft(
     soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
         let (body, position, rotation) = *job.1;
         let state = &mut *job.0;
-        let (min, max) = bounds(&state.points, 0.0);
-        let near = Near::around(colliders, min, max, body.thickness * 2.0 + 0.5);
-        let gravity = gravity + flat(forces.at((min + max) * 0.5));
+        let near = Near::new(colliders);
         state.step(body, dt, gravity, position, rotation, &near);
     });
     for (e, _, _, body) in &scene.softs {
@@ -269,7 +261,6 @@ pub(crate) fn soft(
                 garments.insert(key, (garment, pose));
             }
         }
-        let colliders = &sim.world.colliders;
         let mut jobs: Vec<_> = sim
             .ext
             .garments
@@ -287,13 +278,7 @@ pub(crate) fn soft(
         soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
             let (garment, pose) = job.1;
             let state = &mut *job.0;
-            let (min, max) = bounds(&state.points, garment.max_distance);
-            let near = Near::around(colliders, min, max, garment.radius * 2.0 + 0.1);
-            let middle = (min + max) * 0.5;
-            let garment = &Garment {
-                wind: garment.wind + flat(air.at(middle) + forces.at(middle)),
-                ..*garment
-            };
+            let near = Near::new(colliders);
             state.step(garment, pose, dt, tick, gravity, &near);
         });
     }
@@ -310,7 +295,7 @@ pub(crate) fn soft(
         let rebuild = sim
             .fluids
             .get(&key)
-            .is_none_or(|s| s.count != fluid.count || s.seed != fluid.seed);
+            .is_none_or(|s| s.count != fluid.count || s.seed != fluid.seed || s.size != fluid.size);
         if rebuild {
             sim.fluids.insert(key, FluidState::new(fluid, centre));
         }
@@ -359,30 +344,24 @@ pub(crate) fn soft(
             particles * substeps as usize
         })
         .sum();
-    let colliders = &sim.world.colliders;
     soft_each(Soft::Fluids, &mut jobs, work, grains.fluid_work, |job| {
         let (members, taken) = (job.0, &mut job.1);
-        fluid_set(scene, members, taken, dt, g, forces, colliders);
+        fluid_set(scene, members, taken, dt, g, colliders);
     });
     for (_, taken) in jobs {
         sim.fluids.extend(taken);
     }
     laps.lap(Phase::Fluids);
-    fluids3(scene, settings, forces, dt, sim);
+    fluids3(scene, settings, forces, air, dt, &reactions, sim);
+    apply_reactions(reactions, &mut sim.world.bodies);
+    sim.world
+        .bodies
+        .propagate_modified_body_positions_to_colliders(&mut sim.world.colliders);
+    sim.read_point_reactions(scene, out);
     laps.lap(Phase::Fluids3d);
     Ok(())
 }
 
 fn flat_keep(p: Vec3, z: f32, flat2: bool) -> Vec3 {
     if flat2 { Vec3::new(p.x, p.y, z) } else { p }
-}
-
-fn bounds(points: &[Vec3], slack: f32) -> (Vec3, Vec3) {
-    let (mut min, mut max) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-    for p in points {
-        min = min.min(*p);
-        max = max.max(*p);
-    }
-    let grow = Vec3::splat(slack.max(0.0) * 0.25);
-    (min - grow, max + grow)
 }

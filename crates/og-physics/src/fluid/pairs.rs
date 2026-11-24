@@ -121,4 +121,20 @@ impl Pairs {
     pub fn of(&self, i: usize) -> &[u32] {
         &self.pairs[self.start[i] as usize..self.start[i + 1] as usize]
     }
+
+    /// Transpose the half-pairs into complete, index-sorted neighbourhoods.
+    /// Each particle owns its reduction, independently of lane boundaries.
+    pub fn neighbours(&self, n: usize) -> Vec<Vec<usize>> {
+        let mut neighbours = vec![Vec::new(); n];
+        for i in 0..n {
+            for &j in self.of(i) {
+                neighbours[i].push(j as usize);
+                neighbours[j as usize].push(i);
+            }
+        }
+        for row in &mut neighbours {
+            row.sort_unstable();
+        }
+        neighbours
+    }
 }

@@ -106,7 +106,10 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::VehicleWheel>(&mut failures);
     check::<og_physics::SoftBody>(&mut failures);
     check::<og_physics::Garment>(&mut failures);
+    check::<og_physics::Rope>(&mut failures);
+    check::<og_physics::Cloth>(&mut failures);
     check::<og_physics::Buoyancy>(&mut failures);
+    check::<og_physics::Fluid2D>(&mut failures);
     check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);

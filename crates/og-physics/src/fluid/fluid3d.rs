@@ -6,7 +6,7 @@
 
 use super::solve::{self, Body, GROUP_SIZE, Rule, jitter};
 use crate::schema::Fluid3D;
-use og_core::glam::Vec3;
+use og_core::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 
 /// The most particles one fluid holds.
@@ -16,6 +16,7 @@ pub(crate) const MAX_PARTICLES: u32 = 32768;
 pub(crate) struct Fluid3State {
     pub count: u32,
     pub seed: u32,
+    pub size: Vec3,
     pub positions: Vec<Vec3>,
     pub velocities: Vec<Vec3>,
     /// The fluid's lane in its group (`u32::MAX`: in none).
@@ -35,7 +36,7 @@ impl Fluid3State {
     pub fn new(fluid: &Fluid3D, centre: Vec3) -> Fluid3State {
         let n = fluid
             .count
-            .min(fluid.max_count.clamp(1, MAX_PARTICLES))
+            .min(fluid.max_count.min(MAX_PARTICLES))
             .min(MAX_PARTICLES);
         let size = fluid.size.max(Vec3::splat(0.01));
         let mut positions = Vec::with_capacity(n as usize);
@@ -68,6 +69,7 @@ impl Fluid3State {
         Fluid3State {
             count: fluid.count,
             seed: fluid.seed,
+            size: fluid.size,
             velocities: vec![Vec3::ZERO; positions.len()],
             positions,
             slot: u32::MAX,
@@ -90,7 +92,11 @@ impl Fluid3State {
     /// The emitter's particles for a tick of `dt`: `emitRate · dt` (the
     /// fraction carried), each at a jittered point of the emitter's cube
     /// with the emitter's velocity, while fewer than `maxCount` live.
-    pub fn emit(&mut self, fluid: &Fluid3D, centre: Vec3, dt: f32) {
+    pub fn emit(&mut self, fluid: &Fluid3D, centre: Vec3, rotation: Quat, dt: f32) {
+        let cap = fluid.max_count.min(MAX_PARTICLES) as usize;
+        self.positions.truncate(cap);
+        self.velocities.truncate(cap);
+        self.mix.truncate(cap);
         if fluid.emit_rate.is_nan() || fluid.emit_rate <= 0.0 {
             self.carry = 0.0;
             return;
@@ -98,13 +104,12 @@ impl Fluid3State {
         self.carry += fluid.emit_rate.min(20000.0) * dt;
         let whole = self.carry.floor();
         self.carry -= whole;
-        let cap = fluid.max_count.clamp(1, MAX_PARTICLES) as usize;
         let room = cap.saturating_sub(self.positions.len());
         let new = (whole as usize).min(room);
-        let at = centre + fluid.emit_offset;
+        let at = centre + rotation * fluid.emit_offset;
         let r = fluid.emit_radius.max(0.0);
         let velocity = if fluid.emit_velocity.is_finite() {
-            fluid.emit_velocity
+            rotation * fluid.emit_velocity
         } else {
             Vec3::ZERO
         };
@@ -115,25 +120,37 @@ impl Fluid3State {
                 jitter(fluid.seed ^ 0x5bd1_e995, i, 1) - 0.5,
                 jitter(fluid.seed ^ 0x5bd1_e995, i, 2) - 0.5,
             ) * (2.0 * r);
-            self.positions.push(at + k);
+            let candidate = at + rotation * k;
+            self.emitted = self.emitted.wrapping_add(1);
+            let separation = fluid.radius.max(solve::MIN_RADIUS) * 0.05;
+            if self
+                .positions
+                .iter()
+                .any(|p| (*p - candidate).length_squared() < separation * separation)
+            {
+                continue;
+            }
+            self.positions.push(candidate);
             self.velocities.push(velocity);
             if self.slot != u32::MAX {
                 self.mix.push(solve::own(self.slot));
             }
-            self.emitted = self.emitted.wrapping_add(1);
         }
     }
 
     /// Removes the particles inside the sink box, keeping the others in
     /// order.
-    pub fn sink(&mut self, fluid: &Fluid3D, centre: Vec3) {
+    pub fn sink(&mut self, fluid: &Fluid3D, centre: Vec3, rotation: Quat) {
         let half = fluid.sink_size * 0.5;
         if !(half.x > 0.0 && half.y > 0.0 && half.z > 0.0) {
             return;
         }
-        let at = centre + fluid.sink_offset;
-        let (lo, hi) = (at - half, at + half);
-        let inside = |p: &Vec3| p.cmpge(lo).all() && p.cmple(hi).all();
+        let inside = |p: &Vec3| {
+            (rotation.conjugate() * (*p - centre) - fluid.sink_offset)
+                .abs()
+                .cmple(half)
+                .all()
+        };
         if !self.positions.iter().any(inside) {
             return;
         }
@@ -162,6 +179,8 @@ impl Fluid3State {
         Body {
             rule: Rule {
                 substeps: fluid.substeps,
+                solver_iterations: fluid.solver_iterations,
+                vorticity: fluid.vorticity,
                 radius: fluid.radius,
                 gravity_scale: fluid.gravity_scale,
                 viscosity: fluid.viscosity,
@@ -175,7 +194,6 @@ impl Fluid3State {
             positions: &mut self.positions,
             velocities: &mut self.velocities,
             mix: &mut self.mix,
-            slot: self.slot,
             centre,
         }
     }

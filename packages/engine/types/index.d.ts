@@ -17231,7 +17231,7 @@ export interface VehicleWheel {
 }
 
 /**
- * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+ * A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state.
  *
  * The value of the `Rope` component (token `og.Rope`).
  */
@@ -17268,7 +17268,38 @@ export interface Rope {
    */
   endOffset: Vector3;
   /**
-   * Constraint passes per step: more is stiffer, at more cost.
+   * Physical XPBD axial stiffness in N/m; compliance is 1/stiffness (0: constraints off).
+   *
+   * @default 100000
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * Mass of each free point in kg (0: fixed).
+   *
+   * @default 0.1
+   * @range 0..
+   * @unit kg (kilograms)
+   */
+  mass: number;
+  /**
+   * Small steps per tick (0: simulation off).
+   *
+   * @default 4
+   * @range 0..16
+   */
+  substeps: number;
+  /** Apply endpoint and solid contact reactions to dynamic bodies. */
+  coupling: boolean;
+  /**
+   * Break links above this force in N (0: unbreakable). Broken links stay broken until rebuilt.
+   *
+   * @range 0..
+   */
+  breakForce: number;
+  /**
+   * XPBD constraint passes per substep; stiffness sets physical compliance.
    *
    * @default 12
    * @range 1..64
@@ -17276,7 +17307,7 @@ export interface Rope {
    */
   iterations: number;
   /**
-   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
+   * Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity.
    *
    * @default 0.6
    * @range 0..100
@@ -17360,7 +17391,7 @@ export declare const PIN_LEFT: 4;
 export declare const PIN_TOP_RINGS: 8;
 
 /**
- * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+ * A small-step XPBD cloth: a columns by rows grid, pinned to its entity, with stretch, dihedral bending, long-range attachments, relative-air drag and lift, and self-collision. Velocities and area-lumped inverse masses are explicit world state; there is no self-collision speed cap.
  *
  * The value of the `Cloth` component (token `og.Cloth`).
  */
@@ -17395,7 +17426,50 @@ export interface Cloth {
    */
   pins: number;
   /**
-   * Constraint passes per step.
+   * Physical XPBD stretch stiffness in N/m (0: off).
+   *
+   * @default 100000
+   * @range 0..
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * Physical XPBD dihedral stiffness (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  bending: number;
+  /**
+   * Long-range attachment stiffness in N/m (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  tether: number;
+  /**
+   * Surface mass density in kg/m² (0: fixed).
+   *
+   * @default 1
+   * @range 0..
+   */
+  density: number;
+  /**
+   * Quadratic relative-air drag coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  drag: number;
+  /**
+   * Relative-air lift coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  lift: number;
+  /**
+   * XPBD constraint passes per substep.
    *
    * @default 8
    * @range 1..64
@@ -17403,7 +17477,7 @@ export interface Cloth {
    */
   iterations: number;
   /**
-   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
+   * Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity.
    *
    * @default 0.9
    * @range 0..100
@@ -17420,10 +17494,10 @@ export interface Cloth {
    */
   gravityScale: number;
   /**
-   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (simulation visual) takes the sum as air moving at its magnitude in m/s.
+   * Air velocity added to the per-point wind field. Drag and lift use air minus point velocity; both coefficients zero disable aerodynamic forces.
    * See `physics §8`.
    *
-   * @unit mps2 (metres per second squared)
+   * @unit mps (metres per second)
    * @tunable
    */
   wind: Vector3;
@@ -17453,10 +17527,10 @@ export interface Cloth {
    */
   thickness: number;
   /**
-   * Simulation steps per tick, each integrating and then solving `iterations` passes; with self-collision enough that a point moves less than `thickness` per step (a point moves at most half the thickness a step).
+   * Small steps per tick, each integrating explicit velocity and solving iterations XPBD passes (0: off).
    *
    * @default 1
-   * @range 1..16
+   * @range 0..16
    */
   substeps: number;
   /**
@@ -17482,7 +17556,7 @@ export interface Cloth {
 }
 
 /**
- * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied.
+ * A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
  * See `physics §8`.
  *
  * The value of the `Garment` component (token `og.Garment`).
@@ -17511,7 +17585,7 @@ export interface Garment {
    */
   pinTop: number;
   /**
-   * How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body).
+   * Offset of the spherical backstop behind the skin, scaled by the pose; used with backstopRadius.
    *
    * @range 0..
    * @unit m (metres)
@@ -17519,18 +17593,60 @@ export interface Garment {
    */
   backstop: number;
   /**
-   * How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches.
+   * Spherical backstop radius, scaled by the pose (0: off).
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  backstopRadius: number;
+  /**
+   * Radius of skeleton bone capsules in model metres, scaled by the character (0: off). Hosts may supply tapered capsules through GarmentPose.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  bodyRadius: number;
+  /**
+   * Reset on target translations larger than this, scaled by the pose (0: off).
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  teleportDistance: number;
+  /**
+   * Surface mass density in kg/m² (0: fixed).
    *
    * @default 1
-   * @range 0..1
+   * @range 0..
+   */
+  density: number;
+  /**
+   * Quadratic relative-air drag coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  drag: number;
+  /**
+   * Relative-air lift coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  lift: number;
+  /**
+   * Physical XPBD edge stiffness in N/m (0: off).
+   *
+   * @default 100000
+   * @range 0..
    * @tunable
    */
   stiffness: number;
   /**
-   * How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather.
+   * Physical XPBD dihedral stiffness (0: off).
    *
    * @default 0.1
-   * @range 0..1
+   * @range 0..
    * @tunable
    */
   bending: number;
@@ -17550,7 +17666,7 @@ export interface Garment {
    */
   substeps: number;
   /**
-   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
+   * Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity.
    *
    * @default 1.85
    * @range 0..100
@@ -17567,10 +17683,10 @@ export interface Garment {
    */
   gravityScale: number;
   /**
-   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s.
+   * Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off).
    * See `physics §8`.
    *
-   * @unit mps2 (metres per second squared)
+   * @unit mps (metres per second)
    * @tunable
    */
   wind: Vector3;
@@ -17622,7 +17738,8 @@ export type SoftBodyShape = "sphere" | "box" | "mesh";
 export declare function SoftBodyShape(value?: SoftBodyShape, options?: FieldOptions): FieldSpec<"SoftBodyShape">;
 
 /**
- * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+ * An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
+ * See `physics §8`.
  *
  * The value of the `SoftBody` component (token `og.SoftBody`).
  */
@@ -17659,10 +17776,10 @@ export interface SoftBody {
    */
   mesh: Geometry;
   /**
-   * How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble.
+   * Physical XPBD edge stiffness in N/m; compliance is 1/stiffness (0: off).
    *
-   * @default 1
-   * @range 0..1
+   * @default 100000
+   * @range 0..
    * @tunable
    */
   stiffness: number;
@@ -17675,13 +17792,27 @@ export interface SoftBody {
    */
   pressure: number;
   /**
-   * How much of its volume a pass restores, 0 to 1.
+   * Physical XPBD volume stiffness (0: off). Volume and gradients use centroid-relative coordinates.
    *
-   * @default 1
-   * @range 0..1
+   * @default 100000
+   * @range 0..
    * @tunable
    */
   volumeStiffness: number;
+  /**
+   * Per-tetrahedron hydrostatic volume stiffness about the centroid (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  tetraStiffness: number;
+  /**
+   * Surface mass density in kg/m² (0: fixed).
+   *
+   * @default 1
+   * @range 0..
+   */
+  density: number;
   /**
    * Constraint passes per substep.
    *
@@ -17698,7 +17829,7 @@ export interface SoftBody {
    */
   substeps: number;
   /**
-   * How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping.
+   * Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity.
    *
    * @default 0.3
    * @range 0..100
@@ -17769,7 +17900,7 @@ export interface SoftBody {
 }
 
 /**
- * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`.
+ * Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix; solid contacts exchange impulses with dynamic bodies. Count, seed or size changes rebuild the spawn lattice. Particles and mix are world state; drawn as metaballs on layer.
  *
  * The value of the `Fluid2D` component (token `og.Fluid2D`).
  */
@@ -17778,7 +17909,7 @@ export interface Fluid2D {
    * How many particles (spawned when the component appears or count changes).
    *
    * @default 1000
-   * @range 1..8192
+   * @range 0..8192
    */
   count: number;
   /**
@@ -17805,31 +17936,31 @@ export interface Fluid2D {
    */
   radius: number;
   /**
-   * The density it settles at (neighbours within radius, weighted).
+   * Target poly6 count including self, multiplied by material density (0: pressure off).
    *
-   * @default 1
+   * @default 2
    * @range 0..
    * @tunable
    */
   restDensity: number;
   /**
-   * The pressure's strength (above about 0.15 it gets springy, then unstable).
+   * PBF density relaxation fraction per iteration (0: off).
    *
-   * @default 0.1
-   * @range 0..
+   * @default 1
+   * @range 0..1
    * @tunable
    */
   stiffness: number;
   /**
-   * The near pressure's strength (keeps particles apart, gives surface tension).
+   * Dimensionless PBF artificial pressure s_corr coefficient (0: off).
    *
-   * @default 0.5
+   * @default 0.001
    * @range 0..
    * @tunable
    */
   nearStiffness: number;
   /**
-   * Linear viscosity (honey above 1).
+   * Stable, mass-conserving XSPH velocity smoothing rate.
    *
    * @default 0.15
    * @range 0..4
@@ -17870,6 +18001,20 @@ export interface Fluid2D {
    * @range 1..8
    */
   substeps: number;
+  /**
+   * PBF density projection passes per substep (0: pressure off).
+   *
+   * @default 3
+   * @range 0..64
+   */
+  solverIterations: number;
+  /**
+   * Vorticity confinement acceleration coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  vorticity: number;
   /** The seed of the spawn jitter. */
   seed: number;
   /**
@@ -17910,7 +18055,7 @@ export interface Fluid2D {
 }
 
 /**
- * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects.
+ * Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface.
  * See `physics §8`.
  *
  * The value of the `Fluid3D` component (token `og.Fluid3D`).
@@ -17947,31 +18092,31 @@ export interface Fluid3D {
    */
   radius: number;
   /**
-   * The density it settles at (neighbours within radius, weighted).
+   * Target poly6 count including self, multiplied by material density (0: pressure off).
    *
-   * @default 10
+   * @default 2
    * @range 0..
    * @tunable
    */
   restDensity: number;
   /**
-   * The pressure's strength (above about 0.05 it jitters, then springs apart).
+   * PBF density relaxation fraction per iteration (0: off).
    *
-   * @default 0.02
-   * @range 0..
+   * @default 1
+   * @range 0..1
    * @tunable
    */
   stiffness: number;
   /**
-   * The near pressure's strength (keeps particles apart, gives surface tension).
+   * Dimensionless PBF artificial pressure s_corr coefficient (0: off).
    *
-   * @default 0.4
+   * @default 0.001
    * @range 0..
    * @tunable
    */
   nearStiffness: number;
   /**
-   * Linear viscosity (it also calms the surface; honey above 1).
+   * Stable, mass-conserving XSPH velocity smoothing rate.
    *
    * @default 0.4
    * @range 0..4
@@ -18012,13 +18157,27 @@ export interface Fluid3D {
    * @range 1..8
    */
   substeps: number;
+  /**
+   * PBF density projection passes per substep (0: pressure off).
+   *
+   * @default 3
+   * @range 0..64
+   */
+  solverIterations: number;
+  /**
+   * Vorticity confinement acceleration coefficient (0: off).
+   *
+   * @range 0..
+   * @tunable
+   */
+  vorticity: number;
   /** The seed of the spawn and emitter jitter. */
   seed: number;
   /**
    * The most particles alive at once (the emitter stops there).
    *
    * @default 8192
-   * @range 1..262144
+   * @range 0..262144
    */
   maxCount: number;
   /**
@@ -18029,13 +18188,13 @@ export interface Fluid3D {
    */
   emitRate: number;
   /**
-   * Where the emitter is, from the entity (world axes).
+   * The emitter's offset in entity-local axes.
    *
    * @unit m (metres)
    */
   emitOffset: Vector3;
   /**
-   * The velocity emitted particles start with.
+   * Emitted velocity in entity-local axes, rotated into the world.
    *
    * @unit mps (metres per second)
    * @tunable
@@ -18051,7 +18210,7 @@ export interface Fluid3D {
    */
   emitRadius: number;
   /**
-   * The sink's centre, from the entity (world axes).
+   * The sink's centre in entity-local axes; the box rotates with it.
    *
    * @unit m (metres)
    */
@@ -38868,31 +39027,32 @@ export declare namespace og {
    */
   const VehicleWheel: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly brake: FieldSpec<"bool">; readonly handbrake: FieldSpec<"bool"> }, VehicleWheel>;
   /**
-   * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+   * A small-step XPBD rope with explicit velocities and point masses. Its start and end follow any Transform entity. Changing length reels it without rebuilding its points; coupling applies endpoint and solid contact impulses to dynamic bodies. Points, velocities and broken links are world state.
    */
-  const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly visible: FieldSpec<"bool"> }, Rope>;
+  const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly stiffness: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly coupling: FieldSpec<"bool">; readonly breakForce: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly visible: FieldSpec<"bool"> }, Rope>;
   /**
-   * A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour).
+   * A small-step XPBD cloth: a columns by rows grid, pinned to its entity, with stretch, dihedral bending, long-range attachments, relative-air drag and lift, and self-collision. Velocities and area-lumped inverse masses are explicit world state; there is no self-collision speed cap.
    */
-  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Cloth>;
+  const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly tether: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly lift: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Cloth>;
   /**
-   * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied.
+   * A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
    * See `physics §8`.
    */
-  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"Simulation"> }, Garment>;
+  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly backstopRadius: FieldSpec<"f32">; readonly bodyRadius: FieldSpec<"f32">; readonly teleportDistance: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly drag: FieldSpec<"f32">; readonly lift: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly simulation: FieldSpec<"Simulation"> }, Garment>;
   /**
-   * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
-   */
-  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"SoftBodyShape">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
-  /**
-   * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: one thresholded surface of `color` on sprite layer `layer`.
-   */
-  const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
-  /**
-   * A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider and the terrain (they push nothing back) and stay inside `bounds` when set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes them. Fluids of one `group` layer by `density` and blend by `mixing`. Drawn as a screen-space surface that refracts and reflects.
+   * An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
    * See `physics §8`.
    */
-  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Fluid3D>;
+  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"SoftBodyShape">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly tetraStiffness: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
+  /**
+   * Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix; solid contacts exchange impulses with dynamic bodies. Count, seed or size changes rebuild the spawn lattice. Particles and mix are world state; drawn as metaballs on layer.
+   */
+  const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly vorticity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
+  /**
+   * Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confinement. Groups interpolate material properties by mix. Contacts exchange impulses with dynamic bodies. The emitter and sink use entity-local axes. Count, seed or size changes rebuild the lattice; lowering maxCount truncates in particle order even with emission off. World state; rendered as a refracting and reflecting surface.
+   * See `physics §8`.
+   */
+  const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly vorticity: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"Simulation"> }, Fluid3D>;
   /**
    * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
    */

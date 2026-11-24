@@ -101,6 +101,10 @@ pub(crate) struct Scene {
     pub joints: Vec<(Entity, Joint)>,
     pub vehicles: Vec<(Entity, Vehicle)>,
     pub ropes: Vec<(Entity, Vec3, Rope)>,
+    /// World positions of transform-only rope anchors.
+    pub anchors: og_core::IdMap<u64, Vec3>,
+    /// World rotations for fluid emitter and sink coordinates.
+    pub fluid_rotations: og_core::IdMap<u64, Quat>,
     pub cloths: Vec<(Entity, Vec3, Quat, Cloth)>,
     pub fluids: Vec<(Entity, Vec3, Fluid2D)>,
     pub surfaces: Vec<(Entity, Vec3, WaterSurface)>,
@@ -659,6 +663,30 @@ pub(crate) fn gather<'w>(
     placed!(Q_FLUIDS3, ids.fluid3, scene.fluids3, |e, p, _q, c| (
         e, p, c
     ));
+    for (_, _, rope) in &scene.ropes {
+        let e = Entity::from_bits(rope.end);
+        if rope.end == 0 {
+            continue;
+        }
+        if let Ok(bytes) = get(e, ids.transform)
+            && let Ok(t) = ids.transform_layout.decode::<Transform>(&bytes)
+        {
+            let (p, _) = chains.as_ref().map_or((t.position, t.quaternion), |c| {
+                c.place(e, t.position, t.quaternion)
+            });
+            scene.anchors.insert(rope.end, p);
+        }
+    }
+    for (e, _, _) in &scene.fluids3 {
+        if let Ok(bytes) = get(*e, ids.transform)
+            && let Ok(t) = ids.transform_layout.decode::<Transform>(&bytes)
+        {
+            let (_, r) = chains.as_ref().map_or((t.position, t.quaternion), |c| {
+                c.place(*e, t.position, t.quaternion)
+            });
+            scene.fluid_rotations.insert(e.to_bits(), r);
+        }
+    }
     Ok(scene)
 }
 

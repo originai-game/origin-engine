@@ -339,6 +339,43 @@ pub(crate) struct Sim {
 }
 
 impl Sim {
+    /// Point solvers run after the rigid readback. Publish their impulses
+    /// too, otherwise the next ECS sync would overwrite the new velocities.
+    pub(crate) fn read_point_reactions(&mut self, scene: &Scene, out: &mut StepOut) {
+        let mut displaced = false;
+        for (i, body) in scene.bodies.iter().enumerate() {
+            if !simulated(body) {
+                continue;
+            }
+            let Some(tracked) = self.bodies.get_mut(&body.entity.to_bits()) else {
+                continue;
+            };
+            let rb = &self.world.bodies[tracked.handle];
+            let velocity = unlocked(
+                Velocity {
+                    linear: unv(rb.linvel()),
+                    angular: unangvel(rb.angvel()),
+                },
+                body.body.lock,
+            );
+            let (p, q) = unpose(rb.position(), body.position);
+            if tracked.velocity == Some(velocity)
+                && tracked.position == p
+                && tracked.quaternion == q
+            {
+                continue;
+            }
+            displaced |= tracked.position != p || tracked.quaternion != q;
+            tracked.velocity = Some(velocity);
+            tracked.position = p;
+            tracked.quaternion = q;
+            out.moved[i] = Some((p, q, Some(velocity)));
+        }
+        if displaced {
+            self.refresh_query_bounds();
+        }
+    }
+
     /// The block's extension sections: [`SimExt`]'s, then the joints'.
     pub(crate) fn sections(&self) -> Vec<(u16, Vec<u8>)> {
         let mut out = self.ext.sections();
@@ -438,11 +475,9 @@ impl Sim {
         let points = |p: &mut Vec<Vec3>| p.iter_mut().for_each(|p| *p = moved(*p));
         for (_, r) in self.ropes.iter_mut() {
             points(&mut r.points);
-            points(&mut r.previous);
         }
         for (_, c) in self.cloths.iter_mut() {
             points(&mut c.points);
-            points(&mut c.previous);
         }
         for (_, f) in self.fluids.iter_mut() {
             for p in &mut f.positions {
@@ -457,11 +492,9 @@ impl Sim {
         }
         for (_, b) in self.ext.softs.iter_mut() {
             points(&mut b.points);
-            points(&mut b.previous);
         }
         for (_, g) in self.ext.garments.iter_mut() {
             points(&mut g.points);
-            points(&mut g.previous);
             points(&mut g.targets);
         }
     }

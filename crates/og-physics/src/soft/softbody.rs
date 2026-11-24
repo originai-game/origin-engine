@@ -1,7 +1,5 @@
-//! PBD soft volumes (og.SoftBody): a closed surface of points (2D: a ring)
-//! integrated by position, held by distance constraints along its edges and
-//! one constraint on the volume it encloses (2D: its area), pinned to its
-//! entity by `pinTop` and pushed out of solid colliders. One-way, as cloth.
+//! XPBD soft volumes: explicit velocities and area-lumped masses, edge
+//! compliance and centroid-relative volume constraints, with two-way solids.
 //!
 //! Determinism: `+ - * /` and `sqrt` on f32 in a fixed order (edges in
 //! index order, the volume's gradient by triangle order); the state is the
@@ -22,17 +20,29 @@ pub(crate) struct SoftKey {
     shape: u32,
     detail: u32,
     mesh: u64,
+    mesh_revision: u64,
     radius: u32,
     size: [u32; 3],
     pin_top: u32,
 }
 
 impl SoftKey {
-    pub fn of(s: &SoftBody) -> SoftKey {
+    pub fn of(s: &SoftBody, mesh: Option<&MeshDesc>) -> SoftKey {
+        // A content revision survives save/restore and host re-registration,
+        // unlike a pointer or a host-local monotonic asset counter.
+        let mesh_revision = mesh.map_or(0, |m| {
+            og_core::hash::hash_words(
+                m.positions
+                    .iter()
+                    .flat_map(|p| p.to_array().map(|x| x.to_bits() as u64))
+                    .chain(m.indices.iter().flatten().map(|&i| i as u64)),
+            )
+        });
         SoftKey {
             shape: s.shape,
             detail: s.detail,
             mesh: if s.shape == SOFT_MESH { s.mesh } else { 0 },
+            mesh_revision,
             radius: s.radius.to_bits(),
             size: s.size.to_array().map(f32::to_bits),
             pin_top: s.pin_top.to_bits(),
@@ -46,7 +56,8 @@ impl SoftKey {
 pub(crate) struct SoftState {
     pub key: SoftKey,
     pub points: Vec<Vec3>,
-    pub previous: Vec<Vec3>,
+    pub velocities: Vec<Vec3>,
+    pub inv_mass: Vec<f32>,
     /// Each point at rest in the entity's space (pins follow it there).
     rest: Vec<Vec3>,
     /// The points `pinTop` holds, ascending.
@@ -206,9 +217,14 @@ fn welded(mesh: &MeshDesc) -> (Vec<Vec3>, Vec<[u32; 3]>) {
 
 /// A closed surface's volume: the signed tetrahedra from the origin.
 fn volume3(points: &[Vec3], tris: &[[u32; 3]]) -> f32 {
+    let origin = centroid(points);
     let mut v = 0.0;
     for &[a, b, c] in tris {
-        let (pa, pb, pc) = (points[a as usize], points[b as usize], points[c as usize]);
+        let (pa, pb, pc) = (
+            points[a as usize] - origin,
+            points[b as usize] - origin,
+            points[c as usize] - origin,
+        );
         v += pa.dot(pb.cross(pc));
     }
     v / 6.0
@@ -216,13 +232,19 @@ fn volume3(points: &[Vec3], tris: &[[u32; 3]]) -> f32 {
 
 /// A ring's area in xy (positive anticlockwise).
 fn area2(points: &[Vec3]) -> f32 {
+    let origin = centroid(points);
     let n = points.len();
     let mut a = 0.0;
     for i in 0..n {
-        let (p, q) = (points[i], points[(i + 1) % n]);
+        let (p, q) = (points[i] - origin, points[(i + 1) % n] - origin);
         a += p.x * q.y - q.x * p.y;
     }
     a * 0.5
+}
+
+fn centroid(points: &[Vec3]) -> Vec3 {
+    let first = points.first().copied().unwrap_or(Vec3::ZERO);
+    first + points.iter().fold(Vec3::ZERO, |s, p| s + (*p - first)) / points.len().max(1) as f32
 }
 
 impl SoftState {
@@ -343,8 +365,9 @@ impl SoftState {
         let rotation = if flat { Quat::IDENTITY } else { rotation };
         let points: Vec<Vec3> = rest.iter().map(|p| origin + rotation * *p).collect();
         Ok(SoftState {
-            key: SoftKey::of(soft),
-            previous: points.clone(),
+            key: SoftKey::of(soft, mesh),
+            velocities: vec![Vec3::ZERO; points.len()],
+            inv_mass: crate::verlet::masses(&rest, &triangles),
             points,
             rest,
             pinned,
@@ -361,7 +384,7 @@ impl SoftState {
         for (p, r) in self.points.iter_mut().zip(&self.rest) {
             *p = origin + rotation * *r;
         }
-        self.previous.clone_from(&self.points);
+        self.velocities.fill(Vec3::ZERO);
     }
 
     /// The points `pinTop` holds, ascending.
@@ -385,8 +408,7 @@ impl SoftState {
 
     /// The mean of its points.
     pub fn center(&self) -> Vec3 {
-        let sum = self.points.iter().fold(Vec3::ZERO, |s, p| s + *p);
-        sum / self.points.len().max(1) as f32
+        centroid(&self.points)
     }
 
     /// One tick of `substeps` steps: integrate with gravity, then
@@ -401,6 +423,9 @@ impl SoftState {
         rotation: Quat,
         solids: &dyn Solids,
     ) {
+        if dt <= 0.0 || soft.substeps == 0 {
+            return;
+        }
         let n = self.points.len();
         let flat = self.flat;
         let z = origin.z;
@@ -410,63 +435,88 @@ impl SoftState {
         let ds = dt / substeps as f32;
         let keep = crate::verlet::keep_per_substep(soft.damping, dt, substeps);
         let g = gravity * soft.gravity_scale;
-        let stiffness = soft.stiffness.clamp(0.0, 1.0);
+        let stiffness = soft.stiffness.max(0.0);
         let target = self.rest_volume * soft.pressure.clamp(0.0, 4.0);
         let volume_stiffness = if soft.pressure > 0.0 {
-            soft.volume_stiffness.clamp(0.0, 1.0)
+            soft.volume_stiffness.max(0.0)
         } else {
             0.0
         };
         let thickness = soft.thickness.max(0.0);
-        let mut w = vec![1.0f32; n];
+        let mut w: Vec<f32> = self
+            .inv_mass
+            .iter()
+            .map(|&w| {
+                if soft.density > 0.0 {
+                    w / soft.density
+                } else {
+                    0.0
+                }
+            })
+            .collect();
         for &i in &self.pinned {
             w[i as usize] = 0.0;
         }
         let mut grads = vec![Vec3::ZERO; n];
         for _ in 0..substeps {
-            for ((p, prev), &wi) in self.points.iter_mut().zip(&mut self.previous).zip(&w) {
-                let at = *p;
-                if wi == 0.0 {
-                    *prev = at;
+            let before = self.points.clone();
+            let mut edge_lambda = vec![0.0; self.edges.len()];
+            let mut volume_lambda = 0.0;
+            let mut tetra_lambda = vec![0.0; self.triangles.len()];
+            for i in 0..n {
+                if self.pinned.binary_search(&(i as u32)).is_ok() {
+                    self.points[i] = origin + rotation * self.rest[i];
                     continue;
                 }
-                let v = (at - *prev) * keep;
-                *prev = at;
-                *p = planar(at + v + g * (ds * ds));
-            }
-            for _ in 0..soft.iterations.clamp(1, 64) {
-                for &i in &self.pinned {
-                    self.points[i as usize] = origin + rotation * self.rest[i as usize];
+                if w[i] == 0.0 {
+                    continue;
                 }
+                self.velocities[i] = self.velocities[i] * keep
+                    + (g + solids.acceleration(self.points[i]) + solids.air(self.points[i])) * ds;
+                self.points[i] = planar(self.points[i] + self.velocities[i] * ds);
+            }
+            for _ in 0..soft.iterations.min(64) {
                 if stiffness > 0.0 {
-                    for &(a, b, rest) in &self.edges {
+                    for (k, &(a, b, rest)) in self.edges.iter().enumerate() {
                         let (a, b) = (a as usize, b as usize);
-                        link(&mut self.points, a, b, rest, (w[a], w[b]), stiffness);
+                        link(
+                            &mut self.points,
+                            a,
+                            b,
+                            rest,
+                            (w[a], w[b]),
+                            stiffness,
+                            ds,
+                            &mut edge_lambda[k],
+                        );
                     }
                 }
                 if volume_stiffness > 0.0 {
-                    self.restore_volume(target, volume_stiffness, &w, &mut grads);
+                    self.restore_volume(
+                        target,
+                        volume_stiffness,
+                        ds,
+                        &mut volume_lambda,
+                        &w,
+                        &mut grads,
+                    );
                 }
-                if thickness > 0.0 {
-                    for (p, &wi) in self.points.iter_mut().zip(&w) {
-                        if wi == 0.0 {
-                            continue;
-                        }
-                        if let Some((out, _)) = solids.push_out(*p, thickness) {
-                            *p = planar(out);
-                        }
-                    }
+                if !flat && soft.tetra_stiffness > 0.0 && soft.pressure > 0.0 {
+                    self.restore_tetrahedra(soft, ds, &w, &mut tetra_lambda);
                 }
             }
-            let friction = soft.friction.clamp(0.0, 1.0);
-            if friction > 0.0 && thickness > 0.0 {
-                for i in 0..n {
-                    let p = self.points[i];
-                    if let Some((_, nrm)) = solids.push_out(p, thickness * 1.05) {
-                        let v = p - self.previous[i];
-                        let slide = v - nrm * nrm.dot(v);
-                        self.previous[i] += slide * friction;
-                    }
+            for i in 0..n {
+                self.velocities[i] = (self.points[i] - before[i]) / ds;
+                if w[i] > 0.0 && thickness > 0.0 {
+                    solids.collide_point(
+                        &mut self.points[i],
+                        &mut self.velocities[i],
+                        thickness,
+                        soft.friction.clamp(0.0, 1.0),
+                        1.0 / w[i],
+                        ds,
+                    );
+                    self.points[i] = planar(self.points[i]);
                 }
             }
         }
@@ -474,7 +524,15 @@ impl SoftState {
 
     /// One pass of the volume constraint (Müller et al. 2007): every point
     /// moved along the volume's gradient by the share that restores it.
-    fn restore_volume(&mut self, target: f32, k: f32, w: &[f32], grads: &mut [Vec3]) {
+    fn restore_volume(
+        &mut self,
+        target: f32,
+        k: f32,
+        h: f32,
+        lambda: &mut f32,
+        w: &[f32],
+        grads: &mut [Vec3],
+    ) {
         let n = self.points.len();
         let c = self.volume() - target;
         if self.flat {
@@ -484,11 +542,12 @@ impl SoftState {
             }
         } else {
             grads.fill(Vec3::ZERO);
+            let origin = self.center();
             for &[a, b, c] in &self.triangles {
                 let (pa, pb, pc) = (
-                    self.points[a as usize],
-                    self.points[b as usize],
-                    self.points[c as usize],
+                    self.points[a as usize] - origin,
+                    self.points[b as usize] - origin,
+                    self.points[c as usize] - origin,
                 );
                 grads[a as usize] += pb.cross(pc) / 6.0;
                 grads[b as usize] += pc.cross(pa) / 6.0;
@@ -502,10 +561,56 @@ impl SoftState {
         if denom <= 1e-12 {
             return;
         }
-        let lambda = -k * c / denom;
+        let alpha = 1.0 / (k * h * h);
+        let dl = (-c - alpha * *lambda) / (denom + alpha);
+        *lambda += dl;
         for i in 0..n {
             if w[i] > 0.0 {
-                self.points[i] += grads[i] * (lambda * w[i]);
+                self.points[i] += grads[i] * (dl * w[i]);
+            }
+        }
+    }
+
+    /// Hydrostatic Neo-Hookean energy (J - 1)^2 over the centroid fan.
+    /// The virtual centroid's gradient is distributed over every vertex,
+    /// so it is not an immovable world-space anchor.
+    fn restore_tetrahedra(&mut self, soft: &SoftBody, h: f32, w: &[f32], lambda: &mut [f32]) {
+        let rest_center = centroid(&self.rest);
+        let n = self.points.len();
+        for (k, ids) in self.triangles.iter().enumerate() {
+            let ids = ids.map(|i| i as usize);
+            let [ra, rb, rc] = ids.map(|i| self.rest[i] - rest_center);
+            let rest = ra.dot(rb.cross(rc)) / 6.0;
+            if rest.abs() < 1e-12 {
+                continue;
+            }
+            let center = centroid(&self.points);
+            let [a, b, c] = ids.map(|i| self.points[i] - center);
+            let volume = a.dot(b.cross(c)) / 6.0;
+            let gradients = [
+                b.cross(c) / (6.0 * rest),
+                c.cross(a) / (6.0 * rest),
+                a.cross(b) / (6.0 * rest),
+            ];
+            let reference = (gradients[0] + gradients[1] + gradients[2]) / n as f32;
+            let alpha = 1.0 / (soft.tetra_stiffness * h * h * rest.abs());
+            let mut denom = alpha;
+            let gradient = |i: usize| {
+                let mut g = -reference;
+                for k in 0..3 {
+                    if ids[k] == i {
+                        g += gradients[k];
+                    }
+                }
+                g
+            };
+            for (i, &wi) in w.iter().enumerate() {
+                denom += wi * gradient(i).length_squared();
+            }
+            let dl = (-(volume / rest - soft.pressure) - alpha * lambda[k]) / denom;
+            lambda[k] += dl;
+            for (i, &wi) in w.iter().enumerate() {
+                self.points[i] += gradient(i) * (wi * dl);
             }
         }
     }

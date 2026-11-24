@@ -611,6 +611,8 @@ fn step_here(
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     laps.lap(Phase::Readout);
     ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;
+    // Deferred soft/fluid reaction impulses can wake a body this tick.
+    out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     ext::joint_values(sim, &mut out);
     for (e, j) in &out.joints {
         ext::joint_written(sim, *e, j);

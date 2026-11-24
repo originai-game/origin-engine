@@ -4353,6 +4353,32 @@
           }
         },
         {
+          "name": "stiffness",
+          "column": "f32",
+          "default": 100000,
+          "tunable": true
+        },
+        {
+          "name": "mass",
+          "column": "f32",
+          "default": 0.1
+        },
+        {
+          "name": "substeps",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "coupling",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "breakForce",
+          "column": "f32",
+          "default": 0
+        },
+        {
           "name": "iterations",
           "column": "u32",
           "default": 12,
@@ -4436,6 +4462,41 @@
           "name": "pins",
           "column": "u32",
           "default": 1
+        },
+        {
+          "name": "stiffness",
+          "column": "f32",
+          "default": 100000,
+          "tunable": true
+        },
+        {
+          "name": "bending",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "tether",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "drag",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "lift",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "iterations",
@@ -4544,9 +4605,41 @@
           "tunable": true
         },
         {
+          "name": "backstopRadius",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "bodyRadius",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "teleportDistance",
+          "column": "f32",
+          "default": 0
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "drag",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "lift",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "stiffness",
           "column": "f32",
-          "default": 1,
+          "default": 100000,
           "tunable": true
         },
         {
@@ -4655,7 +4748,7 @@
         {
           "name": "stiffness",
           "column": "f32",
-          "default": 1,
+          "default": 100000,
           "tunable": true
         },
         {
@@ -4667,8 +4760,19 @@
         {
           "name": "volumeStiffness",
           "column": "f32",
-          "default": 1,
+          "default": 100000,
           "tunable": true
+        },
+        {
+          "name": "tetraStiffness",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 1
         },
         {
           "name": "iterations",
@@ -4782,19 +4886,19 @@
         {
           "name": "restDensity",
           "column": "f32",
-          "default": 1,
+          "default": 2,
           "tunable": true
         },
         {
           "name": "stiffness",
           "column": "f32",
-          "default": 0.1,
+          "default": 1,
           "tunable": true
         },
         {
           "name": "nearStiffness",
           "column": "f32",
-          "default": 0.5,
+          "default": 0.001,
           "tunable": true
         },
         {
@@ -4830,6 +4934,17 @@
           "name": "substeps",
           "column": "u32",
           "default": 2
+        },
+        {
+          "name": "solverIterations",
+          "column": "u32",
+          "default": 3
+        },
+        {
+          "name": "vorticity",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "seed",
@@ -4913,19 +5028,19 @@
         {
           "name": "restDensity",
           "column": "f32",
-          "default": 10,
+          "default": 2,
           "tunable": true
         },
         {
           "name": "stiffness",
           "column": "f32",
-          "default": 0.02,
+          "default": 1,
           "tunable": true
         },
         {
           "name": "nearStiffness",
           "column": "f32",
-          "default": 0.4,
+          "default": 0.001,
           "tunable": true
         },
         {
@@ -4961,6 +5076,17 @@
           "name": "substeps",
           "column": "u32",
           "default": 2
+        },
+        {
+          "name": "solverIterations",
+          "column": "u32",
+          "default": 3
+        },
+        {
+          "name": "vorticity",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         },
         {
           "name": "seed",

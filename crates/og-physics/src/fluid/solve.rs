@@ -1,63 +1,15 @@
-//! The particle fluid's solver, in two or three dimensions: double density
-//! relaxation (Clavet, Beaudoin and Poulin, "Particle-based viscoelastic
-//! fluid simulation", SCA 2005). Each substep applies gravity and the
-//! viscosity impulses, moves the particles, relaxes them towards the rest
-//! density (pressure, and near pressure, which keeps them apart and gives
-//! the surface its tension), takes the velocity from the displacement, and
-//! pushes them out of solids, the terrain and the container.
-//!
-//! Why this and not PBF or WCSPH: the relaxation is position-based, so it
-//! is stable at the 60 Hz tick with one or two substeps (velocity capped
-//! at half the radius per substep, nothing tunnels), and costs two
-//! neighbour passes a substep (density, then relaxation) besides the
-//! viscosity. Position-based fluids need three or four constraint
-//! iterations, each a neighbour pass, for the same incompressibility;
-//! weakly compressible SPH needs a timestep a few times shorter than the
-//! tick at these stiffnesses. Its surface tension comes free with the near
-//! pressure.
-//!
-//! Fluids of one group (`group` on the component) step together: their
-//! particles weigh their fluid's `density` and carry a mix over the group's
-//! fluids that `mixing` evens out where they touch. A lone fluid is a group
-//! of one (every particle the same mass, no mix).
-//!
-//! What a dimension chooses is [`Point`]: its vector, how many cells its
-//! neighbour search visits, and how strongly unmixed fluids hold apart.
-//! Everything else is this file for both.
-//!
-//! Determinism: the hash ([`Pairs`]) maps each cell of size `radius` to a
-//! bucket; the buckets are filled by a counting sort in index order, a
-//! particle's neighbouring cells visit their buckets once each in a fixed
-//! order, and the pairs are grouped by their lower particle in the order
-//! found, so every sum is taken in the same order on every host.
-//! `+ - * /` and `sqrt` only. The particles are part of the og.physics
-//! state block.
+//! Position Based Fluids (Macklin & Müller, 2013). Every Jacobi pass reads
+//! one immutable buffer; every particle gathers neighbours in index order.
+//! Lane partitioning changes scheduling, never a floating-point reduction.
 
 use super::pairs::Pairs;
 use crate::verlet::Solids;
 use og_core::glam::{Vec2, Vec3};
 use std::ops::{Add, AddAssign, Div, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 
-/// The time unit the stiffness numbers are tuned in: one 60 Hz tick.
-const TICK: f32 = 1.0 / 60.0;
-
-/// The most fluids one group simulates together (the lanes of a
-/// particle's mix, and of the renderer's field).
 pub(crate) const GROUP_SIZE: usize = 4;
-
-/// The smallest radius a fluid simulates at (a smaller `radius` is this).
 pub(crate) const MIN_RADIUS: f32 = 0.01;
 
-/// How fast mixing evens out the mix of two touching particles, per tick
-/// at `mixing` 1 and full overlap.
-const MIX_RATE: f32 = 0.25;
-
-/// How much of a particle's sliding velocity a solid it touches takes, per
-/// tick (so a pool sloshing in a bowl comes to rest).
-const WALL_FRICTION: f32 = 0.04;
-
-/// A particle's position or velocity, and what its dimension chooses for
-/// the solver.
 pub(crate) trait Point:
     Copy
     + Send
@@ -73,55 +25,35 @@ pub(crate) trait Point:
     + IndexMut<usize>
 {
     const ZERO: Self;
-    /// The vector's components.
     const AXES: usize;
-    /// How many of the neighbour search's cells a particle visits: its own
-    /// and the half of those around it that come after it.
     const FORWARD: usize;
-    /// How strongly the boundary between unmixed fluids holds them apart
-    /// (a multiple of the near pressure) at `mixing` 0.
-    const TENSION: f32;
-
-    fn dot(self, other: Self) -> f32;
-    fn length(self) -> f32;
     fn length_squared(self) -> f32;
-    /// The neighbour search's cell of this position, `inv` cells a unit.
     fn cell(self, inv: f32) -> [i32; 3];
-    /// The position in the world, a 2D one in the plane at `depth`.
     fn world(self, depth: f32) -> Vec3;
-    /// A world position or direction in this dimension.
     fn of_world(p: Vec3) -> Self;
-    /// The particles one lane task takes in a per-particle pass.
     fn grain() -> usize;
 }
 
+fn cell(x: f32, inv: f32) -> i32 {
+    // Leave a cell on either side for neighbour offsets, even at huge coordinates.
+    (x * inv).floor().clamp(-1_000_000_000.0, 1_000_000_000.0) as i32
+}
+
 impl Point for Vec2 {
-    const ZERO: Vec2 = Vec2::ZERO;
+    const ZERO: Self = Self::ZERO;
     const AXES: usize = 2;
     const FORWARD: usize = 5;
-    const TENSION: f32 = 1.0;
-
-    fn dot(self, other: Vec2) -> f32 {
-        Vec2::dot(self, other)
-    }
-    fn length(self) -> f32 {
-        Vec2::length(self)
-    }
     fn length_squared(self) -> f32 {
-        Vec2::length_squared(self)
+        self.length_squared()
     }
     fn cell(self, inv: f32) -> [i32; 3] {
-        [
-            (self.x * inv).floor() as i32,
-            (self.y * inv).floor() as i32,
-            0,
-        ]
+        [cell(self.x, inv), cell(self.y, inv), 0]
     }
     fn world(self, depth: f32) -> Vec3 {
-        Vec3::new(self.x, self.y, depth)
+        self.extend(depth)
     }
-    fn of_world(p: Vec3) -> Vec2 {
-        Vec2::new(p.x, p.y)
+    fn of_world(p: Vec3) -> Self {
+        p.truncate()
     }
     fn grain() -> usize {
         crate::lanes::now().particles_2d
@@ -129,34 +61,19 @@ impl Point for Vec2 {
 }
 
 impl Point for Vec3 {
-    const ZERO: Vec3 = Vec3::ZERO;
+    const ZERO: Self = Self::ZERO;
     const AXES: usize = 3;
     const FORWARD: usize = 14;
-    /// A tenth of the 2D value: a particle has about four times the
-    /// neighbours in 3D, and at 2D's strength the boundary traps a light
-    /// layer under a heavy one, the heavy fluid never sinking through.
-    const TENSION: f32 = 0.1;
-
-    fn dot(self, other: Vec3) -> f32 {
-        Vec3::dot(self, other)
-    }
-    fn length(self) -> f32 {
-        Vec3::length(self)
-    }
     fn length_squared(self) -> f32 {
-        Vec3::length_squared(self)
+        self.length_squared()
     }
     fn cell(self, inv: f32) -> [i32; 3] {
-        [
-            (self.x * inv).floor() as i32,
-            (self.y * inv).floor() as i32,
-            (self.z * inv).floor() as i32,
-        ]
+        [cell(self.x, inv), cell(self.y, inv), cell(self.z, inv)]
     }
     fn world(self, _: f32) -> Vec3 {
         self
     }
-    fn of_world(p: Vec3) -> Vec3 {
+    fn of_world(p: Vec3) -> Self {
         p
     }
     fn grain() -> usize {
@@ -164,7 +81,6 @@ impl Point for Vec3 {
     }
 }
 
-/// A hash of (seed, i, k) to 0..1: the spawn jitter.
 pub(crate) fn jitter(seed: u32, i: u32, k: u32) -> f32 {
     let mut h = seed
         .wrapping_mul(0x27d4_eb2d)
@@ -179,66 +95,61 @@ pub(crate) fn jitter(seed: u32, i: u32, k: u32) -> f32 {
     (h >> 8) as f32 / (1u32 << 24) as f32
 }
 
-/// The mix of a particle that is all its own fluid (lane `slot`).
 pub(crate) fn own(slot: u32) -> [f32; GROUP_SIZE] {
-    let mut own = [0.0f32; GROUP_SIZE];
-    own[slot as usize] = 1.0;
-    own
+    let mut w = [0.0; GROUP_SIZE];
+    w[slot as usize] = 1.0;
+    w
 }
-
-/// Joins a group at lane `to`: every one of the fluid's `particles` gets a
-/// mix of only its own fluid, when it has none or was in another lane.
-pub(crate) fn join(slot: &mut u32, mix: &mut Vec<[f32; GROUP_SIZE]>, particles: usize, to: u32) {
-    if *slot != to || mix.len() != particles {
-        *mix = vec![own(to); particles];
+pub(crate) fn join(slot: &mut u32, mix: &mut Vec<[f32; GROUP_SIZE]>, n: usize, to: u32) {
+    if *slot != to || mix.len() != n {
+        *mix = vec![own(to); n];
         *slot = to;
     }
 }
-
-/// Leaves a group: the particles keep no mix.
 pub(crate) fn leave(slot: &mut u32, mix: &mut Vec<[f32; GROUP_SIZE]>) {
     *slot = u32::MAX;
     mix.clear();
 }
 
-/// The numbers of a fluid's component the solver reads.
 pub(crate) struct Rule<V> {
     pub substeps: u32,
+    pub solver_iterations: u32,
     pub radius: f32,
     pub gravity_scale: f32,
     pub viscosity: f32,
     pub stiffness: f32,
     pub near_stiffness: f32,
+    pub vorticity: f32,
     pub rest_density: f32,
     pub density: f32,
     pub mixing: f32,
-    /// The container's size about the fluid's centre (an axis of 0: open).
     pub bounds: V,
 }
-
-/// One fluid of a step: its rule, its particles, its lane in its group
-/// (`u32::MAX`: in none, and `mix` empty) and the centre of its container.
 pub(crate) struct Body<'a, V> {
     pub rule: Rule<V>,
     pub positions: &'a mut Vec<V>,
     pub velocities: &'a mut Vec<V>,
     pub mix: &'a mut Vec<[f32; GROUP_SIZE]>,
-    pub slot: u32,
     pub centre: V,
 }
 
-/// One tick of a fluid alone or of the fluids of one group (in entity
-/// order, their lanes `0..4`, each joined to its lane first): their
-/// particles push, drag and (by `mixing`) mix as one fluid whose particles
-/// weigh their fluids' `density`, so a heavier fluid sinks under a lighter
-/// one. Pressure comes from every neighbour (number density), each
-/// particle's own stiffness against its own rest density; a pair's
-/// displacement and viscous impulse are shared in inverse proportion to
-/// the particles' masses; unmixed particles of different fluids are held
-/// apart at their boundary by an extra near pressure ([`Point::TENSION`],
-/// gone at `mixing` 1); and touching particles even out their mix at
-/// `mixing × MIX_RATE` per tick, their mass following it. `depth` is the
-/// plane a 2D fluid meets the solids in.
+// Poly6 density and spiky gradient, as in PBF §3. Unnormalised kernels:
+// restDensity is a particle count at unit material density, including self. The spiky
+// gradient does not vanish as neighbours coincide. Its tie direction is
+// antisymmetric, so even coincident particles exchange equal momentum.
+fn kernel<V: Point>(d: V, h: f32, i: usize, j: usize) -> (f32, V) {
+    let r = d.length_squared().sqrt();
+    let q = (1.0 - r * r / (h * h)).max(0.0);
+    let mut direction = V::ZERO;
+    if r > h * 1e-6 {
+        direction = d / r;
+    } else {
+        direction[(i.min(j) + i.max(j)) % V::AXES] = if i < j { 1.0 } else { -1.0 };
+    }
+    let near = (1.0 - r / h).max(0.0);
+    (q * q * q, direction * (-3.0 * near * near / h))
+}
+
 pub(crate) fn step<V: Point>(
     bodies: &mut [Body<'_, V>],
     dt: f32,
@@ -246,239 +157,242 @@ pub(crate) fn step<V: Point>(
     depth: f32,
     solids: &dyn Solids,
 ) {
-    let grouped = bodies.len() > 1;
+    if dt <= 0.0 {
+        return;
+    }
     let substeps = bodies
         .iter()
         .map(|b| b.rule.substeps.clamp(1, 8))
         .max()
         .unwrap_or(1);
+    let iterations = bodies
+        .iter()
+        .map(|b| b.rule.solver_iterations.min(64))
+        .max()
+        .unwrap_or(0);
     let ds = dt / substeps as f32;
-    // Displacements in Clavet's units: time in ticks, so the numbers mean
-    // the same at any substep count.
-    let t = ds / TICK;
     let h = bodies
         .iter()
         .map(|b| b.rule.radius.max(MIN_RADIUS))
         .fold(0.0f32, f32::max);
-    // The particles of every body, in body order.
-    let mut owner: Vec<u8> = Vec::new();
-    let mut positions: Vec<V> = Vec::new();
-    let mut velocities: Vec<V> = Vec::new();
-    let mut mix: Vec<[f32; GROUP_SIZE]> = Vec::new();
+    let grouped = bodies.len() > 1;
+    let mut owner = Vec::new();
+    let mut positions = Vec::new();
+    let mut velocities = Vec::new();
+    let mut mix = Vec::new();
     for (k, b) in bodies.iter().enumerate() {
-        owner.extend(std::iter::repeat_n(k as u8, b.positions.len()));
+        owner.extend(std::iter::repeat_n(k, b.positions.len()));
         positions.extend_from_slice(b.positions);
         velocities.extend_from_slice(b.velocities);
-        if grouped {
-            mix.extend_from_slice(b.mix);
-        }
+        mix.extend(if grouped {
+            b.mix.clone()
+        } else {
+            vec![own(k as u32); b.positions.len()]
+        });
     }
     let n = positions.len();
     if n == 0 {
         return;
     }
-    let mut lane_density = [1.0f32; GROUP_SIZE];
-    if grouped {
-        for b in bodies.iter() {
-            lane_density[b.slot as usize] = b.rule.density.max(0.05);
+    // Material interpolation follows mix, not the particle's original owner.
+    let property = |w: &[f32; GROUP_SIZE], f: fn(&Rule<V>) -> f32| {
+        let mut value = 0.0;
+        for (k, b) in bodies.iter().enumerate() {
+            value += w[k] * f(&b.rule);
         }
-    }
-    let mass_of = |w: &[f32; GROUP_SIZE]| -> f32 {
-        let mut m = 0.0;
-        for l in 0..GROUP_SIZE {
-            m += w[l] * lane_density[l];
-        }
-        m.max(0.05)
+        value
     };
-    let rule_of = |i: usize| &bodies[owner[i] as usize].rule;
-    let mixing_of = |i: usize| rule_of(i).mixing.clamp(0.0, 1.0);
-    let mut mass: Vec<f32> = if grouped {
-        mix.iter().map(mass_of).collect()
-    } else {
-        vec![1.0; n]
-    };
-    let sigma: Vec<f32> = (0..n).map(|i| rule_of(i).viscosity.max(0.0)).collect();
-    let mut previous = vec![V::ZERO; n];
-    let mut rho = vec![0.0f32; n];
-    let mut near = vec![0.0f32; n];
-    let cap = 0.5 * h / ds;
+    let mut lambda = vec![0.0; n];
+    let mut delta = vec![V::ZERO; n];
     for _ in 0..substeps {
-        for (i, v) in velocities.iter_mut().enumerate() {
-            *v += gravity * (rule_of(i).gravity_scale * ds);
-        }
-        let pairs = Pairs::find(&positions, h);
-        // Viscosity: radial impulses between approaching pairs, shared by
-        // mass.
+        let mass: Vec<f32> = mix
+            .iter()
+            .map(|w| property(w, |r| r.density).max(0.05))
+            .collect();
+        let rest: Vec<f32> = mix
+            .iter()
+            .enumerate()
+            // Material density scales BOTH mass and target density. Otherwise
+            // a density-2 particle with restDensity 2 already fills its entire
+            // target alone: every neighbour is expelled to the kernel edge,
+            // eliminating the overlap needed for a liquid interface to mix.
+            .map(|(i, w)| property(w, |r| r.rest_density) * mass[i])
+            .collect();
+        let previous = positions.clone();
         for i in 0..n {
-            let (pi, si) = (positions[i], sigma[i]);
-            for &j in pairs.of(i) {
-                let j = j as usize;
-                let s = 0.5 * (si + sigma[j]);
-                let d = positions[j] - pi;
-                let r2 = d.length_squared();
-                if s <= 0.0 || r2 <= 1e-18 {
-                    continue;
-                }
-                let r = r2.sqrt();
-                let dir = d / r;
-                let u = (velocities[i] - velocities[j]).dot(dir);
-                if u > 0.0 {
-                    let impulse = dir * (t * (1.0 - r / h) * s * u);
-                    let share = mass[j] / (mass[i] + mass[j]);
-                    velocities[i] -= impulse * share;
-                    velocities[j] += impulse * (1.0 - share);
-                }
-            }
+            let at = positions[i].world(depth);
+            let field = V::of_world(solids.acceleration(at) + solids.air(at));
+            velocities[i] += (gravity * property(&mix[i], |r| r.gravity_scale) + field) * ds;
+            positions[i] += velocities[i] * ds;
         }
-        previous.copy_from_slice(&positions);
-        for (p, v) in positions.iter_mut().zip(velocities.iter_mut()) {
-            let len = v.length();
-            if len > cap {
-                *v *= cap / len;
-            }
-            *p += *v * ds;
-        }
-        // Number density over every neighbour. Each particle's sums could
-        // be gathered on the lanes bit for bit (its pairs with the
-        // particles before it, then its own: the order this scatter visits
-        // them), but the pairs' transpose that needs costs what the split
-        // saves: 8,000 particles in 3D on four lanes 8.37 against 8.45 ms a
-        // tick, 2,000 1.56 against 1.84. So it stays this scatter.
-        rho.iter_mut().for_each(|r| *r = 0.0);
-        near.iter_mut().for_each(|r| *r = 0.0);
-        for i in 0..n {
-            for &j in pairs.of(i) {
-                let r = (positions[j as usize] - positions[i]).length();
-                let q = 1.0 - r / h;
-                if q > 0.0 {
-                    let (q2, q3) = (q * q, q * q * q);
-                    rho[i] += q2;
-                    rho[j as usize] += q2;
-                    near[i] += q3;
-                    near[j as usize] += q3;
-                }
-            }
-        }
-        // Relaxation, Gauss-Seidel in index order over the pairs found
-        // before the move: each pair moves both particles at once and the
-        // next pair reads where they now are. Particle i's pairs read what
-        // particle i - 1's wrote whenever the two are neighbours, as
-        // lattice, emission and pouring order make them nearly always, so
-        // the chain that must run in this order is as long as the fluid:
-        // only another order (Jacobi, or two colours) splits it, and that
-        // moves every particle's bits and the world hash. Viscosity and
-        // mixing are passes of the same kind, over velocities and mixes,
-        // and stay serial too.
-        for i in 0..n {
-            let f = rule_of(i);
-            let pressure = f.stiffness * (rho[i] - f.rest_density);
-            let near_pressure = f.near_stiffness * near[i];
-            let mut dx = V::ZERO;
-            for &j in pairs.of(i) {
-                let j = j as usize;
-                let d = positions[j] - positions[i];
-                let r = d.length();
-                if r <= 1e-9 {
-                    continue;
-                }
-                let q = 1.0 - r / h;
-                if q <= 0.0 {
-                    continue;
-                }
-                let mut push = pressure * q + near_pressure * q * q;
-                if grouped {
-                    // How unlike the two particles are (0: the same mix),
-                    // and how much of that the boundary holds.
-                    let same: f32 = mix[i].iter().zip(&mix[j]).map(|(a, b)| a * b).sum();
-                    let unlike = (1.0 - same).clamp(0.0, 1.0);
-                    let hold = unlike * (1.0 - 0.5 * (mixing_of(i) + mixing_of(j))) * V::TENSION;
-                    push += f.near_stiffness * hold * q;
-                }
-                let disp = (d / r) * (t * t * h * push);
-                let total = mass[i] + mass[j];
-                positions[j] += disp * (mass[i] / total);
-                dx -= disp * (mass[j] / total);
-            }
-            positions[i] += dx;
-        }
-        if grouped {
-            // Mixing: touching particles even out their mix, then their
-            // mass.
-            for i in 0..n {
-                for &j in pairs.of(i) {
-                    let j = j as usize;
-                    let rate = 0.5 * (mixing_of(i) + mixing_of(j)) * MIX_RATE * t;
-                    if rate <= 0.0 {
+        for iteration in 0..iterations {
+            // Rebuild after prediction AND projection: no stale half-pairs.
+            let neighbours = Pairs::find(&positions, h).neighbours(n);
+            crate::lanes::for_each_chunk(&mut lambda, &mut delta, V::grain(), |at, ls, _| {
+                for (k, l) in ls.iter_mut().enumerate() {
+                    let i = at + k;
+                    let strength = property(&mix[i], |r| r.stiffness).clamp(0.0, 1.0);
+                    if rest[i] <= 0.0
+                        || strength == 0.0
+                        || iteration >= bodies[owner[i]].rule.solver_iterations
+                    {
+                        *l = 0.0;
                         continue;
                     }
-                    let r = (positions[j] - positions[i]).length();
-                    let q = 1.0 - r / h;
-                    if q <= 0.0 {
+                    let mut rho = mass[i];
+                    let mut grad_i = V::ZERO;
+                    let mut denom = 0.0;
+                    for &j in &neighbours[i] {
+                        let (w, g) = kernel(positions[i] - positions[j], h, i, j);
+                        rho += mass[j] * w;
+                        let g = g * (mass[j] / rest[i]);
+                        grad_i += g;
+                        denom += g.length_squared() / mass[j];
+                    }
+                    denom += grad_i.length_squared() / mass[i];
+                    // A free liquid surface has missing neighbours, not
+                    // negative pressure that pulls isolated drops together.
+                    *l = -strength * (rho / rest[i] - 1.0).max(0.0) / (denom + 1e-6 / (h * h));
+                }
+            });
+            let mut unused = vec![0.0; n];
+            crate::lanes::for_each_chunk(&mut delta, &mut unused, V::grain(), |at, dx, _| {
+                for (k, out) in dx.iter_mut().enumerate() {
+                    let i = at + k;
+                    *out = V::ZERO;
+                    if rest[i] <= 0.0 {
                         continue;
                     }
-                    let k = (rate * q).min(0.5);
-                    // j > i: both halves of the pair, mutably.
-                    let (low, high) = mix.split_at_mut(j);
-                    for (a, b) in low[i].iter_mut().zip(high[0].iter_mut()) {
-                        let delta = (*b - *a) * k;
-                        *a += delta;
-                        *b -= delta;
-                    }
-                }
-            }
-            for (m, w) in mass.iter_mut().zip(&mix) {
-                *m = mass_of(w);
-            }
-        }
-        // The velocity from the displacement, capped at half the radius
-        // per substep (stable, and nothing tunnels a wall).
-        for ((v, p), q) in velocities.iter_mut().zip(&positions).zip(&previous) {
-            let u = (*p - *q) / ds;
-            let len = u.length();
-            *v = if len > cap { u * (cap / len) } else { u };
-        }
-        // Solids, the terrain and each body's container: pushed out, the
-        // velocity into them dropped (pushing out adds none, so a resting
-        // particle does not bounce) and sliding slowed. Each particle
-        // alone, so by ranges on the lanes from two grains.
-        let shared: &[Body<'_, V>] = bodies;
-        let owner = &owner;
-        crate::lanes::for_each_chunk(&mut positions, &mut velocities, V::grain(), |at, ps, vs| {
-            for (k, (p, v)) in ps.iter_mut().zip(vs.iter_mut()).enumerate() {
-                let b = &shared[owner[at + k] as usize];
-                let r_particle = b.rule.radius.max(MIN_RADIUS) * 0.25;
-                if let Some((q, normal)) = solids.push_out(p.world(depth), r_particle) {
-                    *p = V::of_world(q);
-                    let normal = V::of_world(normal);
-                    let along = v.dot(normal);
-                    let slide = *v - normal * along;
-                    *v = normal * along.max(0.0) + slide * (1.0 - WALL_FRICTION * t);
-                }
-                let half = b.rule.bounds * 0.5;
-                for k in 0..V::AXES {
-                    if half[k] > 0.0 {
-                        let (lo, hi) = (b.centre[k] - half[k], b.centre[k] + half[k]);
-                        if p[k] < lo {
-                            p[k] = lo;
-                            v[k] = v[k].max(0.0);
-                        } else if p[k] > hi {
-                            p[k] = hi;
-                            v[k] = v[k].min(0.0);
+                    for &j in &neighbours[i] {
+                        if rest[j] <= 0.0 {
+                            continue;
                         }
+                        let (w, grad) = kernel(positions[i] - positions[j], h, i, j);
+                        let ratio = w / (0.91 * 0.91 * 0.91);
+                        let ratio2 = ratio * ratio;
+                        let artificial = |p: usize| {
+                            if iteration < bodies[owner[p]].rule.solver_iterations {
+                                property(&mix[p], |r| r.near_stiffness)
+                            } else {
+                                0.0
+                            }
+                        };
+                        let corr = -0.5 * h * h * (artificial(i) + artificial(j)) * ratio2 * ratio2;
+                        let symmetric =
+                            lambda[i] * mass[j] / rest[i] + lambda[j] * mass[i] / rest[j];
+                        *out += grad * ((symmetric + corr) / mass[i]);
                     }
+                }
+            });
+            for i in 0..n {
+                positions[i] += delta[i];
+            }
+        }
+        for i in 0..n {
+            velocities[i] = (positions[i] - previous[i]) / ds;
+        }
+        let neighbours = Pairs::find(&positions, h).neighbours(n);
+        // Symmetric, mass-weighted XSPH: one pair coefficient has a common
+        // normalization on both ends. Each row is convex (stable at any
+        // viscosity), and m_i dv_i + m_j dv_j = 0 even for mixed masses.
+        let before = velocities.clone();
+        let viscosity_weight: Vec<f32> = (0..n)
+            .map(|i| {
+                let mut sum = 0.0;
+                for &j in &neighbours[i] {
+                    let (w, _) = kernel(positions[i] - positions[j], h, i, j);
+                    let s = 0.5
+                        * (property(&mix[i], |r| r.viscosity) + property(&mix[j], |r| r.viscosity))
+                            .max(0.0)
+                        * ds;
+                    sum += s * w * mass[j];
+                }
+                sum
+            })
+            .collect();
+        let omega: Vec<Vec3> = (0..n)
+            .map(|i| {
+                let mut curl = Vec3::ZERO;
+                for &j in &neighbours[i] {
+                    let (_, g) = kernel(positions[i] - positions[j], h, i, j);
+                    curl += (before[j] - before[i]).world(0.0).cross(g.world(0.0));
+                }
+                curl
+            })
+            .collect();
+        let mut next_mix = mix.clone();
+        crate::lanes::for_each_chunk(&mut velocities, &mut next_mix, V::grain(), |at, vs, ws| {
+            for (k, v) in vs.iter_mut().enumerate() {
+                let i = at + k;
+                let mut sum = V::ZERO;
+                let mut eta = Vec3::ZERO;
+                let mut mixed = [0.0; GROUP_SIZE];
+                let mut mix_weight = 0.0;
+                for &j in &neighbours[i] {
+                    let (w, grad) = kernel(positions[i] - positions[j], h, i, j);
+                    let s = 0.5
+                        * (property(&mix[i], |r| r.viscosity) + property(&mix[j], |r| r.viscosity))
+                            .max(0.0)
+                        * ds;
+                    sum += (before[j] - before[i])
+                        * (s * w * mass[j] / (1.0 + viscosity_weight[i].max(viscosity_weight[j])));
+                    eta += grad.world(0.0) * omega[j].length();
+                    let rate = 0.5
+                        * (property(&mix[i], |r| r.mixing) + property(&mix[j], |r| r.mixing))
+                            .clamp(0.0, 1.0)
+                        * ds
+                        * w;
+                    mix_weight += rate;
+                    for (l, m) in mixed.iter_mut().enumerate() {
+                        *m += rate * mix[j][l];
+                    }
+                }
+                *v = before[i] + sum;
+                let len = eta.length();
+                if len > 1e-9 {
+                    *v += V::of_world((eta / len).cross(omega[i]))
+                        * (ds * property(&mix[i], |r| r.vorticity).max(0.0));
+                }
+                for (l, m) in ws[k].iter_mut().enumerate() {
+                    *m = (mix[i][l] + mixed[l]) / (1.0 + mix_weight);
                 }
             }
         });
+        mix = next_mix;
+        for i in 0..n {
+            let b = &bodies[owner[i]];
+            let radius = b.rule.radius.max(MIN_RADIUS) * 0.25;
+            let mut p = positions[i].world(depth);
+            let mut v = velocities[i].world(0.0);
+            solids.collide_point(&mut p, &mut v, radius, 0.04, mass[i], ds);
+            positions[i] = V::of_world(p);
+            velocities[i] = V::of_world(v);
+            let half = b.rule.bounds * 0.5;
+            for axis in 0..V::AXES {
+                if half[axis] <= 0.0 {
+                    continue;
+                }
+                let lo = b.centre[axis] - half[axis];
+                let hi = b.centre[axis] + half[axis];
+                if positions[i][axis] < lo {
+                    positions[i][axis] = lo;
+                    velocities[i][axis] = velocities[i][axis].max(0.0);
+                }
+                if positions[i][axis] > hi {
+                    positions[i][axis] = hi;
+                    velocities[i][axis] = velocities[i][axis].min(0.0);
+                }
+            }
+        }
     }
-    // Back into each body.
     let mut at = 0;
     for b in bodies.iter_mut() {
-        let count = b.positions.len();
-        b.positions.copy_from_slice(&positions[at..at + count]);
-        b.velocities.copy_from_slice(&velocities[at..at + count]);
+        let end = at + b.positions.len();
+        b.positions.copy_from_slice(&positions[at..end]);
+        b.velocities.copy_from_slice(&velocities[at..end]);
         if grouped {
-            b.mix.copy_from_slice(&mix[at..at + count]);
+            b.mix.copy_from_slice(&mix[at..end]);
         }
-        at += count;
+        at = end;
     }
 }

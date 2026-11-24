@@ -6,7 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.SoftBody` (component)
 
-A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface.
+
+See `physics §8`.
 
 Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value type is `SoftBody`.
 
@@ -17,12 +19,14 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 | `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | — | A box's full extents. |
 | `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). See `physics §8`. |
 | `mesh` | `Geometry` | `0` | — | — | — | The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
-| `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble. |
+| `stiffness` | `number` | `100000` | ≥ 0 | — | tunable | Physical XPBD edge stiffness in N/m; compliance is 1/stiffness (0: off). |
 | `pressure` | `number` | `1` | 0 … 4 | — | tunable | The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth). |
-| `volumeStiffness` | `number` | `1` | 0 … 1 | — | tunable | How much of its volume a pass restores, 0 to 1. |
+| `volumeStiffness` | `number` | `100000` | ≥ 0 | — | tunable | Physical XPBD volume stiffness (0: off). Volume and gradients use centroid-relative coordinates. |
+| `tetraStiffness` | `number` | `0` | ≥ 0 | — | tunable | Per-tetrahedron hydrostatic volume stiffness about the centroid (0: off). |
+| `density` | `number` | `1` | ≥ 0 | — | — | Surface mass density in kg/m² (0: fixed). |
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per substep. |
 | `substeps` | `number` | `2` | 1 … 16 | — | — | Simulation steps per tick. |
-| `damping` | `number` | `0.3` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
+| `damping` | `number` | `0.3` | 0 … 100 | `perSecond` | tunable | Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `thickness` | `number` | `0.03` | ≥ 0 | `m` | tunable | The distance its points keep from solids (0: no collision). |
 | `friction` | `number` | `0.3` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
@@ -35,7 +39,8 @@ Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value t
 
 ```ogt
 component SoftBody {
-  doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state; og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
+  doc "An XPBD soft volume with explicit velocities, area-lumped masses, edge constraints and centroid-relative signed volume (2D: area). tetraStiffness enables local hydrostatic volume constraints on a centroid fan. Solid contacts exchange momentum with dynamic bodies. Built at the entity's world pose when its shape or mesh revision changes. Points are world state; og.physics.softBodyPoints reads them and material draws the surface."
+  guide "physics §8"
   field shape SoftBodyShape "sphere, box or mesh."
   field radius f32 "A sphere's radius." {
     default 0.5
@@ -55,10 +60,9 @@ component SoftBody {
     max 7
   }
   field mesh Geometry "The mesh shape's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
-  field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble." {
-    default 1
+  field stiffness f32 "Physical XPBD edge stiffness in N/m; compliance is 1/stiffness (0: off)." {
+    default 100000
     min 0
-    max 1
     tunable true
   }
   field pressure f32 "The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth)." {
@@ -67,11 +71,18 @@ component SoftBody {
     max 4
     tunable true
   }
-  field volumeStiffness f32 "How much of its volume a pass restores, 0 to 1." {
+  field volumeStiffness f32 "Physical XPBD volume stiffness (0: off). Volume and gradients use centroid-relative coordinates." {
+    default 100000
+    min 0
+    tunable true
+  }
+  field tetraStiffness f32 "Per-tetrahedron hydrostatic volume stiffness about the centroid (0: off)." {
+    min 0
+    tunable true
+  }
+  field density f32 "Surface mass density in kg/m² (0: fixed)." {
     default 1
     min 0
-    max 1
-    tunable true
   }
   field iterations u32 "Constraint passes per substep." {
     default 8
@@ -84,7 +95,7 @@ component SoftBody {
     min 1
     max 16
   }
-  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+  field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
     default 0.3
     min 0
     max 100
@@ -132,4 +143,4 @@ component SoftBody {
 }
 ```
 
-<sub>Module `physics` line 1449</sub>
+<sub>Module `physics` line 1515</sub>

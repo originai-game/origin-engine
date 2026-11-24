@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Garment` (component)
 
-Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied.
+A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied.
 
 See `physics §8`.
 
@@ -17,14 +17,20 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `mesh` | `number` | `0` | — | — | — | The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh. |
 | `maxDistance` | `number` | `0.2` | ≥ 0 | `m` | tunable | How far a point may stray from where the skinned pose puts it. |
 | `pinTop` | `number` | `0.04` | ≥ 0 | `m` | tunable | Points within this height of the garment's top at rest (the bind pose, the model's +y) stay on the skinned pose: a skirt's waistband, a cape's collar. |
-| `backstop` | `number` | `0` | ≥ 0 | `m` | tunable | How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body). |
-| `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches. |
-| `bending` | `number` | `0.1` | 0 … 1 | — | tunable | How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather. |
+| `backstop` | `number` | `0` | ≥ 0 | `m` | tunable | Offset of the spherical backstop behind the skin, scaled by the pose; used with backstopRadius. |
+| `backstopRadius` | `number` | `0` | ≥ 0 | `m` | — | Spherical backstop radius, scaled by the pose (0: off). |
+| `bodyRadius` | `number` | `0` | ≥ 0 | `m` | — | Radius of skeleton bone capsules in model metres, scaled by the character (0: off). Hosts may supply tapered capsules through GarmentPose. |
+| `teleportDistance` | `number` | `0` | ≥ 0 | `m` | — | Reset on target translations larger than this, scaled by the pose (0: off). |
+| `density` | `number` | `1` | ≥ 0 | — | — | Surface mass density in kg/m² (0: fixed). |
+| `drag` | `number` | `0` | ≥ 0 | — | tunable | Quadratic relative-air drag coefficient (0: off). |
+| `lift` | `number` | `0` | ≥ 0 | — | tunable | Relative-air lift coefficient (0: off). |
+| `stiffness` | `number` | `100000` | ≥ 0 | — | tunable | Physical XPBD edge stiffness in N/m (0: off). |
+| `bending` | `number` | `0.1` | ≥ 0 | — | tunable | Physical XPBD dihedral stiffness (0: off). |
 | `iterations` | `number` | `6` | 1 … 64 | — | tunable | Constraint passes per substep. |
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
-| `damping` | `number` | `1.85` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
+| `damping` | `number` | `1.85` | 0 … 100 | `perSecond` | tunable | Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off). See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
 | `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
@@ -32,7 +38,7 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 
 ```ogt
 component Garment {
-  doc "Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied."
+  doc "A skinned small-step XPBD garment with explicit velocities, area-lumped masses, dihedral bending and relative-air drag and lift. Scaled maxDistance bounds each point about its skinned target; backstopRadius enables a spherical backstop behind it. bodyRadius enables skeleton capsules. pinTop and vertex red times alpha control freedom. teleportDistance resets large pose jumps. Solid contacts exchange momentum with dynamic bodies. World state, 3D only; blendshapes are not applied."
   guide "physics §8"
   field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
   field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
@@ -47,21 +53,43 @@ component Garment {
     unit m
     tunable true
   }
-  field backstop f32 "How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body)." {
+  field backstop f32 "Offset of the spherical backstop behind the skin, scaled by the pose; used with backstopRadius." {
     min 0
     unit m
     tunable true
   }
-  field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches." {
+  field backstopRadius f32 "Spherical backstop radius, scaled by the pose (0: off)." {
+    min 0
+    unit m
+  }
+  field bodyRadius f32 "Radius of skeleton bone capsules in model metres, scaled by the character (0: off). Hosts may supply tapered capsules through GarmentPose." {
+    min 0
+    unit m
+  }
+  field teleportDistance f32 "Reset on target translations larger than this, scaled by the pose (0: off)." {
+    min 0
+    unit m
+  }
+  field density f32 "Surface mass density in kg/m² (0: fixed)." {
     default 1
     min 0
-    max 1
+  }
+  field drag f32 "Quadratic relative-air drag coefficient (0: off)." {
+    min 0
     tunable true
   }
-  field bending f32 "How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather." {
+  field lift f32 "Relative-air lift coefficient (0: off)." {
+    min 0
+    tunable true
+  }
+  field stiffness f32 "Physical XPBD edge stiffness in N/m (0: off)." {
+    default 100000
+    min 0
+    tunable true
+  }
+  field bending f32 "Physical XPBD dihedral stiffness (0: off)." {
     default 0.1
     min 0
-    max 1
     tunable true
   }
   field iterations u32 "Constraint passes per substep." {
@@ -75,7 +103,7 @@ component Garment {
     min 1
     max 16
   }
-  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+  field damping f32 "Velocity decay rate (0: none): each substep h keeps 1 / (1 + damping * h) of a point's velocity." {
     default 1.85
     min 0
     max 100
@@ -88,9 +116,9 @@ component Garment {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (simulation visual) takes the sum as air moving at its magnitude in m/s." {
+  field wind Vector3 "Air velocity added to the per-point wind field. Drag and lift act on relative air velocity (zero coefficients: off)." {
     guide "physics §8"
-    unit mps2
+    unit mps
     tunable true
   }
   field gust f32 "How much the wind varies over the garment and the tick (0: steady)." {
@@ -115,4 +143,4 @@ component Garment {
 }
 ```
 
-<sub>Module `physics` line 1351</sub>
+<sub>Module `physics` line 1395</sub>
