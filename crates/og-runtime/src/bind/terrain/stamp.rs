@@ -14,7 +14,7 @@
 
 use super::{Engine, edit_loaded, index_of, log_of, placement, replay_if_restored, terrain_id};
 use crate::host::wire::{TerrainStampDesc, TerrainStampMode};
-use glam::{DVec2, Mat4, Vec2, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use og_render::TerrainData;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -22,27 +22,7 @@ use std::sync::Arc;
 /// TerrainStampMode's variants, in the IDL's order.
 const MODES: [&str; 2] = ["carve", "hole"];
 
-/// A terrain's grid as a stamp rasterises it: its extent and samples.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Grid {
-    pub size: Vec2,
-    pub columns: u32,
-    pub rows: u32,
-}
-
-impl Grid {
-    fn of(d: &TerrainData) -> Grid {
-        Grid {
-            size: d.size,
-            columns: d.columns,
-            rows: d.rows,
-        }
-    }
-
-    fn cell(&self) -> Vec2 {
-        TerrainData::flat(self.size, self.columns.max(2), self.rows.max(2)).cell()
-    }
-}
+pub(crate) use og_render::terrain_stamp::Grid;
 
 /// What a stamp changes: the points of the rectangle `[column, row,
 /// width, height]` of the grid's samples (carve) or cells (hole), row by
@@ -156,80 +136,6 @@ impl Patch {
     }
 }
 
-/// The lowest of `triangles` (in the terrain's own space) over each point
-/// of the grid's samples (`cells` false) or cells' centres (`cells`
-/// true), seen straight down its y: the rectangle of the points any
-/// triangle covers and, row by row, each one's lowest height (infinite
-/// where none does). Triangles seen edge-on cover nothing; a point on an
-/// edge is covered by both triangles sharing it. Barycentrics are
-/// reckoned in f64, so a point covered once is covered on every host.
-pub(crate) fn underside(
-    grid: Grid,
-    triangles: &[[Vec3; 3]],
-    cells: bool,
-) -> Option<([u32; 4], Vec<f32>)> {
-    let (cols, rows) = if cells {
-        (grid.columns.max(1) - 1, grid.rows.max(1) - 1)
-    } else {
-        (grid.columns, grid.rows)
-    };
-    if cols == 0 || rows == 0 {
-        return None;
-    }
-    let cell = grid.cell().as_dvec2();
-    let half = grid.size.as_dvec2() * 0.5;
-    let shift = if cells { 0.5 } else { 0.0 };
-    // Grid coordinates of a point in the terrain's space, and back.
-    let to_grid = |p: DVec2| (p + half) / cell - shift;
-    let to_local = |c: f64, r: f64| (DVec2::new(c, r) + shift) * cell - half;
-    let mut lowest = vec![f32::INFINITY; (cols * rows) as usize];
-    let (mut lo, mut hi) = ([u32::MAX; 2], [0u32; 2]);
-    for t in triangles {
-        let p = t.map(|v| DVec2::new(v.x as f64, v.z as f64));
-        let area = (p[1] - p[0]).perp_dot(p[2] - p[0]);
-        if area.is_nan() || area.abs() <= 1e-12 {
-            continue;
-        }
-        let g = p.map(to_grid);
-        let min = g[0].min(g[1]).min(g[2]);
-        let max = g[0].max(g[1]).max(g[2]);
-        let c0 = min.x.ceil().max(0.0);
-        let r0 = min.y.ceil().max(0.0);
-        let c1 = max.x.floor().min(cols as f64 - 1.0);
-        let r1 = max.y.floor().min(rows as f64 - 1.0);
-        if c0 > c1 || r0 > r1 {
-            continue;
-        }
-        let eps = -1e-9 * area.abs();
-        for r in r0 as u32..=r1 as u32 {
-            for c in c0 as u32..=c1 as u32 {
-                let q = to_local(c as f64, r as f64);
-                let w0 = (p[2] - p[1]).perp_dot(q - p[1]) * area.signum();
-                let w1 = (p[0] - p[2]).perp_dot(q - p[2]) * area.signum();
-                let w2 = (p[1] - p[0]).perp_dot(q - p[0]) * area.signum();
-                if w0 < eps || w1 < eps || w2 < eps {
-                    continue;
-                }
-                let y = (w0 * t[0].y as f64 + w1 * t[1].y as f64 + w2 * t[2].y as f64) / area.abs();
-                let k = (r * cols + c) as usize;
-                lowest[k] = lowest[k].min(y as f32);
-                lo = [lo[0].min(c), lo[1].min(r)];
-                hi = [hi[0].max(c), hi[1].max(r)];
-            }
-        }
-    }
-    if lo[0] > hi[0] {
-        return None;
-    }
-    let (w, h) = (hi[0] - lo[0] + 1, hi[1] - lo[1] + 1);
-    let mut out = Vec::with_capacity((w * h) as usize);
-    for r in lo[1]..=hi[1] {
-        let row = (r * cols) as usize;
-        out.extend_from_slice(&lowest[row + lo[0] as usize..=row + hi[0] as usize]);
-    }
-    Some(([lo[0], lo[1], w, h], out))
-}
-
 /// The patch a stamp makes: the carve's heights `depth` under the
 /// underside, or the cells it covers.
 ///
@@ -241,31 +147,7 @@ pub(crate) fn underside(
 /// dark line along its foot), and the step down to the carve lies under
 /// the mesh.
 pub(crate) fn patch(grid: Grid, triangles: &[[Vec3; 3]], hole: bool, depth: f32) -> Option<Patch> {
-    let (rect, lowest) = underside(grid, triangles, hole)?;
-    let [_, _, w, h] = rect;
-    let covered = |c: i64, r: i64| {
-        c >= 0
-            && r >= 0
-            && c < w as i64
-            && r < h as i64
-            && lowest[(r * w as i64 + c) as usize].is_finite()
-    };
-    let values = lowest
-        .iter()
-        .enumerate()
-        .map(|(k, y)| {
-            let (c, r) = ((k as u32 % w) as i64, (k as u32 / w) as i64);
-            let inner =
-                covered(c - 1, r) && covered(c + 1, r) && covered(c, r - 1) && covered(c, r + 1);
-            match (y.is_finite(), hole) {
-                (false, true) => 0.0,
-                (true, true) => 1.0,
-                (true, false) if inner => y - depth,
-                (true, false) => *y,
-                (false, false) => f32::NAN,
-            }
-        })
-        .collect();
+    let (rect, values) = og_render::terrain_stamp::patch(grid, triangles, hole, depth)?;
     Some(Patch { hole, rect, values })
 }
 

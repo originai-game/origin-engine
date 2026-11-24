@@ -96,6 +96,7 @@ pub use scene::*;
 pub use shader_capability::{Capability, Holds, Shading, WEATHER_SURFACE_STUB, assemble};
 pub use shader_source::*;
 pub use targets::{TargetFormat, TargetKind, TargetTexture};
+pub use terrain::stamp as terrain_stamp;
 pub use terrain::{
     DEFAULT_TERRAIN_BUDGET, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, TERRAIN_TEXTURED_LAYERS,
     TerrainControl, TerrainData, TerrainLayer, TerrainLod, TerrainSampler,

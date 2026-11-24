@@ -264,6 +264,7 @@ use media::weather;
 use mesh::skin;
 pub use og_render_data::shapes;
 use og_render_data::terrain_error;
+pub use og_render_data::terrain_stamp;
 pub use og_render_data::{Capability, Holds, Shading};
 use particles::ribbons_gpu::ribbon_source;
 use shader::shaders;

@@ -1,5 +1,6 @@
 mod sampler;
 pub use sampler::*;
+pub mod stamp;
 
 use crate::scene::TextureHandle;
 use glam::{Vec2, Vec3};
