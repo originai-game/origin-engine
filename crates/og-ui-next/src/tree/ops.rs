@@ -1013,7 +1013,18 @@ impl Tree {
                 6 => {
                     let e = self.op(r.u32()?)?;
                     let (name, value) = (r.str()?, r.str()?);
-                    self.sem.prop(self.els[e as usize].node, name, value);
+                    let node = self.els[e as usize].node;
+                    let was = self.sem.get(node).range[2];
+                    self.sem.prop(node, name, value);
+                    // A slider moved to a new value sounds its `step`.
+                    let s = self.sem.get(node);
+                    if name == "valueNow"
+                        && s.role == Some(Some(accesskit::Role::Slider))
+                        && was.is_some()
+                        && s.range[2] != was
+                    {
+                        self.sound(e, "step");
+                    }
                     match name {
                         "disabled" => {
                             let on = !matches!(value, "" | "false" | "0");
@@ -8009,5 +8020,64 @@ mod tests {
         t.pointer(from.0, from.1, false, false);
         assert!(t.key("KeyC", false, true, false, false));
         assert_eq!(t.take_copy().as_deref(), Some("1250 co"));
+    }
+
+    /// A value changing sounds it: a slider moved to a new value plays
+    /// `step` (not on its first value, nor a value set again), and a
+    /// rolling number plays `tick` as its drawn value changes, no more
+    /// often than once per `TICK_GAP`, and none once it lands.
+    #[test]
+    fn a_slider_steps_and_a_rolling_number_ticks() {
+        let cue = |h: u64| Cue {
+            clips: vec![h],
+            volume: [0.5, 0.5],
+            pitch: [1.0, 1.0],
+        };
+        let mut table = SoundTable::new();
+        table.insert(
+            String::new(),
+            [("step", 1), ("tick", 2)]
+                .map(|(e, h)| (e.to_string(), cue(h)))
+                .into(),
+        );
+        let mut t = classed();
+        t.set_sounds(std::rc::Rc::new(table));
+        t.set_time(1.0, false);
+        nodes(
+            &mut t,
+            &[
+                (1, 0, "", 0),
+                (3, 0, "transition-count duration-1000 ease-linear", 0),
+            ],
+        );
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("role").str("slider");
+        b.op(6).u32(1).str("valueNow").str("40");
+        b.op(2).u32(4).str("0 gold");
+        b.op(8).u32(3).u32(4).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        let heard =
+            |t: &mut Tree| -> Vec<u64> { t.take_sounds().iter().map(|p| p.sound).collect() };
+        assert_eq!(heard(&mut t), Vec::<u64>::new(), "a first value is silent");
+        for (v, want) in [("41", vec![1]), ("41", vec![]), ("39", vec![1])] {
+            let mut b = Batch::default();
+            b.op(6).u32(1).str("valueNow").str(v);
+            t.apply(&b.bytes()).unwrap();
+            frame(&mut t);
+            assert_eq!(heard(&mut t), want, "valueNow {v}");
+        }
+        // 0 to 1,000 over a second, a frame every 10 ms: about 20 ticks
+        // (one per 50 ms), not 100.
+        let mut b = Batch::default();
+        b.op(3).u32(4).str("1000 gold");
+        t.apply(&b.bytes()).unwrap();
+        let mut ticks = 0;
+        for k in 1..=130 {
+            t.set_time(1.0 + k as f64 * 0.01, false);
+            frame(&mut t);
+            ticks += heard(&mut t).iter().filter(|&&h| h == 2).count();
+        }
+        assert!((15..=22).contains(&ticks), "{ticks} ticks");
     }
 }

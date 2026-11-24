@@ -742,7 +742,11 @@ is an error naming where it is, never ignored):
   fires (`open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`,
   `purchase`, `countdown`, `tick`, `step`, `swipe`, `notify`, `unlock`)
   sound from a node's `sound` prop,
-  when the node first paints: a keyed row sounds once per key. One clip
+  when the node first paints: a keyed row sounds once per key. Two play on a
+  change: a `role="slider"` node sounds `step` each time its `valueNow`
+  changes, and a `transition-count` number sounds `tick` (from its
+  parent's slot, `Count.roll`) as its drawn value rolls, at most every
+  50 ms. One clip
   at random, at a volume and pitch from their ranges, from a seeded
   stream (a replay plays the same).
   The default pack sounds every event from the engine's UI sound set

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui sound",
+      "summary": "A slider now plays the pack's `step` sound each time its value changes, and a `transition-count` number plays `tick` as it rolls (at most every 50 ms; restyle it under `Count.roll`). Neither plays on the first value, and reduced motion lands a roll silently."
+    }
+  ]
+}

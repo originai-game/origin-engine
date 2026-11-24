@@ -43,7 +43,13 @@ struct Count {
     to: Number,
     /// The time it started.
     since: f64,
+    /// When it last sounded `tick` (`NEG_INFINITY`: not yet).
+    ticked: f64,
 }
+
+/// The least time between a rolling number's `tick`s (s): a fast roll
+/// ticks at this rate rather than once per drawn value.
+const TICK_GAP: f64 = 0.05;
 
 /// The one number in a text (`1,250`, `-3.5`, `x12`), how it is written,
 /// and where: what a `transition-count` text rolls.
@@ -766,6 +772,7 @@ impl Tree {
                     now: from,
                     to,
                     since: self.time,
+                    ticked: f64::NEG_INFINITY,
                 })
             }
             _ => {
@@ -779,7 +786,9 @@ impl Tree {
     }
 
     /// Draws each rolling number at its place on its text's curve, and
-    /// lands it on its text when the curve comes to rest.
+    /// lands it on its text when the curve comes to rest. As the drawn
+    /// number changes the text sounds `tick` (its parent's slot's, so
+    /// `Count.roll` may restyle it), at most once per [`TICK_GAP`].
     fn roll(&mut self) {
         let mut i = 0;
         while i < self.counts.len() {
@@ -794,10 +803,16 @@ impl Tree {
             } else {
                 c.to.show(now, &el.text)
             };
-            if let Some(leaf) = el.leaf {
+            let (parent, leaf) = (el.parent, el.leaf);
+            let moved = leaf.is_some_and(|l| self.arena.text_of(l) != Some(&*text));
+            if let Some(leaf) = leaf {
                 self.arena.set_text(leaf, &text);
             }
             let e = c.e;
+            if moved && !done && self.time - c.ticked >= TICK_GAP {
+                self.counts[i].ticked = self.time;
+                self.sound(if parent == NONE { e } else { parent }, "tick");
+            }
             self.para_touch(e);
             if done {
                 self.counts.swap_remove(i);
