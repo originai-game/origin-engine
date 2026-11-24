@@ -449,7 +449,7 @@ fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Valu
 /// The art's nine-slice pieces and the slots that draw them: each slot's
 /// art is its edge (CONVENTIONS.md §Grounds and inks), so its fill is
 /// cleared and the art's face is the ground.
-const ART_SLOTS: [(&str, &str); 8] = [
+const ART_SLOTS: [(&str, &str); 9] = [
     ("Button.plate", "button"),
     ("Button.plate.primary", "button-primary"),
     ("Button.plate.danger", "button-danger"),
@@ -458,6 +458,7 @@ const ART_SLOTS: [(&str, &str); 8] = [
     ("Chip.frame", "chip"),
     ("Slot.frame", "slot"),
     ("Field.frame", "field"),
+    ("Field.area", "field"),
 ];
 
 /// Compiles a resolved recipe ([`resolve`]): each dimension value read
@@ -662,6 +663,16 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             let states = if slot.starts_with("Button") {
                 format!(
                     " hover:nine-{image}-hover active:nine-{image}-pressed disabled:nine-button-disabled data-pressed:text-{fg} disabled:text-{disabled}"
+                )
+            } else if image == "field" {
+                // A text field's states, each its own art: read-only lies
+                // flat, an invalid value rings in danger, the focus in the
+                // accent (over invalid: the field being typed in), disabled
+                // over all, its ink the disabled faces'.
+                // Its box keeps the design's size and padding, which the
+                // art's edge sits in.
+                format!(
+                    " min-h-11 px-3 py-2 text-base data-readonly:nine-field-readonly aria-invalid:nine-field-invalid focus:nine-field-focus disabled:nine-field-disabled disabled:text-{disabled}"
                 )
             } else {
                 String::new()
@@ -1063,6 +1074,30 @@ mod tests {
                     for face in t.art["palette"][role].as_array().unwrap() {
                         let r = contrast(ink, face.as_str().unwrap());
                         assert!(r >= 4.5, "{m} {source} {slot}: {ink} on {face} {r:.2}");
+                    }
+                    // A text field draws each state in its own art, and
+                    // its disabled ink reads on the disabled faces.
+                    if image == "field" {
+                        let v = t.pack["variants"][slot].as_str().unwrap();
+                        for state in [
+                            "focus:nine-field-focus",
+                            "aria-invalid:nine-field-invalid",
+                            "data-readonly:nine-field-readonly",
+                            "disabled:nine-field-disabled",
+                            "disabled:text-art-button-disabled-fg",
+                        ] {
+                            assert!(v.contains(state), "{m} {slot}: {state} in {v}");
+                        }
+                        let ink = t.pack["theme"]["colors"]["art-button-disabled-fg"]
+                            .as_str()
+                            .unwrap();
+                        for face in t.art["palette"]["disabled"].as_array().unwrap() {
+                            let r = contrast(ink, face.as_str().unwrap());
+                            assert!(
+                                r >= 3.0,
+                                "{m} {source} {slot} disabled: {ink} on {face} {r:.2}"
+                            );
+                        }
                     }
                 }
             }

@@ -513,6 +513,25 @@ impl Tree {
 
     /// Whether op element `e` is a control a finger presses: it answers a
     /// press, or it is an action's touch button (`touchButton`).
+    /// An `Input`'s class: the game's own, after `@Field.frame` (or
+    /// `@Field.area` when it is multi-line) unless the game's names a pack
+    /// slot of its own. Its slot draws its box and its states.
+    pub(super) fn field_class(&mut self, e: u32) {
+        let p = &self.input.per[e as usize];
+        let own = p.own_class.split_whitespace().any(|c| c.starts_with('@'));
+        let class = match (own, p.multiline) {
+            (true, _) => p.own_class.to_string(),
+            (false, false) => format!("@Field.frame {}", p.own_class),
+            (false, true) => format!("@Field.area {}", p.own_class),
+        };
+        let old = self.els[e as usize].class;
+        self.els[e as usize].class = self.classes.with(old, true, &class);
+        let slot = class.split_whitespace().find_map(|c| c.strip_prefix('@'));
+        self.input.per[e as usize].slot = slot.unwrap_or("").into();
+        self.data_dirty = true;
+        self.restyle(e);
+    }
+
     pub(super) fn presses(&self, e: u32) -> bool {
         self.els[e as usize].clickable
             || self
@@ -945,6 +964,9 @@ impl Tree {
                     self.input.per[e as usize].input = tag == 4;
                     self.sem
                         .create(self.els[e as usize].node, a11y::Kind::of(tag));
+                    if tag == 4 {
+                        self.field_class(e);
+                    }
                 }
                 // createText
                 2 => {
@@ -964,6 +986,12 @@ impl Tree {
                 4 | 5 => {
                     let e = self.op(r.u32()?)?;
                     let text = r.str()?;
+                    // An `Input`'s class keeps its default field slot.
+                    if code == 4 && self.input.per[e as usize].input {
+                        self.input.per[e as usize].own_class = text.into();
+                        self.field_class(e);
+                        continue;
+                    }
                     let old = self.els[e as usize].class;
                     self.els[e as usize].class = self.classes.with(old, code == 4, text);
                     if code == 4 {
@@ -1085,6 +1113,7 @@ impl Tree {
                         "multiline" if self.input.per[e as usize].input => {
                             self.input.per[e as usize].multiline =
                                 !matches!(value, "" | "false" | "0" | "null");
+                            self.field_class(e);
                             self.inherit(e);
                         }
                         // `rows`: a multi-line field that many lines tall.
@@ -1093,6 +1122,7 @@ impl Tree {
                             let p = &mut self.input.per[e as usize];
                             p.rows = rows;
                             p.multiline |= rows > 1;
+                            self.field_class(e);
                             self.inherit(e);
                         }
                         "maxLength" | "maxlength" if self.input.per[e as usize].input => {
@@ -1100,8 +1130,10 @@ impl Tree {
                                 value.trim().parse::<usize>().unwrap_or(0);
                         }
                         "readOnly" | "readonly" if self.input.per[e as usize].input => {
-                            self.input.per[e as usize].read_only =
-                                !matches!(value, "" | "false" | "0" | "null");
+                            let on = !matches!(value, "" | "false" | "0" | "null");
+                            self.input.per[e as usize].read_only = on;
+                            // `data-readonly:` classes draw it.
+                            self.mark(e, "readonly", on);
                         }
                         "focusGroup" => {
                             self.input.per[e as usize].group = match value.trim() {
@@ -5807,6 +5839,35 @@ mod tests {
         key(&mut t, "ArrowUp", false, false);
         t.type_text("X");
         assert_eq!(value(&mut t).as_deref(), Some("abX\ncd"));
+    }
+
+    /// An `Input` is drawn by the pack's field slot unless its class names
+    /// one: `Field.frame`, `Field.area` once it is multi-line, kept through
+    /// a class change; `readOnly` is its `data-readonly` state.
+    #[test]
+    fn an_input_takes_the_field_slot_by_default() {
+        let mut t = stated();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(4);
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        let e = t.op(1).unwrap();
+        let slot = |t: &Tree| t.input.per[e as usize].slot.to_string();
+        assert_eq!(slot(&t), "Field.frame");
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("grow");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(slot(&t), "Field.frame", "a class of the game's keeps it");
+        let mut b = Batch::default();
+        b.op(6).u32(1).str("rows").str("3");
+        b.op(6).u32(1).str("readOnly").str("true");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(slot(&t), "Field.area");
+        assert!(t.els[e as usize].attrs.iter().any(|a| &**a == "readonly"));
+        let mut b = Batch::default();
+        b.op(4).u32(1).str("@Chat.input grow");
+        t.apply(&b.bytes()).unwrap();
+        assert_eq!(slot(&t), "Chat.input", "its own slot wins");
     }
 
     /// A control sounds the pack's sound for its slot (`@Component.slot`

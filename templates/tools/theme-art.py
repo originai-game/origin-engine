@@ -670,6 +670,31 @@ def draw(spec):
     piece(cv, C, M, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0), C.pair("field"), sunk=True,
           drop=False, scale_cut=0.8)
     put("field", cv)
+    # the field's states: focused rings its face inside its edge in the
+    # accent (a soft band, then a crisp line); invalid in the danger colour
+    # as a double rule, a shape of its own where the accent is red too;
+    # disabled sinks on the disabled faces; read-only lies flat, not sunk,
+    # on the field's own faces (its ink holds on them)
+    for name, ring_c in (("field-focus", "accent"), ("field-invalid", "danger")):
+        cv = Canvas(S, [fi, fi, fi, fi])
+        fd = piece(cv, C, M, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0), C.pair("field"),
+                   sunk=True, drop=False, scale_cut=0.8)
+        rc = C(ring_c)
+        if name == "field-focus":
+            cv.over(rc, (cover(cv, fd) - cover(cv, fd + 3.0)) * 0.35)
+        else:
+            d2 = fd + 2.5
+            cv.over(rc, cover(cv, d2) - cover(cv, d2 + 1.0))
+        cv.over(rc, cover(cv, fd) - cover(cv, fd + 1.5))
+        put(name, cv)
+    cv = Canvas(S, [fi, fi, fi, fi])
+    piece(cv, C, M, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0), C.pair("disabled"), sunk=True,
+          drop=False, scale_cut=0.8)
+    put("field-disabled", cv)
+    cv = Canvas(S, [fi, fi, fi, fi])
+    piece(cv, C, M, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0), C.pair("field"), sunk=False,
+          drop=False, scale_cut=0.8)
+    put("field-readonly", cv)
 
     # divider: a rule fading at its ends, the accent in its middle band
     cv = Canvas(S, [4, 64, 4, 64], band=(4, 0))

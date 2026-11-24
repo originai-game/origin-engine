@@ -661,7 +661,16 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     ("Slot.frame", "an ability or item slot", ""),
     ("Chip.frame", "a tag, badge or chip", ""),
-    ("Field.frame", "a text field or input's box", ""),
+    (
+        "Field.frame",
+        "a text field or input's box (an Input's own, by default): its focus, invalid value, read-only and disabled states",
+        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-1 inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-2 aria-invalid:inset-ring-danger focus:inset-ring-2 focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
+    ),
+    (
+        "Field.area",
+        "a multi-line text field's box (an Input with multiline or rows, by default), in the same states",
+        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-1 inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-2 aria-invalid:inset-ring-danger focus:inset-ring-2 focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
+    ),
     (
         "Row.frame",
         "a row of a list, table or feed",

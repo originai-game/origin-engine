@@ -1222,6 +1222,39 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
         &mut cv, &mut c, m, &shape, "control", b, f, 0.0, true, false, None, 0.8,
     )?;
     put(&mut out, "field", &cv, true, false);
+    // The field's states: focused rings its face inside its edge (a soft
+    // band, then a crisp line), invalid as a double rule (a shape of its
+    // own where the accent is red too); disabled sinks on the disabled
+    // faces; read-only lies flat on the field's own.
+    for (name, ring_c) in [("field-focus", "accent"), ("field-invalid", "danger")] {
+        let mut cv = Canvas::new(si, [fi; 4], (4, 4));
+        let b = [2.0, 2.0, cv.wf() - 2.0, cv.hf() - 2.0];
+        let f = c.pair("field")?;
+        let fd = piece(
+            &mut cv, &mut c, m, &shape, "control", b, f, 0.0, true, false, None, 0.8,
+        )?;
+        let rc = c.named(ring_c)?;
+        if name == "field-focus" {
+            let soft = ring(&cv, &fd, 3.0);
+            cv.over1(rc, &soft.iter().map(|&r| r * 0.35).collect::<Vec<_>>());
+        } else {
+            cv.over1(rc, &ring(&cv, &add(&fd, 2.5), 1.0));
+        }
+        cv.over1(rc, &ring(&cv, &fd, 1.5));
+        put(&mut out, name, &cv, true, false);
+    }
+    for (name, role, sunk) in [
+        ("field-disabled", "disabled", true),
+        ("field-readonly", "field", false),
+    ] {
+        let mut cv = Canvas::new(si, [fi; 4], (4, 4));
+        let b = [2.0, 2.0, cv.wf() - 2.0, cv.hf() - 2.0];
+        let f = c.pair(role)?;
+        piece(
+            &mut cv, &mut c, m, &shape, "control", b, f, 0.0, sunk, false, None, 0.8,
+        )?;
+        put(&mut out, name, &cv, true, false);
+    }
 
     let mut cv = Canvas::new(si, [4.0, 64.0, 4.0, 64.0], (4, 0));
     let w = cv.wf();
@@ -1329,7 +1362,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
 /// The spec's cache key: a hash of its canonical JSON and the generator's version.
 pub fn spec_key(spec: &Value) -> String {
     let mut h = blake3::Hasher::new();
-    h.update(b"ui_art 1\n");
+    h.update(b"ui_art 2\n");
     h.update(serde_json::to_string(spec).unwrap_or_default().as_bytes());
     h.finalize().to_hex()[..32].to_owned()
 }

@@ -132,6 +132,9 @@ pub(super) struct Per {
     pub read_only: bool,
     /// `rows`: a multi-line field at least that many lines tall (0: its text's).
     pub rows: u16,
+    /// An `Input`'s class as the game gave it, which [`Tree::field_class`]
+    /// puts its default field slot before.
+    pub own_class: Box<str>,
     /// How far a one-line field's text is scrolled left to keep the caret
     /// in view, CSS px.
     pub scroll_x: f32,

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Input",
+      "summary": "An Input is drawn by the pack's field slot by default: `Field.frame`, or the new `Field.area` once it is multi-line (multiline or rows), unless its class names a slot of its own. The slot draws its focus, invalid (`invalid`), read-only (`readOnly`, now a `data-readonly` state) and disabled states. Every engine theme draws each state in its own art (`field-focus`, `field-invalid` as a double rule, `field-readonly`, `field-disabled`), with the text ink solved against the art."
+    }
+  ]
+}
