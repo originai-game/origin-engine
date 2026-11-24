@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "SongSelect (built-in component)",
+      "summary": "The selected song's row steps in from the left inside the list instead of running past its right edge, which cut its BPM off."
+    }
+  ]
+}
