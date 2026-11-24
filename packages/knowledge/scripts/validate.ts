@@ -748,7 +748,7 @@ export function artDoc(roots: Roots, problems: string[]): void {
 export function ogtShape(guides: ReadonlyMap<string, string>): string[] {
   const problems: string[] = [];
   for (const [guide, md] of guides) {
-    for (const m of md.matchAll(/^( *)```([\w-]*)\n([\s\S]*?)^ *```/gm)) {
+    for (const m of md.matchAll(/^( *)```([\w-]*)[^\n]*\n([\s\S]*?)^ *```/gm)) {
       if (m[2] !== "text" && m[2] !== "") continue;
       const indent = m[1]!.length;
       const lines = m[3]!.split("\n").map((l) => l.slice(Math.min(indent, l.length - l.trimStart().length)));
