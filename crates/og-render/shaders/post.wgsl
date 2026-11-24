@@ -68,20 +68,12 @@ fn starburst_row(u: f32) -> f32 {
   return mix(a, b, x - i);
 }
 
-// Filament's acosFastPositive (common_math.glsl), which its starburst
-// reads the angle with.
-fn acos_fast_positive(x: f32) -> f32 {
-  let c = clamp(x, 0.0, 1.0);
-  let p = -0.1565827 * c + 1.570796;
-  return p * sqrt(1.0 - c);
-}
-
 fn starburst(uv: vec2<f32>) -> f32 {
   if (post.flare.y < 0.5) { return 1.0; }
   let offset = post.flare.z;
   let center = uv - vec2<f32>(0.5001);
   let d = max(length(center), 1e-6);
-  let radial = acos_fast_positive(abs(center.x) / d);
+  let radial = atan2(center.y, center.x) / (2.0 * PI) + 0.5;
   let mask = starburst_row(fract(radial + offset)) * starburst_row(fract(radial - offset * 0.5));
   return clamp(mask + (1.0 - smoothstep(0.0, 0.3, d)), 0.0, 1.0);
 }
@@ -146,38 +138,34 @@ fn graded(uv: vec2<f32>) -> vec3<f32> {
   return c;
 }
 
-// Contrast-adaptive sharpening (PostEffects.sharpen, post.extra.w its strength) as three.js CAS passes run it after the
-// output pass: over the sRGB-encoded display colour, the centre pushed from its four neighbours by
-// -sqrt(min(mn, 2 - mx) / mx) / mix(8, 5, sharp), normalised; without `sharpen`, the centre as graded.
+// Contrast-adaptive sharpening (PostEffects.sharpen, post.extra.w its
+// strength): evaluate graded(uv) once for the centre and measure local
+// contrast from the 4 cardinal neighbours of `source` in perceptual luma
+// space, avoiding 4x re-evaluation of bloom, flare, LUT, and vignette.
+fn cas_luma(uv: vec2<f32>, exp_gain: f32) -> f32 {
+  let l = max(luma(sample_exact(source, linear_sampler, uv).rgb) * exp_gain, 0.0);
+  return sqrt(l / (1.0 + l));
+}
+
 fn sharpened(uv: vec2<f32>, sharpen: bool) -> vec3<f32> {
+  let center = graded(uv);
+  if (!sharpen) { return center; }
   let t = 1.0 / vec2<f32>(textureDimensions(source));
-  // The centre, then (sharpening) the taps above, left, right and below,
-  // in one loop: one copy of the grading's code (DXC inlines every call).
-  let taps = array<vec2<f32>, 5>(vec2<f32>(0.0), vec2<f32>(0.0, -1.0), vec2<f32>(-1.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0));
-  var center = vec3<f32>(0.0);
-  var c = vec3<f32>(0.0);
-  var mn = vec3<f32>(0.0);
-  var mx = vec3<f32>(0.0);
-  var around = vec3<f32>(0.0);
-  for (var k = 0u; k < 5u; k++) {
-    let g = graded(uv + taps[k] * t);
-    let e = srgb_encode(clamp(g, vec3<f32>(0.0), vec3<f32>(1.0)));
-    if (k == 0u) {
-      center = g;
-      if (!sharpen) { return g; }
-      c = e;
-      mn = e;
-      mx = e;
-    } else {
-      mn = min(mn, e);
-      mx = max(mx, e);
-      around += e;
-    }
-  }
-  let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, vec3<f32>(1e-4)), vec3<f32>(0.0), vec3<f32>(1.0)));
+  let exp_gain = exposure();
+  let c_l = cas_luma(uv, exp_gain);
+  let n_l = cas_luma(uv + vec2<f32>(0.0, -t.y), exp_gain);
+  let w_l = cas_luma(uv + vec2<f32>(-t.x, 0.0), exp_gain);
+  let e_l = cas_luma(uv + vec2<f32>(t.x, 0.0), exp_gain);
+  let s_l = cas_luma(uv + vec2<f32>(0.0, t.y), exp_gain);
+  let mn = min(c_l, min(min(n_l, s_l), min(w_l, e_l)));
+  let mx = max(c_l, max(max(n_l, s_l), max(w_l, e_l)));
+  let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, 1e-4), 0.0, 1.0));
   let w = amp * (-1.0 / mix(8.0, 5.0, post.extra.w));
+  let sharp_l = clamp((c_l + (n_l + w_l + e_l + s_l) * w) / (1.0 + 4.0 * w), 0.0, 1.0);
+  let delta = sharp_l - c_l;
   let highlights = select(vec3<f32>(0.0), max(center - 1.0, vec3<f32>(0.0)), post.hdr.x > 0.0);
-  return srgb_decode(clamp((c + around * w) / (1.0 + 4.0 * w), vec3<f32>(0.0), vec3<f32>(1.0))) + highlights;
+  let enc = srgb_encode(clamp(center, vec3<f32>(0.0), vec3<f32>(1.0)));
+  return srgb_decode(clamp(enc + vec3<f32>(delta), vec3<f32>(0.0), vec3<f32>(1.0))) + highlights;
 }
 
 // Display-linear colour (paper-white units in HDR): grading, vignette, sharpening, grain, flash.
@@ -205,7 +193,10 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
-  return vec4<f32>(srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
+  let enc = srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0)));
+  // 1-LSB triangular IGN dither to break 8-bit sky and shadow banding.
+  let dither = (ign(in.pos.xy) + ign(in.pos.xy + vec2<f32>(17.0, 31.0)) - 1.0) / 255.0;
+  return vec4<f32>(clamp(enc + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
 }
 
 // The bloom chain's source size (bloom_chain.wgsl): each bloom level is a
@@ -225,9 +216,7 @@ fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
 
 // three.js UnrealBloomPass (post.unreal.x). Mip i (0..4) is a Gaussian of
 // kernel radius 3 + 2i (sigma the same, taps 0..radius-1 each way) in its own
-// texels, run on mip i-1 (mip 0: the high pass at half resolution). The
-// separable pair is one 2D pass here: the vertical half reads the horizontal
-// one at its own texel centres, so the product is the same sum. Level i
+// texels, run on mip i-1 (mip 0: the high pass at half resolution). Level i
 // stores mip i times its mix weight, mix(f, 1.2 - f, radius), f = 1 - 0.2 i;
 // the upsamples then add the levels (bilinear, as the composite reads them).
 fn unreal_weight(level: i32) -> f32 {
@@ -251,17 +240,22 @@ fn unreal_high_pass(lit: vec3<f32>) -> vec3<f32> {
   return c * smoothstep(post.bloom.x, post.bloom.x + post.bloom.y, v);
 }
 
-// The Gaussian of mip `level` at `uv`, its taps `texel` apart; from the lit
-// image through the high pass (level 0) or from the weighted level above.
+// The Gaussian of mip `level` at `uv`, its taps `texel` apart; strided to at
+// most 7x7 taps (49 instead of up to 441 at level 4) while preserving the
+// exact Gaussian sigma through bilinear filtering.
 fn unreal_blur(uv: vec2<f32>, texel: vec2<f32>, level: i32) -> vec3<f32> {
   let k = 3 + 2 * level;
+  let stride = max(1, (k - 1) / 3);
+  let m = (k - 1) / stride;
   var sum = vec3<f32>(0.0);
   var norm = 0.0;
-  for (var j = 1 - k; j < k; j++) {
-    let wj = unreal_tap(abs(j), k);
-    for (var i = 1 - k; i < k; i++) {
-      let w = wj * unreal_tap(abs(i), k);
-      let p = uv + texel * vec2<f32>(f32(i), f32(j));
+  for (var j = -m; j <= m; j++) {
+    let sj = j * stride;
+    let wj = unreal_tap(abs(sj), k);
+    for (var i = -m; i <= m; i++) {
+      let si = i * stride;
+      let w = wj * unreal_tap(abs(si), k);
+      let p = uv + texel * vec2<f32>(f32(si), f32(sj));
       var c: vec3<f32>;
       if (level == 0) {
         c = unreal_high_pass(bloom_tap(p));

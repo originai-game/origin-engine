@@ -390,31 +390,20 @@ impl State {
     }
 
     /// Everything FSR carries from frame to frame, for a checkpoint's copy.
+    /// Per-frame transients (dilated depth/motion/reactive, farthest depth,
+    /// shading change, luma instability, SPD mips, reconstructed depth, new
+    /// locks, luma partials) are recomputed every dispatch and need not be
+    /// saved or restored.
     fn resources(&self) -> (Vec<&wgpu::Texture>, Vec<&wgpu::Buffer>) {
-        let views = [
-            &self.dilated_depth,
-            &self.dilated_motion,
-            &self.farthest_depth,
-            &self.farthest_depth_mip1,
-            &self.shading_change,
-            &self.dilated_reactive,
-            &self.luma_instability,
-            &self.spd_mips,
-        ];
-        let textures = views
-            .into_iter()
-            .chain(&self.luma)
+        let textures = self
+            .luma
+            .iter()
             .chain(&self.accumulation)
             .chain(&self.luma_history)
             .chain(&self.locks)
             .map(wgpu::TextureView::texture)
             .collect();
-        let buffers = vec![
-            &self.reconstructed_depth,
-            &self.new_locks,
-            &self.luma_partials,
-            &self.frame_info,
-        ];
+        let buffers = vec![&self.frame_info];
         (textures, buffers)
     }
 

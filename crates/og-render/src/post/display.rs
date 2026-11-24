@@ -104,7 +104,21 @@ pub(crate) fn curve(space: Space, headroom: f32) -> [f32; 4] {
         }
         0.5 * (lo + hi)
     };
-    [headroom, scale(aces), scale(agx), 0.0]
+    let scale_agx = |headroom: f32| {
+        let target = agx_ev(GREY, 4.026069) / headroom;
+        let max_ev = 4.026069 + headroom.max(1.0).log2();
+        let (mut lo, mut hi) = (0.0f32, 4.0f32);
+        for _ in 0..40 {
+            let mid = 0.5 * (lo + hi);
+            if agx_ev(GREY * mid, max_ev) < target {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        0.5 * (lo + hi)
+    };
+    [headroom, scale(aces), scale_agx(headroom), 0.0]
 }
 
 const GREY: f32 = 0.18;
@@ -114,9 +128,9 @@ fn aces(x: f32) -> f32 {
     ((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)).clamp(0.0, 1.0)
 }
 
-/// tonemap.wgsl's `agx` on a grey (its matrices keep a grey grey).
-fn agx(x: f32) -> f32 {
-    let (min_ev, max_ev) = (-12.47393f32, 4.026069f32);
+/// tonemap.wgsl's `agx` on a grey with highlight ceiling `max_ev`.
+fn agx_ev(x: f32, max_ev: f32) -> f32 {
+    let min_ev = -12.47393f32;
     let c = ((x.max(1e-10).log2() - min_ev) / (max_ev - min_ev)).clamp(0.0, 1.0);
     let (x2, x4) = (c * c, c * c * c * c);
     let curve =

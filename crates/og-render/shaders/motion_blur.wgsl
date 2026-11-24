@@ -81,11 +81,20 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
     }
   }
   if (dot(v, v) < 0.25) { return c; }
+  let z0 = depth_at(px);
+  let soft_z = max(z0 * 0.04, 1e-2);
   var sum = c.rgb;
+  var weight = 1.0;
   for (var i = 0u; i < n; i++) {
     let t = (f32(i) + 0.5) / f32(n) - 0.5;
-    sum += textureSampleLevel(tex_a, fx_linear, in.uv + v * t * fxp.screen.zw, 0.0).rgb;
+    let q_uv = in.uv + v * t * fxp.screen.zw;
+    let q_z = depth_uv(q_uv);
+    // Accept samples in front of or at similar depth to the centre, and
+    // softly attenuate stationary closer foreground occluders.
+    let w = clamp((q_z - z0) / soft_z + 1.0, 0.0, 1.0);
+    sum += textureSampleLevel(tex_a, fx_linear, q_uv, 0.0).rgb * w;
+    weight += w;
   }
   // Drawn as given (alpha below 1): no camera moved it.
-  return vec4<f32>(mix(c.rgb, sum / f32(n + 1u), select(1.0, clamp(c.a, 0.0, 1.0), fxp.mb.w > 0.5)), c.a);
+  return vec4<f32>(mix(c.rgb, sum / max(weight, 1e-4), select(1.0, clamp(c.a, 0.0, 1.0), fxp.mb.w > 0.5)), c.a);
 }

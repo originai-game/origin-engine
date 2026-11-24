@@ -21,6 +21,11 @@ fn ao_blur_tap(acc: vec2<f32>, d: f32, a: f32, d0: f32, scale: f32) -> vec2<f32>
 @fragment
 fn fs_ao_blur_gather(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
+  if (fxp.cam.w > 0.5 && fxp.cam.w < 1.5) { return textureLoad(tex_b, px, 0); }
+  let term = max(fxp.ao2.z, 1.0);
+  if (fxp.cam.w > 1.5 || fxp.ao2.y > 0.5) {
+    return vec4<f32>(min(textureLoad(tex_b, px, 0).r * term, 1.0), 0.0, 0.0, 1.0);
+  }
   let d0 = depth_at(px);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
   let scale = max(d0 * 0.04, 1e-3);

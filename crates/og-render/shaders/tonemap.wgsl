@@ -18,7 +18,7 @@ fn agx_contrast(x: vec3<f32>) -> vec3<f32> {
   return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
 }
 
-fn agx(x: vec3<f32>) -> vec3<f32> {
+fn agx_ev(x: vec3<f32>, max_ev: f32) -> vec3<f32> {
   let srgb_to_2020 = mat3x3<f32>(
     vec3<f32>(0.6274, 0.0691, 0.0164),
     vec3<f32>(0.3293, 0.9195, 0.0880),
@@ -36,12 +36,15 @@ fn agx(x: vec3<f32>) -> vec3<f32> {
     vec3<f32>(-0.11060664309660323, 1.157823702216272, -0.11060664309660294),
     vec3<f32>(-0.016493938717834573, -0.016493938717834257, 1.2519364065950405));
   let min_ev = -12.47393;
-  let max_ev = 4.026069;
   var c = inset * (srgb_to_2020 * x);
   c = clamp((log2(max(c, vec3<f32>(1e-10))) - min_ev) / (max_ev - min_ev), vec3<f32>(0.0), vec3<f32>(1.0));
   c = outset * agx_contrast(c);
   c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(2.2));
   return clamp(rec2020_to_srgb * c, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
+fn agx(x: vec3<f32>) -> vec3<f32> {
+  return agx_ev(x, 4.026069);
 }
 
 // Khronos PBR Neutral, as three.js's NeutralToneMapping: linear sRGB in
@@ -91,10 +94,14 @@ fn neutral_hdr(color: vec3<f32>, top: f32) -> vec3<f32> {
 
 // `tone_curve` for an extended-range output (post/display.rs `curve`):
 // hdr.x the headroom over SDR white the curves end at; ACES and AgX scaled
-// by hdr.y and hdr.z so middle grey lands where SDR puts it.
+// by hdr.y and hdr.z so middle grey lands where SDR puts it, with AgX's
+// log highlight ceiling expanded by log2(headroom).
 fn tone_curve_hdr(c: vec3<f32>, curve: f32, hdr: vec4<f32>) -> vec3<f32> {
   if (curve > 2.5) { return neutral_hdr(c, hdr.x); }
-  if (curve > 1.5) { return agx(c * hdr.z) * hdr.x; }
+  if (curve > 1.5) {
+    let max_ev = 4.026069 + log2(max(hdr.x, 1.0));
+    return agx_ev(c * hdr.z, max_ev) * hdr.x;
+  }
   if (curve > 0.5) { return clamp(c, vec3<f32>(0.0), vec3<f32>(hdr.x)); }
   return aces(c * hdr.y) * hdr.x;
 }
