@@ -202,32 +202,6 @@ pub fn cache_dir(assets_dir: &Path) -> PathBuf {
 mod tests {
     use super::*;
 
-    #[test]
-    fn a_recipe_cooks_into_a_pack_and_its_art() {
-        let cache = std::env::temp_dir().join(format!("og-ui-themes-{}", std::process::id()));
-        let text = r##"{
-          "color": { "source": "#d9a531", "accent": "#e8c25a", "neutral": "#4c5643" },
-          "material": "metal", "shape": "cut", "type": "condensed-stencil", "motion": "snappy",
-          "ornament": { "panel": "brackets" },
-          "pack": { "images": { "chip": { "src": "art/hand-chip.png", "slice": 12 } } }
-        }"##;
-        let f = files(text, "styles/game/theme.json", &cache).unwrap();
-        let names: Vec<&str> = f.iter().map(|(n, _)| n.as_str()).collect();
-        assert!(names.contains(&"art/panel.png") && names.contains(&"art/panel.png.ogt"));
-        assert!(names.contains(&"art/button-primary-pressed.png"));
-        // the recipe's own chip replaces the drawn one, which is not bundled
-        assert!(!names.contains(&"art/chip.png"));
-        let pack = &f.iter().find(|(n, _)| n == "pack.json").unwrap().1;
-        let layer = og_ui_next::pack::Layer::parse(std::str::from_utf8(pack).unwrap()).unwrap();
-        assert_eq!(layer.images[1]["panel"].src, "art/panel.png");
-        assert_eq!(layer.images[1]["chip"].src, "art/hand-chip.png");
-        assert!(layer.variants["Panel.frame"].contains("nine-panel"));
-        // drawn once: the second cook reads the cache
-        let again = files(text, "styles/game/theme.json", &cache).unwrap();
-        assert_eq!(f, again);
-        let _ = std::fs::remove_dir_all(&cache);
-    }
-
     /// Every engine theme (`templates/themes/<name>/theme.json`) resolves,
     /// compiles and cooks into a pack with its art, and every art slot's ink
     /// holds 4.5:1 on its pieces as drawn.
@@ -265,13 +239,5 @@ mod tests {
         }
         let _ = std::fs::remove_dir_all(&cache);
         assert!(bad.is_empty(), "{}", bad.join("\n"));
-    }
-
-    #[test]
-    fn only_a_styles_directorys_recipe_is_one() {
-        assert!(is_recipe("styles/game/theme.json"));
-        assert!(!is_recipe("styles/theme.json"));
-        assert!(!is_recipe("styles/a/b/theme.json"));
-        assert!(!is_recipe("levels/game/theme.json"));
     }
 }

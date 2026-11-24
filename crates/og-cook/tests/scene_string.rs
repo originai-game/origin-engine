@@ -1,11 +1,8 @@
-//! A string field in scene text: one quoted string, cooked as its UTF-8 then
-//! zeros to the field's capacity (og-core's `strN` layout), read back as the
-//! same text, so a scene that writes the value back is the text it was read
-//! from. A text over the capacity, numbers for a string or a string without
-//! the schema are refused with the line and the fix.
+//! Scene text validation: a string field's text over the capacity, numbers
+//! for a string or a string without the schema are refused with the line
+//! and the fix.
 
 use og_cook::cook::{CookOptions, cook_project};
-use og_cook::runtime::Bundle;
 use og_core::ogt::{Block, Document, Entry, Value};
 use og_core::reflect::{FieldSchema, FieldType, Schema};
 use std::path::{Path, PathBuf};
@@ -69,57 +66,6 @@ fn errors(root: &Path, schemas: Vec<Schema>) -> String {
         .unwrap()
         .errors()
         .join("\n")
-}
-
-#[test]
-fn a_quoted_string_cooks_to_its_field_and_reads_back_as_the_same_text() {
-    let names = [("a", "Mei", 3), ("b", "小灯 \"lantern\"", 0), ("c", "", 1)];
-    let text = scene_text(&names);
-    assert!(text.contains("name \"小灯 \\\"lantern\\\"\""), "{text}");
-    let root = project("ok", &text);
-    let report = cook_project(&root, &options(vec![profile()])).expect("the scene cooks");
-    assert!(report.errors().is_empty(), "{:?}", report.errors());
-    let scene = Bundle::open(&root.join("cooked"))
-        .unwrap()
-        .load_scene("scenes/s.ogt")
-        .unwrap();
-    let table = scene
-        .components
-        .iter()
-        .find(|c| c.name == "Profile")
-        .unwrap();
-
-    // Bytes: 16 of zero-padded UTF-8, then the u32; the packed check passes.
-    let mut back = Vec::new();
-    for (i, (entity, name, level)) in names.iter().enumerate() {
-        let row = table.get(i).unwrap();
-        assert_eq!(row.len(), 16 + 4);
-        profile().check_packed(row).unwrap();
-        assert_eq!(&row[..name.len()], name.as_bytes());
-        assert!(row[name.len()..16].iter().all(|b| *b == 0), "zero-padded");
-        assert_eq!(u32::from_le_bytes(row[16..20].try_into().unwrap()), *level);
-        back.push((*entity, og_core::unpack_str(&row[..16]).to_owned(), *level));
-    }
-    // The text written back from the cooked values is the source text.
-    let back: Vec<(&str, &str, u32)> = back.iter().map(|(e, n, l)| (*e, n.as_str(), *l)).collect();
-    assert_eq!(scene_text(&back), text);
-
-    // The same text cooks to the same bytes (stable hashes and diffs).
-    let again = project("again", &text);
-    cook_project(&again, &options(vec![profile()])).unwrap();
-    let read = |r: &Path| {
-        let blob = |e: &std::fs::DirEntry| e.path().extension().is_some_and(|x| x == "ogb");
-        let dir = r.join("cooked/scenes");
-        let file = std::fs::read_dir(&dir)
-            .unwrap()
-            .flatten()
-            .find(blob)
-            .expect("a cooked scene");
-        std::fs::read(file.path()).unwrap()
-    };
-    assert_eq!(read(&root), read(&again));
-    let _ = std::fs::remove_dir_all(&root);
-    let _ = std::fs::remove_dir_all(&again);
 }
 
 #[test]

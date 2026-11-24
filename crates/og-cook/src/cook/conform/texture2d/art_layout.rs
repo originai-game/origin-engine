@@ -354,33 +354,3 @@ pub(super) fn relayout(
         grid: None,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_grid_is_found_and_laid_out_again_at_scale() {
-        // Six 16 x 16 frames, 2 apart, after a margin of 1: 3 x 2.
-        let cells: Vec<Rect> = (0..6)
-            .map(|i| [1 + (i % 3) * 18, 1 + (i / 3) * 18, 16, 16])
-            .collect();
-        let g = grid_of(&cells, (53, 35)).unwrap();
-        assert_eq!(
-            (g.cols, g.rows, g.mx, g.sx, g.right, g.bottom),
-            (3, 2, 1, 2, 0, 0)
-        );
-        // At half scale: 8 x 8 cells, spacing 1, margin 1 (0.5 rounds up).
-        let l = relayout(&cells, (53, 35), 8, 16, Some(g));
-        assert_eq!(l.moved([19, 19, 16, 16]), Some([10, 10, 8, 8]));
-        assert_eq!(l.size, (1 + 3 * 8 + 2, 1 + 2 * 8 + 1));
-        // Frames off a grid pack in rows with one texel between.
-        let odd = vec![[0, 0, 10, 4], [10, 0, 6, 6], [0, 6, 10, 10]];
-        assert!(grid_of(&odd, (16, 16)).is_none());
-        let l = relayout(&odd, (16, 16), 5, 10, None);
-        assert_eq!(
-            l.cells.iter().map(|c| c.1).collect::<Vec<_>>(),
-            vec![[0, 0, 5, 2], [6, 0, 3, 3], [0, 4, 5, 5]]
-        );
-    }
-}

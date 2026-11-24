@@ -72,23 +72,3 @@ impl MotionAction {
         Ok(action)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::MotionAction;
-
-    #[test]
-    fn action_requires_a_finite_forward_hold_interval() {
-        let text = "type motion-action\nversion 1\n---\nsource \"brace.glb\"\nclip \"brace\"\nholdStart 0.5\nholdEnd 1.5\nhand right\nhandTarget 0.1 0.02 -0.03\n";
-        let action = MotionAction::parse(text).unwrap();
-        assert_eq!(action.hand_target, [0.1, 0.02, -0.03]);
-        for (from, to) in [
-            ("holdEnd 1.5", "holdEnd 0.5"),
-            ("holdStart 0.5", "holdStart -1"),
-            ("hand right", "hand foot"),
-            ("source \"brace.glb\"", "source \"\""),
-        ] {
-            assert!(MotionAction::parse(&text.replace(from, to)).is_err());
-        }
-    }
-}

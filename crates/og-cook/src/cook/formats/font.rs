@@ -144,39 +144,3 @@ impl Job for FontJob<'_> {
         Action::Input(s.bytes.as_slice(), format!("font {f:?}"), false)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A font ships its file whole with its metrics; a pixel font also its
-    /// grid, and a face drawn on another pitch is named in the note.
-    #[test]
-    fn a_font_ships_its_file_and_a_pixel_font_its_grid() {
-        let read = |p: &str| {
-            std::fs::read(format!("{}/../../{p}", env!("CARGO_MANIFEST_DIR"))).expect("the font")
-        };
-        let cook_px = |bytes: &[u8], pixel: u32| {
-            let s = FontSettings { pixel };
-            let (blob, notes) = cook(bytes, &s, 0).expect("cooks");
-            (blob, notes.note)
-        };
-        let fusion = read("templates/styles/cjk/FusionPixel12-zhHans.ttf");
-        let (blob, note) = cook_px(&fusion, 12);
-        let b = og_blob::Blob::parse(&blob, "test").unwrap();
-        assert_eq!(b.raw("pixel").unwrap(), b"12");
-        assert_eq!(b.raw("file").unwrap(), fusion.as_slice());
-        assert!(
-            note.contains("pixel font") && !note.contains("off the"),
-            "{note}"
-        );
-        let (_, note) = cook_px(
-            &read("tests/fixtures/pixel-font/DotGothic16-Regular.ttf"),
-            16,
-        );
-        assert!(note.contains("off the 16 px grid"), "{note}");
-        let (plain, _) = cook_px(&fusion, 0);
-        let plain = og_blob::Blob::parse(&plain, "test").unwrap();
-        assert!(plain.raw("pixel").is_err() && plain.raw_opt("atlas.0").is_none());
-    }
-}

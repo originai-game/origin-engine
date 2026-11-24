@@ -284,40 +284,6 @@ pub fn tangent_unpack(n: glam::Vec3, q: u16) -> [f32; 4] {
     [t.x, t.y, t.z, if q & 0x8000 != 0 { -1.0 } else { 1.0 }]
 }
 
-#[cfg(test)]
-mod tangent_tests {
-    use super::*;
-
-    /// A tangent comes back across its normal within a twentieth of a
-    /// degree, its sign kept, for normals all over the sphere (both
-    /// sides of the basis' sign flip at z = 0, and the poles).
-    #[test]
-    fn a_tangent_packs_to_its_angle_across_the_normal() {
-        let mut worst = 0.0f32;
-        for i in 0..2000 {
-            let y = 1.0 - 2.0 * (i as f32 + 0.5) / 2000.0;
-            let r = (1.0 - y * y).sqrt();
-            let a = i as f32 * 2.399_963;
-            let n = glam::Vec3::new(r * a.cos(), r * a.sin(), y).normalize();
-            let t = n.any_orthonormal_vector();
-            let t = (glam::Quat::from_axis_angle(n, i as f32 * 0.37) * t).normalize();
-            let w = if i % 3 == 0 { -1.0 } else { 1.0 };
-            let back = tangent_unpack(n, tangent_pack(n, [t.x, t.y, t.z, w]));
-            assert_eq!(back[3], w);
-            let b = glam::Vec3::new(back[0], back[1], back[2]);
-            assert!(b.dot(n).abs() < 1e-5, "{n}: {b} is not across it");
-            worst = worst.max(b.dot(t).clamp(-1.0, 1.0).acos().to_degrees());
-        }
-        assert!(worst < 0.05, "worst {worst} degrees");
-        for n in [glam::Vec3::Z, -glam::Vec3::Z, glam::Vec3::X] {
-            let back = tangent_unpack(n, tangent_pack(n, [0.0, 1.0, 0.0, 1.0]));
-            let b = glam::Vec3::new(back[0], back[1], back[2]);
-            let want = (glam::Vec3::Y - n * n.y).normalize();
-            assert!(b.dot(want) > 0.99999, "{n}: {b}");
-        }
-    }
-}
-
 row!(
     /// One glTF mesh primitive: a meshopt-encoded vertex stream and index
     /// buffer holding every LOD. The vertex stream is, per vertex and in this

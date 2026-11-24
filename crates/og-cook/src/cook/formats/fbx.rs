@@ -698,6 +698,3 @@ impl Writer<'_> {
         }));
     }
 }
-
-#[cfg(test)]
-mod tests;

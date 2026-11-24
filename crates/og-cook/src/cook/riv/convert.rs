@@ -82,16 +82,6 @@ const FILE_LEVEL: &[&str] = &[
     "FileAssetContents",
 ];
 
-/// Every artboard of `file`, in file order, converted.
-#[cfg(test)]
-pub(crate) fn artboards(file: &RivFile) -> Result<Vec<Artboard>, String> {
-    let groups = group(file)?;
-    let assets = assets(file);
-    (0..groups.len())
-        .map(|g| convert(&groups, &assets, g, 0))
-        .collect()
-}
-
 /// Artboard `index` of `file` (in file order) converted, with the
 /// artboards it nests; the others are not looked at.
 pub(crate) fn artboard(

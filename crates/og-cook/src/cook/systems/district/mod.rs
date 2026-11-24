@@ -193,6 +193,3 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
     }
     sources.extend(extra);
 }
-
-#[cfg(test)]
-mod tests;

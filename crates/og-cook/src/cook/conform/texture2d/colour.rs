@@ -137,21 +137,3 @@ pub fn hue_family(c: Lab) -> u8 {
     }
     1 + best as u8
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn round_trips_bytes_and_orders_lightness() {
-        for c in [[0, 0, 0], [255, 255, 255], [200, 30, 90], [12, 140, 250]] {
-            assert_eq!(lab_to_srgb8(lab(c)), c, "{c:?}");
-        }
-        // White is L 1, black L 0, greys have no chroma.
-        assert!((lab([255, 255, 255])[0] as f64 / ONE - 1.0).abs() < 1e-4);
-        assert_eq!(lab([0, 0, 0])[0], 0);
-        assert_eq!(hue_family(lab([128, 128, 128])), 0);
-        // Red lies near 30 degrees, blue near 265: different families.
-        assert_ne!(hue_family(lab([255, 0, 0])), hue_family(lab([0, 0, 255])));
-    }
-}

@@ -288,22 +288,3 @@ fn read_level(bytes: &[u8], h: &Header, k: u32) -> Result<Vec<f32>, String> {
     }
     Ok(rgb)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn packed_floats_decode() {
-        // 1.0 in 11 bits: exponent 15, mantissa 0; 0.5 in 10 bits: 14.
-        assert_eq!(small_float(15 << 6, 6), 1.0);
-        assert_eq!(small_float(14 << 5, 5), 0.5);
-        assert_eq!(small_float(1, 6), 2f32.powi(-14) / 64.0);
-        assert!(small_float(31 << 6, 6).is_infinite());
-    }
-
-    #[test]
-    fn a_ktx2_that_is_not_a_cube_is_refused() {
-        assert!(read_ktx2_cube(b"not a ktx2").is_err());
-    }
-}

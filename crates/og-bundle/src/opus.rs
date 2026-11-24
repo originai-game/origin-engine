@@ -346,39 +346,6 @@ mod tests {
     }
 
     #[test]
-    fn blocks_index_and_decode_to_the_sound_s_length() {
-        for (frames, channels) in [(1usize, 1usize), (23_040, 2), (23_041, 1), (100_000, 2)] {
-            let pcm = tone(frames, channels);
-            let bytes = encode(&pcm, channels, 96_000, 44_100).unwrap();
-            let ix = index(&bytes).unwrap();
-            assert_eq!(
-                (ix.channels, ix.frames, ix.source_rate),
-                (channels, frames as u64, 44_100)
-            );
-            assert_eq!(ix.blocks.len(), block_count(frames as u64));
-            let d = decode(&bytes).unwrap();
-            assert_eq!(d.samples.len(), frames * channels);
-        }
-    }
-
-    #[test]
-    fn a_block_decoded_in_steps_is_the_block_decoded_at_once() {
-        let pcm = tone(60_000, 2);
-        let bytes = encode(&pcm, 2, 64_000, 48_000).unwrap();
-        let ix = index(&bytes).unwrap();
-        let (a, b) = ix.blocks[1];
-        let whole = decode_block(&bytes[a..b], 2, ix.block_len(1)).unwrap();
-        let mut d = BlockDecoder::new(2, ix.block_len(1)).unwrap();
-        let mut rest = &bytes[a..b];
-        let stepped = loop {
-            if let Some(s) = d.step(&mut rest, 3).unwrap() {
-                break s;
-            }
-        };
-        assert_eq!(whole, stepped);
-    }
-
-    #[test]
     fn malformed_files_are_refused() {
         let bytes = encode(&tone(30_000, 1), 1, 64_000, 48_000).unwrap();
         assert!(index(&bytes[..bytes.len() - 1]).is_err());

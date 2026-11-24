@@ -123,14 +123,11 @@ libm = { version = "0.2.16", optional = true }
 resvg = { version = "0.48.1", default-features = false, features = ["text", "raster-images"], optional = true }
 
 [dev-dependencies]
-# Tests draw what the cook writes (RenderScene, Renderer).
+# The GPU test runner (tests/gpu.rs) names og-render's wgpu and probes the
+# adapter with pollster.
 og-render = { path = "../og-render" }
 pollster = { workspace = true }
-# APNG test sources (the version image decodes with).
-png = "0.18.1"
 og-tests = { path = "../og-tests" }
-og-ecs = { path = "../og-ecs" }
-og-audio = { path = "../og-audio" }
 image = { workspace = true }
 
 [[bin]]

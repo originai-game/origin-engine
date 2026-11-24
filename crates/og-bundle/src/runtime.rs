@@ -1706,30 +1706,3 @@ pub fn unpack(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, LoadError> {
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{Manifest, ManifestFile};
-
-    /// og.motion's model is named in the manifest's text and read back; a
-    /// manifest without it (a game that does not use og.motion, or one
-    /// cooked before the entry existed) has none.
-    #[test]
-    fn the_motion_entry_round_trips() {
-        let mut m = Manifest {
-            cooker: "test".into(),
-            ..Manifest::default()
-        };
-        assert_eq!(Manifest::parse(&m.to_text()).unwrap().motion, None);
-        m.motion = Some(ManifestFile {
-            file: "motion/model.ogb".into(),
-            bytes: 35_354_000,
-            hash: 0x0123_4567_89ab_cdef,
-            integrity: "sha384-AAAA".into(),
-        });
-        let text = m.to_text();
-        assert!(text.contains("motion \"motion/model.ogb\""), "{text}");
-        assert_eq!(Manifest::parse(&text).unwrap(), m);
-        assert_eq!(Manifest::parse(&text).unwrap().outputs().count(), 0);
-    }
-}

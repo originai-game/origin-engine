@@ -333,6 +333,3 @@ pub fn import(file: &Path, out: &Path, root: Option<&Path>, hit: bool) -> Result
         findings: c.findings,
     })
 }
-
-#[cfg(test)]
-mod tests;

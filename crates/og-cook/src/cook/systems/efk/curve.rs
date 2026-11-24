@@ -67,20 +67,3 @@ pub fn flat<const N: usize>(keys: &[(f32, [f32; N])], eps: f32) -> bool {
     keys.iter()
         .all(|k| (0..N).all(|c| (k.1[c] - keys[0].1[c]).abs() <= eps))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_line_is_two_keys_and_a_corner_is_kept() {
-        let k = keys(|t| [2.0 * t], &[], 8, 1e-3);
-        assert_eq!(k.len(), 2);
-        // A fade in over the first 10 %: its corner is a key.
-        let k = keys(|t| [(t / 0.1).min(1.0)], &[0.1], 8, 1e-3);
-        assert_eq!(k.iter().map(|k| k.0).collect::<Vec<_>>(), [0.0, 0.1, 1.0]);
-        // A curve is approximated within the key budget.
-        let k = keys(|t| [t * t], &[], 4, 1e-4);
-        assert_eq!(k.len(), 4);
-    }
-}

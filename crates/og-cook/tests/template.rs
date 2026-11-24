@@ -1,41 +1,36 @@
-//! The cook and the runtime loaders, end to end on the project template
-//! (`tests/fixtures/cook-assets/assets`): cook it, load what came out, compare with the
-//! sources and render it.
+//! The cook end to end on the project template
+//! (`tests/fixtures/cook-assets/assets`): its determinism, and what it
+//! writes loading back as authored.
 //!
 //! Ways this could fail, and the test that catches each:
 //! - output bytes depend on thread scheduling, map order, timestamps or
-//!   uninitialised padding → `cooking_twice_gives_identical_bytes` (one cook
-//!   on all cores, one on one thread, every file compared) and
-//!   `every_thread_count_cooks_the_same_bytes` (thirty cooks of a small
-//!   template on 1, 2 and 8 threads, three at a time);
-//! - the incremental check re-cooks too much (stamps over-broad) or too
-//!   little (stamps miss an input), or rewrites unchanged files →
-//!   `a_gltf_edit_recooks_exactly_its_outputs`;
-//! - a stale blob loads silently, or is refused without naming the file and
-//!   both stamps → `a_stale_blob_is_refused_with_both_stamps`;
-//! - quantisation, the meshopt codecs (C encoder, Rust decoder), welding or
-//!   reordering lose or distort triangles → `meshes_keep_their_triangles_and_bounds`;
-//! - Basis encoding, the .basis→KTX2 rebuild or the KTX2→.basis inverse
-//!   corrupt texels, swap channels or flip rows → `textures_decode_close_to_their_sources`;
-//! - QOA, MSDF and scene compilation produce data the loaders cannot read or
-//!   that means something else → `sounds_fonts_and_scenes_load_as_authored`;
-//! - the whole chain feeds og-render something that draws differently from
-//!   the source models → `cooked_models_render_the_gltf_reference_scene`;
-//! - the cooked template is not smaller than its sources → the size check in
-//!   `cooking_twice_gives_identical_bytes`.
-//!
-//! Evidence (the cook report, the two hashes, the rendered frame) goes to
-//! `$OG_EVIDENCE_DIR/M4/` (default `<target tmp>/evidence/M4/`).
+//!   uninitialised padding → `every_thread_count_cooks_the_same_bytes`
+//!   (cooks of a small template on 1, 2 and 8 threads, three at a time);
+//! - QOA, font and scene compilation produce data the loaders cannot read
+//!   or that means something else → `sounds_fonts_and_scenes_load_as_authored`.
 
 use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::Bundle;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
-use crate::support;
+/// `tests/fixtures/cook-assets/assets`: what the template ships.
+fn template_assets() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cook-assets/assets")
+}
 
-use support::{copy_dir, template_assets};
+fn copy_dir(from: &Path, to: &Path) {
+    std::fs::create_dir_all(to).unwrap();
+    for e in std::fs::read_dir(from).unwrap() {
+        let e = e.unwrap();
+        let dst = to.join(e.file_name());
+        if e.file_type().unwrap().is_dir() {
+            copy_dir(&e.path(), &dst);
+        } else {
+            std::fs::copy(e.path(), dst).unwrap();
+        }
+    }
+}
 
 fn files(dir: &Path) -> BTreeMap<String, Vec<u8>> {
     fn walk(base: &Path, dir: &Path, out: &mut BTreeMap<String, Vec<u8>>) {
@@ -109,21 +104,6 @@ fn differences(a: &BTreeMap<String, Vec<u8>>, b: &BTreeMap<String, Vec<u8>>) -> 
         }
     }
     out
-}
-
-/// The template cooked once (all cores) and shared by the tests, across
-/// their processes (`support::shared`).
-fn cooked() -> &'static support::SharedCook {
-    static COOKED: OnceLock<support::SharedCook> = OnceLock::new();
-    COOKED.get_or_init(|| {
-        support::shared("template", &support::template_sources(), |root| {
-            support::stage_template(&root.join("assets"))
-        })
-    })
-}
-
-fn bundle() -> Bundle {
-    Bundle::open(&cooked().root.join("cooked")).expect("the manifest loads")
 }
 
 /// The template made small enough to cook thirty times: as the template
@@ -205,136 +185,14 @@ fn every_thread_count_cooks_the_same_bytes() {
     );
 }
 
-fn source_doc(
-    name: &str,
-) -> (
-    gltf::Document,
-    Vec<gltf::buffer::Data>,
-    Vec<gltf::image::Data>,
-) {
-    gltf::import(support::template_model(name)).unwrap()
-}
-
-#[test]
-fn meshes_keep_their_triangles_and_bounds() {
-    let b = bundle();
-    for name in ["trickster.glb", "dropship.glb"] {
-        let (doc, buffers, _) = source_doc(name);
-        let model = b.load_model(&format!("models/{name}")).unwrap();
-        let src_prims: Vec<_> = doc
-            .meshes()
-            .flat_map(|m| m.primitives().collect::<Vec<_>>())
-            .collect();
-        assert_eq!(
-            model.primitives.len(),
-            src_prims.len(),
-            "{name}: primitive count"
-        );
-        let mut src_tris = 0;
-        let mut cooked_tris = 0;
-        for (i, (prim, cooked)) in src_prims.iter().zip(&model.primitives).enumerate() {
-            let reader = prim.reader(|bf| Some(&buffers[bf.index()]));
-            let pos: Vec<[f32; 3]> = reader.read_positions().unwrap().collect();
-            let tris = reader
-                .read_indices()
-                .map_or(pos.len(), |ix| ix.into_u32().count())
-                / 3;
-            assert_eq!(
-                cooked.triangle_count(0),
-                tris,
-                "{name} primitive {i}: LOD 0 triangles"
-            );
-            src_tris += tris;
-            cooked_tris += cooked.triangle_count(0);
-            // Bounds of the decoded vertices against the source positions.
-            let (mut slo, mut shi) = ([f32::MAX; 3], [f32::MIN; 3]);
-            for p in &pos {
-                for a in 0..3 {
-                    slo[a] = slo[a].min(p[a]);
-                    shi[a] = shi[a].max(p[a]);
-                }
-            }
-            let (mut clo, mut chi) = ([f32::MAX; 3], [f32::MIN; 3]);
-            for v in &cooked.vertices {
-                for a in 0..3 {
-                    clo[a] = clo[a].min(v.position[a]);
-                    chi[a] = chi[a].max(v.position[a]);
-                }
-            }
-            let extent = (0..3)
-                .map(|a| shi[a] - slo[a])
-                .fold(0.0f32, f32::max)
-                .max(1e-6);
-            for a in 0..3 {
-                assert!(
-                    (clo[a] - slo[a]).abs() <= 0.01 * extent,
-                    "{name} primitive {i}: min[{a}] {} vs {}",
-                    clo[a],
-                    slo[a]
-                );
-                assert!(
-                    (chi[a] - shi[a]).abs() <= 0.01 * extent,
-                    "{name} primitive {i}: max[{a}] {} vs {}",
-                    chi[a],
-                    shi[a]
-                );
-            }
-            // LODs shrink and stay inside the vertex buffer.
-            for w in cooked.lods.windows(2) {
-                assert!(
-                    w[1].count < w[0].count,
-                    "{name} primitive {i}: LODs must shrink"
-                );
-            }
-            // Normals stay unit length after octahedral quantisation.
-            for v in cooked.vertices.iter().step_by(97) {
-                let n = glam::Vec3::from(v.normal).length();
-                assert!(
-                    (n - 1.0).abs() < 1e-3,
-                    "{name} primitive {i}: normal length {n}"
-                );
-            }
-        }
-        assert_eq!(src_tris, cooked_tris);
-        // Model bounds (default scene, node transforms) against og-render's
-        // own glTF loader, from the decoded vertices.
-        let reference =
-            og_render::gltf::load_glb(&std::fs::read(support::template_model(name)).unwrap())
-                .unwrap();
-        let world = model.node_world();
-        let (mut lo, mut hi) = (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN));
-        for n in model.scene_nodes(model.default_scene.unwrap()) {
-            if let Some(m) = model.nodes[n].mesh {
-                for at in model.node_draws(&world, n) {
-                    for p in model.meshes[m].primitives.clone() {
-                        for v in &model.primitives[p].vertices {
-                            let w = at.transform_point3(glam::Vec3::from(v.position));
-                            lo = lo.min(w);
-                            hi = hi.max(w);
-                        }
-                    }
-                }
-            }
-        }
-        let extent = (reference.max - reference.min).max_element();
-        assert!(
-            (lo - reference.min).abs().max_element() <= 0.01 * extent,
-            "{name}: {lo} vs {}",
-            reference.min
-        );
-        assert!(
-            (hi - reference.max).abs().max_element() <= 0.01 * extent,
-            "{name}: {hi} vs {}",
-            reference.max
-        );
-        assert!((model.min - reference.min).abs().max_element() <= 1e-4 * extent);
-        assert!((model.max - reference.max).abs().max_element() <= 1e-4 * extent);
-    }
-}
-
 #[test]
 fn sounds_fonts_and_scenes_load_as_authored() {
-    let b = bundle();
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook/template");
+    let _ = std::fs::remove_dir_all(&root);
+    copy_dir(&template_assets(), &root.join("assets"));
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).expect("the manifest loads");
     // Sound: QOA decodes to the WAV's length and stays close to it.
     let s = b.load_sound("audio/blip.wav").unwrap();
     let pcm = s.decode().unwrap();

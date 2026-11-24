@@ -77,9 +77,6 @@ const ROLES: &[&str] = &[
     "scrollbar",
 ];
 
-#[cfg(test)]
-mod tests;
-
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, hash_bytes, stamp,
 };

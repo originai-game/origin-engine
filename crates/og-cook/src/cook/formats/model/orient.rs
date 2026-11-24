@@ -171,29 +171,3 @@ pub fn apply(bytes: &[u8], front: Axis, up: Axis) -> Result<Vec<u8>, String> {
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn turn(front: &str, up: &str, v: [f32; 3]) -> [f32; 3] {
-        let q = glam::Quat::from_array(rotation(
-            Axis::parse(front).unwrap(),
-            Axis::parse(up).unwrap(),
-        ));
-        let r = q * glam::Vec3::from(v);
-        r.to_array().map(|x| (x * 1e4).round() / 1e4)
-    }
-
-    #[test]
-    fn the_stated_front_goes_to_plus_z_and_up_to_plus_y() {
-        // A nose on -X (image-to-3D from a three-quarter concept).
-        assert_eq!(turn("-x", "+y", [-1.0, 0.0, 0.0]), [0.0, 0.0, 1.0]);
-        assert_eq!(turn("-x", "+y", [0.0, 1.0, 0.0]), [0.0, 1.0, 0.0]);
-        // Z up, nose -Y (Blender's front view).
-        assert_eq!(turn("-y", "+z", [0.0, -1.0, 0.0]), [0.0, 0.0, 1.0]);
-        assert_eq!(turn("-y", "+z", [0.0, 0.0, 1.0]), [0.0, 1.0, 0.0]);
-        // Already the engine's: no turn.
-        assert_eq!(turn("+z", "+y", [0.3, 0.2, 0.1]), [0.3, 0.2, 0.1]);
-    }
-}

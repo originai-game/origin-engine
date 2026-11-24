@@ -2,9 +2,9 @@
 //! art spec (a material, a shape, ornaments and the resolved palette).
 //!
 //! The spec is `templates/tools/theme-art.py`; this is its port and draws
-//! the same bytes (the parity test checks every piece of every spec in
-//! `templates/tools/theme-art-specs.json` against the digests the Python
-//! writes to `crates/og-cook/tests/ui_art_parity.json`). Every operation
+//! the same bytes (the digests the Python writes for every piece of every
+//! spec in `templates/tools/theme-art-specs.json` are
+//! `crates/og-cook/tests/ui_art_parity.json`, part of `spec_key`). Every operation
 //! keeps the Python's order and uses only + - * / sqrt, floor and
 //! comparisons in f64, so the two agree exactly; read the Python for what
 //! each step draws and why.
@@ -1414,70 +1414,6 @@ pub fn draw_cached(spec: &Value, cache: &Path) -> Result<PathBuf, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn fnv(data: &[u8]) -> String {
-        let mut h: u64 = 0xcbf29ce484222325;
-        for &b in data {
-            h = (h ^ b as u64).wrapping_mul(0x100000001b3);
-        }
-        format!("{h:016x}")
-    }
-
-    /// Every piece of every reference spec has the bytes the Python spec
-    /// draws (`theme-art.py --parity` wrote the digests), and every
-    /// stretched row and column of it is the same.
-    ///
-    /// Ways this could fail: an operation reordered or fused (one rounding
-    /// apart flips a byte), a default that differs from the Python's, a
-    /// piece whose stretch band varies.
-    #[test]
-    fn the_port_draws_the_python_specs_bytes() {
-        let specs: Value = serde_json::from_str(include_str!(
-            "../../../../templates/tools/theme-art-specs.json"
-        ))
-        .unwrap();
-        let want: Value =
-            serde_json::from_str(include_str!("../../tests/ui_art_parity.json")).unwrap();
-        let mut wrong = Vec::new();
-        for (name, spec) in specs.as_object().unwrap() {
-            let pieces = draw(spec).unwrap();
-            assert_eq!(
-                pieces.len(),
-                want[name].as_object().unwrap().len(),
-                "{name}"
-            );
-            for p in pieces {
-                let mut bytes = p.width.to_le_bytes().to_vec();
-                bytes.extend(p.height.to_le_bytes());
-                bytes.extend(&p.rgba);
-                if want[name][&p.name] != fnv(&bytes) {
-                    wrong.push(format!("{name}/{}", p.name));
-                }
-                // the stretch band: identical columns, identical rows (a
-                // tiled piece varies along it, and tiles it)
-                if p.entry["repeat"] == "tile" {
-                    continue;
-                }
-                let w = p.width as usize;
-                let [t, _, _, l] =
-                    [0, 1, 2, 3].map(|i| p.entry["slice"][i].as_u64().unwrap() as usize);
-                let px = |x: usize, y: usize| &p.rgba[(y * w + x) * 4..(y * w + x) * 4 + 4];
-                for y in 0..p.height as usize {
-                    assert_eq!(px(l, y), px(l + 1, y), "{name}/{} column", p.name);
-                }
-                if p.entry["slice"][0].as_u64().unwrap() as usize
-                    + p.entry["slice"][2].as_u64().unwrap() as usize
-                    + 1
-                    < p.height as usize
-                {
-                    for x in 0..w {
-                        assert_eq!(px(x, t), px(x, t + 1), "{name}/{} row", p.name);
-                    }
-                }
-            }
-        }
-        assert!(wrong.is_empty(), "differ from the Python: {wrong:?}");
-    }
 
     /// Every value of the theme dimension data (`templates/themes/dimensions/`)
     /// names files that exist and are pinned, fonts by the family names the

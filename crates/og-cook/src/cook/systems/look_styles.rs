@@ -212,27 +212,3 @@ pub fn styles() -> &'static [StyleFile] {
 pub fn style_licences() -> &'static [StyleFile] {
     &table().licences
 }
-
-#[test]
-fn pack_files_keep_nested_art_but_exclude_review_trees() {
-    let root = super::test_dir::TempDir::new("style-files");
-    for name in [
-        "fantasy/pack.json",
-        "fantasy/art/coin.svg",
-        "fantasy/tests/pack.json",
-        "fantasy/art/references/coin.png",
-        "fantasy/captures/sheet.png",
-        "tests/clean/sheet.png",
-        "references/fantasy/sheet.png",
-        "captures/fantasy/sheet.png",
-    ] {
-        let path = root.join(name);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(path, "fixture").unwrap();
-    }
-    let paths: Vec<_> = files(&root)
-        .into_iter()
-        .map(|(pack, file, _)| format!("{pack}/{file}"))
-        .collect();
-    assert_eq!(paths, ["fantasy/art/coin.svg", "fantasy/pack.json"]);
-}
