@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "particle trails (Metal)",
+      "summary": "On Metal (macOS, iOS) the GPU trails pipeline no longer fails validation and aborts the game the first time an effect with a trail or ribbon spawns: the trails shader bitcast a vec3 struct member whole, which Metal refuses for its packed vec3. It now writes the position per component."
+    }
+  ]
+}

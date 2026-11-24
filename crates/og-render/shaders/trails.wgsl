@@ -56,7 +56,9 @@ struct StripPoint {
 
 fn put_point(i: u32, p: StripPoint) {
   let words = array<vec4<u32>, 3>(
-    vec4<u32>(bitcast<vec3<u32>>(p.position), bitcast<u32>(p.width)),
+    // Per component: Metal packs a vec3 struct member beside a scalar (packed_float3), and
+    // naga's bitcast of the whole member is an as_type cast Metal refuses for a packed vector.
+    vec4<u32>(bitcast<u32>(p.position.x), bitcast<u32>(p.position.y), bitcast<u32>(p.position.z), bitcast<u32>(p.width)),
     bitcast<vec4<u32>>(p.color),
     vec4<u32>(bitcast<u32>(p.u), p.flags, bitcast<u32>(p.life), p.seed),
   );
