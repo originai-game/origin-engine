@@ -21,4 +21,4 @@ struct SaveRecord {
 }
 ```
 
-<sub>Module `world` line 61</sub>
+<sub>Module `world` line 58</sub>

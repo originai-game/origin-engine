@@ -6,8 +6,8 @@
 use og_api::host::{RECORDS, RecordDecl};
 use og_core::reflect::{FieldSchema, FieldType, Reflect, Schema};
 
-/// The IDL's layout of `decl` at `version`: the IDL declares the fields,
-/// [`VERSIONS`] the version they are at.
+/// The IDL's fields, compared at the module's version. Engine saves are
+/// strict layouts, not a history of record-version migrations.
 fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
     Schema {
         name: decl.schema.to_string(),
@@ -55,68 +55,6 @@ fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
     }
 }
 
-/// Each record's version and the hash of its IDL fields at that version
-/// (`idl_schema(decl, 0).layout_hash()`), written down here rather than read
-/// from the module, so a module whose version is not the IDL's fails, and a
-/// layout change (a field added, removed, renamed or retyped) without a
-/// version bump fails too: a save restores a record by its version, so
-/// changing one's fields means a new version (og.Gamepad 2: eight pads).
-const VERSIONS: &[(&str, u32, u64)] = &[
-    ("og.AnimationEvent", 2, 0xf17130e84b059c4b),
-    ("og.AnimationGraph", 1, 0x14f7a654994eb4b2),
-    ("og.AnimationPlayer", 1, 0x2bec5d121d54fe87),
-    ("og.Audio", 1, 0xc68086afae021f9b),
-    ("og.AudioBusFx", 2, 0x55dfec49f19793bb),
-    ("og.AudioBusNode", 1, 0xd5fe02e154cb1de2),
-    ("og.AudioEvent", 2, 0x854ed73324a01554),
-    ("og.AudioListener", 1, 0x51f48da421d73dc2),
-    ("og.AudioSnapshot", 1, 0x515c0d8ddf345f37),
-    ("og.AudioSource", 4, 0x721d1984f003bb29),
-    ("og.Blendshapes", 2, 0x4f86806f3bbd31a0),
-    ("og.BodySlept", 1, 0x316a96ff6521a2ed),
-    ("og.BodyWoke", 1, 0x268b8a476bcb2864),
-    ("og.Collider", 5, 0xa7e830808f18392e),
-    ("og.CollisionEnded", 1, 0x4e62d2a73639aeb5),
-    ("og.CollisionStarted", 1, 0x6c9e735a7abf1f6a),
-    ("og.Contact", 1, 0xe9a7082085c77412),
-    ("og.ContactHook", 1, 0x5f7ff8a7ff78c1bb),
-    ("og.Flipbook", 1, 0xbbede7fc327207f1),
-    ("og.FlipbookEvent", 1, 0x7d1245df738a14b1),
-    ("og.Fluid3D", 3, 0xf49ede86efaaaa46),
-    ("og.FootLock", 1, 0x335fb3e07795add3),
-    ("og.Hang", 1, 0x051cd84b13b50a0b),
-    ("og.Gamepad", 3, 0x99e64f8fbc5a1170),
-    ("og.IkChain", 1, 0xbbe02154306d4e60),
-    ("og.IkTarget2D", 1, 0x4e454eb44cd38470),
-    ("og.Joint", 4, 0xdf5a129ee90f23f6),
-    ("og.JointBroken", 1, 0xb0cc4d0a3a3cb8c3),
-    ("og.JointLimit", 1, 0x4b0c9cec8d17a70f),
-    ("og.LookAt", 1, 0x219ef1857429f798),
-    ("og.Physics", 2, 0xc6d013db66fc764a),
-    ("og.PointerDown", 1, 0xa0091884ee01db37),
-    ("og.PointerMove", 1, 0x9328be6142683eea),
-    ("og.PointerUp", 1, 0x2f71597da11eef1a),
-    ("og.Pointers", 2, 0x7803a5aacda7e0e2),
-    ("og.RigidBody", 5, 0xa5b01df7ea4b2d8e),
-    ("og.SensorEntered", 1, 0xa33b45062725b7f1),
-    ("og.SensorExited", 1, 0xcaa743ce70b55c7a),
-    ("og.Skeleton", 1, 0xdf1d8ad824fb1c2a),
-    ("og.Skeleton2D", 2, 0x46d09afdee412117),
-    ("og.Skeleton2DEvent", 1, 0x4ade934299b37c48),
-    ("og.SoundEnded", 1, 0x90355457f6c84261),
-    ("og.SoundStarted", 1, 0xb828d371c76e923c),
-    ("og.SpringBone", 1, 0xeb6a65842c7e9d8b),
-    ("og.SpringCollider", 1, 0x4078f34f3ce7d3b3),
-    ("og.Transform", 1, 0x1f6309afb81c85f3),
-    ("og.TweenCompleted", 1, 0xe394841eee68bb0a),
-    ("og.Vehicle", 3, 0x9048899921b2a9cb),
-    ("og.VehicleWheel", 1, 0xc3aa8551ae5e84c4),
-    ("og.SoftBody", 4, 0xdaf4e61371d7c0e1),
-    ("og.Garment", 4, 0xa16dab13969ebfc3),
-    ("og.Buoyancy", 1, 0xbac81201027997a5),
-    ("og.Velocity", 1, 0x70aff545497a9c4d),
-];
-
 fn check<T: Reflect>(failures: &mut Vec<String>) {
     let module = T::schema();
     let Some(decl) = RECORDS.iter().find(|r| r.schema == module.name) else {
@@ -126,20 +64,7 @@ fn check<T: Reflect>(failures: &mut Vec<String>) {
         ));
         return;
     };
-    let fields = idl_schema(decl, 0).layout_hash();
-    let Some(&(_, version, pinned)) = VERSIONS.iter().find(|(n, _, _)| *n == module.name) else {
-        failures.push(format!(
-            "{} has no entry in VERSIONS: add (\"{}\", {}, {fields:#018x})",
-            module.name, module.name, module.version
-        ));
-        return;
-    };
-    if fields != pinned {
-        failures.push(format!(
-            "{}'s fields changed since version {version}: bump its version (the module's #[reflect(version)] and VERSIONS) and pin {fields:#018x}",
-            module.name
-        ));
-    }
+    let version = module.version;
     let idl = idl_schema(decl, version);
     if idl.layout_hash() != module.layout_hash() {
         let show = |s: &Schema| {

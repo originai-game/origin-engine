@@ -1,57 +1,30 @@
 use super::*;
 
-/// The colliders of a scene, placed for queries (no bodies, no stepping).
-pub(crate) struct QueryWorld {
-    bodies: rp::RigidBodySet,
-    colliders: rp::ColliderSet,
-    broad: rp::BroadPhaseBvh,
-    narrow: rp::NarrowPhase,
-    /// Each static height field built in chunks ([`crate::FIELD_CHUNK`]):
-    /// its chunks' colliders, which [`QueryWorld::raycast`] casts itself
-    /// in the order the ray meets them.
-    fields: Vec<Vec<rp::ColliderHandle>>,
-    /// By collider handle index: whether it is one of those chunks.
-    chunk: Vec<bool>,
-    /// By collider handle index: its body kind bit (`QUERY_DYNAMIC`, `QUERY_FIXED`, `QUERY_KINEMATIC`).
-    kind: Vec<u8>,
-    /// Contact hooks snapshot for symmetric `ContactHook.ignore` filtering
-    /// when a query specifies `QueryFilter.exclude`.
-    hooks: IdMap<u64, ContactHook>,
-}
-
 fn hook_ignores(hooks: &IdMap<u64, ContactHook>, a: u64, b: u64) -> bool {
     hooks
         .get(&a)
         .is_some_and(|h| h.ignore.as_slice().iter().any(|&x| x != 0 && x == b))
 }
 
-fn body_kind_bit(b: &Body) -> u8 {
-    if b.control.is_some() {
-        QUERY_KINEMATIC as u8
-    } else {
-        match b.body.kind {
-            BODY_DYNAMIC => QUERY_DYNAMIC as u8,
-            BODY_KINEMATIC => QUERY_KINEMATIC as u8,
-            _ => QUERY_FIXED as u8,
-        }
-    }
-}
-
 fn keep(
-    h: rp::ColliderHandle,
     c: &rp::Collider,
     f: &QueryFilter,
-    kinds: &[u8],
+    bodies: &rp::RigidBodySet,
     hooks: &IdMap<u64, ContactHook>,
 ) -> bool {
-    if !c.is_enabled() {
+    if !c.is_enabled()
+        || c.parent()
+            .and_then(|h| bodies.get(h))
+            .is_some_and(|b| !b.is_enabled())
+    {
         return false;
     }
     if f.kind_flags != 0 {
-        let bit = kinds
-            .get(h.into_raw_parts().0 as usize)
-            .copied()
-            .unwrap_or(QUERY_FIXED as u8) as u32;
+        let bit = match c.parent().and_then(|h| bodies.get(h)) {
+            Some(b) if b.is_dynamic() => QUERY_DYNAMIC,
+            Some(b) if b.is_kinematic() => QUERY_KINEMATIC,
+            _ => QUERY_FIXED,
+        };
         if bit & f.kind_flags == 0 {
             return false;
         }
@@ -82,96 +55,45 @@ pub(crate) fn query_shape(d: &ShapeDesc, shared: &mut Shared) -> Result<rp::Shar
     shape(&d.collider(), Vec3::ONE, shared)
 }
 
-impl QueryWorld {
-    pub(crate) fn build(scene: &Scene, shared: &mut Shared) -> Result<QueryWorld> {
-        let params = rp::IntegrationParameters::default();
-        let mut q = QueryWorld {
-            bodies: rp::RigidBodySet::new(),
-            colliders: rp::ColliderSet::new(),
-            broad: rp::BroadPhaseBvh::new(),
-            narrow: rp::NarrowPhase::new(),
-            fields: Vec::new(),
-            chunk: Vec::new(),
-            kind: Vec::new(),
-            hooks: scene.hooks.clone(),
-        };
-        let mut placed = Vec::with_capacity(scene.bodies.len() + scene.statics.len());
-        for b in &scene.bodies {
-            if !b.body.enabled {
-                continue;
-            }
-            let kb = body_kind_bit(b);
-            let body_pose = pose(b.position, b.quaternion);
-            if let Some(c) = &b.collider
-                && c.enabled
-            {
-                let at = body_pose * local_pose(c, b.scale);
-                placed.push((b.entity, None, at, b.scale, c, kb));
-            }
-            for child in &b.children {
-                if !child.collider.enabled {
-                    continue;
-                }
-                let at = body_pose
-                    * pose(child.position, child.quaternion)
-                    * local_pose(&child.collider, child.scale);
-                placed.push((
-                    child.entity,
-                    Some(b.entity),
-                    at,
-                    child.scale,
-                    &child.collider,
-                    kb,
-                ));
-            }
+impl Sim {
+    /// Populate the one collider world without advancing time. Existing
+    /// simulations (especially restored ones) never pass through this path:
+    /// syncing them here would consume the step's kinematic pose delta.
+    pub(crate) fn initialize(
+        settings: &Physics,
+        dt: f32,
+        scene: &Scene,
+        shared: &mut Shared,
+    ) -> Result<Self> {
+        let mut sim = Self::default();
+        let handles = sync(settings, dt, scene, shared, &mut sim)?;
+        let mut out = StepOut::default();
+        super::super::vehicles(scene, 0.0, &mut sim, &handles, &mut out)?;
+        super::super::ragdolls(scene, 0.0, &mut sim, shared, &mut out)?;
+        sim.ext.hooked = !scene.hooks.is_empty();
+        sim.ext.last_hooks = scene.hooks.clone();
+        for (_, body) in sim.world.bodies.iter_mut() {
+            body.recompute_mass_properties_from_colliders(&sim.world.colliders);
         }
-        for s in &scene.statics {
-            if !s.collider.enabled {
-                continue;
-            }
-            // A field built in chunks is queried as its chunks, as stepped.
-            if let Some(f) = chunked(&s.collider, shared) {
-                let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
-                let (cx, cz) = crate::field_chunks(f.columns, f.rows);
-                let mut chunks = Vec::with_capacity((cx * cz) as usize);
-                for k in 0..cx * cz {
-                    let built =
-                        chunk_collider(&s.collider, &f, k, s.scale, at, s.entity, shared)?.build();
-                    let aabb = built.compute_aabb();
-                    let h = q.colliders.insert(built);
-                    q.broad.set_aabb(&params, h, aabb);
-                    let i = h.into_raw_parts().0 as usize;
-                    if q.chunk.len() <= i {
-                        q.chunk.resize(i + 1, false);
-                    }
-                    q.chunk[i] = true;
-                    if q.kind.len() <= i {
-                        q.kind.resize(i + 1, QUERY_FIXED as u8);
-                    }
-                    q.kind[i] = QUERY_FIXED as u8;
-                    chunks.push(h);
-                }
-                q.fields.push(chunks);
-                continue;
-            }
-            let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
-            placed.push((s.entity, None, at, s.scale, &s.collider, QUERY_FIXED as u8));
+        sim.world
+            .bodies
+            .propagate_modified_body_positions_to_colliders(&mut sim.world.colliders);
+        // CollisionPipeline consumes the bodies' pending changes without
+        // registering them with the dynamics islands. Seed only the live
+        // BVH; the first step must still process every insertion and pair.
+        sim.refresh_query_bounds();
+        Ok(sim)
+    }
+
+    pub(super) fn refresh_query_bounds(&mut self) {
+        let w = &mut self.world;
+        for (handle, collider) in w.colliders.iter().filter(|(_, c)| c.is_enabled()) {
+            w.broad_phase.set_aabb(
+                &w.integration_parameters,
+                handle,
+                collider.compute_broad_phase_aabb(&w.integration_parameters, &w.bodies),
+            );
         }
-        for (e, body, at, scale, c, kb) in placed {
-            let mut built = collider(c, scale, at, e, 0.0, shared)?.build();
-            if let Some(body) = body {
-                built.user_data |= (body.to_bits() as u128) << 64;
-            }
-            let aabb = built.compute_aabb();
-            let h = q.colliders.insert(built);
-            q.broad.set_aabb(&params, h, aabb);
-            let i = h.into_raw_parts().0 as usize;
-            if q.kind.len() <= i {
-                q.kind.resize(i + 1, QUERY_FIXED as u8);
-            }
-            q.kind[i] = kb;
-        }
-        Ok(q)
     }
 
     fn with<T>(&self, f: &QueryFilter, run: impl FnOnce(&rp::QueryPipeline<'_>) -> T) -> T {
@@ -186,23 +108,19 @@ impl QueryWorld {
         run: impl FnOnce(&rp::QueryPipeline<'_>) -> T,
     ) -> T {
         let chunk = |h: rp::ColliderHandle| {
-            no_chunks
-                && self
-                    .chunk
-                    .get(h.into_raw_parts().0 as usize)
-                    .is_some_and(|&c| c)
+            no_chunks && self.ext.fields.values().any(|chunks| chunks.contains(&h))
         };
         let predicate = |h: rp::ColliderHandle, c: &rp::Collider| {
-            !chunk(h) && keep(h, c, f, &self.kind, &self.hooks)
+            !chunk(h) && keep(c, f, &self.world.bodies, &self.ext.last_hooks)
         };
         let mut filter = rp::QueryFilter::new().predicate(&predicate);
         if !f.include_sensors {
             filter = filter.exclude_sensors();
         }
-        let pipeline = self.broad.as_query_pipeline(
-            self.narrow.query_dispatcher(),
-            &self.bodies,
-            &self.colliders,
+        let pipeline = self.world.broad_phase.as_query_pipeline(
+            self.world.narrow_phase.query_dispatcher(),
+            &self.world.bodies,
+            &self.world.colliders,
             filter,
         );
         run(&pipeline)
@@ -228,14 +146,18 @@ impl QueryWorld {
         // A field's chunks in the order the ray enters them, each cast only
         // as far as the nearest hit so far.
         let mut order: Vec<(f32, rp::ColliderHandle)> = Vec::new();
-        for chunks in &self.fields {
+        for chunks in self.ext.fields.values() {
             let h0 = chunks[0];
-            let c = &self.colliders[h0];
-            if !keep(h0, c, f, &self.kind, &self.hooks) || (c.is_sensor() && !f.include_sensors) {
+            let c = &self.world.colliders[h0];
+            if !keep(c, f, &self.world.bodies, &self.ext.last_hooks)
+                || (c.is_sensor() && !f.include_sensors)
+            {
                 continue;
             }
             for &h in chunks {
-                if let Some((enter, _)) = self.colliders[h].compute_aabb().clip_ray_parameters(&ray)
+                if let Some((enter, _)) = self.world.colliders[h]
+                    .compute_aabb()
+                    .clip_ray_parameters(&ray)
                 {
                     order.push((enter, h));
                 }
@@ -247,7 +169,7 @@ impl QueryWorld {
             if enter > limit || (best.is_some() && enter >= limit) {
                 break;
             }
-            let c = &self.colliders[h];
+            let c = &self.world.colliders[h];
             if let Some(hit) = c
                 .shape()
                 .cast_ray_and_get_normal(c.position(), &ray, limit, solid)
@@ -263,8 +185,8 @@ impl QueryWorld {
             }
         }
         Ok(best.map(|(h, hit)| RaycastHit {
-            entity: entity_of(&self.colliders[h]),
-            body: body_of(&self.colliders[h]),
+            entity: entity_of(&self.world.colliders[h]),
+            body: body_of(&self.world.colliders[h]),
             distance: hit.time_of_impact,
             point: unv(ray.point_at(hit.time_of_impact)),
             normal: unv(hit.normal),
@@ -308,7 +230,7 @@ impl QueryWorld {
         });
         // A chunked height field splits one entity into multiple colliders:
         // keep only its nearest crossing so a caller never sees duplicate hits.
-        if !self.fields.is_empty() && hits.len() > 1 {
+        if !self.ext.fields.is_empty() && hits.len() > 1 {
             let mut seen = BTreeSet::new();
             hits.retain(|h| seen.insert((h.entity.to_bits(), h.body.to_bits())));
         }
@@ -330,7 +252,7 @@ impl QueryWorld {
         let at = flat(d.point);
         Ok(self.with(&d.filter, |p| {
             let (h, proj) = p.project_point(v(at), max, d.solid)?;
-            let c = &self.colliders[h];
+            let c = &self.world.colliders[h];
             let point = unv(proj.point);
             let to = at - point;
             let distance = to.length();
@@ -372,7 +294,7 @@ impl QueryWorld {
         Ok(self.with(&d.filter, |p| {
             p.cast_shape(&at, v(dir), shape.as_ref(), options)
                 .map(|(h, hit)| {
-                    let c = &self.colliders[h];
+                    let c = &self.world.colliders[h];
                     ShapeCastHit {
                         entity: entity_of(c),
                         body: body_of(c),
@@ -410,22 +332,22 @@ impl QueryWorld {
             let predicate = |h: rp::ColliderHandle, c: &rp::Collider| {
                 !excluded.contains(&h)
                     && !seen_entities.contains(&(entity_of(c).to_bits(), body_of(c).to_bits()))
-                    && keep(h, c, &d.filter, &self.kind, &self.hooks)
+                    && keep(c, &d.filter, &self.world.bodies, &self.ext.last_hooks)
             };
             let mut filter = rp::QueryFilter::new().predicate(&predicate);
             if !d.filter.include_sensors {
                 filter = filter.exclude_sensors();
             }
-            let pipeline = self.broad.as_query_pipeline(
-                self.narrow.query_dispatcher(),
-                &self.bodies,
-                &self.colliders,
+            let pipeline = self.world.broad_phase.as_query_pipeline(
+                self.world.narrow_phase.query_dispatcher(),
+                &self.world.bodies,
+                &self.world.colliders,
                 filter,
             );
             let Some((h, hit)) = pipeline.cast_shape(&at, v(dir), shape.as_ref(), options) else {
                 break;
             };
-            let c = &self.colliders[h];
+            let c = &self.world.colliders[h];
             let entity = entity_of(c);
             let body = body_of(c);
             excluded.push(h);

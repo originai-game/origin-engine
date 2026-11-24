@@ -172,7 +172,7 @@ impl std::fmt::Debug for PhysicsSystem {
     }
 }
 
-fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
+fn lock<T>(shared: &Mutex<T>) -> MutexGuard<'_, T> {
     // A step that panics takes its simulation out of `Shared` first (see
     // `run`), so what a poisoned lock guards is still consistent.
     shared.lock().unwrap_or_else(|p| p.into_inner())
@@ -264,13 +264,11 @@ impl PhysicsSystem {
         schedule(world, &self.shared, &self.ids)
     }
 
-    /// A read-only system that records the colliders as the world holds
-    /// them at its point in the schedule, so [`Self::tick_query`] answers
-    /// scene queries from inside the systems after it in the same tick
-    /// (game code cannot hand a `&World` to [`Self::query`] while the world
-    /// steps). Recording copies the components; the query view is built only
-    /// when a query asks. Add it with `world.add_system(desc, run)` before
-    /// the systems that query.
+    /// Initializes the authoritative simulation before gameplay on the first
+    /// tick (also after restoring a snapshot without physics state). Once it
+    /// exists this system does no gathering or synchronization: queries read
+    /// what the preceding step left. Schedule before gameplay, after terrain
+    /// restore replay. It never advances physics or consumes queued pushes.
     pub fn query_system(
         &self,
     ) -> (
@@ -282,68 +280,41 @@ impl PhysicsSystem {
             .read::<RigidBody>()
             .read::<Collider>();
         desc.reads.push(gather::TRANSFORM.to_string());
-        for name in gather::QUERY_READ {
+        desc.reads.push(Velocity::NAME.to_string());
+        for name in gather::READ {
             desc.reads.push(name.to_string());
-        }
-        for &qi in &gather::QUERY_QUERIES {
-            desc = desc.query(QUERIES[qi].desc(false));
         }
         let (shared, ids) = (self.shared.clone(), self.ids.clone());
         let run = move |ctx: &mut SystemContext<'_>| {
+            if has_sim(&lock(&shared)) {
+                return Ok(());
+            }
             let settings = *ctx.resource::<Physics>()?;
             let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
-            let q = |i: usize| {
-                let slot = gather::QUERY_QUERIES
-                    .iter()
-                    .position(|&qi| qi == i)
-                    .expect("query_system only accesses QUERY_QUERIES");
-                ctx.query(slot)
-            };
-            let scene = gather::gather_colliders(
-                &q,
+            let scene = gather::gather(
+                &|i| ctx.query_with(&QUERIES[i].desc(false)),
                 &|e, id| ctx.get_bytes(e, id),
                 lazy,
                 &ids,
                 &mut ids.kept(),
                 &ctx.parent_frames()?,
             )?;
-            let mut shared = lock(&shared);
-            shared.recorded = Some((settings, scene));
-            shared.recorded_query = None;
-            Ok(())
+            initialize_sim(&settings, ctx.time().dt(), &scene, &mut lock(&shared))
         };
         (desc, run)
     }
 
-    /// Scene queries over the colliders [`Self::query_system`] recorded in
-    /// the current tick (the same answers [`Self::query`] gives over the
-    /// world at that point). Refused before that system has run.
+    /// A cheap handle to scene queries over the authoritative simulation.
+    /// Gameplay systems run before physics, so they see the tick-start state.
+    /// Refused until `query_system`, `query(world)` or a step initializes it.
     pub fn tick_query(&self) -> Result<PhysicsQuery> {
-        let mut shared = lock(&self.shared);
-        if let Some(q) = &shared.recorded_query {
-            return Ok(PhysicsQuery {
-                inner: q.clone(),
-                shared: self.shared.clone(),
-            });
-        }
-        let Some((settings, scene)) = shared.recorded.take() else {
+        if !has_sim(&lock(&self.shared)) {
             return Err(Error::new(
                 ErrorKind::Invalid,
-                format!(
-                    "no tick has recorded the colliders yet: {QUERY_SYSTEM_NAME} runs at the start of each tick; between ticks, query the world"
-                ),
+                "physics queries need initialization: schedule og.physics.queries before gameplay, or call query(world) between ticks",
             ));
-        };
-        drop(shared);
-        let inner = Arc::new(QueryInner::build_outside(
-            settings.profile,
-            &scene,
-            &self.shared,
-        )?);
-        let mut shared = lock(&self.shared);
-        shared.recorded_query = Some(inner.clone());
+        }
         Ok(PhysicsQuery {
-            inner,
             shared: self.shared.clone(),
         })
     }
@@ -645,12 +616,16 @@ impl PhysicsSystem {
         shared.shapes2.retain(|k, _| k.mesh != handle);
     }
 
-    /// A query view of the colliders as `world` holds them now (outside a
-    /// tick). Build one and run many queries on it; it does not follow
-    /// later changes to the world.
+    /// A cheap live query handle to the last synchronized physics state.
+    /// Before the first step, initializes that same simulation from `world`
+    /// without stepping it. Later ECS edits become visible at the next step;
+    /// restoring immediately replaces the queried simulation.
     pub fn query(&self, world: &World) -> Result<PhysicsQuery> {
+        if has_sim(&lock(&self.shared)) {
+            return self.tick_query();
+        }
         let settings = *world.resource::<Physics>()?;
-        let scene = gather::gather_colliders(
+        let scene = gather::gather(
             &|i| world.query(&QUERIES[i].desc(false)),
             &|e, id| world.get_bytes(e, id),
             gather::LazyIds::of(|n| world.id_by_name(n).ok()),
@@ -659,16 +634,40 @@ impl PhysicsSystem {
             &mut gather::Kept::default(),
             &world.parent_frames()?,
         )?;
-        let inner = Arc::new(QueryInner::build_outside(
-            settings.profile,
+        initialize_sim(
+            &settings,
+            world.time().dt(),
             &scene,
-            &self.shared,
-        )?);
-        Ok(PhysicsQuery {
-            inner,
-            shared: self.shared.clone(),
-        })
+            &mut lock(&self.shared),
+        )?;
+        self.tick_query()
     }
+}
+
+fn has_sim(shared: &Shared) -> bool {
+    shared.sim3.is_some() || shared.sim2.is_some()
+}
+
+fn initialize_sim(settings: &Physics, dt: f32, scene: &Scene, shared: &mut Shared) -> Result<()> {
+    if has_sim(shared) {
+        return Ok(());
+    }
+    outside(|| {
+        match settings.profile {
+            PROFILE_3D => {
+                shared.sim3 = Some(Arc::new(Mutex::new(Box::new(dim3::Sim::initialize(
+                    settings, dt, scene, shared,
+                )?))))
+            }
+            PROFILE_2D => {
+                shared.sim2 = Some(Arc::new(Mutex::new(Box::new(dim2::Sim::initialize(
+                    settings, dt, scene, shared,
+                )?))))
+            }
+            other => return Err(check_profile(other).unwrap_err()),
+        }
+        Ok(())
+    })
 }
 
 /// Runs `f`, physics work outside the step (building a query view, a

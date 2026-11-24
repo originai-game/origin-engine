@@ -146,7 +146,7 @@ Unmount disposes nodes and subscriptions. The renderer sends only changed
 node operations; layout, motion and paint own their retained state. There
 is no document parse/restyle lifecycle or serializable snippet mount.
 Presentation checkpoints and saves stay outside `world_hash`; saves use
-the `og-save:3` envelope. UI feedback is presentation-only and does not
+the `og-save:4` envelope. UI feedback is presentation-only and does not
 create gameplay entities or replay a sound on restore.
 
 ### 2.2 Text and structured content

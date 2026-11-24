@@ -6,7 +6,7 @@ Module [`world`](../world.md) · [index](../index.md)
 
 ### `SaveMigration` (struct)
 
-A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations.
+A game's explicit save edit (GameDesc.migrations): run on a current-engine save of version `from` on its way to GameDesc.saveVersion. Engine records and state are never upgraded.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -15,10 +15,10 @@ A game's save migration step (GameDesc.migrations): run on a save of version `fr
 
 ```ogt
 struct SaveMigration {
-  doc "A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations."
+  doc "A game's explicit save edit (GameDesc.migrations): run on a current-engine save of version `from` on its way to GameDesc.saveVersion. Engine records and state are never upgraded."
   field from u32 "The save version it migrates from, to from + 1; from 1 to GameDesc.saveVersion - 1, each at most once."
   field migrate MigrateFn "The step."
 }
 ```
 
-<sub>Module `world` line 107</sub>
+<sub>Module `world` line 104</sub>

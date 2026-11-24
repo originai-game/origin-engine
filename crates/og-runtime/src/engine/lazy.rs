@@ -70,7 +70,7 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
         .cloned()
         .ok_or_else(|| format!("{name} has no layout"))?;
     let id = world
-        .register_schema(crate::engine::versioned(layout.schema()))
+        .register_schema(layout.schema())
         .map_err(|e| e.reason().to_string())?;
     // A resource holds its default from the moment it is registered.
     if layout.kind == crate::host::codec::RecordKind::Resource && !world.has_resource_id(id) {

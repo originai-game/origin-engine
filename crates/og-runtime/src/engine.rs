@@ -5,10 +5,10 @@ pub(crate) mod lazy;
 
 mod creation;
 pub(crate) use crate::present::extract::extract_layouts;
+pub(crate) use creation::Assembled;
 #[cfg_attr(feature = "publish", allow(unused_imports))]
 pub(crate) use creation::assemble;
 pub(crate) use creation::run_ui_registration;
-pub(crate) use creation::{Assembled, versioned};
 pub use creation::{
     antialias_name, create, destroy, point_shadows_name, render_desc, render_options,
     set_render_backend, transparency_name, warm_renderer,

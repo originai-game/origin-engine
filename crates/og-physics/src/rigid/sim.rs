@@ -150,7 +150,7 @@ pub(crate) struct SimExt {
     /// The bodies near each og.Water's surface and which side of it they
     /// were on ([`crate::water::Under`]).
     pub(crate) under: crate::water::Under,
-    /// Snapshot of the last tick's `og.ContactHook` map (not saved), so an
+    /// Snapshot of the last tick's `og.ContactHook` map, so a query or an
     /// origin shift (`Sim::shift`) preserves one-way/ignore filtering when
     /// refreshing sleeping contacts.
     pub(crate) last_hooks: IdMap<u64, ContactHook>,
@@ -195,7 +195,16 @@ impl SimExt {
             out.push((EXT_SLEEP, bytes));
         }
         if self.hooked {
-            out.push((EXT_HOOKS, Vec::new()));
+            let mut bytes = Vec::new();
+            use og_core::Reflect;
+            let layout = og_core::Layout::of(&ContactHook::schema());
+            let hooks: Vec<_> = self
+                .last_hooks
+                .iter()
+                .map(|(&e, hook)| (e, layout.encode(hook).expect("hook matches its schema")))
+                .collect();
+            crate::encode(&mut bytes, &hooks).expect("hooks serialize into memory");
+            out.push((EXT_HOOKS, bytes));
         }
         if !self.vehicles.is_empty() {
             let mut bytes = Vec::new();
@@ -247,6 +256,14 @@ impl SimExt {
                 ext.compounds = list.into_iter().collect();
             } else if tag == EXT_HOOKS {
                 ext.hooked = true;
+                use og_core::Reflect;
+                let hooks: Vec<(u64, Vec<u8>)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                let layout = og_core::Layout::of(&ContactHook::schema());
+                ext.last_hooks = hooks
+                    .into_iter()
+                    .map(|(e, bytes)| Ok((e, layout.decode::<ContactHook>(&bytes)?)))
+                    .collect::<Result<_>>()?;
             } else if tag == EXT_SLEEP {
                 let list: Vec<(u64, u32)> = crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.still = list.into_iter().collect();
@@ -406,6 +423,7 @@ impl Sim {
                 w.bodies[h].sleep();
             }
         }
+        self.refresh_query_bounds();
         self.static_runs.clear();
         ext::shift_joints(self, s);
         for (_, t) in self.bodies.iter_mut() {

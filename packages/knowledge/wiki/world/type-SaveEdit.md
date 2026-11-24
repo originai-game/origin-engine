@@ -6,15 +6,15 @@ Module [`world`](../world.md) · [index](../index.md)
 
 ### `SaveEdit` (interface)
 
-A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's.
+A current-engine save opened for explicit game-owned editing (world.openSave), every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result and validates layouts strictly. An edit refused changes nothing. Entity ids are the saved world's.
 
 ```ogt
 interface SaveEdit {
-  doc "A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's."
+  doc "A current-engine save opened for explicit game-owned editing (world.openSave), every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result and validates layouts strictly. An edit refused changes nothing. Entity ids are the saved world's."
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 113</sub>
+<sub>Module `world` line 110</sub>
 
 <a id="member-SaveEdit-version"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_save_edit_get_version` · publish builds: kept
 prop version u32 "The game's save version the save was written at (1 for a save of a game that never declared one)."
 ```
 
-<sub>Module `world` line 115</sub>
+<sub>Module `world` line 112</sub>
 
 <a id="member-SaveEdit-types"></a>
 
@@ -55,7 +55,7 @@ fn types {
 }
 ```
 
-<sub>Module `world` line 116</sub>
+<sub>Module `world` line 113</sub>
 
 <a id="member-SaveEdit-has"></a>
 
@@ -84,7 +84,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 120</sub>
+<sub>Module `world` line 117</sub>
 
 <a id="member-SaveEdit-records"></a>
 
@@ -112,7 +112,7 @@ fn records {
 }
 ```
 
-<sub>Module `world` line 126</sub>
+<sub>Module `world` line 123</sub>
 
 <a id="member-SaveEdit-setRecords"></a>
 
@@ -142,7 +142,7 @@ fn setRecords {
 }
 ```
 
-<sub>Module `world` line 131</sub>
+<sub>Module `world` line 128</sub>
 
 <a id="member-SaveEdit-transform"></a>
 
@@ -175,7 +175,7 @@ fn transform {
 }
 ```
 
-<sub>Module `world` line 137</sub>
+<sub>Module `world` line 134</sub>
 
 <a id="member-SaveEdit-split"></a>
 
@@ -209,7 +209,7 @@ fn split {
 }
 ```
 
-<sub>Module `world` line 145</sub>
+<sub>Module `world` line 142</sub>
 
 <a id="member-SaveEdit-renameType"></a>
 
@@ -239,7 +239,7 @@ fn renameType {
 }
 ```
 
-<sub>Module `world` line 153</sub>
+<sub>Module `world` line 150</sub>
 
 <a id="member-SaveEdit-renameField"></a>
 
@@ -271,7 +271,7 @@ fn renameField {
 }
 ```
 
-<sub>Module `world` line 159</sub>
+<sub>Module `world` line 156</sub>
 
 <a id="member-SaveEdit-dropType"></a>
 
@@ -299,7 +299,7 @@ fn dropType {
 }
 ```
 
-<sub>Module `world` line 166</sub>
+<sub>Module `world` line 163</sub>
 
 <a id="member-SaveEdit-spawn"></a>
 
@@ -327,7 +327,7 @@ fn spawn {
 }
 ```
 
-<sub>Module `world` line 171</sub>
+<sub>Module `world` line 168</sub>
 
 <a id="member-SaveEdit-text"></a>
 
@@ -350,7 +350,7 @@ fn text {
 }
 ```
 
-<sub>Module `world` line 176</sub>
+<sub>Module `world` line 173</sub>
 
 <a id="member-SaveEdit-close"></a>
 
@@ -373,4 +373,4 @@ fn close {
 }
 ```
 
-<sub>Module `world` line 180</sub>
+<sub>Module `world` line 177</sub>

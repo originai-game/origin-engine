@@ -156,14 +156,12 @@ impl ToJson for SpawnDesc {
 /// `RestoreDesc`: packages/knowledge/wiki/world.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RestoreDesc {
-    pub migrate: bool,
     pub session: bool,
 }
 
 impl Default for RestoreDesc {
     fn default() -> Self {
         Self {
-            migrate: Default::default(),
             session: Default::default(),
         }
     }
@@ -176,7 +174,6 @@ impl FromJson for RestoreDesc {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
-            migrate: field(o, "migrate", d.migrate)?,
             session: field(o, "session", d.session)?,
         })
     }
@@ -185,7 +182,6 @@ impl FromJson for RestoreDesc {
 impl ToJson for RestoreDesc {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
-        o.insert("migrate".into(), self.migrate.to_json());
         o.insert("session".into(), self.session.to_json());
         Value::Object(o)
     }

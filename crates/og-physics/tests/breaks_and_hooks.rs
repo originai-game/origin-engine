@@ -89,11 +89,13 @@ fn hooks_replay_from_a_restore() {
     let build = || {
         let (mut w, p) = world(Physics::default(), 1);
         let f = floor(&mut w);
+        let caster = w.spawn((at(20.0, 10.0, 0.0),)).unwrap();
         w.insert(
             f,
             ContactHook {
                 surface_velocity: Vec3::new(0.5, 0.0, 0.5),
                 friction: 0.8,
+                ignore: og_core::List::from_slice(&[caster.to_bits()]).unwrap(),
                 ..ContactHook::default()
             },
         )
@@ -106,9 +108,23 @@ fn hooks_replay_from_a_restore() {
                 Collider::sphere(0.25),
             );
         }
-        (w, p)
+        (w, p, f, caster)
     };
-    let (mut a, _pa) = build();
+    let (mut a, pa, floor, caster) = build();
+    let ignored = PointOverlapDesc {
+        point: Vec3::new(0.0, -0.5, 0.0),
+        filter: QueryFilter {
+            exclude: Some(caster),
+            ..Default::default()
+        },
+    };
+    assert!(
+        pa.query(&a)
+            .unwrap()
+            .overlap_point(&ignored)
+            .unwrap()
+            .is_empty()
+    );
     run(&mut a, 30);
     let saved = a.snapshot();
     let hashes = |w: &mut World| {
@@ -120,7 +136,26 @@ fn hooks_replay_from_a_restore() {
             .collect::<Vec<_>>()
     };
     let first = hashes(&mut a);
-    let (mut b, _pb) = build();
+    let (mut b, pb, _, _) = build();
     b.restore(&saved).unwrap();
+    let query = pb.query(&b).unwrap();
+    assert!(
+        query.overlap_point(&ignored).unwrap().is_empty(),
+        "the saved hook filters queries immediately after restore"
+    );
+    assert!(
+        query
+            .overlap_point(&PointOverlapDesc {
+                filter: QueryFilter::default(),
+                ..ignored
+            })
+            .unwrap()
+            .contains(&floor)
+    );
+    assert_eq!(
+        b.snapshot(),
+        saved,
+        "queries leave restored hook state untouched"
+    );
     assert_eq!(hashes(&mut b), first);
 }

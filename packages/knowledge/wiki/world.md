@@ -37,8 +37,8 @@ module world {
 | [`RecordFn`](world/type-RecordFn.md) | callback |  | A value's new form: called once per saved value of the type, in storage order. |
 | [`SplitFn`](world/type-SplitFn.md) | callback |  | Where one saved value goes when its type splits. |
 | [`MigrateFn`](world/type-MigrateFn.md) | callback |  | One step of a game's save migration: changes the save from SaveMigration.from to the next version. |
-| [`SaveMigration`](world/type-SaveMigration.md) | struct |  | A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations. |
-| [`SaveEdit`](world/type-SaveEdit.md) | interface |  | A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. |
+| [`SaveMigration`](world/type-SaveMigration.md) | struct |  | A game's explicit save edit (GameDesc.migrations): run on a current-engine save of version `from` on its way to GameDesc.saveVersion. |
+| [`SaveEdit`](world/type-SaveEdit.md) | interface |  | A current-engine save opened for explicit game-owned editing (world.openSave), every type with its saved fields. |
 | [`og.WorldRestored`](world/record-WorldRestored.md) | event |  | A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read throug… |
 | [`QueryDesc`](world/type-QueryDesc.md) | desc struct |  | Which entities a query matches. |
 | [`SpatialDesc`](world/type-SpatialDesc.md) | desc struct |  | Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child). |

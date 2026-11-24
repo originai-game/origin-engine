@@ -48,6 +48,52 @@ fn check(profile: u32) -> String {
     let (mut c, pc, cc) = build(99, profile);
     c.restore(&half).unwrap();
     assert_eq!(c.world_hash(), half_hash);
+    // Queries immediately use restored Rapier-only colliders, without
+    // stepping or gathering an ECS-only shadow world first.
+    let query = pc.query(&c).unwrap();
+    for entity in c.entities() {
+        if profile == PROFILE_2D
+            && let Some(wheels) = pc.vehicle_wheels(entity)
+        {
+            for wheel in wheels {
+                assert!(
+                    query
+                        .overlap_point(&PointOverlapDesc {
+                            point: wheel.position,
+                            ..Default::default()
+                        })
+                        .unwrap()
+                        .contains(&entity)
+                );
+            }
+        }
+        if let Some(bones) = pc.ragdoll_pose(entity) {
+            let rig = if profile == PROFILE_2D {
+                rig_2d()
+            } else {
+                rig()
+            };
+            // Bone origins lie on the capsule's tip; query its interior,
+            // rather than a floating-point boundary after rotation.
+            for ((origin, rotation), bone) in bones.into_iter().zip(rig.bones) {
+                let point = origin + rotation * (bone.axis * bone.length * 0.5);
+                assert!(
+                    query
+                        .overlap_point(&PointOverlapDesc {
+                            point,
+                            ..Default::default()
+                        })
+                        .unwrap()
+                        .contains(&entity)
+                );
+            }
+        }
+    }
+    assert_eq!(
+        c.world_hash(),
+        half_hash,
+        "queries do not change restored state"
+    );
     run(&mut c, &pc, &cc, HALF, TICKS, profile);
     assert_eq!(
         c.world_hash(),

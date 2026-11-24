@@ -92,78 +92,6 @@ pub(super) const REGISTERED_BY_MODULES: &[&str] = &[
     "og.PauseIntent",
 ];
 
-/// An engine record's schema at the version its module registers, so the
-/// module adopts the IDL's record: a record whose fields changed since
-/// saves held it is at a later version (og-audio's og.AudioSource and
-/// og.AudioBusFx, version 2: the bus graph and the bus effects;
-/// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
-/// version 2: breaking; og.Vehicle, version 2: the drivetrain; og.Cloth,
-/// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; og.Skeleton2D,
-/// version 2: a second blended clip; the runtime's
-/// og.VideoPlayer, version 2: an f64 time; og.Wind, version 2: the
-/// simulated field's turbulence and gust size; the records whose fields
-/// took the API's one name per meaning, `save_migrations::renamed`).
-pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
-    use og_core::Reflect;
-    schema.version = match schema.name.as_str() {
-        "og.AudioSource" => og_audio::AudioSource::schema().version,
-        "og.AudioEvent" => og_audio::AudioEvent::schema().version,
-        "og.AudioBusFx" => og_audio::AudioBusFx::schema().version,
-        "og.RigidBody" => og_physics::RigidBody::schema().version,
-        "og.Collider" => og_physics::Collider::schema().version,
-        "og.Physics" => og_physics::Physics::schema().version,
-        "og.Joint" => og_physics::Joint::schema().version,
-        "og.Vehicle" => og_physics::Vehicle::schema().version,
-        // R9: 64 blendshape weights (`influences`).
-        "og.Blendshapes" => og_anim::Blendshapes::schema().version,
-        // The 2D graph: Skeleton2D's blendClip, blendTime and blend.
-        "og.Skeleton2D" => og_anim::Skeleton2D::schema().version,
-        // simulation (gameplay or visual).
-        "og.Cloth" => og_physics::Cloth::schema().version,
-        "og.SoftBody" => og_physics::SoftBody::schema().version,
-        "og.Garment" => og_physics::Garment::schema().version,
-        "og.Fluid3D" => og_physics::Fluid3D::schema().version,
-        crate::bind::video::PLAYER => crate::bind::video::PLAYER_VERSION,
-        // R11: Light2D's kind, cone, height and layers (2); its radius
-        // named distance (3).
-        "og.Light2D" => 3,
-        // R11: Occluder2D's polygon and layers; Lighting2D's shadowAngles.
-        "og.Occluder2D" | "og.Lighting2D" => 2,
-        // One name per meaning: fields renamed, their values as they were
-        // (og.Collider's is og-physics's version above; og-ai's and the
-        // controller's modules register the same 2).
-        "og.AiAgent"
-        | "og.Perception"
-        | "og.PlatformerController"
-        | "og.Lockstep"
-        | "og.CameraView"
-        | "og.Mirror"
-        | "og.Afterimage"
-        | "og.ReflectionProbe" => 2,
-        // G2: turbulence and gustSize, the simulated field's (2); the
-        // world's wind, `strength` gone into `speed` (3).
-        "og.Wind" => 3,
-        // damping is a decay rate everywhere: the soft things' above, and
-        // the water surface's; the camera's time is recoverTime.
-        "og.Rope" => og_physics::Rope::schema().version,
-        "og.WaterSurface" => og_physics::WaterSurface::schema().version,
-        "og.VirtualCamera" => 3,
-        // One angle rule: og.Environment.rotation in radians, and
-        // og.DayNight.azimuth and og.Aurora.direction as headings
-        // (og.AudioSource's cone is og-audio's version above).
-        // og.DayNight's start and speed as f64 clocks (3).
-        "og.Environment" | "og.Aurora" => 2,
-        "og.DayNight" => 3,
-        // One Blend for effects: a trail's and a beam's stored codes are
-        // a sprite's, alpha 0 and additive 1 (2); a beam's tile is uvTile,
-        // metres per repeat as a trail's (3).
-        "og.Trail" => 2,
-        "og.Beam" => 3,
-        _ => return schema,
-    };
-    schema
-}
-
 /// Builds a world from game `game` and every declaration so far: the
 /// engine's records (IDL order), the game's records (declaration order), the
 /// probe (which registers `og.Input`), then the systems (declared order with
@@ -249,7 +177,7 @@ pub(crate) fn assemble(
             continue;
         }
         match Layout::from_decl(decl).and_then(|l| {
-            world.register_schema(versioned(l.schema())).map_err(err)?;
+            world.register_schema(l.schema()).map_err(err)?;
             Ok(l)
         }) {
             Ok(layout) => {
@@ -387,7 +315,7 @@ pub(crate) fn assemble(
         m(&mut world, &modules)?;
     }
     // Terrain's post-restore edit replay must run before og.physics.queries
-    // snapshots colliders at tick start.
+    // initializes the live collider world before gameplay.
     if world.systems().contains(&"og.terrain")
         && world.systems().contains(&og_physics::QUERY_SYSTEM_NAME)
     {
@@ -445,7 +373,7 @@ pub(crate) fn assemble(
         .collect();
     for name in &lazy_named {
         if let Some(l) = layouts.get(*name) {
-            let id = world.register_schema(versioned(l.schema())).map_err(err)?;
+            let id = world.register_schema(l.schema()).map_err(err)?;
             if l.kind == RecordKind::Resource {
                 world
                     .insert_resource_bytes(id, &l.encode(None, None)?)

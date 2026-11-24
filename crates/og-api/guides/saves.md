@@ -30,7 +30,7 @@ const answer = og.platform.result(world, req.value);
 if (answer?.ok && answer.data.text) world.restore(answer.data.text);
 ```
 
-- world.snapshot writes `og-save:3:` and then the world deflated and
+- world.snapshot writes `og-save:4:` and then the world deflated and
   base64-encoded. Every build has it, publish included, and the same world
   saves to the same text on the native and web hosts.
 - og.platform.saveSlot spreads the text over as many store keys as it
@@ -156,15 +156,17 @@ Every save carries GameDesc.saveVersion (else project.ogt's `saveVersion`,
 else 1). Raise it when a release changes a saved type, and add the step
 from the old version to GameDesc.migrations.
 
-world.restore runs, in order: the engine's own migrations (an engine
-upgrade's changes to its components and its modules' state, such as og.ui's
-state of engine 0.7.7), then each game step from the save's version to
-saveVersion, on the save (SaveEdit). A step that refuses or throws refuses
+world.restore first requires the exact engine version that wrote the save.
+There are no engine migrations: another engine version, envelope format or
+saved component layout is refused with a clear error. The envelope is
+`og-save:4`; old saves are not supported. Engine physics state has its own
+format byte and refuses any other format too.
+
+Explicit game edits run from the save's version to saveVersion on SaveEdit,
+before strict layout validation. A step that refuses or throws refuses
 the restore with its reason and leaves the world as it was. A save of a
-newer saveVersion is refused. The envelope must be `og-save:3`; earlier
-envelope formats are refused with both versions named, never converted.
-world.openSave opens a save with only the engine's migrations applied, to
-read a save without restoring it or to migrate one by hand.
+newer saveVersion is refused. world.openSave opens a current-engine save
+without changing engine records or state, to read or edit it by hand.
 
 ```ts
 og.game({
@@ -185,26 +187,11 @@ og.game({
 | a type gone | `dropType` |
 | a component every saved entity now needs | `setRecords` on a type the save lacks |
 | a new entity | `spawn` |
-| fields added or removed, nothing to compute | `world.restore(text, { migrate: true })`, no step |
 
-Without a step and without `migrate`, a save that holds data of a type
-whose layout changed (a field added, removed or retyped, an enum's
-variants) is refused; the reason names the type and its fields and the
-fixes: `{ migrate: true }`, a migration in GameDesc.migrations, or keeping
-a saved type's fields stable between releases. Two cases restore anyway:
-
-- a type the save holds no data of (no component, resource value or
-  event) takes this build's layout;
-- an engine og.* type that only gained fields takes their declared
-  defaults.
-
-`{ migrate: true }` maps a changed type field by field, by name, as a hot
-reload does: a field added since takes its default, a removed one is
-dropped, an enum value is mapped by its variant's name, a field of another
-type starts at its default, and a type this build no longer registers is
-dropped. The host input the restore keeps (og.Input, og.Pointers,
-og.Gamepad, og.PointerLock, og.Audio) is mapped either way: a save from
-before og.Gamepad's eight pads restores without the flag.
+RestoreDesc has no `migrate` flag. No changed engine layout, including a
+session/input layout, is mapped by field name or filled from new defaults.
+Keep game-owned saved layouts stable, explicitly edit them with SaveEdit,
+or start a new save when changing them.
 
 Hashes after a migration: every peer and every restore of the same save
 migrates to the same world and hash. renameField, renameType, transform,

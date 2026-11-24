@@ -6,12 +6,12 @@
 //!
 //! The schedule a world gets, in order:
 //!
-//! 1. `og.physics.queries`: records the colliders, so `og.physics.castRay`
+//! 1. `og.physics.queries`: initializes the live simulation once, so `og.physics.castRay`
 //!    and friends answer from inside the game's systems;
 //! 2. `og.ui.begin`: opens the UI frame from `og.Input` and the viewport;
 //! 3. the game's systems (declaration order, then `after`/`before`);
-//! 4. `og.ui.end`: lays the frame out (the probe and the renderer read it);
-//! 5. `og.physics`: steps the simulation and writes the dynamic bodies back;
+//! 4. `og.physics`: steps the simulation and writes the dynamic bodies back;
+//! 5. `og.camera`, then `og.ui.end`: reads the stepped world and lays out anchored UI;
 //! 6. `og.ui.sound`: starts a voice for each UI event of the tick;
 //! 7. `og.audio`: turns the tick's AudioSource changes into commands.
 //!
@@ -86,8 +86,8 @@ pub(crate) struct Mounted {
     pub actions: og_input::SharedActions,
 }
 
-/// The modules' systems that run before the game's: physics' collider
-/// recording and the UI's begin. Registers physics' types and settings.
+/// The modules' systems that run before the game's: physics' one-time
+/// initialization and the UI's begin. Registers physics' types and settings.
 pub(crate) fn mount_front(
     world: &mut World,
     engine_id: u32,
@@ -479,8 +479,8 @@ fn shape(s: wire::ShapeDesc) -> ShapeDesc {
     }
 }
 
-/// The query view a call sees: the colliders recorded at the start of the
-/// tick inside a system, the world as it is between ticks.
+/// The one live simulation, initialized before gameplay: before physics
+/// the tick-start state, after physics and between ticks the last step.
 fn query(world: u32) -> Result<PhysicsQuery, String> {
     let eng = engine(world)?;
     let physics = eng
@@ -713,6 +713,7 @@ pub fn og_physics_mass_properties(
     if entity.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&entity) {
         return Err(format!("{entity} is not an entity"));
     }
+    query(world)?;
     let eng = engine(world)?;
     let physics = eng
         .state
@@ -738,6 +739,7 @@ pub fn og_physics_velocity_at_point(
         return Err(format!("{entity} is not an entity"));
     }
     let pt: Vec3 = wire::arg(Some(&point), "point")?;
+    query(world)?;
     let eng = engine(world)?;
     let physics = eng
         .state

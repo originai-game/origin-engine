@@ -14,7 +14,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>Module `world` line 244</sub>
+<sub>Module `world` line 241</sub>
 
 <a id="member-World-tick"></a>
 
@@ -32,7 +32,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>Module `world` line 247</sub>
+<sub>Module `world` line 244</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -64,7 +64,7 @@ fn spawn {
 }
 ```
 
-<sub>Module `world` line 249</sub>
+<sub>Module `world` line 246</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -96,7 +96,7 @@ fn despawn {
 }
 ```
 
-<sub>Module `world` line 257</sub>
+<sub>Module `world` line 254</sub>
 
 <a id="member-World-alive"></a>
 
@@ -124,7 +124,7 @@ fn alive {
 }
 ```
 
-<sub>Module `world` line 265</sub>
+<sub>Module `world` line 262</sub>
 
 <a id="member-World-has"></a>
 
@@ -155,7 +155,7 @@ fn has {
 }
 ```
 
-<sub>Module `world` line 271</sub>
+<sub>Module `world` line 268</sub>
 
 <a id="member-World-insert"></a>
 
@@ -191,7 +191,7 @@ fn insert {
 }
 ```
 
-<sub>Module `world` line 279</sub>
+<sub>Module `world` line 276</sub>
 
 <a id="member-World-remove"></a>
 
@@ -223,7 +223,7 @@ fn remove {
 }
 ```
 
-<sub>Module `world` line 291</sub>
+<sub>Module `world` line 288</sub>
 
 <a id="member-World-get"></a>
 
@@ -255,7 +255,7 @@ fn get {
 }
 ```
 
-<sub>Module `world` line 300</sub>
+<sub>Module `world` line 297</sub>
 
 <a id="member-World-set"></a>
 
@@ -289,7 +289,7 @@ fn set {
 }
 ```
 
-<sub>Module `world` line 309</sub>
+<sub>Module `world` line 306</sub>
 
 <a id="member-World-resource"></a>
 
@@ -319,7 +319,7 @@ fn resource {
 }
 ```
 
-<sub>Module `world` line 319</sub>
+<sub>Module `world` line 316</sub>
 
 <a id="member-World-children"></a>
 
@@ -347,7 +347,7 @@ fn children {
 }
 ```
 
-<sub>Module `world` line 327</sub>
+<sub>Module `world` line 324</sub>
 
 <a id="member-World-removed"></a>
 
@@ -377,7 +377,7 @@ fn removed {
 }
 ```
 
-<sub>Module `world` line 333</sub>
+<sub>Module `world` line 330</sub>
 
 <a id="member-World-spatial"></a>
 
@@ -408,7 +408,7 @@ fn spatial {
 }
 ```
 
-<sub>Module `world` line 341</sub>
+<sub>Module `world` line 338</sub>
 
 <a id="member-World-state"></a>
 
@@ -436,7 +436,7 @@ fn state {
 }
 ```
 
-<sub>Module `world` line 350</sub>
+<sub>Module `world` line 347</sub>
 
 <a id="member-World-setState"></a>
 
@@ -466,7 +466,7 @@ fn setState {
 }
 ```
 
-<sub>Module `world` line 356</sub>
+<sub>Module `world` line 353</sub>
 
 <a id="member-World-find"></a>
 
@@ -494,7 +494,7 @@ fn find {
 }
 ```
 
-<sub>Module `world` line 363</sub>
+<sub>Module `world` line 360</sub>
 
 <a id="member-World-prefabOf"></a>
 
@@ -522,7 +522,7 @@ fn prefabOf {
 }
 ```
 
-<sub>Module `world` line 369</sub>
+<sub>Module `world` line 366</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -550,7 +550,7 @@ fn nameOf {
 }
 ```
 
-<sub>Module `world` line 375</sub>
+<sub>Module `world` line 372</sub>
 
 <a id="member-World-query"></a>
 
@@ -579,7 +579,7 @@ fn query {
 }
 ```
 
-<sub>Module `world` line 381</sub>
+<sub>Module `world` line 378</sub>
 
 <a id="member-World-events"></a>
 
@@ -609,7 +609,7 @@ fn events {
 }
 ```
 
-<sub>Module `world` line 388</sub>
+<sub>Module `world` line 385</sub>
 
 <a id="member-World-emit"></a>
 
@@ -641,7 +641,7 @@ fn emit {
 }
 ```
 
-<sub>Module `world` line 396</sub>
+<sub>Module `world` line 393</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -678,13 +678,13 @@ fn instantiate {
 }
 ```
 
-<sub>Module `world` line 405</sub>
+<sub>Module `world` line 402</sub>
 
 <a id="member-World-snapshot"></a>
 
 #### `World.snapshot`
 
-The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks.
+The world as og-save:4 text: entities, components, names, resources, pending events, module state, schema hashes, the exact engine version and GameDesc.saveVersion. Another engine version or saved layout is refused, never upgraded. Available in every build with identical text on both hosts. SnapshotDesc selects tagged entities or resources. Inside a system it captures mid-tick state without queued structural changes; restore completes that tick. Make this the system's last write. Between ticks it captures the world between ticks.
 
 See `saves`.
 
@@ -705,7 +705,7 @@ Binding symbol `og_world_snapshot` · publish builds: kept
 ```ogt
 fn snapshot {
   custom true
-  doc "The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks."
+  doc "The world as og-save:4 text: entities, components, names, resources, pending events, module state, schema hashes, the exact engine version and GameDesc.saveVersion. Another engine version or saved layout is refused, never upgraded. Available in every build with identical text on both hosts. SnapshotDesc selects tagged entities or resources. Inside a system it captures mid-tick state without queued structural changes; restore completes that tick. Make this the system's last write. Between ticks it captures the world between ticks."
   guide "saves"
   aliases "save game, savegame, checkpoint, serialise the world, persist state, quick save"
   param desc SnapshotDesc "The whole world, or a selection: tagged entities and chosen resources." {
@@ -715,13 +715,13 @@ fn snapshot {
 }
 ```
 
-<sub>Module `world` line 415</sub>
+<sub>Module `world` line 412</sub>
 
 <a id="member-World-openSave"></a>
 
 #### `World.openSave`
 
-Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand.
+Open a current-engine save for editing (SaveEdit), without restoring it. Other engine versions are refused; the engine never upgrades its records or module state. GameDesc.migrations may explicitly edit game-owned records before strict layout validation.
 
 ```ts
 World.openSave(save: string): Result<SaveEdit>
@@ -738,19 +738,19 @@ Binding symbol `og_world_open_save` · publish builds: kept
 ```ogt
 fn openSave {
   custom true
-  doc "Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand."
+  doc "Open a current-engine save for editing (SaveEdit), without restoring it. Other engine versions are refused; the engine never upgrades its records or module state. GameDesc.migrations may explicitly edit game-owned records before strict layout validation."
   param save String "The text world.snapshot returned."
   returns Result.SaveEdit "Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion."
 }
 ```
 
-<sub>Module `world` line 426</sub>
+<sub>Module `world` line 423</sub>
 
 <a id="member-World-restore"></a>
 
 #### `World.restore`
 
-Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first.
+Replace the world with a current-engine snapshot; a selection replaces only its tagged entities and resources. Other engine versions and saved layouts are refused, never automatically upgraded. GameDesc.migrations may explicitly edit game-owned data; a refusal or throw refuses the restore. The session stays unless requested. Applies at tick end inside a system, before the next tick in a command, otherwise at once; the next tick delivers og.WorldRestored. A mid-tick save resumes its tick. Load collider meshes first.
 
 See `saves`.
 
@@ -761,21 +761,21 @@ World.restore(save: string, desc?: RestoreDesc): Result<void>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `save` | `string` | no | The text world.snapshot returned. |
-| `desc` | `RestoreDesc` | yes | Whether a type whose layout changed since the save is mapped field by field. |
+| `desc` | `RestoreDesc` | yes | Whether to restore the saved input instead of keeping the host's. |
 
-**Returns** `Result<void>`: Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or saveVersion, a refused migration, an unloaded collider mesh, or a type whose layout changed that the save holds data of: the reason names the type, its fields and the fix.
+**Returns** `Result<void>`: Refused, with nothing changed, for text world.snapshot did not write, another engine version, a newer saveVersion, a refused game edit, an unloaded collider mesh, or a changed saved layout: the reason names the incompatibility.
 
 Binding symbol `og_world_restore` · publish builds: kept
 
 ```ogt
 fn restore {
   custom true
-  doc "Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first."
+  doc "Replace the world with a current-engine snapshot; a selection replaces only its tagged entities and resources. Other engine versions and saved layouts are refused, never automatically upgraded. GameDesc.migrations may explicitly edit game-owned data; a refusal or throw refuses the restore. The session stays unless requested. Applies at tick end inside a system, before the next tick in a command, otherwise at once; the next tick delivers og.WorldRestored. A mid-tick save resumes its tick. Load collider meshes first."
   guide "saves"
   param save String "The text world.snapshot returned."
-  param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
-  returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or saveVersion, a refused migration, an unloaded collider mesh, or a type whose layout changed that the save holds data of: the reason names the type, its fields and the fix."
+  param desc RestoreDesc "Whether to restore the saved input instead of keeping the host's."
+  returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, another engine version, a newer saveVersion, a refused game edit, an unloaded collider mesh, or a changed saved layout: the reason names the incompatibility."
 }
 ```
 
-<sub>Module `world` line 433</sub>
+<sub>Module `world` line 430</sub>

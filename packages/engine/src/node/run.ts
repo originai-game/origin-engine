@@ -496,7 +496,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const worldTick = (): number => (engine.probe.dump({ what: "world" }) as unknown as { tick: number }).tick;
 
     if (restoreFile) {
-      const restored = engine.world.restore(readFileSync(restoreFile, "utf8"), { migrate: true });
+      const restored = engine.world.restore(readFileSync(restoreFile, "utf8"));
       if (restored.ok) process.stdout.write(JSON.stringify({ event: "restored", ok: true, tick: worldTick() }) + "\n");
       else {
         process.stderr.write(`WARN --restore ${restoreFile}: ${restored.reason}; the run starts fresh\n`);

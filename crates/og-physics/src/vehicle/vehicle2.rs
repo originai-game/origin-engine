@@ -149,6 +149,11 @@ pub(crate) fn vehicles(
             let s = build(&mut sim.world, chassis, veh);
             sim.vehicles.insert(key, s);
         }
+        // Query initialization needs the wheel colliders, not a drivetrain
+        // update: even a zero-duration update can change gear and clutch.
+        if dt == 0.0 {
+            continue;
+        }
         let state = sim.vehicles.get(&key).expect("inserted").clone();
         let radius = veh.wheel_radius.max(0.01);
         // Bullet's units, as the 3D car: the spring's force is stiffness ×

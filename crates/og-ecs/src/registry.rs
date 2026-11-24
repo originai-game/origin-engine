@@ -131,7 +131,14 @@ impl Registry {
         if let Some(&id) = self.by_type.get(&TypeId::of::<T>()) {
             return Ok((id, false));
         }
-        let (id, new) = self.register_schema(T::schema())?;
+        let mut schema = T::schema();
+        // Engine records share the IDL's current baseline. Historical Rust
+        // record revisions no longer select migrations; saved layouts are
+        // still checked strictly, including every field and enum variant.
+        if schema.name.starts_with("og.") {
+            schema.version = 1;
+        }
+        let (id, new) = self.register_schema(schema)?;
         let info = &mut self.types[id.0 as usize];
         // A derive that disagrees with its own schema is caught here, once.
         let probe = T::read_fields(&mut |_, buf| buf.fill(0));

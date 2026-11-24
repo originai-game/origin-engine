@@ -23,4 +23,4 @@ struct Neighbour {
 }
 ```
 
-<sub>Module `world` line 218</sub>
+<sub>Module `world` line 215</sub>

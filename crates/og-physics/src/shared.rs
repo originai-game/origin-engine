@@ -70,8 +70,8 @@ pub type MeshSource = Arc<dyn Fn(u64) -> Option<MeshDesc> + Send + Sync>;
 /// the shapes built from them (assets and caches).
 #[derive(Default)]
 pub(crate) struct Shared {
-    pub sim3: Option<Box<dim3::Sim>>,
-    pub sim2: Option<Box<dim2::Sim>>,
+    pub sim3: Option<Arc<Mutex<Box<dim3::Sim>>>>,
+    pub sim2: Option<Arc<Mutex<Box<dim2::Sim>>>>,
     /// Meshes registered with new geometry since the last step; colliders
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
@@ -102,10 +102,6 @@ pub(crate) struct Shared {
     /// handle ([`PhysicsSystem::set_baked_trimesh`]): taken instead of a
     /// build when the mesh is exactly the one baked.
     pub baked3: IdMap<u64, rapier3d::prelude::SharedShape>,
-    /// The colliders [`PhysicsSystem::query_system`] recorded this tick, and
-    /// the query view built from them on the first query that asked.
-    pub recorded: Option<(Physics, Scene)>,
-    pub recorded_query: Option<Arc<QueryInner>>,
     /// Ragdoll rigs by entity (assets, like meshes) and the animation's
     /// bone poses the host gave for this tick.
     pub rigs: IdMap<u64, Arc<RagdollRig>>,
