@@ -115,7 +115,8 @@ mod tests {
             );
             let lean = Features::WEATHER.leave_out(source.clone());
             assert!(!lean.contains(crate::WEATHER_SURFACE_WGSL));
-            assert!(!lean.contains("fn weather_streaks("));
+            // Dry authored stains share the runs even with weather left out.
+            assert!(lean.contains("fn weather_streaks("));
             assert!(lean.contains("override OG_WEATHER: bool = false;"));
             // (`true` to `false` in the override is one character more.)
             assert_eq!(

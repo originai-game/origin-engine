@@ -16,6 +16,46 @@ fn weather_fbm(p: vec2<f32>) -> f32 {
   return weather_noise(p) * 0.57 + weather_noise(p * 2.03 + 17.1) * 0.29 + weather_noise(p * 4.07 + 3.3) * 0.14;
 }
 
+// Rain running down a wall: thin rivulets along the fall, each starting
+// at its own height (a ledge, a joint, a flaw) where it is darkest, just
+// under a soft top edge, and fading out over a metre or three below it,
+// a little uneven along its length. They flow while it rains and stay as
+// dark stains once it stops. 0..1. `geo` faces sideways; `t` the seconds
+// while it rains; `footprint` the metres a pixel covers there (a rivulet
+// thinner than a pixel widens and dims, so a far wall does not shimmer).
+fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 {
+  // Across the wall: the horizontal direction in its plane.
+  let side = normalize(vec2<f32>(-geo.z, geo.x) + vec2<f32>(1e-5, 0.0));
+  let across = dot(p.xz, side);
+  // Rivulets meander a little as they run down.
+  let u = across + (weather_noise(vec2<f32>(across * 1.3, p.y * 0.9)) - 0.5) * 0.03;
+  // One possible rivulet per 8 cm strip, at its own place in the strip,
+  // 1.3 to 3.2 cm wide; three strips in ten run (seven in ten combed a
+  // wall into dark stripes: a weathered wall sheds in a few runs).
+  let cell = 0.08;
+  let c = i32(floor(u / cell));
+  let f = u / cell - f32(c);
+  let centre = 0.25 + 0.5 * lattice3(vec3<i32>(c, 0, 83), 0u);
+  let half = 0.08 + 0.12 * lattice3(vec3<i32>(c, 0, 89), 0u);
+  let blur = max(half, 0.75 * footprint / cell);
+  // A dark core and, round it, the stone the water soaks a little wider.
+  let core = (1.0 - smoothstep(0.0, blur, abs(f - centre))) * min(half / blur, 1.0);
+  let profile = max(core, 0.5 * (1.0 - smoothstep(0.0, 0.5, abs(f - centre))));
+  let present = step(0.7, lattice3(vec3<i32>(c, 0, 101), 0u));
+  // Its runs: one start every 3 to 8 m down the wall, each fading over
+  // 1.5 to 4.5 m below its start (`d`, metres under it).
+  let period = 3.0 + 5.0 * lattice3(vec3<i32>(c, 0, 97), 0u);
+  let d = fract(-p.y / period + lattice3(vec3<i32>(c, 0, 103), 0u)) * period;
+  let reach = 1.5 + 3.0 * lattice3(vec3<i32>(c, 0, 107), 0u);
+  let run = smoothstep(0.0, 0.05, d) * exp(-d / reach);
+  // Rivulets bunch where the wall sheds most (a broad band noise), and
+  // the water is uneven along each one, sliding down in the rain.
+  let band = mix(0.55, 1.0, smoothstep(0.3, 0.6, weather_noise(vec2<f32>(across * 0.7, 17.0))));
+  let along = 0.7 + 0.3 * weather_noise(vec2<f32>(across * 20.0 + 41.0, p.y * 3.0 + t * 0.9));
+  // At most 0.7: a rivulet is a darker, damper run, not ink.
+  return min(profile * present * run * band * along * 1.2, 0.7);
+}
+
 // A raindrop's ring on standing water: the capillary wave packet its
 // impact sends out (Lagarde's "Water drop" series, 2012-13, draws its
 // rings), a few crests 2.5 cm apart under an envelope that broadens as the
