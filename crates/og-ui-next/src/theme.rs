@@ -446,6 +446,66 @@ fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Valu
     }
 }
 
+/// Each `<role>-fg` the seeds give, as the ink on its own fill
+/// (`text-accent-fg` on `bg-accent`): held at 4.5:1 there, moved in OKLCH
+/// lightness away from the fill (the other way when that end cannot reach
+/// it). A pair that already holds in both schemes is not written.
+fn solve_pairs(seeds: &str, colors: &mut Map<String, Value>) {
+    let design = crate::pack::design::colors(seeds);
+    let pairs: Vec<String> = design[1]
+        .keys()
+        .filter(|k| {
+            k.strip_suffix("-fg")
+                .is_some_and(|g| design[1].contains_key(g))
+        })
+        .cloned()
+        .collect();
+    for role in pairs {
+        let ground = &role[..role.len() - 3];
+        let mut pair = Map::new();
+        let mut moved = false;
+        for (i, scheme) in ["light", "dark"].into_iter().enumerate() {
+            // A role the ink solve already moved is read as it left it.
+            let get = |k: &str| match colors.get(k) {
+                Some(Value::Object(p)) => p.get(scheme).and_then(Value::as_str),
+                Some(v) => v.as_str(),
+                None => design[i].get(k).and_then(Value::as_str),
+            };
+            let (Some(have), Some(fill)) = (get(&role), get(ground)) else {
+                continue;
+            };
+            let (have, fill) = (have.to_owned(), fill.to_owned());
+            let (have, fill) = (&have[..7.min(have.len())], &fill[..7.min(fill.len())]);
+            let Ok(start) = lch(have) else { continue };
+            let mut best = (have.to_owned(), contrast(have, fill));
+            if best.1 < 4.5 {
+                let away = luminance(fill) < 0.18;
+                for up in [away, !away] {
+                    let mut c = start;
+                    while if up { c.l < 1.0 } else { c.l > 0.0 } {
+                        c.l = (c.l + if up { 0.005 } else { -0.005 }).clamp(0.0, 1.0);
+                        let w = contrast(&hex(c), fill);
+                        if w > best.1 {
+                            best = (hex(c), w);
+                        }
+                        if w >= 4.5 {
+                            break;
+                        }
+                    }
+                    if best.1 >= 4.5 {
+                        break;
+                    }
+                }
+                moved = true;
+            }
+            pair.insert(scheme.into(), json!(best.0));
+        }
+        if moved && pair.len() == 2 {
+            colors.entry(role).or_insert(Value::Object(pair));
+        }
+    }
+}
+
 /// The art's nine-slice pieces and the slots that draw them: each slot's
 /// art is its edge (CONVENTIONS.md §Grounds and inks), so its fill is
 /// cleared and the art's face is the ground.
@@ -771,6 +831,9 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 colors.insert(k.clone(), v);
             }
         }
+    }
+    if pack.contains_key("seeds") {
+        solve_pairs(&seed_css(&pack), &mut colors);
     }
     if !colors.is_empty() {
         theme.insert("colors".into(), Value::Object(colors));
@@ -1102,6 +1165,55 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Every engine theme holds each `<role>-fg` at 4.5:1 on its own fill
+    /// in both schemes, as the pack resolves them (cartoon's dark accent
+    /// once kept the design's black `accent-fg` at 1.5:1).
+    ///
+    /// Ways this could fail: a theme's seeds moving a fill without its
+    /// ink, a pair read from the design after the ink solve moved the fill.
+    #[test]
+    fn every_theme_holds_each_fill_and_its_ink() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/themes");
+        let mut names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| {
+                let p = e.ok()?.path();
+                p.join("theme.json")
+                    .is_file()
+                    .then(|| p.file_name()?.to_str().map(str::to_owned))?
+            })
+            .collect();
+        names.sort();
+        assert!(names.len() >= 10, "{names:?}");
+        let mut bad = Vec::new();
+        for name in &names {
+            let at = format!("themes/{name}/theme.json");
+            let text = std::fs::read_to_string(dir.join(name).join("theme.json")).unwrap();
+            let r = resolve(&text, &at, &mut templates()).unwrap();
+            let t = compile(&r, &mut templates()).unwrap();
+            let design = crate::pack::design::colors(&seed_css(&t.pack));
+            let colors = &t.pack["theme"]["colors"];
+            for (i, scheme) in ["light", "dark"].into_iter().enumerate() {
+                let get = |k: &str| match &colors[k] {
+                    Value::Object(p) => p[scheme].as_str().map(str::to_owned),
+                    Value::String(c) => Some(c.clone()),
+                    _ => design[i].get(k).and_then(Value::as_str).map(str::to_owned),
+                };
+                for role in design[i].keys().filter(|k| k.ends_with("-fg")) {
+                    let fill = &role[..role.len() - 3];
+                    let (Some(ink), Some(ground)) = (get(role), get(fill)) else {
+                        continue;
+                    };
+                    let r = contrast(&ink[..7], &ground[..7]);
+                    if r < 4.5 {
+                        bad.push(format!("{name} {scheme} {role} {ink} on {ground} {r:.2}"));
+                    }
+                }
+            }
+        }
+        assert!(bad.is_empty(), "{bad:#?}");
     }
 
     #[test]

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Theme colours: <role>-fg (accent-fg, gold-fg, danger-fg …)",
+      "summary": "A theme holds each `<role>-fg` at 4.5:1 on its own fill in both schemes, moving its lightness away from the fill. Every engine theme's `accent-fg` sat on its accent at 1.0 to 1.8:1 in one scheme (cartoon's selected tab count read black on dark brown)."
+    }
+  ]
+}
