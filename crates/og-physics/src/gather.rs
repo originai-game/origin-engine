@@ -257,37 +257,47 @@ fn ancestor_body(
     frames: &og_core::IdMap<u64, Mat4>,
 ) -> Option<(usize, (Vec3, Quat, Vec3))> {
     if og_ecs::transform::under_parent_frame(e, frames, |c| parents.get(c).map(Entity::from_bits)) {
-        let mut m = Mat4::from_scale_rotation_translation(own.2, own.1, own.0);
+        let mut m = Mat4::from_scale_rotation_translation(own.2, crate::unit(own.1), own.0);
         let mut at = e;
+        let mut visited: Vec<u64> = Vec::new();
         for _ in 0..256 {
             if let Some(frame) = frames.get(&at.to_bits()) {
                 m = *frame * m;
             }
-            let parent = Entity::from_bits(parents.get(at)?);
-            if parent == e {
+            let parent_bits = parents.get(at)?;
+            if parent_bits == 0 || parent_bits == e.to_bits() || visited.contains(&parent_bits) {
                 return None;
             }
+            visited.push(parent_bits);
+            let parent = Entity::from_bits(parent_bits);
             if let Some(i) = bodies.get(parent) {
                 let (s, r, p) = m.to_scale_rotation_translation();
-                return Some((i, (p, r, s)));
+                return Some((i, (p, crate::unit(r), s)));
             }
             if let Some(t) = get(parent, ids.transform)
                 .ok()
                 .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
             {
-                m = t.matrix() * m;
+                m = Mat4::from_scale_rotation_translation(
+                    t.scale,
+                    crate::unit(t.quaternion),
+                    t.position,
+                ) * m;
             }
             at = parent;
         }
         return None;
     }
-    let (mut p, mut r, mut s) = own;
+    let (mut p, mut r, mut s) = (own.0, crate::unit(own.1), own.2);
     let mut at = e;
+    let mut visited: Vec<u64> = Vec::new();
     for _ in 0..256 {
-        let parent = Entity::from_bits(parents.get(at)?);
-        if parent == e {
+        let parent_bits = parents.get(at)?;
+        if parent_bits == 0 || parent_bits == e.to_bits() || visited.contains(&parent_bits) {
             return None;
         }
+        visited.push(parent_bits);
+        let parent = Entity::from_bits(parent_bits);
         if let Some(i) = bodies.get(parent) {
             return Some((i, (p, r, s)));
         }
@@ -295,8 +305,9 @@ fn ancestor_body(
             .ok()
             .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
         {
-            p = t.position + t.quaternion * (t.scale * p);
-            r = t.quaternion * r;
+            let pq = crate::unit(t.quaternion);
+            p = t.position + pq * (t.scale * p);
+            r = crate::unit(pq * r);
             s *= t.scale;
         }
         at = parent;
@@ -316,6 +327,31 @@ pub(crate) fn gather<'w>(
     kept: &mut Kept,
     frames: &og_core::IdMap<u64, Mat4>,
 ) -> Result<Scene> {
+    gather_inner(q, get, lazy, ids, kept, frames, true)
+}
+
+/// Gathers only the bodies, controllers, static colliders and contact hooks
+/// needed for scene queries (`og.physics.queries` and `PhysicsSystem::query`).
+pub(crate) fn gather_colliders<'w>(
+    q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    lazy: LazyIds,
+    ids: &Ids,
+    kept: &mut Kept,
+    frames: &og_core::IdMap<u64, Mat4>,
+) -> Result<Scene> {
+    gather_inner(q, get, lazy, ids, kept, frames, false)
+}
+
+fn gather_inner<'w>(
+    q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    lazy: LazyIds,
+    ids: &Ids,
+    kept: &mut Kept,
+    frames: &og_core::IdMap<u64, Mat4>,
+    full: bool,
+) -> Result<Scene> {
     let mut colliders = ByEntity::new();
     for (at, a) in q(Q_BODY_COLLIDERS)?.enumerate() {
         let rows = ids.colliders(&mut kept.body_colliders, at, &a)?;
@@ -324,17 +360,19 @@ pub(crate) fn gather<'w>(
         }
     }
     let mut velocities = ByEntity::new();
-    for a in q(Q_BODY_VELOCITIES)? {
-        let linear = a.read::<Vec3>(ids.v_linear)?;
-        let angular = a.read::<Vec3>(ids.v_angular)?;
-        for (row, e) in a.entities().iter().enumerate() {
-            velocities.insert(
-                *e,
-                Velocity {
-                    linear: linear[row],
-                    angular: angular[row],
-                },
-            );
+    if full {
+        for a in q(Q_BODY_VELOCITIES)? {
+            let linear = a.read::<Vec3>(ids.v_linear)?;
+            let angular = a.read::<Vec3>(ids.v_angular)?;
+            for (row, e) in a.entities().iter().enumerate() {
+                velocities.insert(
+                    *e,
+                    Velocity {
+                        linear: linear[row],
+                        angular: angular[row],
+                    },
+                );
+            }
         }
     }
     let mut controls = ByEntityControl::default();
@@ -434,6 +472,9 @@ pub(crate) fn gather<'w>(
     for a in q(Q_PARENTS)? {
         let p = a.read::<u64>(ids.parent)?;
         for (e, parent) in a.entities().iter().zip(p.iter()) {
+            if *parent == 0 {
+                continue;
+            }
             parents.insert(*e, *parent);
             any_parent = true;
             if lazy.wheel.is_some() {
@@ -444,6 +485,7 @@ pub(crate) fn gather<'w>(
     // The bodies a child collider can join: rigid bodies a controller
     // does not move (a controller moves its own shape alone).
     let mut joinable = ByEntity::new();
+    let mut body_scales = ByEntity::new();
     let parent_of = |c| parents.get(c).map(Entity::from_bits);
     let transform_of = |p| {
         get(p, ids.transform)
@@ -451,8 +493,9 @@ pub(crate) fn gather<'w>(
             .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
     };
     for b in &mut scene.bodies {
-        if og_ecs::transform::under_parent_frame(b.entity, frames, parent_of) {
-            if b.body.kind == crate::BODY_DYNAMIC {
+        let under_bone = og_ecs::transform::under_parent_frame(b.entity, frames, parent_of);
+        if under_bone || (any_parent && parent_of(b.entity).is_some()) {
+            if under_bone && b.body.kind == crate::BODY_DYNAMIC {
                 return Err(og_core::Error::new(
                     og_core::ErrorKind::Invalid,
                     "a bone-attached transform cannot have a dynamic og.RigidBody; use kinematic",
@@ -464,14 +507,20 @@ pub(crate) fn gather<'w>(
             if let Some(frame) = frames.get(&b.entity.to_bits()) {
                 prefix *= *frame;
             }
-            let m =
-                prefix * Mat4::from_scale_rotation_translation(b.scale, b.quaternion, b.position);
+            let m = prefix
+                * Mat4::from_scale_rotation_translation(
+                    b.scale,
+                    crate::unit(b.quaternion),
+                    b.position,
+                );
             (b.scale, b.quaternion, b.position) = m.to_scale_rotation_translation();
+            b.quaternion = crate::unit(b.quaternion);
             b.parent_frame = Some(prefix);
         }
     }
     if any_parent {
         for (i, b) in scene.bodies.iter().enumerate() {
+            body_scales.insert(b.entity, b.scale);
             if b.control.is_none() {
                 joinable.insert(b.entity, i);
             }
@@ -484,6 +533,7 @@ pub(crate) fn gather<'w>(
         let scale = a.read::<Vec3>(ids.t_scale)?;
         let rows = ids.colliders(&mut kept.static_colliders, at, &a)?;
         let first = scene.statics.len();
+        let mut any_in_arch_parented = false;
         for (row, (e, collider)) in a.entities().iter().zip(rows.iter().copied()).enumerate() {
             let own = (position[row], quaternion[row], scale[row]);
             if any_parent
@@ -501,11 +551,14 @@ pub(crate) fn gather<'w>(
                 joined = true;
                 continue;
             }
-            let own = if og_ecs::transform::under_parent_frame(*e, frames, parent_of) {
+            let own = if (any_parent && parent_of(*e).is_some())
+                || og_ecs::transform::under_parent_frame(*e, frames, parent_of)
+            {
+                any_in_arch_parented = true;
                 let (s, r, p) =
                     og_ecs::transform::world_matrix(*e, frames, parent_of, transform_of)
                         .to_scale_rotation_translation();
-                (p, r, s)
+                (p, crate::unit(r), s)
             } else {
                 own
             };
@@ -520,7 +573,7 @@ pub(crate) fn gather<'w>(
         let len = scene.statics.len() - first;
         scene.static_runs.push(StaticRun {
             len,
-            written: (len == a.len() && frames.is_empty())
+            written: (len == a.len() && frames.is_empty() && !any_in_arch_parented)
                 .then(|| a.written(ids.transform).zip(a.written(ids.collider)))
                 .flatten(),
         });
@@ -548,6 +601,9 @@ pub(crate) fn gather<'w>(
             }
         }
     }
+    if !full {
+        return Ok(scene);
+    }
     for a in q(Q_JOINTS)? {
         let rows: Vec<Joint> = ids.joint.read(&a)?;
         scene.joints.extend(a.entities().iter().copied().zip(rows));
@@ -565,13 +621,6 @@ pub(crate) fn gather<'w>(
         for (i, (e, _)) in scene.vehicles.iter().enumerate() {
             cars.insert(*e, i);
         }
-        let scale_of = |e: Entity| {
-            scene
-                .bodies
-                .iter()
-                .find(|b| b.entity == e)
-                .map_or(Vec3::ONE, |b| b.scale)
-        };
         let mut found: Vec<(u64, WheelChild)> = Vec::new();
         for e in parented {
             let Ok(bytes) = get(e, wheel_id) else {
@@ -586,11 +635,12 @@ pub(crate) fn gather<'w>(
                 });
             if let Some((i, (p, _, _))) = ancestor_body(e, own, &parents, &cars, get, ids, frames) {
                 let car = scene.vehicles[i].0;
+                let car_scale = body_scales.get(car).unwrap_or(Vec3::ONE);
                 found.push((
                     car.to_bits(),
                     WheelChild {
                         entity: e,
-                        mount: p * scale_of(car),
+                        mount: p * car_scale,
                         wheel,
                     },
                 ));
@@ -736,9 +786,9 @@ pub(crate) fn floats<'w>(
     Ok(out)
 }
 
-/// Controllers by entity index, valid for one tick.
+/// Controllers by entity index with generation check, valid for one tick.
 #[derive(Default)]
-struct ByEntityControl(Vec<Option<Control>>);
+struct ByEntityControl(Vec<Option<(u32, Control)>>);
 
 impl ByEntityControl {
     fn insert(&mut self, e: Entity, value: Control) {
@@ -746,10 +796,11 @@ impl ByEntityControl {
         if i >= self.0.len() {
             self.0.resize(i + 1, None);
         }
-        self.0[i] = Some(value);
+        self.0[i] = Some((e.generation(), value));
     }
     fn get(&self, e: Entity) -> Option<Control> {
-        self.0.get(e.index() as usize).copied().flatten()
+        let (eg, c) = self.0.get(e.index() as usize).copied().flatten()?;
+        (eg == e.generation()).then_some(c)
     }
 }
 
@@ -772,16 +823,21 @@ pub(crate) fn write_back(
                 debug_assert_eq!(scene.bodies[k].entity, a.entities()[row]);
                 if let Some((p, q, v)) = out.moved[k] {
                     let (p, q) = match scene.bodies[k].parent_frame {
-                        Some(frame) => {
+                        Some(frame) if frame.determinant().abs() > 1e-12 => {
                             let local = frame.inverse()
                                 * Mat4::from_scale_rotation_translation(
                                     scene.bodies[k].scale,
-                                    q,
+                                    crate::unit(q),
                                     p,
                                 );
-                            let (_, q, p) = local.to_scale_rotation_translation();
-                            (p, q)
+                            let (_, lq, lp) = local.to_scale_rotation_translation();
+                            if lp.is_finite() && lq.is_finite() {
+                                (lp, crate::unit(lq))
+                            } else {
+                                (position[row], quaternion[row])
+                            }
                         }
+                        Some(_) => (position[row], quaternion[row]),
                         None => (p, q),
                     };
                     position[row] = p;

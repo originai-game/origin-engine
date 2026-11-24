@@ -181,6 +181,10 @@ impl StateBlock for PhysicsState {
         shared.stale_meshes.clear();
         shared.field_edits.clear();
         shared.pushes.clear();
+        shared.ragdoll_targets.clear();
+        shared.garment_poses.clear();
+        shared.recorded = None;
+        shared.recorded_query = None;
         shared.sim3 = None;
         shared.sim2 = None;
         let saved = decoded.map(|d| {
@@ -218,7 +222,335 @@ impl StateBlock for PhysicsState {
         for p in &mut shared.pushes {
             p.point = p.point.map(|q| s.moved(q));
         }
+        for poses in shared.ragdoll_targets.values_mut() {
+            for (p, _) in poses {
+                *p = s.moved(*p);
+            }
+        }
+        for pose in shared.garment_poses.values_mut() {
+            for p in &mut pose.targets {
+                *p = s.moved(*p);
+            }
+        }
         shared.recorded = None;
         shared.recorded_query = None;
+    }
+}
+
+/// Single-pass bincode serializer that strips the `shape` field of asset-backed
+/// `rapier::Collider` entries inside `ColliderSet::colliders` and records each
+/// cut point as a [`Hole`]. Never mutates the simulation and never encodes
+/// multi-MB asset meshes/heightfields only to slice them out afterward.
+pub(crate) fn encode_stripped<T: Serialize>(
+    value: &T,
+    slot_keys: &[Option<ShapeKey>],
+) -> (Vec<Hole>, Vec<u8>) {
+    let mut ser = Stripper {
+        out: Vec::new(),
+        holes: Vec::new(),
+        slot_keys,
+        slot_cursor: 0,
+        in_colliders: false,
+    };
+    value
+        .serialize(&mut ser)
+        .expect("a physics world always serializes into memory");
+    debug_assert!(
+        slot_keys.is_empty() || ser.slot_cursor == slot_keys.len(),
+        "ColliderSet slot count mismatch: visited {}, expected {}",
+        ser.slot_cursor,
+        slot_keys.len()
+    );
+    (ser.holes, ser.out)
+}
+
+struct Stripper<'a> {
+    out: Vec<u8>,
+    holes: Vec<Hole>,
+    slot_keys: &'a [Option<ShapeKey>],
+    slot_cursor: usize,
+    in_colliders: bool,
+}
+
+impl Stripper<'_> {
+    fn inner(&mut self) -> bincode::Serializer<&mut Vec<u8>, impl bincode::Options> {
+        bincode::Serializer::new(&mut self.out, codec())
+    }
+}
+
+enum StripStruct<'a, 'b> {
+    Plain(&'b mut Stripper<'a>),
+    ColliderSet(&'b mut Stripper<'a>),
+    Collider {
+        ser: &'b mut Stripper<'a>,
+        key: Option<ShapeKey>,
+    },
+}
+
+impl<'a, 'b> serde::Serializer for &'b mut Stripper<'a> {
+    type Ok = ();
+    type Error = bincode::Error;
+    type SerializeSeq = Self;
+    type SerializeTuple = Self;
+    type SerializeTupleStruct = Self;
+    type SerializeTupleVariant = Self;
+    type SerializeMap = Self;
+    type SerializeStruct = StripStruct<'a, 'b>;
+    type SerializeStructVariant = Self;
+
+    fn serialize_bool(self, v: bool) -> bincode::Result<()> {
+        serde::Serializer::serialize_bool(&mut self.inner(), v)
+    }
+    fn serialize_i8(self, v: i8) -> bincode::Result<()> {
+        serde::Serializer::serialize_i8(&mut self.inner(), v)
+    }
+    fn serialize_i16(self, v: i16) -> bincode::Result<()> {
+        serde::Serializer::serialize_i16(&mut self.inner(), v)
+    }
+    fn serialize_i32(self, v: i32) -> bincode::Result<()> {
+        serde::Serializer::serialize_i32(&mut self.inner(), v)
+    }
+    fn serialize_i64(self, v: i64) -> bincode::Result<()> {
+        serde::Serializer::serialize_i64(&mut self.inner(), v)
+    }
+    fn serialize_i128(self, v: i128) -> bincode::Result<()> {
+        serde::Serializer::serialize_i128(&mut self.inner(), v)
+    }
+    fn serialize_u8(self, v: u8) -> bincode::Result<()> {
+        serde::Serializer::serialize_u8(&mut self.inner(), v)
+    }
+    fn serialize_u16(self, v: u16) -> bincode::Result<()> {
+        serde::Serializer::serialize_u16(&mut self.inner(), v)
+    }
+    fn serialize_u32(self, v: u32) -> bincode::Result<()> {
+        serde::Serializer::serialize_u32(&mut self.inner(), v)
+    }
+    fn serialize_u64(self, v: u64) -> bincode::Result<()> {
+        serde::Serializer::serialize_u64(&mut self.inner(), v)
+    }
+    fn serialize_u128(self, v: u128) -> bincode::Result<()> {
+        serde::Serializer::serialize_u128(&mut self.inner(), v)
+    }
+    fn serialize_f32(self, v: f32) -> bincode::Result<()> {
+        serde::Serializer::serialize_f32(&mut self.inner(), v)
+    }
+    fn serialize_f64(self, v: f64) -> bincode::Result<()> {
+        serde::Serializer::serialize_f64(&mut self.inner(), v)
+    }
+    fn serialize_char(self, v: char) -> bincode::Result<()> {
+        serde::Serializer::serialize_char(&mut self.inner(), v)
+    }
+    fn serialize_str(self, v: &str) -> bincode::Result<()> {
+        serde::Serializer::serialize_str(&mut self.inner(), v)
+    }
+    fn serialize_bytes(self, v: &[u8]) -> bincode::Result<()> {
+        serde::Serializer::serialize_bytes(&mut self.inner(), v)
+    }
+    fn serialize_none(self) -> bincode::Result<()> {
+        serde::Serializer::serialize_none(&mut self.inner())
+    }
+    fn serialize_some<T: ?Sized + Serialize>(self, v: &T) -> bincode::Result<()> {
+        self.out.push(1);
+        v.serialize(self)
+    }
+    fn serialize_unit(self) -> bincode::Result<()> {
+        Ok(())
+    }
+    fn serialize_unit_struct(self, _name: &'static str) -> bincode::Result<()> {
+        Ok(())
+    }
+    fn serialize_unit_variant(
+        self,
+        name: &'static str,
+        variant_index: u32,
+        variant: &'static str,
+    ) -> bincode::Result<()> {
+        serde::Serializer::serialize_unit_variant(&mut self.inner(), name, variant_index, variant)
+    }
+    fn serialize_newtype_struct<T: ?Sized + Serialize>(
+        self,
+        _name: &'static str,
+        value: &T,
+    ) -> bincode::Result<()> {
+        value.serialize(self)
+    }
+    fn serialize_newtype_variant<T: ?Sized + Serialize>(
+        self,
+        name: &'static str,
+        variant_index: u32,
+        variant: &'static str,
+        value: &T,
+    ) -> bincode::Result<()> {
+        serde::Serializer::serialize_unit_variant(&mut self.inner(), name, variant_index, variant)?;
+        value.serialize(self)
+    }
+    fn serialize_seq(self, len: Option<usize>) -> bincode::Result<Self::SerializeSeq> {
+        let _ = serde::Serializer::serialize_seq(&mut self.inner(), len)?;
+        Ok(self)
+    }
+    fn serialize_tuple(self, _len: usize) -> bincode::Result<Self::SerializeTuple> {
+        Ok(self)
+    }
+    fn serialize_tuple_struct(
+        self,
+        _name: &'static str,
+        _len: usize,
+    ) -> bincode::Result<Self::SerializeTupleStruct> {
+        Ok(self)
+    }
+    fn serialize_tuple_variant(
+        self,
+        name: &'static str,
+        variant_index: u32,
+        variant: &'static str,
+        _len: usize,
+    ) -> bincode::Result<Self::SerializeTupleVariant> {
+        serde::Serializer::serialize_unit_variant(&mut self.inner(), name, variant_index, variant)?;
+        Ok(self)
+    }
+    fn serialize_map(self, len: Option<usize>) -> bincode::Result<Self::SerializeMap> {
+        let _ = serde::Serializer::serialize_map(&mut self.inner(), len)?;
+        Ok(self)
+    }
+    fn serialize_struct(
+        self,
+        name: &'static str,
+        _len: usize,
+    ) -> bincode::Result<Self::SerializeStruct> {
+        if !self.slot_keys.is_empty() {
+            if name == "ColliderSet" {
+                return Ok(StripStruct::ColliderSet(self));
+            }
+            if self.in_colliders && name == "Collider" {
+                let key = self.slot_keys[self.slot_cursor];
+                self.slot_cursor += 1;
+                return Ok(StripStruct::Collider { ser: self, key });
+            }
+        }
+        Ok(StripStruct::Plain(self))
+    }
+    fn serialize_struct_variant(
+        self,
+        name: &'static str,
+        variant_index: u32,
+        variant: &'static str,
+        _len: usize,
+    ) -> bincode::Result<Self::SerializeStructVariant> {
+        serde::Serializer::serialize_unit_variant(&mut self.inner(), name, variant_index, variant)?;
+        Ok(self)
+    }
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+}
+
+impl serde::ser::SerializeSeq for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_element<T: ?Sized + Serialize>(&mut self, value: &T) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeTuple for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_element<T: ?Sized + Serialize>(&mut self, value: &T) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeTupleStruct for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_field<T: ?Sized + Serialize>(&mut self, value: &T) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeTupleVariant for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_field<T: ?Sized + Serialize>(&mut self, value: &T) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeMap for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_key<T: ?Sized + Serialize>(&mut self, key: &T) -> bincode::Result<()> {
+        key.serialize(&mut **self)
+    }
+    fn serialize_value<T: ?Sized + Serialize>(&mut self, value: &T) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeStructVariant for &mut Stripper<'_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_field<T: ?Sized + Serialize>(
+        &mut self,
+        _key: &'static str,
+        value: &T,
+    ) -> bincode::Result<()> {
+        value.serialize(&mut **self)
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
+    }
+}
+
+impl serde::ser::SerializeStruct for StripStruct<'_, '_> {
+    type Ok = ();
+    type Error = bincode::Error;
+    fn serialize_field<T: ?Sized + Serialize>(
+        &mut self,
+        key: &'static str,
+        value: &T,
+    ) -> bincode::Result<()> {
+        match self {
+            StripStruct::Plain(ser) => value.serialize(&mut **ser),
+            StripStruct::ColliderSet(ser) => {
+                let was = ser.in_colliders;
+                if key == "colliders" {
+                    ser.in_colliders = true;
+                }
+                let res = value.serialize(&mut **ser);
+                ser.in_colliders = was;
+                res
+            }
+            StripStruct::Collider { ser, key: shape } => {
+                if key == "shape"
+                    && let Some(k) = *shape
+                {
+                    ser.holes.push(Hole {
+                        at: ser.out.len() as u64,
+                        key: k,
+                    });
+                    return Ok(());
+                }
+                value.serialize(&mut **ser)
+            }
+        }
+    }
+    fn end(self) -> bincode::Result<()> {
+        Ok(())
     }
 }

@@ -8,21 +8,27 @@ fn from_asset(c: &Collider) -> bool {
 }
 
 fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {
+    let s = if c.shape == SHAPE_HEIGHTFIELD {
+        scale.abs()
+    } else {
+        Vec3::new(
+            if scale.x == 0.0 { 0.0 } else { scale.x },
+            if scale.y == 0.0 { 0.0 } else { scale.y },
+            if scale.z == 0.0 { 0.0 } else { scale.z },
+        )
+    };
     ShapeKey {
         shape: c.shape,
         mesh: c.mesh,
-        scale: scale.abs().to_array().map(f32::to_bits),
+        scale: s.to_array().map(f32::to_bits),
     }
 }
 
 /// `sim`'s bytes without the geometry of its mesh, convex-hull and
 /// height-field colliders: meshes are assets, so a save carries each such
 /// shape's key and [`load`] rebuilds it from the asset. Everything else is
-/// rapier's own serialisation, byte for byte.
+/// rapier's own serialisation, byte for byte, written in a single pass.
 pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
-    let fits = "a physics world always serializes into memory";
-    let mut full = Vec::new();
-    crate::encode(&mut full, sim).expect(fits);
     let w = &sim.world;
     // Which colliders' shapes come from assets, by handle.
     let mut keyed: BTreeMap<(u32, u32), ShapeKey> = BTreeMap::new();
@@ -61,55 +67,15 @@ pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
             }
         }
     }
-    if keyed.is_empty() {
-        return (Vec::new(), full);
-    }
-    // The colliders' bytes start after the world's fields before them
-    // (bincode writes a struct's fields, and a tuple's, one after another):
-    // measured by writing those fields again with the same encoder rather
-    // than a size pass, which would compile their serialisation twice.
-    let mut scratch = Vec::new();
-    let before = (
-        &w.gravity,
-        &w.integration_parameters,
-        &w.islands,
-        &w.broad_phase,
-        &w.narrow_phase,
-        &w.bodies,
-    );
-    crate::encode(&mut scratch, &before).expect(fits);
-    let start = scratch.len();
-    scratch.clear();
-    crate::encode(&mut scratch, &w.colliders).expect(fits);
-    let end = start + scratch.len();
-    let mut holes = Vec::new();
-    let mut out = Vec::with_capacity(full.len());
-    let mut at = start;
-    out.extend_from_slice(&full[..start]);
-    for (h, c) in w.colliders.iter() {
-        let Some(key) = keyed.get(&h.into_raw_parts()) else {
-            continue;
-        };
-        scratch.clear();
-        crate::encode(&mut scratch, c.shared_shape()).expect(fits);
-        let shape = &scratch;
-        // The shape is the collider's second field: the first match past
-        // the previous collider is it.
-        let Some(found) = full[at..end]
-            .windows(shape.len())
-            .position(|bytes| bytes == shape.as_slice())
-        else {
-            continue;
-        };
-        out.extend_from_slice(&full[at..at + found]);
-        holes.push(Hole {
-            at: out.len() as u64,
-            key: *key,
-        });
-        at += found + shape.len();
-    }
-    out.extend_from_slice(&full[at..]);
-    (holes, out)
+    let slot_keys: Vec<Option<ShapeKey>> = if keyed.is_empty() {
+        Vec::new()
+    } else {
+        w.colliders
+            .iter()
+            .map(|(h, _)| keyed.get(&h.into_raw_parts()).copied())
+            .collect()
+    };
+    crate::encode_stripped(sim, &slot_keys)
 }
 
 /// The simulation [`save`] wrote, its asset shapes rebuilt from the meshes
@@ -131,7 +97,16 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
     let mut full = Vec::with_capacity(bytes.len());
     let mut from = 0;
     for hole in holes {
-        let at = (hole.at as usize).clamp(from, bytes.len());
+        let at = usize::try_from(hole.at).ok().filter(|&at| at >= from && at <= bytes.len()).ok_or_else(|| {
+            Error::new(
+                ErrorKind::Parse,
+                format!(
+                    "the physics block's asset shape offset {} is out of order or past {}",
+                    hole.at,
+                    bytes.len()
+                ),
+            )
+        })?;
         full.extend_from_slice(&bytes[from..at]);
         from = at;
         let c = Collider {

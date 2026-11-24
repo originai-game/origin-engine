@@ -234,7 +234,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         }
     }
     world.grant(SYSTEM_NAME, &[name])?;
-    if name == ContactHook::NAME || name == VehicleWheel::NAME {
+    if name == ContactHook::NAME {
         match world.grant(QUERY_SYSTEM_NAME, &[name]) {
             Err(e) if e.kind() == ErrorKind::NotFound && !e.reason().contains("type") => {}
             r => r?,
@@ -280,21 +280,27 @@ impl PhysicsSystem {
         let mut desc = SystemDesc::new(QUERY_SYSTEM_NAME)
             .read::<Physics>()
             .read::<RigidBody>()
-            .read::<Collider>()
-            .read::<Velocity>();
+            .read::<Collider>();
         desc.reads.push(gather::TRANSFORM.to_string());
-        for name in gather::READ {
+        for name in gather::QUERY_READ {
             desc.reads.push(name.to_string());
         }
-        for q in QUERIES {
-            desc = desc.query(q.desc(false));
+        for &qi in &gather::QUERY_QUERIES {
+            desc = desc.query(QUERIES[qi].desc(false));
         }
         let (shared, ids) = (self.shared.clone(), self.ids.clone());
         let run = move |ctx: &mut SystemContext<'_>| {
             let settings = *ctx.resource::<Physics>()?;
             let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
-            let scene = gather::gather(
-                &|i| ctx.query(i),
+            let q = |i: usize| {
+                let slot = gather::QUERY_QUERIES
+                    .iter()
+                    .position(|&qi| qi == i)
+                    .expect("query_system only accesses QUERY_QUERIES");
+                ctx.query(slot)
+            };
+            let scene = gather::gather_colliders(
+                &q,
                 &|e, id| ctx.get_bytes(e, id),
                 lazy,
                 &ids,
@@ -644,7 +650,7 @@ impl PhysicsSystem {
     /// later changes to the world.
     pub fn query(&self, world: &World) -> Result<PhysicsQuery> {
         let settings = *world.resource::<Physics>()?;
-        let scene = gather::gather(
+        let scene = gather::gather_colliders(
             &|i| world.query(&QUERIES[i].desc(false)),
             &|e, id| world.get_bytes(e, id),
             gather::LazyIds::of(|n| world.id_by_name(n).ok()),

@@ -32,14 +32,20 @@ impl QueryInner {
     }
 }
 
-fn max_distance(d: f32) -> f32 {
-    if d > 0.0 { d } else { f32::MAX }
+fn max_distance(d: f32) -> Result<f32> {
+    if !d.is_finite() || d < 0.0 {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("maxDistance must be finite and at least 0, got {d}"),
+        ));
+    }
+    Ok(if d == 0.0 { f32::MAX } else { d })
 }
 
 impl PhysicsQuery {
     /// The nearest collider along a ray.
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
-        let max = max_distance(desc.max_distance);
+        let max = max_distance(desc.max_distance)?;
         outside(|| match &*self.inner {
             QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
             QueryInner::D2(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
@@ -51,7 +57,7 @@ impl PhysicsQuery {
     /// collider, at its first crossing.
     pub fn raycast_all(&self, desc: &RaycastAllDesc) -> Result<Vec<RaycastHit>> {
         let r = &desc.ray;
-        let max = max_distance(r.max_distance);
+        let max = max_distance(r.max_distance)?;
         let cap = match desc.max_hits {
             0 => MAX_RAYCAST_HITS,
             n => n.min(MAX_RAYCAST_HITS),
@@ -64,7 +70,7 @@ impl PhysicsQuery {
 
     /// The nearest point on any collider to a point, within its reach.
     pub fn project_point(&self, desc: &ProjectPointDesc) -> Result<Option<PointProjection>> {
-        let max = max_distance(desc.max_distance);
+        let max = max_distance(desc.max_distance)?;
         outside(|| match &*self.inner {
             QueryInner::D3(q) => q.project_point(desc, max),
             QueryInner::D2(q) => q.project_point(desc, max),
@@ -73,23 +79,29 @@ impl PhysicsQuery {
 
     /// The first collider a shape meets when swept along a direction.
     pub fn shape_cast(&self, desc: &ShapeCastDesc) -> Result<Option<ShapeCastHit>> {
-        let max = max_distance(desc.max_distance);
-        outside(|| {
-            let mut shared = lock(&self.shared);
-            match &*self.inner {
-                QueryInner::D3(q) => q.shape_cast(desc, max, &mut shared),
-                QueryInner::D2(q) => q.shape_cast(desc, max, &mut shared),
+        let max = max_distance(desc.max_distance)?;
+        outside(|| match &*self.inner {
+            QueryInner::D3(q) => {
+                let shape = dim3::query_shape(&desc.shape, &mut lock(&self.shared))?;
+                q.shape_cast_with(desc, max, &shape)
+            }
+            QueryInner::D2(q) => {
+                let shape = dim2::query_shape(&desc.shape, &mut lock(&self.shared))?;
+                q.shape_cast_with(desc, max, &shape)
             }
         })
     }
 
     /// Every collider overlapping a shape, sorted by entity id.
     pub fn overlap(&self, desc: &OverlapDesc) -> Result<Vec<Entity>> {
-        outside(|| {
-            let mut shared = lock(&self.shared);
-            match &*self.inner {
-                QueryInner::D3(q) => q.overlap(desc, &mut shared),
-                QueryInner::D2(q) => q.overlap(desc, &mut shared),
+        outside(|| match &*self.inner {
+            QueryInner::D3(q) => {
+                let shape = dim3::query_shape(&desc.shape, &mut lock(&self.shared))?;
+                q.overlap_with(desc, &shape)
+            }
+            QueryInner::D2(q) => {
+                let shape = dim2::query_shape(&desc.shape, &mut lock(&self.shared))?;
+                q.overlap_with(desc, &shape)
             }
         })
     }

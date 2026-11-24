@@ -103,9 +103,9 @@ impl Kept {
     }
 }
 
-/// A sparse map by entity index, valid for one tick (live entities have
-/// distinct indices).
-pub(super) struct ByEntity<T>(Vec<Option<T>>);
+/// A sparse map by entity index with generation verification, valid for
+/// one tick (stale or zero parent references never alias a live entity).
+pub(super) struct ByEntity<T>(Vec<Option<(u32, T)>>);
 
 impl<T: Copy> ByEntity<T> {
     pub(super) fn new() -> Self {
@@ -116,9 +116,10 @@ impl<T: Copy> ByEntity<T> {
         if i >= self.0.len() {
             self.0.resize(i + 1, None);
         }
-        self.0[i] = Some(value);
+        self.0[i] = Some((e.generation(), value));
     }
     pub(super) fn get(&self, e: Entity) -> Option<T> {
-        self.0.get(e.index() as usize).copied().flatten()
+        let (eg, v) = self.0.get(e.index() as usize).copied().flatten()?;
+        (eg == e.generation()).then_some(v)
     }
 }

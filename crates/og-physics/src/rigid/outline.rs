@@ -24,7 +24,9 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
     let mut id = vec![0u32; xy.len()];
     let mut name: Vec<u32> = Vec::new();
     for (i, p) in xy.iter().enumerate() {
-        let key = (p.x.to_bits() as u64) << 32 | p.y.to_bits() as u64;
+        let cx = if p.x == 0.0 { 0.0f32 } else { p.x };
+        let cy = if p.y == 0.0 { 0.0f32 } else { p.y };
+        let key = (cx.to_bits() as u64) << 32 | cy.to_bits() as u64;
         let mut s = (key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> shift) as usize;
         loop {
             match slots[s] {
@@ -43,7 +45,8 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
         }
     }
     let at = |v: u32| xy[name[v as usize] as usize];
-    // Directed edges, each triangle turned counter-clockwise.
+    // Directed edges, each unique non-degenerate triangle turned counter-clockwise.
+    let mut seen_tris = std::collections::BTreeSet::new();
     let mut edges: Vec<(u32, u32)> = Vec::with_capacity(mesh.indices.len() * 3);
     for t in &mesh.indices {
         let [a, b, c] = t.map(|i| id[i as usize]);
@@ -51,12 +54,16 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
         if area == 0.0 || !area.is_finite() {
             continue;
         }
+        let mut tri_key = [a, b, c];
+        tri_key.sort_unstable();
+        if !seen_tris.insert(tri_key) {
+            continue;
+        }
         let (b, c) = if area > 0.0 { (b, c) } else { (c, b) };
         edges.extend([(a, b), (b, c), (c, a)]);
     }
     // Each edge filed under its lower vertex (a counting sort): an edge is
-    // on the outline when no triangle has it the other way (a neighbour
-    // across it) as often.
+    // on the outline when it has no opposite neighbour edge (deduplicated).
     let n = name.len();
     let mut start = vec![0u32; n + 1];
     for &(a, b) in &edges {
@@ -75,8 +82,12 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
     let mut on = vec![false; edges.len()];
     for v in 0..n {
         let bucket = &filed[start[v] as usize..start[v + 1] as usize];
-        for &e in bucket {
+        for (pos, &e) in bucket.iter().enumerate() {
             let (a, b) = edges[e as usize];
+            // Emit each boundary directed edge at most once (first occurrence).
+            if bucket[..pos].iter().any(|&f| edges[f as usize] == (a, b)) {
+                continue;
+            }
             let net: i32 = bucket
                 .iter()
                 .map(|&f| match edges[f as usize] {
@@ -115,20 +126,49 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
         if used[first] {
             continue;
         }
+        let start_vertex = boundary[first].0;
         let mut points = Vec::new();
         let mut i = first;
+        let mut closed = false;
         loop {
             used[i] = true;
             let (a, b) = boundary[i];
             points.push(a);
-            let next = outgoing[out_start[b as usize] as usize..out_start[b as usize + 1] as usize]
-                .iter()
-                .map(|&e| e as usize)
-                .find(|&e| !used[e]);
+            if b == start_vertex {
+                closed = true;
+                break;
+            }
+            let cands = &outgoing[out_start[b as usize] as usize..out_start[b as usize + 1] as usize];
+            // At a pinch vertex (multiple unused outgoing edges), pick the
+            // sharpest right turn (keeps solid on the left, avoids figure-8).
+            let mut next = None;
+            let mut best_angle = f32::INFINITY;
+            let in_dir = (at(b) - at(a)).normalize_or_zero();
+            for &e_u32 in cands {
+                let e = e_u32 as usize;
+                if used[e] {
+                    continue;
+                }
+                if next.is_none() && cands.len() == 1 {
+                    next = Some(e);
+                    break;
+                }
+                let (_, c) = boundary[e];
+                let out_dir = (at(c) - at(b)).normalize_or_zero();
+                // Turn angle in (-pi, pi]: most negative is sharpest right turn.
+                let angle = og_core::math::atan2(in_dir.perp_dot(out_dir), in_dir.dot(out_dir));
+                if angle < best_angle {
+                    best_angle = angle;
+                    next = Some(e);
+                }
+            }
             match next {
                 Some(e) => i = e,
                 None => break,
             }
+        }
+        if !closed {
+            continue;
         }
         let points = merge_collinear(points, &at);
         if points.len() >= 3 {
@@ -138,20 +178,22 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
     loops
 }
 
-/// A closed loop without the points that lie on the straight line between
-/// their neighbours (exactly, up to a relative 1e-6).
-fn merge_collinear(points: Vec<u32>, at: &dyn Fn(u32) -> Vec2) -> Vec<u32> {
-    let n = points.len();
-    if n < 3 {
-        return points;
-    }
-    let straight = |i: usize| {
-        let [p, q, r] = [(i + n - 1) % n, i, (i + 1) % n].map(|k| at(points[k]));
+/// A closed loop without points that lie on the straight line between
+/// their neighbours (sequentially, so a gentle curve never collapses whole).
+fn merge_collinear(mut points: Vec<u32>, at: &dyn Fn(u32) -> Vec2) -> Vec<u32> {
+    let mut i = 0;
+    while points.len() >= 3 && i < points.len() {
+        let n = points.len();
+        let p = at(points[(i + n - 1) % n]);
+        let q = at(points[i]);
+        let r = at(points[(i + 1) % n]);
         let (u, v) = (q - p, r - q);
-        u.perp_dot(v).abs() <= 1e-6 * u.length() * v.length() && u.dot(v) > 0.0
-    };
-    (0..n)
-        .filter(|&i| !straight(i))
-        .map(|i| points[i])
-        .collect()
+        if u.perp_dot(v).abs() <= 1e-6 * u.length() * v.length() && u.dot(v) > 0.0 {
+            points.remove(i);
+            i = i.saturating_sub(1);
+        } else {
+            i += 1;
+        }
+    }
+    points
 }

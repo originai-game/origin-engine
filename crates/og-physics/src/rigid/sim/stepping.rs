@@ -155,6 +155,38 @@ fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
             ));
         }
     }
+    if !b.body.gravity_scale.is_finite() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!(
+                "entity {e}: og.RigidBody.gravityScale must be finite, got {}",
+                b.body.gravity_scale
+            ),
+        ));
+    }
+    if !b.body.center_of_mass.is_finite() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!(
+                "entity {e}: og.RigidBody.centerOfMass must be finite, got {}",
+                b.body.center_of_mass
+            ),
+        ));
+    }
+    if !b.position.is_finite() || !b.quaternion.is_finite() || !b.scale.is_finite() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("entity {e}: og.Transform must be finite"),
+        ));
+    }
+    if let Some(vel) = b.velocity
+        && (!vel.linear.is_finite() || !vel.angular.is_finite())
+    {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("entity {e}: og.Velocity must be finite"),
+        ));
+    }
     Ok(kind)
 }
 
@@ -166,27 +198,54 @@ pub(super) fn insert_body(
 ) -> Result<rp::RigidBodyHandle> {
     let (e, body) = (b.entity, &b.body);
     let kind = body_kind(b)?;
-    // A compound body's mass is shared among its colliders by their own
-    // (density times volume); alone, its collider takes it whole.
+    // A compound body's mass is shared among its non-sensor colliders by
+    // their density-weighted volume; sensor colliders never add mass.
     let masses = compound_masses(b, shared)?;
+    let custom_com = body.center_of_mass != Vec3::ZERO;
+    let mut total_mp = rp::MassProperties::default();
+    let mut solid_count = 0usize;
+
     let own = match &b.collider {
         Some(c) => {
             let local = local_pose(c, b.scale);
-            let mass = masses.as_ref().map_or(body.mass, |m| m[0]);
-            let built = collider(c, b.scale, local, e, mass, shared)?;
-            Some(centred(built, c, body, b.scale, local)?)
+            let share = if c.sensor {
+                0.0
+            } else {
+                solid_count += 1;
+                masses.as_ref().map_or(body.mass, |m| m[0])
+            };
+            let pass_mass = if custom_com && !c.sensor { -1.0 } else { share };
+            let built = collider(c, b.scale, local, e, pass_mass, shared)?;
+            if custom_com && !c.sensor {
+                total_mp += collider_mass_props(&built.shape, c.density, share).transform_by(&local);
+            }
+            Some(built)
         }
         None => None,
     };
     let mut children = Vec::with_capacity(b.children.len());
     for (k, child) in b.children.iter().enumerate() {
         let at = pose(child.position, child.quaternion) * local_pose(&child.collider, child.scale);
-        let mass = masses
-            .as_ref()
-            .map_or(0.0, |m| m[k + usize::from(b.collider.is_some())]);
-        let built = collider(&child.collider, child.scale, at, child.entity, mass, shared)?
+        let share = if child.collider.sensor {
+            0.0
+        } else {
+            solid_count += 1;
+            masses
+                .as_ref()
+                .map_or(0.0, |m| m[k + usize::from(b.collider.is_some())])
+        };
+        let pass_mass = if custom_com && !child.collider.sensor {
+            -1.0
+        } else {
+            share
+        };
+        let built = collider(&child.collider, child.scale, at, child.entity, pass_mass, shared)?
             // Its body in the high bits (entity_of reads the low ones).
             .user_data(child.entity.to_bits() as u128 | (e.to_bits() as u128) << 64);
+        if custom_com && !child.collider.sensor {
+            total_mp += collider_mass_props(&built.shape, child.collider.density, share)
+                .transform_by(&at);
+        }
         children.push(built);
     }
     let mut builder = rp::RigidBodyBuilder::new(kind)
@@ -196,7 +255,7 @@ pub(super) fn insert_body(
         .gravity_scale(body.gravity_scale)
         .locked_axes(rp::LockedAxes::from_bits_truncate((body.lock & 63) as u8))
         .ccd_enabled(body.ccd)
-        // Resting is decided by the rest rule below, not by rapier's sleep.
+        // Resting and sleep are driven by og-physics' deterministic sleep pass.
         .can_sleep(false)
         .user_data(e.to_bits() as u128);
     if kind != rp::RigidBodyType::Fixed {
@@ -205,8 +264,17 @@ pub(super) fn insert_body(
             .linvel(v(flat(vel.linear)))
             .angvel(angvel(vel.angular));
     }
-    if own.is_none() && children.is_empty() && kind == rp::RigidBodyType::Dynamic {
-        builder = builder.additional_mass(if body.mass > 0.0 { body.mass } else { 1.0 });
+    if kind == rp::RigidBodyType::Dynamic {
+        if solid_count == 0 {
+            builder = builder.additional_mass(if body.mass > 0.0 { body.mass } else { 1.0 });
+        } else if custom_com {
+            if total_mp.mass() <= 0.0 {
+                let m = if body.mass > 0.0 { body.mass } else { 1.0 };
+                total_mp.set_mass(m, false);
+            }
+            total_mp.local_com += v(flat(body.center_of_mass * b.scale));
+            builder = builder.additional_mass_properties(total_mp);
+        }
     }
     let h = w.bodies.insert(builder);
     if let Some(c) = own {
@@ -219,33 +287,48 @@ pub(super) fn insert_body(
 }
 
 /// Each collider's share of a compound body's `mass` (its own first, then
-/// its children's), in proportion to their masses at their densities;
-/// None when the body is not a compound or takes its mass from them.
+/// its children's), in proportion to their solid masses at their densities;
+/// sensor colliders always receive 0. None when the body is not a compound
+/// or takes its mass from densities.
 fn compound_masses(b: &Body, shared: &mut Shared) -> Result<Option<Vec<f32>>> {
     if b.children.is_empty() || b.body.mass <= 0.0 {
         return Ok(None);
     }
     let mut own = Vec::with_capacity(b.children.len() + 1);
+    let mut is_solid = Vec::with_capacity(b.children.len() + 1);
     if let Some(c) = &b.collider {
-        own.push(shape(c, b.scale, shared)?.mass_properties(c.density).mass());
+        is_solid.push(!c.sensor);
+        own.push(if c.sensor {
+            0.0
+        } else {
+            shape(c, b.scale, shared)?.mass_properties(c.density).mass()
+        });
     }
     for child in &b.children {
         let c = &child.collider;
-        own.push(
+        is_solid.push(!c.sensor);
+        own.push(if c.sensor {
+            0.0
+        } else {
             shape(c, child.scale, shared)?
                 .mass_properties(c.density)
-                .mass(),
-        );
+                .mass()
+        });
     }
     let total: f32 = own.iter().sum();
-    let n = own.len() as f32;
+    let solids = is_solid.iter().filter(|&&s| s).count() as f32;
     Ok(Some(
         own.iter()
-            .map(|&m| {
-                if total > 0.0 {
+            .zip(is_solid)
+            .map(|(&m, solid)| {
+                if !solid {
+                    0.0
+                } else if total > 0.0 {
                     b.body.mass * m / total
+                } else if solids > 0.0 {
+                    b.body.mass / solids
                 } else {
-                    b.body.mass / n
+                    0.0
                 }
             })
             .collect(),
@@ -273,6 +356,38 @@ pub(super) fn body_of(c: &rp::Collider) -> Entity {
 /// and runs serially. Rapier computes the same bits on any number of
 /// threads (`enhanced-determinism`, its solver's layout fixed for eight
 /// workers whatever the pool), so the world is the same either way.
+/// Resolves any collider mesh handles not yet in `shared.meshes` on the
+/// calling thread before stepping on the lanes pool (a host's `mesh_source`
+/// may read engine-thread state).
+fn pre_resolve_meshes(scene: &Scene, shared: &mut Shared) {
+    if shared.mesh_source.is_none() {
+        return;
+    }
+    let need = |c: &Collider| matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH);
+    for b in &scene.bodies {
+        if let Some(c) = &b.collider
+            && need(c)
+        {
+            let _ = mesh(shared, c.mesh);
+        }
+        for child in &b.children {
+            if need(&child.collider) {
+                let _ = mesh(shared, child.collider.mesh);
+            }
+        }
+    }
+    for s in &scene.statics {
+        if need(&s.collider) {
+            let _ = mesh(shared, s.collider.mesh);
+        }
+    }
+    for (_, _, _, sb) in &scene.softs {
+        if sb.shape == SOFT_MESH && sb.mesh != 0 {
+            let _ = mesh(shared, sb.mesh);
+        }
+    }
+}
+
 pub(crate) fn step(
     settings: &Physics,
     dt: f32,
@@ -281,6 +396,7 @@ pub(crate) fn step(
     shared: &mut Shared,
     sim: &mut Sim,
 ) -> Result<StepOut> {
+    pre_resolve_meshes(scene, shared);
     // The bodies this tick steps, or last tick's when ragdolls and vehicles
     // added their own.
     let bodies = scene.bodies.len().max(sim.world.bodies.len());
@@ -420,7 +536,9 @@ fn sync_hooks(scene: &Scene, sim: &mut Sim) {
     }
     let mut change = Vec::new();
     for (h, c) in sim.world.colliders.iter() {
-        let want = if scene.hooks.get(&entity_of(c).to_bits()).is_some() {
+        let want = if scene.hooks.get(&entity_of(c).to_bits()).is_some()
+            || scene.hooks.get(&body_of(c).to_bits()).is_some()
+        {
             all_hooks()
         } else {
             rp::ActiveHooks::empty()
@@ -435,11 +553,16 @@ fn sync_hooks(scene: &Scene, sim: &mut Sim) {
         }
     }
     sim.ext.hooked = !scene.hooks.is_empty();
+    if scene.hooks.is_empty() {
+        sim.ext.last_hooks.clear();
+    } else {
+        sim.ext.last_hooks = scene.hooks.clone();
+    }
 }
 
 /// The contact hooks the solver reads, frozen for the step: read only, so
 /// the same on any number of threads.
-struct Hooks<'a>(&'a IdMap<u64, ContactHook>);
+pub(super) struct Hooks<'a>(pub(super) &'a IdMap<u64, ContactHook>);
 
 /// How far from its direction a one-way surface still holds (45°).
 const ONE_WAY_ANGLE: f32 = std::f32::consts::FRAC_PI_4;

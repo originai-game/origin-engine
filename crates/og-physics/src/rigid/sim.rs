@@ -149,6 +149,10 @@ pub(crate) struct SimExt {
     /// The bodies near each og.Water's surface and which side of it they
     /// were on ([`crate::water::Under`]).
     pub(crate) under: crate::water::Under,
+    /// Snapshot of the last tick's `og.ContactHook` map (not saved), so an
+    /// origin shift (`Sim::shift`) preserves one-way/ignore filtering when
+    /// refreshing sleeping contacts.
+    pub(crate) last_hooks: IdMap<u64, ContactHook>,
 }
 
 /// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
@@ -382,22 +386,31 @@ impl Sim {
                 c.set_position(at);
             }
         }
+        // Always update body-attached collider world poses right away, even
+        // when no body is asleep, so saves/queries immediately after a shift
+        // see the shifted poses.
+        w.bodies.propagate_modified_body_positions_to_colliders(&mut w.colliders);
         // Rapier wakes every contact partner of a collider whose pose
-        // changed, so a whole resting world would wake at the shift. The
-        // moves are taken now (the broad phase refits, the narrow phase
-        // keeps its pairs) and what slept goes back to sleep where it is.
+        // changed, so a whole resting world would wake at the shift. Refresh
+        // broad-phase/contacts using the active ContactHook snapshot so
+        // one-way and ignore rules stay intact, then restore sleep.
         if !asleep.is_empty() {
-            w.detect_collisions(&(), &());
+            if self.ext.last_hooks.is_empty() {
+                w.detect_collisions(&(), &());
+            } else {
+                w.detect_collisions(&Hooks(&self.ext.last_hooks), &());
+            }
             for h in asleep {
                 w.bodies[h].sleep();
             }
         }
+        self.static_runs.clear();
         ext::shift_joints(self, s);
-        for (e, t) in self.bodies.iter_mut() {
-            t.position = s.moved_of(*e, t.position);
+        for (_, t) in self.bodies.iter_mut() {
+            t.position = moved(t.position);
         }
-        for (e, t) in self.statics.iter_mut() {
-            t.position = s.moved_of(*e, t.position);
+        for (_, t) in self.statics.iter_mut() {
+            t.position = moved(t.position);
         }
         for (_, v) in self.vehicles.iter_mut() {
             v.shift(s);

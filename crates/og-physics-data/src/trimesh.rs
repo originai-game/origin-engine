@@ -15,7 +15,12 @@ pub fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
             rp::Vector::new(p.x, p.y, p.z)
         })
         .collect();
-    rp::SharedShape::trimesh(points, mesh.indices.clone()).map_err(|e| {
+    let indices = if s.x * s.y * s.z < 0.0 {
+        mesh.indices.iter().map(|&[a, b, c]| [a, c, b]).collect()
+    } else {
+        mesh.indices.clone()
+    };
+    rp::SharedShape::trimesh(points, indices).map_err(|e| {
         Error::new(
             ErrorKind::Invalid,
             format!("the mesh is not a valid triangle mesh: {e}"),

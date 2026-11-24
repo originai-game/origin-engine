@@ -24,28 +24,43 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
             return Err(invalid("size", x));
         }
     }
-    let s = scale.abs();
-    if !s.is_finite() {
+    if !scale.is_finite() {
         return Err(Error::new(
             ErrorKind::Invalid,
             format!("og.Transform.scale must be finite, got {scale}"),
         ));
     }
+    let abs_s = scale.abs();
     if let Some(k) = crate::key_chunk(c.shape) {
-        return chunk_shape(c.mesh, k, s, shared);
+        return chunk_shape(c.mesh, k, abs_s, shared);
     }
-    if let Some(shape) = primitive(c, s)? {
+    if let Some(shape) = primitive(c, abs_s)? {
         return Ok(shape);
     }
+    let mesh_s = if c.shape == SHAPE_HEIGHTFIELD {
+        abs_s
+    } else {
+        Vec3::new(
+            if scale.x == 0.0 { 0.0 } else { scale.x },
+            if scale.y == 0.0 { 0.0 } else { scale.y },
+            if scale.z == 0.0 { 0.0 } else { scale.z },
+        )
+    };
     let key = ShapeKey {
         shape: c.shape,
         mesh: c.mesh,
-        scale: s.to_array().map(f32::to_bits),
+        scale: mesh_s.to_array().map(f32::to_bits),
     };
     if let Some(shape) = cache(shared).get(&key) {
         return Ok(shape.clone());
     }
     if c.shape == SHAPE_HEIGHTFIELD {
+        if abs_s.x <= 0.0 || abs_s.z <= 0.0 {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("heightfield collider requires positive x/z scale, got {scale}"),
+            ));
+        }
         let field = shared.heightfields.get(&c.mesh).cloned().ok_or_else(|| {
             Error::new(
                 ErrorKind::NotFound,
@@ -55,7 +70,7 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
                 ),
             )
         })?;
-        let built = from_heightfield(&field, s)?;
+        let built = from_heightfield(&field, abs_s)?;
         let cached = cache(shared);
         if cached.len() >= SHAPE_CACHE_LIMIT {
             cached.clear();
@@ -74,9 +89,9 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
             ),
         )
     })?;
-    let built = match baked(shared, c, s, &mesh) {
+    let built = match baked(shared, c, mesh_s, &mesh) {
         Some(b) => b,
-        None => from_mesh(c.shape, &mesh, s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?,
+        None => from_mesh(c.shape, &mesh, mesh_s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?,
     };
     let cached = cache(shared);
     if cached.len() >= SHAPE_CACHE_LIMIT {
@@ -89,6 +104,12 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
 /// Chunk `k` of height field `mesh` at scale `s` (positive), from the
 /// chunk cache or built into it.
 fn chunk_shape(mesh: u64, k: u32, s: Vec3, shared: &mut Shared) -> Result<rp::SharedShape> {
+    if s.x <= 0.0 || s.z <= 0.0 {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("heightfield collider requires positive x/z scale, got {s}"),
+        ));
+    }
     let field = shared.heightfields.get(&mesh).cloned().ok_or_else(|| {
         Error::new(
             ErrorKind::NotFound,
@@ -109,7 +130,11 @@ fn chunk_shape(mesh: u64, k: u32, s: Vec3, shared: &mut Shared) -> Result<rp::Sh
         return Ok(shape.clone());
     }
     let built = field_chunk(&field, s, k);
-    chunk_cache(shared).insert(key, built.clone());
+    let cache = chunk_cache(shared);
+    if cache.len() >= SHAPE_CACHE_LIMIT * 4 {
+        cache.clear();
+    }
+    cache.insert(key, built.clone());
     Ok(built)
 }
 
@@ -150,7 +175,7 @@ pub(super) fn chunk_collider(
     Ok(builder(c, shape, local, entity, 0.0))
 }
 
-fn groups(c: &Collider) -> rp::InteractionGroups {
+pub(super) fn groups(c: &Collider) -> rp::InteractionGroups {
     rp::InteractionGroups::new(
         rp::Group::from_bits_retain(c.layers),
         rp::Group::from_bits_retain(c.mask),
@@ -159,7 +184,9 @@ fn groups(c: &Collider) -> rp::InteractionGroups {
 }
 
 /// A collider builder at `local` (relative to its body, or the world pose of
-/// a static collider). `body_mass` > 0 overrides the density.
+/// a static collider). `body_mass` > 0 overrides the density; `< 0` forces
+/// zero mass (used when mass properties are placed on the body directly).
+/// Sensor colliders always carry zero mass.
 pub(super) fn collider(
     c: &Collider,
     scale: Vec3,
@@ -196,7 +223,9 @@ fn builder(
         .sensor(c.sensor)
         .collision_groups(groups(c))
         .user_data(entity.to_bits() as u128);
-    b = if body_mass > 0.0 {
+    b = if c.sensor || body_mass < 0.0 {
+        b.density(0.0)
+    } else if body_mass > 0.0 {
         b.mass(body_mass)
     } else {
         b.density(c.density)
@@ -208,37 +237,19 @@ fn builder(
     b
 }
 
-/// A body's collider with its centre of mass moved by
-/// `og.RigidBody.centerOfMass` (in the entity's frame, scaled like the
-/// collider's offset): the shape's mass properties at the body's mass (or
-/// the collider's density) with their centre shifted, the inertia kept.
-/// Unchanged when the offset is zero.
-pub(super) fn centred(
-    b: rp::ColliderBuilder,
-    c: &Collider,
-    body: &RigidBody,
-    scale: Vec3,
-    local: rp::Pose,
-) -> Result<rp::ColliderBuilder> {
-    let offset = body.center_of_mass;
-    if offset == Vec3::ZERO {
-        return Ok(b);
-    }
-    if !offset.is_finite() {
-        return Err(Error::new(
-            ErrorKind::Invalid,
-            format!("og.RigidBody.centerOfMass must be finite, got {offset}"),
-        ));
-    }
-    let mut mp = if body.mass > 0.0 {
-        let mut mp = b.shape.mass_properties(1.0);
-        mp.set_mass(body.mass, true);
+/// Mass properties of a solid collider shape at `mass` (> 0) or `density`.
+pub(super) fn collider_mass_props(
+    shape: &rp::SharedShape,
+    density: f32,
+    mass: f32,
+) -> rp::MassProperties {
+    if mass > 0.0 {
+        let mut mp = shape.mass_properties(1.0);
+        mp.set_mass(mass, true);
         mp
     } else {
-        b.shape.mass_properties(c.density)
-    };
-    mp.local_com += local.rotation.inverse() * v(flat(offset * scale));
-    Ok(b.mass_properties(mp))
+        shape.mass_properties(density)
+    }
 }
 
 pub(super) fn local_pose(c: &Collider, scale: Vec3) -> rp::Pose {

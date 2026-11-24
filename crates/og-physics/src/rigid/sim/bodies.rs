@@ -44,13 +44,19 @@ pub(super) fn simulated(b: &Body) -> bool {
     b.body.kind == BODY_DYNAMIC && b.control.is_none()
 }
 
-/// A kinematic body with a nonzero og.Velocity: the step moves it by it
-/// and writes its Transform back.
+/// A kinematic body with a nonzero unlocked og.Velocity in this profile:
+/// the step moves it by it and writes its Transform back.
 pub(super) fn moves_itself(b: &Body) -> bool {
-    b.body.kind == BODY_KINEMATIC
-        && b.control.is_none()
-        && b.velocity
-            .is_some_and(|v| v.linear != Vec3::ZERO || v.angular != Vec3::ZERO)
+    if b.body.kind != BODY_KINEMATIC || b.control.is_some() {
+        return false;
+    }
+    let Some(v) = b.velocity else {
+        return false;
+    };
+    let u = unlocked(v, b.body.lock);
+    let lin = flat(u.linear);
+    let ang = angvel(u.angular);
+    lin != Vec3::ZERO || ang != angvel(Vec3::ZERO)
 }
 
 /// The dynamic bodies' poses before the step, for the rest rule, in body
@@ -71,45 +77,78 @@ pub(super) fn rest_poses(scene: &Scene, sim: &Sim, handles: &Handles<'_>) -> Vec
 /// last left it at (read only, by ranges of bodies on the lanes), then
 /// done to the rapier world in body order.
 enum Plan {
-    /// Still the body it was: moved where game code or a controller put it
-    /// (`next` kinematic target, or `position` teleport) and given a
-    /// `velocity`, each when it changed.
+    /// Still the body topology it was: patch non-structural body/collider
+    /// parameters in place (preserving warm starts and attached joints),
+    /// move where game code or a controller put it, and update velocity.
     Keep {
         handle: rp::RigidBodyHandle,
+        patch_body: bool,
+        patch_own_collider: bool,
+        patch_children: bool,
         next: Option<rp::Pose>,
         position: Option<rp::Pose>,
         velocity: Option<(rp::Vector, rp::AngVector)>,
     },
-    /// New, or its body, collider or scale changed: built afresh.
+    /// New, or its kind, mass/COM, collider shape/topology or scale changed:
+    /// built afresh.
     Build,
 }
 
-/// Whether `b`'s child colliders are those its body was built with.
-fn same_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> bool {
+/// Whether two colliders have the same structural topology (shape, size,
+/// offset, density, sensor flag); friction/restitution/layers/mask can be
+/// patched in place without rebuilding the collider or body.
+fn same_collider_topology(a: &Collider, b: &Collider) -> bool {
+    let topo = |x: &Collider| Collider {
+        friction: 0.0,
+        restitution: 0.0,
+        layers: 0,
+        mask: 0,
+        ..*x
+    };
+    topo(a) == topo(b)
+}
+
+/// Whether `b`'s child colliders have the same topology as built, returning
+/// `(same_topology, any_param_changed)`.
+fn compare_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> (bool, bool) {
     match built {
-        None => b.children.is_empty(),
+        None => (b.children.is_empty(), false),
         Some(built) => {
-            built.len() == b.children.len()
-                && built
-                    .iter()
-                    .zip(&b.children)
-                    .all(|(t, c)| *t == TrackedChild::of(c))
+            if built.len() != b.children.len() {
+                return (false, false);
+            }
+            let mut param_changed = false;
+            for (t, c) in built.iter().zip(&b.children) {
+                if t.entity != c.entity.to_bits()
+                    || t.position != c.position
+                    || t.quaternion != c.quaternion
+                    || t.scale != c.scale
+                    || !same_collider_topology(&t.collider, &c.collider)
+                {
+                    return (false, false);
+                }
+                if t.collider != c.collider {
+                    param_changed = true;
+                }
+            }
+            (true, param_changed)
         }
     }
 }
 
-/// Whether two og.RigidBody values build the same rapier body: sleep's
-/// fields (`canSleep`, `sleeping`) and `airDrag` (read from the component
-/// every tick, `ext::air_drag`) change none of it, and a save does not
-/// keep them in [`Tracked`].
-fn same_body(a: &RigidBody, b: &RigidBody) -> bool {
-    let shape = |x: &RigidBody| RigidBody {
-        can_sleep: true,
-        sleeping: false,
-        air_drag: 0.0,
-        ..*x
-    };
-    shape(a) == shape(b)
+/// Whether two og.RigidBody values have the same structural topology
+/// (kind, mass, center_of_mass); damping, gravity_scale, lock and ccd are
+/// patched in place without losing warm starts or rebuilding joints.
+fn same_body_topology(a: &RigidBody, b: &RigidBody) -> bool {
+    a.kind == b.kind && a.mass == b.mass && a.center_of_mass == b.center_of_mass
+}
+
+fn body_params_differ(a: &RigidBody, b: &RigidBody) -> bool {
+    a.linear_damping != b.linear_damping
+        || a.angular_damping != b.angular_damping
+        || a.gravity_scale != b.gravity_scale
+        || a.lock != b.lock
+        || a.ccd != b.ccd
 }
 
 fn plan(
@@ -124,14 +163,21 @@ fn plan(
     };
     let key = b.entity.to_bits();
     match tracked.get(&key) {
-        Some(t)
-            if same_body(&t.body, &b.body)
-                && t.collider == b.collider
-                && t.scale == b.scale
-                && !b.collider.as_ref().is_some_and(stale_mesh)
-                && same_children(b, compounds.get(&key))
-                && !b.children.iter().any(|c| stale_mesh(&c.collider)) =>
-        {
+        Some(t) if same_body_topology(&t.body, &b.body) && t.scale == b.scale => {
+            let own_ok = match (&t.collider, &b.collider) {
+                (None, None) => true,
+                (Some(tc), Some(bc)) => same_collider_topology(tc, bc) && !stale_mesh(bc),
+                _ => false,
+            };
+            if !own_ok || b.children.iter().any(|c| stale_mesh(&c.collider)) {
+                return Plan::Build;
+            }
+            let (children_ok, patch_children) = compare_children(b, compounds.get(&key));
+            if !children_ok {
+                return Plan::Build;
+            }
+            let patch_body = body_params_differ(&t.body, &b.body);
+            let patch_own_collider = t.collider != b.collider;
             let kind = b.body.kind;
             let (mut next, mut position) = (None, None);
             if b.control.is_some() {
@@ -143,14 +189,24 @@ fn plan(
                 // velocity is where physics wrote it, so it is not moved).
                 position = Some(pose(b.position, b.quaternion));
             }
-            let velocity = (b.control.is_none()
-                && (kind == BODY_KINEMATIC || (kind == BODY_DYNAMIC && t.velocity != b.velocity)))
-                .then(|| {
-                    let vel = unlocked(b.velocity.unwrap_or_default(), b.body.lock);
-                    (v(flat(vel.linear)), angvel(vel.angular))
-                });
+            // Only push velocity updates when velocity changed or when a
+            // moving kinematic body is integrating its velocity (avoids
+            // waking motionless kinematic bodies every tick).
+            let vel_needed = b.control.is_none()
+                && match kind {
+                    BODY_DYNAMIC => t.velocity != b.velocity,
+                    BODY_KINEMATIC => t.velocity != b.velocity || moves_itself(b),
+                    _ => false,
+                };
+            let velocity = vel_needed.then(|| {
+                let vel = unlocked(b.velocity.unwrap_or_default(), b.body.lock);
+                (v(flat(vel.linear)), angvel(vel.angular))
+            });
             Plan::Keep {
                 handle: t.handle,
+                patch_body,
+                patch_own_collider,
+                patch_children,
                 next,
                 position,
                 velocity,
@@ -228,6 +284,18 @@ fn exact(s: &Static) -> bool {
         && s.collider == s.collider
 }
 
+fn patch_collider_in_place(c: &mut rp::Collider, next: &Collider, entity: Entity) -> Result<()> {
+    for (what, x) in [("friction", next.friction), ("restitution", next.restitution)] {
+        if !(x >= 0.0 && x.is_finite()) {
+            return Err(invalid(what, x).context(format!("entity {entity}")));
+        }
+    }
+    c.set_friction(next.friction);
+    c.set_restitution(next.restitution);
+    c.set_collision_groups(groups(next));
+    Ok(())
+}
+
 /// Brings the persistent rapier world in line with `scene` (bodies and
 /// static colliders); returns each body's handle.
 ///
@@ -243,6 +311,12 @@ pub(super) fn sync<'s>(
     shared: &mut Shared,
     sim: &mut Sim,
 ) -> Result<Handles<'s>> {
+    if !settings.gravity.is_finite() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("og.Physics.gravity must be finite, got {}", settings.gravity),
+        ));
+    }
     let substeps = settings.substeps.clamp(1, 16);
     let Sim {
         world: w,
@@ -255,7 +329,22 @@ pub(super) fn sync<'s>(
     // Taken: a sync that fails leaves none.
     let synced = std::mem::take(static_runs);
     let compounds = &mut ext.compounds;
-    w.gravity = v(settings.gravity);
+    let new_gravity = v(settings.gravity);
+    let gravity_changed = w.gravity != new_gravity;
+    w.gravity = new_gravity;
+    if gravity_changed {
+        // Wake all sleeping dynamic bodies when world gravity changes
+        // (e.g. anti-gravity, zero-g or rotated gravity).
+        let wake: Vec<_> = w
+            .bodies
+            .iter()
+            .filter(|(_, rb)| rb.is_dynamic() && rb.is_sleeping())
+            .map(|(h, _)| h)
+            .collect();
+        for h in wake {
+            w.wake_up(h, true);
+        }
+    }
     w.integration_parameters.dt = dt / substeps as f32;
     w.integration_parameters.num_solver_iterations =
         settings.solver_iterations.clamp(1, 32) as usize;
@@ -309,10 +398,88 @@ pub(super) fn sync<'s>(
         let h = match plan {
             Plan::Keep {
                 handle,
+                patch_body,
+                patch_own_collider,
+                patch_children,
                 next,
                 position,
                 velocity,
             } => {
+                if !b.body.air_drag.is_finite() || b.body.air_drag < 0.0 {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!(
+                            "entity {}: og.RigidBody.airDrag must be finite and at least 0, got {}",
+                            b.entity, b.body.air_drag
+                        ),
+                    ));
+                }
+                if !b.position.is_finite() || !b.quaternion.is_finite() {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!("entity {}: og.Transform must be finite", b.entity),
+                    ));
+                }
+                if let Some(vel) = b.velocity
+                    && (!vel.linear.is_finite() || !vel.angular.is_finite())
+                {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!("entity {}: og.Velocity must be finite", b.entity),
+                    ));
+                }
+                if patch_body {
+                    for (what, x) in [
+                        ("linearDamping", b.body.linear_damping),
+                        ("angularDamping", b.body.angular_damping),
+                    ] {
+                        if !(x >= 0.0 && x.is_finite()) {
+                            return Err(Error::new(
+                                ErrorKind::Invalid,
+                                format!(
+                                    "entity {}: og.RigidBody.{what} must be finite and at least 0, got {x}",
+                                    b.entity
+                                ),
+                            ));
+                        }
+                    }
+                    if !b.body.gravity_scale.is_finite() {
+                        return Err(Error::new(
+                            ErrorKind::Invalid,
+                            format!(
+                                "entity {}: og.RigidBody.gravityScale must be finite, got {}",
+                                b.entity, b.body.gravity_scale
+                            ),
+                        ));
+                    }
+                    let rb = &mut w.bodies[handle];
+                    rb.set_linear_damping(b.body.linear_damping);
+                    rb.set_angular_damping(b.body.angular_damping);
+                    rb.set_gravity_scale(b.body.gravity_scale, true);
+                    rb.set_locked_axes(
+                        rp::LockedAxes::from_bits_truncate((b.body.lock & 63) as u8),
+                        true,
+                    );
+                    rb.enable_ccd(b.body.ccd);
+                }
+                if patch_own_collider
+                    && let Some(bc) = &b.collider
+                    && let Some(&ch) = w.bodies[handle].colliders().first()
+                {
+                    patch_collider_in_place(&mut w.colliders[ch], bc, b.entity)?;
+                }
+                if patch_children {
+                    let skip = usize::from(b.collider.is_some());
+                    let handles_copy: Vec<_> =
+                        w.bodies[handle].colliders().iter().skip(skip).copied().collect();
+                    for (child, ch) in b.children.iter().zip(handles_copy) {
+                        patch_collider_in_place(&mut w.colliders[ch], &child.collider, child.entity)?;
+                    }
+                    compounds.insert(
+                        b.entity.to_bits(),
+                        b.children.iter().map(TrackedChild::of).collect(),
+                    );
+                }
                 let rb = &mut w.bodies[handle];
                 if let Some(at) = next {
                     rb.set_next_kinematic_position(at);
@@ -320,8 +487,11 @@ pub(super) fn sync<'s>(
                     rb.set_position(at, true);
                 }
                 if let Some((linear, angular)) = velocity {
-                    rb.set_linvel(linear, true);
-                    rb.set_angvel(angular, true);
+                    let wake = b.body.kind == BODY_DYNAMIC
+                        || linear != rp::Vector::ZERO
+                        || angular != angvel(Vec3::ZERO);
+                    rb.set_linvel(linear, wake);
+                    rb.set_angvel(angular, wake);
                 }
                 handle
             }
@@ -348,11 +518,18 @@ pub(super) fn sync<'s>(
         if !exact(s) {
             runs[run].written = None;
         }
+        if !s.position.is_finite() || !s.quaternion.is_finite() || !s.scale.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("entity {}: og.Transform must be finite", s.entity),
+            ));
+        }
         let key = s.entity.to_bits();
         let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
         let field = chunked(&s.collider, shared);
         let fields = &mut ext.fields;
-        let same = |t: &TrackedStatic| t.collider == s.collider && t.scale == s.scale;
+        let same_topo =
+            |t: &TrackedStatic| same_collider_topology(&t.collider, &s.collider) && t.scale == s.scale;
         // A static field whose every change was a region edit rebuilds
         // only the chunks the edits reached, in chunk order.
         let partial = field.as_ref().and_then(|f| {
@@ -364,10 +541,11 @@ pub(super) fn sync<'s>(
         });
         match tracked_statics.get_mut(&key) {
             Some(t)
-                if same(t)
+                if same_topo(t)
                     && (partial.is_some() || (field.is_none() && !stale_mesh(&s.collider))) =>
             {
                 let moved = t.position != s.position || t.quaternion != s.quaternion;
+                let params_changed = t.collider != s.collider;
                 match (&field, fields.get_mut(&key)) {
                     (Some(f), Some(chunks)) => {
                         for k in partial.unwrap_or_default() {
@@ -388,10 +566,22 @@ pub(super) fn sync<'s>(
                                 w.colliders[h].set_position(local);
                             }
                         }
+                        if params_changed {
+                            for &h in chunks.iter() {
+                                patch_collider_in_place(&mut w.colliders[h], &s.collider, s.entity)?;
+                            }
+                        }
                     }
-                    _ if moved => w.colliders[t.handle].set_position(at),
-                    _ => {}
+                    _ => {
+                        if moved {
+                            w.colliders[t.handle].set_position(at);
+                        }
+                        if params_changed {
+                            patch_collider_in_place(&mut w.colliders[t.handle], &s.collider, s.entity)?;
+                        }
+                    }
                 }
+                t.collider = s.collider;
                 t.position = s.position;
                 t.quaternion = s.quaternion;
             }

@@ -12,14 +12,41 @@ pub(crate) struct QueryWorld {
     fields: Vec<Vec<rp::ColliderHandle>>,
     /// By collider handle index: whether it is one of those chunks.
     chunk: Vec<bool>,
+    /// Contact hooks snapshot for symmetric `ContactHook.ignore` filtering
+    /// when a query specifies `QueryFilter.exclude`.
+    hooks: IdMap<u64, ContactHook>,
 }
 
-fn keep(c: &rp::Collider, f: &QueryFilter) -> bool {
-    (f.mask == 0 || c.collision_groups().memberships.bits() & f.mask != 0)
-        && f.exclude.is_none_or(|e| e.to_bits() != c.user_data as u64)
+fn hook_ignores(hooks: &IdMap<u64, ContactHook>, a: u64, b: u64) -> bool {
+    hooks
+        .get(&a)
+        .is_some_and(|h| h.ignore.as_slice().iter().any(|&x| x != 0 && x == b))
 }
 
-fn query_shape(d: &ShapeDesc, shared: &mut Shared) -> Result<rp::SharedShape> {
+fn keep(c: &rp::Collider, f: &QueryFilter, hooks: &IdMap<u64, ContactHook>) -> bool {
+    if f.mask != 0 && c.collision_groups().memberships.bits() & f.mask == 0 {
+        return false;
+    }
+    if let Some(ex) = f.exclude {
+        let ex_bits = ex.to_bits();
+        let ce = entity_of(c).to_bits();
+        let cb = body_of(c).to_bits();
+        if ex_bits == ce || ex_bits == cb {
+            return false;
+        }
+        if !hooks.is_empty()
+            && (hook_ignores(hooks, ex_bits, ce)
+                || hook_ignores(hooks, ex_bits, cb)
+                || hook_ignores(hooks, ce, ex_bits)
+                || (cb != ce && hook_ignores(hooks, cb, ex_bits)))
+        {
+            return false;
+        }
+    }
+    true
+}
+
+pub(crate) fn query_shape(d: &ShapeDesc, shared: &mut Shared) -> Result<rp::SharedShape> {
     shape(&d.collider(), Vec3::ONE, shared)
 }
 
@@ -33,22 +60,23 @@ impl QueryWorld {
             narrow: rp::NarrowPhase::new(),
             fields: Vec::new(),
             chunk: Vec::new(),
+            hooks: scene.hooks.clone(),
         };
         let mut placed = Vec::with_capacity(scene.bodies.len() + scene.statics.len());
         for b in &scene.bodies {
+            let body_pose = pose(b.position, b.quaternion);
             if let Some(c) = &b.collider {
-                placed.push((b.entity, None, b.position, b.quaternion, b.scale, c));
+                let at = body_pose * local_pose(c, b.scale);
+                placed.push((b.entity, None, at, b.scale, c));
             }
             for child in &b.children {
-                let (p, r) = (
-                    b.position + b.quaternion * child.position,
-                    b.quaternion * child.quaternion,
-                );
+                let at = body_pose
+                    * pose(child.position, child.quaternion)
+                    * local_pose(&child.collider, child.scale);
                 placed.push((
                     child.entity,
                     Some(b.entity),
-                    p,
-                    r,
+                    at,
                     child.scale,
                     &child.collider,
                 ));
@@ -76,17 +104,10 @@ impl QueryWorld {
                 q.fields.push(chunks);
                 continue;
             }
-            placed.push((
-                s.entity,
-                None,
-                s.position,
-                s.quaternion,
-                s.scale,
-                &s.collider,
-            ));
+            let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
+            placed.push((s.entity, None, at, s.scale, &s.collider));
         }
-        for (e, body, position, quaternion, scale, c) in placed {
-            let at = pose(position, quaternion) * local_pose(c, scale);
+        for (e, body, at, scale, c) in placed {
             let mut built = collider(c, scale, at, e, 0.0, shared)?.build();
             if let Some(body) = body {
                 built.user_data |= (body.to_bits() as u128) << 64;
@@ -116,7 +137,7 @@ impl QueryWorld {
                     .get(h.into_raw_parts().0 as usize)
                     .is_some_and(|&c| c)
         };
-        let predicate = |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f);
+        let predicate = |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f, &self.hooks);
         let mut filter = rp::QueryFilter::new().predicate(&predicate);
         if !f.include_sensors {
             filter = filter.exclude_sensors();
@@ -137,19 +158,21 @@ impl QueryWorld {
         max: f32,
         f: &QueryFilter,
     ) -> Result<Option<RaycastHit>> {
+        if !origin.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("RaycastDesc.origin must be finite, got {origin}"),
+            ));
+        }
         let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
         let ray = rp::Ray::new(v(origin), v(dir));
         let mut best = self.pipeline(f, true, |p| p.cast_ray_and_get_normal(&ray, max, true));
         // A field's chunks in the order the ray enters them, each cast only
-        // as far as the nearest hit so far. In the BVH, rapier casts both
-        // leaves of a node at once and goes down the nearer subtree first, so
-        // a far chunk was walked cell by cell to its edge before a nearer
-        // chunk's (or a wall's) hit could cut it short: a ray over a chunked
-        // field visited several times the cells one field does.
+        // as far as the nearest hit so far.
         let mut order: Vec<(f32, rp::ColliderHandle)> = Vec::new();
         for chunks in &self.fields {
             let c = &self.colliders[chunks[0]];
-            if !keep(c, f) || (c.is_sensor() && !f.include_sensors) {
+            if !keep(c, f, &self.hooks) || (c.is_sensor() && !f.include_sensors) {
                 continue;
             }
             for &h in chunks {
@@ -162,14 +185,20 @@ impl QueryWorld {
         order.sort_by(|a, b| a.0.total_cmp(&b.0));
         for (enter, h) in order {
             let limit = best.map_or(max, |(_, hit)| hit.time_of_impact);
-            if enter >= limit {
+            if enter > limit || (best.is_some() && enter >= limit) {
                 break;
             }
             let c = &self.colliders[h];
             if let Some(hit) = c
                 .shape()
                 .cast_ray_and_get_normal(c.position(), &ray, limit, true)
-                .filter(|hit| hit.time_of_impact < limit)
+                .filter(|hit| {
+                    if best.is_some() {
+                        hit.time_of_impact < limit
+                    } else {
+                        hit.time_of_impact <= limit
+                    }
+                })
             {
                 best = Some((h, hit));
             }
@@ -191,6 +220,12 @@ impl QueryWorld {
         f: &QueryFilter,
         cap: usize,
     ) -> Result<Vec<RaycastHit>> {
+        if !origin.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("RaycastDesc.origin must be finite, got {origin}"),
+            ));
+        }
         let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
         let ray = rp::Ray::new(v(origin), v(dir));
         let mut hits = self.with(f, |p| {
@@ -204,14 +239,19 @@ impl QueryWorld {
                 })
                 .collect::<Vec<_>>()
         });
-        // The BVH's leaf order is not an order a game should see: nearest
-        // first, ties by entity bits, so every host and run lists the same.
+        // Nearest first, ties by entity bits, so every host and run lists the same.
         hits.sort_unstable_by(|a, b| {
             a.distance
                 .total_cmp(&b.distance)
                 .then(a.entity.to_bits().cmp(&b.entity.to_bits()))
                 .then(a.body.to_bits().cmp(&b.body.to_bits()))
         });
+        // A chunked height field splits one entity into multiple colliders:
+        // keep only its nearest crossing so a caller never sees duplicate hits.
+        if !self.fields.is_empty() && hits.len() > 1 {
+            let mut seen = BTreeSet::new();
+            hits.retain(|h| seen.insert((h.entity.to_bits(), h.body.to_bits())));
+        }
         hits.truncate(cap);
         Ok(hits)
     }
@@ -251,14 +291,22 @@ impl QueryWorld {
         }))
     }
 
-    pub(crate) fn shape_cast(
+    pub(crate) fn shape_cast_with(
         &self,
         d: &ShapeCastDesc,
         max: f32,
-        shared: &mut Shared,
+        shape: &rp::SharedShape,
     ) -> Result<Option<ShapeCastHit>> {
+        if !d.position.is_finite() || !d.rotation.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "ShapeCastDesc.position and rotation must be finite, got {} / {}",
+                    d.position, d.rotation
+                ),
+            ));
+        }
         let dir = crate::direction(flat(d.direction), "ShapeCastDesc", PROFILE_NAME)?;
-        let shape = query_shape(&d.shape, shared)?;
         let at = pose(d.position, d.rotation);
         let options = ShapeCastOptions::with_max_time_of_impact(max);
         Ok(self.with(&d.filter, |p| {
@@ -272,8 +320,20 @@ impl QueryWorld {
         }))
     }
 
-    pub(crate) fn overlap(&self, d: &OverlapDesc, shared: &mut Shared) -> Result<Vec<Entity>> {
-        let shape = query_shape(&d.shape, shared)?;
+    pub(crate) fn overlap_with(
+        &self,
+        d: &OverlapDesc,
+        shape: &rp::SharedShape,
+    ) -> Result<Vec<Entity>> {
+        if !d.position.is_finite() || !d.rotation.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "OverlapDesc.position and rotation must be finite, got {} / {}",
+                    d.position, d.rotation
+                ),
+            ));
+        }
         let at = pose(d.position, d.rotation);
         let mut hits = self.with(&d.filter, |p| {
             p.intersect_shape(at, shape.as_ref())

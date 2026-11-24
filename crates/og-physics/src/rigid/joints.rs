@@ -108,21 +108,66 @@ pub(crate) fn ground(sim: &mut Sim) -> rp::RigidBodyHandle {
     h
 }
 
-/// The joint's structural part (what rebuilds it), without its motor, its
-/// spring and its output.
+/// The joint's structural part (what rebuilds it): only topology, kind,
+/// anchors and axis. Motors, limits, collide, spring/rope parameters and
+/// break thresholds are patched in place without losing the hinge's zero
+/// angle or solver warm starts.
 fn structure(j: &Joint) -> Joint {
     Joint {
+        limits: false,
+        min: 0.0,
+        max: 0.0,
+        motor: 0,
         motor_target: 0.0,
         motor_stiffness: 0.0,
         motor_damping: 0.0,
         motor_max_force: 0.0,
+        rest_length: 0.0,
         stiffness: 0.0,
         damping: 0.0,
+        length: 0.0,
+        collide: false,
         value: 0.0,
         break_force: 0.0,
         break_torque: 0.0,
         ..*j
     }
+}
+
+/// The joint's physical solver parameters (changes here wake the joined
+/// bodies; changes only to `break_force`, `break_torque` or `value` do not).
+fn physical(j: &Joint) -> Joint {
+    Joint {
+        value: 0.0,
+        break_force: 0.0,
+        break_torque: 0.0,
+        ..*j
+    }
+}
+
+fn check_finite(j: &Joint) -> Result<()> {
+    let ok = j.anchor.is_finite()
+        && j.other_anchor.is_finite()
+        && j.axis.is_finite()
+        && j.min.is_finite()
+        && j.max.is_finite()
+        && j.motor_target.is_finite()
+        && j.motor_stiffness.is_finite()
+        && j.motor_damping.is_finite()
+        && j.motor_max_force.is_finite()
+        && j.rest_length.is_finite()
+        && j.stiffness.is_finite()
+        && j.damping.is_finite()
+        && j.length.is_finite()
+        && j.break_force.is_finite()
+        && j.break_torque.is_finite();
+    if !ok {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "og.Joint numeric fields must be finite",
+        ));
+    }
+    Ok(())
 }
 
 /// The free axis of a hinge or slider.
@@ -133,10 +178,24 @@ fn free_axis(kind: u32) -> rp::JointAxis {
     }
 }
 
-fn set_drive(data: &mut rp::GenericJoint, j: &Joint) {
+fn patch_joint(data: &mut rp::GenericJoint, j: &Joint) -> Result<()> {
+    check_finite(j)?;
+    data.set_contacts_enabled(j.collide);
     match j.kind {
         JOINT_REVOLUTE | JOINT_PRISMATIC => {
             let axis = free_axis(j.kind);
+            if j.limits {
+                if j.min > j.max {
+                    return Err(Error::new(
+                        ErrorKind::Invalid,
+                        format!("og.Joint.min {} is above max {}", j.min, j.max),
+                    ));
+                }
+                data.set_limits(axis, [j.min, j.max]);
+            } else {
+                data.limit_axes.remove(rp::JointAxesMask::from(axis));
+                data.limits[axis as usize].impulse = 0.0;
+            }
             match j.motor {
                 MOTOR_VELOCITY => {
                     data.set_motor_velocity(axis, j.motor_target, j.motor_stiffness.max(0.0));
@@ -150,11 +209,12 @@ fn set_drive(data: &mut rp::GenericJoint, j: &Joint) {
                     );
                 }
                 _ => {
-                    if data.motor(axis).is_some() {
-                        data.set_motor(axis, 0.0, 0.0, 0.0, 0.0);
-                        data.set_motor_max_force(axis, 0.0);
-                    }
-                    return;
+                    data.motor_axes.remove(rp::JointAxesMask::from(axis));
+                    data.motors[axis as usize].stiffness = 0.0;
+                    data.motors[axis as usize].damping = 0.0;
+                    data.motors[axis as usize].max_force = 0.0;
+                    data.motors[axis as usize].impulse = 0.0;
+                    return Ok(());
                 }
             }
             data.set_motor_max_force(
@@ -167,20 +227,20 @@ fn set_drive(data: &mut rp::GenericJoint, j: &Joint) {
             );
         }
         JOINT_SPRING => {
-            let mut s = rp::SpringJointBuilder::new(
+            data.set_motor_position(
+                rp::JointAxis::LinX,
                 j.rest_length.max(0.0),
                 j.stiffness.max(0.0),
                 j.damping.max(0.0),
-            )
-            .build();
-            let anchors = (data.local_anchor1(), data.local_anchor2());
-            s.data.set_local_anchor1(anchors.0);
-            s.data.set_local_anchor2(anchors.1);
-            s.data.set_contacts_enabled(data.contacts_enabled());
-            *data = s.data;
+            );
+            data.set_motor_model(rp::JointAxis::LinX, rp::MotorModel::ForceBased);
+        }
+        JOINT_ROPE => {
+            data.set_limits(rp::JointAxis::LinX, [0.0, j.length.max(0.0)]);
         }
         _ => {}
     }
+    Ok(())
 }
 
 /// The rapier joint for `j`, whose rapier body 1 is the other body (at
@@ -191,6 +251,7 @@ fn set_drive(data: &mut rp::GenericJoint, j: &Joint) {
 /// fixed joint also keeps the bodies' current offset (it welds them as they
 /// are; `otherAnchor` is not used).
 fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::GenericJoint> {
+    check_finite(j)?;
     let mine = v(j.anchor);
     let theirs = v(j.other_anchor);
     let mut data: rp::GenericJoint = match j.kind {
@@ -222,19 +283,10 @@ fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::Generi
             } else {
                 rp::Pose::from_parts(theirs, placed.rotation)
             };
-            let mut b = rp::GenericJointBuilder::new(locked)
+            rp::GenericJointBuilder::new(locked)
                 .local_frame1(frame1)
-                .local_frame2(frame2);
-            if j.limits && matches!(j.kind, JOINT_REVOLUTE | JOINT_PRISMATIC) {
-                if j.min.partial_cmp(&j.max).is_none_or(|o| o.is_gt()) {
-                    return Err(Error::new(
-                        ErrorKind::Invalid,
-                        format!("og.Joint.min {} is above max {}", j.min, j.max),
-                    ));
-                }
-                b = b.limits(free_axis(j.kind), [j.min, j.max]);
-            }
-            b.build()
+                .local_frame2(frame2)
+                .build()
         }
         other => {
             return Err(Error::new(
@@ -245,14 +297,14 @@ fn joint_data(j: &Joint, other: &rp::Pose, this: &rp::Pose) -> Result<rp::Generi
             ));
         }
     };
-    data.set_contacts_enabled(j.collide);
-    set_drive(&mut data, j);
+    patch_joint(&mut data, j)?;
     Ok(data)
 }
 
 /// Brings the joints in line with the scene: gone ones leave, new or
-/// structurally changed ones are built, motor and spring changes update in
-/// place. `handles` maps a body's entity to its rapier body.
+/// structurally changed ones are built, motor, limit, collide, spring, rope
+/// and break-threshold changes update in place. `handles` maps a body's
+/// entity to its rapier body.
 pub(crate) fn sync_joints(
     scene: &Scene,
     sim: &mut Sim,
@@ -307,9 +359,15 @@ pub(crate) fn sync_joints(
                     && alive(t, sim) =>
             {
                 if t.joint != *j {
+                    let wake = physical(&t.joint) != physical(j);
                     let handle = t.handle;
-                    if let Some(joint) = sim.world.impulse_joints.get_mut(handle, true) {
-                        set_drive(&mut joint.data, j);
+                    if wake {
+                        if let Some(joint) = sim.world.impulse_joints.get_mut(handle, true) {
+                            patch_joint(&mut joint.data, j)
+                                .map_err(|err| err.context(format!("entity {e}")))?;
+                        }
+                    } else {
+                        check_finite(j).map_err(|err| err.context(format!("entity {e}")))?;
                     }
                     sim.joints.get_mut(&key).expect("tracked").joint = *j;
                 }

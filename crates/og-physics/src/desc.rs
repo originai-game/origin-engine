@@ -109,12 +109,23 @@ pub const MAX_RAYCAST_HITS: u32 = 256;
 /// The nearest point on a collider to a point ([`PhysicsQuery::project_point`]).
 /// `max_distance` 0 means unbounded; `solid`: a point inside a collider is
 /// its own projection (else it projects onto the surface).
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ProjectPointDesc {
     pub point: Vec3,
     pub max_distance: f32,
     pub solid: bool,
     pub filter: QueryFilter,
+}
+
+impl Default for ProjectPointDesc {
+    fn default() -> Self {
+        ProjectPointDesc {
+            point: Vec3::ZERO,
+            max_distance: 0.0,
+            solid: true,
+            filter: QueryFilter::default(),
+        }
+    }
 }
 
 /// Where a point projects onto the nearest collider.
@@ -124,8 +135,8 @@ pub struct PointProjection {
     pub body: Entity,
     /// The projected point, in world space.
     pub point: Vec3,
-    /// The direction from the surface towards the queried point (out of the
-    /// collider; into it when the point is inside); zero when the point is
+    /// Outward surface normal at `point` (always pointing out of the collider,
+    /// whether the queried point is outside or inside); zero when the point is
     /// on the surface or a solid projection of a point inside.
     pub normal: Vec3,
     /// From the queried point to the projection.
