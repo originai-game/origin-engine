@@ -1018,7 +1018,15 @@ impl Next {
             // Typed text and IME preedit go into the focused `Input` before
             // its keys edit it.
             tree.text_frame(&input.text, input.composition.as_deref());
+            // A control a live gameplay map binds ahead of the UI's (arrows
+            // that steer, Space that fires, the stick or d-pad that flies) is
+            // that map's: it neither moves the UI's focus nor presses the
+            // focused control, unless an `Input` is taking text.
+            let claimed = |c: &str| map.as_ref().is_some_and(|m| m.claims(c));
             for code in &input.keys_pressed {
+                if tree.text_target().is_none() && claimed(code) {
+                    continue;
+                }
                 tree.key(code, input.shift, input.ctrl, input.alt, input.meta);
             }
             for name in &fired {
@@ -1047,18 +1055,18 @@ impl Next {
             // duration every fast one while held, as og-ui's navigation.
             let g = &input.gamepad;
             use og_input::frame::{GamepadFrame as Pad, Nav};
-            for (bit, nav) in [
-                (Pad::UP, Nav::Up),
-                (Pad::DOWN, Nav::Down),
-                (Pad::LEFT, Nav::Left),
-                (Pad::RIGHT, Nav::Right),
+            for (bit, nav, control) in [
+                (Pad::UP, Nav::Up, "pad.up"),
+                (Pad::DOWN, Nav::Down, "pad.down"),
+                (Pad::LEFT, Nav::Left, "pad.left"),
+                (Pad::RIGHT, Nav::Right, "pad.right"),
             ] {
-                if g.pressed & bit != 0 {
+                if g.pressed & bit != 0 && !claimed(control) {
                     tree.nav(nav);
                 }
             }
             let [sx, sy] = pad.stick;
-            let dir = if sx.abs().max(sy.abs()) < 0.5 {
+            let dir = if sx.abs().max(sy.abs()) < 0.5 || claimed("pad.leftXY") {
                 None
             } else if sx.abs() > sy.abs() {
                 Some(if sx > 0.0 { Nav::Right } else { Nav::Left })

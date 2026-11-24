@@ -656,6 +656,25 @@ impl ActionMap {
         &self.contexts
     }
 
+    /// Whether a live context ahead of the UI's binds `control` (a binding's
+    /// control name: `ArrowLeft`, `Space`, `pad.up`, `pad.leftXY`): the UI's
+    /// own handling of it (focus moves, presses on the focused control)
+    /// leaves it to that context, as the UI's actions already do. Empty
+    /// contexts claim nothing.
+    pub fn claims(&self, control: &str) -> bool {
+        let Some(c) = Control::parse(control) else {
+            return false;
+        };
+        let ui = self
+            .contexts
+            .iter()
+            .position(|x| x == UI_CONTEXT)
+            .unwrap_or(self.contexts.len());
+        self.live_claims()
+            .iter()
+            .any(|(cc, r)| *r < ui && overlaps(*cc, c))
+    }
+
     /// A pad's dead zones (`None`: every pad).
     pub fn set_deadzone(&mut self, pad: Option<usize>, dz: PadDeadzone) -> Result<(), String> {
         if !(0.0..=0.95).contains(&dz.stick) || !(0.0..=0.95).contains(&dz.trigger) {
@@ -858,7 +877,7 @@ impl ActionMap {
         if capturing {
             self.capture_step(&reader, tick, dt);
         }
-        let claims = self.claims();
+        let claims = self.live_claims();
         let contexts = self.contexts.clone();
         self.zone_states.clear();
         self.zone_states
@@ -1015,7 +1034,7 @@ impl ActionMap {
 
     /// Each control the live contexts bind, with the rank of the first
     /// context that binds it (empty when every context is live).
-    fn claims(&self) -> Vec<(Control, usize)> {
+    fn live_claims(&self) -> Vec<(Control, usize)> {
         let mut out: Vec<(Control, usize)> = Vec::new();
         for (rank, ctx) in self.contexts.iter().enumerate() {
             for a in self.actions.iter().filter(|a| a.desc.context == *ctx) {

@@ -611,3 +611,39 @@ fn the_actions_block_form_is_global() {
         Some(Err(_))
     ));
 }
+
+/// A gameplay context ahead of the UI claims its keys from the UI's own key
+/// handling (sf-g46): steering with the arrows must not move the HUD's focus,
+/// and Space for an ability must not press the focused button.
+#[test]
+fn a_live_gameplay_context_claims_its_keys_from_the_ui() {
+    let mut map = ActionMap::new();
+    map.define_ui();
+    let bind = |c: &str| Binding {
+        control: c.into(),
+        ..Binding::default()
+    };
+    map.define(action("left", ActionKind::Button, vec![bind("ArrowLeft")]))
+        .unwrap();
+    map.define(action("ult", ActionKind::Button, vec![bind("Space")]))
+        .unwrap();
+    // Every context live, none winning: nothing is claimed.
+    assert!(!map.claims("Space"));
+    map.set_contexts(vec!["gameplay".into()]);
+    assert!(map.claims("Space"));
+    assert!(map.claims("ArrowLeft"));
+    assert!(
+        !map.claims("Enter"),
+        "a key no gameplay action binds stays the UI's"
+    );
+    assert!(!map.claims("ArrowRight"));
+    map.define(action("steer", ActionKind::Axis2, vec![bind("pad.dpad")]))
+        .unwrap();
+    assert!(
+        map.claims("pad.up"),
+        "a d-pad the game steers with is not the UI's"
+    );
+    // The UI named first wins its keys back (a menu over the game).
+    map.set_contexts(vec!["ui".into(), "gameplay".into()]);
+    assert!(!map.claims("Space"));
+}

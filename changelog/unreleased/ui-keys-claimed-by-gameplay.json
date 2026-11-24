@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.input.setActionMaps",
+      "summary": "A key bound by a live action map ahead of the UI's is that map's alone: it no longer moves the UI's focus or presses the focused control (steering with the arrows focused the HUD's first button, and Space for an ability then pressed it). The UI's own actions were already muted that way; its raw key handling now is too. A focused Input taking text still gets every key."
+    }
+  ]
+}
