@@ -25,9 +25,9 @@ export interface HudBarProps {
  * max in its kind's colour over a dark well with a lit rim; a loss leaves
  * a warm ghost that drains after the fill, a low bar turns to danger,
  * segment cuts it into cells, and showValue stands its figure over it. It
- * is as wide as its place; a plate sizes the place. Read only. The old
- * style's lean (skewX) and the cells' mask have no TSX surface: the cells
- * are drawn as notch marks, the lean is dropped.
+ * is as wide as its place; a plate sizes the place. Read only. Its well,
+ * fill colours, ghost, notches and figure are the Bar component's pack
+ * slots, so a theme restyles every HUD bar at once.
  */
 export function HudBar(props: HudBarProps) {
   const value = () => Math.min(Math.max(props.value, 0), Math.max(props.max ?? 1, 0));
@@ -45,7 +45,7 @@ export function HudBar(props: HudBarProps) {
   };
   return (
     <View
-      class={`group/bar relative w-full h-1.5 overflow-hidden bg-track shadow-plate ring ring-rim data-low:shadow-glow data-low:shadow-critical data-low:ring data-low:ring-critical data-low:animate-pulse`}
+      class={`group/bar relative w-full ${packClass("Bar", "frame")} ${props.low ? packClass("Bar", "frame", "low") : ""}`}
       role="meter"
       label={props.name != "" && props.name != undefined ? props.name : (props.kind ?? "health") == "mana" ? t("hud.bar.mana") : (props.kind ?? "health") == "stamina" ? t("hud.bar.stamina") : (props.kind ?? "health") == "shield" ? t("hud.bar.shield") : (props.kind ?? "health") == "xp" ? t("hud.bar.xp") : t("hud.bar.health")}
       valueMin={0}
@@ -57,16 +57,16 @@ export function HudBar(props: HudBarProps) {
       data-xp={(props.kind ?? "health") == "xp"}
       data-low={props.low}
     >
-      <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold ${packClass("Bar", "trail")}`} style={{ width: `${ghost() * 100}%` }} />
-      <View class={`${packClass("Bar", "fill")} absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-foe shadow-glow shadow-foe group-data-mana/bar:bg-mana group-data-mana/bar:shadow-glow group-data-mana/bar:shadow-mana group-data-stamina/bar:bg-linear-to-b group-data-stamina/bar:from-sheen group-data-stamina/bar:to-transparent group-data-stamina/bar:to-42% group-data-stamina/bar:bg-gold group-data-stamina/bar:shadow-glow group-data-stamina/bar:shadow-gold group-data-shield/bar:bg-ally group-data-shield/bar:shadow-glow group-data-shield/bar:shadow-ally group-data-xp/bar:bg-linear-to-r group-data-xp/bar:from-xp group-data-xp/bar:to-xp group-data-xp/bar:shadow-glow group-data-xp/bar:shadow-xp group-data-low/bar:bg-linear-to-b group-data-low/bar:from-sheen group-data-low/bar:to-transparent group-data-low/bar:to-42% group-data-low/bar:bg-critical group-data-low/bar:shadow-glow group-data-low/bar:shadow-critical`} style={{ width: `${share() * 100}%` }} />
+      <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`} style={{ width: `${ghost() * 100}%` }} />
+      <View class={`${packClass("Bar", "fill")} absolute left-0 top-0 h-full ${packClass("Bar", "tone")} ${props.low ? packClass("Bar", "tone", "low") : (props.kind ?? "health") !== "health" ? packClass("Bar", "tone", props.kind ?? "health") : ""}`} style={{ width: `${share() * 100}%` }} />
       <Show when={(props.segment ?? 0) > 0 && (props.max ?? 1) > 0}>
         <For each={Array.from({ length: Math.max(Math.ceil(cells()) - 1, 0) }, (_, i) => i)}>
-          {(i) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass -translate-x-full" style={{ left: `${((i() + 1) / cells()) * 100}%` }} />}
+          {(i) => <View class={`absolute top-0 bottom-0 -translate-x-full ${packClass("Bar", "tick")}`} style={{ left: `${((i() + 1) / cells()) * 100}%` }} />}
         </For>
       </Show>
       <Show when={props.showValue}>
         <View class="absolute inset-0 flex-row items-center justify-center px-1 overflow-hidden">
-          <Text class="text-caption tabular-nums whitespace-nowrap text-fg text-shadow-tag">{t("hud.bar.figure", { now: props.value, max: props.max ?? 1 })}</Text>
+          <Text class={`whitespace-nowrap ${packClass("Bar", "value")}`}>{t("hud.bar.figure", { now: props.value, max: props.max ?? 1 })}</Text>
         </View>
       </Show>
     </View>

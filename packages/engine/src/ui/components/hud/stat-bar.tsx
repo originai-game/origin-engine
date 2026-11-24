@@ -81,7 +81,7 @@ export function StatBar(props: StatBarProps) {
             <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-tag">{props.label}</Text>
           </View>
         </Show>
-        <View class="relative min-w-0 flex-1 h-4.5 overflow-hidden bg-track shadow-plate ring ring-rim group-data-critical/stat:shadow-glow group-data-critical/stat:shadow-critical group-data-critical/stat:ring group-data-critical/stat:ring-critical group-data-critical/stat:animate-pulse">
+        <View class={`relative min-w-0 flex-1 ${packClass("Bar", "frame")} h-4.5 ${critical() ? packClass("Bar", "frame", "low") : ""}`}>
           <View class="absolute left-0 top-0 h-full bg-fg-muted" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
           <View class="absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold" style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>
@@ -93,7 +93,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
           <Show when={cells() > 0}>
             <For each={Array.from({ length: cells() }, (_, i) => i)}>
-              {(i) => <View class="absolute top-0 bottom-0 w-1/100 bg-glass -translate-x-full" style={{ left: `${(i() + 1) * block() * 100}%` }} />}
+              {(i) => <View class={`absolute top-0 bottom-0 -translate-x-full ${packClass("Bar", "tick")}`} style={{ left: `${(i() + 1) * block() * 100}%` }} />}
             </For>
           </Show>
           <Show when={props.showValue && props.valueInside}>

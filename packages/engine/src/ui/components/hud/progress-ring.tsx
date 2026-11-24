@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./progress-ring.en.ogt";
 
 export interface ProgressRingProps {
@@ -16,15 +16,15 @@ export interface ProgressRingProps {
 
 /**
  * A ring that fills with its value, its percent (or the label's words) in
- * the middle; with no known value the ring turns instead. The style's SVG
- * arc is the pack's ring art here, and the spinning ring turns as a lit
- * rim. Read only.
+ * the middle; with no known value the ring turns instead. Its side,
+ * track, fill, spin and label are the Ring component's pack slots. Read
+ * only.
  */
 export function ProgressRing(props: ProgressRingProps) {
   const share = () => Math.min(Math.max(props.value, 0), 1);
   return (
     <View
-      class={`group/ring relative size-12`}
+      class={`group/ring relative ${packClass("Ring", "box")}`}
       role="progressbar"
       label={(props.name ?? "") !== "" ? props.name : props.spinning ? t("component.progress-ring.loading") : t("component.progress-ring.name")}
       valueMin={0}
@@ -38,23 +38,23 @@ export function ProgressRing(props: ProgressRingProps) {
     >
       <Show when={props.spinning} fallback={
         <>
-          <View class="absolute inset-0 rounded-full bg-glass">
+          <View class={`absolute inset-0 ${packClass("Ring", "track")}`}>
             <View
-              class={`absolute inset-0 nine-ring bg-accent group-data-tone-success/ring:bg-success group-data-tone-warn/ring:bg-warn group-data-tone-danger/ring:bg-danger group-data-tone-info/ring:bg-info transition-layout duration-300 ease-out`}
+              class={`absolute inset-0 nine-ring ${packClass("Ring", "fill")} ${["success", "warn", "danger", "info"].includes(props.tone ?? "") ? packClass("Ring", "fill", props.tone) : ""}`}
               wipe={share()}
             />
           </View>
           <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
-            <Text class="text-reading tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class={`whitespace-nowrap ${packClass("Ring", "label")}`}>
               {(props.label ?? "") !== "" ? props.label : `${formatNumber(share() * 100, { decimals: 0 })}%`}
             </Text>
           </View>
         </>
       }>
-        <View class={`absolute inset-0 rounded-full border-4 border-rim border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info animate-spin`}>
+        <View class={`absolute inset-0 ${packClass("Ring", "spin")} border-t-accent group-data-tone-success/ring:border-t-success group-data-tone-warn/ring:border-t-warn group-data-tone-danger/ring:border-t-danger group-data-tone-info/ring:border-t-info`}>
           <Show when={(props.label ?? "") !== ""}>
             <View class="absolute inset-0 flex-row items-center justify-center">
-              <Text class="text-reading whitespace-nowrap text-fg text-shadow-xs">{props.label}</Text>
+              <Text class={`whitespace-nowrap ${packClass("Ring", "label")}`}>{props.label}</Text>
             </View>
           </Show>
         </View>

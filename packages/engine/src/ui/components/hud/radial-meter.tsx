@@ -1,4 +1,4 @@
-import { Show, View, t } from "@origingame/engine/ui";
+import { Show, View, packClass, t } from "@origingame/engine/ui";
 import "./radial-meter.en.ogt";
 
 export interface RadialMeterProps {
@@ -27,12 +27,11 @@ function clamp01(v: number): number {
 }
 
 function RadialMeterWheel(props: { size: string; inset: string; fill: number; exhausted: boolean }) {
-  const ink = () => (props.exhausted ? "bg-foe" : "bg-success");
   return (
     <View class={`absolute ${props.size}`}>
-      <View class="absolute inset-0 rounded-full border border-rim ring ring-shade-deep bg-track" />
-      <View class={`absolute nine-ring ${ink()} transition-layout duration-fast ease-out`} style={{ top: props.inset, right: props.inset, bottom: props.inset, left: props.inset }} wipe={props.fill} />
-      <View class="absolute inset-0 rounded-full bg-linear-to-b from-sheen to-transparent to-42%" />
+      <View class={`absolute inset-0 ${packClass("Radial", "track")}`} />
+      <View class={`absolute nine-ring ${packClass("Radial", "fill")} ${props.exhausted ? packClass("Radial", "fill", "exhausted") : ""}`} style={{ top: props.inset, right: props.inset, bottom: props.inset, left: props.inset }} wipe={props.fill} />
+      <View class={`absolute inset-0 ${packClass("Radial", "sheen")}`} />
     </View>
   );
 }
@@ -46,7 +45,7 @@ export function RadialMeter(props: RadialMeterProps) {
   const wheels = () => Math.min(Math.max(props.wheels ?? 1, 1), 3);
   return (
     <View
-      class="relative size-12 pointer-events-none data-gone:opacity-0"
+      class={`relative pointer-events-none data-gone:opacity-0 ${packClass("Radial", "box")}`}
       data-gone={props.hidden === true}
       data-exhausted={props.exhausted === true}
       role="meter"

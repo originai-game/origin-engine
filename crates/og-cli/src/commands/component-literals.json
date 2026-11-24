@@ -14,7 +14,6 @@
   "components/hud/hud-timer.tsx": 1,
   "components/hud/loot-entry.tsx": 1,
   "components/hud/overlay-bar.tsx": 5,
-  "components/hud/progress-ring.tsx": 2,
   "components/hud/qte-prompt.tsx": 5,
   "components/hud/quest-tracker.tsx": 2,
   "components/hud/radial-menu.tsx": 3,

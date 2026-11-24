@@ -827,7 +827,7 @@ Fixtures: `default`, `low`, `empty`, `reloading`, `belt`, `overflow`.
 <a id="guide-components-32"></a>
 ### `components §32` HudBar
 
-One bar of a HUD, a block a plate is built from: it fills to value over max in its kind's colour over a dark well with a lit rim; a loss leaves a warm ghost that drains after the fill, a low bar turns to danger, segment cuts it into cells, and showValue stands its figure over it. It is as wide as its place; a plate sizes the place. Read only. The old style's lean (skewX) and the cells' mask have no TSX surface: the cells are drawn as notch marks, the lean is dropped.
+One bar of a HUD, a block a plate is built from: it fills to value over max in its kind's colour over a dark well with a lit rim; a loss leaves a warm ghost that drains after the fill, a low bar turns to danger, segment cuts it into cells, and showValue stands its figure over it. It is as wide as its place; a plate sizes the place. Read only. Its well, fill colours, ghost, notches and figure are the Bar component's pack slots, so a theme restyles every HUD bar at once.
 
 `import { HudBar } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/bar.tsx`).
 
@@ -842,7 +842,7 @@ One bar of a HUD, a block a plate is built from: it fills to value over max in i
 | `showValue?` | `boolean` | Its figure, value over max, upright over the bar; for a bar thick enough to hold a line of text. |
 | `name?` | `string` | What a screen reader calls it; empty is its kind (Health, Mana, Stamina, Experience). |
 
-Pack slots: `Bar.fill`, `Bar.trail`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.low`, `Bar.tone.…`, `Bar.trail`, `Bar.value`.
 
 Fixtures: `default`, `mana`, `cells`, `shield`, `figure`, `low`, `empty`, `overflow`.
 
@@ -886,7 +886,7 @@ Each `BossBarWeakness`:
 | `icon?` | `Texture \| 0` | A texture (og.load.texture); 0 draws the glyph in its place. |
 | `glyph?` | `string` | An icon name, in art's place. |
 
-Pack slots: `Bar.fill`, `Bar.trail`, `Plate.frame`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.frame.thick`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.boss`, `Bar.tone.invulnerable`, `Bar.tone.stamina`, `Bar.trail`, `Boss.figure`, `Boss.status`, `Plate.frame`.
 
 Fixtures: `default`, `critical`, `invulnerable`, `defeated`, `loading`, `overflow`.
 
@@ -1209,6 +1209,8 @@ A glass vessel in a bezel, over the scene: a bezel with its light and shade, a s
 | `label?` | `string` | A caption under it; empty is none. |
 | `name?` | `string` | What a screen reader calls it; empty is the label, else Health. |
 
+Pack slots: `Orb.box`, `Orb.fill`, `Orb.fill.mana`, `Orb.glass`, `Orb.label`, `Orb.rim`, `Orb.value`, `Orb.well`, `Orb.well.mana`.
+
 Fixtures: `default`, `mana`, `empty`, `full`.
 
 <a id="guide-components-50"></a>
@@ -1321,7 +1323,7 @@ Fixtures: `default`, `indeterminate`, `success`, `danger`.
 <a id="guide-components-55"></a>
 ### `components §55` ProgressRing
 
-A ring that fills with its value, its percent (or the label's words) in the middle; with no known value the ring turns instead. The style's SVG arc is the pack's ring art here, and the spinning ring turns as a lit rim. Read only.
+A ring that fills with its value, its percent (or the label's words) in the middle; with no known value the ring turns instead. Its side, track, fill, spin and label are the Ring component's pack slots. Read only.
 
 `import { ProgressRing } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/progress-ring.tsx`).
 
@@ -1332,6 +1334,8 @@ A ring that fills with its value, its percent (or the label's words) in the midd
 | `label?` | `string` | Text in the middle; empty is the percent (none while spinning). |
 | `name?` | `string` | What a screen reader calls it; empty is Progress, or Loading while spinning. |
 | `tone?` | `string` | The fill's tone: primary (empty), success, warn, danger or info. |
+
+Pack slots: `Ring.box`, `Ring.fill`, `Ring.fill.…`, `Ring.label`, `Ring.spin`, `Ring.track`.
 
 Fixtures: `default`, `spinning`, `labelled`, `danger`.
 
@@ -1422,6 +1426,8 @@ A stamina wheel: up to three rings that drain and fill, red once exhausted until
 | `hidden?` | `boolean` | Faded out (the game hides it once it has been full a while). |
 | `name?` | `string` | What a screen reader calls it; empty is Stamina. |
 
+Pack slots: `Radial.box`, `Radial.fill`, `Radial.fill.exhausted`, `Radial.sheen`, `Radial.track`.
+
 Fixtures: `default`.
 
 <a id="guide-components-60"></a>
@@ -1507,7 +1513,7 @@ A stat with its bar: the icon and label before a leaning well that fills to valu
 | `bare?` | `boolean` | No HUD plate behind it. |
 | `name?` | `string` | What a screen reader calls it; empty is the label, else Health. |
 
-Pack slots: `Bar.fill`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`.
 
 Fixtures: `default`.
 

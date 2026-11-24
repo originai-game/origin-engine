@@ -95,7 +95,7 @@ export function BossBar(props: BossBarProps) {
       <Show when={props.loading} fallback={
         <>
           <View
-            class={`group/health relative w-full h-3.5 overflow-hidden bg-track shadow-plate ring ring-rim data-critical:shadow-glow data-critical:shadow-danger data-critical:ring data-critical:ring-danger data-critical:animate-pulse compact:h-2.25`}
+            class={`group/health relative w-full ${packClass("Bar", "frame")} ${packClass("Bar", "frame", "thick")} ${critical() ? packClass("Bar", "frame", "low") : ""}`}
             role="meter"
             label={t("hud.boss-bar.health")}
             valueMin={0}
@@ -105,13 +105,12 @@ export function BossBar(props: BossBarProps) {
             data-inv={invulnerable()}
             data-critical={critical()}
           >
-            <View class={`absolute left-0 top-0 h-full bg-fg ${packClass("Bar", "trail")}`} data-ghost style={{ width: `${ghost() * 100}%` }} />
+            <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`} data-ghost style={{ width: `${ghost() * 100}%` }} />
             <View
-              class={`absolute left-0 top-0 h-full bg-linear-to-r from-legendary to-legendary shadow-glow shadow-late ${packClass("Bar", "fill")} group-data-inv/health:bg-none group-data-inv/health:bg-fg-subtle group-data-inv/health:shadow-none`}
+              class={`absolute left-0 top-0 h-full ${packClass("Bar", "fill")} ${packClass("Bar", "tone")} ${packClass("Bar", "tone", "boss")} ${invulnerable() ? packClass("Bar", "tone", "invulnerable") : ""}`}
               style={{ width: `${share() * 100}%` }}
             >
-              <View class="absolute inset-0 bg-linear-to-b from-sheen to-transparent to-42% group-data-inv/health:hidden" />
-            </View>
+                          </View>
             <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
               {(p, i) => (
                 <View
@@ -124,26 +123,26 @@ export function BossBar(props: BossBarProps) {
           </View>
           <View class={`flex-row items-center justify-between w-full min-w-0 gap-x-3`}>
             <Show when={(props.stagger ?? -1) >= 0}>
-              <View class={`shrink min-w-0 flex-row items-center gap-x-1`}>
+              <View class={`grow shrink basis-0 min-w-0 flex-row items-center gap-x-1`}>
                 <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`}>{t("hud.boss-bar.stagger")}</Text>
                 <View
-                  class={`relative w-42.5 min-w-10 h-2 overflow-hidden bg-track shadow-plate ring ring-rim compact:h-1.25`}
+                  class={`relative grow basis-0 min-w-10 max-w-42.5 ${packClass("Bar", "frame")}`}
                   role="meter"
                   label={t("hud.boss-bar.stagger")}
                   valueMin={0}
                   valueMax={100}
                   valueNow={(props.stagger ?? 0) >= 1 ? 100 : (props.stagger ?? 0) * 100}
                 >
-                  <View class="absolute left-0 top-0 h-full bg-linear-to-b from-sheen to-transparent to-42% bg-gold shadow-glow shadow-gold" style={{ width: `${Math.min(Math.max(props.stagger ?? 0, 0), 1) * 100}%` }} />
+                  <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "tone")} ${packClass("Bar", "tone", "stamina")}`} style={{ width: `${Math.min(Math.max(props.stagger ?? 0, 0), 1) * 100}%` }} />
                   <For each={Array.from({ length: Math.max(staggerCells() - 1, 0) }, (_, n) => n)}>
-                    {(n) => <View class="absolute top-0 bottom-0 w-0.75 bg-glass -translate-x-full" style={{ left: `${((n() + 1) / staggerCells()) * 100}%` }} />}
+                    {(n) => <View class={`absolute top-0 bottom-0 -translate-x-full ${packClass("Bar", "tick")}`} style={{ left: `${((n() + 1) / staggerCells()) * 100}%` }} />}
                   </For>
                 </View>
               </View>
             </Show>
             <View class={`flex-row items-center ml-auto min-w-0 gap-x-1`}>
               <Show when={(props.defeated ?? false) || invulnerable()}>
-                <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted data-defeated:text-boon-ink`} role="status" data-defeated={props.defeated}>
+                <Text class={`shrink-0 whitespace-nowrap ${packClass("Boss", "status")}`} role="status">
                   {(props.defeated ?? false) ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}
                 </Text>
               </Show>
@@ -162,7 +161,7 @@ export function BossBar(props: BossBarProps) {
                   </View>
                 )}
               </For>
-              <Text class={`shrink-0 text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg compact:text-caption`}>
+              <Text class={`shrink-0 whitespace-nowrap ${packClass("Boss", "figure")}`}>
                 {`${formatNumber(share() * 100, { decimals: 0 })}%`}
               </Text>
             </View>
