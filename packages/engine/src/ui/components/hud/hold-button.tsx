@@ -10,13 +10,15 @@ export interface HoldButtonProps {
   hint?: string;
   /** An icon of the atlas before the label; empty for none. */
   icon?: string;
-  /** An og-input action whose hold holds it too (confirm); empty for none. */
+  /** An og-input action whose glyph is shown as a hint; empty for none. */
   action?: string;
+  /** Hold duration in seconds. Default 1.2. */
+  duration?: number;
   /** Its role: danger (the default, a destructive confirm), primary or secondary. Default danger. */
   variant?: string;
   /** Shown but inert. */
   disabled?: boolean;
-  /** Confirmed, by holding it 1.2 s or the input action it names. */
+  /** Confirmed, by holding it for duration seconds. */
   onConfirm?: (e: UiEvent) => void;
 }
 
@@ -30,11 +32,12 @@ const VARIANT: Record<string, "danger" | "primary" | undefined> = {
 /**
  * A confirm that must be held (Delete save): its icon and words, what it
  * says while it is held, and a line under it saying what to do. Holding
- * it for 1.2 s confirms, as does the input action it names; the hold's
- * progress runs along the button's foot and the words swap while held.
+ * it for `duration` seconds confirms; the hold's progress runs along the
+ * button's foot and the words swap while held.
  */
 export function HoldButton(props: HoldButtonProps) {
   const variant = () => props.variant ?? "danger";
+  const duration = () => Math.max(props.duration ?? 1.2, 0.1);
   const progress = createSignal(0);
   const held = () => progress() > 0;
   const action = () => (props.action ?? "").trim();
@@ -42,17 +45,19 @@ export function HoldButton(props: HoldButtonProps) {
     <View class="flex-col items-center max-w-full">
       <Button
         variant={VARIANT[variant()] ?? undefined}
-        hold={1.2}
+        hold={duration()}
         onHold={(e) => progress.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1))}
         onPress={(e) => {
           progress.set(0);
           props.onConfirm?.(e);
         }}
-        onAction={action() && action() !== "confirm" ? { [action()]: (e) => props.onConfirm?.(e) } : undefined}
         label={props.label}
         disabled={props.disabled}
         class="relative overflow-hidden max-w-full"
       >
+        <Show when={action() !== ""}>
+          <Text glyph={action()} class="shrink-0 pointer-coarse:hidden text-lg leading-none" />
+        </Show>
         <Show when={props.icon}>
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>

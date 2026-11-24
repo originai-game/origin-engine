@@ -52,10 +52,10 @@ const TEAM_PLATE = `bg-glass ${PLATE_RIM}`;
 const TEAM_A_PLATE = "inset-shadow-underline inset-shadow-team1 inset-ring-hairline inset-ring-border";
 const TEAM_B_PLATE = "inset-shadow-underline inset-shadow-team2 inset-ring-hairline inset-ring-border";
 const NAME = "min-w-0 text-base leading-tight font-bold uppercase tracking-sm text-fg";
-const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 shadow-glow-lg shadow-team1 compact:text-3xl";
-const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 shadow-glow-lg shadow-team2 compact:text-3xl";
+const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 text-shadow-tag compact:text-3xl";
+const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 text-shadow-tag compact:text-3xl";
 const YOU = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-hud-accent-fg rounded-control bg-hud-accent whitespace-nowrap`;
-const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 ${PLATE_RIM} ${packClass("Plate", "frame")}`;
+const ROUND_PLATE = `flex-col items-center justify-center gap-y-0.5 py-0.5 px-4 ${packClass("Plate", "frame")}`;
 
 /**
  * The round's HUD for two teams: each team's name and score on a plate (the
@@ -110,7 +110,7 @@ export function ArenaRoundHud(props: ArenaRoundHudProps) {
         <Show when={ended() ? `${props.outcome}:${props.at ?? 0}` : false} keyed>
           <View class={`flex-col items-center gap-y-1 max-w-full py-3 px-8 animate-stamp compact:py-2 compact:px-4 ${packClass("Panel", "frame")}`}>
             <Text
-              class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold shadow-glow-lg shadow-gold data-lost:text-danger data-lost:shadow-glow-lg data-lost:shadow-critical`}
+              class={`max-w-full text-center text-8xl leading-none font-bold uppercase tracking-xs text-gold text-stroke-2 text-stroke-bg text-shadow-tag data-lost:text-danger`}
               data-lost={props.outcome == "lost"}
             >
               {props.outcome == "won" ? t("arena.round.won") : props.outcome == "lost" ? t("arena.round.lost") : t("arena.round.draw")}

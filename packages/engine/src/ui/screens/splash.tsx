@@ -47,7 +47,7 @@ export function SplashScreen(props: SplashScreenProps) {
           <View class={`flex-row gap-x-1`}>
             <For each={props.marks}>
               {(m) => (
-              <View class={`bg-sheen w-4.5 h-0.5 transition-colors duration-control rounded-capsule data-on:bg-none data-on:bg-sheen shrink`} data-on={m().id === props.mark} />
+              <View class={`bg-border-strong w-4.5 h-0.5 transition-colors duration-control rounded-capsule data-on:bg-none data-on:bg-hud-accent shrink`} data-on={m().id === props.mark} />
               )}
             </For>
           </View>
@@ -68,7 +68,7 @@ export function SplashScreen(props: SplashScreenProps) {
         </View>
       </Show>
       <View class={`flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted compact:bottom-4 compact:justify-center compact:inset-x-4`}>
-        <Text class="text-xs leading-loose font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden shrink">
+        <Text class="text-xs leading-loose font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control pointer-coarse:hidden shrink">
           {t("screen.splash.skipKey")}
         </Text>
         <Text class="pointer-coarse:hidden shrink">{t("screen.splash.skip")}</Text>

@@ -45,7 +45,7 @@ export function PuzzleLevelPath(props: PuzzleLevelPathProps) {
             <View class="mb-4 gap-0" label={c().label}>
               <View class={`sticky top-0 z-1 w-full pt-2 pb-3 px-3 gap-1 ${packClass("Plate", "frame")}`}>
                 <View class="flex-row items-center w-full gap-1">
-                  <Text class={`grow shrink basis-0 font-display text-3xl font-bold leading-tight tracking-tight text-start whitespace-nowrap m-0 overflow-hidden compact:text-xl`}>
+                  <Text class={`grow shrink basis-0 font-display text-3xl font-bold leading-tight text-start whitespace-nowrap m-0 overflow-hidden compact:text-xl`}>
                     {c().label}
                   </Text>
                   <View class={`flex-row items-center text-caption bg-tile inset-shadow-lit text-fg transition duration-control py-0.5 px-2 gap-0.5 rounded-capsule`} label={t("puzzle.path.chapterStarsName", { earned: c().earned, total: c().total })}>

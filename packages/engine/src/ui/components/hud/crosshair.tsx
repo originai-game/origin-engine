@@ -12,24 +12,26 @@ export interface CrosshairProps {
   aimed?: boolean | undefined;
   /** cross (four arms and a dot), dot, or circle (a ring and a dot). Default cross. */
   shape?: string | undefined;
+  /** Optional reload progress (0 to 1); draws a subtle progress ring around the reticle while reloading. */
+  reload?: number | undefined;
 }
 
 /**
  * The reticle: four arms and a dot (or a ring and a dot), opening with
  * the weapon's spread, the target's ink when the aim rests on an enemy,
- * and four diagonal ticks confirming the last hit (red with a glow for a
- * headshot and a kill, the shield's blue for a broken one). Geometry is
- * resolved into styles; the ring's mask is a border, and a new hitAt does
- * not replay the mark while it shows (no keyed surface): the ticks pop in
- * when the mark appears.
+ * an optional reload progress ring, and four symmetric diagonal ticks
+ * confirming the last hit (red with a glow for a headshot and a kill,
+ * the shield's blue for a broken one).
  */
 export function Crosshair(props: CrosshairProps) {
   const gap = () => 0.571 + Math.min(Math.max(props.spread, 0), 1) * 2.286;
+  const tickOffset = () => gap() + 0.45;
   const hitKey = () => ((props.hit ?? "none") !== "none" ? `${props.hit}:${props.hitAt ?? 0}` : false);
-  const tickClass = `absolute w-3.5 h-0.75 bg-fg ring ring-shade-deep data-headshot:bg-foe data-headshot:shadow-glow-sm data-headshot:shadow-foe data-kill:h-1 data-kill:bg-foe data-kill:shadow-glow-sm data-kill:shadow-foe data-shieldbreak:bg-ally data-shieldbreak:shadow-glow-sm data-shieldbreak:shadow-ally animate-pop`;
+  const reload = () => (typeof props.reload === "number" && props.reload > 0 && props.reload < 1 ? props.reload : 0);
+  const tickClass = `absolute w-3.5 h-0.75 rounded-capsule bg-fg ring ring-shade-deep data-headshot:bg-foe data-headshot:shadow-glow-sm data-headshot:shadow-foe data-kill:h-1 data-kill:bg-foe data-kill:shadow-glow-sm data-kill:shadow-foe data-shieldbreak:bg-ally data-shieldbreak:shadow-glow-sm data-shieldbreak:shadow-ally animate-pop`;
   const armClass = `absolute bg-fg ring ring-shade-deep data-aimed:bg-foe data-dot:hidden data-circle:hidden`;
   return (
-    <View class="relative size-24" role="image" label={t("shooter.crosshair.name")} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"}>
+    <View class="relative size-24 pointer-events-none" role="image" label={t("shooter.crosshair.name")} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"}>
       <View class={`${armClass} w-0.5 h-2.5`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ left: "calc(50% - 0.0715rem)", bottom: `calc(50% + ${gap()}rem)` }} />
       <View class={`${armClass} w-0.5 h-2.5`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ left: "calc(50% - 0.0715rem)", top: `calc(50% + ${gap()}rem)` }} />
       <View class={`${armClass} w-2.5 h-0.5`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ top: "calc(50% - 0.0715rem)", right: `calc(50% + ${gap()}rem)` }} />
@@ -40,6 +42,12 @@ export function Crosshair(props: CrosshairProps) {
         data-aimed={props.aimed}
         style={{ left: `calc(50% - ${gap()}rem - 0.357rem)`, top: `calc(50% - ${gap()}rem - 0.357rem)`, width: `calc(${gap() * 2}rem + 0.714rem)`, height: `calc(${gap() * 2}rem + 0.714rem)` }}
       />
+      <Show when={reload() > 0}>
+        <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-11">
+          <View class="absolute inset-0 nine-ring bg-track opacity-muted" />
+          <View class="absolute inset-0 nine-ring bg-hud-accent" wipe={reload()} />
+        </View>
+      </Show>
       <View
         class="absolute size-1 rounded-full bg-fg ring ring-shade-deep data-aimed:bg-foe"
         data-aimed={props.aimed}
@@ -47,10 +55,10 @@ export function Crosshair(props: CrosshairProps) {
       />
       <Show when={hitKey()} keyed>
         <View class="absolute inset-0" data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"}>
-          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% + ${gap()}rem + 0.286rem)`, top: `calc(50% - ${gap()}rem - 0.286rem - 0.5rem)`, rotate: "-45deg" }} />
-          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% + ${gap()}rem + 0.286rem)`, top: `calc(50% + ${gap()}rem + 0.286rem + 0.5rem)`, rotate: "45deg" }} />
-          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% - ${gap()}rem - 0.286rem - 1rem)`, top: `calc(50% + ${gap()}rem + 0.286rem + 0.5rem)`, rotate: "-45deg" }} />
-          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% - ${gap()}rem - 0.286rem - 1rem)`, top: `calc(50% - ${gap()}rem - 0.286rem - 0.5rem)`, rotate: "45deg" }} />
+          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% + ${tickOffset()}rem - 0.4375rem)`, top: `calc(50% - ${tickOffset()}rem - 0.09375rem)`, rotate: "-45deg" }} />
+          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% + ${tickOffset()}rem - 0.4375rem)`, top: `calc(50% + ${tickOffset()}rem - 0.09375rem)`, rotate: "45deg" }} />
+          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% - ${tickOffset()}rem - 0.4375rem)`, top: `calc(50% + ${tickOffset()}rem - 0.09375rem)`, rotate: "-45deg" }} />
+          <View class={tickClass} data-headshot={(props.hit ?? "") == "headshot"} data-kill={(props.hit ?? "") == "kill"} data-shieldbreak={(props.hit ?? "") == "shieldBreak"} style={{ left: `calc(50% - ${tickOffset()}rem - 0.4375rem)`, top: `calc(50% - ${tickOffset()}rem - 0.09375rem)`, rotate: "45deg" }} />
         </View>
       </Show>
     </View>

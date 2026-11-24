@@ -64,8 +64,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
   const blue = props.team == "a";
   const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "inset-shadow-underline inset-shadow-team1" : "inset-shadow-underline inset-shadow-team2";
-  const glow = blue ? "shadow-glow-lg shadow-team1" : "shadow-glow-lg shadow-team2";
-    const edge = blue ? "border-l-thick border-team1" : "border-l-thick border-team2";
+  const edge = blue ? "border-l-thick border-team1" : "border-l-thick border-team2";
   const kda = () => props.columns == "kda";
   return (
     <View class="min-w-0 flex-col" role="table" label={props.name}>
@@ -73,7 +72,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
         <View class="flex-1 min-w-0 flex-row items-baseline gap-x-3 py-1 px-2" role="columnheader">
           <Text class="min-w-0 text-title font-bold tracking-sm uppercase text-fg text-start">{props.name}</Text>
           <Show when={props.score != ""}>
-            <Text class={`flex-none min-w-8 text-center whitespace-nowrap text-display-md font-bold tabular-nums ${ink} ${glow}`} description={t("arena.score.teamScore")}>{props.score}</Text>
+            <Text class={`flex-none min-w-8 text-center whitespace-nowrap text-display-md font-bold tabular-nums text-shadow-tag ${ink}`} description={t("arena.score.teamScore")}>{props.score}</Text>
           </Show>
         </View>
         <Show when={kda()}>

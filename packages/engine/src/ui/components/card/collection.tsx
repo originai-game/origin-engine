@@ -45,7 +45,7 @@ export function CardCollection(props: CardCollectionProps) {
     <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("card.collection.cards")}>
       <Show when={props.title}>
         <View class={`flex-row items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-2`}>
-          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0 shrink`}>
+          <Text class={`font-display text-base font-bold leading-tight text-fg m-0 shrink`}>
             {props.title}
           </Text>
         </View>

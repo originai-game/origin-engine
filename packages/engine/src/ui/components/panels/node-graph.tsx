@@ -34,6 +34,8 @@ export interface NodeGraphProps {
  */
 export function NodeGraph(props: NodeGraphProps) {
   const v = () => props.view;
+  const vw = () => Math.max(v()[2] || 1, 1);
+  const vh = () => Math.max(v()[3] || 1, 1);
   // A drag's last pointer, so a move reports how far it went.
   let last: [number, number] | null = null;
   return (
@@ -55,18 +57,18 @@ export function NodeGraph(props: NodeGraphProps) {
       <View class="absolute inset-12 compact:inset-8 items-center justify-center">
         <View
           class="relative w-full max-h-full"
-          style={{ "aspect-ratio": `${v()[2]} / ${v()[3]}`, translate: `${props.panX ?? 0}px ${props.panY ?? 0}px`, scale: `${props.zoom ?? 1}` }}
+          style={{ "aspect-ratio": `${vw()} / ${vh()}`, translate: `${props.panX ?? 0}px ${props.panY ?? 0}px`, scale: `${props.zoom ?? 1}` }}
         >
           <For each={props.links} key={(l) => l.id}>
             {(l) => (
-              <Line class="absolute inset-0 size-full stroke-2 stroke-rim data-active:stroke-hud-accent data-active:stroke-3" points={l().points} viewBox={`${v()[0]} ${v()[1]} ${v()[2]} ${v()[3]}`} data-active={l().active} />
+              <Line class="absolute inset-0 size-full stroke-2 stroke-rim data-active:stroke-hud-accent data-active:stroke-3" points={l().points} viewBox={`${v()[0]} ${v()[1]} ${vw()} ${vh()}`} data-active={l().active} />
             )}
           </For>
           <For each={props.nodes} key={(n) => n.id}>
             {(n) => (
               <View
                 class="group/node absolute size-0"
-                style={{ left: `${((n().x - v()[0]) / v()[2]) * 100}%`, top: `${((n().y - v()[1]) / v()[3]) * 100}%` }}
+                style={{ left: `${((n().x - v()[0]) / vw()) * 100}%`, top: `${((n().y - v()[1]) / vh()) * 100}%` }}
                 data-locked={n().state === "locked"}
                 data-active={n().state === "active"}
                 data-done={n().state === "done"}
@@ -80,16 +82,15 @@ export function NodeGraph(props: NodeGraphProps) {
                 data-hex={n().shape === "hex"}
               >
                 <View
-                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-regular border-border text-fg group-data-square/node:rounded-field group-data-diamond/node:rounded-control group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-enemy/node:bg-danger group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-thick"
+                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-regular border-border text-fg group-data-square/node:rounded-field group-data-diamond/node:rounded-control group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-ally/node:text-info-fg group-data-enemy/node:bg-danger group-data-enemy/node:text-danger-fg group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-thick"
                   role="button"
                   label={n().label}
                   valueText={n().state}
-                  disabled={n().state === "locked"}
                   selected={n().id === props.selected}
                   onPress={(e) => props.onPick?.(e, n().id)}
                 >
                   <Show when={n().shape === "hex"}>
-                    <View class="absolute inset-0 nine-disc bg-well group-data-ally/node:bg-info group-data-enemy/node:bg-danger" />
+                    <View class="absolute inset-0 rounded-full bg-well group-data-ally/node:bg-info group-data-enemy/node:bg-danger" />
                     <Line class="absolute inset-0 size-full stroke-2 stroke-rim group-data-done/node:stroke-success group-data-active/node:stroke-hud-accent group-data-current/node:stroke-hud-accent group-data-selected/node:stroke-focus group-data-selected/node:stroke-3" points={[50, 2, 92, 26, 92, 74, 50, 98, 8, 74, 8, 26]} closed viewBox={[100, 100]} />
                   </Show>
                   <Icon class="size-6 compact:size-4.5 group-data-diamond/node:-rotate-45 group-data-locked/node:opacity-dim" name={n().icon} />

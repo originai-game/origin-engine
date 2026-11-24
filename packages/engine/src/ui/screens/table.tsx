@@ -15,9 +15,11 @@ export interface TableProps {
  * A HUD plate of plain rows: the first column a name, the others figures.
  */
 export function Table(props: TableProps) {
+  const cols = () => Math.max(1, props.columns.length);
+  const template = () => ({ gridTemplateColumns: ["2fr", ...Array.from({ length: cols() - 1 }, () => "1fr")].join(" ") });
   return (
-    <View class={`w-full p-0 ${packClass("Panel", "frame")}`} role="table" label={props.label}>
-      <View class={`min-h-12 border-b border-border-muted grid grid-cols-[2fr_1fr_1fr] w-full p-2`} role="row">
+    <View class={`w-full p-0 overflow-hidden ${packClass("Panel", "frame")}`} role="table" label={props.label}>
+      <View class={`min-h-12 border-b border-border-muted grid w-full p-2`} style={template()} role="row">
         <For each={props.columns}>
           {(c, i) => (
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold px-2 m-0 data-end:text-end`} role="columnheader" data-end={i() > 0}>

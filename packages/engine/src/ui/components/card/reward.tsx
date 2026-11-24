@@ -40,7 +40,7 @@ export function CardReward(props: CardRewardProps) {
             {props.kicker}
           </Text>
         </Show>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg text-center m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg text-center m-0`}>
           {props.title}
         </Text>
       </View>

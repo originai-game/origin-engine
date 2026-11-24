@@ -1,4 +1,5 @@
-import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import { StarBar } from "../hud/star-bar";
 import "./puzzle.en.ogt";
 
@@ -55,7 +56,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
       </View>
       <View class={`items-center gap-1`} data-result-lose={(props.result) === 'lose'}>
         <Show when={(props.thresholds ?? []).length}>
-          <View class="items-end justify-center gap-2">
+          <View class="flex-row items-end justify-center gap-2">
             <For each={props.thresholds}>
               {(th, i) => (
               <Icon class="text-fg-subtle size-19.5 data-centre:mb-3 data-centre:size-25 compact:size-13 data-lit:text-gold compact:data-centre:mb-2 compact:data-centre:size-17 shrink" name="star" data-lit={i() < props.stars} data-centre={i() === 1 && (props.thresholds ?? []).length === 3} />
@@ -74,7 +75,7 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
         </Show>
       </View>
       <Show when={(props.rows ?? []).length}>
-        <View class="grow shrink bg-tile inset-shadow-lit gap-2">
+        <View class="grow shrink rounded-card bg-tile inset-shadow-lit inset-ring-hairline inset-ring-border gap-2">
           <Scroll class={`py-1 px-3 gap-2`} role="table" label={t("puzzle.summary.breakdown")}>
             <For each={props.rows}>
               {(r) => (
@@ -101,17 +102,17 @@ export function PuzzleSummary(props: PuzzleSummaryProps) {
           </Scroll>
         </View>
       </Show>
-      <View class={`flex-row flex-wrap items-center justify-center gap-1 compact:gap-0.5`}>
-        <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.menu")} onPress={(e) => props.onMenu?.(e)}>
+      <View class={`flex-row flex-wrap items-center justify-center gap-2 compact:gap-1`}>
+        <Button class={`grow shrink basis-0`} label={t("puzzle.summary.menu")} onPress={(e) => props.onMenu?.(e)}>
           <Text>{t("puzzle.summary.menu")}</Text>
-        </View>
-        <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11`} role="button" label={t("puzzle.summary.retry")} onPress={(e) => props.onRetry?.(e)} data-primary={!props.canNext}>
+        </Button>
+        <Button variant={props.canNext ? undefined : "primary"} class={`grow shrink basis-0`} label={t("puzzle.summary.retry")} onPress={(e) => props.onRetry?.(e)}>
           <Text>{t("puzzle.summary.retry")}</Text>
-        </View>
+        </Button>
         <Show when={props.canNext}>
-          <View class={`flex-row items-center justify-center gap-1 grow shrink basis-0 min-h-11 text-accent`} role="button" label={t("puzzle.summary.next")} onPress={(e) => props.onNext?.(e)}>
+          <Button variant="primary" class={`grow shrink basis-0`} label={t("puzzle.summary.next")} onPress={(e) => props.onNext?.(e)}>
             <Text>{t("puzzle.summary.next")}</Text>
-          </View>
+          </Button>
         </Show>
       </View>
     </View>

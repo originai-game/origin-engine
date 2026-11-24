@@ -5,7 +5,7 @@ import "./data-grid.en.ogt";
 export interface DataGridProps {
   /** The headings, a keyed collection of { id, label, numeric }: numeric columns align to the end in tabular figures. */
   columns: ReadonlyArray<{ id: string; label: string; numeric: boolean }>;
-  /** The columns' widths as CSS grid tracks, one per column; empty shares the width equally between four. A numeric column's track holds its widest figure in text-scaled units (calc(96 * var(--font-step-px))), so it grows with the player's text size; a figure is never cut, and the text columns (fr) give way. */
+  /** The columns' widths as CSS grid tracks, one per column; empty shares the width equally between four. A numeric column's track holds its widest figure in text-scaled rem units (e.g. 6rem), so it grows with the player's text size; a figure is never cut, and the text columns (fr) give way. */
   tracks: string;
   /** The rows, a keyed collection of { id, cells }: cells a keyed list of { id, text, numeric }, in the columns' order. Only the rows in view are built. */
   rows: ReadonlyArray<{ id: string; cells: ReadonlyArray<{ id: string; text: string; numeric: boolean }> }>;
@@ -91,9 +91,9 @@ export function DataGrid(props: DataGridProps) {
                 </View>
               </Show>
           }>
-            <View class={`w-full items-center p-6 gap-3`} role="alert" label={props.error}>
-              <View class={`grow shrink basis-0 bg-danger inset-ring-regular inset-ring-danger justify-center items-center gap-3 size-16 rounded-capsule`}>
-                <Icon class="text-danger" name="close" />
+            <View class={`w-full items-center p-6 gap-3`} role="alert" sound="error" label={props.error}>
+              <View class={`grow shrink basis-0 bg-danger text-danger-fg inset-ring-regular inset-ring-danger justify-center items-center gap-3 size-16 rounded-capsule`}>
+                <Icon class="size-8 text-danger-fg" name="close" />
               </View>
               <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>
                 {props.error}
@@ -106,22 +106,22 @@ export function DataGrid(props: DataGridProps) {
       }>
         <View class="p-0 gap-0" role="status" label={t("component.data-grid.loading")}>
           <View class="w-full border-b border-border-muted py-2 px-3">
-            <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
+            <View class={`relative bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
           <View class="w-full border-b border-border-muted py-2 px-3">
-            <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
+            <View class={`relative bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
           <View class="w-full border-b border-border-muted py-2 px-3">
-            <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
+            <View class={`relative bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
           <View class="w-full border-b border-border-muted py-2 px-3">
-            <View class={`bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
+            <View class={`relative bg-bg-subtle w-full h-3 rounded-capsule overflow-hidden`}>
               <View class={`absolute left-0 w-2/5 pointer-events-none bg-linear-to-r from-transparent via-border to-transparent inset-y-0 animate-shimmer`} />
             </View>
           </View>
@@ -132,7 +132,7 @@ export function DataGrid(props: DataGridProps) {
 }
 
 export const fixtures: Record<string, Partial<DataGridProps>> = {
-  default: {"label":"Inventory","tracks":"2fr 1fr calc(48 * var(--font-step-px)) calc(96 * var(--font-step-px))","selected":"b","loading":false,"error":"","empty":"","hint":"","columns":[{"id":"name","label":"Item","numeric":false},{"id":"kind","label":"Type","numeric":false},{"id":"qty","label":"Qty","numeric":true},{"id":"value","label":"Value","numeric":true}],"rows":[{"id":"a","cells":[{"id":"name","text":"Ember Blade","numeric":false},{"id":"kind","text":"Weapon","numeric":false},{"id":"qty","text":"1","numeric":true},{"id":"value","text":"1,250","numeric":true}]},{"id":"b","cells":[{"id":"name","text":"Health Potion","numeric":false},{"id":"kind","text":"Consumable","numeric":false},{"id":"qty","text":"12","numeric":true},{"id":"value","text":"40","numeric":true}]},{"id":"c","cells":[{"id":"name","text":"Iron Shield","numeric":false},{"id":"kind","text":"Armour","numeric":false},{"id":"qty","text":"1","numeric":true},{"id":"value","text":"380","numeric":true}]},{"id":"d","cells":[{"id":"name","text":"Silver Key","numeric":false},{"id":"kind","text":"Quest","numeric":false},{"id":"qty","text":"2","numeric":true},{"id":"value","text":"0","numeric":true}]},{"id":"e","cells":[{"id":"name","text":"Moonstone","numeric":false},{"id":"kind","text":"Gem","numeric":false},{"id":"qty","text":"3","numeric":true},{"id":"value","text":"900","numeric":true}]}]},
+  default: {"label":"Inventory","tracks":"2fr 1fr 3.5rem 6rem","selected":"b","loading":false,"error":"","empty":"","hint":"","columns":[{"id":"name","label":"Item","numeric":false},{"id":"kind","label":"Type","numeric":false},{"id":"qty","label":"Qty","numeric":true},{"id":"value","label":"Value","numeric":true}],"rows":[{"id":"a","cells":[{"id":"name","text":"Ember Blade","numeric":false},{"id":"kind","text":"Weapon","numeric":false},{"id":"qty","text":"1","numeric":true},{"id":"value","text":"1,250","numeric":true}]},{"id":"b","cells":[{"id":"name","text":"Health Potion","numeric":false},{"id":"kind","text":"Consumable","numeric":false},{"id":"qty","text":"12","numeric":true},{"id":"value","text":"40","numeric":true}]},{"id":"c","cells":[{"id":"name","text":"Iron Shield","numeric":false},{"id":"kind","text":"Armour","numeric":false},{"id":"qty","text":"1","numeric":true},{"id":"value","text":"380","numeric":true}]},{"id":"d","cells":[{"id":"name","text":"Silver Key","numeric":false},{"id":"kind","text":"Quest","numeric":false},{"id":"qty","text":"2","numeric":true},{"id":"value","text":"0","numeric":true}]},{"id":"e","cells":[{"id":"name","text":"Moonstone","numeric":false},{"id":"kind","text":"Gem","numeric":false},{"id":"qty","text":"3","numeric":true},{"id":"value","text":"900","numeric":true}]}]},
   loading: {"label":"Inventory","tracks":"","selected":"","loading":true,"error":"","columns":[{"id":"name","label":"Item","numeric":false},{"id":"kind","label":"Type","numeric":false},{"id":"qty","label":"Qty","numeric":true},{"id":"value","label":"Value","numeric":true}],"rows":[]},
   error: {"label":"Inventory","tracks":"","selected":"","loading":false,"error":"The vault did not answer.","columns":[{"id":"name","label":"Item","numeric":false},{"id":"kind","label":"Type","numeric":false},{"id":"qty","label":"Qty","numeric":true},{"id":"value","label":"Value","numeric":true}],"rows":[]},
   empty: {"label":"Inventory","tracks":"","selected":"","loading":false,"error":"","empty":"The satchel holds nothing.","hint":"Fill it at the merchant.","columns":[{"id":"name","label":"Item","numeric":false},{"id":"kind","label":"Type","numeric":false},{"id":"qty","label":"Qty","numeric":true},{"id":"value","label":"Value","numeric":true}],"rows":[]},

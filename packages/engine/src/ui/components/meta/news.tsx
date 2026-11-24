@@ -33,7 +33,7 @@ export function News(props: NewsProps) {
   return (
     <View class={`w-full max-h-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.news.title")} busy={(props.loading ?? false)}>
       <View class={`min-h-12 border-b border-border-muted py-1 px-4`}>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg m-0`}>
           {props.title || t("meta.news.title")}
         </Text>
       </View>

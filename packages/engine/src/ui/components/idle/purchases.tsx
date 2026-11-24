@@ -31,7 +31,7 @@ export function IdlePurchases(props: IdlePurchasesProps) {
     <View class={`grow shrink basis-0 w-full p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("idle.purchases.name")}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight text-fg whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
           {props.title !== '' ? props.title : t("idle.purchases.name")}
         </Text>
         <Show when={(props.amounts ?? []).length}>

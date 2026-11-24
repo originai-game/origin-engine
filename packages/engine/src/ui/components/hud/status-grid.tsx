@@ -47,7 +47,7 @@ const EDGES: Record<string, string> = {
 };
 
 function effectTime(remaining: number): string {
-  return remaining < 10 ? t("component.status-grid.seconds", { value: remaining }) : formatDuration(remaining);
+  return remaining < 10 ? t("component.status-grid.seconds", { value: formatNumber(remaining, { decimals: 1 }) }) : formatDuration(remaining);
 }
 
 function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
@@ -71,18 +71,18 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       >
         <Icon class="size-6 text-fg text-shadow-tag group-data-expiring/statusgrid:animate-pulse" name={props.effect.icon} />
         <Show when={duration() > 0 && remaining() < duration()}>
-          <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={1 - remaining() / duration()} />
+          <View class="absolute inset-0 nine-tile bg-shade-deep" wipe={Math.min(Math.max(1 - remaining() / duration(), 0), 1)} />
         </Show>
       </View>
       <Show when={stacks() > 1 || remaining() > 0}>
         <View class="flex-row items-center gap-x-1">
           <Show when={stacks() > 1}>
-            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-1 text-xs font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {t("component.status-grid.stacks", { count: stacks() })}
             </Text>
           </Show>
           <Show when={remaining() > 0}>
-            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-border rounded-control px-1 text-xs font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {effectTime(remaining())}
             </Text>
           </Show>

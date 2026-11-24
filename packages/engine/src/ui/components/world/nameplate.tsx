@@ -45,6 +45,23 @@ export interface NameplateProps {
   compact?: boolean;
   /** Hidden past this many world units (80). */
   maxDistance?: number;
+  /** Distance at which the nameplate is drawn at scale 1. */
+  scaleAt?: number;
+  /** Minimum world-distance scale. */
+  scaleMin?: number;
+  /** Maximum world-distance scale. */
+  scaleMax?: number;
+  /** Behaviour when behind world geometry. Default "fade". */
+  occlusion?: "fade" | "hide" | "none";
+}
+
+function parsePoint(at?: string): [number, number, number] {
+  const parts = (at ?? "0 0 0").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
 }
 
 /**
@@ -52,14 +69,7 @@ export interface NameplateProps {
  * reaction's ink, its title in small capitals, its health as a bar cut in
  * quarters (a cream ghost of a hit, the shield after the fill) and the
  * cast row (the spell and its time over a thin bar), all on a HUD plate
- * (compact, the bar alone, has none). Read only; the game
- * owns every figure and state. The old style's lean (skewX), the wings'
- * and the target brackets' clip-path arrows, and the interrupted cast's hatch
- * have no TSX surface and are dropped; it stacks over the plates it overlaps,
- * fades behind drawn geometry, and hides past `maxDistance` (the anchor's
- * declutter, occlusion and maxDistance); the quarters are drawn as three notch
- * marks, the plate does not scale when targeted, and the plate's room cap (a
- * viewport measure) stands as max-w-full.
+ * (compact, the bar alone, has none).
  */
 export function Nameplate(props: NameplateProps) {
   const reaction = () => ((props.reaction ?? "") == "" ? "neutral" : (props.reaction ?? ""));
@@ -73,16 +83,18 @@ export function Nameplate(props: NameplateProps) {
   const hp = () => Math.min(Math.max(health(), 0), 1);
   const low = () => health() >= 0 && health() <= 0.25 && !props.dead;
   const elite = () => (props.elite || props.boss) === true;
-  const point = () => ((props.at ?? "0 0 0").split(/\s+/).map(Number) as [number, number, number]);
   const castFill = () => (castState() === "interrupted" ? 1 : Math.min(Math.max(props.castProgress ?? 0, 0), 1));
   return (
     <View
-      anchor={props.entity ? (props.entity as Entity) : point()}
+      anchor={props.entity ? (props.entity as Entity) : parsePoint(props.at)}
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
-      occlusion="fade"
+      occlusion={props.occlusion ?? "fade"}
       maxDistance={props.maxDistance}
-      class={`group -translate-x-1/2 -translate-y-full flex-col items-center gap-y-0.5 w-max max-w-full leading-tight ${props.compact ? "":`py-1 px-2 ${packClass("Plate", "frame")}`}`}
+      scaleAt={props.scaleAt}
+      scaleMin={props.scaleMin}
+      scaleMax={props.scaleMax}
+      class={`group -translate-x-1/2 -translate-y-full pointer-events-none flex-col items-center gap-y-0.5 w-max max-w-full leading-tight ${props.compact ? "":`py-1 px-2 ${packClass("Plate", "frame")}`}`}
       label={props.name}
       data-boss={props.boss}
       data-compact={props.compact}
@@ -122,7 +134,7 @@ export function Nameplate(props: NameplateProps) {
       <Show when={health() >= 0 && !props.dead}>
         <View class="relative flex-row items-center gap-x-1.25">
           <View
-            class={`relative h-2 w-29 bg-track group-data-boss:h-2.5 group-data-boss:w-50 group-data-compact:h-1.5 group-data-compact:w-14.5 ${props.targeted ? (elite() ? "ring-regular ring-knob" : "shadow-glow shadow-sheen ring-regular ring-knob") : elite() ? "shadow-plate ring ring-gold" : "shadow-plate ring ring-rim"}`}
+            class={`relative h-2 w-29 rounded-capsule bg-track group-data-boss:h-2.5 group-data-boss:w-50 group-data-compact:h-1.5 group-data-compact:w-14.5 ${props.targeted ? (elite() ? "ring-regular ring-knob" : "shadow-glow shadow-sheen ring-regular ring-knob") : elite() ? "shadow-plate ring ring-gold" : "shadow-plate ring ring-rim"}`}
             role="meter"
             label={t("world.nameplate.health")}
             valueMin={0}
@@ -130,7 +142,7 @@ export function Nameplate(props: NameplateProps) {
             valueNow={hp()}
             valueText={`${formatNumber(hp() * 100, { decimals: 0 })}%`}
           >
-            <View class="absolute inset-0 overflow-hidden">
+            <View class="absolute inset-0 rounded-capsule overflow-hidden">
               <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-control delay-slow ease-out" style={{ width: `${hp() * 100}%` }} />
               <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-hud-accent" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
@@ -141,7 +153,7 @@ export function Nameplate(props: NameplateProps) {
               </For>
             </View>
             <Show when={low()}>
-              <View class="absolute inset-0 shadow-glow shadow-foe ring ring-foe animate-pulse" />
+              <View class="absolute inset-0 rounded-capsule shadow-glow shadow-foe ring ring-foe animate-pulse" />
             </Show>
           </View>
           <Show when={(props.boss || low()) && !props.compact}>
@@ -164,8 +176,8 @@ export function Nameplate(props: NameplateProps) {
               <Text class="shrink-0 tracking-normal tabular-nums text-fg">{castTime()}</Text>
             </Show>
           </View>
-          <View class="relative h-1.25 overflow-hidden bg-track ring ring-warn group-data-state-locked/cast:ring group-data-state-locked/cast:ring-entry-grain group-data-state-interrupted/cast:shadow-glow group-data-state-interrupted/cast:shadow-foe group-data-state-interrupted/cast:ring group-data-state-interrupted/cast:ring-foe">
-            <View class="absolute left-0 top-0 bottom-0 bg-linear-to-r from-warn via-warn via-80% to-sheen shadow-glow-sm shadow-warn group-data-state-locked/cast:bg-linear-to-r group-data-state-locked/cast:from-fg-muted group-data-state-locked/cast:via-fg group-data-state-locked/cast:via-85% group-data-state-locked/cast:to-sheen group-data-state-locked/cast:shadow-none group-data-state-interrupted/cast:bg-danger group-data-state-interrupted/cast:shadow-none" style={{ width: `${castFill() * 100}%` }} />
+          <View class="relative h-1.25 rounded-capsule overflow-hidden bg-track ring ring-warn group-data-state-locked/cast:ring group-data-state-locked/cast:ring-entry-grain group-data-state-interrupted/cast:shadow-glow group-data-state-interrupted/cast:shadow-foe group-data-state-interrupted/cast:ring group-data-state-interrupted/cast:ring-foe">
+            <View class="absolute left-0 top-0 bottom-0 rounded-capsule bg-linear-to-r from-warn via-warn via-80% to-sheen shadow-glow-sm shadow-warn group-data-state-locked/cast:bg-linear-to-r group-data-state-locked/cast:from-fg-muted group-data-state-locked/cast:via-fg group-data-state-locked/cast:via-85% group-data-state-locked/cast:to-sheen group-data-state-locked/cast:shadow-none group-data-state-interrupted/cast:bg-danger group-data-state-interrupted/cast:shadow-none" style={{ width: `${castFill() * 100}%` }} />
           </View>
         </View>
       </Show>

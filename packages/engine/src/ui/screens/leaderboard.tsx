@@ -1,15 +1,13 @@
 import type { Texture } from "@origingame/engine";
-import {Scroll, For, Show, Text, packClass, type UiEvent, View, formatDuration, t} from "@origingame/engine/ui";
+import {Scroll, For, Show, Text, packClass, type UiEvent, View, formatDuration, formatNumber, t} from "@origingame/engine/ui";
 import { Art } from "../controls/art";
 import { Button } from "../controls/button";
 import { Tab, Tabs } from "../controls/tabs";
 import "./leaderboard.en.ogt";
 
-/** English ordinal (1st, 2nd, 23rd): formatOrdinal has no TSX surface. */
+/** Locale-safe rank badge (#1, #2, #1,284). */
 function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+  return `#${formatNumber(n)}`;
 }
 
 export interface LeaderboardScreenProps {
@@ -46,14 +44,17 @@ export interface LeaderboardScreenProps {
  */
 export function LeaderboardScreen(props: LeaderboardScreenProps) {
   return (
-    <View class={`absolute inset-0 text-fg grow shrink basis-0 p-8 gap-3 compact:p-3 compact:gap-2 disabled:text-fg-subtle ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View
+      class={`absolute inset-0 text-fg grow shrink basis-0 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+2rem)] pr-[calc(env(hud-inset-right)+2rem)] gap-3 compact:pt-[calc(env(hud-inset-top)+0.75rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+0.75rem)] compact:pr-[calc(env(hud-inset-right)+0.75rem)] compact:gap-2 disabled:text-fg-subtle ${packClass("Screen", "frame")} ${props.class ?? ""}`}
+      onAction={{ back: (e) => props.onBack?.(e) }}
+    >
       <View class={`absolute bg-linear-to-r from-shade-deep via-shade-deep via-55% to-shade-deep inset-0`} />
       <View class={`w-full max-w-264 flex-row flex-wrap items-center gap-y-2 gap-x-3 p-0 mx-auto`}>
         <Button class={`shrink`} onPress={(e) => props.onBack?.(e)}><Text>{t("screen.common.back")}</Text></Button>
         <Text class={`font-display text-display-xl font-bold leading-flat tracking-sm uppercase text-fg grow shrink m-0 compact:text-display-sm`}>
           {t("screen.leaderboard.title")}
         </Text>
-        <Button class={`h-7 px-3 compact:h-8 shrink`} onPress={(e) => props.onPeriod?.(e)}>
+        <Button size="sm" class={`shrink`} onPress={(e) => props.onPeriod?.(e)}>
           <Text>{props.period}</Text>
         </Button>
       </View>
@@ -69,7 +70,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         </Tab>
       </Tabs>
       <Show when={props.tab === "league"}>
-        <View class={`w-full max-w-264 flex-row items-center flex-wrap bg-plate-hi py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
+        <View class={`w-full max-w-264 flex-row items-center flex-wrap py-2 px-3 mx-auto gap-3 ${packClass("Panel", "frame")}`}>
           <Text class="text-title font-bold tracking-sm uppercase text-gold m-0 shrink">
             {props.league.name}
           </Text>
@@ -87,7 +88,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <For each={props.rows}>
             {(r) => (
             <View class={`group/row bg-layer-2 text-fg transition duration-control grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-dim compact:gap-x-2 active:scale-nudge ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league"&& r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
-              <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums rounded-control bg-layer-2 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:nine-none group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:nine-none group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:nine-none group-data-place-3/row:text-legendary-fg ${r().rank <= 3 ? "" : packClass("Chip", "frame")}`}>
+              <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums rounded-control bg-layer-2 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:nine-none group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-raised-hi group-data-place-2/row:nine-none group-data-place-2/row:text-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:nine-none group-data-place-3/row:text-legendary-fg ${r().rank <= 3 ? "" : packClass("Chip", "frame")}`}>
                 {t("screen.leaderboard.RowRank", { value: ordinal(r().rank) })}
               </Text>
               <Art class="size-8 compact:size-6" kind="emblem" src={r().texture} />

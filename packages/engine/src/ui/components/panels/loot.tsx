@@ -62,7 +62,7 @@ export function RpgLoot(props: RpgLootProps) {
         <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
           {items().length ? t("rpg.loot.kicker", { count: formatNumber(items().length) }) : t("rpg.loot.title")}
         </Text>
-        <Text class="font-display text-base font-bold leading-tight tracking-tight text-fg m-0">
+        <Text class="font-display text-base font-bold leading-tight text-fg m-0">
           {props.title || t("rpg.loot.title")}
         </Text>
       </View>

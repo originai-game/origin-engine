@@ -28,20 +28,20 @@ export function Cooldown(props: CooldownProps) {
       role="button"
       onPress={(e) => props.onUse?.(e)}
       label={props.label}
-      valueText={cooling() ? formatNumber(props.remaining) : t("component.ability-slot.ready")}
+      valueText={cooling() ? formatNumber(props.remaining, { decimals: 1 }) : t("component.ability-slot.ready")}
       disabled={cooling()}
       data-ready={!cooling()}
     >
       <View class={`absolute items-center justify-center ${packClass("Ability", "face")}`}>
         <Icon class={packClass("Ability", "icon")} name={props.icon} />
         <Show when={cooling()}>
-          <View class={`absolute inset-0 ${packClass("Ability", "sweep")}`} wipe={Math.min(props.remaining / (props.total ?? 1), 1)} wipeCcw />
+          <View class={`absolute inset-0 ${packClass("Ability", "sweep")}`} wipe={Math.min(Math.max((props.total ?? 1) > 0 ? props.remaining / (props.total ?? 1) : 1, 0), 1)} wipeCcw />
         </Show>
       </View>
       <Show when={cooling()}>
         <View class="absolute inset-0 items-center justify-center pointer-events-none">
           <Text class={`whitespace-nowrap ${packClass("Ability", "count")}`}>
-            {props.remaining < 10 ? formatNumber(props.remaining) : formatDuration(props.remaining)}
+            {props.remaining < 10 ? formatNumber(props.remaining, { decimals: 1 }) : formatDuration(props.remaining)}
           </Text>
         </View>
       </Show>

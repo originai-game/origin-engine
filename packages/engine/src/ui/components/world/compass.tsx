@@ -13,6 +13,8 @@ export interface CompassPoi {
   icon?: string;
   /** For a reader. */
   label?: string;
+  /** Optional relative vertical elevation indicator: above, below, or level. */
+  elevation?: "above" | "below" | "level";
 }
 
 export interface CompassProps {
@@ -32,9 +34,9 @@ export interface CompassProps {
  * ticks; each point of interest is a mark under the strip with its
  * distance. A lap (360 degrees) is three windows wide, so a window shows
  * 120 degrees; the strip is three laps and every mark repeats at its
- * bearing on each lap. The band's end fade and the caret's triangle have
- * no TSX surface: the fade is dropped and the caret is a small diamond.
+ * bearing on each lap.
  */
+const TAU = Math.PI * 2;
 const K = 0.4774648;
 
 const POINTS: ReadonlyArray<{ at: number; cardinal: boolean; key: string }> = [
@@ -64,19 +66,26 @@ function poiInk(kind?: string): [string, string] {
 
 function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
   const ink = () => poiInk(props.poi.kind);
+  const bearing = () => ((((props.poi.bearing || 0) % TAU) + TAU) % TAU);
   return (
     <View
-      class="absolute flex-col items-center gap-y-0.75 w-20 top-9.75"
+      class="absolute flex-col items-center gap-y-0.5 w-20 top-9.5"
       label={props.poi.label}
-      style={{ left: `calc(${((props.poi.bearing * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
+      style={{ left: `calc(${((bearing() * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
     >
+      <Show when={props.poi.elevation === "above"}>
+        <View class="size-1.25 rotate-45 border-l-regular border-t-regular border-fg" />
+      </Show>
       <Show when={(props.poi.icon ?? "") !== ""} fallback={
         <View class={`size-2.5 m-0.25 rotate-45 ring-regular ring-entry-hi ${ink()[0]}`} />
       }>
         <Icon class={`size-3 ${ink()[1]}`} name={props.poi.icon} />
       </Show>
+      <Show when={props.poi.elevation === "below"}>
+        <View class="size-1.25 rotate-45 border-r-regular border-b-regular border-fg" />
+      </Show>
       <Show when={(props.poi.distance ?? -1) >= 0}>
-        <Text class="text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0)}${props.units}`}</Text>
+        <Text class="text-caption leading-tight font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{`${formatNumber(props.poi.distance ?? 0, { decimals: 0 })}${props.units}`}</Text>
       </Show>
     </View>
   );
@@ -88,14 +97,18 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
  * interest with their distances. Read only.
  */
 export function Compass(props: CompassProps) {
-  const heading = () => Math.min(Math.max(props.heading ?? 0, 0), Math.PI * 2);
-  const degrees = () => (heading() * 57.29578);
+  const heading = () => {
+    const h = props.heading ?? 0;
+    return Number.isFinite(h) ? (((h % TAU) + TAU) % TAU) : 0;
+  };
+  const deg = () => Math.round(heading() * 57.2957795) % 360;
+  const degText = () => `${String(deg()).padStart(3, "0")}°`;
   const pois = () => props.pois ?? [];
   return (
-    <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={`${formatNumber(degrees())}°`}>
+    <View class="flex-col items-center w-160 max-w-full" role="status" label={t("component.compass.name")} valueText={degText()}>
       <View class="flex-col items-center relative z-1 -mb-1">
         <Text class="py-0 px-1.25 text-xs leading-snug font-bold tabular-nums text-hud-accent-fg bg-hud-accent rounded-control text-shadow-none">
-          {(degrees() < 9.5 ? "00" : degrees() < 99.5 ? "0" : "") + formatNumber(degrees()) + "°"}
+          {degText()}
         </Text>
       </View>
       <View class="relative w-full h-18 overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">

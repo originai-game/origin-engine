@@ -15,11 +15,11 @@ export interface BannerProps {
  */
 export function Banner(props: BannerProps) {
   return (
-    <View class={`items-center text-center py-0 px-4 gap-1 transition duration-slow ease-out starting:scale-enter starting:opacity-0 ${packClass("Plate", "frame")}`} role="status" sound="reward">
-      <Text class={`font-display text-7xl font-bold leading-tight tracking-tight text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg max-w-140 text-balance m-0 compact:text-display-md`}>
+    <View class={`pointer-events-none items-center text-center py-0 px-4 gap-1 transition duration-slow ease-out starting:scale-enter starting:opacity-0 ${packClass("Plate", "frame")}`} role="status" sound="reward">
+      <Text class={`font-display text-7xl font-bold leading-tight text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg max-w-140 text-balance m-0 compact:text-display-md`}>
         {props.title}
       </Text>
-      <View class={`h-0.75`} />
+      <View class={`w-32 h-0.75 rounded-capsule bg-linear-to-r from-transparent via-gold to-transparent`} />
       <Text class={`text-reading font-semibold tracking-label uppercase text-gold text-balance text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 data-hidden:hidden`} data-hidden={props.subtitle === ""}>
         {props.subtitle}
       </Text>

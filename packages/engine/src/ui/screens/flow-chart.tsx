@@ -45,9 +45,9 @@ export function FlowChartScreen(props: FlowChartScreenProps) {
   return (
     <View class={`absolute inset-0 pt-8 pb-6 px-12 gap-y-4 text-accent-hover overflow-hidden compact:pt-4 compact:px-4 compact:gap-y-3 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
       <View class="absolute bg-glass inset-0" />
-      <View class="items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
+      <View class="flex-row items-baseline gap-x-4 p-0 compact:flex-wrap compact:gap-y-1">
         <Button class="text-accent-hover compact:-ml-2" onPress={(e) => props.onBack?.(e)}>
-          <View class="items-center gap-x-1">
+          <View class="flex-row items-center gap-x-1">
             <Icon class="size-4 rtl:-scale-x-100 rtl:scale-y-100 shrink" name="chevronLeft" />
             <Text class="shrink">{t("screen.common.back")}</Text>
           </View>
@@ -70,9 +70,9 @@ export function FlowChartScreen(props: FlowChartScreenProps) {
         onPan={(e, dx, dy) => props.onPan?.(e, dx, dy)}
       />
       <Show when={props.detail !== ""}>
-        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 bg-plate-lo ring-hairline ring-accent shrink-0">
+        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 rounded-panel bg-plate-lo inset-ring-hairline inset-ring-accent shrink-0">
           <View class="grow shrink basis-50 min-w-0 gap-y-0.5">
-            <Text class="text-sm font-bold uppercase tracking-wide text-accent">{t("screen.flow-chart.selected")}</Text>
+            <Text class="text-sm font-bold uppercase tracking-wide text-accent-ink">{t("screen.flow-chart.selected")}</Text>
             <Text class="text-xl font-semibold leading-snug text-fg">{props.detail}</Text>
           </View>
           <Button variant="primary" class="ml-auto min-w-45 compact:basis-full" disabled={!props.canPlay} onPress={(e) => { if (props.canPlay) props.onPlay?.(e); }}>

@@ -65,7 +65,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         role="button"
         onPress={(e) => props.onUse?.(e)}
         label={props.name}
-        valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : cooling() ? formatNumber(props.cooldown) : t("component.ability-slot.ready")}
+        valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : cooling() ? formatNumber(props.cooldown, { decimals: 1 }) : t("component.ability-slot.ready")}
         disabled={off()}
         data-fit={props.fit}
       >
@@ -80,7 +80,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
             <View class={`absolute inset-0 ${packClass("Ability", "tint")}`} />
           </Show>
           <Show when={cooling()}>
-            <View class={`absolute inset-0 ${packClass("Ability", "sweep")} ${ult() ? packClass("Ability", "sweep", "ultimate") : ""}`} wipe={Math.min(props.cooldown / (props.cooldownMax ?? 1), 1)} wipeCcw />
+            <View class={`absolute inset-0 ${packClass("Ability", "sweep")} ${ult() ? packClass("Ability", "sweep", "ultimate") : ""}`} wipe={Math.min(Math.max((props.cooldownMax ?? 1) > 0 ? props.cooldown / (props.cooldownMax ?? 1) : 1, 0), 1)} wipeCcw />
           </Show>
           <Show when={props.disabled && !props.locked}>
             <View class="absolute inset-0 items-center justify-center">
@@ -91,7 +91,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         <Show when={cooling()}>
           <View class="absolute inset-0 items-center justify-center pointer-events-none">
             <Text class={`whitespace-nowrap ${packClass("Ability", "count")}`}>
-              {props.cooldown < 10 ? formatNumber(props.cooldown) : formatDuration(props.cooldown)}
+              {props.cooldown < 10 ? formatNumber(props.cooldown, { decimals: 1 }) : formatDuration(props.cooldown)}
             </Text>
           </View>
         </Show>
@@ -108,7 +108,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         <Show when={props.count > 0}>
           <Text class={`absolute right-1.5 bottom-1.5 ${packClass("Ability", "chip", "count")}`}>{formatNumber(props.count)}</Text>
         </Show>
-        <Show when={props.maxCharges > 1 && !cooling() && !props.locked}>
+        <Show when={props.maxCharges > 1 && !props.locked}>
           <Text class={`absolute -top-1.5 -right-1.5 whitespace-nowrap ${packClass("Ability", "chip", "charges")}`}>{formatNumber(props.charges)}</Text>
         </Show>
       </View>

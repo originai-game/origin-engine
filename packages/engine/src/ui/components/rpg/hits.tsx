@@ -1,4 +1,4 @@
-import { For, formatNumber, packClass, Show, t, Text, View } from "@origingame/engine/ui";
+import { For, formatNumber, Show, t, Text, View } from "@origingame/engine/ui";
 import "./rpg.en.ogt";
 
 export interface RpgHitsProps {
@@ -14,39 +14,41 @@ export interface RpgHitsProps {
  */
 export function RpgHits(props: RpgHitsProps) {
   return (
-    <View class={`flex-col items-start max-w-full pointer-events-none text-stroke-3 text-stroke-bg p-2 ${packClass("Plate", "frame")}`} role="log" label={t("rpg.hits.name")}>
-      <For each={props.hits ?? []} key={(h) => h.id}>
-        {(h, i) => (
-        <View class={`group/hits flex-col items-start max-w-full min-w-0 animate-pop transition duration-fast exit:opacity-0 data-later:mt-8 data-later:opacity-soft data-third:ml-55 data-third:mt-0 data-third:opacity-quiet data-lead:ml-37.5 compact:data-lead:ml-0 compact:data-later:hidden`}
-          data-lead={i() === 0 && (props.hits ?? []).length > 1}
-          data-later={i() >= 1}
-          data-third={i() >= 2}
-          data-normal={h().kind === "normal"}
-          data-burn={h().kind === "burn"}
-          data-critical={h().kind === "critical"}
-          data-heal={h().kind === "heal"}
-          data-miss={h().kind === "miss"}>
-          <Show when={h().call}>
-            <Text class={`max-w-full min-w-0 text-sm font-semibold tracking-label uppercase text-gold whitespace-normal compact:text-xs compact:tracking-normal`}>
-              {h().call}
-            </Text>
-          </Show>
-          <View class="flex-row items-baseline min-w-0 max-w-full gap-1">
-            <Show when={h().kind !== "miss"}>
-              <Text class={`shrink text-display-md leading-none font-bold tabular-nums whitespace-nowrap group-data-critical/hits:text-display-xl group-data-critical/hits:italic group-data-critical/hits:text-gold group-data-burn/hits:text-legendary group-data-heal/hits:text-success compact:text-title compact:group-data-critical/hits:text-4xl`}>
-                {h().kind === "heal" ? t("rpg.hits.heal", { amount: formatNumber(h().amount) }) : formatNumber(h().amount)}
+    <Show when={(props.hits ?? []).length > 0}>
+      <View class={`flex-col items-start max-w-full pointer-events-none text-stroke-3 text-stroke-bg text-shadow-tag p-2`} role="log" label={t("rpg.hits.name")}>
+        <For each={props.hits ?? []} key={(h) => h.id}>
+          {(h, i) => (
+          <View class={`group/hits flex-col items-start max-w-full min-w-0 animate-pop transition duration-fast exit:opacity-0 data-later:mt-8 data-later:opacity-soft data-third:ml-55 data-third:mt-0 data-third:opacity-quiet data-lead:ml-37.5 compact:data-lead:ml-0 compact:data-later:hidden`}
+            data-lead={i() === 0 && (props.hits ?? []).length > 1}
+            data-later={i() >= 1}
+            data-third={i() >= 2}
+            data-normal={h().kind === "normal"}
+            data-burn={h().kind === "burn"}
+            data-critical={h().kind === "critical"}
+            data-heal={h().kind === "heal"}
+            data-miss={h().kind === "miss"}>
+            <Show when={h().call}>
+              <Text class={`max-w-full min-w-0 text-sm font-semibold tracking-label uppercase text-gold whitespace-normal compact:text-xs compact:tracking-normal`}>
+                {h().call}
               </Text>
             </Show>
-            <Show when={h().word}>
-              <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden group-data-burn/hits:text-legendary group-data-miss/hits:text-title group-data-miss/hits:opacity-quiet`}>
-                {h().word}
-              </Text>
-            </Show>
+            <View class="flex-row items-baseline min-w-0 max-w-full gap-1">
+              <Show when={h().kind !== "miss"}>
+                <Text class={`shrink text-display-md leading-none font-bold tabular-nums whitespace-nowrap group-data-critical/hits:text-display-xl group-data-critical/hits:italic group-data-critical/hits:text-gold group-data-burn/hits:text-legendary group-data-heal/hits:text-success compact:text-title compact:group-data-critical/hits:text-4xl`}>
+                  {h().kind === "heal" ? t("rpg.hits.heal", { amount: formatNumber(h().amount) }) : formatNumber(h().amount)}
+                </Text>
+              </Show>
+              <Show when={h().word}>
+                <Text class={`min-w-0 text-sm font-bold whitespace-nowrap overflow-hidden group-data-burn/hits:text-legendary group-data-miss/hits:text-title group-data-miss/hits:opacity-quiet`}>
+                  {h().word}
+                </Text>
+              </Show>
+            </View>
           </View>
-        </View>
-        )}
-      </For>
-    </View>
+          )}
+        </For>
+      </View>
+    </Show>
   );
 }
 

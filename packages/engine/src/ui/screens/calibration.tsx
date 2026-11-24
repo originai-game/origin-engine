@@ -24,7 +24,7 @@ function Slider(props: {
   };
   return (
     <View
-      class="grow shrink basis-50 min-w-0 flex-row items-center h-9"
+      class="grow shrink basis-50 min-w-0 flex-row items-center"
       role="slider"
       tabIndex={0}
       label={props.label}
@@ -151,10 +151,10 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
                   {t("screen.calibration.offsetHint")}
                 </Text>
                 <View class="flex-row flex-wrap items-center gap-y-2 gap-x-3">
-                  <Button class="min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-full" onPress={(e) => props.onMeasure?.(e)}>
+                  <Button class="min-w-40 compact:min-w-0 compact:grow compact:shrink compact:basis-full" onPress={(e) => props.onMeasure?.(e)}>
                     <Text>{t("screen.calibration.start")}</Text>
                   </Button>
-                  <Button class="text-accent min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onTap?.(e)}>
+                  <Button class="min-w-40 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onTap?.(e)}>
                     <Text>{t("screen.calibration.tap")}</Text>
                   </Button>
                   <Text class="text-base leading-normal text-fg-muted line-clamp-3 tabular-nums m-0 compact:text-base shrink">
@@ -178,15 +178,15 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
           </View>
         </Show>
         <View class="flex-row flex-wrap items-center justify-between gap-2">
-          <Button class="min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onBack?.(e)}>
+          <Button class="min-w-40 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onBack?.(e)}>
             <Text>{t("screen.common.back")}</Text>
           </Button>
           <Show when={props.step === "controller"} fallback={
-              <Button variant="primary" class="min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onNext?.(e)}>
+              <Button variant="primary" class="min-w-40 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onNext?.(e)}>
                 <Text>{t("screen.calibration.next")}</Text>
               </Button>
           }>
-            <Button variant="primary" class="min-w-40 h-9 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onDone?.(e)}>
+            <Button variant="primary" class="min-w-40 compact:min-w-0 compact:grow compact:shrink compact:basis-0" onPress={(e) => props.onDone?.(e)}>
               <Text>{t("screen.calibration.done")}</Text>
             </Button>
           </Show>

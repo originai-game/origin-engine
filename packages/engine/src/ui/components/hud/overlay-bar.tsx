@@ -63,10 +63,11 @@ export function OverlayBar(props: OverlayBarProps) {
           <For each={props.overlays ?? []} key={(o) => o.id}>
             {(o) => (
               <View
-                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button inset-ring-hairline inset-ring-border-strong active:bg-none active:bg-tile-pressed`}
+                class={`shrink-0 flex-row items-center h-14 py-1 pr-3 pl-1 gap-x-2 bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep rounded-button inset-ring-hairline inset-ring-border-strong transition duration-control hover:bg-none hover:bg-surface-hover active:bg-none active:bg-tile-pressed data-selected:inset-ring-regular data-selected:inset-ring-accent data-selected:bg-none data-selected:bg-surface-hover`}
                 role="button"
                 label={o().name}
                 pressed={o().id === (props.selected ?? "")}
+                data-selected={o().id === (props.selected ?? "")}
                 onPress={(e) => props.onChoose?.(e, o().id)}
               >
                 <Show when={o().image} fallback={

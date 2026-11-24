@@ -36,7 +36,7 @@ export function Friends(props: FriendsProps) {
   return (
     <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.friends.name")}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+        <Text class={`grow shrink font-display text-base font-bold leading-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.friends.name")}
         </Text>
         <Button class={`min-h-11`} onPress={(e) => props.onAdd?.(e)}>

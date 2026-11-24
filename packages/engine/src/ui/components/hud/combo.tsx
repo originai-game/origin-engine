@@ -13,36 +13,43 @@ export interface ComboProps {
   state?: string;
   /** A custom heading; empty uses Combo. Default "". */
   label?: string;
+  /** Hide the plate completely while idle with zero combo. Default false. */
+  hideWhenIdle?: boolean;
 }
 
 /**
  * The combo readout on its HUD plate: the heading, the count and its
- * multiplier as figures, what state the chain is in, and the window's
+ * multiplier as figures, a broken-chain cue when broken, and the window's
  * progress while it runs. A status: its changes announce. Read only; the
  * game owns the count and the window.
  */
 export function Combo(props: ComboProps) {
   const state = () => props.state ?? "idle";
+  const hidden = () => (props.hideWhenIdle ?? false) && state() === "idle" && (props.count ?? 0) <= 0;
   return (
-    <View
-      class={`group/combo flex-col max-w-full ${packClass("Combo", "plate")}`}
-      role="status"
-      data-active={state() === "active"}
-      data-broken={state() === "broken"}
-      data-idle={state() === "idle"}
-    >
-      <Text class="text-base text-fg text-shadow-tag">{props.label || t("hud.combo.name")}</Text>
-      <View class="flex-row flex-wrap items-baseline gap-x-2">
-        <Text class={`${packClass("Count", "roll")} ${packClass("Combo", "count")}`}>{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
-        <Text class={packClass("Combo", "multiplier")}>{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
+    <Show when={!hidden()}>
+      <View
+        class={`group/combo flex-col max-w-full data-idle:opacity-muted ${packClass("Combo", "plate")}`}
+        role="status"
+        data-active={state() === "active"}
+        data-broken={state() === "broken"}
+        data-idle={state() === "idle"}
+      >
+        <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-tag">{props.label || t("hud.combo.name")}</Text>
+        <View class="flex-row flex-wrap items-baseline gap-x-2">
+          <Text class={`${packClass("Count", "roll")} ${packClass("Combo", "count")}`}>{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
+          <Text class={packClass("Combo", "multiplier")}>{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
+        </View>
+        <Show when={state() === "broken"}>
+          <Text class="text-caption font-semibold uppercase tracking-label text-danger text-shadow-tag">
+            {t("hud.combo.broken")}
+          </Text>
+        </Show>
+        <Show when={(props.remaining ?? -1) >= 0}>
+          <Progress value={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100} label={t("hud.combo.window")} class="w-full" />
+        </Show>
       </View>
-      <Text class="text-caption text-fg-muted group-data-active/combo:text-success group-data-broken/combo:text-danger text-shadow-tag">
-        {state() === "broken" ? t("hud.combo.broken") : state() === "active" ? t("hud.combo.active") : t("hud.combo.idle")}
-      </Text>
-      <Show when={(props.remaining ?? -1) >= 0}>
-        <Progress value={Math.min(Math.max(props.remaining ?? 0, 0), 1) * 100} label={t("hud.combo.window")} class="w-full" />
-      </Show>
-    </View>
+    </Show>
   );
 }
 

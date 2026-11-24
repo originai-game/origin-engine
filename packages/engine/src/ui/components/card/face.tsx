@@ -36,7 +36,7 @@ export interface CardFaceProps {
  */
 export function CardFace(props: CardFaceProps) {
   return (
-    <View class={`group/cardface rounded-card bg-layer-2 text-rim-strong grow size-full p-1 gap-0.5 overflow-hidden data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-muted data-type-status:text-fg-muted data-type-relic:text-gold data-dim:text-rim`} data-framed={props.rarity === "rare"|| props.rarity === "epic"|| props.rarity === "legendary"} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium'|| props.size === 'small'|| props.size === 'tiny'} data-small={props.size === 'small'|| props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
+    <View class={`group/cardface rounded-card bg-layer-2 text-rim-strong grow size-full p-1 gap-0.5 overflow-hidden data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-muted data-type-status:text-fg-muted data-type-relic:text-gold data-dim:text-rim`} data-framed={props.rarity === "rare" || props.rarity === "epic" || props.rarity === "legendary" || props.rarity === "mythic"} data-type-attack={(props.type) === 'attack'} data-type-curse={(props.type) === 'curse'} data-type-power={(props.type) === 'power'} data-type-relic={(props.type) === 'relic'} data-type-skill={(props.type) === 'skill'} data-type-status={(props.type) === 'status'} data-dim={props.dim === true} data-medium={props.size === 'medium'|| props.size === 'small'|| props.size === 'tiny'} data-small={props.size === 'small'|| props.size === 'tiny'} data-tiny={props.size === 'tiny'}>
       <View class="absolute bg-linear-to-b from-current to-transparent to-32% opacity-faint inset-0" />
       <View class={`flex-row items-center grow shrink basis-0 min-h-9/50 justify-center rounded-card bg-tile-pressed text-border-strong gap-0 overflow-hidden`}>
         <View class="absolute opacity-dim inset-0" />
@@ -55,13 +55,13 @@ export function CardFace(props: CardFaceProps) {
         </Text>
       </Show>
       <Show when={props.text}>
-        <Text class={`text-center line-clamp-4 text-caption leading-snug text-fg bg-tile-pressed py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
+        <Text class={`text-center line-clamp-4 text-caption leading-snug text-fg bg-tile-pressed rounded-control py-0.5 px-1 m-0 overflow-hidden group-data-medium/cardface:line-clamp-3 group-data-small/cardface:line-clamp-2 group-data-tiny/cardface:line-clamp-1`}>
           {props.text}
         </Text>
       </Show>
       <View class="absolute inset-0 pointer-events-none hidden group-data-framed/cardface:flex nine-card-frame" />
       <Show when={props.cost}>
-        <View class={`flex-row items-center absolute left-0 top-0 w-7.5 h-8.5 justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg text-lg font-bold gap-0`} label={t("card.face.cost", { cost: props.cost })}>
+        <View class={`flex-row items-center absolute left-1 top-1 size-7.5 justify-center rounded-capsule bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg shadow-plate inset-ring-hairline inset-ring-sheen text-base font-bold gap-0`} label={t("card.face.cost", { cost: props.cost })}>
           <Text class="whitespace-nowrap shrink">{props.cost}</Text>
         </View>
       </Show>

@@ -74,7 +74,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       </Show>
       <Show when={props.key !== ""}>
         <Text
-          class={`max-w-full px-1 text-center text-xs font-bold bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-control shadow-key data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-glow-lg data-ready:inset-shadow-lip`}
+          class={`max-w-full px-1 text-center text-xs font-bold bg-linear-to-b from-key-hi to-key-lo text-key-fg rounded-control shadow-key data-ready:bg-linear-to-b data-ready:from-hud-accent-hi data-ready:to-hud-accent data-ready:shadow-glow-lg data-ready:inset-shadow-lip`}
           data-ready={props.ready}
         >
           {props.key}

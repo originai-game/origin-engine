@@ -72,7 +72,7 @@ function StepCard(props: TutorialScreenProps) {
           <Text>{t("screen.tutorial.skip")}</Text>
         </Button>
         <Show when={!props.waits}>
-          <Button variant="primary" class="ml-auto min-w-30 h-9 shrink" onPress={(e) => props.onNext?.(e)}>
+          <Button variant="primary" class="ml-auto min-w-30 shrink" onPress={(e) => props.onNext?.(e)}>
             <Text>{t("screen.tutorial.next")}</Text>
           </Button>
         </Show>

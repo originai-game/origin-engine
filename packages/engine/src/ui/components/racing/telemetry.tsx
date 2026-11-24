@@ -97,17 +97,20 @@ export function RacingTelemetry(props: RacingTelemetryProps) {
         >
           <Show when={(props.lights ?? -1) >= 0}>
             <View
-              class={`relative w-2/5 h-1.5 mb-0.5 overflow-hidden bg-track compact:h-1`}
+              class={`flex-row items-center gap-x-0.75 w-1/2 h-1.5 mb-0.5 compact:h-1`}
               role="meter"
               label={t("racing.telemetry.lights")}
               valueMin={0}
               valueMax={100}
               valueNow={(props.lights ?? 0) >= 1 ? 100 : (props.lights ?? 0) * 100}
             >
-              <View
-                class="absolute left-0 top-0 h-full bg-linear-to-r from-boon from-43% via-gold via-72% to-foe"
-                style={{ width: `${Math.min(Math.max(props.lights ?? 0, 0), 1) * 100}%` }}
-              />
+              <For each={[0, 1, 2, 3, 4, 5, 6]}>
+                {(i) => {
+                  const lit = () => Math.min(Math.max(props.lights ?? 0, 0), 1) >= (i() + 1) / 7 - 0.04;
+                  const tone = i() < 3 ? "data-lit:bg-boon data-lit:shadow-glow-sm data-lit:shadow-boon" : i() < 5 ? "data-lit:bg-gold data-lit:shadow-glow-sm data-lit:shadow-gold" : "data-lit:bg-foe data-lit:shadow-glow-sm data-lit:shadow-foe";
+                  return <View class={`flex-1 h-full rounded-capsule bg-track ${tone}`} data-lit={lit()} />;
+                }}
+              </For>
             </View>
           </Show>
           <Text class={`text-8xl leading-flat font-bold tabular-nums whitespace-nowrap text-fg compact:text-5xl compact:leading-none`}>{formatNumber(props.speed)}</Text>

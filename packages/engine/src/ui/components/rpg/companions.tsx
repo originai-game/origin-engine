@@ -64,7 +64,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
           </View>
           <Show when={m().key}>
             <Text
-              class={`shrink-0 self-center min-w-5.5 max-w-18 px-1 text-xs leading-normal font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
+              class={`shrink-0 self-center min-w-5.5 max-w-18 px-1 text-xs leading-normal font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:hidden`}
             >
               {m().key}
             </Text>

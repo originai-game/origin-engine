@@ -59,7 +59,7 @@ export interface ShopProps {
  * key, which the game answers with a ShopConfirm), choosetab (a category's
  * key), tabNext and tabPrev (E/Q, bumpers) and retry. A tile the game
  * refused has no buy handler: it keeps the focus so a player can read it,
- * is marked disabled (aria-disabled), dims its art and says why in words
+ * is marked disabled, dims its art and says why in words
  * on its foot. The selected tile wears corner brackets. The grid fills the
  * height it is given and scrolls inside it; narrow, it is two columns and
  * the tabs scroll sideways.
@@ -75,7 +75,7 @@ export function Shop(props: ShopProps) {
               {props.kicker}
             </Text>
           </Show>
-          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg line-clamp-2 m-0 overflow-hidden`}>
+          <Text class={`font-display text-base font-bold leading-tight text-fg line-clamp-2 m-0 overflow-hidden`}>
             {props.title !== '' ? props.title : t("general.shop.name")}
           </Text>
         </View>
@@ -127,13 +127,13 @@ export function Shop(props: ShopProps) {
                     <For each={props.offers}>
                       {(o) => (
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
-                          <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                          <View class={`group/offer relative w-full pt-1 pb-2 px-1 overflow-hidden data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" tabIndex={0} data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"} data-tier-uncommon={o().rarity === "uncommon"} data-tier-rare={o().rarity === "rare"} data-tier-epic={o().rarity === "epic"} data-tier-legendary={o().rarity === "legendary"} data-tier-mythic={o().rarity === "mythic"}>
                             <View class="w-full gap-1">
                               <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                                <View class={`justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
-                                  <View class="absolute opacity-faint inset-0" />
-                                  <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
-                                    <Image class="absolute inset-0 size-full object-cover" src={o().image} />
+                                <View class={`relative justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 group-data-tier-uncommon/offer:inset-ring-regular group-data-tier-uncommon/offer:inset-ring-uncommon group-data-tier-rare/offer:inset-ring-regular group-data-tier-rare/offer:inset-ring-rare group-data-tier-epic/offer:inset-ring-regular group-data-tier-epic/offer:inset-ring-epic group-data-tier-legendary/offer:inset-ring-regular group-data-tier-legendary/offer:inset-ring-legendary group-data-tier-mythic/offer:inset-ring-regular group-data-tier-mythic/offer:inset-ring-mythic ${packClass("Slot", "frame")}`}>
+                                  <View class="absolute opacity-faint inset-0 bg-linear-to-b from-common to-transparent group-data-tier-uncommon/offer:from-uncommon group-data-tier-rare/offer:from-rare group-data-tier-epic/offer:from-epic group-data-tier-legendary/offer:from-legendary group-data-tier-mythic/offer:from-mythic" />
+                                  <Show when={o().image} fallback={<Icon class="size-12 compact:size-9 opacity-dim" name={o().icon} />}>
+                                    <Image class="absolute inset-0 size-full object-cover opacity-dim" src={o().image} />
                                   </Show>
                                 </View>
                               </Flourish>
@@ -143,7 +143,7 @@ export function Shop(props: ShopProps) {
                                 </Text>
                               </Show>
                               <Show when={o().badge}>
-                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg rounded-control transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                   {o().badge}
                                 </Text>
                               </Show>
@@ -194,15 +194,15 @@ export function Shop(props: ShopProps) {
                               </View>
                             </View>
                             <Show when={o().id === props.selected}>
-                              <View class={`absolute pointer-events-none inset-0`} />
+                              <View class={`absolute pointer-events-none inset-0 rounded-card inset-ring-regular inset-ring-accent`} />
                             </Show>
                           </View>
                       }>
-                        <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                        <View class={`group/offer relative w-full pt-1 pb-2 px-1 overflow-hidden data-featured:col-span-2 hover:bg-surface-hover transition duration-control ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"} data-tier-uncommon={o().rarity === "uncommon"} data-tier-rare={o().rarity === "rare"} data-tier-epic={o().rarity === "epic"} data-tier-legendary={o().rarity === "legendary"} data-tier-mythic={o().rarity === "mythic"}>
                           <View class="w-full gap-1">
                             <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                              <View class={`justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
-                                <View class="absolute opacity-faint inset-0" />
+                              <View class={`relative justify-center items-center w-full h-24 text-fg-muted gap-2 overflow-hidden compact:h-15 group-data-tier-uncommon/offer:inset-ring-regular group-data-tier-uncommon/offer:inset-ring-uncommon group-data-tier-rare/offer:inset-ring-regular group-data-tier-rare/offer:inset-ring-rare group-data-tier-epic/offer:inset-ring-regular group-data-tier-epic/offer:inset-ring-epic group-data-tier-legendary/offer:inset-ring-regular group-data-tier-legendary/offer:inset-ring-legendary group-data-tier-mythic/offer:inset-ring-regular group-data-tier-mythic/offer:inset-ring-mythic ${packClass("Slot", "frame")}`}>
+                                <View class="absolute opacity-faint inset-0 bg-linear-to-b from-common to-transparent group-data-tier-uncommon/offer:from-uncommon group-data-tier-rare/offer:from-rare group-data-tier-epic/offer:from-epic group-data-tier-legendary/offer:from-legendary group-data-tier-mythic/offer:from-mythic" />
                                 <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
                                   </Show>
@@ -214,7 +214,7 @@ export function Shop(props: ShopProps) {
                               </Text>
                             </Show>
                             <Show when={o().badge}>
-                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg rounded-control transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                 {o().badge}
                               </Text>
                             </Show>
@@ -249,7 +249,7 @@ export function Shop(props: ShopProps) {
                             </View>
                           </View>
                           <Show when={o().id === props.selected}>
-                            <View class={`absolute pointer-events-none inset-0`} />
+                            <View class={`absolute pointer-events-none inset-0 rounded-card inset-ring-regular inset-ring-accent`} />
                           </Show>
                         </View>
                       </Show>

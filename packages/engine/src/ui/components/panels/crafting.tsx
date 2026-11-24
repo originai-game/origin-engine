@@ -61,7 +61,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
         <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap`}>
           {t("rpg.craft.title")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg m-0`}>
           {props.title || t("rpg.craft.title")}
         </Text>
       </View>
@@ -91,7 +91,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                 {/* The rarity's leading edge, inside the frame, which is the row's edge. */}
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
-                <View class={`items-center w-full gap-2`}>
+                <View class={`flex-row items-center w-full gap-2`}>
                   <View class={`justify-center items-center gap-2 size-11 shrink-0 group-data-not-can/row:opacity-dim group-data-tier-uncommon/row:inset-ring-regular group-data-tier-uncommon/row:inset-ring-uncommon group-data-tier-rare/row:inset-ring-regular group-data-tier-rare/row:inset-ring-rare group-data-tier-epic/row:inset-ring-regular group-data-tier-epic/row:inset-ring-epic group-data-tier-legendary/row:inset-ring-regular group-data-tier-legendary/row:inset-ring-legendary group-data-tier-mythic/row:inset-ring-regular group-data-tier-mythic/row:inset-ring-mythic ${packClass("Slot", "frame")}`}>
                     <Icon class={`size-37/50`} name={recipe().icon} />
                   </View>
@@ -145,7 +145,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
                       <View class={`grid grid-cols-fill-32.5 p-0 m-0 gap-1`}>
                         <For each={(props.ingredients ?? [])} key={(ingredient) => ingredient.id}>
                           {(ingredient) => (
-                          <View class={`bg-tile rounded-card py-1 px-2 gap-0.5 data-not-sufficient:inset-ring-regular data-not-sufficient:inset-ring-danger`} data-not-sufficient={!(ingredient().sufficient)}>
+                          <View class={`group/ingredient bg-tile rounded-card py-1 px-2 gap-0.5 data-not-sufficient:inset-ring-regular data-not-sufficient:inset-ring-danger`} data-not-sufficient={!(ingredient().sufficient)}>
                             <Text class={`text-fg-muted`}>
                               {ingredient().name}
                             </Text>

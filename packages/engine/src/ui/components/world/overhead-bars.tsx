@@ -23,6 +23,23 @@ export interface OverheadBarsProps {
   bars?: ReadonlyArray<OverheadBar>;
   /** World units over each unit's point (its head). */
   height?: number;
+  /** Distance at which bars are drawn at scale 1. */
+  scaleAt?: number;
+  /** Minimum world-distance scale. */
+  scaleMin?: number;
+  /** Maximum world-distance scale. */
+  scaleMax?: number;
+  /** Maximum world distance before hiding. */
+  maxDistance?: number;
+}
+
+function parsePoint(at: string): [number, number, number] {
+  const parts = (at || "0 0 0").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
 }
 
 /**
@@ -36,8 +53,7 @@ export function OverheadBars(props: OverheadBarsProps) {
     <View role="group" label={t("world.bars.name")}>
       <For each={props.bars ?? []} key={(b) => b.id}>
         {(b) => {
-          const point = () => b().at.split(/\s+/).map(Number) as [number, number, number];
-          const anchor = () => (b().entity ? (b().entity as Entity) : point());
+          const anchor = () => (b().entity ? (b().entity as Entity) : parsePoint(b().at));
           const share = () => (b().max > 0 ? Math.min(Math.max(b().value / b().max, 0), 1) : 0);
           const resourceShare = () =>
             (b().resourceMax ?? 0) > 0
@@ -49,15 +65,19 @@ export function OverheadBars(props: OverheadBarsProps) {
               lift={[0, height(), 0]}
               occlusion="fade"
               declutter="stack"
-              class="-translate-x-1/2 flex-col items-center gap-y-0.5"
+              scaleAt={props.scaleAt}
+              scaleMin={props.scaleMin}
+              scaleMax={props.scaleMax}
+              maxDistance={props.maxDistance}
+              class="-translate-x-1/2 pointer-events-none flex-col items-center gap-y-0.5"
             >
-              <View class="relative h-1.25 w-11.5 overflow-hidden bg-track ring ring-rim">
+              <View class="relative h-1.25 w-11.5 rounded-capsule overflow-hidden bg-track ring ring-rim">
                 <View
-                  class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`}
+                  class={`absolute left-0 top-0 h-full rounded-capsule ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`}
                   style={{ width: `${share() * 100}%` }}
                 />
                 <View
-                  class={`absolute left-0 top-0 h-full bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold ${packClass("Bar", "fill")}`}
+                  class={`absolute left-0 top-0 h-full rounded-capsule bg-success data-ally:bg-info data-enemy:bg-danger data-neutral:bg-gold ${packClass("Bar", "fill")}`}
                   data-ally={b().side === "ally"}
                   data-enemy={b().side === "enemy"}
                   data-neutral={b().side === "neutral"}
@@ -65,9 +85,9 @@ export function OverheadBars(props: OverheadBarsProps) {
                 />
               </View>
               <Show when={(b().resourceMax ?? 0) > 0}>
-                <View class="relative h-0.75 w-9.25 overflow-hidden bg-track ring ring-rim">
+                <View class="relative h-0.75 w-9.25 rounded-capsule overflow-hidden bg-track ring ring-rim">
                   <View
-                    class={`absolute left-0 top-0 h-full bg-mana ${packClass("Bar", "fill")}`}
+                    class={`absolute left-0 top-0 h-full rounded-capsule bg-mana ${packClass("Bar", "fill")}`}
                     style={{ width: `${resourceShare() * 100}%` }}
                   />
                 </View>

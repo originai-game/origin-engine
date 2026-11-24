@@ -1,4 +1,5 @@
-import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, formatNumber, t} from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
@@ -58,14 +59,14 @@ export function PassTrack(props: PassTrackProps) {
               {props.season && props.refresh ? t("meta.pass.kicker", { season: props.season, refresh: props.refresh }) : props.season || props.refresh}
             </Text>
           </Show>
-          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+          <Text class={`font-display text-base font-bold leading-tight text-fg m-0`}>
             {props.title || t("meta.pass.title")}
           </Text>
         </View>
         <Show when={!(props.premiumUnlocked ?? false) && props.upgradeLabel}>
-          <View class={`flex-row items-center justify-center gap-1 text-accent max-w-full min-h-11 compact:w-full`} role="button" disabled={(props.disabled ?? false) || (props.loading ?? false) || !!props.error} onPress={(e) => props.onUpgrade?.(e)}>
+          <Button variant="primary" class={`max-w-full compact:w-full`} disabled={(props.disabled ?? false) || (props.loading ?? false) || !!props.error} onPress={(e) => props.onUpgrade?.(e)}>
             <Text class="whitespace-normal">{props.upgradeLabel}</Text>
-          </View>
+          </Button>
         </Show>
       </View>
       <Show when={(props.loading ?? false)} fallback={
@@ -74,7 +75,7 @@ export function PassTrack(props: PassTrackProps) {
                   <Scroll class="grow shrink basis-0 w-full gap-3">
                     <View class={`flex-row items-center w-full gap-3`}>
                       <Show when={props.level}>
-                        <View class={`justify-center items-center text-title font-bold text-hud-accent-fg bg-linear-to-b from-hud-accent-hi to-hud-accent gap-2 size-16`} label={t("meta.pass.level", { level: props.level })}>
+                        <View class={`justify-center items-center text-title font-bold text-hud-accent-fg bg-linear-to-b from-hud-accent-hi to-hud-accent rounded-card shadow-glow gap-2 size-16`} label={t("meta.pass.level", { level: props.level })}>
                           <Text>{props.level}</Text>
                         </View>
                       </Show>
@@ -87,8 +88,8 @@ export function PassTrack(props: PassTrackProps) {
                             {props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}
                           </Text>
                         </View>
-                        <View class={`bg-track shadow-sunk w-full h-2.5 mx-1 rounded-capsule`} role="meter" label={t("meta.pass.progress")} valueText={props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}>
-                          <View class={`bg-hud-accent absolute left-0 inset-y-0`} style={{ width: `${(100 * ((props.progress ?? 0) > 1 ? 1 : (props.progress ?? 0) < 0 ? 0 : (props.progress ?? 0)))}%` }} />
+                        <View class={`relative bg-track shadow-sunk w-full h-2.5 mx-1 rounded-capsule overflow-hidden`} role="meter" label={t("meta.pass.progress")} valueText={props.progressText || `${formatNumber((props.progress ?? 0) * 100, { decimals: 0 })}%`}>
+                          <View class={`bg-hud-accent absolute left-0 inset-y-0 rounded-capsule`} style={{ width: `${(100 * ((props.progress ?? 0) > 1 ? 1 : (props.progress ?? 0) < 0 ? 0 : (props.progress ?? 0)))}%` }} />
                         </View>
                       </View>
                     </View>
@@ -129,9 +130,9 @@ export function PassTrack(props: PassTrackProps) {
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
-                                    <View class={`flex-row items-center justify-center gap-1 text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
+                                    <Button variant="primary" size="sm" class="mt-auto w-full" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
                                       <Text class="whitespace-normal">{t("meta.claim")}</Text>
-                                    </View>
+                                    </Button>
                                   </Show>
                               }>
                                 <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:nine-none data-kind-claimed:text-success-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>
@@ -175,9 +176,9 @@ export function PassTrack(props: PassTrackProps) {
                                         <Text class="whitespace-nowrap">{t("meta.locked")}</Text>
                                       </View>
                                   }>
-                                    <View class={`flex-row items-center justify-center gap-1 text-accent mt-auto w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
+                                    <Button variant="primary" size="sm" class="mt-auto w-full" disabled={(props.disabled ?? false)} onPress={(e) => props.onClaim?.(e, r().id)}>
                                       <Text class="whitespace-normal">{t("meta.claim")}</Text>
-                                    </View>
+                                    </Button>
                                   </Show>
                               }>
                                 <View class={`flex-row items-center mt-auto text-xs font-bold tracking-label uppercase text-fg-muted py-0.5 px-1 gap-0.5 data-kind-claimed:bg-none data-kind-claimed:bg-success data-kind-claimed:nine-none data-kind-claimed:text-success-fg ${packClass("Chip", "frame")}`} data-kind-claimed={true}>

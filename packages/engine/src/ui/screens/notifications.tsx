@@ -28,8 +28,8 @@ export function NotificationsScreen(props: NotificationsScreenProps) {
         {(n) => (
         <View class={`relative group/frame flex-row pr-1 pl-4.25 items-center w-90 max-w-full py-2 gap-3 compact:w-full ${packClass("Plate", "frame")} disabled:text-fg-subtle`} data-tone-danger={(n().tone) === 'danger'} data-tone-success={(n().tone) === 'success'} data-tone-warn={(n().tone) === 'warn'}>
           <View class="absolute left-0 w-1 bg-info inset-y-0 group-data-tone-success/frame:bg-none group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-none group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-none group-data-tone-danger/frame:bg-danger" />
-          <View class={`relative shrink-0 flex-row size-12 nine-socket`}>
-            <View class="absolute inset-0 nine-socket-rim bg-info group-data-tone-success/frame:bg-success group-data-tone-warn/frame:bg-warn group-data-tone-danger/frame:bg-danger" />
+          <View class={`relative shrink-0 flex-row size-12 rounded-card overflow-hidden bg-tile`}>
+            <View class="absolute inset-0 rounded-card bg-transparent inset-ring-regular inset-ring-info group-data-tone-success/frame:inset-ring-success group-data-tone-warn/frame:inset-ring-warn group-data-tone-danger/frame:inset-ring-danger" />
             <View class="flex-row items-center justify-center w-full text-info group-data-tone-success/frame:text-success group-data-tone-warn/frame:text-warn group-data-tone-danger/frame:text-danger shrink">
               <Icon class="size-4 shrink" name={n().tone === 'success' ? 'check' : n().tone === 'warn' ? 'bolt' : n().tone === 'danger' ? 'close' : 'star'} />
             </View>

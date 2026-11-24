@@ -27,25 +27,24 @@ export interface RadialMenuProps {
   detail?: string;
   /** Aim: the pointer moved. */
   onAim?: (e: UiEvent) => void;
+  /** Optional slice hover callback when pointer enters a slice's button. */
+  onHover?: (e: UiEvent, id: string) => void;
   /** Choose a slice. */
   onChoose?: (e: UiEvent, id: string) => void;
 }
 
 /**
- * A wheel of slices over the scene: a disc, each slice a plate wedge with
+ * A wheel of slices over the scene: a frosted disc, each slice a wedge with
  * its icon, label and cost upright at its centre, the chosen slice's wedge
- * lit and its line in the centre well. The game owns the aim and the
- * choice; the buttons report theirs. The style's SVG wedges are sampled
- * <Line> polylines here; the buttons sit by their slice's turn with
- * inline transforms, since the turn is data. The wheel is two --size-4xl
- * across and every offset is a share of that.
+ * lit and its line in a frosted centre well. The game owns the aim and the
+ * choice; the buttons report theirs.
  */
 const TAU = Math.PI * 2;
-const R = 105;
+const R = 108;
 
 function wedgePoints(at: number, span: number): readonly number[] {
-  const start = (at - span / 2) * TAU - Math.PI / 2 + 0.0175;
-  const sweep = Math.max(span - 0.006, 0.01) * TAU;
+  const start = (at - span / 2) * TAU - Math.PI / 2 + 0.025;
+  const sweep = Math.max(span - 0.008, 0.01) * TAU;
   const points: number[] = [];
   const steps = 24;
   for (let k = 0; k <= steps; k++) {
@@ -61,17 +60,18 @@ function wedgePoints(at: number, span: number): readonly number[] {
  * onChoose; the game decides what a slice does.
  */
 export function RadialMenu(props: RadialMenuProps) {
-  const span = () => props.span ?? 0;
+  const items = () => props.items ?? [];
+  const span = () => (props.span && props.span > 0 ? props.span : items().length > 0 ? 1 / items().length : 0);
   const chosen = () => props.chosen ?? "";
   return (
     <View class="relative size-70 pointer-events-auto" role="menu" label={t("component.radial-menu.name")} onPointerMove={(e) => props.onAim?.(e)}>
-      <View class="absolute inset-0 rounded-full bg-hud ring ring-shade-deep" />
-      <For each={props.items ?? []} key={(item) => item.id}>
+      <View class="absolute inset-0 rounded-full bg-hud backdrop-blur-regular inset-ring-hairline inset-ring-border shadow-panel" />
+      <For each={items()} key={(item) => item.id}>
         {(item) => (
           <View class="group/radialmenu absolute inset-0" data-chosen={item().id === chosen()}>
-            <View class="absolute inset-0 flex-row items-center justify-center">
+            <View class="absolute inset-0 flex-row items-center justify-center pointer-events-none">
               <View class="relative size-70">
-                <Line viewBox="0 0 320 320" points={wedgePoints(item().at, span())} class="w-full h-full stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-86" />
+                <Line viewBox="0 0 320 320" points={wedgePoints(item().at, span())} class="w-full h-full stroke-rim-soft group-data-chosen/radialmenu:stroke-accent stroke-64" />
               </View>
             </View>
             <View
@@ -83,11 +83,12 @@ export function RadialMenu(props: RadialMenuProps) {
                 style={{ transform: `rotate(${item().at * -360}deg)` }}
               >
                 <View
-                  class="group/radialitem flex-col items-center justify-center size-full"
+                  class="group/radialitem flex-col items-center justify-center size-full px-1"
                   role="menuitem"
                   label={item().label}
                   current={item().id === chosen()}
                   disabled={item().disabled}
+                  onFocus={(e) => props.onHover?.(e, item().id)}
                   onPress={(e) => props.onChoose?.(e, item().id)}
                   data-chosen={item().id === chosen()}
                   data-disabled={item().disabled === true}
@@ -95,11 +96,11 @@ export function RadialMenu(props: RadialMenuProps) {
                   <Show when={(item().icon ?? "") !== ""}>
                     <Icon class="size-6 text-fg group-data-chosen/radialitem:text-accent-fg group-data-chosen/radialitem:scale-lift group-data-disabled/radialitem:opacity-dim" name={item().icon} />
                   </Show>
-                  <Text class="max-w-full text-caption whitespace-nowrap text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-dim">{item().label}</Text>
+                  <Text class="max-w-full text-caption whitespace-nowrap truncate text-fg text-shadow-xs group-data-chosen/radialitem:text-accent-fg group-data-disabled/radialitem:opacity-dim">{item().label}</Text>
                   <Show when={(item().cost ?? "") !== ""}>
                     <View class="flex-row items-center gap-x-0.5">
-                      <Icon class="size-4 text-fg" name="coin" />
-                      <Text class={`${item().unaffordable ? "text-danger" : "text-warn"} text-reading font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
+                      <Icon class="size-3.5 text-fg" name="coin" />
+                      <Text class={`${item().unaffordable ? "text-danger" : "text-warn"} text-xs font-bold tabular-nums whitespace-nowrap text-shadow-xs`}>{item().cost}</Text>
                     </View>
                   </Show>
                 </View>
@@ -108,13 +109,13 @@ export function RadialMenu(props: RadialMenuProps) {
           </View>
         )}
       </For>
-      <View class="absolute inset-0 flex-col items-center justify-center p-2 pointer-events-none">
+      <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-24 rounded-full bg-glass backdrop-blur-thin inset-ring-hairline inset-ring-border shadow-plate flex-col items-center justify-center p-2 pointer-events-none">
         <Show when={(props.detail ?? "") !== ""} fallback={
-          <For each={(props.items ?? []).filter((item) => item.id === chosen())} key={(item) => item.id}>
-            {(item) => <Text class="text-center text-caption text-fg-muted text-shadow-xs">{item().label}</Text>}
+          <For each={items().filter((item) => item.id === chosen())} key={(item) => item.id}>
+            {(item) => <Text class="text-center text-caption font-semibold text-fg text-shadow-xs line-clamp-2">{item().label}</Text>}
           </For>
         }>
-          <Text class="text-center text-caption text-fg-muted text-shadow-xs">{props.detail}</Text>
+          <Text class="text-center text-caption text-fg-muted text-shadow-xs line-clamp-3">{props.detail}</Text>
         </Show>
       </View>
     </View>

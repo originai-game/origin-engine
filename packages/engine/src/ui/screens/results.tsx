@@ -53,7 +53,10 @@ export interface ResultsScreenProps {
  */
 export function ResultsScreen(props: ResultsScreenProps) {
   return (
-    <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass py-8 px-16 compact:p-3 short:py-3 short:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View
+      class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-55% to-glass pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] pl-[calc(env(hud-inset-left)+4rem)] pr-[calc(env(hud-inset-right)+4rem)] compact:pt-[calc(env(hud-inset-top)+0.75rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+0.75rem)] compact:pr-[calc(env(hud-inset-right)+0.75rem)] short:py-3 short:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}
+      sound={props.won ? "reward" : "error"}
+    >
       <View class={`max-w-384 p-0 mx-auto gap-4 size-full disabled:text-fg-subtle short:flex-row compact:gap-3 compact:h-auto compact:max-h-full compact:my-auto shrink ${packClass("Panel", "frame")}`}>
         <Scroll class="grow shrink basis-0 compact:grow-0 compact:basis-auto gap-6 compact:justify-start compact:gap-3 short:justify-start short:gap-2">
           <View class="flex-row items-end gap-6 compact:items-start compact:gap-3">
@@ -63,8 +66,8 @@ export function ResultsScreen(props: ResultsScreenProps) {
               </Text>
               <View class="h-px w-full max-w-140 bg-linear-to-r from-transparent via-fg-muted to-transparent" />
               <Show when={props.level !== undefined}>
-                <View class="items-center max-w-160 gap-3">
-                  <Text class="text-center leading-13.5 bg-linear-to-b from-epic to-glass-lo text-fg text-title font-bold tabular-nums size-13.5 compact:leading-10 compact:text-base compact:size-10">
+                <View class="flex-row items-center max-w-160 gap-3">
+                  <Text class="text-center leading-13.5 rounded-card bg-linear-to-b from-epic to-glass-lo text-fg text-title font-bold tabular-nums size-13.5 compact:leading-10 compact:text-base compact:size-10">
                     {props.level}
                   </Text>
                   <View class="grow shrink basis-0 gap-1">
@@ -83,7 +86,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
             </View>
             <Show when={props.grade !== ""}>
               <View class="items-center gap-1">
-                <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75">
+                <View class="rounded-card bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75">
                   <Text class={`text-center leading-flat font-bold text-fg m-0 compact:leading-21.5 compact:w-18.75 compact:h-21.5 compact:text-display-xl short:leading-21.5 short:w-18.75 short:h-21.5 short:text-display-xl`} role="heading">
                     {props.grade}
                   </Text>
@@ -99,7 +102,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
             <View class="flex-row w-full" role="tablist" label={t("screen.results.grade")}>
               <For each={[{ value: "summary", label: t("screen.results.tabSummary") }, { value: "graphs", label: t("screen.results.tabGraphs") }, { value: "board", label: t("screen.results.tabBoard") }]}>
                 {(tab) => (
-                  <View class={`flex-row gap-1 justify-center items-center grow min-h-11 data-selected:text-accent text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
+                  <View class={`relative flex-row gap-1 justify-center items-center grow min-h-11 data-selected:text-accent-ink text-fg-muted`} role="tab" tabIndex={0} selected={props.tab === tab().value} data-selected={props.tab === tab().value} label={tab().label} onPress={(e) => props.onTab?.(e, tab().value)}>
                     <Show when={props.tab === tab().value}><View class={`absolute inset-x-2 bottom-0 h-0.75 rounded-capsule bg-accent pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
                     <Text>{tab().label}</Text>
                   </View>
@@ -151,7 +154,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                     <For each={props.rewards}>
                       {(r) => (
                       <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
-                        <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
+                        <View class="relative rounded-card overflow-hidden bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                           <Show when={!r().texture && r().icon}>
                             <Icon class="absolute inset-0 m-auto size-14 compact:size-10 text-gold" name={r().icon ?? ""} />

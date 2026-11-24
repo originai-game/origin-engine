@@ -33,7 +33,7 @@ const FILL: Record<string, string> = {
  */
 export function Pips(props: PipsProps) {
   return (
-    <View class={`group/pips flex-row flex-wrap items-center text-fg max-w-full p-0 gap-2 disabled:text-fg-subtle ${props.class ?? ""}`} role="group" label={props.label || t("base.pips.resource")} busy={(props.loading ?? false)} aria-disabled={(props.disabled ?? false)} data-off={(props.disabled ?? false)}>
+    <View class={`group/pips flex-row flex-wrap items-center text-fg max-w-full p-0 gap-2 disabled:text-fg-subtle ${props.class ?? ""}`} role="group" label={props.label || t("base.pips.resource")} busy={(props.loading ?? false)} disabled={(props.disabled ?? false)} data-off={(props.disabled ?? false)}>
       <View class={`shrink ${packClass("Pips", "label")}`}>
         <Text>{props.label || t("base.pips.resource")}</Text>
       </View>

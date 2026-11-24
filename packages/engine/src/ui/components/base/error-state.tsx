@@ -1,4 +1,5 @@
 import { Icon, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import { Spinner } from "./spinner";
 import "./states.en.ogt";
 
@@ -31,16 +32,16 @@ export interface ErrorStateProps {
  */
 export function ErrorState(props: ErrorStateProps) {
   return (
-    <View class={`bg-tile shadow-sunk text-fg items-center text-center p-6 gap-4 rounded-block disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2`} role="alert" busy={(props.busy ?? false)} label={props.title || t("base.error.title")}>
+    <View class={`bg-tile shadow-sunk text-fg items-center text-center p-6 gap-4 rounded-block disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2`} role="alert" sound="error" busy={(props.busy ?? false)} label={props.title || t("base.error.title")}>
       <View class={`border-danger bg-danger text-danger-fg justify-center items-center gap-4 size-16 rounded-capsule border-regular animate-pop`}>
-        <Icon class={`text-bg size-8`} name="close" />
+        <Icon class={`text-danger-fg size-8`} name="close" />
       </View>
       <View class="items-center max-w-105 gap-1">
         <Text class={`font-semibold text-lg text-fg m-0`}>
           {props.title || t("base.error.title")}
         </Text>
         <Show when={props.body}>
-          <Text class={`text-center m-0`}>{props.body}</Text>
+          <Text class={`text-fg-muted text-center m-0`}>{props.body}</Text>
         </Show>
         <Show when={props.code}>
           <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-border text-fg transition duration-control self-center w-fit mt-1 mb-0 max-w-full py-0 px-2 mx-0 rounded-control`}>
@@ -49,21 +50,21 @@ export function ErrorState(props: ErrorStateProps) {
         </Show>
       </View>
       <Show when={(props.canRetry ?? true) || props.dismissLabel}>
-        <View class={`flex-row flex-wrap items-center justify-center gap-4`}>
+        <View class={`flex-row flex-wrap items-center justify-center gap-3`}>
           <Show when={(props.canRetry ?? true)}>
-            <View class={`flex-row items-center justify-center gap-1 text-accent min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onRetry?.(e)}>
+            <Button variant="primary" class="max-w-full shrink" disabled={(props.busy ?? false)} busy={(props.busy ?? false)} onPress={(e) => props.onRetry?.(e)}>
               <Show when={(props.busy ?? false)}>
                 <Spinner size={16} name={t("base.error.busy")} />
               </Show>
               <Text class="whitespace-normal">
                 {(props.busy ?? false) ? t("base.error.busy") : props.retryLabel || t("base.error.retry")}
               </Text>
-            </View>
+            </Button>
           </Show>
           <Show when={props.dismissLabel}>
-            <View class={`flex-row items-center justify-center gap-1 min-h-11 max-w-full shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDismiss?.(e)}>
+            <Button class="max-w-full shrink" disabled={(props.busy ?? false)} onPress={(e) => props.onDismiss?.(e)}>
               <Text class="whitespace-normal">{props.dismissLabel}</Text>
-            </View>
+            </Button>
           </Show>
         </View>
       </Show>

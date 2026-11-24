@@ -34,7 +34,7 @@ export function StrategyCommands(props: StrategyCommandsProps) {
                 {c().name}
               </Text>
               <Show when={c().key}>
-                <Text class={`shrink min-w-5 max-w-2/5 py-0 px-1.25 leading-normal text-xs font-bold text-center text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
+                <Text class={`shrink min-w-5 max-w-2/5 py-0 px-1.25 leading-normal text-xs font-bold text-center text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key whitespace-nowrap overflow-hidden pointer-coarse:hidden`}>
                   {c().key}
                 </Text>
               </Show>

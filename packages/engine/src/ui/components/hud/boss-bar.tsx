@@ -7,6 +7,8 @@ export interface BossBarPhase {
   id: string;
   label?: string;
   complete?: boolean;
+  /** Optional health fraction (0 to 1) where this phase begins; omitted distributes phases evenly. */
+  at?: number;
 }
 
 export interface BossBarWeakness {
@@ -70,7 +72,17 @@ export function BossBar(props: BossBarProps) {
   const shown = () => Math.min(Math.max(props.value ?? 0, 0), Math.max(max(), 0));
   const critical = () => !(props.loading ?? false) && !(props.defeated ?? false) && max() > 0 && (props.value ?? 0) / max() <= 0.25;
   const invulnerable = () => (props.invulnerable ?? false) && !(props.defeated ?? false);
-  const staggerCells = () => (props.staggerCells ?? 10) > 0 ? (props.staggerCells ?? 1) : 1;
+  const staggerCells = () => Math.max(props.staggerCells ?? 10, 1);
+  const activePhase = () => {
+    const id = props.phase ?? "";
+    if (!id) return undefined;
+    return (props.phases ?? []).find((p) => p.id === id);
+  };
+  const phaseLabel = () => activePhase()?.label ?? "";
+  const phaseAt = (p: BossBarPhase, indexAfterFirst: number, total: number) => {
+    if (typeof p.at === "number" && Number.isFinite(p.at)) return Math.min(Math.max(p.at, 0), 1);
+    return total > 0 ? (total - (indexAfterFirst + 1)) / total : 0;
+  };
   return (
     <View
       class={`flex-col items-center w-full max-w-150 gap-y-1.5 py-2 px-4 compact:gap-y-1 compact:py-1 compact:px-2 ${packClass("Plate", "frame")}`}
@@ -91,6 +103,11 @@ export function BossBar(props: BossBarProps) {
             {props.epithet}
           </Text>
         </Show>
+        <Show when={phaseLabel() !== ""}>
+          <Text class={`shrink-0 text-xs font-bold tracking-label uppercase whitespace-nowrap px-1.5 py-0.5 rounded-capsule bg-raised-lo inset-ring-hairline inset-ring-border text-fg-muted`}>
+            {phaseLabel()}
+          </Text>
+        </Show>
       </View>
       <Show when={props.loading} fallback={
         <>
@@ -101,7 +118,7 @@ export function BossBar(props: BossBarProps) {
             valueMin={0}
             valueMax={max() > 0 ? max() : 1}
             valueNow={shown()}
-            valueText={t("hud.boss-bar.value", { value: shown(), max: max() > 0 ? max() : 0 })}
+            valueText={phaseLabel() ? `${t("hud.boss-bar.value", { value: shown(), max: max() > 0 ? max() : 0 })} · ${phaseLabel()}` : t("hud.boss-bar.value", { value: shown(), max: max() > 0 ? max() : 0 })}
             data-inv={invulnerable()}
             data-critical={critical()}
           >
@@ -111,16 +128,18 @@ export function BossBar(props: BossBarProps) {
             <View
               class={`absolute left-0 top-0 h-full ${packClass("Bar", "fill")} ${packClass("Bar", "tone")} ${packClass("Bar", "tone", "boss")} ${invulnerable() ? packClass("Bar", "tone", "invulnerable") : ""}`}
               style={{ width: `${share() * 100}%` }}
-            >
-                          </View>
+            />
             <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
-              {(p, i) => (
-                <View
-                  class={`absolute size-2.25 rotate-45 compact:size-1.75 data-passed:opacity-muted ${packClass("Boss", "phase")}`}
-                  data-passed={max() > 0 && (props.value ?? 0) / max() <= ((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length}
-                  style={{ left: `calc(${(((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length) * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
-                />
-              )}
+              {(p, i) => {
+                const pos = () => phaseAt(p(), i(), (props.phases ?? []).length);
+                return (
+                  <View
+                    class={`absolute size-2.25 rotate-45 compact:size-1.75 data-passed:opacity-muted ${packClass("Boss", "phase")}`}
+                    data-passed={p().complete === true || (max() > 0 && (props.value ?? 0) / max() <= pos())}
+                    style={{ left: `calc(${pos() * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
+                  />
+                );
+              }}
             </For>
           </View>
           <View class={`flex-row items-center justify-between w-full min-w-0 gap-x-3`}>

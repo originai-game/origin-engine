@@ -41,6 +41,7 @@ export interface RpgQuestDetailProps {
  * on a quiet secondary button. With neither action it is read only.
  */
 export function RpgQuestDetail(props: RpgQuestDetailProps) {
+  const firstStage = () => (props.objectives ?? []).findIndex((o) => o.step === 0 && !o.done);
   return (
     <View class={`group/frame flex-col size-full min-h-0 overflow-hidden ${packClass("Panel", "frame")}`} label={props.name} data-with-scenery={props.scenery !== 0}>
       {/* Band */}
@@ -74,7 +75,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                 <View class={`flex-col`} role="list">
                   <For each={props.objectives ?? []} key={(o) => o.id}>
                     {(o, i) => (
-                      <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-border`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
+                      <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-border`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={i() === firstStage()} data-done={o().done}>
                         <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-regular inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-regular group-data-current/obj:inset-ring-gold group-data-done/obj:bg-success group-data-done/obj:shadow-glow-sm group-data-done/obj:shadow-health group-data-done/obj:inset-ring-regular group-data-done/obj:inset-ring-health`} />
                         <Text class={`grow min-w-0 group-data-step1/obj:text-fg-muted group-data-step1/obj:font-semibold group-data-done/obj:text-fg-subtle group-data-done/obj:line-through`}>
                           {o().text}
@@ -100,8 +101,8 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.rewards ?? []} key={(r) => r.id}>
                     {(r) => (
                       <View class={`group/reward flex-row items-center gap-3 grow min-w-62.5 compact:min-w-0 compact:w-full py-1 pl-1 pr-3 ${packClass("Chip", "frame")}`} role="listitem" data-unique={r().detail !== ""}>
-                        <View class={`relative shrink-0 size-12 nine-socket`}>
-                          <View class={`absolute inset-0 nine-socket-rim bg-rim group-data-unique/reward:bg-gold`} />
+                        <View class={`relative shrink-0 size-12 rounded-card overflow-hidden bg-tile`}>
+                          <View class={`absolute inset-0 rounded-card bg-transparent inset-ring-regular inset-ring-rim group-data-unique/reward:inset-ring-gold`} />
                           <View class={`size-full flex-row items-center justify-center`}>
                             <Icon class={`size-6 group-data-unique/reward:text-gold`} name={r().icon} />
                           </View>

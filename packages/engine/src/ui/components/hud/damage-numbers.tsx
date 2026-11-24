@@ -31,22 +31,37 @@ export interface DamageNumbersProps {
  */
 const KINDS = ["crit", "heal", "shield", "weak", "miss"];
 
+function parsePoint(at: string): [number, number, number] {
+  const parts = (at || "").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
+}
+
+function formatHit(hit: DamageHit): string {
+  if (hit.kind === "miss") return "MISS";
+  const num = formatNumber(hit.amount);
+  if (hit.kind === "heal") return `+${num}`;
+  if (hit.kind === "crit") return `${num}!`;
+  return num;
+}
+
 export function DamageNumbers(props: DamageNumbersProps) {
   return (
-      <For each={props.hits ?? []} key={(h) => h.id}>
-        {(h) => {
-          const point = () => h().at.split(/\s+/).map(Number) as [number, number, number];
-          return (
-            <Text
-              anchor={h().entity ? (h().entity as Entity) : point()}
-              class={`-translate-x-1/2 whitespace-nowrap ${packClass("Damage", "number")} ${KINDS.includes(h().kind ?? "") ? packClass("Damage", "number", h().kind) : ""}`}
-              style={{ color: h().color || undefined }}
-            >
-              {formatNumber(h().amount)}
-            </Text>
-          );
-        }}
-      </For>
+    <For each={props.hits ?? []} key={(h) => h.id}>
+      {(h) => (
+        <Text
+          anchor={h().entity ? (h().entity as Entity) : parsePoint(h().at)}
+          declutter="stack"
+          class={`-translate-x-1/2 pointer-events-none whitespace-nowrap ${packClass("Damage", "number")} ${KINDS.includes(h().kind ?? "") ? packClass("Damage", "number", h().kind) : ""}`}
+          style={{ color: h().color || undefined }}
+        >
+          {formatHit(h())}
+        </Text>
+      )}
+    </For>
   );
 }
 

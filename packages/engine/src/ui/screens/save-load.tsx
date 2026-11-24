@@ -36,8 +36,9 @@ export interface SaveLoadScreenProps {
  * saves.
  */
 export function SaveLoadScreen(props: SaveLoadScreenProps) {
+  const selectedFull = () => props.slots.some((s) => s.id === props.selected && !s.empty);
   return (
-    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-6 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onBack?.(e) }}>
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-border-muted items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>
@@ -129,26 +130,26 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
           <View class={`shrink narrow:hidden`}>{props.preview?.()}</View>
           <View class={`flex-row flex-wrap justify-end mt-auto pt-3 gap-2 narrow:pt-0`}>
             <Show when={props.onDelete}>
-              <Button class="text-danger grow shrink basis-30 h-9 narrow:basis-25" onPress={(e) => props.onDelete?.(e)} onAction={{ details: (e) => props.onDelete?.(e) }}>
+              <Button variant="danger" class="grow shrink basis-30 narrow:basis-25" disabled={!selectedFull()} onPress={(e) => { if (selectedFull()) props.onDelete?.(e); }} onAction={{ details: (e) => { if (selectedFull()) props.onDelete?.(e); } }}>
                 <Text>{t("screen.save-load.delete")}</Text>
               </Button>
             </Show>
             <Show when={props.mode === "save"} fallback={
                 <Show when={props.slots.length > 0}>
                   <Show when={props.onLoad}>
-                    <Button variant="primary" class="grow shrink basis-30 h-9 narrow:basis-25" onPress={(e) => props.onLoad?.(e)}>
+                    <Button variant="primary" class="grow shrink basis-30 narrow:basis-25" disabled={!selectedFull()} onPress={(e) => { if (selectedFull()) props.onLoad?.(e); }}>
                       <Text>{t("screen.save-load.load")}</Text>
                     </Button>
                   </Show>
                 </Show>
             }>
               <Show when={props.onNewSlot}>
-                <Button class="grow shrink basis-30 h-9 narrow:basis-25" onPress={(e) => props.onNewSlot?.(e)}>
+                <Button class="grow shrink basis-30 narrow:basis-25" onPress={(e) => props.onNewSlot?.(e)}>
                   <Text>{t("screen.save-load.new")}</Text>
                 </Button>
               </Show>
               <Show when={props.onSave}>
-                <Button variant="primary" class="grow shrink basis-30 h-9 narrow:basis-25" onPress={(e) => props.onSave?.(e)}>
+                <Button variant="primary" class="grow shrink basis-30 narrow:basis-25" onPress={(e) => props.onSave?.(e)}>
                   <Text>{t("screen.save-load.save")}</Text>
                 </Button>
               </Show>

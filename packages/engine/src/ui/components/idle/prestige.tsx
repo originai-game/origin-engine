@@ -51,7 +51,7 @@ export function IdlePrestige(props: IdlePrestigeProps) {
         <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
           {t("idle.prestige.kicker")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg max-w-full m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg max-w-full m-0`}>
           {props.title !== '' ? props.title : t("idle.prestige.name")}
         </Text>
       </View>

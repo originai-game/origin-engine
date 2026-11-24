@@ -1,4 +1,5 @@
-import {For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, packClass, type UiEvent, View, t} from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import { EmptyState } from "../base/empty-state";
 import { ErrorState } from "../base/error-state";
 import { Spinner } from "../base/spinner";
@@ -39,7 +40,7 @@ export function Inbox(props: InboxProps) {
   return (
     <View class={`grow shrink basis-0 h-auto p-4 gap-3 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title || t("meta.inbox.title")} busy={(props.loading ?? false) || (props.busy ?? false)}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-border-muted py-1 px-4 gap-2`}>
-        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+        <Text class={`grow shrink basis-0 font-display text-base font-bold leading-tight text-fg m-0`}>
           {props.title || t("meta.inbox.title")}
         </Text>
         <Show when={props.summary}>
@@ -51,12 +52,12 @@ export function Inbox(props: InboxProps) {
       <Show when={(props.loading ?? false)} fallback={
           <Show when={props.error} fallback={
               <Show when={!(props.messages ?? []).length} fallback={
-                  <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] compact:grid-cols-1`}>
+                  <View class={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 compact:grid-cols-1`}>
                     <Scroll class={`max-h-140 p-0.5 m-0 gap-1 compact:min-h-40 compact:max-h-48`} label={t("meta.inbox.messages")}>
                       <For each={(props.messages ?? [])}>
                         {(message) => (
                         <View>
-                          <View class={`flex-row items-center justify-center gap-1 group/row rounded-card bg-layer-2 text-fg transition duration-control w-full text-start py-2 px-3 data-selected:bg-layer-4 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
+                          <View class={`flex-row items-center justify-center gap-1 group/row rounded-card bg-layer-2 text-fg transition duration-control w-full text-start py-2 px-3 hover:bg-surface-hover data-selected:bg-layer-4 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" pressed={message().id === props.selected} disabled={(props.busy ?? false)} onPress={(e) => props.onChoose?.(e, message().id)} data-not-unread={!(message().unread)} data-unread={message().unread} data-selected={message().id === props.selected}>
                             <View class="items-start w-full gap-2">
                               <Text class={`text-caption text-fg-muted`}>
                                 {message().sender}
@@ -84,7 +85,7 @@ export function Inbox(props: InboxProps) {
                         )}
                       </For>
                     </Scroll>
-                    <View class="max-h-140 overflow-y-hidden bg-glass inset-shadow-lit inset-ring-hairline inset-ring-border py-3 px-4 rounded-card compact:max-h-none">
+                    <View class="max-h-140 overflow-y-auto bg-glass inset-shadow-lit inset-ring-hairline inset-ring-border py-3 px-4 rounded-card compact:max-h-none">
                       <Show when={!props.selected}>
                         <Text class={`text-caption text-fg-muted m-0`}>
                           {t("meta.inbox.select")}
@@ -135,16 +136,16 @@ export function Inbox(props: InboxProps) {
                                 </Text>
                               </View>
                             </Show>
-                            <View class={`flex-row flex-wrap items-center gap-2`}>
+                            <View class={`flex-row flex-wrap items-center gap-2 pt-1`}>
                               <Show when={message().hasAttachments}>
-                                <View class={`flex-row items-center justify-center gap-1 text-accent min-h-11 shrink`} role="button" disabled={(props.busy ?? false) || !message().claimable || message().claimed || message().expired} onPress={(e) => props.onClaim?.(e, message().id)}>
+                                <Button variant="primary" class="shrink" disabled={(props.busy ?? false) || !message().claimable || message().claimed || message().expired} onPress={(e) => props.onClaim?.(e, message().id)}>
                                   <Text class="whitespace-normal">{t("meta.inbox.claim")}</Text>
-                                </View>
+                                </Button>
                               </Show>
                               <Show when={message().canDelete}>
-                                <View class={`flex-row items-center justify-center gap-1 min-h-11 shrink`} role="button" disabled={(props.busy ?? false)} onPress={(e) => props.onDelete?.(e, message().id)}>
+                                <Button variant="danger" class="shrink" disabled={(props.busy ?? false)} onPress={(e) => props.onDelete?.(e, message().id)}>
                                   <Text class="whitespace-normal">{t("meta.inbox.delete")}</Text>
-                                </View>
+                                </Button>
                               </Show>
                             </View>
                           </View>

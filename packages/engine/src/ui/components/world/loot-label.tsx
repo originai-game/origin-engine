@@ -30,70 +30,84 @@ export interface LootLabelProps {
   tiers?: ReadonlyArray<LootTier>;
   /** The chip is pressed: the game owns what is picked up. */
   onPick?: (e: UiEvent) => void;
+  /** Maximum world distance before hiding. */
+  maxDistance?: number;
+  /** Distance at which the label is drawn at scale 1. */
+  scaleAt?: number;
+  /** Minimum world-distance scale. */
+  scaleMin?: number;
+  /** Maximum world-distance scale. */
+  scaleMax?: number;
+}
+
+function parsePoint(at?: string): [number, number, number] {
+  const parts = (at ?? "0 0 0").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
 }
 
 /**
  * An item on the ground: over it a dark chip with the tier's strip on its
  * leading edge and the name in the tier's ink (a stack's count after it);
- * epic and legendary raise a beam. Reports pick (the chip); the game owns
- * what is picked up. The old ground pool (the tier's glow where the item
- * lies, a `<ground>` plane) has no TSX surface and is dropped, as are the
- * old anchor's avoidance and max distance; labels stack clear of each
- * other and fade behind drawn geometry (the anchor's declutter and
- * occlusion).
- * The hovered chip's pick-up key (the action's bound glyph) has no TSX
- * surface and is dropped; the chip keeps the action's name as a state. A
- * long name wraps without breaking.
+ * epic, legendary and mythic raise a beam. Reports pick (the chip); the
+ * game owns what is picked up.
  */
 export function LootLabel(props: LootLabelProps) {
   const rarity = () => ((props.rarity ?? "") == "" ? "common" : (props.rarity ?? ""));
   const name = () => props.name ?? "";
   const action = () => props.action ?? "";
   const more = () => props.more ?? 0;
-  const point = () => ((props.at ?? "0 0 0").split(/\s+/).map(Number) as [number, number, number]);
   return (
     <View
-      anchor={props.entity ? (props.entity as Entity) : point()}
+      anchor={props.entity ? (props.entity as Entity) : parsePoint(props.at)}
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       occlusion="fade"
+      maxDistance={props.maxDistance}
+      scaleAt={props.scaleAt}
+      scaleMin={props.scaleMin}
+      scaleMax={props.scaleMax}
       class="-translate-x-1/2 group flex-col items-center"
       data-common={rarity() === "common"}
       data-uncommon={rarity() === "uncommon"}
       data-rare={rarity() === "rare"}
       data-epic={rarity() === "epic"}
       data-legendary={rarity() === "legendary"}
+      data-mythic={rarity() === "mythic"}
     >
       <View
-        class={`group/chip relative flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap animate-pop hover:scale-lift hover:bg-tile group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile data-hovered:scale-lift data-hovered:bg-tile ${packClass("Chip", "frame")}`}
+        class={`group/chip relative overflow-hidden flex-row items-center gap-x-1.5 min-w-0 max-w-full shrink-0 py-0.75 pr-2.25 pl-2.75 text-caption leading-tight font-semibold whitespace-nowrap animate-pop hover:scale-lift hover:bg-tile group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:font-bold group-data-legendary:text-gold group-data-legendary:bg-tile group-data-mythic:font-bold group-data-mythic:text-mythic group-data-mythic:bg-tile data-hovered:scale-lift data-hovered:bg-tile ${packClass("Chip", "frame")}`}
         data-more={more() > 0}
         data-hovered={props.hovered}
         role="button"
         label={more() > 0 ? t("world.loot.moreName", { n: more() }) : name()}
         onPress={(e) => props.onPick?.(e)}
       >
-        <View class="absolute left-0 top-0 bottom-0 w-0.75 bg-fg-subtle group-data-uncommon:bg-uncommon group-data-rare:bg-rare group-data-epic:bg-epic group-data-legendary:bg-gold" />
+        <View class="absolute left-0 top-0 bottom-0 w-0.75 bg-fg-subtle group-data-uncommon:bg-uncommon group-data-rare:bg-rare group-data-epic:bg-epic group-data-legendary:bg-gold group-data-mythic:bg-mythic" />
         <Show when={props.hovered && action() !== ""}>
-          <Text class="shrink-0 px-1 rounded-control bg-linear-to-b from-key-hi to-key-lo text-key-fg text-2xs font-bold leading-snug shadow-key" glyph={action()} />
+          <Text class="shrink-0 text-base leading-none text-fg" glyph={action()} />
         </Show>
         <Show when={more() > 0}>
           <Text class="shrink-0 font-bold tabular-nums">{t("world.loot.more", { n: more() })}</Text>
           <For each={props.tiers ?? []} key={(d) => d.id}>
-            {(d) => <View class="shrink-0 size-2 rotate-45 bg-fg-subtle data-rarity-uncommon:bg-uncommon data-rarity-rare:bg-rare data-rarity-epic:bg-epic data-rarity-legendary:bg-gold" data-rarity-uncommon={d().rarity === "uncommon"} data-rarity-rare={d().rarity === "rare"} data-rarity-epic={d().rarity === "epic"} data-rarity-legendary={d().rarity === "legendary"} />}
+            {(d) => <View class="shrink-0 size-2 rotate-45 bg-fg-subtle data-rarity-uncommon:bg-uncommon data-rarity-rare:bg-rare data-rarity-epic:bg-epic data-rarity-legendary:bg-gold data-rarity-mythic:bg-mythic" data-rarity-uncommon={d().rarity === "uncommon"} data-rarity-rare={d().rarity === "rare"} data-rarity-epic={d().rarity === "epic"} data-rarity-legendary={d().rarity === "legendary"} data-rarity-mythic={d().rarity === "mythic"} />}
           </For>
         </Show>
         <Show when={more() === 0}>
-          <Text class="shrink max-w-47.5 min-w-0 truncate opacity-soft group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:text-gold">{name()}</Text>
+          <Text class="shrink max-w-47.5 min-w-0 truncate opacity-soft group-data-uncommon:text-uncommon group-data-rare:text-rare group-data-epic:text-epic group-data-legendary:text-gold group-data-mythic:text-mythic">{name()}</Text>
           <Show when={(props.count ?? 0) > 1}>
             <Text class="shrink-0 font-bold tabular-nums">{t("world.loot.count", { count: props.count ?? 0 })}</Text>
           </Show>
-          <Show when={rarity() === "legendary"}>
-            <View class="absolute left-0 top-0 bottom-0 w-3/10 bg-linear-to-r from-transparent via-gold-hi to-transparent animate-shimmer" />
+          <Show when={rarity() === "legendary" || rarity() === "mythic"}>
+            <View class="absolute left-0 top-0 bottom-0 w-3/10 bg-linear-to-r from-transparent via-gold-hi to-transparent animate-shimmer pointer-events-none" />
           </Show>
         </Show>
       </View>
-      <Show when={more() === 0 && (rarity() === "epic" || rarity() === "legendary")}>
-        <View class="shrink-0 w-0.75 h-11 bg-epic shadow-glow-lg shadow-xp group-data-legendary:bg-gold group-data-legendary:shadow-glow-lg group-data-legendary:shadow-gold opacity-quiet" />
+      <Show when={more() === 0 && (rarity() === "epic" || rarity() === "legendary" || rarity() === "mythic")}>
+        <View class="shrink-0 w-0.75 h-11 bg-epic shadow-glow-lg shadow-xp group-data-legendary:bg-gold group-data-legendary:shadow-glow-lg group-data-legendary:shadow-gold group-data-mythic:bg-mythic group-data-mythic:shadow-glow-lg group-data-mythic:shadow-mythic opacity-quiet pointer-events-none" />
       </Show>
     </View>
   );

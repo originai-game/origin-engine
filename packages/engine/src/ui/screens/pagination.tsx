@@ -10,6 +10,10 @@ export interface PaginationProps {
   atStart?: boolean;
   /** The last page is shown: Next takes no press. */
   atEnd?: boolean;
+  /** Previous's accessible name (Previous page); absent: the navigation's label. */
+  previousLabel?: string | undefined;
+  /** Next's accessible name (Next page); absent: the navigation's label. */
+  nextLabel?: string | undefined;
   /** The next event, with the row's key where it comes from a row. */
   onNext?: (e: UiEvent, key?: string) => void;
   /** The page event, with the row's key where it comes from a row. */
@@ -23,9 +27,9 @@ export interface PaginationProps {
  */
 export function Pagination(props: PaginationProps) {
   return (
-    <View class={`flex-row items-center text-fg max-w-full p-0 gap-1 disabled:text-fg-subtle`} label={props.label}>
-      <Button class={`min-w-11 min-h-11 p-0 rounded-control`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.label}>
-        <Icon class="size-4" name="chevronLeft" />
+    <View class={`flex-row items-center text-fg max-w-full p-0 gap-1 disabled:text-fg-subtle`} role="navigation" label={props.label}>
+      <Button class={`min-w-11 min-h-11 p-0 rounded-control`} disabled={props.atStart} onPress={(e) => props.onPrevious?.(e)} label={props.previousLabel ?? props.label}>
+        <Icon class="size-4 rtl:-scale-x-100" name="chevronLeft" />
       </Button>
       <View class="flex-row flex-wrap items-center shrink justify-center p-0 m-0 gap-1">
         <For each={props.pages}>
@@ -37,7 +41,7 @@ export function Pagination(props: PaginationProps) {
               </Text>
             </Show>
             <Show when={!p().gap}>
-              <Button variant={p().current ? "primary" : undefined} class={`min-w-11 min-h-11 font-bold rounded-control ${p().current ? "" : "bg-tile inset-ring-hairline inset-ring-border"}`} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
+              <Button variant={p().current ? "primary" : undefined} class={`min-w-11 min-h-11 font-bold rounded-control ${p().current ? "" : "bg-tile inset-ring-hairline inset-ring-border"}`} selected={p().current === true} label={p().label} onPress={(e) => props.onPage?.(e, p().id)} data-current={p().current} data-variant-primary={(p().current ? "primary" : "quiet") === "primary"} data-variant-quiet={(p().current ? "primary" : "quiet") === "quiet"}>
                 <Text class="tabular-nums">{p().label}</Text>
               </Button>
             </Show>
@@ -45,8 +49,8 @@ export function Pagination(props: PaginationProps) {
           )}
         </For>
       </View>
-      <Button class={`min-w-11 min-h-11 p-0 rounded-control`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.label}>
-        <Icon class="size-4" name="chevronRight" />
+      <Button class={`min-w-11 min-h-11 p-0 rounded-control`} disabled={props.atEnd} onPress={(e) => props.onNext?.(e)} label={props.nextLabel ?? props.label}>
+        <Icon class="size-4 rtl:-scale-x-100" name="chevronRight" />
       </Button>
     </View>
   );

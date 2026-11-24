@@ -49,7 +49,7 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
         <View class={`flex-row flex-wrap grow shrink basis-0 justify-center gap-1 compact:basis-full`} role="list" label={t("puzzle.goals.name")}>
           <Show when={(props.goals)?.length ?? 0} fallback={<Text class={`tracking-xs text-fg-muted self-center text-center text-shadow-tag m-0 shrink`}> {t("puzzle.goals.none")} </Text>}><For each={props.goals}>
             {(g) => (
-            <View class={`items-center min-w-20.75 max-w-32 py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
+            <View class={`relative items-center min-w-20.75 max-w-32 py-0.5 px-1 gap-0 compact:min-w-0 compact:grow compact:shrink compact:basis-0 ${packClass("Chip", "frame")}`} role="listitem" label={g().done ? t("puzzle.goals.done", { label: g().label }) : t("puzzle.goals.left", { label: g().label, left: g().left })} data-done={g().done}>
               <View class={`group/socket grow shrink basis-0 justify-center items-center gap-2 size-12 compact:size-8`}>
                 <Icon class="text-shadow-tag size-full" name={g().icon} />
               </View>
@@ -76,13 +76,13 @@ export function PuzzleGoals(props: PuzzleGoalsProps) {
             </Text>
           </View>
           <Show when={(props.progress ?? -1) >= 0}>
-            <View class="w-full h-4">
+            <View class="relative w-full h-4">
               <View class={`bg-track shadow-sunk absolute top-3/10 h-2 inset-x-0 rounded-capsule overflow-hidden`}>
-                <View class={`bg-gold h-full`} style={{ width: `${(100 * ((props.progress ?? -1) > 1 ? 1 : (props.progress ?? -1)))}%` }} />
+                <View class={`bg-gold h-full rounded-capsule`} style={{ width: `${(100 * Math.min(Math.max(props.progress ?? 0, 0), 1))}%` }} />
               </View>
               <For each={props.stars}>
                 {(s) => (
-                <View class={`absolute top-0 text-fg-muted size-4 data-lit:text-gold`} data-lit={(props.progress ?? -1) >= s().at}>
+                <View class={`absolute top-0 -translate-x-1/2 text-fg-muted size-4 data-lit:text-gold`} data-lit={(props.progress ?? -1) >= s().at} style={{ left: `${Math.min(Math.max(s().at, 0), 1) * 100}%` }}>
                   <Icon class="text-shadow-tag size-full" name="star" />
                 </View>
                 )}

@@ -74,7 +74,7 @@ export function RpgTrade(props: RpgTradeProps) {
           <Text class="text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap">
             {t("rpg.trade.kicker")}
           </Text>
-          <Text class="font-display text-base font-bold leading-tight tracking-tight text-fg m-0">
+          <Text class="font-display text-base font-bold leading-tight text-fg m-0">
             {props.title || t("rpg.trade.title")}
           </Text>
         </View>
@@ -179,7 +179,16 @@ export function RpgTrade(props: RpgTradeProps) {
         <For each={goods()}>
           {(good) => (
             <Show when={good().id === props.selected}>
-              <View class="w-full pt-2 border-t border-border-muted gap-2" label={good().name}>
+              <View
+                class="group/row w-full pt-2 border-t border-border-muted gap-2"
+                label={good().name}
+                data-tier-common={(good().rarity || "common") === "common"}
+                data-tier-uncommon={(good().rarity || "common") === "uncommon"}
+                data-tier-rare={(good().rarity || "common") === "rare"}
+                data-tier-epic={(good().rarity || "common") === "epic"}
+                data-tier-legendary={(good().rarity || "common") === "legendary"}
+                data-tier-mythic={(good().rarity || "common") === "mythic"}
+              >
                 <View class="flex-row items-center w-full gap-2 compact:flex-wrap">
                   <View class={`${socket} gap-2 size-15`}>
                     <Show when={(good().rarity || "common") !== "common"}>

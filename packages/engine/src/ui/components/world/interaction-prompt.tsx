@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, t } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, packClass, t, type UiEvent } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
 
@@ -21,7 +21,7 @@ export interface InteractionPromptProps {
   name?: string;
   /** The key is down: the cap sinks 2 px and lights. */
   pressed?: boolean;
-  /** A hold's progress 0 to 1: a white ring round the cap on a dark disc (1 is done: the cap lights); negative draws none. Released, the game sets 0 and the ring drains in 200 ms. */
+  /** A hold's progress 0 to 1: an accent ring round the cap on a dark disc (1 is done: the cap lights); negative draws none. */
   hold?: number;
   /** It cannot be used now: the cap greys and the reason shows in red with a lock. */
   disabled?: boolean;
@@ -29,18 +29,31 @@ export interface InteractionPromptProps {
   reason?: string;
   /** Hidden past this many world units (6). */
   maxDistance?: number;
+  /** Distance at which the prompt is drawn at scale 1. */
+  scaleAt?: number;
+  /** Minimum world-distance scale. */
+  scaleMin?: number;
+  /** Maximum world-distance scale. */
+  scaleMax?: number;
+  /** Behaviour when behind world geometry. */
+  occlusion?: "fade" | "hide" | "none";
+  /** Optional tap/click handler for direct touch or pointer interaction. */
+  onPress?: (e: UiEvent) => void;
+}
+
+function parsePoint(at?: string): [number, number, number] {
+  const parts = (at ?? "0 0 0").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
 }
 
 /**
- * What the player can do with what is in front of them: a key cap beside
- * a glass plate, the verb in condensed capitals and the object under it;
- * a hold's ring round the cap. It rises in when in range. The game decides
- * when it shows and what the input does; read only. The old SVG hold ring
- * becomes a nine-ring with the hold's share as its wipe (the 200 ms drain
- * on release is dropped); a nine-cut plate takes no rim (it paints as a
- * rectangle around the cut), so the glass's rim is dropped. It hides past
- * `maxDistance` and keeps its place over the plates and labels that stack
- * (the anchor's declutter, priority 1).
+ * What the player can do with what is in front of them: a key cap (or
+ * device-adaptive action glyph) beside a frosted glass plate, the verb in
+ * condensed capitals and the object under it; a hold's ring round the cap.
  */
 export function InteractionPrompt(props: InteractionPromptProps) {
   const hold = () => props.hold ?? -1;
@@ -49,16 +62,21 @@ export function InteractionPrompt(props: InteractionPromptProps) {
   const name = () => props.name ?? "";
   const reason = () => props.reason ?? "";
   const lit = () => props.pressed || hold() >= 1;
-  const point = () => ((props.at ?? "0 0 0").split(/\s+/).map(Number) as [number, number, number]);
   return (
     <View
-      anchor={props.entity ? (props.entity as Entity) : point()}
+      anchor={props.entity ? (props.entity as Entity) : parsePoint(props.at)}
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
       priority={1}
       maxDistance={props.maxDistance}
+      scaleAt={props.scaleAt}
+      scaleMin={props.scaleMin}
+      scaleMax={props.scaleMax}
+      occlusion={props.occlusion}
       class="-translate-x-1/2 -translate-y-full group flex-row items-center animate-pop text-fg"
-      role="status"
+      role={props.onPress ? "button" : "status"}
+      disabled={props.onPress ? props.disabled : undefined}
+      onPress={props.onPress ? (e) => props.onPress?.(e) : undefined}
       label={`${props.verb}${name() !== "" ? ` ${name()}` : ""}`}
       description={props.disabled && reason() !== "" ? reason() : ""}
       data-pad={props.pad}
@@ -67,12 +85,19 @@ export function InteractionPrompt(props: InteractionPromptProps) {
     >
       <View class="relative z-1 shrink-0 flex-row items-center justify-center size-9">
         <Show when={hold() >= 0}>
-          <View class="absolute inset-0 rounded-full bg-fg-muted" />
-          <View class="absolute inset-0 nine-ring bg-sheen transition-layout duration-fast ease-out" wipe={hold() >= 1 ? 1 : hold()} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={hold() >= 1 ? 1 : hold()} />
+          <View class="absolute inset-0 rounded-full bg-scrim" />
+          <View class="absolute inset-0 nine-ring bg-hud-accent transition-layout duration-fast ease-out" wipe={Math.min(Math.max(hold(), 0), 1)} role="meter" label={t("world.prompt.hold")} valueMin={0} valueMax={1} valueNow={Math.min(Math.max(hold(), 0), 1)} />
         </Show>
-        <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong" glyph={key() === "" && action() !== "" ? action() : undefined}>{key()}</Text>
+        <Show
+          when={key() !== "" || action() === ""}
+          fallback={
+            <Text class="z-1 text-xl leading-none text-fg text-shadow-tag group-data-disabled:opacity-dim" glyph={action()} />
+          }
+        >
+          <Text class="z-1 min-w-6.5 h-6.5 px-1.25 text-center text-sm leading-6.5 font-bold whitespace-nowrap text-key-fg bg-linear-to-b from-key-hi to-key-lo rounded-control shadow-key group-data-pressed:translate-y-0.5 group-data-pressed:bg-linear-to-b group-data-pressed:from-hud-accent-hi group-data-pressed:to-hud-accent group-data-pressed:shadow-glow-lg group-data-pressed:inset-shadow-lip group-data-disabled:text-fg-subtle group-data-disabled:bg-linear-to-b group-data-disabled:from-fg-subtle group-data-disabled:to-fg-subtle group-data-pad:px-0 group-data-pad:w-6.5 group-data-pad:min-w-0 group-data-pad:text-uncommon group-data-pad:rounded-full group-data-pad:bg-fg group-data-pad:shadow-key group-data-pad:ring-regular group-data-pad:ring-rim-strong">{key()}</Text>
+        </Show>
       </View>
-      <View class="flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 rounded-card bg-plate-hi">
+      <View class={`flex-col min-w-0 -ml-2.5 pt-1 px-3 pb-1.25 pl-4 ${packClass("Plate", "frame")}`}>
         <Text class="text-reading leading-tight font-bold tracking-md uppercase whitespace-nowrap group-data-disabled:text-fg-muted">{props.verb}</Text>
         <Show when={name() !== ""}>
           <Text class="min-w-0 max-w-50 text-2xs leading-tight font-semibold tracking-wide uppercase whitespace-nowrap truncate text-fg-muted">{name()}</Text>

@@ -1,4 +1,5 @@
 import { Icon, Show, Text, View, t, type UiEvent } from "@origingame/engine/ui";
+import { Button } from "../../controls/button";
 import "./states.en.ogt";
 
 export interface EmptyStateProps {
@@ -35,7 +36,7 @@ export function EmptyState(props: EmptyStateProps) {
           {props.title || t("base.empty.title")}
         </Text>
         <Show when={props.body}>
-          <Text class={`text-center m-0`}>{props.body}</Text>
+          <Text class={`text-fg-muted text-center m-0`}>{props.body}</Text>
         </Show>
         <Show when={props.hint}>
           <Text class={`text-caption text-fg-muted text-center m-0`}>
@@ -44,9 +45,9 @@ export function EmptyState(props: EmptyStateProps) {
         </Show>
       </View>
       <Show when={props.actionLabel}>
-        <View class={`flex-row items-center justify-center gap-1 text-accent max-w-full min-h-11`} role="button" disabled={(props.disabled ?? false)} onPress={(e) => props.onActivate?.(e)}>
+        <Button variant="primary" class="max-w-full" disabled={(props.disabled ?? false)} onPress={(e) => props.onActivate?.(e)}>
           <Text class="whitespace-normal">{props.actionLabel}</Text>
-        </View>
+        </Button>
       </Show>
     </View>
   );

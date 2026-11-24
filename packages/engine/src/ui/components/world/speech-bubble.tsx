@@ -1,4 +1,4 @@
-import { Show, Text, View, t } from "@origingame/engine/ui";
+import { Show, Text, View, packClass, t } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 import "./world.en.ogt";
 
@@ -19,32 +19,47 @@ export interface SpeechBubbleProps {
   shout?: boolean;
   /** How much of the line's time is left, 0 to 1, a thin line along the bubble's foot; negative draws none. The game times the line out and removes the bubble. */
   left?: number;
+  /** Maximum world distance before hiding. */
+  maxDistance?: number;
+  /** Distance at which the bubble is drawn at scale 1. */
+  scaleAt?: number;
+  /** Minimum world-distance scale. */
+  scaleMin?: number;
+  /** Maximum world-distance scale. */
+  scaleMax?: number;
+  /** Behaviour when behind world geometry. */
+  occlusion?: "fade" | "hide" | "none";
+}
+
+function parsePoint(at?: string): [number, number, number] {
+  const parts = (at ?? "0 0 0").trim().split(/\s+/).map(Number);
+  return [
+    Number.isFinite(parts[0]) ? parts[0]! : 0,
+    Number.isFinite(parts[1]) ? parts[1]! : 0,
+    Number.isFinite(parts[2]) ? parts[2]! : 0,
+  ];
 }
 
 /**
- * A line spoken over a head: the HUD's glass with a cut corner, the
- * speaker in their colour, the line wrapping at 27 characters and a thin
- * line of the time left. It pops from its tail. Read only; the game
- * decides when it shows and when it goes. The old tail (a clip-path
- * triangle) has no TSX surface: it stands in as a small diamond under the
- * box. A nine-cut box takes no rim or outer shadow (they paint as
- * rectangles around the cut), so the glass's rim, the drop shadow and a
- * shout's warm rim are dropped; a shout keeps its bolder line. The 27
- * character measure stands as a fixed 12.6rem (the ch unit and the
- * viewport room caps have no class surface). Bubbles stack clear of each
- * other (the anchor's declutter).
+ * A line spoken over a head: a frosted glass plate, the speaker in their
+ * colour, the line wrapping cleanly and a thin line of the time left.
+ * Bubbles stack clear of each other (the anchor's declutter).
  */
 export function SpeechBubble(props: SpeechBubbleProps) {
   const reaction = () => ((props.reaction ?? "") == "" ? "friendly" : (props.reaction ?? ""));
   const speaker = () => props.speaker ?? "";
   const left = () => props.left ?? -1;
-  const point = () => ((props.at ?? "0 0 0").split(/\s+/).map(Number) as [number, number, number]);
   return (
     <View
-      anchor={props.entity ? (props.entity as Entity) : point()}
+      anchor={props.entity ? (props.entity as Entity) : parsePoint(props.at)}
       lift={[0, props.height ?? 0, 0]}
       declutter="stack"
-      class="-translate-x-1/2 -translate-y-full group flex-col items-center animate-pop text-fg"
+      maxDistance={props.maxDistance}
+      scaleAt={props.scaleAt}
+      scaleMin={props.scaleMin}
+      scaleMax={props.scaleMax}
+      occlusion={props.occlusion}
+      class="-translate-x-1/2 -translate-y-full pointer-events-none group flex-col items-center animate-pop text-fg"
       role="status"
       label={speaker() !== "" ? t("world.speech.name", { speaker: speaker() }) : props.text}
       data-shout={props.shout}
@@ -52,18 +67,18 @@ export function SpeechBubble(props: SpeechBubbleProps) {
       data-reaction-neutral={reaction() === "neutral"}
       data-reaction-player={reaction() === "player"}
     >
-      <View class="relative flex-col gap-y-0.5 min-w-0 max-w-44 py-2 px-3.25 text-reading leading-snug rounded-card bg-plate-hi">
+      <View class={`relative overflow-hidden flex-col gap-y-0.5 min-w-0 max-w-44 py-2 px-3.25 text-reading leading-snug group-data-shout:inset-ring-regular group-data-shout:inset-ring-warn ${packClass("Plate", "frame")}`}>
         <Show when={speaker() !== ""}>
           <Text class="min-w-0 max-w-full text-2xs font-bold tracking-wide uppercase whitespace-nowrap truncate text-success text-shadow-tag group-data-reaction-hostile:text-danger group-data-reaction-neutral:text-gold group-data-reaction-player:text-hud-accent-ink">{speaker()}</Text>
         </Show>
         <Text class="min-w-0 group-data-shout:font-bold">{props.text}</Text>
         <Show when={left() >= 0}>
-          <View class="absolute left-2.5 right-2.5 bottom-0.75 h-0.5 bg-track">
-            <View class="h-full bg-sheen" style={{ width: `${Math.min(Math.max(left(), 0), 1) * 100}%` }} />
+          <View class="absolute left-2.5 right-2.5 bottom-0.75 h-0.5 rounded-capsule overflow-hidden bg-track">
+            <View class="h-full rounded-capsule bg-sheen" style={{ width: `${Math.min(Math.max(left(), 0), 1) * 100}%` }} />
           </View>
         </Show>
       </View>
-      <View class="size-2.5 rotate-45 -mt-px bg-plate-hi" />
+      <View class="size-2.5 rotate-45 -mt-1.25 bg-plate-lo border-r border-b border-border" />
     </View>
   );
 }

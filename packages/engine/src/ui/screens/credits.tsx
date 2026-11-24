@@ -33,11 +33,11 @@ export interface CreditsScreenProps {
  */
 export function CreditsScreen(props: CreditsScreenProps) {
   return (
-    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e) }}>
+    <View class={`absolute inset-0 grow shrink basis-0 text-fg p-0 gap-0 overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onPress={(e) => props.onFaster?.(e)} onAction={{ confirm: (e) => props.onFaster?.(e), back: (e) => props.onBack?.(e) }}>
       <Show when={props.keyArt !== 0}>
         <Art class="absolute object-cover inset-0 size-full" kind="keyArt" src={props.keyArt} />
       </Show>
-      <View class={`absolute inset-0 compact:bg-linear-to-b compact:from-shade-deep compact:via-shade-deep compact:via-40% compact:to-shade-deep compact:bg-transparent`} />
+      <View class={`absolute inset-0 bg-scrim opacity-soft compact:opacity-100 compact:bg-linear-to-b compact:from-shade-deep compact:via-shade-deep compact:via-40% compact:to-shade-deep compact:bg-transparent`} />
       <View class="flex-row items-center py-4 px-8 gap-2 compact:py-2 compact:px-3">
         <Button class={`shrink`} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center gap-x-1">
@@ -53,11 +53,11 @@ export function CreditsScreen(props: CreditsScreenProps) {
             {(s) => (
             <View class="w-full max-w-140 items-center text-center gap-y-4">
               <View class="flex-row items-center justify-center gap-x-3 w-full">
-                <Text class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent`} />
+                <View class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent`} />
                 <Text class={`tracking-kicker uppercase text-hud-accent-ink shrink text-caption font-bold m-0 compact:tracking-label`}>
                   {s().title}
                 </Text>
-                <Text class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent -scale-x-100 scale-y-100`} />
+                <View class={`shrink basis-10 min-w-2 h-px bg-linear-to-r from-transparent to-hud-accent -scale-x-100 scale-y-100`} />
               </View>
               <For each={s().names}>
                 {(n) => (
@@ -81,7 +81,7 @@ export function CreditsScreen(props: CreditsScreenProps) {
         </View>
       </View>
       <View class="flex-row absolute right-6 bottom-4 items-center gap-x-2 text-caption text-fg-muted pointer-coarse:hidden compact:hidden">
-        <Text class="text-xs leading-loose font-bold text-hud-accent-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control shrink">
+        <Text class="text-xs leading-loose font-bold text-key-fg bg-linear-to-b from-key-hi to-key-lo shadow-key py-0 px-1 rounded-control shrink">
           {t("screen.credits.fasterKey")}
         </Text>
         <Text class="shrink">{t("screen.credits.faster")}</Text>

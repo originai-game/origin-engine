@@ -54,14 +54,14 @@ export function RadialMeter(props: RadialMeterProps) {
       valueMax={wheels()}
       valueNow={value()}
     >
-      <Show when={wheels() >= 1}>
-        <RadialMeterWheel size="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-7.25" inset="13.4%" fill={clamp01(value())} exhausted={props.exhausted === true} />
+      <Show when={wheels() >= 3}>
+        <RadialMeterWheel size="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-10.25" inset="0%" fill={clamp01(value() - 2)} exhausted={props.exhausted === true} />
       </Show>
       <Show when={wheels() >= 2}>
         <RadialMeterWheel size="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-8.5" inset="6.25%" fill={clamp01(value() - 1)} exhausted={props.exhausted === true} />
       </Show>
-      <Show when={wheels() >= 3}>
-        <RadialMeterWheel size="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-10.25" inset="0%" fill={clamp01(value() - 2)} exhausted={props.exhausted === true} />
+      <Show when={wheels() >= 1}>
+        <RadialMeterWheel size="left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 absolute size-7.25" inset="13.4%" fill={clamp01(value())} exhausted={props.exhausted === true} />
       </Show>
     </View>
   );

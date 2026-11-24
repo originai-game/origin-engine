@@ -19,32 +19,35 @@ export interface RpgQuestTrackerProps {
  * owns choosing what to track.
  */
 export function RpgQuestTracker(props: RpgQuestTrackerProps) {
+  const firstUndone = () => props.steps.findIndex((s) => !s.done);
   return (
-    <View class={`gap-y-1.25 gap-x-2 w-62.5 max-w-full p-2 data-empty:hidden compact:w-full ${packClass("Plate", "frame")}`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
+    <View class={`gap-y-1.5 gap-x-2 w-62.5 max-w-full px-3 py-2.5 data-empty:hidden compact:w-full ${packClass("Plate", "frame")}`} role="status" label={props.label !== '' ? props.label : t("rpg.quests.main")} data-empty={!props.name}>
       <Show when={props.name}>
-        <Text class={`text-xs font-semibold tracking-label uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg overflow-hidden compact:hidden`}>
-          {props.label !== '' ? props.label : t("rpg.quests.main")}
-        </Text>
-        <View class="flex-row items-baseline gap-1 compact:hidden">
-          <Text class={`shrink text-base font-semibold whitespace-nowrap text-fg text-shadow-xs text-shadow-bg overflow-hidden`}>
-            {props.name}
+        <View class="gap-y-0.5 pb-1 border-b border-border-muted compact:hidden">
+          <Text class={`text-xs font-semibold tracking-label uppercase text-gold whitespace-nowrap text-shadow-xs text-shadow-bg overflow-hidden`}>
+            {props.label !== '' ? props.label : t("rpg.quests.main")}
           </Text>
-          <Show when={props.distance}>
-            <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
-              {props.distance}
+          <View class="flex-row items-baseline gap-1.5">
+            <Text class={`shrink min-w-0 text-base font-semibold whitespace-nowrap truncate text-fg text-shadow-xs text-shadow-bg`}>
+              {props.name}
             </Text>
-          </Show>
+            <Show when={props.distance}>
+              <Text class={`shrink-0 max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1.5 overflow-hidden ${packClass("Chip", "frame")}`}>
+                {props.distance}
+              </Text>
+            </Show>
+          </View>
         </View>
         <View class="gap-y-1 gap-x-2 p-0 m-0">
           <For each={props.steps}>
             {(s, i) => (
-            <View class={`group/step flex-row items-center opacity-muted gap-1 compact:hidden data-current:opacity-100 data-done:opacity-dim compact:data-current:flex`} data-done={s().done} data-current={!s().done && (i() === 0 || props.steps[i() - 1]['done'])}>
-              <View class={`rotate-45 inset-ring-regular inset-ring-gold mx-0.5 size-2 group-data-done/step:bg-none group-data-done/step:bg-gold`} />
-              <Text class={`shrink text-caption font-semibold whitespace-nowrap text-fg text-shadow-xs text-shadow-bg overflow-hidden group-data-done/step:line-through`}>
+            <View class={`group/step flex-row items-center opacity-muted gap-1.5 compact:hidden data-current:opacity-100 data-done:opacity-dim compact:data-current:flex`} data-done={s().done} data-current={i() === firstUndone()}>
+              <View class={`shrink-0 rotate-45 inset-ring-regular inset-ring-gold mx-0.5 size-2 group-data-done/step:bg-none group-data-done/step:bg-gold`} />
+              <Text class={`shrink min-w-0 text-caption font-semibold whitespace-nowrap truncate text-fg text-shadow-xs text-shadow-bg group-data-done/step:line-through`}>
                 {s().text}
               </Text>
               <Show when={s().tag}>
-                <Text class={`max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1 overflow-hidden ${packClass("Chip", "frame")}`}>
+                <Text class={`shrink-0 max-w-9/20 text-xs font-bold tabular-nums whitespace-nowrap py-0 px-1.5 overflow-hidden ${packClass("Chip", "frame")}`}>
                   {s().tag}
                 </Text>
               </Show>

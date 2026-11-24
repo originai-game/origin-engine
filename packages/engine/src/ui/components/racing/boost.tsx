@@ -48,7 +48,7 @@ export function RacingBoost(props: RacingBoostProps) {
         <View class="flex-row items-center gap-x-2 min-w-0">
           <Text class={`shrink min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden compact:tracking-normal py-0.25 px-1.5 ${packClass("Plate", "frame")} text-ally-ink`}>{label()}</Text>
           <Show when={(props.key ?? "") !== ""}>
-            <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-hud-accent-fg rounded-control shadow-key text-xs leading-normal font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
+            <Text class={`shrink min-w-5.5 max-w-3/5 pointer-coarse:hidden bg-linear-to-b from-key-hi to-key-lo text-key-fg rounded-control shadow-key text-xs leading-normal font-bold tabular-nums text-center whitespace-nowrap overflow-hidden py-0 px-1`}>{props.key}</Text>
           </Show>
         </View>
         <View class={`relative w-full h-3 overflow-hidden bg-well shadow-plate ring ring-rim compact:h-2`}>

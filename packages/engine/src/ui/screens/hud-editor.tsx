@@ -142,7 +142,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
       onAction={{ back: (e) => props.onDone?.(e) }}
     >
       <Show when={hasRegions() || showSafe()}>
-        <View class="absolute inset-0 pt-[env(hud-inset-top)] pb-[env(hud-inset-bottom)] pl-[env(hud-inset-left)] pr-[env(hud-inset-right)] p-4">
+        <View class="absolute inset-0 pt-[calc(env(hud-inset-top)+1rem)] pb-[calc(env(hud-inset-bottom)+1rem)] pl-[calc(env(hud-inset-left)+1rem)] pr-[calc(env(hud-inset-right)+1rem)]">
           <View
             class="relative size-full"
             onPointerDown={(e) => {
@@ -206,7 +206,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
         </View>
       </Show>
       <Show when={props.showHint}>
-        <View class={`absolute w-max top-6 bg-plate-hi backdrop-blur-regular py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
+        <View class={`absolute w-max top-6 py-3 px-6 mx-auto inset-x-0 compact:top-12 ${packClass("Panel", "frame")}`}>
           <Text class={`text-center line-clamp-2 text-reading font-semibold text-fg m-0`}>
             {t("screen.hud-editor.hint")}
           </Text>
@@ -214,7 +214,7 @@ export function HudEditorScreen(props: HudEditorScreenProps) {
       </Show>
       <View class={`absolute w-max max-w-full bottom-6 mx-auto inset-x-0 flex-col items-center gap-2 px-4 narrow:left-4 narrow:right-0 narrow:w-auto narrow:bottom-8 narrow:mx-0 short:left-24 short:right-0 short:w-auto short:mx-0`}>
         <Show when={hasRegions()}>
-          <View class={`flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2.5 px-4 bg-plate-hi backdrop-blur-regular ${packClass("Panel", "frame")}`}>
+          <View class={`flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 py-2.5 px-4 ${packClass("Panel", "frame")}`}>
             <Show
               when={activeRegion()}
               fallback={

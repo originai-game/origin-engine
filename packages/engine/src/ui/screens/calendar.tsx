@@ -8,6 +8,10 @@ export interface CalendarProps {
   weekdays: ReadonlyArray<{ id: string; label: string }>;
   /** The cells, a keyed collection of { id, label, outside, today, marked } from the week's first day (outside: another month's). */
   days: ReadonlyArray<{ id: string; label: string; today: boolean; outside: boolean; marked: boolean }>;
+  /** Previous's accessible name (Previous month); absent: the month. */
+  previousLabel?: string | undefined;
+  /** Next's accessible name (Next month); absent: the month. */
+  nextLabel?: string | undefined;
   /** The next event, with the row's key where it comes from a row. */
   onNext?: (e: UiEvent, key?: string) => void;
   /** The pick event, with the row's key where it comes from a row. */
@@ -24,14 +28,14 @@ export function Calendar(props: CalendarProps) {
   return (
     <View class={`w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
       <View class={`flex-row min-h-12 border-b border-border-muted items-center py-1 px-4 gap-1`}>
-        <Button class={`bg-tile inset-ring-hairline inset-ring-border min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
-          <Icon class="size-4" name="chevronLeft" />
+        <Button class={`bg-tile inset-ring-hairline inset-ring-border min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onPrevious?.(e)} label={props.previousLabel ?? props.month}>
+          <Icon class="size-4 rtl:-scale-x-100" name="chevronLeft" />
         </Button>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg grow shrink basis-0 text-center m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg grow shrink basis-0 text-center m-0`}>
           {props.month}
         </Text>
-        <Button class={`bg-tile inset-ring-hairline inset-ring-border min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onNext?.(e)} label={props.month}>
-          <Icon class="size-4" name="chevronRight" />
+        <Button class={`bg-tile inset-ring-hairline inset-ring-border min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onNext?.(e)} label={props.nextLabel ?? props.month}>
+          <Icon class="size-4 rtl:-scale-x-100" name="chevronRight" />
         </Button>
       </View>
       <View class="grid grid-cols-7 gap-0.5" role="grid">
@@ -44,10 +48,10 @@ export function Calendar(props: CalendarProps) {
         </For>
         <For each={props.days}>
           {(d) => (
-          <View class={`flex-row items-center justify-center gap-1 rounded-control bg-tile inset-ring-hairline inset-ring-border text-fg transition duration-control w-full min-h-11 font-bold data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent data-outside:bg-none data-outside:bg-transparent data-outside:inset-ring-0 data-outside:shadow-none data-outside:text-fg-muted data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:inset-ring-0 data-today:shadow-none data-today:text-hud-accent-fg active:scale-press data-locked:scale-100 disabled:scale-100 data-down:opacity-dim`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
+          <View class={`relative flex-row items-center justify-center gap-1 rounded-control bg-tile inset-ring-hairline inset-ring-border text-fg transition duration-control w-full min-h-11 font-bold data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent data-outside:bg-none data-outside:bg-transparent data-outside:inset-ring-0 data-outside:shadow-none data-outside:text-fg-muted data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:inset-ring-0 data-today:shadow-none data-today:text-hud-accent-fg active:scale-press data-locked:scale-100 disabled:scale-100 data-down:opacity-dim`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
             <Text class="tabular-nums">{d().label}</Text>
             <Show when={d().marked}>
-              <Text class="absolute bottom-0.5 rotate-45 bg-gold shadow-glow-sm shadow-gold tabular-nums size-1" />
+              <View class="absolute bottom-1 rotate-45 bg-gold shadow-glow-sm shadow-gold size-1" />
             </Show>
           </View>
           )}

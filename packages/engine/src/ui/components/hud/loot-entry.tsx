@@ -32,14 +32,14 @@ export function HudLootEntry(props: HudLootEntryProps) {
   const rarity = () => props.rarity ?? "common";
   return (
     <View
-      class={`flex-row items-center w-fit min-w-0 max-w-full pr-3 data-fading:opacity-dim ${packClass("Plate", "frame")}`}
+      class={`flex-row items-center gap-2 overflow-hidden w-fit min-w-0 max-w-full pr-3 data-fading:opacity-dim ${packClass("Plate", "frame")}`}
       role="group"
       label={(props.quantity ?? 0) > 0 ? t("hud.loot-entry.row", { name: props.name, quantity: props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) }) }) : props.name}
       data-rarity={rarity()}
       data-fading={props.fading}
     >
-      <View class={`shrink-0 self-stretch w-0.75 mr-1 bg-sheen data-uncommon:bg-uncommon data-rare:bg-rare data-epic:bg-epic data-legendary:bg-legendary`} data-uncommon={rarity() === "uncommon"} data-rare={rarity() === "rare"} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"} />
-      <View class="relative shrink-0 my-0.75 size-5 rounded-control overflow-hidden bg-raised-lo compact:size-4.5">
+      <View class={`shrink-0 self-stretch w-0.75 bg-sheen data-uncommon:bg-uncommon data-rare:bg-rare data-epic:bg-epic data-legendary:bg-legendary data-mythic:bg-mythic`} data-uncommon={rarity() === "uncommon"} data-rare={rarity() === "rare"} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"} data-mythic={rarity() === "mythic"} />
+      <View class="relative shrink-0 my-1 size-5 rounded-control overflow-hidden bg-raised-lo compact:size-4.5">
         <Show when={props.icon} fallback={
           <Show when={props.glyph}>
             <Icon class="absolute inset-0 size-full text-fg" name={props.glyph} />
@@ -48,7 +48,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
           <Image class="absolute inset-0 size-full" src={props.icon} />
         </Show>
       </View>
-      <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap truncate text-fg text-shadow-tag data-epic:text-epic-hi data-legendary:text-legendary`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"}>
+      <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap truncate text-fg text-shadow-tag data-epic:text-epic-hi data-legendary:text-legendary data-mythic:text-mythic`} data-epic={rarity() === "epic"} data-legendary={rarity() === "legendary"} data-mythic={rarity() === "mythic"}>
         {props.name}
       </Text>
       <Show when={props.label}>
@@ -57,7 +57,7 @@ export function HudLootEntry(props: HudLootEntryProps) {
         </Text>
       </Show>
       <Show when={(props.quantity ?? 0) > 0}>
-        <Text class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-tag data-legendary:text-legendary`} data-legendary={rarity() === "legendary"}>
+        <Text class={`shrink-0 text-sm font-bold tabular-nums whitespace-nowrap text-fg-muted text-shadow-tag data-legendary:text-legendary data-mythic:text-mythic`} data-legendary={rarity() === "legendary"} data-mythic={rarity() === "mythic"}>
           {props.currency ? t("hud.loot-entry.gain", { quantity: formatNumber(props.quantity ?? 0) }) : t("hud.loot-entry.count", { quantity: formatNumber(props.quantity ?? 0) })}
         </Text>
       </Show>

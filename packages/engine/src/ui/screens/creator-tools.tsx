@@ -65,7 +65,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
         <Button class={`h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 shrink`} onPress={(e) => props.onRedo?.(e)}>
           <Text>{t("screen.creator-tools.redo")}</Text>
         </Button>
-        <Button class={`text-accent h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-run-playing:opacity-quiet shrink`} onPress={(e) => props.onPlay?.(e)} data-run-stopped={props.playing !== true} data-run-playing={props.playing === true}>
+        <Button class={`text-accent-ink h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-run-playing:opacity-quiet shrink`} onPress={(e) => props.onPlay?.(e)} data-run-stopped={props.playing !== true} data-run-playing={props.playing === true}>
           <Text>{t("screen.creator-tools.play")}</Text>
         </Button>
         <Button variant="primary" class={`h-7 px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 shrink`} disabled={!props.dirty} onPress={(e) => props.onSave?.(e)}>
@@ -92,7 +92,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
           </Button>
         </Scroll>
         <View class={`w-90 narrow:w-auto narrow:min-h-70 p-2 gap-2 disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'inspector'}>
-          <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg line-clamp-1 text-ellipsis m-0`}>
+          <Text class={`font-display text-base font-bold leading-tight text-fg line-clamp-1 text-ellipsis m-0`}>
             {props.selected}
           </Text>
           <Scroll class="grow shrink basis-0">

@@ -37,10 +37,10 @@ export interface ListItemProps {
 export function ListItem(props: ListItemProps) {
   return (
     <View class="grow shrink basis-0 h-auto gap-2">
-      <View class={`flex-row items-center justify-center gap-1 text-fg transition duration-control w-full min-h-11 text-start py-2 px-3 rounded-control ${props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover hover:bg-none active:bg-raised-pressed active:bg-none disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
+      <View class={`group/listitem flex-row items-center justify-center gap-1 text-fg transition duration-control w-full min-h-11 text-start py-2 px-3 rounded-control ${props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover hover:bg-none active:bg-raised-pressed active:bg-none disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
         <View class="flex-row flex-wrap items-center w-full gap-3">
           <Show when={(props.image ?? 0) || props.icon}>
-            <View class={`bg-tile shadow-sunk justify-center items-center self-start gap-2 size-11 rounded-control`}>
+            <View class={`bg-tile shadow-sunk justify-center items-center self-start gap-2 size-11 rounded-control overflow-hidden`}>
               <Show when={(props.image ?? 0)} fallback={
                   <Icon class={`size-6`} name={props.icon ?? ""} />
               }>
@@ -76,7 +76,7 @@ export function ListItem(props: ListItemProps) {
               </Show>
               <Show when={(props.loading ?? false)} fallback={
                   <Show when={(props.selected ?? false)}>
-                    <Icon class={`text-accent size-4 animate-pop`} name="check" />
+                    <Icon class={`text-accent-ink size-4 animate-pop`} name="check" />
                   </Show>
               }>
                 <Spinner size={20} name={t("base.loading")} />

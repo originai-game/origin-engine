@@ -115,7 +115,7 @@ export function HudSlot(props: HudSlotProps) {
             <Image class={`absolute inset-0 size-full ${cooling() || unaffordable() ? "opacity-dim" : ""}`} src={props.icon ?? 0} />
           </Show>
           <Show when={unaffordable()}>
-            <View class="absolute inset-0 bg-surface" />
+            <View class="absolute inset-0 bg-scrim opacity-soft pointer-events-none" />
           </Show>
           <Show when={cooling() && !unaffordable()}>
             <View class="absolute inset-0 nine-disc bg-scrim" wipe={Math.min(cooldown(), 1)} wipeCcw />
@@ -135,14 +135,14 @@ export function HudSlot(props: HudSlotProps) {
               <Text class="text-base leading-none font-bold tabular-nums whitespace-nowrap text-fg text-stroke-3 text-stroke-bg text-shadow-tag">{`${formatNumber(charge() * 100, { decimals: 0 })}%`}</Text>
             </View>
           </Show>
-          <Show when={(props.count ?? 0) > 0}>
-            <View class="absolute top-0 right-0">
-              <Text class="max-w-15.25 -mt-1.5 -mr-1 bg-surface inset-shadow-lit px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-normal text-fg rounded-control overflow-hidden">
-                {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
-              </Text>
-            </View>
-          </Show>
         </View>
+        <Show when={(props.count ?? 0) > 0}>
+          <View class="absolute -top-1.5 -right-1 pointer-events-none">
+            <Text class="max-w-15.25 bg-surface inset-ring-hairline inset-ring-border inset-shadow-lit px-1.25 text-xs font-bold tabular-nums whitespace-nowrap leading-normal text-fg rounded-control overflow-hidden">
+              {t("hud.slot.count", { count: formatNumber(props.count ?? 0) })}
+            </Text>
+          </View>
+        </Show>
       </View>
       <Show when={(props.key ?? "") !== ""}>
         <Text

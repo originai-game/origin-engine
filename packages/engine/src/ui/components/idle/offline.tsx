@@ -38,7 +38,7 @@ export function IdleOffline(props: IdleOfflineProps) {
         <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
           {t("idle.offline.kicker")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg text-start m-0`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg text-start m-0`}>
           {props.title !== '' ? props.title : t("idle.offline.name")}
         </Text>
       </View>

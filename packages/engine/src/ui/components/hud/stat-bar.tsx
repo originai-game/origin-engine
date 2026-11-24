@@ -18,6 +18,8 @@ export interface StatBarProps {
   heal?: number;
   /** Damage that can still come back, drawn grey between the value and this. */
   recoverable?: number;
+  /** Value before the latest loss, held as a trailing ghost behind the fill. Absent, the ghost rests at the fill and lags it on each loss. */
+  ghost?: number;
   /** A short name at its start (HP); empty is none. */
   label?: string;
   /** An icon of the atlas before it; empty is none. */
@@ -39,23 +41,28 @@ export interface StatBarProps {
 }
 
 /**
- * A stat with its bar: the icon and label before a leaning well that
+ * A stat with its bar: the icon and label before a well that
  * fills to value in its kind's colour, the heal and recoverable shares
- * past it, the shield along its top, a notch at each block's end, and the
- * figure at its end (inside the track on valueInside). Health turns warn
- * under low and danger under critical. Read only. The old style's lean
- * (skewX) and the blocks' mask have no TSX surface: the blocks are drawn
- * as notch marks, the lean and the figure's font-stretch are dropped, and
- * the ghost holds the fill's width instead of draining behind it.
+ * past it, a trailing ghost behind losses, the shield along its top,
+ * a notch at each interior block boundary, and the figure at its end
+ * (inside the track on valueInside). Health turns warn under low and
+ * danger under critical. Read only.
  */
 export function StatBar(props: StatBarProps) {
   const max = () => props.max ?? 1;
   const fraction = () => (max() > 0 ? Math.min(Math.max(props.value / max(), 0), 1) : 0);
+  const ghostFraction = () => {
+    if (max() <= 0) return 0;
+    const g = Math.max(props.ghost ?? props.value, props.value);
+    return Math.min(Math.max(g / max(), 0), 1);
+  };
+  const recoverableFraction = () => (max() > 0 ? Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) : 0);
+  const healFraction = () => (max() > 0 ? Math.min(Math.max((props.value + (props.heal ?? 0)) / max(), 0), 1) : 0);
   const text = () => props.valueText || t("component.stat-bar.value", { value: props.value, max: max() });
   const critical = () => (props.kind ?? "health") == "health" && fraction() <= (props.critical ?? 0.15);
   const low = () => (props.kind ?? "health") == "health" && fraction() <= (props.low ?? 0.3) && !critical();
-  const cells = () => ((props.segment ?? 0) > 0 ? Math.floor(max() / (props.segment ?? 1)) : 0);
-  const block = () => (cells() > 0 ? (props.segment ?? 1) / max() : 0);
+  const cells = () => ((props.segment ?? 0) > 0 && max() > 0 ? Math.floor(max() / (props.segment ?? 1)) : 0);
+  const block = () => (cells() > 0 && max() > 0 ? (props.segment ?? 1) / max() : 0);
   return (
     <View
       class={`group/stat flex-col gap-y-0.5 w-full text-fg data-mana:text-mana data-stamina:text-success data-xp:text-xp data-low:text-warn data-critical:text-danger`}
@@ -82,23 +89,25 @@ export function StatBar(props: StatBarProps) {
           </View>
         </Show>
         <View class={`relative min-w-0 flex-1 ${packClass("Bar", "frame")} h-4.5 ${critical() ? packClass("Bar", "frame", "low") : ""}`}>
-          <View class="absolute left-0 top-0 h-full bg-fg-muted" style={{ width: `${Math.min(Math.max((props.recoverable ?? 0) / max(), fraction()), 1) * 100}%` }} />
-          <View class={`absolute left-0 top-0 h-full bg-linear-to-r from-gold to-gold ${packClass("Bar", "trail")}`} style={{ width: `${fraction() * 100}%` }} />
+          <Show when={(props.recoverable ?? 0) > props.value}>
+            <View class="absolute left-0 top-0 h-full bg-fg-muted opacity-muted" style={{ width: `${recoverableFraction() * 100}%` }} />
+          </Show>
+          <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`} style={{ width: `${ghostFraction() * 100}%` }} />
           <Show when={(props.heal ?? 0) > 0}>
-            <View class="absolute left-0 top-0 h-full bg-success" style={{ width: `${Math.min((props.value + (props.heal ?? 0)) / max(), 1) * 100}%` }} />
+            <View class="absolute left-0 top-0 h-full bg-success opacity-soft" style={{ width: `${healFraction() * 100}%` }} />
           </Show>
           <View class={`absolute left-0 top-0 h-full bg-health inset-shadow-lit ${packClass("Bar", "fill")} group-data-mana/stat:bg-mana group-data-stamina/stat:bg-success group-data-xp/stat:bg-xp group-data-low/stat:bg-warn group-data-critical/stat:bg-critical`} style={{ width: `${fraction() * 100}%` }} />
           <Show when={(props.shieldMax ?? 0) > 0 && (props.shield ?? 0) > 0}>
-            <View class="absolute left-0 top-0 w-full h-17/50 bg-info" style={{ width: `${Math.min((props.shield ?? 0) / (props.shieldMax ?? 1), 1) * 100}%` }} />
+            <View class="absolute left-0 top-0 h-17/50 bg-info" style={{ width: `${Math.min(Math.max((props.shield ?? 0) / (props.shieldMax ?? 1), 0), 1) * 100}%` }} />
           </Show>
-          <Show when={cells() > 0}>
-            <For each={Array.from({ length: cells() }, (_, i) => i)}>
+          <Show when={cells() > 1}>
+            <For each={Array.from({ length: Math.max(cells() - 1, 0) }, (_, i) => i)}>
               {(i) => <View class={`absolute top-0 bottom-0 -translate-x-full ${packClass("Bar", "tick")}`} style={{ left: `${(i() + 1) * block() * 100}%` }} />}
             </For>
           </Show>
           <Show when={props.showValue && props.valueInside}>
-            <View class="absolute right-0 top-0 h-full flex-row items-center px-2">
-              <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
+            <View class="absolute right-0 top-0 h-full flex-row items-center px-2 pointer-events-none">
+              <Text class="text-xs font-bold tabular-nums whitespace-nowrap text-fg text-stroke-2 text-stroke-bg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
             </View>
           </Show>
         </View>

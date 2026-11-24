@@ -31,7 +31,7 @@ export function DailyQuests(props: DailyQuestsProps) {
   return (
     <View class={`grow shrink basis-0 p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")}`} label={props.title !== '' ? props.title : t("general.quests.name")} busy={props.loading}>
       <View class={`flex-row flex-wrap items-center min-h-12 border-b border-border-muted w-full py-1 px-4 gap-3`}>
-        <Text class={`grow shrink font-display text-base font-bold leading-tight tracking-tight text-fg m-0`}>
+        <Text class={`grow shrink font-display text-base font-bold leading-tight text-fg m-0`}>
           {props.title !== '' ? props.title : t("general.quests.name")}
         </Text>
         <Show when={props.refresh}>
@@ -53,8 +53,8 @@ export function DailyQuests(props: DailyQuestsProps) {
                 <For each={props.quests}>
                   {(q) => (
                   <View class={`group/row flex-row items-center rounded-card bg-layer-2 text-fg transition duration-control w-full pr-3 pl-2 py-2 gap-3 compact:gap-y-1 compact:flex-wrap compact:p-2 hover:bg-layer-3 data-state-done:bg-layer-1 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("List", "item")}`} label={q().name} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                    <View class={`group/well relative nine-socket gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-muted`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
-                      <View class="absolute inset-0 nine-socket-rim bg-rim group-data-state-done/well:bg-gold group-data-state-claimed/well:bg-sheen" />
+                    <View class={`group/well relative rounded-card bg-well shadow-sunk gap-2 size-16 compact:hidden group-data-state-claimed/row:opacity-muted`} data-state-claimed={(q().state) === 'claimed'} data-state-done={(q().state) === 'done'}>
+                      <View class="absolute inset-0 pointer-events-none rounded-card inset-ring-regular inset-ring-rim group-data-state-done/well:inset-ring-gold group-data-state-claimed/well:inset-ring-sheen" />
                       <View class="absolute justify-center items-center text-fg inset-0 gap-2 group-data-state-done/well:text-gold">
                         <Icon class="size-6" name={q().state === 'claimed' ? 'check' : q().icon} />
                       </View>

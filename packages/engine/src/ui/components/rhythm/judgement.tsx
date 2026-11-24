@@ -84,7 +84,7 @@ export function RhythmJudgement(props: RhythmJudgementProps) {
           data-judgement-miss={judgement() === "miss"}
         >
           <Text
-            class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
+            class={`max-w-full min-w-0 text-8xl compact:text-title leading-flat font-bold italic tracking-wide uppercase text-center whitespace-nowrap text-ellipsis overflow-hidden text-gold text-stroke-2 text-stroke-bg text-shadow-tag data-judgement-great:text-hud-accent-ink data-judgement-good:text-boon-ink data-judgement-bad:text-warn data-judgement-miss:text-fg-muted`}
             data-judgement-perfect={judgement() === "perfect"}
             data-judgement-great={judgement() === "great"}
             data-judgement-good={judgement() === "good"}

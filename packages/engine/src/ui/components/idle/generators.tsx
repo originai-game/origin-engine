@@ -30,7 +30,7 @@ export function IdleGenerators(props: IdleGeneratorsProps) {
         <Text class={`whitespace-nowrap text-ellipsis text-xs font-semibold tracking-kicker uppercase text-fg-muted overflow-hidden`}>
           {t("idle.generators.kicker")}
         </Text>
-        <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg max-w-full whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
+        <Text class={`font-display text-base font-bold leading-tight text-fg max-w-full whitespace-nowrap text-ellipsis m-0 overflow-hidden`}>
           {props.title !== '' ? props.title : t("idle.generators.name")}
         </Text>
       </View>

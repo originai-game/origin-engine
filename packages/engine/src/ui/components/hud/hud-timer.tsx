@@ -1,4 +1,4 @@
-import { Show, Text, View, formatDuration, packClass, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatDuration, formatNumber, packClass, t } from "@origingame/engine/ui";
 import "./hud-timer.en.ogt";
 
 export interface HudTimerProps {
@@ -25,12 +25,16 @@ export interface HudTimerProps {
 export function HudTimer(props: HudTimerProps) {
   const warn = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) && props.seconds > (props.warnAt ?? 0) / 3;
   const critical = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) / 3;
+  const display = () =>
+    (props.countdown ?? false) && props.seconds > 0 && props.seconds < 10
+      ? `${formatNumber(props.seconds, { decimals: 1 })}s`
+      : formatDuration(props.seconds);
   return (
     <View
       class={`flex-col items-center gap-y-0.5 py-2 px-4 data-paused:opacity-muted ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label || t("component.hud-timer.name")}
-      valueText={formatDuration(props.seconds)}
+      valueText={display()}
       data-warn={warn()}
       data-critical={critical()}
       data-paused={props.paused}
@@ -38,9 +42,10 @@ export function HudTimer(props: HudTimerProps) {
       <Show when={props.label}>
         <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap opacity-quiet text-shadow-tag">{props.label}</Text>
       </Show>
-      <View class="flex-row items-center gap-1">
+      <View class="flex-row items-center gap-1.5">
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>
           <View class="group/hudtimer relative size-6" data-warn={warn()} data-critical={critical()}>
+            <View class="absolute inset-0 nine-ring bg-track" />
             <View
               class="absolute inset-0 nine-ring bg-gold group-data-warn/hudtimer:bg-warn group-data-critical/hudtimer:bg-danger transition-layout duration-fast ease-out"
               wipe={Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1)}
@@ -48,12 +53,12 @@ export function HudTimer(props: HudTimerProps) {
           </View>
         </Show>
         <Text
-          class={`text-2xl tabular-nums whitespace-nowrap text-shadow-tag data-warn:text-warn data-critical:text-danger data-paused:animate-pulse data-critical:animate-beat`}
+          class={`text-2xl font-bold tabular-nums whitespace-nowrap text-shadow-tag data-warn:text-warn data-critical:text-danger data-paused:animate-pulse data-critical:animate-beat`}
           data-warn={warn()}
           data-critical={critical()}
           data-paused={props.paused}
         >
-          {formatDuration(props.seconds)}
+          {display()}
         </Text>
       </View>
     </View>

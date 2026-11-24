@@ -88,9 +88,9 @@ function pauseRows(props: PauseScreenProps): Entry[] {
  */
 export function PauseScreen(props: PauseScreenProps) {
   return (
-    <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View class={`absolute inset-0 flex-row text-fg overflow-hidden ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onResume?.(e) }}>
       <View class={`absolute inset-0 bg-linear-to-r from-glass via-glass via-25% to-transparent to-60% compact:bg-linear-to-b compact:from-glass compact:via-glass compact:via-40% compact:to-glass compact:bg-transparent`} />
-      <Scroll class={`pr-8 pl-12 text-fg w-160 max-w-full h-full transition duration-base ease-out py-8 compact:pt-8 compact:pb-4 compact:w-full compact:px-4 short:py-3 short:px-4 disabled:text-fg-subtle starting:opacity-0 starting:-translate-x-6 starting:translate-y-0 shrink`}>
+      <Scroll class={`pr-8 pl-[calc(env(hud-inset-left)+3rem)] text-fg w-160 max-w-full h-full transition duration-base ease-out pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+2rem)] compact:pt-[calc(env(hud-inset-top)+2rem)] compact:pb-[calc(env(hud-inset-bottom)+1rem)] compact:w-full compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] short:py-3 short:px-4 disabled:text-fg-subtle starting:opacity-0 starting:-translate-x-6 starting:translate-y-0 shrink`}>
         <Text class={`font-display text-8xl font-bold leading-tight tracking-xs uppercase text-fg text-shadow-xs text-shadow-bg m-0 compact:text-display-lg`}>
           {t("screen.pause.title")}
         </Text>
@@ -100,7 +100,7 @@ export function PauseScreen(props: PauseScreenProps) {
               {t("screen.pause.objectiveLabel")}
             </Text>
             <View class="flex-row items-center gap-x-2">
-              <Text class="rotate-45 bg-hud-accent shadow-glow size-2" />
+              <View class="rotate-45 bg-hud-accent shadow-glow size-2 shrink-0" />
               <Text class={`grow shrink text-lg leading-snug font-semibold line-clamp-2 m-0 compact:text-base`}>
                 {props.objective}
               </Text>
@@ -110,20 +110,20 @@ export function PauseScreen(props: PauseScreenProps) {
             {t("screen.pause.Played", { played: formatDuration(props.played) })}
           </Text>
         </View>
-        <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focusGroup="wrap">
+        <View class="gap-y-0.5 mt-auto -ml-4 pt-6 short:grid short:pt-2 short:grid-cols-[1fr_1fr] short:gap-x-3 compact:-mx-4" focusGroup="wrap" focusMemory>
           <For each={pauseRows(props)} key={(r) => r.key}>
             {(r) => (
               <>
                 <Show when={r().rule}>
                   <View class="h-px mt-2 mr-0 mb-1 ml-4 bg-linear-to-r from-sheen to-transparent to-80% compact:ml-6 short:hidden" />
                 </Show>
-                <View class={`flex-row items-center justify-center gap-1 group/row w-full min-h-11 text-fg-muted py-1 px-4 hover:bg-hud-accent focus-visible:bg-hud-accent ${r().danger ? "hover:text-danger focus-visible:text-danger" : "hover:text-hud-accent-fg focus-visible:text-hud-accent-fg"} active:bg-hud-accent active:text-hud-accent-fg disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" name={r().name} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
+                <View class={`flex-row items-center justify-center gap-1 group/row w-full min-h-11 text-fg-muted py-1 px-4 rounded-button ${r().danger ? "hover:bg-danger hover:text-danger-fg focus-visible:bg-danger focus-visible:text-danger-fg active:bg-danger active:text-danger-fg" : "hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg"} disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle compact:pr-4 compact:pl-6`} role="button" name={r().name} disabled={r().disabled === true} onPress={(e) => r().press(e)}>
                   <View class="flex-row items-center gap-x-3 w-full">
                     <Text class="grow shrink text-start text-title leading-tight font-semibold text-shadow-xs text-shadow-bg compact:text-xl">
                       {r().label}
                     </Text>
                     <Show when={!r().minor}>
-                      <Icon class="text-hud-accent-fg opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
+                      <Icon class="opacity-0 size-4 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 rtl:-scale-x-100 rtl:scale-y-100" name="chevronRight" />
                     </Show>
                   </View>
                 </View>
