@@ -37,6 +37,7 @@ pub(crate) struct HalfResFx {
     upsample_layout: wgpu::BindGroupLayout,
     downsample: Deferred<wgpu::RenderPipeline>,
     pub(crate) upsample: Sampled<wgpu::RenderPipeline>,
+    reactive: Deferred<wgpu::RenderPipeline>,
     downsample_cache: Mutex<Option<(DownsampleKey, wgpu::BindGroup)>>,
     upsample_cache: Mutex<Option<(UpsampleKey, wgpu::BindGroup)>>,
 }
@@ -104,13 +105,13 @@ impl HalfResFx {
                 )
             })
         };
+        let upsample_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("fx half bilateral upsample"),
+            bind_group_layouts: &[Some(&upsample_layout)],
+            immediate_size: 0,
+        });
         let upsample = {
-            let (device, layout) = (device.clone(), upsample_layout.clone());
-            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("fx half bilateral upsample"),
-                bind_group_layouts: &[Some(&layout)],
-                immediate_size: 0,
-            });
+            let (device, pl, module) = (device.clone(), upsample_pl.clone(), module.clone());
             Sampled::anywhere(samples, move |samples| {
                 crate::hdr_pipeline(
                     &device,
@@ -131,11 +132,52 @@ impl HalfResFx {
                 )
             })
         };
+        let reactive = {
+            let (device, pl, module) = (device.clone(), upsample_pl, module);
+            Deferred::anywhere(move || {
+                crate::traffic::create_render_pipeline(
+                    &device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("fx half reactive"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module: module.get(),
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: wgpu::PrimitiveState::default(),
+                        depth_stencil: None,
+                        multisample: wgpu::MultisampleState::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module: module.get(),
+                            entry_point: Some("fs_reactive"),
+                            compilation_options: Default::default(),
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: crate::oit::REVEAL_FORMAT,
+                                blend: Some(wgpu::BlendState {
+                                    color: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::Zero,
+                                        dst_factor: wgpu::BlendFactor::Src,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                    alpha: KEEP_ALPHA,
+                                }),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
+            })
+        };
         HalfResFx {
             downsample_layout,
             upsample_layout,
             downsample,
             upsample,
+            reactive,
             downsample_cache: Mutex::new(None),
             upsample_cache: Mutex::new(None),
         }
@@ -144,10 +186,48 @@ impl HalfResFx {
     pub(crate) fn start(&self) {
         crate::deferred::Start::start(&self.downsample);
         crate::deferred::Start::start(&self.upsample);
+        crate::deferred::Start::start(&self.reactive);
     }
 
     pub(crate) fn set_samples(&self, samples: u32) {
         self.upsample.set_samples(samples);
+    }
+
+    fn upsample_group(
+        &self,
+        device: &wgpu::Device,
+        full_depth: &wgpu::TextureView,
+        fx_half: &wgpu::TextureView,
+        half_depth: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        let key = (full_depth.clone(), fx_half.clone(), half_depth.clone());
+        let mut cache = self.upsample_cache.lock().expect("fx half upsample");
+        if let Some((k, g)) = &*cache
+            && *k == key
+        {
+            g.clone()
+        } else {
+            let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("fx half bilateral upsample"),
+                layout: &self.upsample_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(full_depth),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(fx_half),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(half_depth),
+                    },
+                ],
+            });
+            *cache = Some((key, g.clone()));
+            g
+        }
     }
 
     /// Downsamples full-resolution `full_depth` (`lindepth`) into half-res
@@ -216,36 +296,51 @@ impl HalfResFx {
         let Some(pipeline) = self.upsample.get() else {
             return 0;
         };
-        let key = (full_depth.clone(), fx_half.clone(), half_depth.clone());
-        let group = {
-            let mut cache = self.upsample_cache.lock().expect("fx half upsample");
-            if let Some((k, g)) = &*cache
-                && *k == key
-            {
-                g.clone()
-            } else {
-                let g = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("fx half bilateral upsample"),
-                    layout: &self.upsample_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(full_depth),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::TextureView(fx_half),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::TextureView(half_depth),
-                        },
-                    ],
-                });
-                *cache = Some((key, g.clone()));
-                g
-            }
+        let group = self.upsample_group(device, full_depth, fx_half, half_depth);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &group, &[]);
+        pass.draw(0..3, 0..1);
+        1
+    }
+
+    /// Multiplies half-res soft FX reactivity into `target` (`oit.reveal` when
+    /// `clear == false`, or `fx.reactive` cleared to `(1, 1)` when `clear == true`)
+    /// so TAA and FSR 3.1 suppress ghosting over fast additive/soft FX.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn encode_reactive(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut crate::Encoder,
+        full_depth: &wgpu::TextureView,
+        fx_half: &wgpu::TextureView,
+        half_depth: &wgpu::TextureView,
+        target: &wgpu::TextureView,
+        clear: bool,
+    ) -> u32 {
+        let Some(pipeline) = self.reactive.get() else {
+            return 0;
         };
+        let group = self.upsample_group(device, full_depth, fx_half, half_depth);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("fx half reactive"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: target,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: if clear {
+                        wgpu::LoadOp::Clear(wgpu::Color::WHITE)
+                    } else {
+                        wgpu::LoadOp::Load
+                    },
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &group, &[]);
         pass.draw(0..3, 0..1);

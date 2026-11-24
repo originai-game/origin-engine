@@ -196,8 +196,9 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
 
 // The light a particle at `p` with normal `n` receives (emitter.look.x),
 // sent out along `v`: the sun with its cascades, the image-based light,
-// the cluster's local lights, on a rough white surface.
-fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+// the cluster's local lights, on a rough white surface, plus optional
+// Henyey-Greenstein backlit sun transmittance for lit smoke billboards.
+fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, scatter: f32) -> vec3<f32> {
   var s: Surface;
   s.albedo = vec3<f32>(1.0);
   s.metallic = 0.0;
@@ -213,18 +214,21 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> 
   // The caustics, the local lights and the diffuse light around it, as
   // every lit surface's (surface_shade.wgsl).
   let at = ShadeAt(p, n, v, frag, false, false, false);
-  return surface_matte(s, at, brdf(s, n, v, l) * frame.light_color.rgb * shadow, n_dot_l * shadow);
+  var lit = surface_matte(s, at, brdf(s, n, v, l) * frame.light_color.rgb * shadow, n_dot_l * shadow);
+  if (scatter > 0.0) {
+    let cos_t = clamp(dot(-v, l), -1.0, 1.0);
+    lit += frame.light_color.rgb * shadow * (1.5 * hg_phase(cos_t, 0.55) * scatter);
+  }
+  return lit;
 }
 
 // A smooth lit mesh particle (emitter.look.w, its roughness, below 1):
-// its body `c` lit as a matte one and blended at its alpha, with what its
-// surface reflects (the sun's GGX highlight, the local lights', the sky's
-// at Schlick's Fresnel) added over it at full strength, the alpha raised to
-// carry it: glass shards that stay clear and glint where they face the
-// light, as a transparent material keeps its specular.
+// evaluates diffuse (premultiplied by c.a) and dielectric specular (at full
+// strength) in a single `surface_shade` pass, raising alpha to carry bright
+// glints on clear shards without duplicating shadow or cluster light loops.
 fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rough: f32) -> vec4<f32> {
   var s: Surface;
-  s.albedo = vec3<f32>(0.0);
+  s.albedo = c.rgb * c.a;
   s.metallic = 0.0;
   s.roughness = clamp(rough, 0.02, 1.0);
   s.f0 = vec3<f32>(0.04);
@@ -236,14 +240,15 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
-  // A black surface's light is what it reflects (surface_shade.wgsl).
   let at = ShadeAt(p, n, v, frag, false, false, false);
-  let lit = surface_shade(s, at, StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0), n_dot_l * shadow, vec3<f32>(0.0), 1.0, 1.0);
-  let spec = lit.direct + lit.specular;
-  let body = c.rgb * particle_light(frag, p, n, toward_eye(p)) * c.a;
+  let sun_total = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  let lit = surface_shade(s, at, StyleSun(sun_total, 1.0), n_dot_l * shadow, vec3<f32>(0.0), 1.0, 1.0);
+  var spec_s = s;
+  spec_s.albedo = vec3<f32>(0.0);
+  let spec = lit.specular + brdf(spec_s, n, v, l) * frame.light_color.rgb * shadow;
   let a = clamp(c.a + max(spec.r, max(spec.g, spec.b)), 0.0, 1.0);
   if (a <= 0.0) { return vec4<f32>(0.0); }
-  return vec4<f32>((body + spec) / a, a);
+  return vec4<f32>((lit.direct + lit.diffuse + lit.specular) / a, a);
 }
 
 // A billboard's normal at `facing` (ParticleOut's, the rotation applied:
@@ -433,6 +438,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   o.uv = m.uv;
   o.local = vec2<f32>(0.0);
   o.shape_uv = m.uv;
+  o.oit_key = oit_key4(p.pos_age, vec3<f32>(p.misc.x, p.misc.w, 2.0));
   particle_effect(&o, t, p.misc.w);
   o.color = color_curve(t, p.misc.w) * emitter.color * m.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
@@ -474,70 +480,108 @@ fn particle_hue(c: vec4<f32>) -> vec4<f32> {
   return vec4<f32>(hue_rotate(c.rgb, emitter.counts2.y), c.a);
 }
 
-@fragment
-fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
+fn is_alpha_blend() -> bool {
+  return abs(emitter.render.w - 1.0) < 0.5;
+}
+
+fn mesh_fragment(in: ParticleOut) -> vec4<f32> {
+  let n = normalize(in.normal);
+  var c: vec4<f32>;
   if (effect_on()) {
-    var c = particle_hue(particle_effect_color(in, 1.0, in.normal));
+    c = particle_hue(particle_effect_color(in, 1.0, n));
     c.a *= particle_soft(in);
-    c = particle_fog(c, in.world);
-    if (c.a <= 0.0) { discard; }
-    if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
-    return blend_out(c);
+  } else {
+    c = particle_hue(in.color);
   }
-  var c = particle_hue(in.color);
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
-    c = particle_gloss(in.clip.xy, in.world, normalize(in.normal), c, emitter.look.w);
+    c = particle_gloss(in.clip.xy, in.world, n, c, emitter.look.w);
   } else if (emitter.look.x > 0.5) {
-    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal), toward_eye(in.world)), c.a);
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, n, toward_eye(in.world), 0.0), c.a);
   }
-  c = particle_fog(c, in.world);
+  c = fx_fog(c, in.world, in.clip.xy, is_alpha_blend());
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return blend_out(c);
 }
 
-// A mesh's colour through the fog: towards the fog's for one that adds
-// or covers; a subtractive or multiply one fades out instead (the fog
-// colour taken away or multiplied would darken it).
-fn particle_fog(c: vec4<f32>, world: vec3<f32>) -> vec4<f32> {
-  if (emitter.render.w < 1.5) { return vec4<f32>(apply_fog(c.rgb, world), c.a); }
-  return vec4<f32>(c.rgb, c.a * fog_keep(world));
+@fragment
+fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
+  return mesh_fragment(in);
+}
+
+@fragment
+fn fs_mesh_oit(in: ParticleOut) -> OitOutput {
+  return oit_weighted(mesh_fragment(in), in.clip.z);
+}
+
+@fragment
+fn fs_mesh_oit_list(in: ParticleOut, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = mesh_fragment(in);
+  oit_store(in.clip, c, mask, in.oit_key);
+  return oit_weighted(c, in.clip.z);
+}
+
+@fragment
+fn fs_mesh_oit_front(in: ParticleOut) -> OitOutput {
+  let c = mesh_fragment(in);
+  return oit_hybrid(c, in.clip);
+}
+
+@fragment
+fn fs_mesh_oit_mark(in: ParticleOut) {
+  let c = mesh_fragment(in);
+  oit_front_mark(in.clip, c.a);
 }
 
 // Distortion: the scene copy behind the particle, shifted along the
-// texture's red and green (a normal map) or, without a texture, by a
-// smooth wavering field in screen space that rises over time (heat haze).
-// The field is the screen's, not the particle's, so overlapping particles
-// at a pixel bend it the same way and blend softly instead of pasting
-// differently shifted copies over each other (shards).
+// texture's red and green (a normal map), an EffectMaterial, or a smooth
+// wavering field in screen space that rises over time (heat haze).
+// Samples the scene copy bilinearly and rejects shifted taps that lie on a
+// foreground surface in front of the distortion particle.
 @fragment
 fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
   let tex = particle_tex(in);
+  let r = length(in.local) * 2.0;
+  let soft_dot = smoothstep(0.0, 0.6, clamp(1.0 - r, 0.0, 1.0));
+  let size_f = max(vec2<f32>(textureDimensions(scene_color)), vec2<f32>(1.0));
   var bend: vec2<f32>;
-  var mask: f32;
-  if (emitter.sheet2.y > 0.5) {
+  var w: f32;
+  if (effect_on()) {
+    let fx = particle_effect_color(in, soft_dot, ball_normal(in.facing));
+    w = fx.a;
+    if ((effect.flags.x & FX_MAIN) != 0u || emitter.sheet2.y > 0.5) {
+      bend = fx.rg * 2.0 - 1.0;
+    } else {
+      let cells = in.clip.xy / size_f.y * 18.0;
+      let q = vec3<f32>(cells.x, cells.y + frame.time.x * 1.2, frame.time.x * 0.6);
+      bend = vec2<f32>(value_noise3(q, 11u), value_noise3(q, 23u)) * 2.0 - 1.0;
+    }
+  } else if (emitter.sheet2.y > 0.5) {
     bend = tex.rg * 2.0 - 1.0;
-    mask = tex.a;
+    w = in.color.a * tex.a;
   } else {
-    let r = length(in.local) * 2.0;
-    mask = smoothstep(0.0, 0.6, clamp(1.0 - r, 0.0, 1.0));
-    let cells = in.clip.xy / f32(textureDimensions(scene_color).y) * 18.0;
+    w = in.color.a * soft_dot;
+    let cells = in.clip.xy / size_f.y * 18.0;
     let q = vec3<f32>(cells.x, cells.y + frame.time.x * 1.2, frame.time.x * 0.6);
     bend = vec2<f32>(value_noise3(q, 11u), value_noise3(q, 23u)) * 2.0 - 1.0;
   }
-  var w = in.color.a * mask;
-  if (emitter.render.z > 0.0) {
-    let at = min(vec2<i32>(in.clip.xy), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
-    let scene = textureLoad(scene_depth, at, 0).r;
-    w *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
-  }
+  w *= particle_soft(in);
   if (w <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
-  let size = vec2<i32>(textureDimensions(scene_color));
   // Screen rows run down: the bend's +y is up.
-  let shift = vec2<f32>(bend.x, -bend.y) * emitter.look.y * f32(size.y) * w;
-  let at = clamp(vec2<i32>(in.clip.xy + shift), vec2<i32>(0), size - vec2<i32>(1));
-  return vec4<f32>(textureLoad(scene_color, at, 0).rgb, clamp(w, 0.0, 1.0));
+  let shift = vec2<f32>(bend.x, -bend.y) * emitter.look.y * size_f.y * w;
+  let target_px = clamp(in.clip.xy + shift, vec2<f32>(0.5), size_f - vec2<f32>(0.5));
+  let d_size = vec2<i32>(textureDimensions(scene_depth));
+  let d_at = clamp(
+    vec2<i32>(target_px * (vec2<f32>(d_size) / size_f)),
+    vec2<i32>(0),
+    max(d_size - vec2<i32>(1), vec2<i32>(0)),
+  );
+  let refracted_depth = textureLoad(scene_depth, d_at, 0).r;
+  let safe_px = select(in.clip.xy, target_px, refracted_depth + 0.05 >= in.depth);
+  let half_tex = vec2<f32>(0.5) / size_f;
+  let uv = clamp(safe_px / size_f, half_tex, vec2<f32>(1.0) - half_tex);
+  return vec4<f32>(textureSampleLevel(scene_color, sprite_sampler, uv, 0.0).rgb, clamp(w, 0.0, 1.0));
 }
 
 @fragment
@@ -546,7 +590,8 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
 }
 
 // Half-resolution soft particle pass: scene_depth is bound at half resolution
-// (matching in.clip.xy), while clustered lighting expects full-res pixel coords.
+// (matching in.clip.xy), while clustered lighting and froxel UVs expect
+// full-resolution pixel coordinates.
 @fragment
 fn fs_half(in: ParticleOut) -> @location(0) vec4<f32> {
   return particle_fragment(in, in.clip.xy * 2.0);
@@ -602,14 +647,16 @@ fn particle_fragment(in: ParticleOut, light_frag: vec2<f32>) -> vec4<f32> {
     // behind it: the sun and the lamps it passes.)
     var n = ball_normal(in.facing);
     var v = toward_eye(in.world);
+    var scatter = 1.0 - 0.65 * clamp(c.a, 0.0, 1.0);
     if (particle_align() == 1u) {
       n = -v;
       v = n;
+      scatter = 0.0;
     }
-    c = vec4<f32>(c.rgb * particle_light(light_frag, in.world, n, v), c.a);
+    c = vec4<f32>(c.rgb * particle_light(light_frag, in.world, n, v, scatter), c.a);
   }
   c.a *= particle_soft(in);
-  c.a *= fog_keep(in.world);
+  c = fx_fog(c, in.world, light_frag, is_alpha_blend());
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return blend_out(c);

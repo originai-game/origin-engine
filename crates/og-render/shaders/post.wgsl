@@ -294,9 +294,10 @@ fn fs_bloom_prefilter(in: VsOut) -> @location(0) vec4<f32> {
     let contribution = max(soft, brightness - post.bloom.x) / max(brightness, 1e-4);
     out = c * contribution;
   }
-  if (post.mode.w > 0.5) {
-    // The order-independent glow buffer joins without a threshold.
-    out += textureSampleLevel(bloom_tex, linear_sampler, in.uv, 0.0).rgb * exposure();
+  if (post.mode.w > 0.0) {
+    // The order-independent glow buffer joins without a threshold, scaled by
+    // its relative intensity against the bloom composite weight.
+    out += textureSampleLevel(bloom_tex, linear_sampler, in.uv, 0.0).rgb * exposure() * post.mode.w;
   }
   return vec4<f32>(out, 1.0);
 }

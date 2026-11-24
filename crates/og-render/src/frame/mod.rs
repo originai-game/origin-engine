@@ -125,6 +125,9 @@ pub(crate) struct FrameUniform {
     pub leaf_year: [[f32; 4]; 2],
     /// The view ray through a pixel ([`view_rays`], frame.wgsl `pixel_ray`).
     pub view_rays: [[f32; 4]; 3],
+    /// Main camera's integrated 3D volumetric froxel volume params:
+    /// x: max distance (0: inactive), y: slice count, z: 1/width, w: 1/height.
+    pub vol_froxel: [f32; 4],
 }
 
 /// The frame uniform's `view_rays` for `view_proj`: the world direction of

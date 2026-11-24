@@ -30,6 +30,7 @@ pub(super) struct WriteFrameUniformsInputs<'a> {
     pub probe_faces: &'a [[frame::CameraFrame; 6]],
     pub reflections: &'a [camera::PlanarReflection],
     pub ssr: Option<&'a ssr::ScreenSpaceReflections>,
+    pub volumetric_froxels: bool,
 }
 
 pub(super) struct WriteFrameUniformsOutputs {
@@ -65,6 +66,7 @@ impl Renderer {
             probe_faces,
             reflections,
             ssr,
+            volumetric_froxels,
         }: WriteFrameUniformsInputs<'_>,
     ) -> WriteFrameUniformsOutputs {
         // The dither's turn (common.wgsl `dither_cut`): the frames drawn
@@ -202,6 +204,18 @@ impl Renderer {
             drawn: [self.frame_index as u32, 0, 0, dither],
             leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
             view_rays: frame::view_rays(cam.jittered_view_proj),
+            vol_froxel: if volumetric_froxels
+                && let Some((_, dist, slices)) = self.volumetric.froxel_info()
+            {
+                [
+                    dist,
+                    slices as f32,
+                    1.0 / self.width.max(1) as f32,
+                    1.0 / self.height.max(1) as f32,
+                ]
+            } else {
+                [0.0; 4]
+            },
         };
         if let Some(light) = underwater {
             uniform.atmosphere.underwater(light);
@@ -350,6 +364,7 @@ impl Renderer {
             }
             u.cluster = self.reflections.reflection_clusters[k].params;
             u.ssr = [0.0; 4];
+            u.vol_froxel = [0.0; 4];
             crate::traffic::write_buffer(
                 &self.queue,
                 &self.reflections.reflection_buffer[k],

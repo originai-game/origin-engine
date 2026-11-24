@@ -192,25 +192,16 @@ impl Renderer {
             &[mode]
         };
         let samples = self.samples;
+        let src = crate::oit::Source::Particles(crate::oit::ParticleOit::Billboard, false, None);
         let missing = |r: &Self| {
-            modes.iter().any(|&m| {
-                !r.oit
-                    .pipelines
-                    .contains_key(&(crate::oit::Source::Particles, m, samples))
-            })
+            modes
+                .iter()
+                .any(|&m| !r.oit.pipelines.contains_key(&(src, m, samples)))
         };
         if !missing(self) {
             return false;
         }
-        self.ensure_oit_pipelines(
-            mode,
-            &[],
-            &[],
-            &[],
-            &[crate::oit::Source::Particles],
-            &[],
-            &[],
-        );
+        self.ensure_oit_pipelines(mode, &[], &[], &[], &[src], &[], &[]);
         true
     }
 

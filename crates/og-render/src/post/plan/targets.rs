@@ -111,6 +111,12 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
             desc(hw, hh, LINDEPTH_FORMAT, 1, ATTACH_BIND),
         )
         .transient("fx.half", desc(hw, hh, HDR_FORMAT, 1, ATTACH_BIND));
+        if cfg.taa && cfg.oit.is_none() {
+            g.transient(
+                "fx.reactive",
+                desc(w, h, crate::oit::REVEAL_FORMAT, 1, ATTACH_BIND),
+            );
+        }
     }
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
     if cfg.taa {

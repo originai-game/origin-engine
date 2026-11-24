@@ -142,6 +142,8 @@ struct Frame {
   // The view ray through a pixel (frame/mod.rs `view_rays`, `pixel_ray` below): its world direction at ndc (x, y) is
   // along [0].xyz * x + [1].xyz * y + [2].xyz.
   view_rays: array<vec4<f32>, 3>,
+  // Main camera's integrated 3D volumetric froxel volume: x max distance (0: inactive), y slices, z 1/width, w 1/height.
+  vol_froxel: vec4<f32>,
 };
 
 // The unit world direction of the view ray through `ndc` (the view's own in orthographic). From the view's rotation

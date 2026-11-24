@@ -360,6 +360,7 @@ fn apply_pipeline(
     layout: &wgpu::PipelineLayout,
     froxel: bool,
     constants: &[(&str, f64)],
+    samples: u32,
 ) -> wgpu::RenderPipeline {
     crate::traffic::create_render_pipeline(
         device,
@@ -374,7 +375,10 @@ fn apply_pipeline(
             },
             primitive: Default::default(),
             depth_stencil: None,
-            multisample: Default::default(),
+            multisample: wgpu::MultisampleState {
+                count: samples,
+                ..Default::default()
+            },
             fragment: Some(wgpu::FragmentState {
                 module,
                 entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
@@ -562,6 +566,10 @@ pub(crate) struct Volumetric {
     /// The apply pipeline of the fog and of the water, each made on the
     /// first frame with its medium.
     apply: [Option<wgpu::RenderPipeline>; 2],
+    /// Sample count the `apply` pipelines were compiled for.
+    apply_samples: u32,
+    /// Last prepared froxel max distance (0 when inactive).
+    froxel_distance: f32,
     /// Whether the frame's medium is the water.
     water: bool,
     /// The lit features the renderer is made without (pipeline_features.rs).
@@ -713,15 +721,30 @@ impl Volumetric {
             apply_layout,
             module: None,
             apply: [None, None],
+            apply_samples: 1,
+            froxel_distance: 0.0,
             water: false,
             off,
             warned_volumes: false,
         }
     }
 
+    /// The integrated 3D froxel volume view, max distance, and slice count when
+    /// the froxel grid is available for forward volumetric fog sampling in FX.
+    pub(crate) fn froxel_info(&self) -> Option<(&wgpu::TextureView, f32, u32)> {
+        let f = self.froxels.as_ref()?;
+        (self.froxel_distance > 0.0).then_some((&f.sum, self.froxel_distance, f.slices))
+    }
+
     /// Makes the module, the froxel volumes and the pipelines of the
     /// medium (`water`) on first use; `frame_layout`: the lit frame group's.
-    fn ensure(&mut self, device: &wgpu::Device, frame_layout: &wgpu::BindGroupLayout, water: bool) {
+    fn ensure(
+        &mut self,
+        device: &wgpu::Device,
+        frame_layout: &wgpu::BindGroupLayout,
+        water: bool,
+        samples: u32,
+    ) {
         let froxel = self.method == VolumetricMethod::Froxel;
         if self.module.is_none() {
             let label = if froxel {
@@ -743,10 +766,15 @@ impl Volumetric {
         let Some((module, layout)) = &self.module else {
             return;
         };
+        if self.apply_samples != samples {
+            self.apply = [None, None];
+            self.apply_samples = samples;
+        }
         let constants = Medium::constants(water);
         if self.apply[water as usize].is_none() {
-            self.apply[water as usize] =
-                Some(apply_pipeline(device, module, layout, froxel, constants));
+            self.apply[water as usize] = Some(apply_pipeline(
+                device, module, layout, froxel, constants, samples,
+            ));
         }
         if let Some(f) = &mut self.froxels
             && f.inject[water as usize].is_none()
@@ -777,11 +805,12 @@ impl Volumetric {
         (local, eye): (&[FogVolume], Vec3),
         sky: f32,
         size: (u32, u32),
+        samples: u32,
         tick: u64,
         quality: &crate::RenderQuality,
     ) {
         self.water = matches!(medium, Medium::Water { .. });
-        self.ensure(device, frame_layout, self.water);
+        self.ensure(device, frame_layout, self.water, samples);
         let slices = quality.froxel_slices();
         if let Some(f) = &mut self.froxels
             && f.slices != slices
@@ -791,6 +820,7 @@ impl Volumetric {
             f.slices = slices;
         }
         let (scatter, fog, distance, own) = medium.uniform();
+        self.froxel_distance = distance;
         // The water's medium is the water alone.
         let (near, dropped) = match medium {
             Medium::Fog(_) => nearest_volumes(local, eye, distance),

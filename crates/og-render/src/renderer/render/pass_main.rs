@@ -125,20 +125,17 @@ impl Renderer {
             self.graph.order().contains(&FramePass::Prepass),
             self.samples,
         );
-        // With water or a 3D fluid the pass is split after the
-        // sky: the scene so far is copied for them to refract
-        // and reflect, then the pass goes on over it.
-        // So is it for transmissive materials, which refract the
-        // copy's mip chain (`physical.rs`).
-        // And for particles that bend the scene behind them (heat haze),
-        // which read the same copy.
-        let split = !water_draws.is_empty()
-            || fluid_frame.is_some()
-            || transmission_view.is_some()
-            || particle_frame.distortion;
+        // With water, a 3D fluid or transmissive materials, the pass splits
+        // after the sky so they can refract the opaque scene; distortion
+        // particles split after transparents so heat haze refracts water,
+        // volumetric fog, OIT smoke and strips too.
+        let water_copy = !water_draws.is_empty() || fluid_frame.is_some();
+        let split = water_copy || transmission_view.is_some();
+        let distort = particle_frame.distortion;
+        let vol_froxel_early = volumetric_fog.is_some() && self.volumetric.froxel_info().is_some();
+        let vol_raymarch_late = volumetric_fog.is_some() && !vol_froxel_early;
         // Each part of the pass stores what a later part loads again: the
-        // part before the water's copy, and the parts before the OIT pass
-        // and its resolve (`keep`).
+        // part before the water's copy, volumetric apply, OIT, or distortion (`keep`).
         let begin = |encoder: &mut crate::Encoder, first: bool, keep: bool, label: &'static str| {
             let (view, resolve_target, store) = if msaa {
                 (
@@ -283,6 +280,47 @@ impl Renderer {
             } else {
                 false
             };
+        // Stamp half-res FX coverage into `fx.reactive` when TAA runs without OIT
+        // (always initializing `fx.reactive` to white even if half-res skipped).
+        if let Some(reactive) = self.graph.try_view("fx.reactive") {
+            let stamped = if half_ready
+                && let (Some(full_depth), Some(half_depth), Some(half_view)) = (
+                    self.graph.try_view("lindepth"),
+                    self.graph.try_view("fx.half_depth"),
+                    self.graph.try_view("fx.half"),
+                ) {
+                self.particles.gpu.half_res.encode_reactive(
+                    &self.device,
+                    encoder,
+                    full_depth,
+                    half_view,
+                    half_depth,
+                    reactive,
+                    true,
+                )
+            } else {
+                0
+            };
+            stats.draw_calls += stamped;
+            if stamped == 0 {
+                let _clear = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("fx reactive clear"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: reactive,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+            }
+        }
         // A serial frame (`set_gpu_serial`) draws each class of draw in a
         // render pass of its own, each waited for, so the perf record
         // reads the main pass's cost by what it draws (`"main: scatter"`,
@@ -292,7 +330,7 @@ impl Renderer {
         let mut pass = begin(
             encoder,
             true,
-            serial || split || oit.is_some(),
+            serial || split || vol_froxel_early || vol_raymarch_late || oit.is_some() || distort,
             if serial { "main: opaque" } else { "main" },
         );
         pass.set_bind_group(0, frame_bind_group, &[]);
@@ -524,7 +562,7 @@ impl Renderer {
                 height: self.height,
                 depth_or_array_layers: 1,
             };
-            if let Some(copy) = self.graph.try_view("scene-copy") {
+            if water_copy && let Some(copy) = self.graph.try_view("scene-copy") {
                 encoder.copy_texture_to_texture(
                     hdr.texture().as_image_copy(),
                     copy.texture().as_image_copy(),
@@ -545,7 +583,7 @@ impl Renderer {
             pass = begin(
                 encoder,
                 false,
-                serial || oit.is_some(),
+                serial || vol_froxel_early || vol_raymarch_late || oit.is_some() || distort,
                 if serial {
                     "main: water"
                 } else {
@@ -569,6 +607,33 @@ impl Renderer {
                     .map_or(Default::default(), |x| x.draw(&mut pass, f));
                 binder.reset(&mut pass);
             }
+        }
+        // Forward volumetric fog: when 3D froxels are active, apply the volume
+        // to opaque surfaces, sky and water/fluids here so particles, effect
+        // meshes and ribbons sample the 3D froxel volume at their own true
+        // world depth and 2D sprites are never fogged by 3D scene depth.
+        if vol_froxel_early {
+            drop(pass);
+            let depth = self.graph.try_view("front-depth");
+            self.volumetric.encode_apply(
+                &self.device,
+                encoder,
+                frame_bind_group,
+                if msaa {
+                    self.graph.view("hdr-msaa")
+                } else {
+                    hdr
+                },
+                depth.unwrap_or(self.graph.view("lindepth")),
+            );
+            pass = begin(
+                encoder,
+                false,
+                serial || oit.is_some() || distort,
+                "main (after volumetric)",
+            );
+            pass.set_bind_group(0, frame_bind_group, &[]);
+            pass.set_bind_group(2, fx_group, &[]);
         }
         let composite_half_res = |pass: &mut wgpu::RenderPass| {
             let (Some(full_depth), Some(half_view), Some(half_depth)) = (
@@ -617,12 +682,16 @@ impl Renderer {
                     stats.draw_calls += composite_half_res(&mut pass);
                     pass.set_bind_group(0, frame_bind_group, &[]);
                     pass.set_bind_group(2, fx_group, &[]);
-                    stats.draw_calls +=
-                        particles(&mut pass, particles_gpu::ParticlePart::Full, None, None);
-                } else {
-                    stats.draw_calls +=
-                        particles(&mut pass, particles_gpu::ParticlePart::All, None, None);
                 }
+                stats.draw_calls += particles(
+                    &mut pass,
+                    particles_gpu::ParticlePart::Main {
+                        skip_half: half_ready,
+                        skip_distort: distort,
+                    },
+                    None,
+                    None,
+                );
                 // Trails, ribbons and beams (layered 2D trails go with the sprites).
                 stats.draw_calls += ctx.draw_strips(&mut pass, &ribbon_frame.runs);
             }
@@ -759,11 +828,37 @@ impl Renderer {
                     a.copy_count(encoder, self.frame_index);
                 }
                 stats.draw_calls += self.encode_oit_resolve(encoder, mode);
+                // After OIT resolve has consumed exact OIT revealage, multiply
+                // half-res additive/soft FX reactivity into `oit.reveal` so
+                // TAA and FSR 3.1 suppress ghosting on half-res fireballs too.
+                if taa
+                    && half_ready
+                    && let (Some(full_depth), Some(half_depth), Some(half_view), Some(reveal)) = (
+                        self.graph.try_view("lindepth"),
+                        self.graph.try_view("fx.half_depth"),
+                        self.graph.try_view("fx.half"),
+                        self.graph.try_view("oit.reveal"),
+                    )
+                {
+                    stats.draw_calls += self.particles.gpu.half_res.encode_reactive(
+                        &self.device,
+                        encoder,
+                        full_depth,
+                        half_view,
+                        half_depth,
+                        reveal,
+                        false,
+                    );
+                }
                 // Over the resolved scene: the billboards the OIT pass
                 // cannot take, back to front, then half-res soft clouds,
-                // then what adds light (never weighted down) and what bends
-                // the scene.
-                pass = begin(encoder, false, false, "main (after oit)");
+                // then what adds light (never weighted down).
+                pass = begin(
+                    encoder,
+                    false,
+                    vol_raymarch_late || distort,
+                    "main (after oit)",
+                );
                 pass.set_bind_group(0, frame_bind_group, &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += ctx.draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
@@ -774,7 +869,10 @@ impl Renderer {
                 }
                 stats.draw_calls += particles(
                     &mut pass,
-                    particles_gpu::ParticlePart::After(half_ready),
+                    particles_gpu::ParticlePart::After {
+                        skip_half: half_ready,
+                        skip_distort: distort,
+                    },
                     None,
                     None,
                 );
@@ -786,6 +884,28 @@ impl Renderer {
                 );
             }
         }
+        // Distortion particles (heat haze, shockwaves): copy the post-water,
+        // post-volumetric, post-OIT HDR scene so refraction bends everything
+        // behind the shockwave instead of erasing water and smoke.
+        if distort {
+            drop(pass);
+            if let Some(copy) = self.graph.try_view("scene-copy") {
+                encoder.copy_texture_to_texture(
+                    hdr.texture().as_image_copy(),
+                    copy.texture().as_image_copy(),
+                    wgpu::Extent3d {
+                        width: self.width,
+                        height: self.height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
+            pass = begin(encoder, false, vol_raymarch_late, "main (distortion)");
+            pass.set_bind_group(0, frame_bind_group, &[]);
+            pass.set_bind_group(2, fx_group, &[]);
+            stats.draw_calls +=
+                particles(&mut pass, particles_gpu::ParticlePart::Distort, None, None);
+        }
         // Lines, points and wireframes (lines.rs), with their own group 0.
         let n = self
             .lines
@@ -796,6 +916,26 @@ impl Renderer {
             stats.draw_calls += n;
             pass.set_bind_group(0, frame_bind_group, &[]);
         }
+        // Raymarched volumetric fog fallback (when 3D froxels are unavailable):
+        // apply before 2D sprites so 2D sprites and text are never fogged.
+        if vol_raymarch_late {
+            drop(pass);
+            let depth = self.graph.try_view("front-depth");
+            self.volumetric.encode_apply(
+                &self.device,
+                encoder,
+                frame_bind_group,
+                if msaa {
+                    self.graph.view("hdr-msaa")
+                } else {
+                    hdr
+                },
+                depth.unwrap_or(self.graph.view("lindepth")),
+            );
+            pass = begin(encoder, false, false, "main (sprites)");
+            pass.set_bind_group(0, frame_bind_group, &[]);
+            pass.set_bind_group(2, fx_group, &[]);
+        }
         // Sprites and text, blended over the scene in sorted order.
         stats.draw_calls += ctx.draw_sprites(
             &mut pass,
@@ -805,18 +945,6 @@ impl Renderer {
             false,
         );
         drop(pass);
-        // Volumetric fog over everything drawn (volumetric.rs), to the first
-        // surface each pixel shows: the water's where it lies in front.
-        if volumetric_fog.is_some() {
-            let depth = self.graph.try_view("front-depth");
-            self.volumetric.encode_apply(
-                &self.device,
-                encoder,
-                frame_bind_group,
-                self.graph.view("hdr"),
-                depth.unwrap_or(self.graph.view("lindepth")),
-            );
-        }
         // The lit image for the next frame's GI (`gi-write`).
         if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
             encoder.copy_texture_to_texture(

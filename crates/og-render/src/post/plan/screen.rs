@@ -67,6 +67,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             }
             if cfg.oit.is_some() {
                 reads.push("oit.reveal");
+            } else if cfg.fx_half {
+                reads.push("fx.reactive");
             }
             g.pass(name, &reads, &["history-write", "history-depth-write"])
         }

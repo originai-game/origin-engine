@@ -37,15 +37,14 @@ fn fs_downsample(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(d_max, d_min, 0.0, 0.0);
 }
 
-@fragment
-fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
+fn sample_bilateral(pos_xy: vec2<f32>) -> vec4<f32> {
   let full_sz = vec2<i32>(textureDimensions(full_depth));
-  let fp = min(vec2<i32>(in.pos.xy), max(full_sz - vec2<i32>(1), vec2<i32>(0)));
+  let fp = min(vec2<i32>(pos_xy), max(full_sz - vec2<i32>(1), vec2<i32>(0)));
   let d_full = textureLoad(full_depth, fp, 0).r;
 
   let half_sz = vec2<i32>(textureDimensions(fx_half));
   let half_mx = max(half_sz - vec2<i32>(1), vec2<i32>(0));
-  let hc = in.pos.xy * 0.5 - vec2<f32>(0.5);
+  let hc = pos_xy * 0.5 - vec2<f32>(0.5);
   let b = vec2<i32>(floor(hc));
   let f = fract(hc);
 
@@ -76,4 +75,20 @@ fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
 
   let wsum = max(w00 + w10 + w01 + w11, 1e-6);
   return (c00 * w00 + c10 * w10 + c01 * w01 + c11 * w11) / wsum;
+}
+
+@fragment
+fn fs_upsample(in: VsOut) -> @location(0) vec4<f32> {
+  return sample_bilateral(in.pos.xy);
+}
+
+// Stamps half-res soft FX coverage into an Rg8Unorm reactive revealage target
+// (`oit.reveal` or `fx.reactive`) with multiplicative blending so TAA and
+// FSR 3.1 reduce history trust over fast additive fireballs and soft clouds.
+@fragment
+fn fs_reactive(in: VsOut) -> @location(0) vec4<f32> {
+  let c = sample_bilateral(in.pos.xy);
+  let peak = max(c.r, max(c.g, c.b));
+  let react = clamp(max(1.0 - c.a, peak / (1.0 + peak)), 0.0, 0.85);
+  return vec4<f32>(1.0, 1.0 - react, 0.0, 1.0);
 }

@@ -195,7 +195,9 @@ impl FrameGraph {
             self.view(lit_names(&self.passes).main),
             self.view("depth"),
             prepass,
-            self.try_view("oit.reveal").unwrap_or(no_reactive),
+            self.try_view("oit.reveal")
+                .or_else(|| self.try_view("fx.reactive"))
+                .unwrap_or(no_reactive),
             &history[slot],
             &history[1 - slot],
             self.try_view("hdr.sharp"),

@@ -68,7 +68,7 @@ fn draw_kind(e: &ParticleEmitter) -> DrawKind {
 
 /// A particle's trail beside it (`TrailIn` in particles.wgsl): its
 /// [`TRAIL_POINTS`] samples, one instance per particle.
-const TRAIL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+pub(crate) const TRAIL_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
     array_stride: (TRAIL_POINTS * 16) as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
@@ -468,43 +468,76 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
 /// Which of a camera's 3D systems and effect meshes a draw takes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ParticlePart {
-    /// Every system and effect mesh, in one place (views, probes, or no OIT / no half-res).
+    /// Every system and effect mesh, in one place (views and probes).
     All,
-    /// Every full-resolution system and effect mesh when half-res soft particles ran without OIT.
-    Full,
-    /// Solid mesh particles (debris, depth-writing).
+    /// Full-resolution main-pass particles without OIT.
+    Main { skip_half: bool, skip_distort: bool },
+    /// Solid opaque mesh particles (debris, depth-writing).
     Before,
-    /// Alpha billboards and instanced alpha effect meshes into the OIT pass.
+    /// Alpha billboards, trails, effect-material mesh particles and instanced
+    /// alpha effect meshes into the OIT pass.
     Oit,
     /// Large soft-depth billboards rendered into the half-resolution target (`fx.half`).
     Half,
-    /// Non-solid, non-OIT draws after OIT resolve (`true` skips half-res systems already drawn).
-    After(bool),
+    /// Non-solid, non-OIT draws after OIT resolve.
+    After { skip_half: bool, skip_distort: bool },
+    /// Distortion particles drawn after the post-transparent `scene-copy`.
+    Distort,
 }
 
 impl ParticlePart {
     fn draws(self, s: &FrameSystem) -> bool {
         match self {
             ParticlePart::All => true,
-            ParticlePart::Full => !s.half_res,
+            ParticlePart::Main {
+                skip_half,
+                skip_distort,
+            } => !(skip_half && s.half_res) && !(skip_distort && s.kind == DrawKind::Distort),
             ParticlePart::Before => solid_mesh(s),
             ParticlePart::Oit => in_oit(s),
             ParticlePart::Half => s.half_res,
-            ParticlePart::After(skip_half) => {
-                !solid_mesh(s) && !in_oit(s) && !(skip_half && s.half_res)
+            ParticlePart::After {
+                skip_half,
+                skip_distort,
+            } => {
+                !solid_mesh(s)
+                    && !in_oit(s)
+                    && !(skip_half && s.half_res)
+                    && !(skip_distort && s.kind == DrawKind::Distort)
             }
+            ParticlePart::Distort => s.kind == DrawKind::Distort,
         }
     }
 }
 
-/// Debris: meshes that write depth (an effect mesh is blended).
+/// Debris: opaque alpha-blended mesh particles that write depth (additive,
+/// subtractive, multiply and effect-material mesh particles never write depth).
 fn solid_mesh(s: &FrameSystem) -> bool {
-    s.kind == DrawKind::Mesh && !s.look.effect_mesh
+    s.kind == DrawKind::Mesh && !s.look.effect_mesh && s.blend == ParticleBlend::Alpha
+}
+
+/// OIT pipeline source for a particle system that joins the OIT pass.
+pub(crate) fn oit_source_of(s: &FrameSystem) -> Option<crate::oit::Source> {
+    if s.blend != ParticleBlend::Alpha {
+        return None;
+    }
+    let kind = match s.kind {
+        DrawKind::Billboard => crate::oit::ParticleOit::Billboard,
+        DrawKind::Trail => crate::oit::ParticleOit::Trail,
+        DrawKind::Mesh if s.look.effect_mesh => crate::oit::ParticleOit::Mesh,
+        _ => return None,
+    };
+    let double_sided = kind == crate::oit::ParticleOit::Mesh && s.look.double_sided;
+    Some(crate::oit::Source::Particles(
+        kind,
+        double_sided,
+        s.look.hook,
+    ))
 }
 
 /// Whether a system's particles join the order-independent passes.
 fn in_oit(s: &FrameSystem) -> bool {
-    s.kind == DrawKind::Billboard && s.blend == ParticleBlend::Alpha && s.look.hook.is_none()
+    oit_source_of(s).is_some()
 }
 
 impl ParticleFrame {
@@ -523,12 +556,13 @@ impl ParticleFrame {
     /// OIT pipeline sources needed by particles and effect meshes on `mask`.
     pub fn oit_sources(&self, mask: u32) -> Vec<crate::oit::Source> {
         let mut out = Vec::new();
-        if self
-            .systems
-            .iter()
-            .any(|s| s.layers & mask != 0 && in_oit(s))
-        {
-            out.push(crate::oit::Source::Particles);
+        for s in &self.systems {
+            if s.layers & mask != 0
+                && let Some(src) = oit_source_of(s)
+                && !out.contains(&src)
+            {
+                out.push(src);
+            }
         }
         for b in &self.effect_meshes.batches {
             if b.layers & mask != 0 && b.in_oit() {

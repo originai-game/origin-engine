@@ -647,6 +647,7 @@ pub(crate) fn face_uniform(
     u.stylise = [0.0; 4];
     u.probe = [[0.0; 4]; 3];
     u.ssr = [0.0; 4];
+    u.vol_froxel = [0.0; 4];
     u
 }
 

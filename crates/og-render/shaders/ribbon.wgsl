@@ -216,11 +216,7 @@ fn ribbon_fragment(in: RibbonOut, alpha: bool) -> vec4<f32> {
   } else {
     c.a *= soft;
   }
-  if (alpha) {
-    c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
-  } else {
-    c.a *= fog_keep(in.world);
-  }
+  c = fx_fog(c, in.world, in.clip.xy, alpha);
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return c;

@@ -254,6 +254,16 @@ pub(crate) fn group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 6,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D3,
+                    multisampled: false,
+                },
+                count: None,
+            },
         ],
     })
 }
@@ -282,6 +292,10 @@ pub(crate) struct EffectRenderer {
     buffer: wgpu::Buffer,
     sampler: wgpu::Sampler,
     white: wgpu::TextureView,
+    /// 1x1x1 identity 3D froxel fallback `(0, 0, 0, 1)` when volumetric fog is off.
+    froxel_empty: wgpu::TextureView,
+    /// Currently bound integrated 3D froxel volume (if any).
+    froxel: Option<wgpu::TextureView>,
     /// By material index + 1 (0: none), each with the texture views it was
     /// made with: a material whose views are the same keeps its group.
     groups: Vec<([Option<wgpu::TextureView>; 4], wgpu::BindGroup)>,
@@ -342,6 +356,37 @@ impl EffectRenderer {
             },
         );
         let white = white.create_view(&Default::default());
+        let froxel_tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("effect froxel empty"),
+            size: wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D3,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+            texture_binding_view_dimension: None,
+        });
+        crate::traffic::write_texture(
+            queue,
+            froxel_tex.as_image_copy(),
+            &[0, 0, 0, 255],
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(4),
+                rows_per_image: Some(1),
+            },
+            wgpu::Extent3d {
+                width: 1,
+                height: 1,
+                depth_or_array_layers: 1,
+            },
+        );
+        let froxel_empty = froxel_tex.create_view(&Default::default());
         let buffer = Self::buffer(device, EFFECT_STRIDE);
         crate::traffic::write_buffer(queue, &buffer, 0, bytemuck::bytes_of(&EffectGpu::off()));
         let mut r = EffectRenderer {
@@ -351,6 +396,8 @@ impl EffectRenderer {
             buffer,
             sampler,
             white,
+            froxel_empty,
+            froxel: None,
             groups: Vec::new(),
             bytes: Vec::new(),
             cached: Vec::new(),
@@ -378,6 +425,7 @@ impl EffectRenderer {
         views: [Option<&wgpu::TextureView>; 4],
     ) -> wgpu::BindGroup {
         let view = |i: usize| wgpu::BindingResource::TextureView(views[i].unwrap_or(&self.white));
+        let froxel = self.froxel.as_ref().unwrap_or(&self.froxel_empty);
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("effect material"),
             layout: &self.layout,
@@ -410,8 +458,36 @@ impl EffectRenderer {
                     binding: 5,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: wgpu::BindingResource::TextureView(froxel),
+                },
             ],
         })
+    }
+
+    /// Binds the integrated 3D volumetric froxel texture into every cached
+    /// effect group when its view changes (rebuilding only on first creation or
+    /// froxel slice-count change).
+    pub(crate) fn set_froxel(&mut self, device: &wgpu::Device, froxel: Option<&wgpu::TextureView>) {
+        if self.froxel.as_ref() == froxel {
+            return;
+        }
+        self.froxel = froxel.cloned();
+        let rebuilt: Vec<_> = self
+            .groups
+            .iter()
+            .map(|(views, _)| {
+                let refs = [
+                    views[0].as_ref(),
+                    views[1].as_ref(),
+                    views[2].as_ref(),
+                    views[3].as_ref(),
+                ];
+                (views.clone(), self.group(device, refs))
+            })
+            .collect();
+        self.groups = rebuilt;
     }
 
     /// Writes the scene's materials and makes the groups of those whose

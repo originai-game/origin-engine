@@ -231,7 +231,16 @@ impl ParticleRenderer {
                 uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
                 uniform_entry(1, wgpu::ShaderStages::VERTEX_FRAGMENT, false),
                 depth_entry(2, wgpu::ShaderStages::FRAGMENT),
-                depth_entry(3, wgpu::ShaderStages::FRAGMENT),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let draw_module =
@@ -673,6 +682,29 @@ impl ParticleRenderer {
         self.half_draw.insert(blend_of, p);
     }
 
+    /// Returns (and caches) the particle draw shader module compiled with effect
+    /// hook shader `h`, shared by both direct and OIT particle pipelines.
+    pub(crate) fn hook_module(
+        &mut self,
+        device: &wgpu::Device,
+        h: usize,
+        shaders: &[crate::MaterialShader],
+    ) -> wgpu::ShaderModule {
+        if let Some(m) = self.hook_modules.get(&h) {
+            return m.clone();
+        }
+        let source = draw_source(&self.frame_wgsl, shaders.get(h));
+        let module = crate::gpu::shader_module(
+            device,
+            wgpu::ShaderModuleDescriptor {
+                label: Some("particles (effect hook)"),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            },
+        );
+        self.hook_modules.insert(h, module.clone());
+        module
+    }
+
     /// Makes the draw pipeline for `key`, (blend, samples, kind, look),
     /// started on the pipeline cache.
     fn make_draw(
@@ -682,21 +714,12 @@ impl ParticleRenderer {
         shaders: &[crate::MaterialShader],
     ) {
         let (blend_of, samples, kind_of, look) = key;
-        if let Some(h) = look.hook
-            && !self.hook_modules.contains_key(&h)
-        {
-            let source = draw_source(&self.frame_wgsl, shaders.get(h));
-            let module = crate::gpu::shader_module(
-                device,
-                wgpu::ShaderModuleDescriptor {
-                    label: Some("particles (effect hook)"),
-                    source: wgpu::ShaderSource::Wgsl(source.into()),
-                },
-            );
-            self.hook_modules.insert(h, module);
-        }
+        let alpha_over = wgpu::BlendState {
+            color: wgpu::BlendComponent::OVER,
+            alpha: KEEP_ALPHA,
+        };
         let blend = match blend_of {
-            _ if kind_of == DrawKind::Distort => wgpu::BlendState::ALPHA_BLENDING,
+            _ if kind_of == DrawKind::Distort => alpha_over,
             ParticleBlend::Additive => wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -705,7 +728,7 @@ impl ParticleRenderer {
                 },
                 alpha: KEEP_ALPHA,
             },
-            ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
+            ParticleBlend::Alpha => alpha_over,
             ParticleBlend::Subtractive => wgpu::BlendState {
                 color: wgpu::BlendComponent {
                     src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -725,9 +748,9 @@ impl ParticleRenderer {
         };
         let mesh = kind_of == DrawKind::Mesh;
         let trail = kind_of == DrawKind::Trail;
-        let solid = mesh && !look.effect_mesh;
+        let solid = mesh && !look.effect_mesh && blend_of == ParticleBlend::Alpha;
         let module = match look.hook {
-            Some(h) => self.hook_modules[&h].clone(),
+            Some(h) => self.hook_module(device, h, shaders),
             None => self.draw_module.get().clone(),
         };
         let (device, layout) = (device.clone(), self.draw_pl.clone());
@@ -799,7 +822,7 @@ impl ParticleRenderer {
                     .is_some_and(|(f, (lo, hi))| !f.intersects_box(lo, hi))
         }) {
             let Some(pipeline) = (match part {
-                ParticlePart::Oit => oit_lookup(crate::oit::Source::Particles),
+                ParticlePart::Oit => oit_source_of(s).and_then(&oit_lookup),
                 ParticlePart::Half => self.half_draw.get(&s.blend).and_then(|p| p.get()),
                 _ => self
                     .draw

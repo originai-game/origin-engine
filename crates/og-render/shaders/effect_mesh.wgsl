@@ -97,14 +97,6 @@ fn em_soft(in: EffectMeshOut) -> f32 {
   return clamp((scene - in.depth) / dist, 0.0, 1.0);
 }
 
-fn em_fog(c: vec4<f32>, world: vec3<f32>, blend_id: f32) -> vec4<f32> {
-  // Alpha blends towards fog colour; additive, subtractive and multiply attenuate by fog transmittance.
-  if (blend_id > 0.5 && blend_id < 1.5) {
-    return vec4<f32>(apply_fog(c.rgb, world), c.a);
-  }
-  return vec4<f32>(c.rgb, c.a * fog_keep(world));
-}
-
 fn em_blend_out(c: vec4<f32>, blend_id: f32) -> vec4<f32> {
   if (blend_id < 2.5) { return c; }
   return vec4<f32>(mix(vec3<f32>(1.0), c.rgb, clamp(c.a, 0.0, 1.0)), c.a);
@@ -134,7 +126,7 @@ fn effect_mesh_fragment(in: EffectMeshOut) -> vec4<f32> {
     c = vec4<f32>(hue_rotate(c.rgb, in.fx_meta.x), c.a);
   }
   c.a *= em_soft(in);
-  c = em_fog(c, in.world, in.fx_meta.y);
+  c = fx_fog(c, in.world, in.clip.xy, in.fx_meta.y > 0.5 && in.fx_meta.y < 1.5);
   if (c.a <= 0.0) { discard; }
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
   return em_blend_out(c, in.fx_meta.y);

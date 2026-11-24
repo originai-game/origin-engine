@@ -159,10 +159,9 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
         let tv = cross(n, tu);
         let bent = normalize(tu * ts.x + tv * ts.y + n * ts.z);
         target_normal = bent;
-        let w = clamp(fade, 0.0, 1.0);
-        // The bend alone (0 where the map is flat), so the surface's own
-        // normal map shows through the decal's flat margin.
-        if (!wet) { r.normal = vec4<f32>(r.normal.xyz + (bent - n) * w, max(r.normal.w, w)); }
+        // Weight by decal opacity * angle fade so transparent margins and
+        // animated fade-outs leave the underlying surface normal untouched.
+        if (!wet) { r.normal = vec4<f32>(r.normal.xyz + (bent - n) * a, max(r.normal.w, a)); }
       }
     }
     if (wet) {

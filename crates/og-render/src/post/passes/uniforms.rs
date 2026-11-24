@@ -122,11 +122,18 @@ impl PostPasses {
         let flash = post.flash.map_or([0.0; 4], |f| {
             f.color.extend(f.amount.clamp(0.0, 1.0)).to_array()
         });
+        // Relative weight for the 2D glow buffer in the shared bloom chain so
+        // `post.glow.intensity` is honored independently of 3D `post.bloom.intensity`.
+        let glow_scale = match (lit_bloom, post.glow.filter(|_| glow)) {
+            (Some(_), Some(g)) if bloom[2] > 0.0 => g.intensity.max(0.0) / bloom[2].max(1e-4),
+            (None, Some(g)) if g.intensity > 0.0 => 1.0,
+            _ => 0.0,
+        };
         let uniform = PostUniform {
             hdr,
             exposure,
             bloom,
-            mode: [tonemap, 1.0, lit_feeds as u32 as f32, glow as u32 as f32],
+            mode: [tonemap, 1.0, lit_feeds as u32 as f32, glow_scale],
             grade: [
                 // The adjusted table carries the grading at its intensity.
                 if post.adjust().is_some() {

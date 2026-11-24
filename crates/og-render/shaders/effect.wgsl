@@ -35,6 +35,7 @@ struct Effect {
 @group(3) @binding(3) var effect_noise: texture_2d<f32>;
 @group(3) @binding(4) var effect_flow: texture_2d<f32>;
 @group(3) @binding(5) var effect_sampler: sampler;
+@group(3) @binding(6) var fx_froxel: texture_3d<f32>;
 
 const FX_ON: u32 = 1u;
 const FX_MAIN: u32 = 2u;
@@ -294,4 +295,30 @@ fn effect_shade(f: EffectFragment, surface: texture_2d<f32>) -> vec4<f32> {
   c = surface_color(h, p, c);
   c = vec4<f32>(c.rgb + surface_emissive(h, p, vec3<f32>(0.0)), c.a);
   return c;
+}
+
+// Unified 3D fog for particles, effect meshes and ribbons/strips: reads the
+// integrated volumetric froxel grid when active (`frame.vol_froxel.x > 0.0`),
+// else falls back to analytic scene fog. Alpha-blended surfaces scatter in-light
+// and attenuate; additive / subtractive / multiply surfaces attenuate by
+// transmittance only so fog never turns additive light into bright grey cards.
+fn fx_fog(c: vec4<f32>, world: vec3<f32>, clip_xy: vec2<f32>, alpha_blend: bool) -> vec4<f32> {
+  if (frame.vol_froxel.x > 0.0) {
+    let d = max(dot(world - frame.view_pos.xyz, frame.view_forward.xyz), 0.0);
+    let f = sqrt(d / frame.vol_froxel.x);
+    let slices = frame.vol_froxel.y;
+    let uv = clamp(clip_xy * frame.vol_froxel.zw, vec2<f32>(0.0), vec2<f32>(1.0));
+    let z = clamp(f - 0.5 / slices, 0.5 / slices, 1.0 - 0.5 / slices);
+    let s = textureSampleLevel(fx_froxel, ibl_sampler, vec3<f32>(uv, z), 0.0);
+    let k = clamp(f * slices, 0.0, 1.0);
+    let vol = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+    if (alpha_blend) {
+      return vec4<f32>(c.rgb * vol.a + vol.rgb, c.a);
+    }
+    return vec4<f32>(c.rgb, c.a * vol.a);
+  }
+  if (alpha_blend) {
+    return vec4<f32>(apply_fog(c.rgb, world), c.a);
+  }
+  return vec4<f32>(c.rgb, c.a * fog_keep(world));
 }

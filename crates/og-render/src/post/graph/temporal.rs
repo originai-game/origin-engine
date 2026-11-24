@@ -57,6 +57,7 @@ impl Temporal {
         let reveal = cx
             .graph
             .try_view("oit.reveal")
+            .or_else(|| cx.graph.try_view("fx.reactive"))
             .filter(|_| cx.has(FramePass::Taa))
             .unwrap_or(&cx.passes.no_reactive);
         let taa = history.map(|h| {

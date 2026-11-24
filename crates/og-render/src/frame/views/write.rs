@@ -111,8 +111,9 @@ impl Views {
             (u.view_right, u.view_up) = p.frame.axes();
             u.cluster = slot.clusters.params;
             u.params[2] = records.len() as f32;
-            // The main camera's screen-space reflections lie elsewhere.
+            // The main camera's screen-space reflections and froxel volume lie elsewhere.
             u.ssr = [0.0; 4];
+            u.vol_froxel = [0.0; 4];
             // Its own level-of-detail tint (meshlet.wgsl).
             u.drawn[1] = u32::from(scene.frame.views[p.index].lod_debug);
             crate::traffic::write_buffer(queue, &slot.frame_buffer, 0, bytemuck::bytes_of(&u));

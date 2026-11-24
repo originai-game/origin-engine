@@ -166,6 +166,9 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             }
             if cfg.fx_half {
                 writes.extend(["fx.half_depth", "fx.half"]);
+                if cfg.taa && cfg.oit.is_none() {
+                    writes.push("fx.reactive");
+                }
             }
             g.pass(name, &reads, &writes)
         }

@@ -524,6 +524,14 @@ impl Arena {
     }
 }
 
+/// Particle draw variant in the OIT pass (`particles.wgsl`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum ParticleOit {
+    Billboard,
+    Trail,
+    Mesh,
+}
+
 /// What an OIT pipeline draws (with its pass mode and samples, its key in
 /// [`OitState::pipelines`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -544,8 +552,9 @@ pub(crate) enum Source {
     Strip,
     /// Alpha strips from their points with an effect material shader hook.
     StripHook(usize),
-    /// Alpha particle billboards (particles.wgsl `fs`).
-    Particles,
+    /// Alpha particle systems (billboards, trails, or effect-material meshes):
+    /// kind, `double_sided` (for meshes), optional effect hook shader index.
+    Particles(ParticleOit, bool, Option<usize>),
     /// Instanced alpha effect meshes (`double_sided`, optional hook shader index).
     EffectMesh(bool, Option<usize>),
 }

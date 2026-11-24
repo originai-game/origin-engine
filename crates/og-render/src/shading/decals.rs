@@ -85,6 +85,7 @@ pub(crate) fn decal_layout_entries() -> [wgpu::BindGroupLayoutEntry; 1] {
 pub(crate) struct DecalBuffers {
     pub data: wgpu::Buffer,
     bytes: Vec<u8>,
+    prev_bytes: Vec<u8>,
     pub generation: u32,
 }
 
@@ -110,11 +111,13 @@ impl DecalBuffers {
                     + 16 * size_of::<DecalGpu>() as u64,
             ),
             bytes: Vec::new(),
+            prev_bytes: Vec::new(),
             generation: 0,
         }
     }
 
-    /// Writes the cells and records, growing the buffer when it is short.
+    /// Writes the cells and records, growing the buffer when it is short and
+    /// skipping the GPU upload when the packed payload is unchanged.
     pub fn write(
         &mut self,
         device: &wgpu::Device,
@@ -130,11 +133,15 @@ impl DecalBuffers {
         self.bytes.resize(first as usize * 16, 0);
         self.bytes.extend_from_slice(bytemuck::cast_slice(records));
         let len = self.bytes.len() as u64;
-        if len > self.data.size() {
+        let resized = len > self.data.size();
+        if resized {
             self.data = storage(device, len.next_power_of_two());
             self.generation = self.generation.wrapping_add(1);
+        } else if self.bytes == self.prev_bytes {
+            return;
         }
         crate::traffic::write_buffer(queue, &self.data, 0, &self.bytes);
+        std::mem::swap(&mut self.bytes, &mut self.prev_bytes);
     }
 
     /// The bind group entry (binding 5).

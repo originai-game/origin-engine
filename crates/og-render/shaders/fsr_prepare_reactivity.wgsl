@@ -263,9 +263,10 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   // accumulation pass jitters it back).
   let sc_uv = clamp_uv(uv - jitter() / vec2<f32>(render_size()), shading_change_render_size(), shading_change_max_render_size());
   let sampled_change = saturate(textureSampleLevel(shading_change_tex, linear_clamp, sc_uv, 0.0).r * shading_change_scale());
-  let shading_change = max(dilate_reactive_masks(p), sampled_change);
+  let reactive = dilate_reactive_masks(p);
+  let shading_change = max(reactive, sampled_change);
   let motion_divergence = compute_motion_divergence(uv, mv, dilated_depth);
-  let final_reactiveness = max(motion_divergence, 0.0);
+  let final_reactiveness = max(motion_divergence, reactive);
   let accumulation = update_accumulation(p, uv, mv, disocclusion, shading_change);
 
   let masks = vec4<f32>(final_reactiveness, disocclusion, shading_change, accumulation);

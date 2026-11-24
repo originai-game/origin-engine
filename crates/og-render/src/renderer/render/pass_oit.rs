@@ -375,7 +375,7 @@ impl Renderer {
                     });
                     (none, job)
                 }
-                Source::Particles => {
+                Source::Particles(kind, double_sided, hook) => {
                     let layout = self
                         .oit
                         .layout(
@@ -390,9 +390,30 @@ impl Renderer {
                             ],
                         )
                         .clone();
-                    let shader = self.particles.gpu.draw_module.get().clone();
-                    const PARTICLES: &[Option<wgpu::VertexBufferLayout<'static>>] =
+                    let shader = match hook {
+                        Some(h) => self.particles.gpu.hook_module(&device, h, shaders),
+                        None => self.particles.gpu.draw_module.get().clone(),
+                    };
+                    const BILLBOARD: &[Option<wgpu::VertexBufferLayout<'static>>] =
                         &[Some(particles_gpu::PARTICLE_LAYOUT)];
+                    const TRAIL: &[Option<wgpu::VertexBufferLayout<'static>>] = &[
+                        Some(particles_gpu::PARTICLE_LAYOUT),
+                        Some(particles_gpu::TRAIL_LAYOUT),
+                    ];
+                    const MESH: &[Option<wgpu::VertexBufferLayout<'static>>] = &[
+                        Some(particles_gpu::PARTICLE_LAYOUT),
+                        Some(particles_gpu::MESH_LAYOUT),
+                    ];
+                    let (vs, fs, buffers, cull) = match kind {
+                        oit::ParticleOit::Billboard => ("vs", "fs", BILLBOARD, None),
+                        oit::ParticleOit::Trail => ("vs_trail", "fs", TRAIL, None),
+                        oit::ParticleOit::Mesh => (
+                            "vs_mesh",
+                            "fs_mesh",
+                            MESH,
+                            (!double_sided).then_some(wgpu::Face::Back),
+                        ),
+                    };
                     let job = variant_job(move |_| {
                         Made::Pipeline(oit::pipeline(
                             &device,
@@ -403,10 +424,10 @@ impl Renderer {
                                 label: "particles",
                                 layout: &layout,
                                 module: &shader,
-                                vs: "vs",
-                                fs: "fs",
-                                buffers: PARTICLES,
-                                cull: None,
+                                vs,
+                                fs,
+                                buffers,
+                                cull,
                                 depth_write: false,
                                 depth_compare: wgpu::CompareFunction::LessEqual,
                                 blend: None,

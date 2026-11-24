@@ -702,6 +702,10 @@ impl Renderer {
         // The volumetric fog's plan step (pass_volumetric.rs).
         frames.volumetric = VolumetricPass::plan(self, (volumetric_fog.as_ref(), scene));
         plans.volumetric = VolumetricPass::bind(self, &mut frames.volumetric, ());
+        self.particles.gpu.effects.set_froxel(
+            &self.device,
+            self.volumetric.froxel_info().map(|(v, _, _)| v),
+        );
         // The shadow passes' plan steps: the cascades, the shelter map and
         // the local faces, in that order (pass_shadows.rs).
         let casters = Casters::new(
@@ -839,6 +843,7 @@ impl Renderer {
             probe_faces: &probe_faces,
             reflections: &reflections,
             ssr: effects.ssr.as_ref(),
+            volumetric_froxels: plans.volumetric.is_some(),
         });
         // The sun on screen, the flare's and the post chain's uniforms (sun_and_post.rs).
         let sun = self.write_sun_and_post(WriteSunAndPostInputs {
