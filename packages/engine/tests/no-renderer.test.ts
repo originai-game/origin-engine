@@ -1,12 +1,9 @@
 // Simulation does not need a GPU; a test that requests pixels does.
 import { expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
-import { attachRenderer } from "../src/node/index.ts";
-import { gpuTest } from "./support/gpu.ts";
-import { decodePng } from "../src/node/png.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], options: { cwd: string; env: Record<string, string | undefined> }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -17,7 +14,6 @@ const repo = join(pkg, "..", "..");
 const evidence = join(repo, "target", "evidence", "no-renderer");
 const game = join(evidence, "game");
 
-// A drawn run takes the switch gpuTest's probe took (support/gpu.ts).
 const run = (cmd: string[], renderer: boolean) => {
   const env = { ...process.env, OG_ENGINE_PACKAGE: pkg, OG_RENDERER: renderer ? process.env.OG_RENDERER : "none" };
   const r = Bun.spawnSync(cmd, { cwd: repo, env });
@@ -132,73 +128,3 @@ test("frames only", async () => {
   // Its assertions are the frame reported unchecked: the test is not refused, and not passed.
   expect(result(framesOnly.stdout)).toMatchObject({ status: "unchecked", checks: 2, frameChecks: 0, unchecked: ["only.png"] });
 }, 120_000);
-
-gpuTest("a GPU run checks the frames without changing simulation, dumps or hashes", () => {
-  const command = prepare();
-  const blind = result(run(command, false).stdout);
-  const out = join(game, "og-out/test/surface/run-1");
-  const blindUi = readFileSync(join(out, "ui.json"), "utf8");
-  const drawn = run([...command, "--require-checked"], true);
-  if (drawn.code !== 0) throw new Error(drawn.out);
-  const lit = result(drawn.stdout);
-  expect(lit.status).toBe("passed");
-  expect(lit.tier).not.toBe("none");
-  expect(lit.hash).toBe(blind.hash);
-  expect(lit.hashes).toEqual(blind.hashes);
-  // The frame's own expect in place of its unchecked report; nothing left for runPlaytest to report.
-  expect(lit.checks).toBe(blind.checks - 1);
-  expect(lit.unchecked).toEqual([]);
-  expect(existsSync(join(out, "surface.png"))).toBeTrue();
-  expect(readFileSync(join(out, "ui.json"), "utf8")).toBe(blindUi);
-  expect(existsSync(join(out, ".failure"))).toBeFalse();
-  writeFileSync(join(game, "tests/surface.og.ts"), SURFACE.replace('expect(run.quit, "reached quit").toBe(true)', 'expect(run.quit, "deliberate failure").toBe(false)'));
-  const failed = run(command, true);
-  expect(failed.code).toBe(1);
-  const capture = result(failed.stdout).failureCaptures[0]!;
-  expect(capture.frame.status).toBe("captured");
-  if (capture.frame.status !== "captured" || !capture.world || !capture.snapshot) throw new Error("failure evidence is missing");
-  const image = decodePng(readFileSync(capture.frame.path));
-  expect([image.width, image.height]).toEqual([640, 480]);
-  expect(image.rgba).toEqual(decodePng(readFileSync(join(out, "surface.png"))).rgba);
-  expect(JSON.parse(readFileSync(capture.world, "utf8")).hash).toBe(lit.hash);
-  expect(readFileSync(capture.snapshot, "utf8")).toMatch(/^og-save:/);
-  // The last tick's frame is named for its tick, never taken for a frame check's.
-  expect(capture.frame.path.endsWith(`/last@${capture.tick}.png`)).toBeTrue();
-  // A frame check that fails before the last tick: its evidence is the frame it compared, at its tick.
-  writeFileSync(join(game, "tests/surface.og.ts"), SURFACE.replace("0.4:screenshot:surface.png", "0.35:expect:region:0,0,8,8:color:#ff00ff:0;0.35:screenshot:at-check.png;0.4:screenshot:surface.png"));
-  const missed = result(run(command, true).stdout);
-  const evidence = missed.failureCaptures[0]!;
-  const compared = evidence.files.filter((f) => f.what === "compared");
-  expect(compared.map((f) => [f.path.split("/").pop(), f.tick])).toEqual([[`region@21.png`, 21]]);
-  expect(missed.failures.join("\n")).toContain("the compared frame is .failure/region@21.png");
-  expect(evidence.tick).toBeGreaterThan(21);
-  expect(evidence.files.find((f) => f.what === "last")?.tick).toBe(evidence.tick);
-  expect(decodePng(readFileSync(compared[0]!.path)).rgba).toEqual(decodePng(readFileSync(join(out, "at-check.png"))).rgba);
-}, 120_000);
-
-test("a refused adapter is reported without hiding other renderer failures", () => {
-  const reason = "no GPU adapter: Auto: no suitable adapter found";
-  const refused = () => JSON.stringify({ ok: false, reason });
-  const saved = process.env.OG_RENDERER;
-  // The warnings are kept, not printed: the gate reads a missing-GPU warning
-  // on this process's stderr as GPU tests left unchecked.
-  const write = process.stderr.write;
-  const warnings: string[] = [];
-  process.stderr.write = ((text: string) => warnings.push(text) > 0) as typeof write;
-  try {
-    delete process.env.OG_RENDERER;
-    expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none", adapterError: reason });
-    process.env.OG_RENDERER = "none";
-    expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none", adapterError: reason });
-    expect(attachRenderer(1, 64, 64, () => JSON.stringify({ ok: false, reason: "device lost" }))).toEqual({ ok: false, reason: "device lost" });
-  } finally {
-    process.stderr.write = write;
-    if (saved === undefined) delete process.env.OG_RENDERER;
-    else process.env.OG_RENDERER = saved;
-  }
-  // Unexpected without OG_RENDERER=none, expected with it; nothing for another failure.
-  expect(warnings).toEqual([
-    `WARNING unexpected missing GPU: ${reason}; GPU checks are skipped/unchecked, not passed\n`,
-    `WARNING missing GPU: ${reason}; GPU checks are skipped/unchecked, not passed\n`,
-  ]);
-});

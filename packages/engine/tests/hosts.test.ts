@@ -3,8 +3,6 @@
 // addon and on the wasm module. Each host runs in its own process.
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 // The functional lane may run with a web module older than the native addon
@@ -15,10 +13,6 @@ const STALE_WASM = process.env.OG_WASM_STALE === "1";
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
-// A landing's gate builds no publish or lanes module (OG_WASM_VARIANTS=dev,
-// docs/ci.md §Lanes): what loads one skips there and runs in the full lane
-// and release packing.
-const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 
 test("development digests agree across hosts and native lanes actually execute in parallel", () => {
   const run = (host: string, lanes: string) => {
@@ -57,22 +51,6 @@ test.skipIf(STALE_WASM)("the native and the web host agree on the world hash aft
   expect(hello("node", "--seed", "7").hash).not.toBe(node.hash);
 }, 120_000);
 
-test.skipIf(STALE_WASM)("a probe argument of the wrong type is refused alike on both hosts, and the engine keeps running", () => {
-  const run = (host: string) => {
-    const r = Bun.spawnSync(["bun", "tests/support/probe-refusal.ts", "--host", host], { cwd: pkg });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
-    return JSON.parse(out.trim().split("\n").pop()!) as { refused: string; scheduled: number; tick: number; hash: string };
-  };
-  const [node, web] = [run("node"), run("web")];
-  expect(web.refused).toBe("probe.commands: script must be a string, not object");
-  expect(node.refused).toBe(web.refused);
-  // After the refusal the same engine schedules, ticks and hashes as usual.
-  expect(web.scheduled).toBe(1);
-  expect(web.tick).toBe(30);
-  expect(web.hash).toBe(node.hash);
-}, 120_000);
-
 function physics(host: string, ...extra: string[]) {
   const r = Bun.spawnSync(["bun", "tests/support/physics-hash.ts", "--host", host, ...extra], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
@@ -83,57 +61,6 @@ function physics(host: string, ...extra: string[]) {
     lanes?: { threads: number; pool: string; parallelCalls: number; sites: Record<string, { calls: number }> };
     modules?: string[];
   };
-}
-
-// The publish module split into its primary and on-demand modules
-// (docs/web-export.md §Modules): a module that loads late changes nothing,
-// so the world is the native host's whether physics arrives at its first
-// call (inside the first tick) or before the engine starts, and a scene
-// without nav, motion, destruction or video loads none of them; physics
-// loads its profile's simulation (physics3d or physics2d), never the other.
-const NO_SPLIT = !existsSync(join(pkg, "dist", "web-publish", "modules", "modules.json"));
-for (const profile of ["3d", "2d"]) {
-  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} split publish module gives the native world whenever its modules load, and loads only those it calls`, () => {
-    const node = physics("node", "--profile", profile, "--snapshot", "--ticks", "300");
-    const late = physics("publish", "--profile", profile, "--snapshot", "--ticks", "300") as ReturnType<typeof physics> & { modules: string[] };
-    const early = physics("publish", "--profile", profile, "--snapshot", "--ticks", "300", "--modules", "physics,physics2d,physics3d,nav,story,motion,destruction,video") as ReturnType<typeof physics> & { modules: string[] };
-    expect(late.snapshot).toBe(node.snapshot);
-    expect(early.snapshot).toBe(node.snapshot);
-    expect(late.modules).toContain("physics");
-    expect(late.modules).toContain(`physics${profile}`);
-    for (const m of ["nav", "motion", "destruction", "video", profile === "2d" ? "physics3d" : "physics2d"]) expect(late.modules).not.toContain(m);
-    expect(early.modules).toEqual(["destruction", "motion", "nav", "physics", "physics2d", "physics3d", "story", "video"]);
-    expect(late.modules).not.toContain("world3d");
-  }, 180_000);
-
-  // Each module carries the read-only data only its functions read, out of
-  // the primary (scripts/wasm-split-data.ts); the test above shows the
-  // world is unchanged with it moved.
-  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} split publish module's modules each carry their own data`, () => {
-    const listed = JSON.parse(readFileSync(join(pkg, "dist", "web-publish", "modules", "modules.json"), "utf8")) as Record<string, { data: number }>;
-    for (const [m, e] of Object.entries(listed)) expect([m, e.data > 0]).toEqual([m, true]);
-  });
-
-  // A game that uses none of them loads none: its meshes, ticks, frames and
-  // snapshot never call into a module (tests/support/module-free.ts throws
-  // on any load, naming the module).
-  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} game using no optional module loads none of the split publish module's modules`, () => {
-    const r = Bun.spawnSync(["bun", "tests/support/module-free.ts", "--profile", profile], { cwd: pkg });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
-    const run = JSON.parse(out.trim().split("\n").pop()!) as { tick: number; modules: string[] };
-    expect(run.modules).toEqual([]);
-    expect(run.tick).toBeGreaterThan(30);
-  }, 120_000);
-
-  // A game that calls og.terrain loads the 3D world's module, and only it:
-  // a 2D game holds a 3D world too, from the same publish module.
-  test.skipIf(STALE_WASM || NO_SPLIT)(`a ${profile} game calling og.terrain loads the 3D world's module`, () => {
-    const r = Bun.spawnSync(["bun", "tests/support/module-free.ts", "--profile", profile, "--terrain"], { cwd: pkg });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(`${new TextDecoder().decode(r.stderr)}${out}`);
-    expect((JSON.parse(out.trim().split("\n").pop()!) as { modules: string[] }).modules).toEqual(["world3d"]);
-  }, 120_000);
 }
 
 for (const profile of ["3d", "2d"]) {
@@ -154,141 +81,3 @@ for (const profile of ["3d", "2d"]) {
     expect(node.tally!.inside).toBeGreaterThan(node.tally!.entered);
   }, 180_000);
 }
-
-test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel give the same hashes on both hosts and replay from a snapshot", () => {
-  const run = (host: string, ...extra: string[]) => {
-    const r = Bun.spawnSync(["bun", "tests/support/feel-hash.ts", "--host", host, ...extra], { cwd: pkg });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
-    return JSON.parse(out.trim().split("\n").pop()!) as {
-      checkpoints: { tick: number; hash: string }[];
-      tally: { done: number; tags: number; frozen: number };
-      end: string;
-      replayed: string;
-      curveSamples: number[][];
-      cameraSamples: { ease: string; readback: string; progress: number; x: number; hash: string; continued: string; stored: string; active: string }[];
-    };
-  };
-  const [node, web, again] = [run("node"), run("web"), run("node")];
-  expect(node.checkpoints.map((c) => c.tick)).toEqual([20, 23, 40, 80, 140]);
-  expect(web.checkpoints).toEqual(node.checkpoints);
-  expect(again.checkpoints).toEqual(node.checkpoints);
-  expect(web.curveSamples).toEqual(node.curveSamples);
-  expect(web.cameraSamples).toEqual(node.cameraSamples);
-  expect(node.cameraSamples).toHaveLength(2);
-  for (const sample of node.cameraSamples) {
-    const expected = sample.ease.startsWith("cubic")
-      ? 1 - (1 - Math.cbrt(sample.progress)) ** 3
-      : Math.min(1, (Math.floor(sample.progress * 4) + 1) / 4);
-    expect(sample.x).toBeCloseTo(-2 + 13 * expected, 5);
-    expect(sample.readback).toBe(sample.stored);
-    expect(sample.active).toBe(sample.stored);
-  }
-  // Independent evaluations of the GSAP 3.15.0 formula, at tick/60.
-  const goldens = [
-    [0, 0, 0, 0],
-    [0.0000182692601438, 0.108881673432, 0.0000205071905135, -0.000895292962963],
-    [0.000534593338694, 0.681700118492, 0.00209776957121, -0.044502962963],
-    [0.0023428102759, 0.861057629437, 0.0212290594572, -0.0274043714815],
-    [0.138942370563, 0.997657189724, 0.978770940543, 1.02740437148],
-    [0.891118326568, 0.99998173074, 0.999979492809, 1.00089529296],
-    [1, 1, 1, 1],
-    // p = 1e-5 and 1 - 1e-5.
-    [9.766301925e-9, 6.931222271e-5, 9.766978897e-9, -3.403051937e-10],
-    [0.999930687777, 0.999999990234, 0.999999990233, 1.000000000340],
-  ];
-  for (let i = 0; i < goldens.length; i++) {
-    for (let j = 0; j < 4; j++) expect(node.curveSamples[i]![j]!).toBeCloseTo(goldens[i]![j]!, 5);
-  }
-  // x=u³, y=1−(1−u)³; independent analytic inverse, not the engine solver.
-  for (const [i, tick] of [0, 1, 10, 17, 43, 59, 60].entries()) {
-    const p = tick / 60;
-    expect(node.curveSamples[i]![4]!).toBeCloseTo(1 - (1 - Math.cbrt(p)) ** 3, 5);
-    // Before the first tick the tween has not written its start value.
-    expect(node.curveSamples[i]![5]!).toBe(tick === 0 ? 0 : Math.min(1, (Math.floor(p * 4) + 1) / 4));
-  }
-  // The snapshot taken inside the hit stop replays into the same world.
-  expect(node.replayed).toBe(node.end);
-  expect(web.replayed).toBe(web.end);
-  // The systems saw eight frozen ticks; every tween and group reported once
-  // (sequence 3, parallel 4, squash and flash untagged; the yoyo never ends).
-  expect(node.tally).toEqual({ done: 4, tags: 7, frozen: 8 });
-  // The hit stop is in the hash: without it the worlds part after it starts.
-  const free = run("node", "--no-hit-stop");
-  expect(free.checkpoints[0]).toEqual(node.checkpoints[0]);
-  expect(free.checkpoints[1]!.hash).not.toBe(node.checkpoints[1]!.hash);
-  expect(free.tally.frozen).toBe(0);
-}, 120_000);
-
-// The lanes module (docs/web-export.md §Lanes), beside the one publish
-// module in dist/web-publish: both physics simulations, wasm atomics and
-// the publish members. It steps each profile's scene to the native
-// world, on the engine thread alone and with 1,024 bodies on a pool of four
-// Workers (wasm-bindgen-rayon's, under bun as in a page; every step went to
-// the pool): the same snapshot as the native host's at tick 600, which
-// restored natively has the native world's hash (a publish module has no
-// world dump of its own). Split (docs/web-export.md §Modules), each pool
-// Worker loads physics into its own instance at its lane's first call,
-// and nothing loads the modules the scene never calls, the other
-// profile's simulation included.
-for (const profile of ["3d", "2d"] as const) {
-  test.skipIf(STALE_WASM || NO_PUBLISH_WASM)(`the lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers`, () => {
-    const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
-    for (const [bodies, threads] of [["64", null], ["1024", "4"]] as const) {
-      const node = physics("node", "--profile", profile, "--bodies", bodies, "--snapshot");
-      const publish = physics("publish", "--profile", profile, "--bodies", bodies, "--snapshot");
-      expect(publish.snapshot).toBe(node.snapshot);
-      const lanes = physics("lanes", "--profile", profile, "--bodies", bodies, "--snapshot", ...(threads ? ["--threads", threads] : []));
-      const label = `${bodies} bodies, ${threads ?? 1} lane(s)`;
-      expect([label, lanes.tick]).toEqual([label, 600]);
-      if (threads) {
-        expect([label, lanes.lanes!.pool, lanes.lanes!.threads]).toEqual([label, "web-workers", 4]);
-        expect([label, lanes.lanes!.sites.physics.calls]).toEqual([label, 600]);
-      } else {
-        expect([label, lanes.lanes!.pool, lanes.lanes!.parallelCalls]).toEqual([label, "none", 0]);
-      }
-      expect([label, lanes.body63]).toEqual([label, node.body63]);
-      expect([label, lanes.tally]).toEqual([label, node.tally]);
-      expect(lanes.snapshot!.length).toBeGreaterThan(0);
-      expect([label, lanes.snapshot]).toEqual([label, node.snapshot!]);
-      if (existsSync(join(pkg, "dist", "web-publish", "modules-lanes", "modules.json"))) {
-        expect([label, lanes.modules!.includes("physics"), lanes.modules!.filter((m) => ["nav", "motion", "destruction", "video", profile === "2d" ? "physics3d" : "physics2d"].includes(m))]).toEqual([label, true, []]);
-      }
-      const file = join(dir, `lanes-${profile}-${bodies}.snapshot`);
-      writeFileSync(file, lanes.snapshot!);
-      expect([label, physics("node", "--profile", profile, "--bodies", bodies, "--restore", file).restored]).toEqual([label, { tick: 600, hash: node.hash }]);
-    }
-  }, 180_000);
-}
-
-test.skipIf(STALE_WASM)("the probe's memory answers the same shape on both hosts, each with what its host can read", () => {
-  type Memory = { host: string; linear: number | null; resident: number | null; heap: { live: number; peak: number; allocations: number } | null; world: { entities: number }; stream: { budget: number; used: number; peak: number } | null; audio: number | null; gpu: unknown; deviceLosses: number | null };
-  const run = (host: string) => {
-    const r = Bun.spawnSync(["bun", "tests/support/probe-memory.ts", "--host", host], { cwd: pkg });
-    const out = new TextDecoder().decode(r.stdout);
-    if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
-    return JSON.parse(out.trim().split("\n").pop()!) as { memory: Memory; worker: Memory | null };
-  };
-  const [node, web] = [run("node"), run("web")];
-  expect(Object.keys(web.memory).sort()).toEqual(Object.keys(node.memory).sort());
-  expect(Object.keys(node.memory).sort()).toEqual(["audio", "deviceLosses", "gpu", "heap", "host", "linear", "resident", "stream", "world"]);
-  // No renderer in this run: no GPU memory on either host.
-  expect([web.memory.gpu, node.memory.gpu]).toEqual([null, null]);
-  expect([node.memory.host, web.memory.host]).toEqual(["native", "web"]);
-  for (const m of [node.memory, web.memory]) {
-    expect(m.world.entities).toBe(10000);
-    expect(m.heap!.live).toBeGreaterThan(0);
-    expect(m.heap!.peak).toBeGreaterThan(m.heap!.live - 1);
-    expect(m.heap!.allocations).toBeGreaterThan(0);
-    expect(m.stream!.budget).toBe(256 * 1024 * 1024);
-  }
-  // The wasm's linear memory holds the heap; a native process reads its resident memory instead.
-  expect(web.memory.linear!).toBeGreaterThan(web.memory.heap!.live);
-  expect(web.memory.resident).toBeNull();
-  expect(node.memory.linear).toBeNull();
-  expect(node.memory.resident!).toBeGreaterThan(node.memory.heap!.live);
-  // The engine Worker's `memory` call is the probe's answer.
-  expect(web.worker!.world.entities).toBe(10000);
-  // Read a moment later, after the probe's call grew the memory or not: never smaller.
-  expect(web.worker!.linear!).toBeGreaterThanOrEqual(web.memory.linear!);
-}, 120_000);

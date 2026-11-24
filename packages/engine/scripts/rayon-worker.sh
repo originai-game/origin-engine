@@ -26,7 +26,6 @@
 # Exits 1 when the directory has a lanes module but no helper, or a helper
 # whose start call or Worker start is in neither form (a wasm-bindgen-rayon
 # move changed it: read the new helper before shipping it).
-# tests/web-csp.test.ts runs it on the pinned helper.
 set -eu
 dir="$1"
 [ -f "$dir/origin-engine-lanes.js" ] || exit 0

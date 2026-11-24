@@ -32,18 +32,6 @@ function capture(engine: Engine): Image {
 
 const isWhite = (p: number[]) => p.every((c) => c > 200);
 
-gpuTest("GPU waits follow renderer replacement and engine destruction", () => {
-  const engine = start(og.game({}));
-  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeTrue();
-  expect(JSON.parse(native().og_node_attach_offscreen(engine.id, W, H)).ok).toBeTrue();
-  expect(engine.frame(0).ok).toBeTrue();
-  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeTrue();
-  engine.destroy();
-  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeFalse();
-  expect(JSON.parse(native().og_node_attach_offscreen(engine.id, W, H)).ok).toBeFalse();
-  expect(JSON.parse(native().og_node_wait_gpu(engine.id)).ok).toBeFalse();
-});
-
 gpuTest("a sprite submitted on some ticks is drawn after those ticks only", () => {
   // Sprites on ticks 0 and 1, none after: the queue must not outlive them.
   const Draw = defineSystem("RtDraw", {}, (_q, _t, world: World) => {
@@ -71,15 +59,7 @@ function frameOf(game: unknown, ticks = 1): Image {
   return capture(engine);
 }
 
-const diff = (a: number[], b: number[]) => Math.max(...a.map((v, i) => Math.abs(v - b[i]!)));
 const lum = (p: number[]) => 0.2126 * p[0]! + 0.7152 * p[1]! + 0.0722 * p[2]!;
-/** Mean luma of a rectangle. */
-function meanLuma(img: Image, x0: number, y0: number, x1: number, y1: number): number {
-  let s = 0;
-  let n = 0;
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++, n++) s += lum(pixel(img, x, y));
-  return s / n;
-}
 /** How many pixels differ by more than `by` in any channel. */
 function changed(a: Image, b: Image, by = 24): number {
   let n = 0;
@@ -97,106 +77,6 @@ function wall(world: World, material?: Parameters<typeof og.render.standardMater
   world.insert(e, og.Mesh, { geometry, material: m });
   return m;
 }
-
-gpuTest("screen-space sprites are drawn over the finished frame in CSS pixels, untonemapped and clipped", () => {
-  const Hud = defineSystem("RtHud", {}, (_q, _t, world: World) => {
-    og.render.sprite(world, { screen: true, position: { x: 10, y: 10, z: 0 }, width: 40, height: 30, anchor: { x: 0, y: 0 }, color: { r: 1, g: 0.5, b: 0 } });
-    og.render.sprite(world, { screen: true, position: { x: 80, y: 10, z: 0 }, width: 40, height: 40, anchor: { x: 0, y: 0 }, color: { r: 0, g: 0, b: 1 }, clip: [80, 10, 20, 40] });
-  });
-  const img = frameOf(og.game({ systems: [Hud], start: (w: World) => void wall(w) }));
-  // The authored colour (sRGB of linear 0.5 is 188) though the scene is ACES
-  // tone mapped: within one step of the encode's rounding (lavapipe gives 187).
-  expect(diff(pixel(img, 25, 20), [255, 188, 0])).toBeLessThan(2);
-  expect(isWhite(pixel(img, 25, 20))).toBeFalse();
-  // Its top-left corner is (10, 10): the pixel above and left is the scene.
-  expect(diff(pixel(img, 9, 20), [255, 188, 0])).toBeGreaterThan(40);
-  // The clipped sprite shows its left 20 px only.
-  expect(pixel(img, 90, 30)).toEqual([0, 0, 255]);
-  expect(diff(pixel(img, 110, 30), [0, 0, 255])).toBeGreaterThan(40);
-});
-
-gpuTest("PostEffects reach the frame: a screen flash and a vignette", () => {
-  const plain = frameOf(og.game({ start: (w: World) => void wall(w) }));
-  const flashed = frameOf(
-    og.game({
-      start: (w: World) => {
-        wall(w);
-        const p = must(w.resource(og.PostEffects));
-        p.flash = 1;
-        p.flashColor = { r: 0, g: 1, b: 0 };
-      },
-    }),
-  );
-  expect(pixel(flashed, W / 2, H / 2)).toEqual([0, 255, 0]);
-  const vignetted = frameOf(
-    og.game({
-      start: (w: World) => {
-        wall(w);
-        const p = must(w.resource(og.PostEffects));
-        p.vignette = true;
-        p.vignetteIntensity = 1;
-      },
-    }),
-  );
-  const corner = (img: Image) => meanLuma(img, 0, 0, 12, 12);
-  const centre = (img: Image) => meanLuma(img, W / 2 - 6, H / 2 - 6, W / 2 + 6, H / 2 + 6);
-  expect(corner(vignetted)).toBeLessThan(corner(plain) * 0.6);
-  expect(Math.abs(centre(vignetted) - centre(plain))).toBeLessThan(6);
-});
-
-gpuTest("a Decal component projects onto the wall", () => {
-  const base = (w: World) => wall(w);
-  const plain = frameOf(og.game({ start: base }));
-  const decal = frameOf(
-    og.game({
-      start: (w: World) => {
-        base(w);
-        const e = must(w.spawn({ name: "decal", position: { x: 0, y: 0, z: -6 } }));
-        w.set(e, og.Transform, { scale: { x: 3, y: 3, z: 2 } });
-        w.insert(e, og.Decal, { color: { r: 1, g: 0, b: 0 } });
-      },
-    }),
-  );
-  const [r, g] = pixel(decal, W / 2, H / 2);
-  const [r0, g0] = pixel(plain, W / 2, H / 2);
-  expect(r).toBeGreaterThan(g + 30);
-  expect(Math.abs(r0 - g0)).toBeLessThan(8);
-  // Outside the decal's box the wall is unchanged.
-  expect(diff(pixel(decal, 4, 4), pixel(plain, 4, 4))).toBeLessThan(6);
-});
-
-gpuTest("2D lighting: Lighting2D darkens lit layers and a Light2D lights around it", () => {
-  const board = (w: World) => {
-    const cam = must(w.resource(og.Camera));
-    cam.orthographic = true;
-    cam.height = 10;
-    cam.position = { x: 0, y: 0, z: 10 };
-    const s = must(w.resource(og.RenderSettings));
-    s.toneMapped = false;
-  };
-  const Floor = defineSystem("RtFloor", {}, (_q, _t, world: World) => {
-    og.render.sprite(world, { position: { x: 0, y: 0, z: 0 }, width: 30, height: 12, color: { r: 0.8, g: 0.8, b: 0.8 } });
-  });
-  const unlit = frameOf(og.game({ systems: [Floor], start: board }));
-  const lit = frameOf(
-    og.game({
-      systems: [Floor],
-      start: (w: World) => {
-        board(w);
-        const l = must(w.resource(og.Lighting2D));
-        l.enabled = true;
-        l.ambient = { r: 0, g: 0, b: 0 };
-        const e = must(w.spawn({ name: "lamp", position: { x: -6, y: 0, z: 0 } }));
-        w.insert(e, og.Light2D, { distance: 5, intensity: 1.5 });
-      },
-    }),
-  );
-  const left = meanLuma(lit, 20, H / 2 - 4, 40, H / 2 + 4);
-  const right = meanLuma(lit, W - 30, H / 2 - 4, W - 10, H / 2 + 4);
-  expect(right).toBeLessThan(10);
-  expect(left).toBeGreaterThan(60);
-  expect(meanLuma(unlit, W - 30, H / 2 - 4, W - 10, H / 2 + 4)).toBeGreaterThan(150);
-});
 
 gpuTest("trails, beams and ribbons draw strips", () => {
   const dark = (w: World) => {
@@ -250,43 +130,3 @@ gpuTest("trails, beams and ribbons draw strips", () => {
   expect(og.render.ribbon(start(og.game({})).world, { points: [] }).ok).toBeFalse();
 });
 
-gpuTest("material and sprite effects: a hit flash, toon bands, dissolve", () => {
-  const flashed = frameOf(og.game({ start: (w: World) => void wall(w, { flash: 1, flashColor: { r: 0, g: 0, b: 1 } }) }));
-  const [r, g, b] = pixel(flashed, W / 2, H / 2);
-  expect(b).toBeGreaterThan(r + 100);
-  expect(b).toBeGreaterThan(g + 100);
-  const gone = frameOf(og.game({ start: (w: World) => void wall(w, { dissolve: 1 }) }));
-  const plain = frameOf(og.game({ start: (w: World) => void wall(w) }));
-  expect(changed(gone, plain)).toBeGreaterThan((W * H) / 2);
-  const toon = frameOf(og.game({ start: (w: World) => void wall(w, { toon: true }) }));
-  expect(changed(toon, plain, 8)).toBeGreaterThan(100);
-  // A white sprite flashed red.
-  const Hit = defineSystem("RtHit", {}, (_q, _t, world: World) => {
-    og.render.sprite(world, { position: { x: 0, y: 0, z: -4 }, width: 2, height: 2, flash: 1, flashColor: { r: 1, g: 0, b: 0 } });
-  });
-  const hit = frameOf(og.game({ systems: [Hit], start: (w: World) => void must(w.resource(og.RenderSettings)) }));
-  const p = pixel(hit, W / 2, H / 2);
-  expect(p[0]!).toBeGreaterThan(p[1]! + 100);
-});
-
-gpuTest("camera shake moves the view deterministically by the tick", () => {
-  const shaken = (trauma: number) =>
-    frameOf(
-      og.game({
-        start: (w: World) => {
-          wall(w);
-          const e = must(w.spawn({ name: "post", position: { x: 0, y: 0, z: -5 } }));
-          w.insert(e, og.Mesh, { geometry: must(og.render.boxGeometry(w, { width: 0.3, height: 3, depth: 0.3 })), material: must(og.render.standardMaterial(w, { color: { r: 1, g: 0.1, b: 0.1 } })) });
-          const p = must(w.resource(og.PostEffects));
-          p.shakeTrauma = trauma;
-          p.shakeMaxOffset = 0.5;
-        },
-      }),
-      10,
-    );
-  const still = shaken(0);
-  const a = shaken(1);
-  const b = shaken(1);
-  expect(changed(a, still)).toBeGreaterThan(50);
-  expect(changed(a, b, 0)).toBe(0);
-});

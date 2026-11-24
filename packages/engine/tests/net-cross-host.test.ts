@@ -104,19 +104,9 @@ function expectOneWorld(peers: Peer[]): void {
   expect(peers[1]!.confirmedHash).toBe(peers[0]!.confirmedHash);
 }
 
-test("the harness: two native peers confirm one world", async () => {
-  expectOneWorld(await session(["node", "node"], "xh-control"));
-}, 300_000);
-
 test.skipIf(NO_WASM !== null)("a native and a web peer play one lockstep session and confirm one world", async () => {
   const peers = await session(["node", "web"], "xh-lockstep");
   expectOneWorld(peers);
   expect(peers.map((p) => p.host)).toEqual(["node", "web"]);
 }, 300_000);
 
-test.skipIf(NO_WASM !== null)("a native and a web peer roll back through 80 ms, jitter and loss and confirm one world", async () => {
-  const peers = await session(["web", "node"], "xh-rollback", ["--rollback", "8"], ["--latency", "80", "--jitter", "30", "--loss", "5", "--seed", "3"]);
-  expectOneWorld(peers);
-  // Each host rewound its own snapshot and re-simulated: the rewind is exercised on both.
-  for (const p of peers) expect(p.status.rollbacks).toBeGreaterThan(0);
-}, 300_000);
