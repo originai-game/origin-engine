@@ -30,7 +30,8 @@ test.skipIf(!clones(dir))("a cloned project past 512 MiB is admitted", () => {
     truncateSync(join(project, "cooked", "big.ogb"), 600 * 1024 * 1024);
     const frozen = freezeInputs(["--root", project], dir, join(dir, "runs"));
     try {
-      expect(frozen.inputRoot).toBeDefined();
+      // Beside the project, on its volume, whatever volume the runs directory is on.
+      expect(frozen.inputRoot!.startsWith(join(project, ".og", "session-inputs"))).toBe(true);
       expect(readFileSync(join(frozen.inputRoot!, "project.ogt"), "utf8")).toBe("type project\n");
     } finally {
       frozen.dispose();

@@ -9,7 +9,12 @@ const OMIT = new Set([".git", ".og", ".amp", "og-out", "node_modules", "dist"]);
 const MAX_BYTES = 512 * 1024 * 1024;
 const MAX_FILES = 32768;
 
-export function freezeInputs(argv: readonly string[], cwd: string, directory: string) {
+export function freezeInputs(argv: readonly string[], cwd: string, runs: string) {
+  // A clone needs its source's volume, and the session's runtime directory
+  // (under the temp dir, for a short socket path) is often another one: a
+  // project's run freezes into the project's own `.og`, never copied itself.
+  const root = argv.indexOf("--root");
+  const directory = root >= 0 && argv[root + 1] ? join(resolve(cwd, argv[root + 1]!), ".og", "session-inputs") : runs;
   mkdirSync(directory, { recursive: true });
   const dir = mkdtempSync(join(directory, "run-"));
   const args = [...argv];
