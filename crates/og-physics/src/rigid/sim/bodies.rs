@@ -178,14 +178,12 @@ fn plan(
             let patch_body = body_params_differ(&t.body, &b.body);
             let patch_own_collider = t.collider != b.collider;
             let kind = b.body.kind;
-            let (mut next, mut position) = (None, None);
-            if b.control.is_some() {
-                // A controller moved it after the last step: the step
-                // takes it there, pushing what is in the way.
-                next = Some(pose(b.position, b.quaternion));
-            } else if t.position != b.position || t.quaternion != b.quaternion {
+            let next = None;
+            let mut position = None;
+            if t.position != b.position || t.quaternion != b.quaternion {
                 // Game code moved it (a kinematic body moving by its
-                // velocity is where physics wrote it, so it is not moved).
+                // velocity is where physics wrote it). Teleports, including
+                // controllers, never become swept kinematic targets.
                 position = Some(pose(b.position, b.quaternion));
             }
             // Only push velocity updates when velocity changed or when a

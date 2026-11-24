@@ -293,6 +293,7 @@ pub(crate) fn platformers(
         let new_body = rp::Pose::from_parts(v(end), at.rotation) * local.inverse();
         let (position, quaternion) = unpose(&new_body, b.position);
         out.moved[k] = Some((position, quaternion, None));
+        super::sim::write_controller_pose(sim, handle, new_body);
         if p.push_bodies {
             push(
                 &mut sim.world,
