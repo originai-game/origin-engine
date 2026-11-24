@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "Theme art: panel and plate faces",
+      "summary": "A material's gloss band (plastic, flat) is drawn on buttons and chips only. Panels and plates carry text from their top edge, and a light ink could not hold on a dark face under the band (candy's pause objective read at 3.3:1)."
+    },
+    {
+      "member": "Theme art cache (og cook)",
+      "summary": "A project's drawn theme art (`.og/ui-art/`) is drawn again when the engine draws it differently, instead of keeping art an older engine drew until the recipe changed."
+    }
+  ]
+}

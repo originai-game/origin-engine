@@ -1122,13 +1122,20 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     let pc = 24f64.max(shape.corner("panel") + 12.0);
     let head = spec.get("panel").and_then(|p| p.get("header"));
     let hh = head.map(|h| opt(h, "height", 0.0)).unwrap_or(0.0);
+    // A panel and a plate carry text from their top edge, so their face
+    // has no gloss band: a light ink cannot hold on a dark face under a
+    // white band (a button's label sits centred, below it).
+    let mut flat = m.clone();
+    if let Some(o) = flat.as_object_mut() {
+        o.remove("gloss");
+    }
     let mut cv = Canvas::new(si, [pc + hh, pc, pc + lip * 0.5, pc], (4, 4));
     let b = [3.0, 3.0, cv.wf() - 3.0, cv.hf() - 3.0];
     let f = c.pair("panel")?;
     let fd = piece(
         &mut cv,
         &mut c,
-        m,
+        &flat,
         &shape,
         "panel",
         b,
@@ -1162,7 +1169,7 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     piece(
         &mut cv,
         &mut c,
-        m,
+        &flat,
         &shape,
         "control",
         b,
@@ -1359,10 +1366,12 @@ pub fn draw(spec: &Value) -> Result<Vec<Piece>, String> {
     Ok(out)
 }
 
-/// The spec's cache key: a hash of its canonical JSON and the generator's version.
+/// The spec's cache key: a hash of its canonical JSON and the generator's
+/// output, which the parity fixture pins (a change that draws differently
+/// changes it, so art drawn by an older generator is drawn again).
 pub fn spec_key(spec: &Value) -> String {
     let mut h = blake3::Hasher::new();
-    h.update(b"ui_art 2\n");
+    h.update(include_str!("../../tests/ui_art_parity.json").as_bytes());
     h.update(serde_json::to_string(spec).unwrap_or_default().as_bytes());
     h.finalize().to_hex()[..32].to_owned()
 }

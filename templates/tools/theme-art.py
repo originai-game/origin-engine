@@ -629,13 +629,18 @@ def draw(spec):
     piece(cv, C, M, shape, "control", (m, m, cv.w - m, cv.h - m), C.pair("disabled"), lip_h=lip)
     put("button-disabled", cv)
 
+    # A panel and a plate carry text from their top edge, so their face has
+    # no gloss band: a light ink cannot hold on a dark face under a white
+    # band (a button's label sits centred, below it).
+    flat = {k: v for k, v in M.items() if k != "gloss"}
+
     # panel: a larger corner, an optional header band in its top inset
     pc = max(24.0, shape.corner("panel") + 12)
     head = spec.get("panel", {}).get("header")
     hh = head["height"] if head else 0.0
     cv = Canvas(S, [pc + hh, pc, pc + lip * 0.5, pc])
     box = (3.0, 3.0, cv.w - 3.0, cv.h - 3.0)
-    fd = piece(cv, C, M, shape, "panel", box, C.pair("panel"), lip_h=lip * 0.5, orn=orn("panel"), scale_cut=1.6)
+    fd = piece(cv, C, flat, shape, "panel", box, C.pair("panel"), lip_h=lip * 0.5, orn=orn("panel"), scale_cut=1.6)
     if head:
         band = cover(cv, fd) * clamp((3.0 + hh - cv.y) * S)
         hc = C(head["color"])
@@ -648,7 +653,7 @@ def draw(spec):
     pr = min(shape.corner("control"), 14.0)
     pi = max(12.0, pr + 4)
     cv = Canvas(S, [pi, pi + 2, pi, pi + 2])
-    piece(cv, C, M, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0 - lip * 0.5), C.pair("plate"),
+    piece(cv, C, flat, shape, "control", (2.0, 2.0, cv.w - 2.0, cv.h - 2.0 - lip * 0.5), C.pair("plate"),
           lip_h=lip * 0.5, orn=orn("plate"))
     put("plate", cv)
 
