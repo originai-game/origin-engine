@@ -27,7 +27,7 @@ export function HitFeedback(props: HitFeedbackProps) {
       <For each={props.flash ? [props.flash] : []} key={(id) => id}>
         {() => <View class={`absolute inset-0 ${packClass("Hit", "vignette")}`} />}
       </For>
-      <DamageDirection hits={props.hits} />
+      <DamageDirection hits={props.hits ?? []} />
     </View>
   );
 }

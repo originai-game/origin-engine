@@ -65,7 +65,7 @@ const TSCONFIG = {
   compilerOptions: {
     target: "ES2022", module: "ESNext", moduleResolution: "Bundler", lib: ["ES2022"], types: [],
     strict: true, exactOptionalPropertyTypes: true, noFallthroughCasesInSwitch: true,
-    isolatedModules: true, verbatimModuleSyntax: true, allowImportingTsExtensions: true, noEmit: true,
+    isolatedModules: true, verbatimModuleSyntax: true, allowImportingTsExtensions: true, noEmit: true, jsx: "preserve",
   },
   include: ["src/**/*.ts", ".og/types/**/*.d.ts"],
 };
