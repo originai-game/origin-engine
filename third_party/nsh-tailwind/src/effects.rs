@@ -1077,6 +1077,12 @@ pub enum Keyframes {
     Nudge,
     /// Swells to 1.05× and back, forever (a call to action waiting on a tap).
     Breathe,
+    /// Damped horizontal micro-shake once (damage taken, blocked or rejected input).
+    Shake,
+    /// Quick bright impact flash fading out once (ability use, hit taken).
+    Flash,
+    /// Short kickback and spring return once (shot fired, combo impact).
+    Recoil,
 }
 
 /// `animation*`: a keyframe animation running natively, forever by default.

@@ -28,6 +28,8 @@ struct Node {
     /// changes.
     memo: std::cell::Cell<[(u32, f32, f32); 2]>,
     slot: SlotId,
+    /// Released back to [`Arena::free`], awaiting reuse.
+    dead: bool,
 }
 
 const EMPTY: u32 = u32::MAX - 1;
@@ -150,6 +152,8 @@ pub type Measure<'a> = dyn FnMut(Id, &str, &Run, Avail) -> (f32, f32) + 'a;
 #[derive(Clone, Debug)]
 pub struct Arena {
     nodes: Vec<Node>,
+    /// Released node ids ready to reuse in [`Arena::push`].
+    free: Vec<Id>,
     store: LayoutStore,
     root_slot: SlotId,
     /// Something changed since the last layout.
@@ -181,6 +185,7 @@ impl Arena {
     pub fn new() -> Arena {
         let mut a = Arena {
             nodes: Vec::new(),
+            free: Vec::new(),
             store: LayoutStore::new(),
             root_slot: SlotId(0),
             dirty: true,
@@ -195,19 +200,35 @@ impl Arena {
     }
 
     fn push(&mut self, parent: Id) -> Id {
-        let id = self.nodes.len() as Id;
         self.next_key += 1;
-        self.nodes.push(Node {
-            parent,
-            children: Vec::new(),
-            key: self.next_key,
-            style: CompactStyle::default(),
-            space: crate::record::Spacing::default(),
-            text: None,
-            memo: std::cell::Cell::new(NO_MEMO),
-            // Not laid out yet: an empty box until a reconcile reaches it.
-            slot: DETACHED,
-        });
+        let id = if let Some(id) = self.free.pop() {
+            let n = &mut self.nodes[id as usize];
+            n.parent = parent;
+            n.children.clear();
+            n.key = self.next_key;
+            n.style = CompactStyle::default();
+            n.space = crate::record::Spacing::default();
+            n.text = None;
+            n.memo.set(NO_MEMO);
+            n.slot = DETACHED;
+            n.dead = false;
+            id
+        } else {
+            let id = self.nodes.len() as Id;
+            self.nodes.push(Node {
+                parent,
+                children: Vec::new(),
+                key: self.next_key,
+                style: CompactStyle::default(),
+                space: crate::record::Spacing::default(),
+                text: None,
+                memo: std::cell::Cell::new(NO_MEMO),
+                // Not laid out yet: an empty box until a reconcile reaches it.
+                slot: DETACHED,
+                dead: false,
+            });
+            id
+        };
         if parent != NONE {
             self.nodes[parent as usize].children.push(id);
         }
@@ -245,7 +266,7 @@ impl Arena {
     /// measures in changed (a locale linked a face for what it lacked).
     pub fn remeasure(&mut self) {
         for id in 0..self.nodes.len() as Id {
-            if self.nodes[id as usize].text.is_some() {
+            if !self.nodes[id as usize].dead && self.nodes[id as usize].text.is_some() {
                 self.nodes[id as usize].memo.set(NO_MEMO);
                 self.touch(id, false);
             }
@@ -342,6 +363,9 @@ impl Arena {
         for k in 0..self.retexted.len() {
             let id = self.retexted[k];
             let n = &self.nodes[id as usize];
+            if n.dead {
+                continue;
+            }
             let memo = n.memo.get();
             let same = !self.structure
                 && memo[0].0 != EMPTY
@@ -370,8 +394,7 @@ impl Arena {
     }
 
     /// Takes `id` out of its parent's children: it and its subtree are no
-    /// longer laid out (their slots stay, unused, until the arena is made
-    /// again).
+    /// longer laid out.
     pub fn detach(&mut self, id: Id) {
         let p = self.nodes[id as usize].parent;
         if p != NONE {
@@ -380,6 +403,31 @@ impl Arena {
             self.dirty = true;
             self.structure = true;
         }
+    }
+
+    /// Releases `id` (never the root 0) back into the free list for reuse.
+    /// Callers must already have released or detached its descendants.
+    pub fn release(&mut self, id: Id) {
+        if id == 0 || self.nodes[id as usize].dead {
+            return;
+        }
+        self.detach(id);
+        let kids = std::mem::take(&mut self.nodes[id as usize].children);
+        for c in kids {
+            if self.nodes[c as usize].parent == id {
+                self.nodes[c as usize].parent = NONE;
+            }
+        }
+        let n = &mut self.nodes[id as usize];
+        n.dead = true;
+        n.slot = DETACHED;
+        n.text = None;
+        n.memo.set(NO_MEMO);
+        n.style = CompactStyle::default();
+        n.space = crate::record::Spacing::default();
+        self.free.push(id);
+        self.dirty = true;
+        self.structure = true;
     }
 
     /// Puts `id` under `parent`, before its child `before` (or last when

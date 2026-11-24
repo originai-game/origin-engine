@@ -256,6 +256,8 @@ pub struct Transform {
     pub scale: [f32; 2],
     /// Radians, clockwise.
     pub rotate: f32,
+    /// Skew angles (x, y) in radians (`skew-x-*`, `skew-y-*`).
+    pub skew: [f32; 2],
     /// Fractions of the box.
     pub origin: [f32; 2],
 }
@@ -267,6 +269,7 @@ impl Default for Transform {
             percent: [0.0; 2],
             scale: [1.0; 2],
             rotate: 0.0,
+            skew: [0.0; 2],
             origin: [0.5; 2],
         }
     }
@@ -278,6 +281,7 @@ impl Transform {
             && self.percent == [0.0; 2]
             && self.scale == [1.0; 2]
             && self.rotate == 0.0
+            && self.skew == [0.0; 2]
     }
 }
 
@@ -443,6 +447,8 @@ pub struct Skin {
     pub selection: Option<Rgba>,
     pub text_stroke: TextStroke,
     pub opacity: f32,
+    /// `mix-blend-*`: 0 normal, 1 add (`plus-lighter`), 2 `screen`, 3 `multiply`.
+    pub blend: u8,
     /// An SVG shape's fill and stroke paint, and its stroke's width.
     pub paint: Rgba,
     pub stroke: Rgba,
@@ -473,6 +479,7 @@ impl Default for Skin {
             selection: None,
             text_stroke: TextStroke::default(),
             opacity: 1.0,
+            blend: 0,
             paint: [0.0, 0.0, 0.0, 1.0],
             stroke: [0.0; 4],
             stroke_width: 1.0,

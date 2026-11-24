@@ -619,7 +619,10 @@ impl Texts {
                         1 => &mut *stroke,
                         j => &mut shadow[j - 2],
                     };
-                    let raster = if field {
+                    let use_color = field
+                        && matches!(form, Form::Fill)
+                        && strikes.is_color(fonts, &strike, g.id);
+                    let raster = if field && !use_color {
                         None
                     } else {
                         strikes.glyph(fonts, atlas, &strike, run.coords, g.id, bin, form, look.ink)

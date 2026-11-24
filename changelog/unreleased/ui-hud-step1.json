@@ -1,0 +1,21 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI classes skew-*, wipe transitions, animate-shake, animate-flash, animate-recoil",
+      "summary": "A UI element can skew (skew-x-*, skew-y-*) and both a skew and a radial image wipe transition between styles; animate-shake, animate-flash and animate-recoil are new keyframe presets, and the preset animations take their durations from the theme's duration tokens (ready-pulse, damage, flash)."
+    },
+    {
+      "member": "theme scale-*, opacity-*, stroke-* tokens",
+      "summary": "A theme or pack names scale, opacity and stroke-width tokens (scale-press, opacity-flash, stroke-arc …) that classes read like its other tokens."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "UI hit testing",
+      "summary": "A press, hover or drop on a transformed (moved, scaled, rotated or skewed) element lands where the element is drawn."
+    },
+    "A removed UI element frees its slot and an inline style its cache entry, so a screen that mounts and unmounts many nodes no longer grows memory.",
+    "Colour emoji draw in their colours in UI text."
+  ]
+}

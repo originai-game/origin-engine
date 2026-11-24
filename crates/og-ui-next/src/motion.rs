@@ -95,6 +95,12 @@ pub enum Keyframes {
     /// Ours: swells to 1.05× and back, forever (a call to action waiting
     /// on a tap: a claimable reward, a recommended button).
     Breathe,
+    /// Ours: damped horizontal shake (hit reaction, denied input, low-ammo).
+    Shake,
+    /// Ours: brief opacity flash that decays to 0 and stays out (damage / hit flash).
+    Flash,
+    /// Ours: brief kickback and springy recovery (shot / strike feedback).
+    Recoil,
 }
 
 /// `animate-*` and how it is timed (the class resolver's presets, or
@@ -110,6 +116,9 @@ pub struct Loop {
     pub ease: [f32; 4],
     /// `None` repeats forever.
     pub iterations: Option<u32>,
+    /// Theme-driven peak amplitude (`scale-*` for Breathe/Float/Beat,
+    /// `opacity-flash` for Flash); 0 uses the keyframe's default.
+    pub peak: f32,
 }
 
 /// What a class list asks of motion: `Record::motion`.
@@ -193,7 +202,7 @@ impl Animatable for L {
 }
 
 /// A skin's animated values, one track each.
-const CHANNELS: usize = 13 + TEXT_SHADOWS - 1;
+const CHANNELS: usize = 15 + TEXT_SHADOWS - 1;
 const OPACITY_CH: usize = 0;
 const RADIUS_CH: usize = 5;
 const TRANSFORM_CH: usize = 6;
@@ -202,7 +211,9 @@ const SHADOW_CH: usize = 7;
 /// The first text-shadow layer's channel; the others follow.
 const TEXT_SHADOW_CH: usize = SHADOW_CH + SHADOWS;
 const BLUR_CH: usize = TEXT_SHADOW_CH + TEXT_SHADOWS;
-const _: () = assert!(BLUR_CH + 1 == CHANNELS);
+const SKEW_CH: usize = BLUR_CH + 1;
+const WIPE_CH: usize = SKEW_CH + 1;
+const _: () = assert!(WIPE_CH + 1 == CHANNELS);
 const _: () = assert!(
     CHANNELS < 32,
     "tracks is a u32 with FRAME_BIT above the channels"
@@ -229,7 +240,9 @@ const GROUPS: [(u8, PropClass); CHANNELS] = [
     (SHADOW, PropClass::Color),
     (SHADOW, PropClass::Color),
     (SHADOW, PropClass::Color),
-    (SHADOW, PropClass::Blur), // backdrop blur
+    (SHADOW, PropClass::Blur),          // backdrop blur
+    (TRANSFORM, PropClass::Scale),      // skew (x, y)
+    (LAYOUT | SHAPE, PropClass::Shape), // radial image wipe
 ];
 
 const PROPS: [Prop<L>; CHANNELS] = {
@@ -301,6 +314,11 @@ fn read(ch: usize, s: &Skin) -> L {
             ]);
         }
         BLUR_CH => v[0] = s.backdrop_blur,
+        SKEW_CH => {
+            v[0] = s.transform.skew[0];
+            v[1] = s.transform.skew[1];
+        }
+        WIPE_CH => v[0] = s.image.wipe,
         TEXT_SHADOW_CH.. => v = shadow_lanes(&s.text_shadows.layers[ch - TEXT_SHADOW_CH]),
         _ => v = shadow_lanes(&s.shadows[ch - SHADOW_CH]),
     }
@@ -321,6 +339,8 @@ fn write(ch: usize, s: &mut Skin, L(v): &L) {
             t.percent = [v[5], v[6]];
         }
         BLUR_CH => s.backdrop_blur = v[0].max(0.0),
+        SKEW_CH => s.transform.skew = [v[0], v[1]],
+        WIPE_CH => s.image.wipe = v[0].clamp(0.0, 1.0),
         TEXT_SHADOW_CH.. => {
             let (k, t) = (ch - TEXT_SHADOW_CH, &mut s.text_shadows);
             put_shadow(&mut t.layers[k], v);
@@ -845,8 +865,9 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
         Some(k) if n >= k as f64 => (1.0, false),
         _ => (n.fract() as f32, true),
     };
-    // Pops, stamps and beats end where they rest; only a float stays away.
-    if !playing && lp.keyframes != K::Float {
+    // Pops, stamps, beats, shakes and recoils end where they rest;
+    // floats and flashes stay faded out.
+    if !playing && !matches!(lp.keyframes, K::Float | K::Flash) {
         return (false, false);
     }
     let ez = |x: f32| bezier(lp.ease, x);
@@ -883,10 +904,14 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
             *o *= q;
             scale = lerp(1.4, 1.0, q);
         }
-        K::Beat => scale = lerp(1.15, 1.0, ez(p)),
+        K::Beat => {
+            let peak = if lp.peak > 0.0 { lp.peak } else { 1.15 };
+            scale = lerp(peak, 1.0, ez(p));
+        }
         K::Float => {
             if p < 0.2 {
-                scale = lerp(1.4, 1.0, ez(p / 0.2));
+                let peak = if lp.peak > 0.0 { lp.peak } else { 1.4 };
+                scale = lerp(peak, 1.0, ez(p / 0.2));
             } else {
                 let q = ez((p - 0.2) / 0.8);
                 shift[1] = -48.0 * q;
@@ -895,7 +920,10 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
         }
         K::Shimmer => shift[0] = size[0] * lerp(-1.0, 4.2, ez(p)),
         K::Nudge => scale = 1.0 + 0.08 * og_core::math::sin(std::f32::consts::PI * ez(p)),
-        K::Breathe => scale = 1.0 + 0.05 * og_core::math::sin(std::f32::consts::PI * ez(p)),
+        K::Breathe => {
+            let peak = if lp.peak > 0.0 { lp.peak } else { 1.05 };
+            scale = 1.0 + (peak - 1.0) * og_core::math::sin(std::f32::consts::PI * ez(p));
+        }
         K::Rise => {
             let q = ez(p);
             *o *= q.clamp(0.0, 1.0);
@@ -907,6 +935,25 @@ fn pose(lp: &Loop, elapsed: f64, s: &mut Skin, size: [f32; 2], reduced: bool) ->
                 lerp(1.0, 1.08, q * q)
             } else {
                 lerp(1.15, 1.0, ez((p - 0.4) / 0.6))
+            }
+        }
+        K::Shake => {
+            let damp = (1.0 - p).max(0.0);
+            shift[0] = 6.0 * damp * og_core::math::sin(p * 3.0 * std::f32::consts::TAU);
+        }
+        K::Flash => {
+            let peak = if lp.peak > 0.0 { lp.peak } else { 0.6 };
+            *o *= lerp(peak, 0.0, ez(p));
+        }
+        K::Recoil => {
+            if p < 0.25 {
+                let q = ez(p / 0.25);
+                scale = lerp(1.0, 0.92, q);
+                shift[1] = lerp(0.0, 3.0, q);
+            } else {
+                let q = ez((p - 0.25) / 0.75);
+                scale = lerp(0.92, 1.0, q);
+                shift[1] = lerp(3.0, 0.0, q);
             }
         }
     }

@@ -825,6 +825,89 @@ impl Tree {
         }
     }
 
+    /// `e` (arena node `node`) is freed and its slot may be reused: scrub
+    /// every input reference to `e` or `node` and reset `per[e]`.
+    pub(super) fn forget_el(&mut self, e: u32, node: Id) {
+        self.forget_drag(e);
+        let inp = &mut self.input;
+        inp.hover.retain(|&x| x != e);
+        inp.next.retain(|&x| x != e);
+        if inp.held.as_ref().is_some_and(|h| h.e == e) {
+            inp.held = None;
+        }
+        if inp.capture == e {
+            inp.capture = NONE;
+        }
+        if inp.first.is_some_and(|f| f.0 == e) {
+            inp.first = None;
+        }
+        if inp.field_press.is_some_and(|f| f.0 == e) {
+            inp.field_press = None;
+        }
+        if inp.selecting == Some(e) {
+            inp.selecting = None;
+        }
+        if inp.caret_scrolled == Some(e) {
+            inp.caret_scrolled = None;
+        }
+        if inp.focus == e {
+            inp.focus = NONE;
+        }
+        inp.modals.retain(|&(m, _)| m != e);
+        for (_, ret) in &mut inp.modals {
+            if *ret == e {
+                *ret = NONE;
+            }
+        }
+        inp.modal_els.retain(|&m| m != e);
+        inp.stops.retain(|&s| s != e);
+        if inp.latch.is_some_and(|l| l.0 == e) {
+            inp.latch = None;
+        }
+        if inp.fling.is_some_and(|f| f.0 == e) {
+            inp.fling = None;
+        }
+        if let Some(f) = &mut inp.finger
+            && matches!(f.mode, Touch::Pan { e: pe, .. } if pe == e)
+        {
+            f.mode = Touch::Drag;
+        }
+        if inp.holding.as_ref().is_some_and(|h| h.e == e) {
+            inp.holding = None;
+        }
+        inp.autofocus.retain(|&a| a != e);
+        inp.zone_els.retain(|&z| z != e);
+        inp.zone_from.retain(|&z| z != e);
+        inp.zone_was.retain(|&z| z != e);
+        for g in &mut inp.gestures {
+            if g.as_ref().is_some_and(|g| g.e == e) {
+                *g = None;
+            }
+        }
+        if inp.pinch.as_ref().is_some_and(|p| p.e == e) {
+            inp.pinch = None;
+        }
+        inp.thumbs.retain(|&t| t != e);
+        if inp.grab.is_some_and(|g| g.0 == e) {
+            inp.grab = None;
+        }
+        inp.scrolled.retain(|&s| s != e);
+        inp.pinned.retain(|&p| p != node);
+        let mut p = self.els[e as usize].parent;
+        while p != NONE {
+            if let Some(per) = inp.per.get_mut(p as usize)
+                && per.last == Some(e)
+            {
+                per.last = None;
+            }
+            p = self.els[p as usize].parent;
+        }
+        if let Some(per) = inp.per.get_mut(e as usize) {
+            *per = Per::default();
+            per.tab = NO_TAB;
+        }
+    }
+
     /// The pack's sounds, their clips loaded (the host's).
     pub fn set_sounds(&mut self, sounds: std::rc::Rc<SoundTable>) {
         self.input.sounds = sounds;
@@ -1009,7 +1092,8 @@ impl Tree {
         if p.value.is_empty() {
             return Some(0);
         }
-        let shown = self.texts.leaf(leaf)?.hit(x - ox, y - oy);
+        let (ux, uy) = self.untransform(e, x, y)?;
+        let shown = self.texts.leaf(leaf)?.hit(ux - ox, uy - oy);
         Some(p.value_offset(shown))
     }
 
@@ -1042,9 +1126,11 @@ impl Tree {
         };
         self.input.field_press = Some((e, self.time, (x, y), n));
         let word = match n {
-            2 => self
-                .field_origin(e)
-                .and_then(|(leaf, ox, oy)| Some(self.texts.leaf(leaf)?.word_at(x - ox, y - oy))),
+            2 => self.untransform(e, x, y).and_then(|(ux, uy)| {
+                self.field_origin(e).and_then(|(leaf, ox, oy)| {
+                    Some(self.texts.leaf(leaf)?.word_at(ux - ox, uy - oy))
+                })
+            }),
             _ => None,
         };
         let Some(at) = self.field_hit(e, x, y) else {
@@ -1782,10 +1868,17 @@ impl Tree {
             let on = x >= 0.0 && y >= 0.0 && x < w && y < h;
             return shown && on && !in_hole;
         }
-        let b = self.arena.box_of(self.els[e as usize].node);
+        let Some((ux, uy)) = self.untransform(e, x, y) else {
+            return false;
+        };
+        let node = self.els[e as usize].node;
+        let b = self
+            .motion
+            .box_of(node)
+            .unwrap_or_else(|| self.arena.box_of(node));
         let local = nsh_input::Point {
-            x: nsh_input::Points(x - bx),
-            y: nsh_input::Points(y - by),
+            x: nsh_input::Points(ux - bx),
+            y: nsh_input::Points(uy - by),
         };
         let size = nsh_input::Size {
             width: nsh_input::Points(b.w),
@@ -2445,12 +2538,17 @@ impl Tree {
     /// The element's box on screen, as og-ui's navigation reads it.
     fn rect(&self, e: u32) -> og_ui_model::Rect {
         let (x, y, _, _) = self.abs[e as usize];
-        let b = self.arena.box_of(self.els[e as usize].node);
+        let node = self.els[e as usize].node;
+        let b = self
+            .motion
+            .box_of(node)
+            .unwrap_or_else(|| self.arena.box_of(node));
+        let [x0, y0, x1, y1] = self.screen_bounds(e, x, y, b.w, b.h);
         og_ui_model::Rect {
-            x,
-            y,
-            width: b.w,
-            height: b.h,
+            x: x0,
+            y: y0,
+            width: x1 - x0,
+            height: y1 - y0,
         }
     }
 

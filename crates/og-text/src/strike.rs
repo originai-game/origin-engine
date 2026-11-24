@@ -288,6 +288,14 @@ impl Strikes {
         let f = crate::sdf::field(&font, GlyphId::new(id), &self.coords, &mut self.mask)?;
         atlas.insert(key, (f.left, f.top), (f.width, f.height), &self.mask)
     }
+
+    /// Whether glyph `id` of `strike`'s face is a colour glyph (COLRv0/v1),
+    /// which must be rasterized to the colour tier rather than an outline SDF.
+    pub fn is_color(&self, fonts: &Collection, strike: &Strike, id: u32) -> bool {
+        FontRef::from_index(fonts.file(strike.face), strike.key.index)
+            .ok()
+            .is_some_and(|f| f.color_glyphs().get(GlyphId::new(id)).is_some())
+    }
 }
 
 /// Lays `text` out in `style` (its lines broken only at `\n`, aligned in

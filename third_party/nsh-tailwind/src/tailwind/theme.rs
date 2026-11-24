@@ -738,6 +738,16 @@ impl Theme {
     pub(crate) fn replace_tokens(&mut self, tokens: Arc<ClassTokens>) {
         self.tokens = Some(tokens);
     }
+
+    /// Named scale token (`scale-<name>`), if defined by the theme.
+    pub fn scale(&self, name: &str) -> Option<f32> {
+        self.scales.get(name).copied()
+    }
+
+    /// Named opacity token (`opacity-<name>`), if defined by the theme.
+    pub fn opacity(&self, name: &str) -> Option<f32> {
+        self.opacities.get(name).copied()
+    }
 }
 
 #[cfg(test)]

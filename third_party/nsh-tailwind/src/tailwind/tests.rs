@@ -2347,3 +2347,43 @@ mod text_color_opacity {
         assert_eq!(s.text.line_height, Some(px(28.0)));
     }
 }
+
+#[test]
+fn combat_animation_presets_and_theme_tokens() {
+    let theme = Theme::from_json(
+        r#"{
+            "stroke": { "arc": 3.5 },
+            "duration": { "ready-pulse": 1400, "damage": 650, "flash": 180 }
+        }"#,
+    )
+    .unwrap();
+    let resolve = |classes: &str| {
+        let list = parse(&theme, classes);
+        assert!(list.unknown().is_empty(), "{classes}: {:?}", list.unknown());
+        let mut s = Style::default();
+        let mut props = ClassProps::default();
+        let group = |_: &str| 0;
+        let context = Context {
+            env: ClassEnvironment::default(),
+            window: crate::geometry::size_pt(390.0, 844.0),
+            rtl: false,
+            states: 0,
+            position: 0,
+            group: &group,
+        };
+        list.apply(&context, &theme, &mut s, &mut props, |_| {});
+        s
+    };
+    assert_eq!(resolve("stroke-arc").paint.stroke_width, Some(px(3.5)));
+    let shake = resolve("animate-shake").view.animation.unwrap();
+    assert_eq!((shake.keyframes, shake.duration), (Keyframes::Shake, 320.0));
+    let recoil = resolve("animate-recoil").view.animation.unwrap();
+    assert_eq!((recoil.keyframes, recoil.duration), (Keyframes::Recoil, 180.0));
+    let flash = resolve("animate-flash").view.animation.unwrap();
+    assert_eq!((flash.keyframes, flash.duration), (Keyframes::Flash, 180.0));
+    assert_eq!(resolve("animate-breathe").view.animation.unwrap().duration, 1400.0);
+    assert_eq!(resolve("animate-float").view.animation.unwrap().duration, 650.0);
+    // Without theme overrides, animate-flash uses its built-in 240 ms timing.
+    assert_eq!(styled("animate-flash").view.animation.unwrap().duration, 240.0);
+}
+

@@ -166,8 +166,9 @@ struct El {
     class: u32,
     /// The element its arena node is a child of (a fixed one: none).
     arena_parent: u32,
-    /// The element it inherits from.
+    /// The element it inherits from, and its direct logical children.
     parent: u32,
+    children: Vec<u32>,
     kind: Kind,
     leaf: Option<Id>,
     /// Its text, a text leaf's or an icon's name: rewritten in place, so a
@@ -412,7 +413,8 @@ pub(crate) struct ImageProps {
 
 impl ImageProps {
     /// The box image `base` (its classes') with these props over it, the
-    /// source's slot from `textures` (none: 0).
+    /// source's slot from `textures` (none: 0). `wipe` is already folded
+    /// into `base.wipe` (and animated by `Motion`).
     fn over(
         &self,
         base: &crate::record::Slice,
@@ -422,7 +424,6 @@ impl ImageProps {
         if !self.handle.is_nan() {
             (im.texture, im.size) = textures.map_or((0, [0.0; 2]), |f| f(self.handle));
         }
-        im.wipe = self.wipe.unwrap_or(im.wipe);
         im.wipe_start = self.wipe_start.unwrap_or(im.wipe_start);
         im.wipe_ccw = self.wipe_ccw.unwrap_or(im.wipe_ccw);
         im
@@ -440,6 +441,8 @@ pub struct Tree {
     /// The surface's size in CSS px ([`Tree::resize`]).
     size: (f32, f32),
     els: Vec<El>,
+    /// Freed element indices in [`Tree::els`] awaiting reuse by [`Tree::create`].
+    free_els: Vec<u32>,
     arena: Arena,
     /// What the root passes down: the theme's body text and ink
     /// ([`Tree::set_resolver`]).
@@ -655,6 +658,7 @@ impl Tree {
                 decoration: Decoration::default(),
             },
             els: Vec::new(),
+            free_els: Vec::new(),
             arena: Arena::new(),
             paint: true,
             insets: [0.0; 4],
@@ -1327,6 +1331,21 @@ impl Tree {
         }
     }
 
+    /// Sets `child`'s logical parent to `parent`, keeping `El::children` in sync.
+    pub(super) fn set_parent(&mut self, child: u32, parent: u32) {
+        let old = self.els[child as usize].parent;
+        if old == parent {
+            return;
+        }
+        if old != NONE {
+            self.els[old as usize].children.retain(|&c| c != child);
+        }
+        self.els[child as usize].parent = parent;
+        if parent != NONE {
+            self.els[parent as usize].children.push(child);
+        }
+    }
+
     /// Re-applies `e` and every descendant whose inheritance changed.
     fn reapply(&mut self, e: u32) {
         let before = self.els[e as usize].eff;
@@ -1334,8 +1353,9 @@ impl Tree {
         if self.els[e as usize].eff == before {
             return;
         }
-        for c in 0..self.els.len() as u32 {
-            if self.els[c as usize].parent == e && !self.els[c as usize].dead {
+        for k in 0..self.els[e as usize].children.len() {
+            let c = self.els[e as usize].children[k];
+            if !self.els[c as usize].dead {
                 self.reapply(c);
             }
         }
@@ -2714,6 +2734,48 @@ impl Tree {
         self.near_target(x, y)
     }
 
+    /// Inverse of element `e`'s last painted 2D affine transform, mapping
+    /// surface coordinates `(x, y)` back into `e`'s pre-transform space.
+    /// Returns `None` if the transform is singular (zero scale / collapsed).
+    pub(super) fn untransform(&self, e: u32, x: f32, y: f32) -> Option<(f32, f32)> {
+        let xf = self.xfs.get(e as usize).copied().unwrap_or(0);
+        if xf == 0 {
+            return Some((x, y));
+        }
+        let Some(&[a, b, c, d, tx, ty, _, _]) = self.painted_transforms.get(xf as usize) else {
+            return Some((x, y));
+        };
+        let det = a * d - b * c;
+        if det.abs() < 1e-6 {
+            return None;
+        }
+        let (dx, dy) = (x - tx, y - ty);
+        Some(((d * dx - c * dy) / det, (a * dy - b * dx) / det))
+    }
+
+    /// Axis-aligned screen bounds `[x0, y0, x1, y1]` of element `e`'s box
+    /// `(x, y, w, h)` after its painted 2D affine transform.
+    pub(super) fn screen_bounds(&self, e: u32, x: f32, y: f32, w: f32, h: f32) -> [f32; 4] {
+        let xf = self.xfs.get(e as usize).copied().unwrap_or(0);
+        if xf == 0 {
+            return [x, y, x + w, y + h];
+        }
+        let Some(&[a, b, c, d, tx, ty, _, _]) = self.painted_transforms.get(xf as usize) else {
+            return [x, y, x + w, y + h];
+        };
+        let mut out = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+        for [cx, cy] in [[x, y], [x + w, y], [x, y + h], [x + w, y + h]] {
+            let (sx, sy) = (a * cx + c * cy + tx, b * cx + d * cy + ty);
+            out = [
+                out[0].min(sx),
+                out[1].min(sy),
+                out[2].max(sx),
+                out[3].max(sy),
+            ];
+        }
+        out
+    }
+
     /// On a touch screen, a press that lands on no control goes to the
     /// nearest enabled one whose box, grown to [`TOUCH_TARGET`] square
     /// round its centre, holds the point (Material's minimum interactive
@@ -2746,12 +2808,13 @@ impl Tree {
                 .motion
                 .box_of(el.node)
                 .unwrap_or_else(|| self.arena.box_of(el.node));
+            let [sx0, sy0, sx1, sy1] = self.screen_bounds(e as u32, bx, by, b.w, b.h);
             // What of it is drawn: a control scrolled out of view takes nothing.
             let [x0, y0, x1, y1] = [
-                bx.max(clip[0]),
-                by.max(clip[1]),
-                (bx + b.w).min(clip[2]),
-                (by + b.h).min(clip[3]),
+                sx0.max(clip[0]),
+                sy0.max(clip[1]),
+                sx1.min(clip[2]),
+                sy1.min(clip[3]),
             ];
             if x1 <= x0 || y1 <= y0 {
                 continue;
@@ -2810,19 +2873,20 @@ impl Tree {
                 NONE => all,
                 p => self.abs.get(p as usize).map_or(all, |a| a.3),
             };
+            if x < cx0 || x >= cx1 || y < cy0 || y >= cy1 {
+                continue;
+            }
             let b = self
                 .motion
                 .box_of(el.node)
                 .unwrap_or_else(|| self.arena.box_of(el.node));
             // A span in a paragraph is where its glyphs are.
             let inside = match self.on_span(e as u32, x, y) {
-                Some(on) => on && x >= cx0 && x < cx1 && y >= cy0 && y < cy1,
-                None => {
-                    x >= bx.max(cx0)
-                        && x < (bx + b.w).min(cx1)
-                        && y >= by.max(cy0)
-                        && y < (by + b.h).min(cy1)
-                }
+                Some(on) => on,
+                None => match self.untransform(e as u32, x, y) {
+                    Some((lx, ly)) => lx >= bx && lx < bx + b.w && ly >= by && ly < by + b.h,
+                    None => false,
+                },
             };
             if !shown || !inside || !self.reachable(e as u32) {
                 continue;
@@ -3253,7 +3317,22 @@ fn transformed(p: &mut Paint, parent: u32, t: &crate::record::Transform, rect: [
 fn affine(t: &crate::record::Transform, rect: [f32; 4]) -> [f32; 6] {
     let (sin, cos) = og_core::math::sin_cos(t.rotate);
     let [sx, sy] = t.scale;
-    let (a, b, c, d) = (cos * sx, sin * sx, -sin * sy, cos * sy);
+    let tan = |r: f32| {
+        if r == 0.0 {
+            0.0
+        } else {
+            let (s, c) = og_core::math::sin_cos(r);
+            if c.abs() < 1e-6 { 0.0 } else { s / c }
+        }
+    };
+    let (tx, ty) = (tan(t.skew[0]), tan(t.skew[1]));
+    let (k00, k01, k10, k11) = ((1.0 + tx * ty) * sx, tx * sy, ty * sx, sy);
+    let (a, b, c, d) = (
+        cos * k00 - sin * k10,
+        sin * k00 + cos * k10,
+        cos * k01 - sin * k11,
+        sin * k01 + cos * k11,
+    );
     let ox = rect[0] + t.origin[0] * rect[2];
     let oy = rect[1] + t.origin[1] * rect[3];
     let e = ox + t.translate[0] + t.percent[0] * rect[2] - (a * ox + c * oy);

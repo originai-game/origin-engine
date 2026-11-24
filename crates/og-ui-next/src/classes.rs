@@ -382,7 +382,7 @@ impl Classes {
         let (direction, logical) = (out.layout.direction, out.logical);
         nsh_tailwind::style::apply_direction(&mut out.layout, &mut out.view, &logical, env.rtl);
         out.layout.direction = direction;
-        let mut record = record_of(&out, &props);
+        let mut record = record_of(&out, &props, &self.theme);
         // `space-x-*` ends each child but the last with a margin, the
         // start one with `space-x-reverse`: physical sides by direction.
         if let Some(space) = &props.space {
@@ -473,12 +473,11 @@ pub enum StyleProperty {
 /// The style properties NSH reads into a field this tree does not draw,
 /// with why: each is a field `every_nsh_style_field_is_read_or_named_not_drawn`
 /// names as not drawn.
-const NOT_DRAWN: [(&str, &str); 11] = [
+const NOT_DRAWN: [(&str, &str); 10] = [
     ("glassEffect", "a platform material"),
     ("glassTintColor", "a platform material"),
     ("tintColor", "a native image's tint"),
     ("backfaceVisibility", "3D: the tree draws 2D transforms"),
-    ("mixBlendMode", "blend modes are not drawn yet"),
     ("accentColor", "an accent colour is not drawn yet"),
     ("direction", "the tree takes the page's direction"),
     ("writingDirection", "the tree takes the page's direction"),
@@ -655,7 +654,7 @@ fn gradient_of(g: &nsh_tailwind::effects::Gradient) -> Gradient {
     out
 }
 
-fn record_of(style: &Style, props: &ClassProps) -> Record {
+fn record_of(style: &Style, props: &ClassProps, theme: &Theme) -> Record {
     let mut r = Record {
         layout: CompactStyle::from(&style.layout),
         ..Record::default()
@@ -701,6 +700,12 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     let (view, text, skin) = (&style.view, &style.text, &mut r.skin);
     skin.fill = linear(view.background_color);
     skin.opacity = view.opacity;
+    skin.blend = match view.blend_mode {
+        nsh_tailwind::effects::BlendMode::PlusLighter => 1,
+        nsh_tailwind::effects::BlendMode::Screen => 2,
+        nsh_tailwind::effects::BlendMode::Multiply => 3,
+        _ => 0,
+    };
     let c = &view.corner_radius;
     let all = view.border_radius.0;
     skin.radius =
@@ -708,7 +713,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     let w = &view.borders.widths;
     skin.border = [w.top.0, w.right.0, w.bottom.0, w.left.0];
     // The commonest side colour is the border's; the sides of the first
-    // other one take it (a third colour draws as the second); a tie goes to the
+    // other one take it (a third colour draws as the second); a tie goes to
     // top's.
     let cs = view.borders.colors;
     let base = *cs
@@ -727,8 +732,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
     skin.outline.offset = view.outline.offset.0;
     skin.outline.color = linear(view.outline.color);
     // Translate (a fraction of the box's own size resolved at paint),
-    // scale and rotate in their own fields; skew and 3D need a matrix and
-    // are left out.
+    // scale, rotate and 2D skew; 3D transforms are left out.
     for op in view.transform.ops() {
         let (t, v) = (&mut skin.transform, op.value);
         match op.kind {
@@ -740,6 +744,8 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
             TransformKind::ScaleX => t.scale[0] *= v,
             TransformKind::ScaleY => t.scale[1] *= v,
             TransformKind::Rotate => t.rotate += v.to_radians(),
+            TransformKind::SkewX => t.skew[0] += v.to_radians(),
+            TransformKind::SkewY => t.skew[1] += v.to_radians(),
             _ => {}
         }
     }
@@ -922,7 +928,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.select = on;
         t.set |= Text::SELECT;
     }
-    r.motion = motion_of(style);
+    r.motion = motion_of(style, theme);
     if let Some(nowrap) = props.no_wrap {
         t.nowrap = nowrap;
         t.set |= Text::NOWRAP;
@@ -942,7 +948,7 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
 
 /// What `transition-*`, `duration-*`, `delay-*`, `ease-*` and `animate-*`
 /// ask of motion; NSH's milliseconds become seconds.
-fn motion_of(style: &Style) -> motion::Spec {
+fn motion_of(style: &Style, theme: &Theme) -> motion::Spec {
     let mut m = motion::Spec::default();
     if let Some(t) = &style.view.transition {
         // NSH's groups are motion's bits one to one, `LAYOUT` (ours) too.
@@ -958,26 +964,45 @@ fn motion_of(style: &Style) -> motion::Spec {
             None => motion::Ease::Bezier(t.easing),
         };
     }
-    m.animate = style.view.animation.map(|a| motion::Loop {
-        keyframes: match a.keyframes {
-            Keyframes::Spin => motion::Keyframes::Spin,
-            Keyframes::Ping => motion::Keyframes::Ping,
-            Keyframes::Pulse => motion::Keyframes::Pulse,
-            Keyframes::Bounce => motion::Keyframes::Bounce,
-            Keyframes::Pop => motion::Keyframes::Pop,
-            Keyframes::Stamp => motion::Keyframes::Stamp,
-            Keyframes::Beat => motion::Keyframes::Beat,
-            Keyframes::Float => motion::Keyframes::Float,
-            Keyframes::Shimmer => motion::Keyframes::Shimmer,
-            Keyframes::Rise => motion::Keyframes::Rise,
-            Keyframes::Charge => motion::Keyframes::Charge,
-            Keyframes::Nudge => motion::Keyframes::Nudge,
-            Keyframes::Breathe => motion::Keyframes::Breathe,
-        },
-        duration: a.duration / 1000.0,
-        delay: a.delay / 1000.0,
-        ease: a.easing,
-        iterations: a.iterations,
+    m.animate = style.view.animation.map(|a| {
+        let (keyframes, peak) = match a.keyframes {
+            Keyframes::Spin => (motion::Keyframes::Spin, 0.0),
+            Keyframes::Ping => (motion::Keyframes::Ping, 0.0),
+            Keyframes::Pulse => (motion::Keyframes::Pulse, 0.0),
+            Keyframes::Bounce => (motion::Keyframes::Bounce, 0.0),
+            Keyframes::Pop => (motion::Keyframes::Pop, 0.0),
+            Keyframes::Stamp => (motion::Keyframes::Stamp, 0.0),
+            Keyframes::Beat => (
+                motion::Keyframes::Beat,
+                theme.scale("combo-pop").unwrap_or(0.0),
+            ),
+            Keyframes::Float => (
+                motion::Keyframes::Float,
+                theme.scale("damage-pop").unwrap_or(0.0),
+            ),
+            Keyframes::Shimmer => (motion::Keyframes::Shimmer, 0.0),
+            Keyframes::Rise => (motion::Keyframes::Rise, 0.0),
+            Keyframes::Charge => (motion::Keyframes::Charge, 0.0),
+            Keyframes::Nudge => (motion::Keyframes::Nudge, 0.0),
+            Keyframes::Breathe => (
+                motion::Keyframes::Breathe,
+                theme.scale("ready-pulse").unwrap_or(0.0),
+            ),
+            Keyframes::Shake => (motion::Keyframes::Shake, 0.0),
+            Keyframes::Flash => (
+                motion::Keyframes::Flash,
+                theme.opacity("flash").unwrap_or(0.0),
+            ),
+            Keyframes::Recoil => (motion::Keyframes::Recoil, 0.0),
+        };
+        motion::Loop {
+            keyframes,
+            duration: a.duration / 1000.0,
+            delay: a.delay / 1000.0,
+            ease: a.easing,
+            iterations: a.iterations,
+            peak,
+        }
     });
     m
 }

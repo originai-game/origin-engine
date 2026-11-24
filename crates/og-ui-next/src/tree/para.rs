@@ -43,7 +43,7 @@ pub(super) struct Selected {
 /// whether it is down at all (a finger waiting to long-press).
 #[derive(Clone, Copy, Debug)]
 pub(super) struct SelectPress {
-    e: u32,
+    pub(super) e: u32,
     at: f64,
     place: (f32, f32),
     count: u8,
@@ -395,7 +395,10 @@ impl Tree {
         let k = para.members.iter().position(|&m| m == e)?;
         let [start, end] = para.ranges[k];
         let g = self.texts.leaf(leaf)?;
-        let (px, py) = (x - ox, y - oy);
+        let Some((ux, uy)) = self.untransform(root, x, y) else {
+            return Some(false);
+        };
+        let (px, py) = (ux - ox, uy - oy);
         let mut on = false;
         g.selection(start as usize..end as usize, |[sx, sy, w, h]| {
             on |= px >= sx && px < sx + w && py >= sy && py < sy + h;
@@ -462,7 +465,8 @@ impl Tree {
         let &(ex, ey, ..) = self.abs.get(e as usize)?;
         let lb = self.arena.box_of(leaf);
         let g = self.texts.leaf(leaf)?;
-        let (px, py) = (x - ex - lb.x, y - ey - lb.y);
+        let (ux, uy) = self.untransform(e, x, y)?;
+        let (px, py) = (ux - ex - lb.x, uy - ey - lb.y);
         Some((g.hit(px, py), g.word_at(px, py)))
     }
 

@@ -440,6 +440,7 @@ pub(crate) struct Parts {
     delay: Option<f32>,
     transition_none: bool,
     animate: Option<Option<KeyframeAnimation>>,
+    animate_preset: bool,
     text_shadow: Option<Arc<[TextShadow]>>,
     text_shadow_color: Option<Color>,
     text_shadow_alpha: Option<f32>,
@@ -589,8 +590,14 @@ impl Parts {
                 self.transition_none = true;
                 self.transition_props = None;
             }
-            Animate(k) => self.animate = Some(k.map(preset)),
-            Animation(a) => self.animate = Some(Some(a)),
+            Animate(k) => {
+                self.animate = Some(k.map(preset));
+                self.animate_preset = k.is_some();
+            }
+            Animation(a) => {
+                self.animate = Some(Some(a));
+                self.animate_preset = false;
+            }
             TextShadow(layers) => self.text_shadow = Some(layers),
             TextShadowColor(c) => self.text_shadow_color = Some(c),
             TextShadowAlpha(a) => self.text_shadow_alpha = Some(a),
@@ -820,7 +827,20 @@ impl Parts {
                 spring: self.spring,
             });
         }
-        if let Some(k) = self.animate.filter(|_| has(touched::ANIMATE)) {
+        if let Some(mut k) = self.animate.filter(|_| has(touched::ANIMATE)) {
+            if self.animate_preset
+                && let Some(a) = &mut k
+            {
+                let key = match a.keyframes {
+                    Keyframes::Breathe => Some("ready-pulse"),
+                    Keyframes::Float => Some("damage"),
+                    Keyframes::Flash => Some("flash"),
+                    _ => None,
+                };
+                if let Some(&ms) = key.and_then(|n| theme.durations.get(n)) {
+                    a.duration = ms;
+                }
+            }
             style.view.animation = k;
         }
         if let Some(layers) = self
@@ -1890,6 +1910,9 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "animate-charge" => Decl::Part(Part::Animate(Some(Keyframes::Charge))),
         "animate-nudge" => Decl::Part(Part::Animate(Some(Keyframes::Nudge))),
         "animate-breathe" => Decl::Part(Part::Animate(Some(Keyframes::Breathe))),
+        "animate-shake" => Decl::Part(Part::Animate(Some(Keyframes::Shake))),
+        "animate-flash" => Decl::Part(Part::Animate(Some(Keyframes::Flash))),
+        "animate-recoil" => Decl::Part(Part::Animate(Some(Keyframes::Recoil))),
         // Interactivity.
         "pointer-events-none" => Decl::Set(
             K::PointerEvents,
@@ -2370,6 +2393,9 @@ static PREFIXES: &[(&str, Handler)] = &[
         }
         if let Some(p) = svg_paint(t, v) {
             return one(Decl::Set(K::Stroke, p));
+        }
+        if let Some(w) = t.strokes.get(v) {
+            return one(setn(K::StrokeWidth, *w));
         }
         let a = arbitrary(v)?;
         let a = arbitrary_hinted(&a, "length")
@@ -3243,7 +3269,10 @@ fn preset(keyframes: Keyframes) -> KeyframeAnimation {
         | Keyframes::Rise
         | Keyframes::Charge
         | Keyframes::Nudge
-        | Keyframes::Breathe => {
+        | Keyframes::Breathe
+        | Keyframes::Shake
+        | Keyframes::Flash
+        | Keyframes::Recoil => {
             let (duration, easing, iterations) = match keyframes {
                 Keyframes::Rise => (320.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 Keyframes::Nudge => (420.0, [0.42, 0.0, 0.58, 1.0], Some(1)),
@@ -3252,6 +3281,9 @@ fn preset(keyframes: Keyframes) -> KeyframeAnimation {
                 Keyframes::Stamp | Keyframes::Beat => (400.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 Keyframes::Float => (800.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 Keyframes::Charge => (600.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
+                Keyframes::Shake => (320.0, [0.0, 0.0, 1.0, 1.0], Some(1)),
+                Keyframes::Flash => (240.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
+                Keyframes::Recoil => (180.0, [0.23, 1.0, 0.32, 1.0], Some(1)),
                 _ => (1400.0, [0.42, 0.0, 0.58, 1.0], None),
             };
             KeyframeAnimation {

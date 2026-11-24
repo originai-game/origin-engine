@@ -1435,9 +1435,26 @@ impl Next {
     pub(crate) fn probe(&self) -> Value {
         let s = &self.spans;
         let p = &self.paint;
-        let mut kinds = [0usize; 4];
+        let (mut solid, mut gradient, mut glyph, mut icon) = (0usize, 0usize, 0usize, 0usize);
+        let (mut border, mut shadow, mut image, mut line, mut group) =
+            (0usize, 0usize, 0usize, 0usize, 0usize);
         for q in &p.quads {
-            kinds[(q.kind as usize).min(3)] += 1;
+            match q.kind {
+                k if k == og_render::paint::PaintKind::Solid as u32 => solid += 1,
+                k if k == og_render::paint::PaintKind::Gradient as u32 => gradient += 1,
+                k if k == og_render::paint::PaintKind::Raster as u32 => glyph += 1,
+                k if k == og_render::paint::PaintKind::Icon as u32 => icon += 1,
+                k if k == og_render::paint::PaintKind::Border as u32 => border += 1,
+                k if k == og_render::paint::PaintKind::Shadow as u32
+                    || k == og_render::paint::PaintKind::InsetShadow as u32 =>
+                {
+                    shadow += 1;
+                }
+                k if k == og_render::paint::PaintKind::Image as u32 => image += 1,
+                k if k == og_render::paint::PaintKind::Line as u32 => line += 1,
+                k if k == og_render::paint::PaintKind::Group as u32 => group += 1,
+                _ => {}
+            }
         }
         // The first glyphs' places, as the paint pass reads them.
         let glyphs: Vec<Value> = p
@@ -1452,8 +1469,17 @@ impl Next {
                 })
             })
             .collect();
-        let kinds =
-            json!({ "solid": kinds[0], "gradient": kinds[1], "glyph": kinds[2], "icon": kinds[3] });
+        let kinds = json!({
+            "solid": solid,
+            "gradient": gradient,
+            "glyph": glyph,
+            "icon": icon,
+            "border": border,
+            "shadow": shadow,
+            "image": image,
+            "line": line,
+            "group": group,
+        });
         json!({
             "build_ms": s.build, "build_allocations": s.build_allocations,
             "frame_ms": s.frame, "commit_ms": s.commit, "layout_ms": s.layout,

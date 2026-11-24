@@ -174,6 +174,21 @@ pub(super) const GROUP_STATES: u16 = {
     all
 };
 
+/// Cached interaction-state and presence metadata for a class string alone
+/// (`style == ""`). Inline declarations carry no Tailwind variants, so every
+/// `(class, style)` entry reuses its class string's metadata without
+/// re-probing all interaction states or presence variants.
+#[derive(Clone, Copy, Default)]
+struct ClassMeta {
+    tracked: u16,
+    has_starting: bool,
+    has_exit: bool,
+}
+
+/// How many unreferenced inline-styled entries may remain cached before
+/// orphaned ones are evicted and their slot ids recycled.
+const INLINE_ORPHAN_CAP: usize = 64;
+
 /// The records of the class and style pairs the op nodes use, each
 /// resolved once; an entry's key is `class\0style`. `presence` holds an
 /// entry's `starting:` and `exit:` records where they differ from its own.
@@ -186,6 +201,13 @@ pub struct Classes {
     /// Each entry's interaction states its record reads, and its records
     /// under the ones it reads, made the first time they are met.
     tracked: Vec<u16>,
+    /// Live `El::class` references to each entry; inline-styled entries
+    /// whose count drops to 0 are recycled once `orphan_styled` grows past
+    /// [`INLINE_ORPHAN_CAP`].
+    refs: Vec<u32>,
+    free: Vec<u32>,
+    orphan_styled: Vec<u32>,
+    class_meta: FxHashMap<Box<str>, ClassMeta>,
     stated: FxHashMap<(u32, u16, u32), Record>,
     /// The data contexts met, by id less one (0: none).
     datas: Vec<Box<str>>,
@@ -215,15 +237,26 @@ fn tracks(resolve: Option<&Resolve>, c: &str, s: &str, base: &Record) -> u16 {
 }
 
 /// An entry's record, and its `starting:` and `exit:` ones where they
-/// differ from it.
-fn resolved(resolve: Option<&Resolve>, c: &str, s: &str) -> (Record, [Option<Box<Record>>; 2]) {
+/// differ from it, using `meta` to skip probing absent presence variants.
+fn resolved_with(
+    resolve: Option<&Resolve>,
+    c: &str,
+    s: &str,
+    meta: ClassMeta,
+) -> (Record, [Option<Box<Record>>; 2]) {
     let Some(f) = resolve else {
         return (Record::default(), [None, None]);
     };
     let base = f(c, s, 0, "");
-    let other = |state| Some(Box::new(f(c, s, state, ""))).filter(|r| **r != base);
-    let presence = [other(STARTING), other(EXIT)];
-    (base, presence)
+    let starting = meta
+        .has_starting
+        .then(|| Box::new(f(c, s, STARTING, "")))
+        .filter(|r| **r != base);
+    let exit = meta
+        .has_exit
+        .then(|| Box::new(f(c, s, EXIT, "")))
+        .filter(|r| **r != base);
+    (base, [starting, exit])
 }
 
 impl Classes {
@@ -295,6 +328,68 @@ impl Classes {
         key.split_once('\0').unwrap_or((key, ""))
     }
 
+    pub(super) fn acquire(&mut self, i: u32) {
+        if let Some(r) = self.refs.get_mut(i as usize) {
+            *r = r.saturating_add(1);
+        }
+    }
+
+    pub(super) fn release(&mut self, i: u32) {
+        let Some(r) = self.refs.get_mut(i as usize) else {
+            return;
+        };
+        *r = r.saturating_sub(1);
+        if *r == 0
+            && !self.keys[i as usize].is_empty()
+            && !Self::split(&self.keys[i as usize]).1.is_empty()
+        {
+            self.orphan_styled.push(i);
+            if self.orphan_styled.len() > INLINE_ORPHAN_CAP {
+                self.evict_orphans();
+            }
+        }
+    }
+
+    fn evict_orphans(&mut self) {
+        let keep = INLINE_ORPHAN_CAP / 2;
+        let drain_end = self.orphan_styled.len().saturating_sub(keep);
+        let mut evicted: Vec<u32> = Vec::new();
+        for idx in self.orphan_styled.drain(..drain_end) {
+            let slot = idx as usize;
+            if self.refs[slot] == 0
+                && !self.keys[slot].is_empty()
+                && !Self::split(&self.keys[slot]).1.is_empty()
+            {
+                let key = std::mem::take(&mut self.keys[slot]);
+                self.index.remove(&key);
+                self.presence[slot] = [None, None];
+                self.tracked[slot] = 0;
+                self.free.push(idx);
+                evicted.push(idx);
+            }
+        }
+        if !evicted.is_empty() {
+            self.stated.retain(|&(i, _, _), _| !evicted.contains(&i));
+        }
+    }
+
+    fn class_meta(&mut self, c: &str) -> ClassMeta {
+        if let Some(&m) = self.class_meta.get(c) {
+            return m;
+        }
+        let Some(f) = self.resolve.as_ref() else {
+            return ClassMeta::default();
+        };
+        let base = f(c, "", 0, "");
+        let meta = ClassMeta {
+            tracked: tracks(Some(f), c, "", &base),
+            has_starting: f(c, "", STARTING, "") != base,
+            has_exit: f(c, "", EXIT, "") != base,
+        };
+        self.class_meta.insert(c.into(), meta);
+        meta
+    }
+
     fn get(&mut self, class: &str, style: &str) -> u32 {
         self.buf.clear();
         self.buf.push_str(class);
@@ -321,24 +416,70 @@ impl Classes {
         if let Some(&i) = self.index.get(self.buf.as_str()) {
             return i;
         }
-        let (c, s) = Self::split(&self.buf);
-        let (record, presence) = resolved(self.resolve.as_ref(), c, s);
-        self.tracked
-            .push(tracks(self.resolve.as_ref(), c, s, &record));
-        let i = self.keys.len() as u32;
-        self.records.push(record);
-        self.presence.push(presence);
-        self.keys.push(self.buf.as_str().into());
-        self.index.insert(self.buf.as_str().into(), i);
-        i
+        let key: Box<str> = self.buf.as_str().into();
+        let (c, s) = Self::split(&key);
+        let (record, presence, tracked) = if s.is_empty() {
+            if let Some(f) = self.resolve.as_ref() {
+                let base = f(c, "", 0, "");
+                let starting = Some(Box::new(f(c, "", STARTING, ""))).filter(|r| **r != base);
+                let exit = Some(Box::new(f(c, "", EXIT, ""))).filter(|r| **r != base);
+                let tr = match self.class_meta.get(c) {
+                    Some(&m) => m.tracked,
+                    None => {
+                        let tr = tracks(Some(f), c, "", &base);
+                        self.class_meta.insert(
+                            c.into(),
+                            ClassMeta {
+                                tracked: tr,
+                                has_starting: starting.is_some(),
+                                has_exit: exit.is_some(),
+                            },
+                        );
+                        tr
+                    }
+                };
+                (base, [starting, exit], tr)
+            } else {
+                (Record::default(), [None, None], 0)
+            }
+        } else {
+            let meta = self.class_meta(c);
+            let (record, presence) = resolved_with(self.resolve.as_ref(), c, s, meta);
+            (record, presence, meta.tracked)
+        };
+        if let Some(i) = self.free.pop() {
+            let slot = i as usize;
+            self.records[slot] = record;
+            self.presence[slot] = presence;
+            self.tracked[slot] = tracked;
+            self.refs[slot] = 0;
+            self.keys[slot] = key.clone();
+            self.index.insert(key, i);
+            i
+        } else {
+            let i = self.keys.len() as u32;
+            self.records.push(record);
+            self.presence.push(presence);
+            self.tracked.push(tracked);
+            self.refs.push(0);
+            self.keys.push(key.clone());
+            self.index.insert(key, i);
+            i
+        }
     }
 
     fn reresolve(&mut self) {
         self.stated.clear();
-        for (i, k) in self.keys.iter().enumerate() {
-            let (c, s) = Self::split(k);
-            (self.records[i], self.presence[i]) = resolved(self.resolve.as_ref(), c, s);
-            self.tracked[i] = tracks(self.resolve.as_ref(), c, s, &self.records[i]);
+        self.class_meta.clear();
+        for i in 0..self.keys.len() {
+            if self.keys[i].is_empty() {
+                continue;
+            }
+            let key = self.keys[i].clone();
+            let (c, s) = Self::split(&key);
+            let meta = self.class_meta(c);
+            (self.records[i], self.presence[i]) = resolved_with(self.resolve.as_ref(), c, s, meta);
+            self.tracked[i] = meta.tracked;
         }
     }
 }
@@ -459,6 +600,9 @@ impl Tree {
             let ring = self.classes.get("@Focus.ring", "");
             record.skin.outline = self.classes.record(ring, 0, 0).skin.outline;
         }
+        if let Some(w) = self.els[e as usize].image.as_ref().and_then(|im| im.wipe) {
+            record.skin.image.wipe = w;
+        }
         // The press every control that answers one shows, as a game's
         // buttons squash under a finger: the pack's `Press.feedback`, its
         // pose under `active:` laid over the element's own transform and
@@ -511,6 +655,16 @@ impl Tree {
         }
     }
 
+    /// Replaces `e`'s class entry with `new`, maintaining reference counts.
+    fn swap_class(&mut self, e: u32, new: u32) {
+        let old = self.els[e as usize].class;
+        if new != old {
+            self.classes.acquire(new);
+            self.classes.release(old);
+            self.els[e as usize].class = new;
+        }
+    }
+
     /// Whether op element `e` is a control a finger presses: it answers a
     /// press, or it is an action's touch button (`touchButton`).
     /// An `Input`'s class: the game's own, after `@Field.frame` (or
@@ -525,7 +679,8 @@ impl Tree {
             (false, true) => format!("@Field.area {}", p.own_class),
         };
         let old = self.els[e as usize].class;
-        self.els[e as usize].class = self.classes.with(old, true, &class);
+        let new = self.classes.with(old, true, &class);
+        self.swap_class(e, new);
         let slot = class.split_whitespace().find_map(|c| c.strip_prefix('@'));
         self.input.per[e as usize].slot = slot.unwrap_or("").into();
         self.data_dirty = true;
@@ -687,6 +842,19 @@ impl Tree {
         (n as f32 * step).min(cap)
     }
 
+    /// Longest remaining exit time of `e` and all descendants under it.
+    fn max_leaves_in(&self, e: u32) -> f32 {
+        let el = &self.els[e as usize];
+        if el.dead {
+            return 0.0;
+        }
+        let mut wait = self.motion.leaves_in(el.node);
+        for &c in &el.children {
+            wait = wait.max(self.max_leaves_in(c));
+        }
+        wait
+    }
+
     /// How long `child`, put on screen beside an absolutely placed sibling
     /// on its way out, holds its entrance: until what leaves there has
     /// left, so a screen that replaces one (a `<Show>` branch, a mount)
@@ -700,20 +868,27 @@ impl Tree {
         }
         let parent = self.els[child as usize].parent;
         let mut wait = 0.0f32;
-        for s in 0..self.els.len() as u32 {
-            let el = &self.els[s as usize];
-            if s == child || el.dead || el.parent != parent || !abs(s) {
-                continue;
-            }
-            if !self.motion.exiting(el.node) && !self.leaving.iter().any(|l| l.0 == s) {
-                continue;
-            }
-            wait = wait.max(self.motion.leaves_in(el.node));
-            for d in 0..self.els.len() as u32 {
-                let el = &self.els[d as usize];
-                if !el.dead && self.is_under(d, s) {
-                    wait = wait.max(self.motion.leaves_in(el.node));
+        if parent != NONE {
+            for &s in &self.els[parent as usize].children {
+                let el = &self.els[s as usize];
+                if s == child || el.dead || !abs(s) {
+                    continue;
                 }
+                if !self.motion.exiting(el.node) && !self.leaving.iter().any(|l| l.0 == s) {
+                    continue;
+                }
+                wait = wait.max(self.max_leaves_in(s));
+            }
+        } else {
+            for s in 0..self.els.len() as u32 {
+                let el = &self.els[s as usize];
+                if s == child || el.dead || el.parent != NONE || !abs(s) {
+                    continue;
+                }
+                if !self.motion.exiting(el.node) && !self.leaving.iter().any(|l| l.0 == s) {
+                    continue;
+                }
+                wait = wait.max(self.max_leaves_in(s));
             }
         }
         wait
@@ -739,11 +914,11 @@ impl Tree {
             return Err(format!("og.ui ops: node {id} exists"));
         }
         let class = self.classes.get("", "");
+        self.classes.acquire(class);
         let record = self.classes.records[class as usize].clone();
         let node = self.arena.element(NONE, record.layout.clone());
         let leaf = text.then(|| self.arena.text(node, "", 16.0));
-        let e = self.els.len() as u32;
-        self.els.push(El {
+        let fresh = El {
             node,
             disabled: false,
             clickable: false,
@@ -753,6 +928,7 @@ impl Tree {
             class,
             arena_parent: NONE,
             parent: NONE,
+            children: Vec::new(),
             kind,
             leaf,
             text: String::new(),
@@ -772,12 +948,30 @@ impl Tree {
             para: None,
             queued: false,
             ruby: Box::default(),
-        });
+        };
+        let e = if let Some(slot) = self.free_els.pop() {
+            self.els[slot as usize] = fresh;
+            if let Some(a) = self.abs.get_mut(slot as usize) {
+                a.2 = false;
+            }
+            if let Some(x) = self.xfs.get_mut(slot as usize) {
+                *x = 0;
+            }
+            slot
+        } else {
+            let slot = self.els.len() as u32;
+            self.els.push(fresh);
+            slot
+        };
         if self.by_js.len() <= id as usize {
             self.by_js.resize(id as usize + 1, NONE);
         }
         self.by_js[id as usize] = e;
-        self.input.per.resize(e as usize + 1, input::Per::default());
+        if self.input.per.len() <= e as usize {
+            self.input.per.resize(e as usize + 1, input::Per::default());
+        } else {
+            self.input.per[e as usize] = input::Per::default();
+        }
         self.input.per[e as usize].tab = input::NO_TAB;
         self.entering.push(e);
         self.inherit(e);
@@ -818,9 +1012,14 @@ impl Tree {
     /// when any animates out: hold `top` drawn, not hit, until they settle.
     fn exit_under(&mut self, top: u32) -> bool {
         let mut any = false;
-        for d in 0..self.els.len() as u32 {
+        let mut stack: Vec<u32> = self.els[top as usize].children.clone();
+        while let Some(d) = stack.pop() {
             let el = &self.els[d as usize];
-            if el.dead || el.js == NONE || !self.is_under(d, top) {
+            if el.dead {
+                continue;
+            }
+            stack.extend_from_slice(&el.children);
+            if el.js == NONE {
                 continue;
             }
             let to = self.classes.presence(el.class, 1);
@@ -831,10 +1030,19 @@ impl Tree {
 
     /// Whether an element under `top` is on its way out.
     fn exiting_under(&self, top: u32) -> bool {
-        (0..self.els.len() as u32).any(|d| {
-            let el = &self.els[d as usize];
-            !el.dead && self.motion.exiting(el.node) && self.is_under(d, top)
-        })
+        fn check(tree: &Tree, e: u32) -> bool {
+            for &c in &tree.els[e as usize].children {
+                let el = &tree.els[c as usize];
+                if el.dead {
+                    continue;
+                }
+                if tree.motion.exiting(el.node) || check(tree, c) {
+                    return true;
+                }
+            }
+            false
+        }
+        check(self, top)
     }
 
     /// Whether element `d` is below `top` (not `top` itself).
@@ -854,39 +1062,77 @@ impl Tree {
         if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
             *slot = NONE;
         }
-        for c in 0..self.els.len() as u32 {
-            let el = &self.els[c as usize];
-            if el.parent == e && !el.dead {
+        for k in 0..self.els[e as usize].children.len() {
+            let c = self.els[e as usize].children[k];
+            if !self.els[c as usize].dead {
                 self.unbind(c);
             }
         }
     }
 
-    /// Frees `e` and what is under it now.
+    /// Frees `e` and what is under it now, recycling both element and arena slots.
     fn free(&mut self, e: u32) {
-        let el = &mut self.els[e as usize];
-        el.dead = true;
-        let (node, js) = (el.node, el.js);
-        if let Some(leaf) = el.leaf {
-            self.texts.release(leaf);
+        if self.els[e as usize].dead {
+            return;
         }
-        self.arena.detach(node);
-        self.motion.forget(node);
-        self.sem.release(node);
-        self.input.modal_els.retain(|&m| m != e);
-        self.input.zone_els.retain(|&z| z != e);
-        self.forget_drag(e);
-        self.anchored.retain(|&a| a != e);
-        self.leaving.retain(|l| l.0 != e);
-        if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
-            *slot = NONE;
-        }
-        for c in 0..self.els.len() as u32 {
-            let el = &self.els[c as usize];
-            if el.parent == e && !el.dead {
+        let kids = std::mem::take(&mut self.els[e as usize].children);
+        for c in kids {
+            if self.els[c as usize].parent == e {
+                self.els[c as usize].parent = NONE;
+            }
+            if !self.els[c as usize].dead {
                 self.free(c);
             }
         }
+        self.forget_el(e, self.els[e as usize].node);
+        self.set_parent(e, NONE);
+        let el = &mut self.els[e as usize];
+        el.dead = true;
+        let (node, leaf, js, class) = (el.node, el.leaf.take(), el.js, el.class);
+        el.js = NONE;
+        el.arena_parent = NONE;
+        el.text.clear();
+        el.attrs.clear();
+        el.line = None;
+        el.particles = None;
+        el.anchor = None;
+        el.image = None;
+        el.para = None;
+        self.classes.release(class);
+        if let Some(leaf) = leaf {
+            self.texts.release(leaf);
+            self.arena.release(leaf);
+        }
+        self.arena.release(node);
+        self.motion.forget(node);
+        self.sem.release(node);
+        self.anchored.retain(|&a| a != e);
+        self.spotlights.retain(|&s| s != e);
+        self.leaving.retain(|l| l.0 != e);
+        self.entering.retain(|&x| x != e);
+        self.counts.retain(|c| c.e != e);
+        self.paras.retain(|&p| p != e);
+        self.warned_layers.retain(|&n| n != node);
+        self.warned_paras.retain(|&x| x != e);
+        self.glides.retain(|g| !g.3.contains(&e));
+        self.cascade.1.retain(|r| r.0 != e);
+        if self.select.as_ref().is_some_and(|s| s.e == e) {
+            self.select = None;
+        }
+        if self.select_press.as_ref().is_some_and(|p| p.e == e) {
+            self.select_press = None;
+        }
+        if let Some(a) = self.abs.get_mut(e as usize) {
+            a.2 = false;
+        }
+        if let Some(x) = self.xfs.get_mut(e as usize) {
+            *x = 0;
+        }
+        if let Some(slot) = self.by_js.get_mut(js as usize).filter(|s| **s == e) {
+            *slot = NONE;
+        }
+        self.ordered = false;
+        self.free_els.push(e);
     }
 
     /// The exits that settled in this frame's motion tick: a removed
@@ -908,8 +1154,8 @@ impl Tree {
                 self.free(e);
             } else {
                 self.arena.detach(node);
-                let el = &mut self.els[e as usize];
-                (el.parent, el.arena_parent) = (NONE, NONE);
+                self.set_parent(e, NONE);
+                self.els[e as usize].arena_parent = NONE;
             }
             self.ordered = false;
             self.paint = true;
@@ -932,8 +1178,8 @@ impl Tree {
             } else {
                 self.leaving.swap_remove(k);
                 self.arena.detach(node);
-                let el = &mut self.els[e as usize];
-                (el.parent, el.arena_parent) = (NONE, NONE);
+                self.set_parent(e, NONE);
+                self.els[e as usize].arena_parent = NONE;
                 self.ordered = false;
                 self.paint = true;
             }
@@ -998,7 +1244,8 @@ impl Tree {
                         continue;
                     }
                     let old = self.els[e as usize].class;
-                    self.els[e as usize].class = self.classes.with(old, code == 4, text);
+                    let new = self.classes.with(old, code == 4, text);
+                    self.swap_class(e, new);
                     if code == 4 {
                         let slot = text.split_whitespace().find_map(|c| c.strip_prefix('@'));
                         let per = &mut self.input.per[e as usize];
@@ -1363,7 +1610,23 @@ impl Tree {
                             });
                             let number = value.parse::<f32>().ok().filter(|n| n.is_finite());
                             match name {
-                                "wipe" => props.wipe = number.map(|w| w.clamp(0.0, 1.0)),
+                                "wipe" => {
+                                    let next = number.map(|w| w.clamp(0.0, 1.0));
+                                    props.wipe = next;
+                                    let target = next.unwrap_or(1.0);
+                                    if self.els[e as usize].record.skin.image.wipe != target {
+                                        let mut next_rec = self.els[e as usize].record.clone();
+                                        next_rec.skin.image.wipe = target;
+                                        let old = std::mem::replace(
+                                            &mut self.els[e as usize].record,
+                                            next_rec,
+                                        );
+                                        let el = &self.els[e as usize];
+                                        if el.entering.is_none() {
+                                            self.motion.restyle(el.node, &old, &el.record);
+                                        }
+                                    }
+                                }
                                 "wipeStart" => props.wipe_start = number,
                                 _ => {
                                     props.wipe_ccw = (!value.is_empty())
@@ -1480,8 +1743,8 @@ impl Tree {
                     self.para_touch(self.els[child as usize].parent);
                     self.arena
                         .attach(self.els[child as usize].node, pnode, before);
-                    let el = &mut self.els[child as usize];
-                    (el.parent, el.arena_parent) = (p, p);
+                    self.set_parent(child, p);
+                    self.els[child as usize].arena_parent = p;
                     self.para_touch(child);
                     self.data_dirty = true;
                     let held = self.leaving.iter().any(|l| l.0 == child)
@@ -1491,9 +1754,14 @@ impl Tree {
                     self.sem.exiting(el.node, false);
                     if held {
                         // Put back while what is under it exits: they turn back.
-                        for d in 0..self.els.len() as u32 {
+                        let mut stack: Vec<u32> = self.els[child as usize].children.clone();
+                        while let Some(d) = stack.pop() {
                             let el = &self.els[d as usize];
-                            if !el.dead && self.motion.exiting(el.node) && self.is_under(d, child) {
+                            if el.dead {
+                                continue;
+                            }
+                            stack.extend_from_slice(&el.children);
+                            if self.motion.exiting(el.node) {
                                 self.motion.enter(el.node, &el.record, None);
                             }
                         }
@@ -1550,8 +1818,8 @@ impl Tree {
                         continue;
                     }
                     self.arena.detach(self.els[child as usize].node);
-                    let el = &mut self.els[child as usize];
-                    (el.parent, el.arena_parent) = (NONE, NONE);
+                    self.set_parent(child, NONE);
+                    self.els[child as usize].arena_parent = NONE;
                     self.ordered = false;
                     self.paint = true;
                 }
