@@ -1721,6 +1721,9 @@ mod tests {
         let mut counts = std::collections::BTreeMap::new();
         for path in files {
             let text = std::fs::read_to_string(&path).unwrap();
+            // A component's fixtures are the game's data (a ramp's colours,
+            // a car's), passed in as props: not the component's look.
+            let text = text.split("\nexport const fixtures").next().unwrap_or("");
             // Doc comments name values (`--ability-slot-size`, `48 px`).
             let code: String = text
                 .lines()
