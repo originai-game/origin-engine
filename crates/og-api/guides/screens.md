@@ -91,7 +91,9 @@ fonts, images, icons and sounds) and the assets it names. Structure stays
 in TSX components. Haptics stay in `og.*`.
 
 The engine ships the default pack, which dresses every core control,
-component and screen in plain tokens. A game's own pack lies over it:
+component and screen in plain tokens, and the themes: recipes the cook
+compiles into a pack with drawn art, which a look names (`ui "fantasy"`)
+and a game derives its own from (the themes guide). A game's own pack lies over it:
 name its directory in the look (`ui "my-style"`), which makes the cook
 bundle it, and write in its `pack.json` its seeds, the theme values it
 sets over the default pack, its art and the classes of the slots it
