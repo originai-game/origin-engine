@@ -171,7 +171,14 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
     for slug in looks {
         let root = project(&[("looks/x.ogt", &format!("{HEAD}{slug}\n"))]);
         let s = source(&root, "looks/x.ogt");
-        let known = |id: &str| builtin_ids.contains(&id) || packs.iter().any(|p| p == id);
+        // An engine theme cooks to `@themes/<name>/pack.json`.
+        let theme = |id: &str| {
+            id.strip_prefix("@themes/")
+                .and_then(|t| t.strip_suffix("/pack.json"))
+                .is_some_and(|t| crate::cook::ui_themes::builtin_recipe(t).is_some())
+        };
+        let known =
+            |id: &str| builtin_ids.contains(&id) || packs.iter().any(|p| p == id) || theme(id);
         let (look, _) =
             resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
         let cap = number_of(&look, "MaterialStyle", "outlineNearCap");
@@ -182,7 +189,11 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
         }
         let text = String::from_utf8_lossy(&s.bytes).to_string();
         for (id, _) in builtin_files(&s.rel, &text, &root) {
-            assert!(builtin_ids.contains(&id), "{slug}: {id}");
+            // A theme's files are the ones its recipe just cooked.
+            assert!(
+                id.starts_with("@themes/") || builtin_ids.contains(&id),
+                "{slug}: {id}"
+            );
         }
     }
 }
