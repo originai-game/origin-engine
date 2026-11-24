@@ -24,6 +24,24 @@ buildings {
   heightNoise 0.01 0.6
   rule "grammars/terrace.ogt"
 }
+yards {
+  label "yard"
+  spacing 9
+  margin 4.5
+  attempts 24
+  max 128
+  turn 0 360
+  prop "tree" {
+    model "models/yard-tree.ogt"
+    weight 3
+    collider capsule 0.18 3.8
+  }
+  prop "bench" {
+    model "models/yard-bench.shape.json"
+    weight 2
+    collider box 1.8 0.9 0.45
+  }
+}
 prop "lamp" {
   model "models/lamp.ogt"
   every 22

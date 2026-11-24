@@ -1,0 +1,21 @@
+{
+  "name": "Courtyard slatted bench",
+  "ops": [
+    { "op": "box", "name": "seat-front", "width": 1800, "depth": 90, "height": 35, "on": { "origin": [0, -180, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "seat-2", "width": 1800, "depth": 90, "height": 35, "on": { "origin": [0, -75, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "seat-3", "width": 1800, "depth": 90, "height": 35, "on": { "origin": [0, 30, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "seat-back", "width": 1800, "depth": 90, "height": 35, "on": { "origin": [0, 135, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "back-lower", "width": 1800, "depth": 35, "height": 100, "on": { "origin": [0, 180, 550], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "back-middle", "width": 1800, "depth": 35, "height": 100, "on": { "origin": [0, 180, 670], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "back-upper", "width": 1800, "depth": 35, "height": 100, "on": { "origin": [0, 180, 790], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "left-leg", "width": 50, "depth": 400, "height": 430, "on": { "origin": [-650, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "right-leg", "width": 50, "depth": 400, "height": 430, "on": { "origin": [650, 0, 0], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "left-back-post", "width": 40, "depth": 40, "height": 460, "on": { "origin": [-650, 200, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "box", "name": "right-back-post", "width": 40, "depth": 40, "height": 460, "on": { "origin": [650, 200, 430], "x": [1, 0, 0], "y": [0, 1, 0], "z": [0, 0, 1] } },
+    { "op": "material", "ids": [0, 1, 2, 3, 4, 5, 6], "name": "weathered-oak", "color": "#67513b", "roughness": 0.85,
+      "surface": { "density": 256, "layers": [
+        { "pattern": "stripes", "scale": 0.012, "width": 0.002, "axis": "+Y", "color": "#34271c", "breakup": 0.65, "relief": -0.0005 }
+      ] } },
+    { "op": "material", "ids": [7, 8, 9, 10], "name": "painted-iron", "color": "#242b26", "roughness": 0.7, "metalness": 0.4 }
+  ]
+}

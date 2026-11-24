@@ -451,7 +451,59 @@ lowest surface. Editing or removing a district's carve invalidates the
 terrain and its nav bakes without changing the original asset files.
 
 <a id="guide-districts-7"></a>
-### `districts §7` Pitfalls
+### `districts §7` Fill the ground behind the lots
+
+Treat a courtyard as the ground left by the lots, not another rectangle
+placed over the block: that keeps its paving and props out of buildings
+when the grid turns, jitters or a street cuts it. Add `yards` to the
+district, using the library's own ground label and the game's models:
+
+```text
+yards {
+  label "yard"
+  spacing 9
+  margin 4.5
+  attempts 24
+  max 128
+  turn 0 360
+  prop "tree" {
+    model "models/yard-tree.ogt"
+    weight 3
+    collider capsule 0.18 3.8
+  }
+  prop "bench" {
+    model "models/yard-bench.shape.json"
+    weight 2
+    collider box 1.8 0.9 0.45
+  }
+}
+```
+
+The ground label replaces the yard surface rather than layering a second
+plane over it. Put paving maps and per-yard colour variation in the
+library. A tree can be a plant (models §3), a seat a model program
+(model guide); repeated assets remain instances with their own colliders
+and the ordinary model LODs. These choices are the game's, not a built-in
+garden composition.
+
+All prop kinds share one seeded Poisson set. Choose spacing for the
+largest model, and margin for its extent from its origin, including the
+tree crown: the constraints apply to origins, not automatic mesh fitting.
+The draw tries at most `attempts` neighbours per active point and caps
+the candidate set at `max` per yard before boundary filtering; a narrow
+yard or a low cap may leave fewer props. A yard with no space keeps its
+paving without forcing props into walls. Omit `yards` for the original
+ground, or leave `max` at zero for paving only. A missing number never
+chooses a density for the game.
+
+The reserved lots do not become yard when `buildings.density` leaves a
+building out. Changing yard decoration leaves streets, lots and building
+seeds alone. Yard props join the same streaming cells as other props;
+only their placement runs at cook time. As with the buildings, prepare
+their ground separately when the underlying terrain is uneven.
+
+<a id="guide-districts-8"></a>
+### `districts §8` Pitfalls
 
 - A label no material covers fails the cook, naming the label and the
   grammar; a typo in a grammar's `label` is the usual cause.

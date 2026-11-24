@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "type district",
+      "summary": "An optional yards block fills the ground behind street-facing lots with labelled paving and a weighted pool of instanced props. Shared seeded Poisson sites respect authored spacing, boundary margin, rotation and candidate limits; props retain colliders, model LODs and streaming. Yard decoration does not move streets or buildings."
+    }
+  ]
+}

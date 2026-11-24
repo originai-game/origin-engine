@@ -33,6 +33,7 @@ mod glb;
 pub(crate) mod parse;
 pub(super) mod terrain;
 mod texts;
+mod yards;
 
 use super::*;
 

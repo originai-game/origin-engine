@@ -1,0 +1,94 @@
+type model
+version 1
+---
+material "stone" {
+  color 0.28 0.27 0.24
+  roughness 0.9
+}
+material "soil" {
+  color 0.045 0.032 0.018
+  roughness 1
+}
+part "tree-bed" {
+  material "stone"
+  cylinderGeometry {
+    radiusTop 1.9
+    radiusBottom 1.9
+    height 0.12
+    radialSegments 32
+  }
+  at {
+    position 0 0.06 0
+  }
+}
+part "earth" {
+  material "soil"
+  cylinderGeometry {
+    radiusTop 1.76
+    radiusBottom 1.76
+    height 0.13
+    radialSegments 32
+  }
+  at {
+    position 0 0.065 0
+  }
+}
+plant "courtyard-tree" {
+  seed 19
+  growth deciduous
+  levels 2
+  force 0 1 0 0.015
+  barkColor 0.13 0.08 0.04
+  trunk {
+    length 3.7
+    radius 0.16
+    sections 10
+    segments 9
+    taper 0.65
+    gnarliness 0.035
+    twist 0.08
+    children 8
+  }
+  branch1 {
+    length 3.3
+    radius 0.55
+    sections 9
+    segments 7
+    taper 0.85
+    gnarliness 0.08
+    twist 0.12
+    children 6
+    angle 45
+    start 0.55
+  }
+  branch2 {
+    length 1.8
+    radius 0.45
+    sections 6
+    segments 5
+    taper 0.95
+    gnarliness 0.14
+    twist 0.1
+    children 0
+    angle 55
+    start 0.4
+  }
+  leaves {
+    shape blade
+    count 60
+    start 0.25
+    end 1
+    angle 45
+    facing 0.7
+    rows 0
+    size 0.28
+    width 0.5
+    sizeVariance 0.3
+    color 0.045 0.14 0.018
+    color2 0.14 0.25 0.045
+    colorVariation 0.2
+    translucency 0.4
+    domeNormals 0.65
+    season 0
+  }
+}

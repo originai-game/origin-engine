@@ -182,6 +182,129 @@ fn a_district_builds_the_same_bytes_and_another_seed_another_town() {
 }
 
 #[test]
+fn yard_props_keep_their_spacing_and_margin_behind_the_lots() {
+    let source = "type district
+version 1
+---
+seed 7
+region {
+  point 0 0
+  point 80 0
+  point 80 60
+  point 0 60
+}
+streets {
+  street \"front\" {
+    point -10 0
+    point 90 0
+    width 8
+    sidewalk 2
+  }
+  kerb 0.15
+}
+lots {
+  width 6 12
+  depth 10 10
+}
+yards {
+  label \"yard\"
+  spacing 5
+  margin 2
+  attempts 24
+  max 128
+  turn 20 20
+  prop \"tree\" {
+    model \"models/tree.ogt\"
+    weight 2
+    collider capsule 0.15 4
+  }
+  prop \"seat\" {
+    model \"models/seat.ogt\"
+    weight 1
+    collider box 2 0.6 0.5
+  }
+}
+materials \"materials/town.ogt\"
+";
+    let library =
+        format!("{LIBRARY}\nmaterial \"yard\" {{\n label yard\n color 0.2 0.15 0.1\n}}\n");
+    let a = run(source, &library).unwrap();
+    let b = run(source, &library).unwrap();
+    assert_eq!(a.scene, b.scene);
+    assert_eq!(a.models, b.models);
+    assert_unique_names(&a);
+    let (model, buffers, _) = gltf::import_slice(&a.models[0].1).unwrap();
+    let mut area = BTreeMap::<String, f32>::new();
+    for part in model.meshes().flat_map(|m| m.primitives()) {
+        let reader = part.reader(|b| Some(&buffers[b.index()].0));
+        let p: Vec<glam::Vec3> = reader
+            .read_positions()
+            .unwrap()
+            .map(glam::Vec3::from)
+            .collect();
+        let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
+        let projected: f32 = indices
+            .chunks_exact(3)
+            .map(|t| {
+                let [a, b, c] = [p[t[0] as usize], p[t[1] as usize], p[t[2] as usize]];
+                (b - a).cross(c - a).y.abs() / 2.0
+            })
+            .sum();
+        *area
+            .entry(part.material().name().unwrap().to_string())
+            .or_default() += projected;
+    }
+    // This yard touches three block boundaries: no duplicate ground
+    // underneath and no gap along an open edge of the paving.
+    assert!((area["yard"] - 80.0 * 44.0).abs() < 1e-3);
+    assert!((area["stone"] - 80.0 * 12.0).abs() < 1e-3);
+    let doc = og_core::ogt::Document::parse(&a.scene).unwrap();
+    let mut points = Vec::<[f32; 2]>::new();
+    let mut kinds = std::collections::BTreeSet::new();
+    for e in doc
+        .body
+        .get_all("entity")
+        .filter(|e| e.string(0).unwrap().contains("/yard-"))
+    {
+        let body = e.block.as_ref().unwrap();
+        kinds.insert(body.get("model").unwrap().string(0).unwrap());
+        let t = body.get("Transform").unwrap().block.as_ref().unwrap();
+        let p = t.get("position").unwrap().numbers(0).unwrap();
+        // Roadway ends at z=4, pavement at 6, lots at 16; two more
+        // metres of clearance on all four sides of the remaining yard.
+        assert!(
+            (2.0..=78.0).contains(&p[0]) && (18.0..=58.0).contains(&p[2]),
+            "{p:?}"
+        );
+        assert!((p[1] - 0.15).abs() < 1e-4);
+        for q in &points {
+            assert!((p[0] - q[0]).hypot(p[2] - q[1]) >= 5.0 - 1e-4);
+        }
+        points.push([p[0], p[2]]);
+        let q = t.get("quaternion").unwrap().numbers(0).unwrap();
+        assert!((q[1] - 0.1736).abs() < 1e-4);
+        assert!(
+            body.get("entity")
+                .unwrap()
+                .block
+                .as_ref()
+                .unwrap()
+                .get("Collider")
+                .is_some()
+        );
+    }
+    assert!(
+        points.len() > 20 && points.len() <= 128,
+        "{} sites",
+        points.len()
+    );
+    assert_eq!(kinds.len(), 2, "both weighted models appear");
+    let empty = run(&source.replace("max 128", "max 0"), &library).unwrap();
+    assert!(!empty.scene.contains("/yard-"));
+    assert!(run(&source.replace("spacing 5", "spacing 0"), &library).is_err());
+}
+
+#[test]
 fn every_building_collides_and_every_prop_stands_with_its_collider() {
     let a = run(&district(""), LIBRARY).unwrap();
     let doc = og_core::ogt::Document::parse(&a.scene).unwrap();

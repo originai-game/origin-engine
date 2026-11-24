@@ -128,11 +128,24 @@ fn lots_lie_in_their_block_apart_and_each_fronts_its_street() {
     // The lots tile each block's ring: inside each block, the lots and
     // the yard behind them make up the block.
     let lots: f64 = l.lots.iter().map(|x| area2(&x.footprint) / 2.0).sum();
+    let yards: f64 = l.yards.iter().map(|x| area2(&x.footprint) / 2.0).sum();
     let blocks: f64 = l.blocks.iter().map(|b| b.poly.area()).sum();
     assert!(
         lots > 0.4 * blocks && lots <= blocks + 1e-6,
         "{lots} of {blocks}"
     );
+    assert!((lots + yards - blocks).abs() < 1e-6 * blocks);
+    assert!(!l.yards.is_empty());
+    for yard in &l.yards {
+        assert!(
+            yard.footprint
+                .iter()
+                .all(|p| inside(*p, &l.blocks[yard.block].poly.points))
+        );
+        for lot in l.lots.iter().filter(|l| l.block == yard.block) {
+            assert!(shared(&yard.footprint, &lot.footprint) < 1e-6);
+        }
+    }
 }
 
 #[test]

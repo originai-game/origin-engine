@@ -357,8 +357,14 @@ pub(super) fn build(
         }
     }
 
+    let yards_by_block: BTreeMap<_, _> = plan
+        .yards
+        .iter()
+        .filter(|_| d.yards.is_some())
+        .map(|y| (y.block, y))
+        .collect();
     // Each block's pavement, its ground and its kerbs.
-    for block in &plan.blocks {
+    for (index, block) in plan.blocks.iter().enumerate() {
         let mid = block.poly.points.iter().copied().sum::<DVec2>() / block.poly.len() as f64;
         let c = cell_of(mid);
         let acc = cells
@@ -378,13 +384,25 @@ pub(super) fn build(
                 centre(c),
             );
         }
-        add_mesh(
-            acc,
-            &street_look("ground")?,
-            0,
-            &polygon(&own, &[], DVec3::Y, &level),
-            centre(c),
-        );
+        let yard = yards_by_block.get(&index).copied();
+        let court: Vec<DVec3> = yard
+            .into_iter()
+            .flat_map(|y| &y.footprint)
+            .map(|p| at(*p, kerb))
+            .collect();
+        let ground = polygon(&own, &court, DVec3::Y, &level);
+        if !ground.indices.is_empty() {
+            add_mesh(acc, &street_look("ground")?, 0, &ground, centre(c));
+        }
+        if let (Some(rules), Some(yard)) = (&d.yards, yard) {
+            add_mesh(
+                acc,
+                &library.draw(&rules.label, yard.seed, "the yards")?,
+                0,
+                &polygon(&court, &[], DVec3::Y, &level),
+                centre(c),
+            );
+        }
         if kerb > 0.0 {
             let look = street_look("kerb")?;
             let n = pave.len();
@@ -522,6 +540,23 @@ pub(super) fn build(
             yaw_z(s.facing),
             prop.collider.as_ref(),
         ));
+    }
+
+    // Yard props share one set of separated sites across all model kinds.
+    if let Some(rules) = &d.yards {
+        for yard in &plan.yards {
+            for (n, site) in super::yards::sites(yard, rules)?.iter().enumerate() {
+                let prop = &rules.props[site.prop];
+                let c = cell_of(site.position);
+                cells.entry(c).or_default().entities.push(texts::placed(
+                    &format!("{rel}/yard-{}/{}-{n}", yard.block, prop.name),
+                    &prop.model,
+                    at(site.position, kerb) - centre(c),
+                    yaw(site.turn),
+                    prop.collider.as_ref(),
+                ));
+            }
+        }
     }
 
     // The models, the cells' scenes and the district's.

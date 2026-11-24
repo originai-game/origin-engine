@@ -8,10 +8,14 @@ const view = defineSystem("View", { writes: [og.Camera] }, (_query, time, world)
     camera.value.position = { x, y: 1.7, z: 80 };
     camera.value.quaternion = og.transform.lookAt(camera.value.position, { x: x + 35, y: 4, z: 72 });
     og.assert.reachable("street view");
-  } else {
+  } else if (time.tick < 240) {
     camera.value.position = { x: 90, y: 55, z: -25 };
     camera.value.quaternion = og.transform.lookAt(camera.value.position, { x: 90, y: 0, z: 40 });
     og.assert.reachable("block view");
+  } else {
+    camera.value.position = { x: 90, y: 12, z: 24 };
+    camera.value.quaternion = og.transform.lookAt(camera.value.position, { x: 90, y: 1, z: 46 });
+    og.assert.reachable("courtyard view");
   }
   og.assert.always(camera.value.position.y > 1.6, "camera stays above the road");
 });

@@ -8,11 +8,16 @@ fixture rules, not an engine town or style preset.
 
 Readers: og-cook's district integration test checks that the entrances,
 shop glazing and plinth survive merging and every generated LOD. The L4
-look capture drives this project's camera: street until tick 180, then a
-block overview. Capture both at 1920×1080 and 390×844; a two-second street
+look capture drives this project's camera: street until tick 180, a
+block overview until 240, then the courtyard. Capture all three at
+1920×1080 and 390×844; a two-second street
 walk fits before the camera switches. The target is Watch Dogs: Legion's
-London streets. Later look heads address courtyards, upper-storey relief,
-brick repetition and kerb details on this same project.
+London streets. Later look heads address upper-storey relief,
+brick repetition and kerb details on this same project. Courtyards now
+use labelled brick paving, seeded plant-generator trees in stone beds
+and slatted model-program benches. Their shared Poisson sites stay
+behind the reserved street lots and carry authored colliders; no model
+or surface is generated at runtime.
 
 Textures are pinned by `og-assets.json`; install with the repository's
 asset tool. The source image is generated at authoring time, and the

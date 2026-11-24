@@ -87,6 +87,20 @@ material "asphalt" {
   color 0.06 0.06 0.065
   roughness 0.95
 }
+material "yard-paving" {
+  label yard
+  color 0.45 0.43 0.36
+  roughness 1
+  tile 2 1
+  map "textures/stock.png"
+  normalMap "textures/stock-n.png"
+  metalnessMap "textures/stock-mr.png"
+  aoMap "textures/stock-ao.png"
+  vary {
+    value 0.1
+    warmth 0.04
+  }
+}
 material "stock" {
   label wall
   weight 2

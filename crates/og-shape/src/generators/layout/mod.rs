@@ -156,6 +156,14 @@ pub struct Lot {
     pub seed: u64,
 }
 
+/// The ground left behind a block's ring of street-facing lots.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Yard {
+    pub block: usize,
+    pub footprint: Vec<DVec2>,
+    pub seed: u64,
+}
+
 /// Where a prop stands.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Site {
@@ -177,6 +185,7 @@ pub struct Layout {
     pub streets: Vec<Street>,
     pub blocks: Vec<Block>,
     pub lots: Vec<Lot>,
+    pub yards: Vec<Yard>,
     pub sites: Vec<Site>,
     pub notes: Vec<String>,
 }
@@ -335,14 +344,23 @@ pub fn layout(desc: &LayoutDesc) -> Result<Layout, String> {
         })
         .collect();
     let mut lots = Vec::new();
+    let mut yards = Vec::new();
     for (b, block) in blocks.iter().enumerate() {
-        notes.extend(lots::lots(b, &block.poly, &desc.lots, desc.seed, &mut lots));
+        notes.extend(lots::lots(
+            b,
+            &block.poly,
+            &desc.lots,
+            desc.seed,
+            &mut lots,
+            &mut yards,
+        ));
     }
     let sites = props::sites(&blocks, &streets, &desc.props, desc.seed)?;
     Ok(Layout {
         streets,
         blocks,
         lots,
+        yards,
         sites,
         notes,
     })

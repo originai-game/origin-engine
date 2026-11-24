@@ -95,6 +95,26 @@ pub(crate) struct Prop {
     pub collider: Option<PropCollider>,
 }
 
+/// A weighted model for the yard's shared, non-overlapping sites.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct YardProp {
+    pub name: String,
+    pub model: String,
+    pub weight: f64,
+    pub collider: Option<PropCollider>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Yards {
+    pub label: String,
+    pub spacing: f64,
+    pub margin: f64,
+    pub attempts: u32,
+    pub max: usize,
+    pub turn: [f64; 2],
+    pub props: Vec<YardProp>,
+}
+
 /// A grammar the buildings take.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct RuleUse {
@@ -130,6 +150,7 @@ pub(crate) struct District {
     pub lots: LotsDesc,
     pub buildings: Buildings,
     pub props: Vec<Prop>,
+    pub yards: Option<Yards>,
     pub materials: String,
     pub cells: Option<Cells>,
     /// The `hlod` block, given to each cell's sub-scene as written.
@@ -170,7 +191,23 @@ fn prop(e: &Entry) -> Result<Prop, String> {
     )?;
     let model = asset(b.get("model").ok_or_else(|| at(e, "names its `model`"))?)?;
     let num = |k: &str| b.get(k).map(one).transpose().map(|v| v.unwrap_or(0.0));
-    let collider = match b.get("collider") {
+    let collider = collider(b.get("collider"))?;
+    Ok(Prop {
+        desc: PropDesc {
+            name,
+            every: num("every")?,
+            jitter: num("jitter")?,
+            kerb: num("kerb")?,
+            corners: b.get("corners").map(flag).transpose()?.unwrap_or(false),
+            street: b.get("street").map(text).transpose()?,
+        },
+        model,
+        collider,
+    })
+}
+
+fn collider(entry: Option<&Entry>) -> Result<Option<PropCollider>, String> {
+    Ok(match entry {
         None => None,
         Some(c) => match c.values.first().and_then(Value::as_word) {
             Some("box") => {
@@ -206,19 +243,79 @@ fn prop(e: &Entry) -> Result<Prop, String> {
             }
             _ => return Err(at(c, "is `box <w> <h> <d>` or `capsule <radius> <height>`")),
         },
-    };
-    Ok(Prop {
-        desc: PropDesc {
-            name,
-            every: num("every")?,
-            jitter: num("jitter")?,
-            kerb: num("kerb")?,
-            corners: b.get("corners").map(flag).transpose()?.unwrap_or(false),
-            street: b.get("street").map(text).transpose()?,
-        },
-        model,
-        collider,
     })
+}
+
+fn yards(e: &Entry) -> Result<Yards, String> {
+    let b = block(e)?;
+    known(
+        b,
+        &[
+            "label", "spacing", "margin", "attempts", "max", "turn", "prop",
+        ],
+        "yards",
+    )?;
+    let num = |k: &str| b.get(k).map(one).transpose().map(|v| v.unwrap_or(0.0));
+    let mut out = Yards {
+        label: text(
+            b.get("label")
+                .ok_or_else(|| at(e, "names its ground `label`"))?,
+        )?,
+        spacing: num("spacing")?,
+        margin: num("margin")?,
+        attempts: 0,
+        max: 0,
+        turn: b.get("turn").map(range).transpose()?.unwrap_or([0.0; 2]),
+        props: Vec::new(),
+    };
+    let attempts = num("attempts")?;
+    let max = num("max")?;
+    if !(0.0..=256.0).contains(&attempts)
+        || attempts.fract() != 0.0
+        || !(0.0..=1_000_000.0).contains(&max)
+        || max.fract() != 0.0
+        || out.margin < 0.0
+        || out.spacing < 0.0
+        || out.spacing > f32::MAX as f64
+        || out.turn[0] > out.turn[1]
+    {
+        return Err(at(
+            e,
+            "spacing and margin are nonnegative; attempts is a whole number 0 to 256; max is a whole number 0 to 1000000; turn is least then greatest degrees",
+        ));
+    }
+    out.attempts = attempts as u32;
+    out.max = max as usize;
+    let mut names = BTreeSet::new();
+    for p in b.get_all("prop") {
+        let name = match p.values.as_slice() {
+            [Value::String(name)] if !name.is_empty() => name.clone(),
+            _ => return Err(at(p, "names its prop in quotes")),
+        };
+        if !names.insert(name.clone()) {
+            return Err(at(p, format!("yard prop `{name}` is written twice")));
+        }
+        let pb = block(p)?;
+        known(pb, &["model", "weight", "collider"], "a yard prop")?;
+        let model = asset(pb.get("model").ok_or_else(|| at(p, "names its model"))?)?;
+        let weight = pb.get("weight").map(one).transpose()?.unwrap_or(0.0);
+        if !positive(weight) {
+            return Err(at(p, "weight is above zero"));
+        }
+        out.props.push(YardProp {
+            name,
+            model,
+            weight,
+            collider: collider(pb.get("collider"))?,
+        });
+    }
+    if out.max > 0 && (out.spacing == 0.0 || out.attempts == 0 || out.props.is_empty()) {
+        return Err(at(
+            e,
+            "with max above zero, state positive spacing, attempts and weighted props",
+        ));
+    }
+    Ok(out)
 }
 
 fn buildings(e: &Entry) -> Result<Buildings, String> {
@@ -308,6 +405,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
             "hlod",
             "merge",
             "terrain",
+            "yards",
         ],
         "a district",
     )?;
@@ -455,6 +553,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
         lots,
         buildings,
         props,
+        yards: b.get("yards").map(yards).transpose()?,
         materials,
         cells,
         hlod: b.get("hlod").cloned(),

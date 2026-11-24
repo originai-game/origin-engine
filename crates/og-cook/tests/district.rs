@@ -39,6 +39,78 @@ const LAMP: &str = "type model\nversion 1\n---\nmaterial \"iron\" {\n  color 0.0
 const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point 0 0\n  point 120 0\n  point 120 80\n  point 0 80\n}\nstreets {\n  grid 60 40\n  width 8\n  sidewalk 2\n  kerb 0.15\n}\nlots {\n  width 6 12\n  depth 10 16\n}\nbuildings {\n  density 1\n  height 6 12\n  rule \"grammars/house.ogt\"\n}\nprop \"lamp\" {\n  model \"models/lamp.ogt\"\n  every 20\n  kerb 0.4\n  collider capsule 0.1 3.8\n}\nmaterials \"materials/town.ogt\"\ncells {\n  size 64\n  load 100\n}\n";
 
 #[test]
+fn yards_cook_with_labelled_paving_and_shared_colliding_props_in_cells() {
+    let root = project("yards");
+    write(&root, "grammars/house.ogt", GRAMMAR);
+    let library = LIBRARY.replace("  map \"textures/brick.png\"\n", "");
+    write(
+        &root,
+        "materials/town.ogt",
+        &format!("{library}\nmaterial \"yard\" {{\n label yard\n color 0.2 0.18 0.1\n}}\n"),
+    );
+    write(&root, "models/lamp.ogt", LAMP);
+    let district = format!(
+        "{}\nyards {{\n label \"yard\"\n spacing 5\n margin 1\n attempts 24\n max 128\n prop \"tree\" {{\n model \"models/lamp.ogt\"\n weight 1\n collider capsule 0.1 4\n }}\n}}\n",
+        DISTRICT.replace("grid 60 40", "grid 60 80")
+    );
+    write(&root, "districts/town.ogt", &district);
+    let report = cook(&root);
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let town = bundle.load_scene("districts/town.ogt").unwrap();
+    let mut props = 0;
+    let mut paved_cells = 0;
+    for cell in town.entities.iter().filter_map(|e| e.subscene.as_deref()) {
+        let scene = bundle.load_scene(cell).unwrap();
+        for (index, entity) in scene
+            .entities
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.name.contains("/yard-") && e.instance.is_some())
+        {
+            assert_eq!(entity.instance.as_deref(), Some("models/lamp.ogt"));
+            let child = scene
+                .entities
+                .iter()
+                .position(|e| e.parent == Some(index) && e.name.ends_with("/collider"))
+                .unwrap();
+            let table = scene
+                .components
+                .iter()
+                .find(|c| c.name == "Collider")
+                .unwrap();
+            assert!(table.get(child).is_some());
+            props += 1;
+        }
+        let model = bundle
+            .load_model(&format!("{}.glb", cell.trim_end_matches(".ogt")))
+            .unwrap();
+        for p in model
+            .primitives
+            .iter()
+            .filter(|p| model.materials[p.material].name == "yard")
+        {
+            assert!(p.triangle_count(0) > 0);
+            assert!(
+                p.vertices
+                    .iter()
+                    .all(|v| (v.position[1] - 0.15).abs() < 1e-4)
+            );
+            paved_cells += 1;
+        }
+    }
+    assert!(props > 5, "{props} yard instances");
+    assert!(paved_cells > 0);
+    assert!(
+        !bundle
+            .load_model("models/lamp.ogt")
+            .unwrap()
+            .primitives
+            .is_empty()
+    );
+}
+
+#[test]
 fn street_entrances_and_shopfronts_survive_cell_merging_and_lods() {
     let root = project("ground-storey");
     write(

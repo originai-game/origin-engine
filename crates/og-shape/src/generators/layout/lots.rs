@@ -4,7 +4,7 @@
 use glam::DVec2;
 
 use super::geom::{EPS, Poly, area2, edge};
-use super::{Lot, LotsDesc, Stream, key};
+use super::{Lot, LotsDesc, Stream, Yard, key};
 
 /// The widths a frontage of `len` is cut into: each drawn between the
 /// least and the greatest while what is left allows another, the last
@@ -41,6 +41,7 @@ pub(super) fn lots(
     d: &LotsDesc,
     seed: u64,
     lots: &mut Vec<Lot>,
+    yards: &mut Vec<Yard>,
 ) -> Option<String> {
     let pts = &poly.points;
     let n = pts.len();
@@ -51,6 +52,11 @@ pub(super) fn lots(
         .filter(|&i| poly.streets[i].is_some() && pts[i].distance(pts[(i + 1) % n]) >= d.width[0])
         .collect();
     let Some(&first) = fronts.first() else {
+        yards.push(Yard {
+            block: b,
+            footprint: pts.clone(),
+            seed: key(seed, "yard", super::geom::middle(pts)),
+        });
         return Some(format!(
             "block {b} fronts no street for a lot's width: it has no lots"
         ));
@@ -61,6 +67,19 @@ pub(super) fn lots(
         (pts[first] + pts[(first + 1) % n]) / 2.0,
     ));
     let depth = s.range(d.depth[0], d.depth[1]);
+    let mut yard = poly.clone();
+    for &i in &fronts {
+        let (_, nrm) = edge(pts, i);
+        yard = yard.clip(-nrm, -depth - pts[i].dot(nrm), None);
+    }
+    let yard = yard.tidy();
+    if yard.len() >= 3 && yard.area() > EPS {
+        yards.push(Yard {
+            block: b,
+            footprint: yard.points,
+            seed: key(seed, "yard", (pts[first] + pts[(first + 1) % n]) / 2.0),
+        });
+    }
     let before = lots.len();
     for &i in &fronts {
         let (a, end) = (pts[i], pts[(i + 1) % n]);
