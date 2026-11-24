@@ -638,7 +638,7 @@ Worker's console and in the boot telemetry sample.
   digits of its sha256), and each cache keeps that index under
   `og-sw-index.json`. A new build's worker copies into its cache every
   file whose content one of this scope's older caches holds under any
-  name, and fetches only the rest and the page (`tests/sw-update.test.ts`).
+  name, and fetches only the rest and the page.
 - **Install hint**: shown only when not framed and not installed, with a
   manifest and a service worker; "Not now" is remembered. The shell's own
   words are Chinese when `navigator.language` is `zh*`, else English.

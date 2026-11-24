@@ -15,7 +15,7 @@ gate's evidence directory and runs its smoke test. That check includes
 
 | Fixture | Feature | Tests that read it | Inputs (crates and packages it exercises) | Warm |
 |---|---|---|---|---|
-| [destruction-yard](destruction-yard/README.md) | destruction: fracture in the cook, breaking on impulses, dust, the cross-host world hash | its `tests/yard.og.ts`; `packages/engine/tests/destruction.test.ts`; `crates/og-runtime/tests/destruction.rs` | og-physics, og-cook, og-runtime, og-render, packages/engine | 3.5–6 s + 3.7 s cook |
+| [destruction-yard](destruction-yard/README.md) | destruction: fracture in the cook, breaking on impulses, dust, the cross-host world hash | its `tests/yard.og.ts`; `packages/engine/tests/destruction.test.ts` | og-physics, og-cook, og-runtime, og-render, packages/engine | 3.5–6 s + 3.7 s cook |
 | [vehicle-terrain](vehicle-terrain/README.md) | og.Vehicle on terrain, HUD, eased camera, particles, decals, engine audio | its `tests/drive.og.ts`; `scripts/check.sh web-reference`; `packages/engine/tests/presentation.test.ts` | og-physics, og-render, og-ui, og-audio, og-cook, og-runtime, packages/engine, templates/styles/scifi | 4.4–5.2 s |
 | [vfx-hit](vfx-hit/README.md) | composed effects (type vfx): a hit and a heal, their events, one frame | its `tests/hit.og.ts` | og-runtime, og-render, og-cook, og-bundle, packages/engine | 0.9 s |
 | [anim-markers](anim-markers/README.md) | og.AnimationEvent's state, layer and dominant in a cross-fade and a three-way blend | its `tests/markers.og.ts`; og-anim `tests/graph.rs`, `tests/playback.rs`; `packages/engine/tests/anim.test.ts` | og-anim, og-runtime, og-cook, packages/engine | 0.7 s |
@@ -32,11 +32,8 @@ gate's evidence directory and runs its smoke test. That check includes
 | [rive](rive/README.md) | Rive import: artboards, paths, paints, keyframes, nested artboards, the import settings | og-cook `riv::tests`, `tests/rive.rs`; og-tests-cooked `ui_rive_*` | og-cook, og-ui, og-render | 0.2 s |
 | [pixel-font](pixel-font/README.md) | pixel-font grid diagnostics (asset-only fixture) | og-cook `a_pixel_font_cooks_on_its_grid` | og-cook, templates/styles/cjk | 0.25 s |
 | [cook-assets](cook-assets/README.md) | model, texture and audio loading | cook/runtime loader tests; engine animation/Basis tests | og-cook, og-runtime | owning tests |
-| [ai-nav](ai-nav/README.md) | authored navmesh and guard machine | og-ai tests | og-ai | owning tests |
 | [motion](motion/README.md) | animation compression and retargeting | cook retarget; runtime motion/LOD | og-cook, og-runtime | owning tests |
 | [motion-feet](motion-feet/README.md) | og.motion's drawn feet: planted, stepped, never sliding, over walks, a run, jumps, a turn and held poses; its poses at fixed ticks on the web | its `tests/feet.og.ts`; `packages/engine/tests/presentation.test.ts`; `packages/engine/tests/web/motion-ticks.ts` | og-motion, og-runtime, og-anim, og-render, packages/engine | 5–7 s with its cook |
-| [baked-light](baked-light/README.md) | baked-scene binding | runtime baked_scenes | og-runtime | owning tests |
-| [texture-arrays](texture-arrays/README.md) | material arrays and streaming | runtime arrays/release; cook stream | og-cook, og-runtime | owning tests |
 | [sprite-2d](sprite-2d/README.md) | sprite arrays and 2D web export | runtime sprite arrays/release; web export | og-runtime, packages/engine | owning tests |
 | [ui-text](ui-text/README.md) | fonts, shaping, icons and locale tables | UI/cook text tests, engine UI tests | og-ui, og-cook, packages/engine | owning tests |
 | [terrain-stream](terrain-stream/README.md) | resident/streamed height samples agree | engine terrain-stream test | og-runtime, packages/engine | owning test |

@@ -3175,7 +3175,6 @@ name = "og-audio"
 version = "0.9.0"
 dependencies = [
  "cpal",
- "image",
  "og-core",
  "og-ecs",
  "og-env",
@@ -3226,7 +3225,6 @@ dependencies = [
  "gltf",
  "image",
  "libc",
- "miniz_oxide 0.9.1",
  "nsh-jsx",
  "og-anim",
  "og-api",
@@ -3279,14 +3277,12 @@ dependencies = [
  "nalgebra 0.34.2",
  "og-ai",
  "og-anim",
- "og-audio",
  "og-bake",
  "og-blob",
  "og-bundle",
  "og-core",
  "og-css",
  "og-draw",
- "og-ecs",
  "og-i18n",
  "og-physics-data",
  "og-records",
@@ -3309,7 +3305,6 @@ dependencies = [
  "oxc_ast_visit",
  "oxc_parser",
  "oxc_span",
- "png",
  "pollster",
  "resvg",
  "ring",
@@ -3326,7 +3321,6 @@ dependencies = [
 name = "og-core"
 version = "0.9.0"
 dependencies = [
- "bincode",
  "bytemuck",
  "glam 0.34.1",
  "og-core-derive",
@@ -3372,7 +3366,6 @@ dependencies = [
  "glam 0.34.1",
  "og-core",
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3467,7 +3460,6 @@ name = "og-idl"
 version = "0.9.0"
 dependencies = [
  "og-core",
- "serde_json",
 ]
 
 [[package]]
@@ -3493,7 +3485,6 @@ name = "og-net"
 version = "0.9.0"
 dependencies = [
  "og-core",
- "rcgen",
  "ring",
  "rustls",
  "serde_json",
@@ -3512,15 +3503,11 @@ dependencies = [
  "og-ecs",
  "og-env",
  "og-lanes",
- "og-net",
  "og-physics-data",
  "og-shape",
- "og-tilemap",
  "rapier2d",
  "rapier3d",
- "rayon",
  "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3578,7 +3565,6 @@ dependencies = [
  "fdeflate",
  "glam 0.34.1",
  "gltf",
- "image",
  "js-sys",
  "libc",
  "log",
@@ -3662,7 +3648,6 @@ dependencies = [
  "og-shape",
  "og-shared",
  "og-story",
- "og-tests",
  "og-text",
  "og-tilemap",
  "og-timeline",
@@ -3671,12 +3656,9 @@ dependencies = [
  "og-ui-next",
  "og-video",
  "pollster",
- "ring",
  "serde",
  "serde_json",
  "skrifa",
- "tokio",
- "ttf-parser",
  "wgpu",
  "zmij",
 ]
@@ -3695,7 +3677,6 @@ dependencies = [
  "glam 0.34.1",
  "gltf",
  "i_overlay",
- "miniz_oxide 0.9.1",
  "og-core",
  "og-shape-formats",
  "robust",
@@ -3709,7 +3690,6 @@ dependencies = [
 name = "og-shape-formats"
 version = "0.9.0"
 dependencies = [
- "gltf",
  "image-webp",
  "miniz_oxide 0.9.1",
  "og-core",
@@ -3755,7 +3735,6 @@ version = "0.9.0"
 dependencies = [
  "glam 0.34.1",
  "image",
- "log",
  "og-anim",
  "og-bake",
  "og-core",
@@ -3780,7 +3759,6 @@ dependencies = [
  "image",
  "og-anim",
  "og-cook",
- "og-core",
  "og-env",
  "og-render",
  "og-rive",

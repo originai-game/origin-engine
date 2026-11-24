@@ -249,7 +249,7 @@ invalidated by the compiler itself.
     run and plays each to the end; every fork must match the run's world
     hash on every tick, its screenshots and its final presentation hash, and
     any difference fails the run. This is GGPO's SyncTest applied to both
-    hashes (`packages/engine/tests/presentation.test.ts`).
+    hashes.
 - **Module state.** Game state in a JS module is in neither snapshot, so a
   restore, rollback, fork or capture-only run would lose it. `og check`
   fails on it (OG9101, `crates/og-cli/src/module_state.rs`): module-scope
@@ -1449,9 +1449,7 @@ scale 1 and TAAU at it (where both only antialias: every native run's
 resolve); low uses TAAU and high FSR 3.1 at every scale; a game sets
 `RenderSettings.upscaler` itself at any preset. Automatic quality lowers the
 render scale first, so `auto` turns to FSR as it does, keeps `auto` when
-it caps the quality at medium and draws TAAU at low. The measurements are
-`fsr::compare` and `fsr::cost` (`crates/og-tests/tests/fsr.rs`, ignored, run
-by hand on a GPU); their numbers go in reports.
+it caps the quality at medium and draws TAAU at low.
 
 ## 13. Alternatives considered
 

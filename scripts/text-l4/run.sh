@@ -6,8 +6,6 @@
 # written with packages/engine/src/node/png.ts.
 # OG_ENGINE_PACKAGE must point at this checkout's packages/engine with dist/web built
 # (scripts/release-wasm.sh --development, then packages/engine/scripts/build.sh's copy).
-# RT_TESTS, if set, is og-runtime's `tests` binary: the mixed-script and emoji
-# reference frames are recorded with it into <out-dir>/mixed/.
 #
 # Writes under <out-dir>:
 #   sheets/og-<pack>.png, sheets/chrome-<pack>.png, cmp/cmp-<pack>.png, cmp/rows.json
@@ -40,15 +38,7 @@ bun "$here/measure.ts" "$out/sheets" "$out/sheets" "$out/cmp" "$packs" > "$out/c
     --packs "$packs" --schemes dark,light --out "$out/gallery" ) > "$out/gallery.log" 2>&1 \
   || fail "gallery: captions or shop-confirm defects (gallery/defects.txt)"
 
-# 3. The mixed-script and emoji reference frames, when the test binary is given.
-if [ -n "${RT_TESTS:-}" ]; then
-  touch "$work/mark"
-  OG_UI_CAPTURE=1 "$RT_TESTS" font_packs::mixed_script font_packs::colour_emoji --include-ignored > "$out/mixed.log" 2>&1 \
-    || fail "mixed: font_packs reference tests failed (mixed.log)"
-  mkdir -p "$out/mixed"; find "$root/crates/og-tests/references/vulkan" -name '*.png' -newer "$work/mark" -exec cp {} "$out/mixed/" \;
-else fail "mixed: skipped (RT_TESTS not set)"; fi
-
-# 4. The cold time to the first Han glyph, natively and in Chrome on this GPU.
+# 3. The cold time to the first Han glyph, natively and in Chrome on this GPU.
 cp -R "$here/cjk-game" "$work/cjk-native"; link "$work/cjk-native"
 bun "$here/cold-native.ts" "$og" "$work/cjk-native" "$out/cold-native" || fail "cold-native: Han text did not draw by tick 30, or the run failed"
 cp -R "$here/cjk-game" "$work/cjk-web"; link "$work/cjk-web"

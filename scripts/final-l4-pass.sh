@@ -164,7 +164,7 @@ sec_gallery() {
 
 sec_text() {
   # 8956's measuring scripts, called as they are (scripts/text-l4/run.sh): the sheets against
-  # Chrome at 12-48 px per pack, the mixed-script frames, the captions and → lines, and the cold
+  # Chrome at 12-48 px per pack, the captions and → lines, and the cold
   # time to the first CJK glyph natively and in Chrome on the NVIDIA adapter.
   if [ ! -x "$root/scripts/text-l4/run.sh" ]; then
     fail text "not wired: scripts/text-l4/run.sh (8956's text-l4-scripts) is not in this checkout"
@@ -172,7 +172,7 @@ sec_text() {
   fi
   [ -n "${CHROME:-}" ] || { fail text "no Chrome"; return 0; }
   local rc
-  ( export OG_ENGINE_PACKAGE="$root/packages/engine" RT_TESTS="$BUNDLE/bin/t/deps/og-runtime-tests"
+  ( export OG_ENGINE_PACKAGE="$root/packages/engine"
     [ "$DRY" = 1 ] && export SWIFTSHADER=1
     cd "$root" && scripts/text-l4/run.sh "$BUNDLE/bin/og" "$CHROME" "$OUT/text" ) ; rc=$?
   [ -s "$OUT/text/failures.txt" ] && sed 's/^/text: /' "$OUT/text/failures.txt" >> "$OUT/failures.txt"

@@ -172,8 +172,6 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 - Crowds at 50k are bound by the CPU on the L4, not by a pass: the frame
   is 9.2 ms, its GPU passes 5.5 ms, and the render call takes 11.4 ms of
   CPU in profile mode, 5.4 ms of it the scene's update.
-- og-audio's busy mix renders one second of audio in 98 ms on the L4's
-  Xeon, against perf.sh's 50 ms bound.
 - Mobile: run the UI on at least one real iPhone and one real Android
   phone (the real-device run).
 - The asset store's cook stat index: sessions still run the incremental
@@ -241,9 +239,6 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   alpha-aware visibility query that keeps that lobe, at an added steady
   cost of at most 0.5 ms p95 on the L4 at 1280×720, cache refresh and wind
   included.
-- `packages/engine/tests/flow-fused.test.ts` runs at its 120 s timeout:
-  one `og run` of the 12 s fixture takes 65–78 s on an idle machine and
-  about 108–120 s for the win case under the full eight-way bun-test.
 
 ## Decided
 

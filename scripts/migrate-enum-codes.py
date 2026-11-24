@@ -30,8 +30,6 @@ CONSTANTS |= {"VEHICLE_ARCADE": "arcade", "VEHICLE_DRIVETRAIN": "drivetrain"}
 NUMERIC = [
     "crates/og-api/guides/world.md",
     "tests/fixtures/motion-feet/src/main.ts",
-    "packages/engine/tests/fixtures/saves/game.ts",
-    "packages/engine/tests/support/yard-piers.ts",
     "crates/og-runtime/examples/flight_plan.rs",
     "crates/og-runtime/tests",
 ]

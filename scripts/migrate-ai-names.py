@@ -18,7 +18,6 @@ NAMES = {
 }
 paths = list((ROOT / "crates/og-ai").rglob("*.rs")) + [
     ROOT / "crates/og-ai/README.md",
-    ROOT / "crates/og-cook/tests/behaviour.rs",
     ROOT / "crates/og-api/api/ai.ogt",
 ]
 paths += [p for p in ROOT.glob("tests/fixtures/**/*.ogt")

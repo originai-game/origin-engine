@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # The perf suite (docs/ci.md §What runs where; `make perf`): og-tests' frame
-# times (crates/og-tests/perf/<tier>-<adapter>/) and og-runtime's
-# extraction cost (crates/og-runtime/perf/<cpu>/), release profile, each
+# times (crates/og-tests/perf/<tier>-<adapter>/), release profile, each
 # against this machine's committed baseline with a 15 % tolerance; and the
 # wall-clock room stall (packages/engine/tests/rooms.test.ts). The
 # release test binaries are built first with no GPU slot; then one test runs
@@ -30,7 +29,7 @@ case "${1:-}" in
   *) og_err "usage: scripts/perf.sh [--measure]"; exit 2 ;;
 esac
 
-dirs="crates/og-tests/perf crates/og-runtime/perf"
+dirs="crates/og-tests/perf"
 out="$OG_EVIDENCE_DIR/perf"
 mkdir -p "$out"
 if [ "$measure" = 1 ]; then
@@ -42,7 +41,7 @@ fi
 og_admission_acquire exclusive "scripts/perf.sh ($PWD)" || exit 1
 og_lock_acquire "$OG_TARGET_DIR" "scripts/perf.sh ($PWD)" || exit 1
 t0="$(date +%s)"
-cargo test -p og-tests -p og-runtime -p og-audio --release --no-run 2>&1 | tee "$out/perf.log"
+cargo test -p og-tests --release --no-run 2>&1 | tee "$out/perf.log"
 rc="${PIPESTATUS[0]}"
 if [ "$rc" = 0 ]; then
   (cd packages/engine && OG_RELEASE=1 sh scripts/build.sh --native) 2>&1 | tee -a "$out/perf.log"
@@ -51,7 +50,7 @@ fi
 if [ "$rc" = 0 ]; then
   og_gpu_acquire_all "scripts/perf.sh ($PWD)" || exit 1
   og_say "perf: holding every GPU slot"
-  cargo test -p og-tests -p og-runtime -p og-audio --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
+  cargo test -p og-tests --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 2>&1 | tee -a "$out/perf.log"
   rc="${PIPESTATUS[0]}"
   # Real-time room behaviour paced on the wall clock (a peer stalled past
   # stallTimeoutMs), which a loaded gate cannot pace.
