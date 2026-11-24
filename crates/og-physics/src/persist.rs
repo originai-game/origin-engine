@@ -28,6 +28,8 @@ pub(crate) use og_physics_data::encode;
 /// and where they go (empty with tag 0, no simulation yet).
 type Block = (Vec<Push>, Vec<Hole>, Vec<u8>);
 
+const FORMAT: u8 = 2;
+
 /// After a restore and before the next step, height field `handle` was
 /// registered with other heights: the restored simulation is decoded again
 /// from its bytes over them (its shape caches for the field dropped), its
@@ -51,27 +53,28 @@ pub(super) fn reload_restored(shared: &mut Shared, handle: u64) -> Result<bool> 
         .collect();
     let mut sim = outside(|| dim3::load(&source.sim, &source.holes, shared))?;
     sim.restore_sections(&sections)?;
-    shared.sim3 = Some(Box::new(sim));
+    shared.sim3 = Some(Arc::new(Mutex::new(Box::new(sim))));
     shared.restored = Some(source);
     Ok(true)
 }
 
 impl StateBlock for PhysicsState {
     fn save(&self, out: &mut Vec<u8>) {
+        out.push(FORMAT);
         let shared = lock(&self.0);
         let pushes = shared.pushes.clone();
         let mut sections = Vec::new();
         let block: Option<(u8, Block)> = match () {
             _ if shared.sim3.is_some() => {
-                let sim = shared.sim3.as_deref().unwrap();
+                let sim = lock(shared.sim3.as_deref().unwrap());
                 sections = sim.sections();
-                let (holes, bytes) = dim3::save(sim);
+                let (holes, bytes) = dim3::save(&sim);
                 Some((PROFILE_3D as u8, (pushes, holes, bytes)))
             }
             _ if shared.sim2.is_some() => {
-                let sim = shared.sim2.as_deref().unwrap();
+                let sim = lock(shared.sim2.as_deref().unwrap());
                 sections = sim.sections();
-                let (holes, bytes) = dim2::save(sim);
+                let (holes, bytes) = dim2::save(&sim);
                 Some((PROFILE_2D as u8, (pushes, holes, bytes)))
             }
             _ if !pushes.is_empty() => Some((0, (pushes, Vec::new(), Vec::new()))),
@@ -91,6 +94,12 @@ impl StateBlock for PhysicsState {
                 ErrorKind::Parse,
                 format!("the rapier world does not decode: {e}"),
             )
+        };
+        let Some((&FORMAT, bytes)) = bytes.split_first() else {
+            return Err(Error::new(
+                ErrorKind::Parse,
+                "incompatible og.physics state format; old saves are not supported",
+            ));
         };
         let Some((&tag, rest)) = bytes.split_first() else {
             return Ok(Box::new(Saved::Empty));
@@ -146,7 +155,7 @@ impl StateBlock for PhysicsState {
             .downcast::<Saved>()
             .expect("decoded by PhysicsState::decode");
         let mut out = Records::default();
-        let profile = bytes.first().map_or(0, |&t| u32::from(t));
+        let profile = bytes.get(1).map_or(0, |&t| u32::from(t));
         out.global.push(("profile".to_owned(), Field::of(&profile)));
         let pushes = match saved {
             Saved::Empty => Vec::new(),
@@ -183,8 +192,6 @@ impl StateBlock for PhysicsState {
         shared.pushes.clear();
         shared.ragdoll_targets.clear();
         shared.garment_poses.clear();
-        shared.recorded = None;
-        shared.recorded_query = None;
         shared.sim3 = None;
         shared.sim2 = None;
         let saved = decoded.map(|d| {
@@ -195,29 +202,28 @@ impl StateBlock for PhysicsState {
             None | Some(Saved::Empty) => {}
             Some(Saved::Pushes(p)) => shared.pushes = p,
             Some(Saved::D3(sim, p, source)) => {
-                shared.sim3 = Some(sim);
+                shared.sim3 = Some(Arc::new(Mutex::new(sim)));
                 shared.pushes = p;
                 shared.restored = source;
             }
             Some(Saved::D2(sim, p)) => {
-                shared.sim2 = Some(sim);
+                shared.sim2 = Some(Arc::new(Mutex::new(sim)));
                 shared.pushes = p;
             }
         }
     }
 
     /// The simulation in place ([`dim3::Sim::shift`]) and the points of the
-    /// pushes not yet applied. The query view recorded for this tick was
-    /// read before the shift: dropped, so the next query records again.
+    /// pushes not yet applied. Queries immediately read the shifted world.
     fn shift(&mut self, s: &og_ecs::Shift) {
         let mut shared = lock(&self.0);
         // Moved in place: its bytes are no longer the simulation's.
         shared.restored = None;
-        if let Some(sim) = shared.sim3.as_deref_mut() {
-            sim.shift(s);
+        if let Some(sim) = shared.sim3.as_deref() {
+            lock(sim).shift(s);
         }
-        if let Some(sim) = shared.sim2.as_deref_mut() {
-            sim.shift(s);
+        if let Some(sim) = shared.sim2.as_deref() {
+            lock(sim).shift(s);
         }
         for p in &mut shared.pushes {
             p.point = p.point.map(|q| s.moved(q));
@@ -232,8 +238,6 @@ impl StateBlock for PhysicsState {
                 *p = s.moved(*p);
             }
         }
-        shared.recorded = None;
-        shared.recorded_query = None;
     }
 }
 

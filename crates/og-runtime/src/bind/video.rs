@@ -42,10 +42,6 @@ use std::sync::{Arc, Mutex};
 /// The system's name.
 pub(crate) const VIDEO_SYSTEM: &str = "og.video";
 pub(crate) const PLAYER: &str = "og.VideoPlayer";
-/// og.VideoPlayer's schema version: 2 since G3-2 made `time` an f64
-/// (crate::world::save_migrations upgrades a version 1 save), 3 since it
-/// gained `wait` (a restore takes it off).
-pub(crate) const PLAYER_VERSION: u32 = 3;
 const AUDIO: &str = "og.AudioSource";
 /// A request to change a player at the tick boundary (IDL og.MediaIntent).
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";

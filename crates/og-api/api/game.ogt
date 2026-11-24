@@ -53,7 +53,7 @@ module game {
       default 1
       min 1
     }
-    field migrations List.SaveMigration "The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted." {
+    field migrations List.SaveMigration "The game's explicit save edits: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save must have the current engine version and og-save:4 envelope; other versions are refused, never converted. Engine records and state are never upgraded." {
       guide "saves §5"
     }
     field explore ExploreDesc "How `og explore` searches this game's states: what a cell reads and which inputs it presses. Left out, cells come from every field of the game's resources and components and the inputs from its own button actions and none of the intents. Read by the tool only; the engine and the world never see it."

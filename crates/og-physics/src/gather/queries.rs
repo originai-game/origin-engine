@@ -201,24 +201,6 @@ pub(crate) const READ: [&str; 12] = [
     Parent::NAME,
 ];
 
-/// The subset of [`QUERIES`] needed to build a scene query view (bodies,
-/// controllers, colliders, parents; no velocities, joints, vehicles, soft
-/// bodies, fluids or water).
-pub(crate) const QUERY_QUERIES: [usize; 8] = [
-    Q_BODIES,
-    Q_BODY_COLLIDERS,
-    Q_STATIC_COLLIDERS,
-    Q_CHARACTERS,
-    Q_PLATFORMERS,
-    Q_BODY_CHARACTERS,
-    Q_BODY_PLATFORMERS,
-    Q_PARENTS,
-];
-
-/// Components beyond Physics/RigidBody/Collider/Transform that
-/// `og.physics.queries` reads.
-pub(crate) const QUERY_READ: [&str; 3] = [CHARACTER, PLATFORMER, Parent::NAME];
-
 /// The fields and layout of one reflected component, for decoding rows.
 pub(crate) struct Rows {
     pub(super) fields: Vec<FieldRef>,

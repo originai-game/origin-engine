@@ -1468,13 +1468,6 @@ export interface SpawnDesc {
  */
 export interface RestoreDesc {
   /**
-   * Map a type whose layout changed since the save by field name, as hot reload does (added fields take defaults, removed ones and unregistered types drop, enums map by variant name, retyped ones reset). Off, such a save is refused, naming the type; the host input the restore keeps is mapped either way.
-   * See `saves §5`.
-   *
-   * @default false
-   */
-  readonly migrate?: boolean;
-  /**
    * Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way.
    * See `saves §4`.
    *
@@ -1602,7 +1595,7 @@ export type SplitFn = (value: unknown, entity: Entity | null) => unknown;
 export type MigrateFn = (save: SaveEdit) => Result<void>;
 
 /**
- * A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations.
+ * A game's explicit save edit (GameDesc.migrations): run on a current-engine save of version `from` on its way to GameDesc.saveVersion. Engine records and state are never upgraded.
  */
 export interface SaveMigration {
   /**
@@ -1614,7 +1607,7 @@ export interface SaveMigration {
 }
 
 /**
- * A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's.
+ * A current-engine save opened for explicit game-owned editing (world.openSave), every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result and validates layouts strictly. An edit refused changes nothing. Entity ids are the saved world's.
  */
 export interface SaveEdit {
   /**
@@ -1983,7 +1976,7 @@ export interface World {
    */
   instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>;
   /**
-   * The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks.
+   * The world as og-save:4 text: entities, components, names, resources, pending events, module state, schema hashes, the exact engine version and GameDesc.saveVersion. Another engine version or saved layout is refused, never upgraded. Available in every build with identical text on both hosts. SnapshotDesc selects tagged entities or resources. Inside a system it captures mid-tick state without queued structural changes; restore completes that tick. Make this the system's last write. Between ticks it captures the world between ticks.
    * See `saves`.
    *
    * @param desc The whole world, or a selection: tagged entities and chosen resources.
@@ -1991,19 +1984,19 @@ export interface World {
    */
   snapshot(desc?: SnapshotDesc): Result<string>;
   /**
-   * Open a save for editing, as a migration does (SaveEdit): the engine's own migrations applied (an engine upgrade's changes to its components and its modules' state, such as og.ui's state of engine 0.7.7), the game's not yet. world.restore opens and migrates by itself; use this to read a save without restoring it, or to migrate one by hand.
+   * Open a current-engine save for editing (SaveEdit), without restoring it. Other engine versions are refused; the engine never upgrades its records or module state. GameDesc.migrations may explicitly edit game-owned records before strict layout validation.
    *
    * @param save The text world.snapshot returned.
    * @returns Refused for text world.snapshot did not write, or a save of a newer GameDesc.saveVersion.
    */
   openSave(save: string): Result<SaveEdit>;
   /**
-   * Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session stays (saves §4). In a system it applies when the tick ends, in a command before the next tick, elsewhere at once (saves §1); the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first.
+   * Replace the world with a current-engine snapshot; a selection replaces only its tagged entities and resources. Other engine versions and saved layouts are refused, never automatically upgraded. GameDesc.migrations may explicitly edit game-owned data; a refusal or throw refuses the restore. The session stays unless requested. Applies at tick end inside a system, before the next tick in a command, otherwise at once; the next tick delivers og.WorldRestored. A mid-tick save resumes its tick. Load collider meshes first.
    * See `saves`.
    *
    * @param save The text world.snapshot returned.
-   * @param desc Whether a type whose layout changed since the save is mapped field by field.
-   * @returns Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or saveVersion, a refused migration, an unloaded collider mesh, or a type whose layout changed that the save holds data of: the reason names the type, its fields and the fix.
+   * @param desc Whether to restore the saved input instead of keeping the host's.
+   * @returns Refused, with nothing changed, for text world.snapshot did not write, another engine version, a newer saveVersion, a refused game edit, an unloaded collider mesh, or a changed saved layout: the reason names the incompatibility.
    */
   restore(save: string, desc?: RestoreDesc): Result<void>;
 }
@@ -2401,7 +2394,7 @@ export interface GameDesc {
    */
   readonly saveVersion?: number;
   /**
-   * The game's save migrations: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save envelope must be og-save:3; earlier envelope formats are refused with both versions in the error, never converted.
+   * The game's explicit save edits: world.restore runs each one whose `from` lies between the save's version and saveVersion, in order. The save must have the current engine version and og-save:4 envelope; other versions are refused, never converted. Engine records and state are never upgraded.
    * See `saves §5`.
    *
    * @default []
@@ -38959,7 +38952,7 @@ export declare namespace og {
      */
     function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
     /**
-     * The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
+     * The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it.
      * See `physics §4`.
      *
      * @param world The world.
@@ -39014,14 +39007,14 @@ export declare namespace og {
      */
     function overlapPoint(world: World, desc?: PointOverlapDesc): Result<readonly Entity[]>;
     /**
-     * The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body.
+     * The live simulation's computed mass, world centre of mass and local principal inertia for a RigidBody entity, or null if not a body. Uses the same initialization and tick boundary as castRay.
      *
      * @param world The world.
      * @param entity The body's entity.
      */
     function massProperties(world: World, entity: Entity): Result<MassProperties | null>;
     /**
-     * The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body.
+     * The live simulation's world-space linear velocity of a RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not a body. Uses the same initialization and tick boundary as castRay.
      *
      * @param world The world.
      * @param entity The body's entity.

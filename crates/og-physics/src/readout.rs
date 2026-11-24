@@ -172,10 +172,12 @@ pub struct PhysicsDump {
 macro_rules! with_sim {
     ($shared:expr, |$s:ident| $body:expr) => {{
         let shared = lock(&$shared);
-        if let Some($s) = shared.sim3.as_deref() {
+        if let Some(sim) = shared.sim3.as_deref() {
+            let $s = lock(sim);
             return $body;
         }
-        if let Some($s) = shared.sim2.as_deref() {
+        if let Some(sim) = shared.sim2.as_deref() {
+            let $s = lock(sim);
             return $body;
         }
         None
@@ -190,9 +192,9 @@ impl PhysicsSystem {
     pub fn dump(&self) -> Option<PhysicsDump> {
         let shared = lock(&self.shared);
         let mut out = if let Some(s) = shared.sim3.as_deref() {
-            s.dump()
+            lock(s).dump()
         } else {
-            shared.sim2.as_deref()?.dump()
+            lock(shared.sim2.as_deref()?).dump()
         };
         out.stats = shared.stats.clone();
         Some(out)
@@ -392,10 +394,10 @@ impl PhysicsSystem {
     pub fn vehicle_wheels(&self, entity: Entity) -> Option<Vec<WheelPose>> {
         let shared = lock(&self.shared);
         if let Some(s) = shared.sim3.as_deref() {
-            return dim3::wheels(s, entity.to_bits());
+            return dim3::wheels(&lock(s), entity.to_bits());
         }
         if let Some(s) = shared.sim2.as_deref() {
-            return dim2::wheels(s, entity.to_bits());
+            return dim2::wheels(&lock(s), entity.to_bits());
         }
         None
     }
@@ -413,10 +415,10 @@ impl PhysicsSystem {
     pub fn ragdoll_pose(&self, entity: Entity) -> Option<Vec<(Vec3, Quat)>> {
         let shared = lock(&self.shared);
         if let Some(s) = shared.sim3.as_deref() {
-            return dim3::ragdoll_pose(s, entity.to_bits());
+            return dim3::ragdoll_pose(&lock(s), entity.to_bits());
         }
         if let Some(s) = shared.sim2.as_deref() {
-            return dim2::ragdoll_pose(s, entity.to_bits());
+            return dim2::ragdoll_pose(&lock(s), entity.to_bits());
         }
         None
     }

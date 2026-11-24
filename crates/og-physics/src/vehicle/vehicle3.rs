@@ -183,6 +183,11 @@ pub(crate) fn vehicles(
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
+    // Raycast wheels add no colliders. Query initialization must not run
+    // the drivetrain or apply suspension impulses before the first step.
+    if dt == 0.0 {
+        return Ok(());
+    }
     let live: BTreeSet<u64> = og_core::sort::set(scene.vehicles.iter().map(|v| v.0.to_bits()));
     sim.vehicles.retain(|e, _| live.contains(e));
     sim.ext.vehicles.retain(|e, _| live.contains(e));

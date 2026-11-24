@@ -1,35 +1,32 @@
 use super::*;
 
-/// Scene queries over a fixed set of colliders (see [`PhysicsSystem::query`]).
-/// Results depend only on the colliders, so they are as deterministic as the
-/// world they were built from.
+/// Scene queries over the authoritative physics simulation.
 pub struct PhysicsQuery {
-    pub(super) inner: Arc<QueryInner>,
     pub(super) shared: Arc<Mutex<Shared>>,
 }
 
-pub(crate) enum QueryInner {
-    D3(dim3::QueryWorld),
-    D2(dim2::QueryWorld),
-}
-
-impl QueryInner {
-    fn build(profile: u32, scene: &Scene, shared: &mut Shared) -> Result<QueryInner> {
-        Ok(match profile {
-            PROFILE_3D => QueryInner::D3(dim3::QueryWorld::build(scene, shared)?),
-            PROFILE_2D => QueryInner::D2(dim2::QueryWorld::build(scene, shared)?),
-            other => return Err(check_profile(other).unwrap_err()),
+// Clone only the simulation handle under Shared. Shape lookup is likewise
+// completed before this macro: no BVH traversal holds the asset/state lock.
+macro_rules! query_sim {
+    ($self:ident, |$q:ident $(, $shape:ident = ($desc:expr))?| $run:expr) => {{
+        let (sim3, sim2) = {
+            let shared = lock(&$self.shared);
+            (shared.sim3.clone(), shared.sim2.clone())
+        };
+        outside(|| {
+            if let Some(sim) = sim3 {
+                $(let $shape = dim3::query_shape($desc, &mut lock(&$self.shared))?;)?
+                let $q = lock(&sim);
+                $run
+            } else if let Some(sim) = sim2 {
+                $(let $shape = dim2::query_shape($desc, &mut lock(&$self.shared))?;)?
+                let $q = lock(&sim);
+                $run
+            } else {
+                Err(Error::new(ErrorKind::Invalid, "physics queries need an initialized simulation"))
+            }
         })
-    }
-
-    /// [`Self::build`] outside the step, through [`outside`].
-    pub(super) fn build_outside(
-        profile: u32,
-        scene: &Scene,
-        shared: &Mutex<Shared>,
-    ) -> Result<QueryInner> {
-        outside(|| Self::build(profile, scene, &mut lock(shared)))
-    }
+    }};
 }
 
 fn max_distance(d: f32) -> Result<f32> {
@@ -46,14 +43,13 @@ impl PhysicsQuery {
     /// The nearest collider along a ray.
     pub fn raycast(&self, desc: &RaycastDesc) -> Result<Option<RaycastHit>> {
         let max = max_distance(desc.max_distance)?;
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => {
-                q.raycast(desc.origin, desc.direction, max, desc.solid, &desc.filter)
-            }
-            QueryInner::D2(q) => {
-                q.raycast(desc.origin, desc.direction, max, desc.solid, &desc.filter)
-            }
-        })
+        query_sim!(self, |q| q.raycast(
+            desc.origin,
+            desc.direction,
+            max,
+            desc.solid,
+            &desc.filter
+        ))
     }
 
     /// Every collider a ray meets within its reach, nearest first (ties by
@@ -66,34 +62,26 @@ impl PhysicsQuery {
             0 => MAX_RAYCAST_HITS,
             n => n.min(MAX_RAYCAST_HITS),
         } as usize;
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => q.raycast_all(r.origin, r.direction, max, r.solid, &r.filter, cap),
-            QueryInner::D2(q) => q.raycast_all(r.origin, r.direction, max, r.solid, &r.filter, cap),
-        })
+        query_sim!(self, |q| q.raycast_all(
+            r.origin,
+            r.direction,
+            max,
+            r.solid,
+            &r.filter,
+            cap
+        ))
     }
 
     /// The nearest point on any collider to a point, within its reach.
     pub fn project_point(&self, desc: &ProjectPointDesc) -> Result<Option<PointProjection>> {
         let max = max_distance(desc.max_distance)?;
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => q.project_point(desc, max),
-            QueryInner::D2(q) => q.project_point(desc, max),
-        })
+        query_sim!(self, |q| q.project_point(desc, max))
     }
 
     /// The first collider a shape meets when swept along a direction.
     pub fn shape_cast(&self, desc: &ShapeCastDesc) -> Result<Option<ShapeCastHit>> {
         let max = max_distance(desc.max_distance)?;
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => {
-                let shape = dim3::query_shape(&desc.shape, &mut lock(&self.shared))?;
-                q.shape_cast_with(desc, max, &shape)
-            }
-            QueryInner::D2(q) => {
-                let shape = dim2::query_shape(&desc.shape, &mut lock(&self.shared))?;
-                q.shape_cast_with(desc, max, &shape)
-            }
-        })
+        query_sim!(self, |q, shape = (&desc.shape)| q.shape_cast_with(desc, max, &shape))
     }
 
     /// Every collider a shape meets when swept along a direction, nearest first,
@@ -105,38 +93,17 @@ impl PhysicsQuery {
             0 => MAX_RAYCAST_HITS,
             n => n.min(MAX_RAYCAST_HITS),
         } as usize;
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => {
-                let shape = dim3::query_shape(&c.shape, &mut lock(&self.shared))?;
-                q.shape_cast_all_with(c, max, &shape, cap)
-            }
-            QueryInner::D2(q) => {
-                let shape = dim2::query_shape(&c.shape, &mut lock(&self.shared))?;
-                q.shape_cast_all_with(c, max, &shape, cap)
-            }
-        })
+        query_sim!(self, |q, shape = (&c.shape)| q.shape_cast_all_with(c, max, &shape, cap))
     }
 
     /// Every collider overlapping a shape, sorted by entity id.
     pub fn overlap(&self, desc: &OverlapDesc) -> Result<Vec<Entity>> {
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => {
-                let shape = dim3::query_shape(&desc.shape, &mut lock(&self.shared))?;
-                q.overlap_with(desc, &shape)
-            }
-            QueryInner::D2(q) => {
-                let shape = dim2::query_shape(&desc.shape, &mut lock(&self.shared))?;
-                q.overlap_with(desc, &shape)
-            }
-        })
+        query_sim!(self, |q, shape = (&desc.shape)| q.overlap_with(desc, &shape))
     }
 
     /// Every collider containing a point, sorted by entity id.
     pub fn overlap_point(&self, desc: &PointOverlapDesc) -> Result<Vec<Entity>> {
-        outside(|| match &*self.inner {
-            QueryInner::D3(q) => q.overlap_point(desc),
-            QueryInner::D2(q) => q.overlap_point(desc),
-        })
+        query_sim!(self, |q| q.overlap_point(desc))
     }
 }
 

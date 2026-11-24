@@ -159,9 +159,25 @@ if (hit) damage(hit.body);
 | What is inside this area right now | overlap |
 | Nearest surface, closest cover, am I inside a solid | projectPoint |
 
-Inside a system every query sees the colliders as they were at the start of
-the tick, before any system ran: a body spawned or moved this tick is seen
-on the next. Between ticks they see the world as it is. A hit's `entity` is
+All queries read the one live Rapier simulation: its bodies, colliders and
+broad phase, including ragdoll bones and 2D vehicle wheels. A system before
+og.physics sees the colliders as the tick started: an ECS body spawned or
+moved this tick is not seen until physics synchronizes and steps it. A
+system after og.physics (og.camera and the other built-in post-physics
+systems) sees the colliders as this tick's step left them. ContactHook.ignore
+is honored symmetrically when QueryFilter.exclude identifies the querying
+entity; compound self-exclusion excludes its whole body.
+
+Between ticks queries also read that last stepped state, not pending ECS
+edits. Before the first step, the first query initializes the same simulation
+from the world without advancing time or consuming queued impulses.
+og.physics.queries establishes this initial boundary before gameplay; once
+the simulation exists it does no collider gathering or synchronization.
+A restore immediately replaces the queried simulation with the saved one,
+without resynchronizing poses or consuming kinematic velocity inference.
+The Rust PhysicsSystem.query(world) returns a cheap live handle after this
+one-time initialization; handles follow steps and restores, not frozen views.
+A hit's `entity` is
 the collider's entity; `body` is the body it belongs to, which differs for a
 compound child: damage the body, play the hit effect on the collider.
 Sensors are skipped unless the filter asks for them. A ray per tick is the

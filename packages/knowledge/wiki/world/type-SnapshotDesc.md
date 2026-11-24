@@ -27,4 +27,4 @@ struct SnapshotDesc {
 }
 ```
 
-<sub>Module `world` line 46</sub>
+<sub>Module `world` line 43</sub>

@@ -135,15 +135,15 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
                 shared.sim2 = None;
                 // Stepped: the restored bytes are behind the simulation now.
                 shared.restored = None;
-                let mut sim = shared.sim3.take().unwrap_or_default();
-                let out = dim3::step(&settings, dt, tick, &scene, &mut shared, &mut sim)?;
+                let sim = shared.sim3.take().unwrap_or_default();
+                let out = dim3::step(&settings, dt, tick, &scene, &mut shared, &mut lock(&sim))?;
                 shared.sim3 = Some(sim);
                 out
             }
             PROFILE_2D => {
                 shared.sim3 = None;
-                let mut sim = shared.sim2.take().unwrap_or_default();
-                let out = dim2::step(&settings, dt, tick, &scene, &mut shared, &mut sim)?;
+                let sim = shared.sim2.take().unwrap_or_default();
+                let out = dim2::step(&settings, dt, tick, &scene, &mut shared, &mut lock(&sim))?;
                 shared.sim2 = Some(sim);
                 out
             }
@@ -283,8 +283,14 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
     let pool = laps.phases[stats::Phase::Rapier as usize].split;
     let mut shared = lock(shared);
     let bodies = match () {
-        _ if shared.sim3.is_some() => shared.sim3.as_deref().map_or(0, |s| s.world.bodies.len()),
-        _ if shared.sim2.is_some() => shared.sim2.as_deref().map_or(0, |s| s.world.bodies.len()),
+        _ if shared.sim3.is_some() => shared
+            .sim3
+            .as_deref()
+            .map_or(0, |s| lock(s).world.bodies.len()),
+        _ if shared.sim2.is_some() => shared
+            .sim2
+            .as_deref()
+            .map_or(0, |s| lock(s).world.bodies.len()),
         _ => 0,
     };
     shared.stats = PhysicsStats {

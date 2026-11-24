@@ -327,31 +327,6 @@ pub(crate) fn gather<'w>(
     kept: &mut Kept,
     frames: &og_core::IdMap<u64, Mat4>,
 ) -> Result<Scene> {
-    gather_inner(q, get, lazy, ids, kept, frames, true)
-}
-
-/// Gathers only the bodies, controllers, static colliders and contact hooks
-/// needed for scene queries (`og.physics.queries` and `PhysicsSystem::query`).
-pub(crate) fn gather_colliders<'w>(
-    q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
-    get: GetBytes<'_>,
-    lazy: LazyIds,
-    ids: &Ids,
-    kept: &mut Kept,
-    frames: &og_core::IdMap<u64, Mat4>,
-) -> Result<Scene> {
-    gather_inner(q, get, lazy, ids, kept, frames, false)
-}
-
-fn gather_inner<'w>(
-    q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
-    get: GetBytes<'_>,
-    lazy: LazyIds,
-    ids: &Ids,
-    kept: &mut Kept,
-    frames: &og_core::IdMap<u64, Mat4>,
-    full: bool,
-) -> Result<Scene> {
     let mut colliders = ByEntity::new();
     for (at, a) in q(Q_BODY_COLLIDERS)?.enumerate() {
         let rows = ids.colliders(&mut kept.body_colliders, at, &a)?;
@@ -360,19 +335,17 @@ fn gather_inner<'w>(
         }
     }
     let mut velocities = ByEntity::new();
-    if full {
-        for a in q(Q_BODY_VELOCITIES)? {
-            let linear = a.read::<Vec3>(ids.v_linear)?;
-            let angular = a.read::<Vec3>(ids.v_angular)?;
-            for (row, e) in a.entities().iter().enumerate() {
-                velocities.insert(
-                    *e,
-                    Velocity {
-                        linear: linear[row],
-                        angular: angular[row],
-                    },
-                );
-            }
+    for a in q(Q_BODY_VELOCITIES)? {
+        let linear = a.read::<Vec3>(ids.v_linear)?;
+        let angular = a.read::<Vec3>(ids.v_angular)?;
+        for (row, e) in a.entities().iter().enumerate() {
+            velocities.insert(
+                *e,
+                Velocity {
+                    linear: linear[row],
+                    angular: angular[row],
+                },
+            );
         }
     }
     let mut controls = ByEntityControl::default();
@@ -600,9 +573,6 @@ fn gather_inner<'w>(
                     .insert(e.to_bits(), ids.hook_layout.decode::<ContactHook>(&bytes)?);
             }
         }
-    }
-    if !full {
-        return Ok(scene);
     }
     for a in q(Q_JOINTS)? {
         let rows: Vec<Joint> = ids.joint.read(&a)?;

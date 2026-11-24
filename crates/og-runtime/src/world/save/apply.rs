@@ -65,12 +65,9 @@ pub(crate) fn restore_session(
     keep: &[&str],
 ) -> Result<(), String> {
     crate::engine::lazy::before_restore(eng, world, snapshot);
-    world
-        .check_snapshot(snapshot, false)
-        .map_err(|e| refusal(e, false))?;
+    world.check_snapshot(snapshot, false).map_err(refusal)?;
     let pending = Pending {
         snapshot: snapshot.to_vec(),
-        migrate: false,
         session: false,
         ui: None,
     };
@@ -164,17 +161,17 @@ pub(super) fn apply_selection(
             })
             .unwrap_or_default()
     };
-    let lenient = |ty: &str| SESSION.contains(&ty);
+    let lenient = |_: &str| false;
     crate::engine::lazy::before_restore(eng, world, &pending.snapshot);
     world
         .restore_selection(
             &pending.snapshot,
-            pending.migrate,
+            false,
             &lenient,
-            &engine_owned,
+            &|_| false,
             &entity_fields,
         )
-        .map_err(|e| refusal(e, pending.migrate))?;
+        .map_err(refusal)?;
     let tick = world.time().tick;
     refresh(eng, world, tick, tick);
     Ok(())
@@ -241,15 +238,7 @@ pub(super) fn apply_keeping(
     let actions = eng.state.borrow().actions.clone();
     let kept_actions = actions.as_ref().map(|a| og_input::actions::lock(a).clone());
     crate::engine::lazy::before_restore(eng, world, &pending.snapshot);
-    if pending.migrate {
-        world
-            .restore_migrating(&pending.snapshot)
-            .map_err(|e| refusal(e, true))?;
-    } else {
-        world
-            .restore(&pending.snapshot)
-            .map_err(|e| refusal(e, false))?;
-    }
+    world.restore(&pending.snapshot).map_err(refusal)?;
     for (id, bytes) in kept {
         let _ = world.insert_resource_bytes(id, &bytes);
     }

@@ -2,23 +2,18 @@
 //! the world, or the part of it a game keeps, as text a game puts in the
 //! platform store, and back.
 //!
-//! The text is `og-save:3:` and the base64 of a deflated payload: `OGSV`,
-//! a `u32` version (3), the `u64` tick it was taken at, the `u64` FNV-1a
+//! The text is `og-save:4:` and the base64 of a deflated payload: `OGSV`,
+//! a `u32` version (4), the `u64` tick it was taken at, the `u64` FNV-1a
 //! of the body (a damaged save is refused) and the `u32` save version
 //! of the game that wrote it (GameDesc.saveVersion), then the length-prefixed world
 //! snapshot (og-ecs's format, which carries every type's name, layout hash
 //! and field table, so a save from a build whose types changed is refused
-//! naming them, or mapped field by field with `migrate`; the session's
-//! types below may differ without either, as the host's replace them,
-//! and so may an engine type that only gained fields since the save,
-//! which take their declared defaults: [`engine_owned`]).
+//! naming them). The envelope also carries the exact engine version;
+//! saves from another engine version are refused, never upgraded.
 //! The body ends with a portable UI presentation checkpoint, outside the
 //! simulation hash. Other envelope versions are refused without conversion.
 //!
-//! A restore first upgrades the engine's own state in the save
-//! ([`crate::world::save_migrations`]: og.ui's block 9 → 11 ...), so an engine
-//! upgrade never refuses a player's save for what the engine changed. The
-//! game's migrations (GameDesc.migrations) run in TypeScript before it,
+//! The game's edits (GameDesc.migrations) run in TypeScript before restore,
 //! on a save opened with `World.openSave`: [`og_world_open_save`] and the
 //! `og_save_edit_*` calls edit it, and its text carries the game's current
 //! save version. A save of a newer game version is refused.
@@ -52,7 +47,7 @@ pub use edit::*;
 
 const PREFIX: &str = "og-save:";
 const MAGIC: &[u8; 4] = b"OGSV";
-const VERSION: u32 = 3;
+const VERSION: u32 = 4;
 /// og-ecs's selection format: the snapshot's `u32` after its magic.
 const SELECTION: u32 = 5;
 /// The largest save inflated: far over any world the 64 KiB store holds.
@@ -67,21 +62,9 @@ const SESSION: &[&str] = &[
     "og.Audio",
 ];
 
-/// Whether a type is the engine's own (an og.* component, resource or
-/// event: the IDL's records and the modules'; a game's names cannot start
-/// with `og.`). A save restores without `migrate` when such a type only
-/// gained fields since it was written, each added field at its declared
-/// default (og.RenderSettings' new fields in every save of the build
-/// before); a field removed, renamed or retyped still needs an engine
-/// migration, and a game's own types stay strict.
-fn engine_owned(name: &str) -> bool {
-    name.starts_with("og.")
-}
-
 /// A restore asked for inside a tick, applied when it ends.
 pub(crate) struct Pending {
     snapshot: Vec<u8>,
-    migrate: bool,
     /// The save's input (RestoreDesc.session) instead of the host's.
     session: bool,
     ui: Option<crate::present::presentation::UiCheckpoint>,
@@ -95,8 +78,6 @@ struct Save {
     tick: u64,
     /// The game's save version when it was written.
     version: u32,
-    /// The engine's migrations [`upgraded`] applied.
-    steps: Vec<String>,
 }
 
 fn is_selection(snapshot: &[u8]) -> bool {
@@ -185,6 +166,9 @@ fn encode(
 ) -> String {
     let ui = serde_json::to_vec(&ui).expect("UI checkpoint contains bytes only");
     let mut body = Vec::with_capacity(snapshot.len() + ui.len() + 4);
+    let engine = env!("CARGO_PKG_VERSION").as_bytes();
+    body.extend_from_slice(&(engine.len() as u32).to_le_bytes());
+    body.extend_from_slice(engine);
     body.extend_from_slice(&(snapshot.len() as u32).to_le_bytes());
     body.extend_from_slice(snapshot);
     body.extend_from_slice(&ui);
@@ -209,7 +193,7 @@ pub fn save_snapshot_bytes(save: &str) -> Result<Vec<u8>, String> {
 /// What a save holds.
 fn decode_save(save: &str) -> Result<Save, String> {
     let not_a_save = || {
-        "this is not a save: world.restore takes the text world.snapshot returned (`og-save:3:...`), as it was stored".to_string()
+        "this is not a save: world.restore takes the text world.snapshot returned (`og-save:4:...`), as it was stored".to_string()
     };
     let rest = save.trim().strip_prefix(PREFIX).ok_or_else(not_a_save)?;
     let (format, body) = rest.split_once(':').ok_or_else(not_a_save)?;
@@ -236,6 +220,19 @@ fn decode_save(save: &str) -> Result<Save, String> {
     if og_core::hash::hash_bytes(body) != hash {
         return Err("the save's text is damaged (its checksum does not match): store and read it back unchanged".into());
     }
+    let engine_size = body.get(..4).ok_or_else(not_a_save)?;
+    let engine_size = u32::from_le_bytes(engine_size.try_into().expect("4 bytes")) as usize;
+    let engine_end = engine_size.checked_add(4).ok_or_else(not_a_save)?;
+    let engine = body
+        .get(4..engine_end)
+        .and_then(|b| std::str::from_utf8(b).ok());
+    if engine != Some(env!("CARGO_PKG_VERSION")) {
+        return Err(format!(
+            "the save is from another engine version; this engine is {}; old saves are not supported",
+            env!("CARGO_PKG_VERSION")
+        ));
+    }
+    let body = &body[engine_end..];
     let size = body.get(..4).ok_or_else(not_a_save)?;
     let size = u32::from_le_bytes(size.try_into().expect("4 bytes")) as usize;
     let end = size.checked_add(4).ok_or_else(not_a_save)?;
@@ -251,7 +248,6 @@ fn decode_save(save: &str) -> Result<Save, String> {
         ui,
         tick: u64::from_le_bytes(payload[8..16].try_into().expect("8 bytes")),
         version: u32::from_le_bytes(payload[24..28].try_into().expect("4 bytes")),
-        steps: Vec::new(),
     })
 }
 
@@ -260,37 +256,31 @@ fn decode(save: &str) -> Result<Vec<u8>, String> {
     decode_save(save).map(|s| s.snapshot)
 }
 
-/// A save's snapshot as this engine writes it: the engine's migrations
-/// applied ([`crate::world::save_migrations`]), and the game's save version
-/// checked against `current` (a save of a newer version is refused).
-fn upgraded(save: &str, current: u32) -> Result<Save, String> {
-    let mut s = decode_save(save)?;
+/// A save with its game version checked (a newer version is refused).
+fn checked_save(save: &str, current: u32) -> Result<Save, String> {
+    let s = decode_save(save)?;
     if s.version > current {
         return Err(format!(
             "this save is of the game's save version {}, and this build is at {current}: a newer build of the game wrote it",
             s.version
         ));
     }
-    if let Some((bytes, steps)) = crate::world::save_migrations::upgrade(&s.snapshot)? {
-        s.snapshot = bytes;
-        s.steps = steps;
-    }
     Ok(s)
 }
 
 /// The refusal for a save this world does not take, with its fix.
-fn refusal(e: og_core::Error, migrate: bool) -> String {
+fn refusal(e: og_core::Error) -> String {
     let reason = e.reason().to_string();
     let reason = reason
         .strip_prefix("snapshot: ")
         .unwrap_or(&reason)
         .to_string();
     match e.kind() {
-        og_core::ErrorKind::Schema if !migrate => format!(
-            "the save does not fit this build: {reason}; pass {{ migrate: true }} to map it field by field (added fields take their defaults, removed ones are dropped), or keep a saved type's fields stable between releases"
+        og_core::ErrorKind::Schema => format!(
+            "the save does not fit this build: {reason}; old save layouts are not supported"
         ),
-        og_core::ErrorKind::NotFound if !migrate => format!(
-            "the save does not fit this build: {reason} (declare it as the build that saved did, or pass {{ migrate: true }} to drop it)"
+        og_core::ErrorKind::NotFound => format!(
+            "the save does not fit this build: {reason}; old save layouts are not supported"
         ),
         _ => format!("the save cannot be restored: {reason}"),
     }
@@ -303,30 +293,22 @@ pub fn og_world_restore(
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let eng = engine(world)?;
-    let crate::host::wire::RestoreDesc { migrate, session } =
+    let crate::host::wire::RestoreDesc { session } =
         crate::host::wire::arg(desc.as_deref(), "desc")?;
     let current = eng.state.borrow().save_version;
     let (snapshot, ui) = {
-        let s = upgraded(&save, current)?;
-        // What the engine's migrations did, in the log (`og run` prints it).
-        if !s.steps.is_empty() {
-            eng.state.borrow_mut().log.push(json!({
-                "tick": og_ecs::last_tick(), "warning": false,
-                "text": format!("world.restore: the engine upgraded the save: {}", s.steps.join("; ")),
-            }));
-        }
+        let s = checked_save(&save, current)?;
         (s.snapshot, s.ui)
     };
     if is_selection(&snapshot) {
         // Checked whole when it applies (restore_selection changes nothing
         // when it refuses); here, only that it reads.
         if let Err(e) = SnapshotEdit::from_bytes(&snapshot) {
-            return Err(refusal(e, migrate));
+            return Err(refusal(e));
         }
         if running(world).is_some() || eng.probe.try_borrow_mut().is_err() {
             eng.state.borrow_mut().pending_restore = Some(Pending {
                 snapshot,
-                migrate,
                 session,
                 ui,
             });
@@ -338,7 +320,6 @@ pub fn og_world_restore(
             w,
             &Pending {
                 snapshot,
-                migrate,
                 session,
                 ui,
             },
@@ -347,34 +328,24 @@ pub fn og_world_restore(
             Err(e) => Err(e),
         };
     }
-    // The session's types (SESSION) are the host's after a restore, so a
-    // save whose only differences are theirs (og.Gamepad's eight pads in a
-    // build after a four-pad save) is taken, mapped field by field.
+    // Every saved layout must match, including the host's session types.
     if let Some(f) = running(world) {
         // A save that holds a lazy record the world has not registered
         // (crate::engine::lazy): registered and checked as the tick ends.
         if crate::engine::lazy::snapshot_needs(&eng, &snapshot) {
             eng.state.borrow_mut().pending_restore = Some(Pending {
                 snapshot,
-                migrate,
                 session,
                 ui,
             });
             return Ok(Value::Null);
         }
         // SAFETY: the frame is published while its system runs.
-        let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(
-            &snapshot,
-            migrate,
-            SESSION,
-            &engine_owned,
-        ) {
-            Ok(session_differs) => migrate || session_differs,
-            Err(e) => return Err(refusal(e, migrate)),
-        };
+        unsafe { f.ctx() }
+            .check_snapshot(&snapshot, false)
+            .map_err(refusal)?;
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,
-            migrate,
             session,
             ui,
         });
@@ -382,16 +353,12 @@ pub fn og_world_restore(
     }
     let w = eng.world()?;
     crate::engine::lazy::before_restore(&eng, w, &snapshot);
-    let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION, &engine_owned) {
-        Ok(session_differs) => migrate || session_differs,
-        Err(e) => return Err(refusal(e, migrate)),
-    };
+    w.check_snapshot(&snapshot, false).map_err(refusal)?;
     // A command runs while the probe is busy: the restore waits for the
     // tick's start (apply_pending).
     let Ok(mut probe) = eng.probe.try_borrow_mut() else {
         eng.state.borrow_mut().pending_restore = Some(Pending {
             snapshot,
-            migrate,
             session,
             ui,
         });
@@ -403,7 +370,6 @@ pub fn og_world_restore(
         w,
         &Pending {
             snapshot,
-            migrate,
             session,
             ui,
         },

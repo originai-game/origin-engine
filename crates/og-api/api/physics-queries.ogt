@@ -204,7 +204,7 @@
   }
 
   fn castRay {
-    doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+    doc "The nearest collider along a ray in the live Rapier simulation. Before og.physics a system sees tick-start colliders; after it, this tick's stepped colliders. Between ticks it sees the last simulation state, not pending ECS edits. Before the first step queries initialize the simulation without advancing time; a restore immediately replaces it."
     guide "physics §4"
     aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
     param world World "The world."
@@ -256,14 +256,14 @@
   }
 
   fn massProperties {
-    doc "The solver's computed mass, world centre of mass and local principal inertia for a stepped RigidBody entity, or null if not yet stepped or not a body."
+    doc "The live simulation's computed mass, world centre of mass and local principal inertia for a RigidBody entity, or null if not a body. Uses the same initialization and tick boundary as castRay."
     param world World "The world."
     param entity Entity "The body's entity."
     returns Result.Option.MassProperties
   }
 
   fn velocityAtPoint {
-    doc "The world-space linear velocity of a stepped RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not yet stepped or not a body."
+    doc "The live simulation's world-space linear velocity of a RigidBody entity at a world-space point (linear + angular × (point - com)), or null if not a body. Uses the same initialization and tick boundary as castRay."
     param world World "The world."
     param entity Entity "The body's entity."
     param point Vector3 "The world-space point."

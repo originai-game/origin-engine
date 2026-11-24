@@ -12,12 +12,12 @@ pub(crate) struct Open {
     pub(super) ui: Option<crate::present::presentation::UiCheckpoint>,
 }
 
-/// `World.openSave`: the save with the engine's migrations applied, open
-/// for the game's (a handle for the `og_save_edit_*` calls).
+/// `World.openSave`: a current-engine save open for game-owned editing
+/// (a handle for the `og_save_edit_*` calls).
 pub fn og_world_open_save(world: u32, save: String) -> Result<serde_json::Value, String> {
     let eng = engine(world)?;
     let current = eng.state.borrow().save_version;
-    let s = upgraded(&save, current)?;
+    let s = checked_save(&save, current)?;
     let edit = match SnapshotEdit::from_bytes(&s.snapshot) {
         Ok(e) => e,
         Err(e) => return Err(format!("the save cannot be opened: {}", e.reason())),

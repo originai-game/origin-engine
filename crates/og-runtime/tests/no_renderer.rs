@@ -316,4 +316,36 @@ fn a_world_without_a_renderer_replays_from_its_snapshot() {
         again, first,
         "the same 30 ticks from the snapshot land on the same hash"
     );
+    // The player-facing save envelope refuses old formats and another
+    // engine version, even if its checksum is valid; neither refusal
+    // changes this world. The probe's in-process rewind is not this format.
+    let save = og_runtime::og_world_snapshot(r.engine, None)
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let old = save.replacen("og-save:4:", "og-save:3:", 1);
+    assert!(
+        og_runtime::og_world_restore(r.engine, old, None)
+            .unwrap_err()
+            .contains("save format 3")
+    );
+    let compressed = og_core::base64::decode(save.strip_prefix("og-save:4:").unwrap()).unwrap();
+    let mut payload = miniz_oxide::inflate::decompress_to_vec(&compressed).unwrap();
+    // Header: magic, format, tick, checksum, game version; then the
+    // length-prefixed engine version. Change that version, not the layout.
+    payload[32] = b'x';
+    let checksum = og_core::hash::hash_bytes(&payload[28..]);
+    payload[16..24].copy_from_slice(&checksum.to_le_bytes());
+    let other = format!(
+        "og-save:4:{}",
+        og_core::base64::encode(&miniz_oxide::deflate::compress_to_vec(&payload, 6))
+    );
+    assert!(
+        og_runtime::og_world_restore(r.engine, other, None)
+            .unwrap_err()
+            .contains("another engine version")
+    );
+    assert_eq!(raw(og_engine_probe_dump(r.engine, None))["hash"], again);
+    og_runtime::og_world_restore(r.engine, save, None).unwrap();
 }

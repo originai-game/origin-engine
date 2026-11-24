@@ -466,7 +466,7 @@ mod sim;
 #[allow(clippy::duplicate_mod)]
 #[path = "rigid/debug_lines.rs"]
 pub(crate) mod debug_lines;
-pub(crate) use sim::{QueryWorld, Sim, load, query_shape, save, step};
+pub(crate) use sim::{Sim, load, query_shape, save, step};
 
 #[allow(clippy::duplicate_mod)]
 #[path = "ext.rs"]

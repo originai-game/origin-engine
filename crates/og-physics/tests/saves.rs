@@ -18,6 +18,137 @@ use og_physics::*;
 use std::sync::Arc;
 use support::*;
 
+#[test]
+fn queries_share_the_simulation_across_restore() {
+    for profile in [PROFILE_2D, PROFILE_3D] {
+        let mut w = World::new(&og_ecs::WorldDesc {
+            tick_rate: 60,
+            seed: 1,
+        })
+        .unwrap();
+        w.register::<Transform>().unwrap();
+        let p = PhysicsSystem::register(
+            &mut w,
+            Physics {
+                profile,
+                gravity: Vec3::ZERO,
+                ..Physics::default()
+            },
+        )
+        .unwrap();
+        let body = spawn_body(
+            &mut w,
+            at(0.0, 0.0, 0.0),
+            RigidBody::kinematic(),
+            Collider::sphere(0.5),
+        );
+        let (desc, run) = p.query_system();
+        w.add_system(desc, run).unwrap();
+        let pre = p.clone();
+        w.add_system(
+            og_ecs::SystemDesc::new("game")
+                .write::<Transform>()
+                .write::<RigidBody>()
+                .write::<Collider>(),
+            move |ctx| {
+                let x = ctx.time().tick as f32 * 2.0;
+                let q = pre.tick_query()?;
+                assert_eq!(
+                    q.overlap_point(&PointOverlapDesc {
+                        point: Vec3::new(x, 0.0, 0.0),
+                        ..Default::default()
+                    })?,
+                    vec![body]
+                );
+                ctx.set(body, at(x + 2.0, 0.0, 0.0))?;
+                assert!(
+                    q.overlap_point(&PointOverlapDesc {
+                        point: Vec3::new(x + 2.0, 0.0, 0.0),
+                        ..Default::default()
+                    })?
+                    .is_empty()
+                );
+                let spawned_at = Vec3::new(50.0 + x, 0.0, 0.0);
+                ctx.spawn((
+                    Transform::at(spawned_at),
+                    RigidBody::fixed(),
+                    Collider::sphere(0.25),
+                ))?;
+                assert!(
+                    q.overlap_point(&PointOverlapDesc {
+                        point: spawned_at,
+                        ..Default::default()
+                    })?
+                    .is_empty(),
+                    "a spawn is not visible before physics"
+                );
+                Ok(())
+            },
+        )
+        .unwrap();
+        p.schedule(&mut w).unwrap();
+        let post = p.clone();
+        w.add_system(og_ecs::SystemDesc::new("presentation"), move |ctx| {
+            let x = (ctx.time().tick + 1) as f32 * 2.0;
+            assert_eq!(
+                post.tick_query()?.overlap_point(&PointOverlapDesc {
+                    point: Vec3::new(x, 0.0, 0.0),
+                    ..Default::default()
+                })?,
+                vec![body]
+            );
+            // A direct Transform write teleports this non-controller body;
+            // querying must not invent a velocity for that teleport.
+            assert_eq!(post.velocity_at_point(body, Vec3::ZERO)?.unwrap().x, 0.0);
+            assert_eq!(
+                post.tick_query()?
+                    .overlap_point(&PointOverlapDesc {
+                        point: Vec3::new(48.0 + x, 0.0, 0.0),
+                        ..Default::default()
+                    })?
+                    .len(),
+                1,
+                "the same spawn is visible after physics"
+            );
+            Ok(())
+        })
+        .unwrap();
+        // Initialize before any step, then keep this handle across both a
+        // step and a restore: it must not retain a shadow collider world.
+        let q = p.query(&w).unwrap();
+        assert_eq!(
+            q.overlap_point(&PointOverlapDesc::default()).unwrap(),
+            vec![body]
+        );
+        w.step().unwrap();
+        let saved = w.snapshot();
+        w.step().unwrap();
+        assert_eq!(
+            q.overlap_point(&PointOverlapDesc {
+                point: Vec3::new(4.0, 0.0, 0.0),
+                ..Default::default()
+            })
+            .unwrap(),
+            vec![body]
+        );
+        w.restore(&saved).unwrap();
+        assert_eq!(
+            q.overlap_point(&PointOverlapDesc {
+                point: Vec3::new(2.0, 0.0, 0.0),
+                ..Default::default()
+            })
+            .unwrap(),
+            vec![body]
+        );
+        assert_eq!(
+            w.snapshot(),
+            saved,
+            "querying a restore must not resync or mutate it"
+        );
+        w.step().unwrap();
+    }
+}
+
 const GROUND: u64 = 7;
 const HULL: u64 = 8;
 const TERRAIN: u64 = 9;
@@ -120,6 +251,29 @@ fn a_snapshot_carries_mesh_colliders_by_their_asset_and_restores_to_the_same_wor
     }
     let saved = w.snapshot();
     let hash = w.world_hash();
+    // The format byte is a hard boundary, including missing/unknown formats.
+    let mut edit = og_ecs::SnapshotEdit::from_bytes(&saved).unwrap();
+    let block = edit.block("og.physics").unwrap().to_vec();
+    assert_eq!(block[0], 2);
+    for bytes in [
+        Vec::new(),
+        [vec![1], block[1..].to_vec()].concat(),
+        [vec![3], block[1..].to_vec()].concat(),
+    ] {
+        edit.set_block("og.physics", bytes).unwrap();
+        let error = w.restore(&edit.to_bytes()).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("incompatible og.physics state format"),
+            "{error}"
+        );
+        assert_eq!(
+            w.world_hash(),
+            hash,
+            "a refused format leaves the world intact"
+        );
+    }
     // The triangles alone are 7,200 × 12 bytes of indices and 3,721 × 12
     // of positions before their BVH: the save holds none of them.
     assert!(
