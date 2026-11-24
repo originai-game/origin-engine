@@ -23,6 +23,7 @@ struct EmitterDraw {
   look: vec4<f32>,               // x: lit, y: distortion, z: mesh mode (0 quad, 1 mesh, 2 effect mesh), w: roughness
   axis: vec4<f32>,               // xyz: upright/facing axis in emitter space; w: 1 effect mesh billboard
   trail: vec4<f32>,              // x: lifetime, y: width share, z: sample interval, w: newest sample index
+  crop: vec4<f32>,               // tight opaque UV cutout [u0, v0, u1, v1] for billboards
   info: vec4<u32>,               // x: max particles, y: seed, z: unused, w: unused
 };
 

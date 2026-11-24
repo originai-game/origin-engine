@@ -249,6 +249,7 @@ impl Renderer {
             && scene.frame.debug == DebugView::None
             && scene.frame.views.is_empty()
             && scene.lighting.reflection_probes.is_empty();
+        let textures = &self.cache.textures;
         let particle_frame = self.particles.gpu.prepare(
             &self.device,
             &self.queue,
@@ -258,7 +259,8 @@ impl Renderer {
                 && self.runs(FramePass::Particles),
             self.info.caps.contains(Caps::INDIRECT),
             oit_order_free,
-            self.cache.textures.len(),
+            textures.len(),
+            |i| textures[i].alpha_bounds,
             camera.position,
             cam.forward,
         )?;
@@ -1022,6 +1024,7 @@ impl Renderer {
             reflections: &reflections,
             object_space,
             oit_mode: camera_lists.oit_mode,
+            fx_half: particle_frame.has_half_res(scene.frame.camera_layers) && effects.prepass,
             adjusted,
             lut_index,
             stylise_key,
@@ -1462,6 +1465,7 @@ impl Renderer {
                 sprite_frame: &arenas.sprite_frame,
                 sprite_fx_group: binds.sprite_fx_group,
                 particle_group: &binds.particle_group,
+                half_particle_group: &binds.half_particle_group,
                 particle_frame: &particle_frame,
                 ribbon_frame: &arenas.ribbon_frame,
                 line_frame: &line_frame,

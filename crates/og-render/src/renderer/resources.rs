@@ -240,6 +240,9 @@ pub(crate) struct GpuTexture {
     /// A render target's ([`TextureSource::Target`]): counted with the
     /// render targets in [`crate::GpuMemory`].
     pub(crate) target: bool,
+    /// Tight non-transparent UV bounds `[u0, v0, u1, v1]` padded by 1 texel for
+    /// exact bilinear filtering, used to crop dead border area on billboards.
+    pub(crate) alpha_bounds: [f32; 4],
 }
 
 /// What an RGBA8 texture allocates on the GPU, every level.

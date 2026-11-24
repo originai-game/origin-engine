@@ -75,4 +75,7 @@ pub(crate) struct GraphConfig {
     /// `lindepth` as storage (impostor_kept.wgsl), so it is made with
     /// that usage, which a device without it refuses for its format.
     pub lindepth_storage: bool,
+    /// Large soft-depth billboard particles run in a half-resolution HDR
+    /// target (`fx.half` + `fx.half_depth`) and composite bilaterally onto `hdr`.
+    pub fx_half: bool,
 }

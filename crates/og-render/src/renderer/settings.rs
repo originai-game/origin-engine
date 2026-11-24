@@ -227,6 +227,7 @@ impl Renderer {
             f.set_samples(samples);
         }
         self.lines.set_samples(samples);
+        self.particles.gpu.half_res.set_samples(samples);
         if let Some(t) = self.world.terrain.get_mut() {
             t.set_samples(samples);
         }

@@ -204,6 +204,8 @@ pub(crate) struct FrameSystem {
     /// Its effect material (`effect.rs`) and how its pipeline differs.
     effect: Option<crate::EffectMaterialHandle>,
     look: Look,
+    /// Routed to the half-resolution soft-particle pass on the main camera.
+    half_res: bool,
 }
 
 /// Where each of a CPU-path system's [`FrameSystem::slots`] ranges starts
@@ -386,6 +388,10 @@ pub(crate) struct ParticleRenderer {
     hook_modules: HashMap<usize, wgpu::ShaderModule>,
     frame_wgsl: String,
     draw_pl: wgpu::PipelineLayout,
+    /// Half-resolution soft-particle draw pipelines (Additive and Alpha, sample_count = 1).
+    half_draw: HashMap<ParticleBlend, crate::deferred::Deferred<wgpu::RenderPipeline>>,
+    /// Half-res depth downsample and depth-aware bilateral upsample composite.
+    pub(crate) half_res: crate::particles::half_res::HalfResFx,
     /// Standalone instanced effect mesh renderer sharing `draw_pl` and `effects`.
     pub(crate) effect_meshes: crate::particles::effect_mesh::EffectMeshRenderer,
     /// The effect materials (group 3 of every particle, effect mesh and strip draw).
@@ -462,23 +468,31 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
 /// Which of a camera's 3D systems and effect meshes a draw takes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ParticlePart {
-    /// Every system and effect mesh, in one place (no OIT).
+    /// Every system and effect mesh, in one place (views, probes, or no OIT / no half-res).
     All,
+    /// Every full-resolution system and effect mesh when half-res soft particles ran without OIT.
+    Full,
     /// Solid mesh particles (debris, depth-writing).
     Before,
     /// Alpha billboards and instanced alpha effect meshes into the OIT pass.
     Oit,
-    /// Additive, subtractive, multiply and distortion draws after OIT resolve.
-    After,
+    /// Large soft-depth billboards rendered into the half-resolution target (`fx.half`).
+    Half,
+    /// Non-solid, non-OIT draws after OIT resolve (`true` skips half-res systems already drawn).
+    After(bool),
 }
 
 impl ParticlePart {
     fn draws(self, s: &FrameSystem) -> bool {
         match self {
             ParticlePart::All => true,
+            ParticlePart::Full => !s.half_res,
             ParticlePart::Before => solid_mesh(s),
             ParticlePart::Oit => in_oit(s),
-            ParticlePart::After => !solid_mesh(s) && !in_oit(s),
+            ParticlePart::Half => s.half_res,
+            ParticlePart::After(skip_half) => {
+                !solid_mesh(s) && !in_oit(s) && !(skip_half && s.half_res)
+            }
         }
     }
 }
@@ -497,6 +511,13 @@ impl ParticleFrame {
     /// Whether this frame has any 3D particle systems or instanced effect meshes.
     pub fn has_draws(&self) -> bool {
         !self.systems.is_empty() || !self.effect_meshes.batches.is_empty()
+    }
+
+    /// Whether any 3D system on `mask` is routed to the half-resolution soft pass.
+    pub fn has_half_res(&self, mask: u32) -> bool {
+        self.systems
+            .iter()
+            .any(|s| s.layers & mask != 0 && s.half_res)
     }
 
     /// OIT pipeline sources needed by particles and effect meshes on `mask`.

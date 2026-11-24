@@ -67,6 +67,7 @@ impl Renderer {
             format: TextureFormat::Rgba8,
             bytes: 0,
             target: false,
+            alpha_bounds: FULL_UV,
         })
     }
 
@@ -109,6 +110,7 @@ impl Renderer {
             format: TextureFormat::Rgba8,
             bytes: 4,
             target: false,
+            alpha_bounds: FULL_UV,
         }
     }
 
@@ -123,6 +125,7 @@ impl Renderer {
                 format: TextureFormat::Rgba8,
                 bytes: rgba_texture_bytes(texture),
                 target: false,
+                alpha_bounds: rgba_alpha_bounds(texture),
             },
             TextureSource::Encoded(upload) => self.upload_encoded(upload),
             TextureSource::Target(t) => GpuTexture {
@@ -130,6 +133,7 @@ impl Renderer {
                 format: TextureFormat::Rgba8,
                 bytes: t.bytes(),
                 target: true,
+                alpha_bounds: FULL_UV,
             },
         }
     }
@@ -219,6 +223,43 @@ impl Renderer {
             format: desc.format,
             bytes: upload.levels.iter().map(|l| l.len() as u64).sum(),
             target: false,
+            alpha_bounds: FULL_UV,
         }
     }
+}
+
+const FULL_UV: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+/// Computes the tight non-transparent UV box `[u0, v0, u1, v1]` of an RGBA8
+/// texture, padded by one texel on each side so bilinear filtering outside the
+/// box is guaranteed to sample zero alpha.
+fn rgba_alpha_bounds(texture: &TextureData) -> [f32; 4] {
+    let (w, h) = (texture.width, texture.height);
+    if w < 4 || h < 4 || texture.rgba.len() < (w as usize) * (h as usize) * 4 {
+        return FULL_UV;
+    }
+    let (mut min_x, mut min_y) = (w, h);
+    let (mut max_x, mut max_y) = (0u32, 0u32);
+    for y in 0..h {
+        let row = (y as usize) * (w as usize) * 4;
+        for x in 0..w {
+            if texture.rgba[row + (x as usize) * 4 + 3] > 0 {
+                min_x = min_x.min(x);
+                min_y = min_y.min(y);
+                max_x = max_x.max(x);
+                max_y = max_y.max(y);
+            }
+        }
+    }
+    if min_x > max_x {
+        return FULL_UV;
+    }
+    let u0 = min_x.saturating_sub(1) as f32 / w as f32;
+    let v0 = min_y.saturating_sub(1) as f32 / h as f32;
+    let u1 = (max_x + 2).min(w) as f32 / w as f32;
+    let v1 = (max_y + 2).min(h) as f32 / h as f32;
+    if (u1 - u0) * (v1 - v0) >= 0.98 {
+        return FULL_UV;
+    }
+    [u0, v0, u1, v1]
 }

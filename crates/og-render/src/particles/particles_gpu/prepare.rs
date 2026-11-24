@@ -181,6 +181,40 @@ impl CompactPlanner<'_> {
     }
 }
 
+const FULL_UV: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
+
+/// Returns the tight non-transparent UV box for a plain single-frame textured
+/// billboard emitter without effect materials (100% pixel-identical cutout).
+fn billboard_crop(e: &ParticleEmitter, texture_bounds: &impl Fn(usize) -> [f32; 4]) -> [f32; 4] {
+    if !matches!(e.render, ParticleRender::Billboard)
+        || e.effect.is_some()
+        || e.sheet.mode != SheetMode::Off
+        || e.sheet.columns > 1
+        || e.sheet.rows > 1
+    {
+        return FULL_UV;
+    }
+    e.texture.map_or(FULL_UV, |t| texture_bounds(t.index()))
+}
+
+/// Whether a 3D billboard system qualifies for the half-resolution soft pass
+/// (4x fillrate reduction on large soft clouds/fireballs with bilateral upsample).
+fn qualifies_half_res(
+    scene: &RenderScene,
+    kind: DrawKind,
+    blend: ParticleBlend,
+    look: Look,
+    soft: f32,
+    oit_order_free: bool,
+) -> bool {
+    scene.frame.debug == crate::DebugView::None
+        && scene.frame.quality.soft_particles
+        && kind == DrawKind::Billboard
+        && look.hook.is_none()
+        && soft >= 0.25
+        && (blend == ParticleBlend::Additive || (blend == ParticleBlend::Alpha && !oit_order_free))
+}
+
 impl ParticleRenderer {
     /// Advances every system of the scene, plans batched GPU simulation waves,
     /// alive compaction + indirect draw args, and writes the lean draw uniforms.
@@ -194,6 +228,7 @@ impl ParticleRenderer {
         indirect: bool,
         oit_order_free: bool,
         texture_count: usize,
+        texture_bounds: impl Fn(usize) -> [f32; 4],
         eye: Vec3,
         forward: Vec3,
     ) -> Result<ParticleFrame, RenderError> {
@@ -827,6 +862,7 @@ impl ParticleRenderer {
                         seed,
                         textured,
                         soft,
+                        FULL_UV,
                         false,
                     );
                     newest_sample(&mut draw, interval, g.time);
@@ -860,6 +896,7 @@ impl ParticleRenderer {
                         seed,
                         textured,
                         soft,
+                        billboard_crop(e, &texture_bounds),
                         false,
                     );
                     newest_sample(&mut draw, interval, g.time);
@@ -913,6 +950,14 @@ impl ParticleRenderer {
                     } else {
                         (effect, look, mesh)
                     };
+                    let head_half = qualifies_half_res(
+                        scene,
+                        actual_kind,
+                        blend,
+                        head_look,
+                        soft,
+                        oit_order_free,
+                    );
                     out.systems.push(FrameSystem {
                         id: sys.id,
                         draw_entry,
@@ -928,6 +973,7 @@ impl ParticleRenderer {
                         mesh: head_mesh,
                         effect: head_effect,
                         look: head_look,
+                        half_res: head_half,
                     });
                     if let Some(tsrc) = trail_source {
                         let (ef, mat) = effect_of(scene, e, DrawKind::Trail, sys.emitter.index())?;
@@ -951,6 +997,7 @@ impl ParticleRenderer {
                             mesh: None,
                             effect: ef,
                             look: lk,
+                            half_res: false,
                         });
                     }
                 }
@@ -989,6 +1036,7 @@ impl ParticleRenderer {
                         crate::particles::child_seed(seed, k),
                         ce.texture.is_some(),
                         csoft,
+                        billboard_crop(ce, &texture_bounds),
                         true,
                     );
                     draw_entries.push(cdraw);
@@ -1033,6 +1081,14 @@ impl ParticleRenderer {
                         },
                         effect: ceffect,
                         look: clook,
+                        half_res: qualifies_half_res(
+                            scene,
+                            ckind,
+                            cblend,
+                            clook,
+                            csoft,
+                            oit_order_free,
+                        ),
                     });
                 }
             } else {
@@ -1099,10 +1155,13 @@ impl ParticleRenderer {
                         seed,
                         textured,
                         soft,
+                        billboard_crop(e, &texture_bounds),
                         false,
                     );
                     newest_sample(&mut draw, interval, state.cpu.time);
                     draw_entries.push(draw);
+                    let cpu_half =
+                        qualifies_half_res(scene, kind, blend, look, soft, oit_order_free);
                     out.systems.push(FrameSystem {
                         id: sys.id,
                         draw_entry,
@@ -1127,6 +1186,7 @@ impl ParticleRenderer {
                         mesh,
                         effect,
                         look,
+                        half_res: cpu_half,
                     });
                     if !state.cpu.trail.is_empty() {
                         push_trail(&mut out, e, scene, sys.emitter.index())?;
@@ -1162,6 +1222,9 @@ impl ParticleRenderer {
                     );
                     out.needs_depth |= csoft > 0.0;
                     out.soft |= csoft > 0.0;
+                    let cblend = cmaterial
+                        .and_then(|m| m.blend)
+                        .unwrap_or_else(|| ce.blend());
                     let draw_entry = draw_entries.len() as u32;
                     let entry = emitter_draw_gpu(
                         ce,
@@ -1171,15 +1234,14 @@ impl ParticleRenderer {
                         crate::particles::child_seed(seed, k),
                         ce.texture.is_some(),
                         csoft,
+                        billboard_crop(ce, &texture_bounds),
                         true,
                     );
                     draw_entries.push(entry);
                     out.systems.push(FrameSystem {
                         id: sys.id,
                         draw_entry,
-                        blend: cmaterial
-                            .and_then(|m| m.blend)
-                            .unwrap_or_else(|| ce.blend()),
+                        blend: cblend,
                         texture: ce.texture,
                         depth,
                         layers,
@@ -1194,6 +1256,14 @@ impl ParticleRenderer {
                         },
                         effect: ceffect,
                         look: clook,
+                        half_res: qualifies_half_res(
+                            scene,
+                            ckind,
+                            cblend,
+                            clook,
+                            csoft,
+                            oit_order_free,
+                        ),
                     });
                 }
             }
@@ -1720,6 +1790,7 @@ fn push_trail(
     if !t.head {
         last.kind = DrawKind::Trail;
         last.mesh = None;
+        last.half_res = false;
         (last.effect, last.look) = (effect, look);
         return Ok(());
     }
@@ -1738,6 +1809,7 @@ fn push_trail(
         mesh: None,
         effect,
         look,
+        half_res: false,
     };
     out.systems.push(trail);
     Ok(())

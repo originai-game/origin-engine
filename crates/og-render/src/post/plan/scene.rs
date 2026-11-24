@@ -164,6 +164,9 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             if cfg.oit.is_some() {
                 writes.extend(["oit.accum", "oit.reveal", "oit.front"]);
             }
+            if cfg.fx_half {
+                writes.extend(["fx.half_depth", "fx.half"]);
+            }
             g.pass(name, &reads, &writes)
         }
         FramePass::Glow => g.pass(name, &[], &["glow"]),

@@ -24,6 +24,7 @@ impl Particles {
         sprite_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
         simulation: ParticleSimulation,
+        samples: u32,
     ) -> Particles {
         Particles {
             gpu: particles_gpu::ParticleRenderer::new(
@@ -32,6 +33,7 @@ impl Particles {
                 frame_layout,
                 sprite_layout,
                 frame_wgsl,
+                samples,
             ),
             sprite_buffer: buffers::particle_sprite_buffer(device, SPRITE_STRIDE * 64),
             sprite_sources: Vec::new(),

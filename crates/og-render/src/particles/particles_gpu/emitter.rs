@@ -81,6 +81,7 @@ pub(super) struct EmitterDrawGpu {
     pub look: [f32; 4],
     pub axis: [f32; 4],
     pub trail: [f32; 4],
+    pub crop: [f32; 4],
     pub info: [u32; 4],
 }
 
@@ -124,6 +125,7 @@ pub(super) fn emitter_draw_gpu(
     seed: u32,
     textured: bool,
     soft: f32,
+    crop: [f32; 4],
     world_override: bool,
 ) -> EmitterDrawGpu {
     let (size_t, size_v, size_n) = curve_gpu(Some(&e.size_over_life));
@@ -209,6 +211,7 @@ pub(super) fn emitter_draw_gpu(
         trail: e
             .trail
             .map_or([0.0, 0.0, 0.0, -1.0], |t| [t.lifetime, t.width, 0.0, -1.0]),
+        crop,
         info: [e.max_particles, seed, 0, 0],
     }
 }

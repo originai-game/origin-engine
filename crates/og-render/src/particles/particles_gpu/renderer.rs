@@ -80,6 +80,7 @@ impl ParticleRenderer {
         frame_layout: &wgpu::BindGroupLayout,
         sprite_layout: &wgpu::BindGroupLayout,
         frame_wgsl: &str,
+        samples: u32,
     ) -> ParticleRenderer {
         let sim_frame_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle sim frame"),
@@ -280,6 +281,8 @@ impl ParticleRenderer {
             hook_modules: HashMap::new(),
             frame_wgsl: frame_wgsl.to_string(),
             draw_pl,
+            half_draw: HashMap::new(),
+            half_res: crate::particles::half_res::HalfResFx::new(device, samples),
             effect_meshes: crate::particles::effect_mesh::EffectMeshRenderer::new(device),
             effects,
             emitter_draw_buffer,
@@ -583,11 +586,21 @@ impl ParticleRenderer {
         samples: u32,
         shaders: &[crate::MaterialShader],
     ) {
+        let mut any_half = false;
         for s in frame.systems.iter().filter(|s| s.kind != DrawKind::Sprite) {
             let key = (s.blend, samples, s.kind, s.look);
             if !self.draw.contains_key(&key) {
                 self.make_draw(device, key, shaders);
             }
+            if s.half_res {
+                any_half = true;
+                if !self.half_draw.contains_key(&s.blend) {
+                    self.make_half_draw(device, s.blend);
+                }
+            }
+        }
+        if any_half {
+            self.half_res.start();
         }
         self.effect_meshes.ensure_pipelines(
             device,
@@ -596,7 +609,68 @@ impl ParticleRenderer {
             samples,
             shaders,
         );
-        let _ = HDR_FORMAT;
+    }
+
+    /// Makes a half-resolution soft-particle pipeline for `blend` (sample_count
+    /// 1, no depth attachment — occlusion and soft fade read `fx.half_depth`).
+    fn make_half_draw(&mut self, device: &wgpu::Device, blend_of: ParticleBlend) {
+        let blend = match blend_of {
+            ParticleBlend::Additive => wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: KEEP_ALPHA,
+            },
+            // Premultiplied radiance in .rgb + remaining background transmittance in .a.
+            _ => wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            },
+        };
+        let module = self.draw_module.get().clone();
+        let (device, layout) = (device.clone(), self.draw_pl.clone());
+        let p = crate::deferred::Deferred::anywhere(move || {
+            crate::traffic::create_render_pipeline(
+                &device,
+                &wgpu::RenderPipelineDescriptor {
+                    label: Some("particles (half res)"),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs"),
+                        compilation_options: Default::default(),
+                        buffers: &[Some(PARTICLE_LAYOUT)],
+                    },
+                    primitive: wgpu::PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("fs_half"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: Some(blend),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                },
+            )
+        });
+        crate::deferred::Start::start(&p);
+        self.half_draw.insert(blend_of, p);
     }
 
     /// Makes the draw pipeline for `key`, (blend, samples, kind, look),
@@ -726,6 +800,7 @@ impl ParticleRenderer {
         }) {
             let Some(pipeline) = (match part {
                 ParticlePart::Oit => oit_lookup(crate::oit::Source::Particles),
+                ParticlePart::Half => self.half_draw.get(&s.blend).and_then(|p| p.get()),
                 _ => self
                     .draw
                     .get(&(s.blend, samples, s.kind, s.look))

@@ -118,6 +118,10 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         crate::particles_gpu::draw_source(&crate::fluid_shared_source(), None),
     );
     add("effect meshes", crate::particles::effect_mesh::source(None));
+    add(
+        "fx upsample",
+        crate::particles::half_res::FX_UPSAMPLE_WGSL.to_string(),
+    );
     for (label, wgsl) in crate::post::post_sources() {
         add(label, wgsl);
     }

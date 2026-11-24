@@ -104,6 +104,14 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
             desc(w, h, crate::oit::FRONT_FORMAT, cfg.samples, ATTACH_BIND),
         );
     }
+    if cfg.fx_half {
+        let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
+        g.transient(
+            "fx.half_depth",
+            desc(hw, hh, LINDEPTH_FORMAT, 1, ATTACH_BIND),
+        )
+        .transient("fx.half", desc(hw, hh, HDR_FORMAT, 1, ATTACH_BIND));
+    }
     g.transient("depth", desc(w, h, DEPTH_FORMAT, cfg.samples, depth_usage));
     if cfg.taa {
         g.import("history-read")

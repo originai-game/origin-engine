@@ -29,6 +29,7 @@ pub(super) struct MainPlan<'f> {
     pub(super) sprite_frame: &'f sprites::SpriteFrame,
     pub(super) sprite_fx_group: &'f wgpu::BindGroup,
     pub(super) particle_group: &'f Option<wgpu::BindGroup>,
+    pub(super) half_particle_group: &'f Option<wgpu::BindGroup>,
     pub(super) particle_frame: &'f particles_gpu::ParticleFrame,
     pub(super) ribbon_frame: &'f ribbons::RibbonFrame,
     pub(super) line_frame: &'f lines::LineFrame,
@@ -96,6 +97,7 @@ impl Renderer {
             sprite_frame,
             sprite_fx_group,
             particle_group,
+            half_particle_group,
             particle_frame,
             ribbon_frame,
             line_frame,
@@ -192,6 +194,95 @@ impl Renderer {
                 })
                 .forget_lifetime()
         };
+        // Particles and instanced effect meshes, far systems first.
+        let particles = |pass: &mut wgpu::RenderPass,
+                         part: particles_gpu::ParticlePart,
+                         oit_mode: Option<oit::Oit>,
+                         group_override: Option<&wgpu::BindGroup>| {
+            let Some(group) = group_override.or(particle_group.as_ref()) else {
+                return 0;
+            };
+            let groups = &self.cache.sprite_groups;
+            let white = &self.sprite.white_sprite_group;
+            self.particles.gpu.draw(
+                pass,
+                particle_frame,
+                self.samples,
+                group,
+                scene.frame.camera_layers,
+                true,
+                Some(view_frustum),
+                part,
+                |src| oit_mode.and_then(|m| self.oit_pipeline(src, m)),
+                |t: Option<TextureHandle>| match t {
+                    None => white,
+                    Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
+                },
+                |m: crate::MeshHandle| {
+                    self.cache
+                        .meshes
+                        .get(m.index())
+                        .filter(|g| g.full)
+                        .map(|g| (g.vertex_slice(false), &g.indices, g.index_count))
+                },
+            )
+        };
+        // Half-resolution soft billboard clouds/smoke/fireballs render into
+        // `fx.half` against the 2x2 downsampled linear depth (`fx.half_depth`)
+        // before the main HDR pass opens, so bilateral compositing adds zero
+        // extra full-resolution HDR/MSAA render pass splits.
+        let half_ready =
+            if let (Some(half_group), Some(full_depth), Some(half_depth), Some(half_view)) = (
+                half_particle_group,
+                self.graph.try_view("lindepth"),
+                self.graph.try_view("fx.half_depth"),
+                self.graph.try_view("fx.half"),
+            ) {
+                let down = self.particles.gpu.half_res.encode_downsample(
+                    &self.device,
+                    encoder,
+                    full_depth,
+                    half_depth,
+                );
+                stats.draw_calls += down;
+                if down > 0 {
+                    let mut half_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("fx half particles"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: half_view,
+                            depth_slice: None,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                // Premultiplied radiance (0,0,0) and remaining
+                                // background transmittance (1.0).
+                                load: wgpu::LoadOp::Clear(wgpu::Color {
+                                    r: 0.0,
+                                    g: 0.0,
+                                    b: 0.0,
+                                    a: 1.0,
+                                }),
+                                store: wgpu::StoreOp::Store,
+                            },
+                        })],
+                        depth_stencil_attachment: None,
+                        timestamp_writes: None,
+                        occlusion_query_set: None,
+                        multiview_mask: None,
+                    });
+                    half_pass.set_bind_group(0, frame_bind_group, &[]);
+                    stats.draw_calls += particles(
+                        &mut half_pass,
+                        particles_gpu::ParticlePart::Half,
+                        None,
+                        Some(half_group),
+                    );
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
         // A serial frame (`set_gpu_serial`) draws each class of draw in a
         // render pass of its own, each waited for, so the perf record
         // reads the main pass's cost by what it draws (`"main: scatter"`,
@@ -479,36 +570,20 @@ impl Renderer {
                 binder.reset(&mut pass);
             }
         }
-        // Particles and instanced effect meshes, far systems first.
-        let particles = |pass: &mut wgpu::RenderPass,
-                         part: particles_gpu::ParticlePart,
-                         oit_mode: Option<oit::Oit>| {
-            let Some(group) = particle_group else {
+        let composite_half_res = |pass: &mut wgpu::RenderPass| {
+            let (Some(full_depth), Some(half_view), Some(half_depth)) = (
+                self.graph.try_view("lindepth"),
+                self.graph.try_view("fx.half"),
+                self.graph.try_view("fx.half_depth"),
+            ) else {
                 return 0;
             };
-            let groups = &self.cache.sprite_groups;
-            let white = &self.sprite.white_sprite_group;
-            self.particles.gpu.draw(
+            self.particles.gpu.half_res.composite(
+                &self.device,
                 pass,
-                particle_frame,
-                self.samples,
-                group,
-                scene.frame.camera_layers,
-                true,
-                Some(view_frustum),
-                part,
-                |src| oit_mode.and_then(|m| self.oit_pipeline(src, m)),
-                |t: Option<TextureHandle>| match t {
-                    None => white,
-                    Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
-                },
-                |m: crate::MeshHandle| {
-                    self.cache
-                        .meshes
-                        .get(m.index())
-                        .filter(|g| g.full)
-                        .map(|g| (g.vertex_slice(false), &g.indices, g.index_count))
-                },
+                full_depth,
+                half_view,
+                half_depth,
             )
         };
         let diagnostic = scene.frame.debug != DebugView::None;
@@ -538,7 +613,16 @@ impl Renderer {
                     probe_binding,
                     main_list.indirect,
                 );
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::All, None);
+                if half_ready {
+                    stats.draw_calls += composite_half_res(&mut pass);
+                    pass.set_bind_group(0, frame_bind_group, &[]);
+                    pass.set_bind_group(2, fx_group, &[]);
+                    stats.draw_calls +=
+                        particles(&mut pass, particles_gpu::ParticlePart::Full, None, None);
+                } else {
+                    stats.draw_calls +=
+                        particles(&mut pass, particles_gpu::ParticlePart::All, None, None);
+                }
                 // Trails, ribbons and beams (layered 2D trails go with the sprites).
                 stats.draw_calls += ctx.draw_strips(&mut pass, &ribbon_frame.runs);
             }
@@ -549,7 +633,8 @@ impl Renderer {
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls +=
                     ctx.draw_oit_part(&mut pass, BlendedPart::Transmissive, probe_binding);
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before, None);
+                stats.draw_calls +=
+                    particles(&mut pass, particles_gpu::ParticlePart::Before, None, None);
                 drop(pass);
                 // The blended surfaces in any order into the weighted
                 // targets (and the arena's nodes or front layer), against
@@ -602,8 +687,12 @@ impl Renderer {
                     mark_pass.set_bind_group(2, fx_group, &[]);
                     stats.draw_calls +=
                         ctx.draw_oit_part(&mut mark_pass, BlendedPart::Oit(mark), probes);
-                    stats.draw_calls +=
-                        particles(&mut mark_pass, particles_gpu::ParticlePart::Oit, Some(mark));
+                    stats.draw_calls += particles(
+                        &mut mark_pass,
+                        particles_gpu::ParticlePart::Oit,
+                        Some(mark),
+                        None,
+                    );
                     stats.draw_calls += self.frame_draw_strips(
                         &mut mark_pass,
                         &ribbon_frame.runs,
@@ -653,8 +742,12 @@ impl Renderer {
                 oit_pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls +=
                     ctx.draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
-                stats.draw_calls +=
-                    particles(&mut oit_pass, particles_gpu::ParticlePart::Oit, Some(mode));
+                stats.draw_calls += particles(
+                    &mut oit_pass,
+                    particles_gpu::ParticlePart::Oit,
+                    Some(mode),
+                    None,
+                );
                 stats.draw_calls += self.frame_draw_strips(
                     &mut oit_pass,
                     &ribbon_frame.runs,
@@ -667,13 +760,24 @@ impl Renderer {
                 }
                 stats.draw_calls += self.encode_oit_resolve(encoder, mode);
                 // Over the resolved scene: the billboards the OIT pass
-                // cannot take, back to front, then what adds light (it is
-                // never weighted down) and what bends the scene.
+                // cannot take, back to front, then half-res soft clouds,
+                // then what adds light (never weighted down) and what bends
+                // the scene.
                 pass = begin(encoder, false, false, "main (after oit)");
                 pass.set_bind_group(0, frame_bind_group, &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += ctx.draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
-                stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::After, None);
+                if half_ready {
+                    stats.draw_calls += composite_half_res(&mut pass);
+                    pass.set_bind_group(0, frame_bind_group, &[]);
+                    pass.set_bind_group(2, fx_group, &[]);
+                }
+                stats.draw_calls += particles(
+                    &mut pass,
+                    particles_gpu::ParticlePart::After(half_ready),
+                    None,
+                    None,
+                );
                 stats.draw_calls += self.frame_draw_strips(
                     &mut pass,
                     &ribbon_frame.runs,

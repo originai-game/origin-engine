@@ -103,7 +103,11 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     o.clip = vec4<f32>(2.0, 2.0, 2.0, 1.0);
     return o;
   }
-  let c = quad_corner(vi) - 0.5;
+  let q = quad_corner(vi);
+  let c = vec2<f32>(
+    mix(emitter.crop.x, emitter.crop.z, q.x) - 0.5,
+    0.5 - mix(emitter.crop.w, emitter.crop.y, q.y),
+  );
   o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 0.0));
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
@@ -538,35 +542,42 @@ fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
-  return particle_fragment(in);
+  return particle_fragment(in, in.clip.xy);
+}
+
+// Half-resolution soft particle pass: scene_depth is bound at half resolution
+// (matching in.clip.xy), while clustered lighting expects full-res pixel coords.
+@fragment
+fn fs_half(in: ParticleOut) -> @location(0) vec4<f32> {
+  return particle_fragment(in, in.clip.xy * 2.0);
 }
 
 // An alpha system in the main camera's order-independent passes (oit.rs).
 @fragment
 fn fs_oit(in: ParticleOut) -> OitOutput {
-  return oit_weighted(particle_fragment(in), in.clip.z);
+  return oit_weighted(particle_fragment(in, in.clip.xy), in.clip.z);
 }
 
 @fragment
 fn fs_oit_list(in: ParticleOut, @builtin(sample_mask) mask: u32) -> OitOutput {
-  let c = particle_fragment(in);
+  let c = particle_fragment(in, in.clip.xy);
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
 }
 
 @fragment
 fn fs_oit_front(in: ParticleOut) -> OitOutput {
-  let c = particle_fragment(in);
+  let c = particle_fragment(in, in.clip.xy);
   return oit_hybrid(c, in.clip);
 }
 
 @fragment
 fn fs_oit_mark(in: ParticleOut) {
-  let c = particle_fragment(in);
+  let c = particle_fragment(in, in.clip.xy);
   oit_front_mark(in.clip, c.a);
 }
 
-fn particle_fragment(in: ParticleOut) -> vec4<f32> {
+fn particle_fragment(in: ParticleOut, light_frag: vec2<f32>) -> vec4<f32> {
   let tex = particle_tex(in);
   // No texture: a soft round dot.
   let dot_d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
@@ -595,7 +606,7 @@ fn particle_fragment(in: ParticleOut) -> vec4<f32> {
       n = -v;
       v = n;
     }
-    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, n, v), c.a);
+    c = vec4<f32>(c.rgb * particle_light(light_frag, in.world, n, v), c.a);
   }
   c.a *= particle_soft(in);
   c.a *= fog_keep(in.world);

@@ -38,6 +38,7 @@
 
 pub(crate) mod effect;
 pub(crate) mod effect_mesh;
+pub(crate) mod half_res;
 pub(crate) mod particles_gpu;
 pub(crate) mod ribbons;
 pub(crate) mod ribbons_gpu;

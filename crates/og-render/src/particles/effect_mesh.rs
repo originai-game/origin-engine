@@ -464,7 +464,7 @@ impl EffectMeshRenderer {
         oit_lookup: &impl Fn(crate::oit::Source) -> Option<&'b wgpu::RenderPipeline>,
         mesh: &impl Fn(crate::MeshHandle) -> Option<(wgpu::BufferSlice<'b>, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
-        if frame.batches.is_empty() || matches!(part, ParticlePart::Before) {
+        if frame.batches.is_empty() || matches!(part, ParticlePart::Before | ParticlePart::Half) {
             return 0;
         }
         let mut draws = 0;
@@ -474,10 +474,10 @@ impl EffectMeshRenderer {
                 continue;
             }
             let wants = match part {
-                ParticlePart::All => true,
-                ParticlePart::Before => false,
+                ParticlePart::All | ParticlePart::Full => true,
+                ParticlePart::Before | ParticlePart::Half => false,
                 ParticlePart::Oit => b.in_oit(),
-                ParticlePart::After => !b.in_oit(),
+                ParticlePart::After(_) => !b.in_oit(),
             };
             if !wants {
                 continue;

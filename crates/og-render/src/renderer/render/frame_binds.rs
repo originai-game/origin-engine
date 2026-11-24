@@ -34,6 +34,7 @@ pub(super) struct BindFrameOutputs<'a> {
     pub backface_fx_group: Option<wgpu::BindGroup>,
     pub scene_depth: &'a wgpu::TextureView,
     pub particle_group: Option<wgpu::BindGroup>,
+    pub half_particle_group: Option<wgpu::BindGroup>,
     pub metaball_groups: Vec<wgpu::BindGroup>,
     pub fx_lean: Option<&'a wgpu::BindGroup>,
 }
@@ -234,6 +235,11 @@ impl Renderer {
                 .gpu
                 .draw_group(&self.device, scene_depth, copy)
         });
+        let half_particle_group = self.graph.try_view("fx.half_depth").map(|half_depth| {
+            self.particles
+                .gpu
+                .draw_group(&self.device, half_depth, &self.post.white)
+        });
         let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
             .iter()
             .map_while(|name| self.graph.try_view(name))
@@ -254,6 +260,7 @@ impl Renderer {
             backface_fx_group,
             scene_depth,
             particle_group,
+            half_particle_group,
             metaball_groups,
             fx_lean,
         }

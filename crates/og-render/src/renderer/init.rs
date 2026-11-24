@@ -560,6 +560,7 @@ impl Renderer {
             &sprite_layout,
             &off.leave_out(fluid_shared_source()),
             desc.particles,
+            samples,
         );
         let lights_2d = light2d::Light2dRenderer::new(&device);
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
