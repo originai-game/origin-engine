@@ -350,7 +350,40 @@ material, without another image copy. Under minification it fades back to
 ordinary filtered mip sampling to avoid shifting the distant colour
 distribution; this is not a guarantee of repetition-free distant walls.
 
-## 6. Pitfalls
+## 6. Streets on terrain
+
+When a district crosses a height field, give it the terrain asset to
+carve at cook time:
+
+```text
+terrain "terrain/land.ogt" {
+  depth 0.25
+}
+```
+
+Place the district and terrain in the same local coordinate space. Roads
+are at local y = 0; the cook lowers samples under their footprint using
+the same underside projection as TerrainStamp. `depth` is clearance under
+the road, in terrain metres (omitted: zero). Footprint-edge samples meet
+the road itself. It cuts only: ground already below that surface stays
+below it, so prepare or fill low terrain separately when a road needs
+support. Neither source heightmaps nor terrain outside the footprint are
+rewritten.
+
+The carve includes the pavement strip but not block interiors, so it is
+not a way to level an entire building site. Buildings still start at
+the pavement's height; prepare building sites separately on hilly land.
+This does not drape the district or choose a road grade. Both region
+grids and `along` paths use their generated footprints, including turns.
+
+Place and stream the terrain as usual; naming it here changes its cooked
+height field, not its scene placement. Its tiles, LODs, height sampling,
+terrain collisions and navmeshes baked from it read the carved surface.
+Several districts may carve one terrain; overlapping streets keep the
+lowest surface. Editing or removing a district's carve invalidates the
+terrain and its nav bakes without changing the original asset files.
+
+## 7. Pitfalls
 
 - A label no material covers fails the cook, naming the label and the
   grammar; a typo in a grammar's `label` is the usual cause.

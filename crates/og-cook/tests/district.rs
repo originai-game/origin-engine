@@ -39,6 +39,116 @@ const LAMP: &str = "type model\nversion 1\n---\nmaterial \"iron\" {\n  color 0.0
 const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point 0 0\n  point 120 0\n  point 120 80\n  point 0 80\n}\nstreets {\n  grid 60 40\n  width 8\n  sidewalk 2\n  kerb 0.15\n}\nlots {\n  width 6 12\n  depth 10 16\n}\nbuildings {\n  density 1\n  height 6 12\n  rule \"grammars/house.ogt\"\n}\nprop \"lamp\" {\n  model \"models/lamp.ogt\"\n  every 20\n  kerb 0.4\n  collider capsule 0.1 3.8\n}\nmaterials \"materials/town.ogt\"\ncells {\n  size 64\n  load 100\n}\n";
 
 #[test]
+fn streets_carve_their_terrain_without_cutting_block_interiors() {
+    use og_ai::nav::cooked::BundleNav;
+    use og_core::glam::{Vec2, Vec3};
+    let area = "region {\n point -48 -48\n point 48 -48\n point 48 48\n point -48 48\n}\nstreets {\n grid 48 48\n width 8\n sidewalk 2\n kerb 0.15\n}\n";
+    let path =
+        "along {\n point -48 0\n point 0 0\n point 32 32\n width 8\n sidewalk 2\n depth 16\n}\n";
+    for (name, region, road, untouched) in [
+        ("area", area, Vec2::new(24.0, 0.0), Vec2::new(24.0, 24.0)),
+        (
+            "concave",
+            &area.replace(" point 48 48", " point 48 0\n point 0 0\n point 0 48"),
+            Vec2::new(0.0, -24.0),
+            Vec2::new(-24.0, 24.0),
+        ),
+        ("path", path, Vec2::new(16.0, 16.0), Vec2::new(24.0, -24.0)),
+    ] {
+        let root = project(&format!("carve-{name}"));
+        write(&root, "grammars/house.ogt", GRAMMAR);
+        write(
+            &root,
+            "materials/town.ogt",
+            &LIBRARY.replace("  map \"textures/brick.png\"\n", ""),
+        );
+        let district = format!(
+            "type district\nversion 1\n---\nseed 3\n{region}lots {{\n width 6 12\n depth 10 16\n}}\nbuildings {{\n density 1\n height 6 12\n rule \"grammars/house.ogt\"\n}}\nmaterials \"materials/town.ogt\"\nterrain \"land.ogt\" {{\n depth 0.5\n}}\n"
+        );
+        write(&root, "districts/town.ogt", &district);
+        write(
+            &root,
+            "land.ogt",
+            "type terrain\nversion 1\n---\nheightmap \"h.png\"\nheight -2 8\nsize 128 128\ntile 64\n",
+        );
+        // One already-low point must stay low. Everything else is above
+        // the street; the asymmetric points distinguish a street from a block.
+        let image = image::ImageBuffer::<image::Luma<u16>, Vec<u16>>::from_fn(129, 129, |x, y| {
+            image::Luma([if (x, y) == (40, 64) { 0 } else { 65535 }])
+        });
+        image.save(root.join("assets/h.png")).unwrap();
+        write(
+            &root,
+            "walk.ogt",
+            "type navmesh\nversion 1\n---\nterrain \"land.ogt\"\ncellSize 0.5\ncellHeight 0.05\nbounds {\n min -36 -10 -2\n max -30 12 2\n}\nagent {\n radius 0.2\n height 1\n}\n",
+        );
+        for depth in [0.5, 4.0] {
+            write(
+                &root,
+                "districts/town.ogt",
+                &district.replace("depth 0.5", &format!("depth {depth}")),
+            );
+            let report = cook(&root);
+            assert!(report.ok(), "{name}: {:?}", report.errors());
+            let bundle = Bundle::open(&root.join("cooked")).unwrap();
+            let terrain = bundle.load_terrain("land.ogt").unwrap().field().unwrap();
+            assert!(
+                (terrain.height(road) + depth).abs() < 0.001,
+                "{name}: street not carved to {}",
+                -depth
+            );
+            assert!(
+                (terrain.height(untouched) - 8.0).abs() < 0.001,
+                "{name}: block/outside was carved"
+            );
+            assert!((terrain.height(Vec2::new(-24.0, 0.0)) - (-2.0f32).min(-depth)).abs() < 0.001);
+            assert!((terrain.height(Vec2::new(60.0, 40.0)) - 8.0).abs() < 0.001);
+            // Nav reads the same flattened surface, including after only
+            // the district changes. A bake of the uncarved heightmap fails.
+            let bytes = bundle.read("walk.ogt").unwrap();
+            let (field, tiles) = bundle.navmesh("walk.ogt", &bytes).unwrap();
+            let nav = og_ai::nav::NavMesh::from_tiles(field, tiles).unwrap();
+            let p = nav
+                .find_path(
+                    Vec3::new(-34.0, -depth, 0.0),
+                    Vec3::new(-32.0, -depth, 0.0),
+                    Vec3::splat(0.5),
+                )
+                .expect("street is walkable");
+            assert!(p.complete);
+            // An unchanged cook keeps the same public height samples.
+            assert!(cook(&root).ok());
+            assert_eq!(
+                terrain,
+                Bundle::open(&root.join("cooked"))
+                    .unwrap()
+                    .load_terrain("land.ogt")
+                    .unwrap()
+                    .field()
+                    .unwrap()
+            );
+        }
+        write(
+            &root,
+            "districts/town.ogt",
+            &district.replace("terrain \"land.ogt\" {\n depth 0.5\n}\n", ""),
+        );
+        assert!(cook(&root).ok());
+        let field = Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .load_terrain("land.ogt")
+            .unwrap()
+            .field()
+            .unwrap();
+        assert_eq!(
+            field.height(road),
+            8.0,
+            "removing the carve restores the source"
+        );
+    }
+}
+
+#[test]
 fn a_district_cooks_into_streaming_cells_of_its_own_models() {
     let root = project("cells");
     write(&root, "grammars/house.ogt", GRAMMAR);

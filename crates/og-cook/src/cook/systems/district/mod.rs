@@ -31,6 +31,7 @@
 mod build;
 mod glb;
 pub(crate) mod parse;
+pub(super) mod terrain;
 mod texts;
 
 use super::*;
@@ -104,6 +105,12 @@ fn plan_check<'a>(
 /// and libraries they name are consumed.
 pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let mut extra = Vec::new();
+    let terrains: BTreeSet<String> = sources
+        .iter()
+        .filter(|s| s.kind == &super::terrain::TERRAIN)
+        .map(|s| s.rel.clone())
+        .collect();
+    let mut carves = Vec::new();
     for s in sources.iter_mut() {
         if s.kind != &DISTRICT || s.error.is_some() {
             continue;
@@ -117,6 +124,13 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
             // What it names is part of it, built or not.
             consumed.insert(d.materials.clone());
             consumed.extend(d.buildings.rules.iter().map(|r| r.grammar.clone()));
+            if let Some((id, _)) = &d.terrain
+                && !terrains.contains(id)
+            {
+                return Err(format!(
+                    "terrain `{id}` is not a terrain asset under assets/"
+                ));
+            }
             build::build(&s.rel, &d, &read)
         });
         let out = match built {
@@ -128,6 +142,9 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         };
         s.bytes = out.scene.into_bytes();
         s.kind = &scene::SCENE;
+        if let Some(carve) = out.carve {
+            carves.push(carve);
+        }
         let made = |rel: String, kind: Kind, bytes: Vec<u8>| Source {
             path: s
                 .path
@@ -151,6 +168,27 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         }
         for (rel, glb) in out.models {
             extra.push(made(rel, &crate::cook::model::MODEL, glb));
+        }
+    }
+    for (id, carve) in carves {
+        // Settings enter the cook stamp. A nav bake reading this terrain
+        // needs the same carve and must invalidate when its streets move.
+        let carve = carve.with(og_core::ogt::Value::String(id.clone()));
+        for s in sources.iter_mut() {
+            let nav_uses = s.kind == &super::navmesh::NAVMESH
+                && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|doc| {
+                    doc.body
+                        .get_all("terrain")
+                        .any(|e| e.values.first().and_then(|v| v.as_str()) == Some(id.as_str()))
+                });
+            if s.rel != id && !nav_uses {
+                continue;
+            }
+            let (text, doc) = s
+                .settings
+                .get_or_insert_with(|| (String::new(), Document::new("import", 1)));
+            doc.body.push(carve.clone());
+            *text = doc.to_text().expect("generated terrain settings");
         }
     }
     sources.extend(extra);

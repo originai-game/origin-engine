@@ -19,6 +19,7 @@ pub(super) struct Output {
     pub scene: String,
     pub scenes: Vec<(String, String)>,
     pub models: Vec<(String, Vec<u8>)>,
+    pub carve: Option<(String, og_core::ogt::Entry)>,
 }
 
 /// Triangles by material and detail level.
@@ -199,7 +200,7 @@ fn level(p: DVec3) -> DVec2 {
 
 /// The road's ground: the region, or the roadway along the street a
 /// region lines.
-fn roads(d: &District, plan: &Layout) -> Vec<Vec<DVec2>> {
+pub(super) fn roads(d: &District, plan: &Layout) -> Vec<Vec<DVec2>> {
     match &d.region {
         Region::Area(points) => vec![points.clone()],
         Region::Along { .. } => {
@@ -530,6 +531,10 @@ pub(super) fn build(
         scene: String::new(),
         scenes: Vec::new(),
         models: Vec::new(),
+        carve: d
+            .terrain
+            .as_ref()
+            .map(|(id, depth)| (id.clone(), super::terrain::carve(d, &plan, *depth))),
     };
     let mut placed = Vec::new();
     let group = format!("district-{:08x}", hash_bytes(rel.as_bytes()) as u32);

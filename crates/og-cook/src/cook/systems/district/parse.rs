@@ -135,6 +135,8 @@ pub(crate) struct District {
     /// The `hlod` block, given to each cell's sub-scene as written.
     pub hlod: Option<Entry>,
     pub merge: bool,
+    /// The terrain asset, in the district's local space, and carve depth.
+    pub terrain: Option<(String, f64)>,
 }
 
 fn street(e: &Entry) -> Result<StreetDesc, String> {
@@ -305,6 +307,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
             "cells",
             "hlod",
             "merge",
+            "terrain",
         ],
         "a district",
     )?;
@@ -421,6 +424,28 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
         }
         None => None,
     };
+    let terrain = b
+        .get("terrain")
+        .map(|e| {
+            let id = match e.values.as_slice() {
+                [Value::String(id)] if !id.is_empty() => crate::runtime::asset_id(id).to_string(),
+                _ => return Err(at(e, "names its terrain asset in quotes")),
+            };
+            let depth = if let Some(b) = &e.block {
+                known(b, &["depth"], "terrain")?;
+                b.get("depth").map(one).transpose()?.unwrap_or(0.0)
+            } else {
+                0.0
+            };
+            if depth < 0.0 || depth > f32::MAX as f64 {
+                return Err(at(
+                    e,
+                    "depth is a finite nonnegative number in terrain metres",
+                ));
+            }
+            Ok((id, depth))
+        })
+        .transpose()?;
     Ok(District {
         seed: seed as u64,
         region,
@@ -434,6 +459,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
         cells,
         hlod: b.get("hlod").cloned(),
         merge: b.get("merge").map(flag).transpose()?.unwrap_or(true),
+        terrain,
     })
 }
 

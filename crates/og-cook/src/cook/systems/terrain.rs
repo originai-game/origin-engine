@@ -768,7 +768,9 @@ pub(crate) fn cook_terrain(
         std::str::from_utf8(&s.bytes).map_err(|_| CookError("a terrain is text (UTF-8)".into()))?;
     let root = assets_root(s);
     let doc = parse(&s.rel, &root, text).map_err(CookError)?;
-    let source = field(&doc, &root).map_err(CookError)?;
+    let mut source = field(&doc, &root).map_err(CookError)?;
+    super::district::terrain::apply(s.settings.as_ref().map(|(_, d)| d), &s.rel, &mut source)
+        .map_err(CookError)?;
     let (columns, rows, size) = (source.columns, source.rows, source.size);
     let (sea, river_length) = source.generated.unwrap_or((None, 0.0));
     // A 16-bit heightmap's samples are already steps of the declared
@@ -831,7 +833,10 @@ pub(crate) fn cook_terrain(
     field.check().map_err(CookError)?;
     let layout = field.layout(doc.tile).map_err(CookError)?;
     let (lo_all, hi_all) = field.range();
-    let (step_lo, step_hi) = declared.unwrap_or((lo_all, hi_all));
+    // A street carve can extend a heightmap below its declared range.
+    let (step_lo, step_hi) = declared
+        .map(|(lo, hi)| (lo.min(lo_all), hi.max(hi_all)))
+        .unwrap_or((lo_all, hi_all));
     let span = (step_hi - step_lo).max(f32::MIN_POSITIVE);
     let pyramid = field
         .control

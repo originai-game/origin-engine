@@ -267,6 +267,7 @@ fn scene_triangles(
 /// split along the renderer's diagonal, its holes left out), standing at `position`, only the
 /// cells reaching into `bounds` when given. Returns how many it added.
 fn terrain_triangles(
+    settings: Option<&Document>,
     root: &Path,
     rel: &str,
     position: Vec3,
@@ -277,7 +278,8 @@ fn terrain_triangles(
     let text = std::fs::read_to_string(root.join(rel))
         .map_err(|_| "does not exist under assets/".to_string())?;
     let doc = super::terrain::parse(rel, root, &text)?;
-    let field = super::terrain::field(&doc, root)?;
+    let mut field = super::terrain::field(&doc, root)?;
+    super::district::terrain::apply(settings, rel, &mut field)?;
     let heights = field.heights;
     let holes = field.holes;
     let (cols, rows) = (field.columns as usize, field.rows as usize);
@@ -620,6 +622,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         let tb = e.block.as_ref();
         let step = f32_of(tb, "step", 1.0).max(1.0) as usize;
         let n = terrain_triangles(
+            s.settings.as_ref().map(|(_, d)| d),
             &root,
             p,
             vec3_of(tb, "position", Vec3::ZERO),
