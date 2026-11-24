@@ -1495,6 +1495,11 @@ impl Tree {
                             self.input.per[e as usize].cue = value.into();
                             self.paint = true;
                         }
+                        // `haptic`: preset override played with this node's
+                        // non-hover interactions and cues (`"none"` silences).
+                        "haptic" => {
+                            self.input.per[e as usize].haptic = value.into();
+                        }
                         // `anchor` an entity's number or a world point
                         // `x,y,z` (empty: back in flow): the host places
                         // the node (§World); any other text is a UI

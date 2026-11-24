@@ -693,6 +693,7 @@ impl Texts {
                         mask: 0,
                         filter: 0,
                         round: 0,
+                        blend: 0,
                     });
                     if list == 0 {
                         fill_ink.push(run.ink);

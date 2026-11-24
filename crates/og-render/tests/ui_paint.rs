@@ -138,6 +138,7 @@ fn solid(rect: [f32; 4], [r, g, b]: [u8; 3], alpha: f32) -> PaintQuad {
         mask: 0,
         filter: 0,
         round: 0,
+        blend: 0,
     }
 }
 

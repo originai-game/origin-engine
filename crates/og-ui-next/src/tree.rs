@@ -526,6 +526,9 @@ pub struct Tree {
     /// Each element's colour matrix in the last paint, its own composed
     /// over its ancestors': one of [`Tree::drawn`]'s filters plus 1, 0 none.
     filters: Vec<u32>,
+    /// Each element's blend mode in the last paint ([`og_draw::paint::PaintBlend`]):
+    /// 0 normal, 1 add, 2 screen, 3 multiply.
+    blends: Vec<u8>,
     /// The transforms of the last paint, which `xfs` index: [`Tree::drawn`]
     /// is the host's to take, and the probe reads where a text was drawn
     /// after it has.
@@ -614,7 +617,7 @@ mod particles;
 mod stacking;
 mod thumb;
 mod vcursor;
-pub use input::{Cue, Play, SoundTable};
+pub use input::{Cue, HapticTable, Play, SoundTable};
 pub use ops::{EVENTS, Event as OpEvent, Fired, MAGIC, REFUSED, Resolve};
 pub use vcursor::{Pad as CursorPad, Pointer as CursorPointer, VirtualCursorDesc};
 
@@ -680,6 +683,7 @@ impl Tree {
             xfs: Vec::new(),
             masks: Vec::new(),
             filters: Vec::new(),
+            blends: Vec::new(),
             painted_transforms: Vec::new(),
             textures: None,
             order: Vec::new(),
@@ -1667,6 +1671,8 @@ impl Tree {
         self.masks.resize(self.els.len(), 0);
         self.filters.clear();
         self.filters.resize(self.els.len(), 0);
+        self.blends.clear();
+        self.blends.resize(self.els.len(), 0);
         // The nodes painting for the first time with a `sound` to play.
         let mut sounding: Vec<u32> = Vec::new();
         // The groups open while their subtrees paint, innermost last, and
@@ -1828,6 +1834,13 @@ impl Tree {
             } else {
                 self.filters[el.arena_parent as usize]
             };
+            self.blends[e] = if s.blend != 0 {
+                s.blend
+            } else if el.arena_parent == NONE {
+                0
+            } else {
+                self.blends[el.arena_parent as usize]
+            };
             if !visible {
                 continue;
             }
@@ -1891,9 +1904,10 @@ impl Tree {
                 let gi = p.shaped_gradient(paint_gradient(g, area), g.stops().iter().copied());
                 self.masks[e] = gi + 1;
             }
-            let (outer_mask, outer_filter) = (self.masks[e], self.filters[e]);
+            let (outer_mask, outer_filter, outer_blend) =
+                (self.masks[e], self.filters[e], self.blends[e]);
             if group {
-                (self.masks[e], self.filters[e]) = (0, 0);
+                (self.masks[e], self.filters[e], self.blends[e]) = (0, 0, 0);
             }
             // Its own filters, then its ancestors' over them (CSS's filter
             // on each of the nested groups).
@@ -1996,6 +2010,7 @@ impl Tree {
                         mask: outer_mask,
                         filter: outer_filter,
                         round: pround,
+                        blend: u32::from(outer_blend),
                         ..quad(
                             PaintKind::Group,
                             [0.0; 4],
@@ -2679,6 +2694,14 @@ impl Tree {
                     (q.mask, q.filter) = (mask, filter);
                 }
             }
+            let blend = self.blends[e];
+            if blend != 0 {
+                for (i, q) in self.drawn.quads[start..].iter_mut().enumerate() {
+                    if Some(start + i) != backdrop && q.blend == 0 {
+                        q.blend = u32::from(blend);
+                    }
+                }
+            }
             // A backdrop takes its mask, and its ancestors' colour filters
             // as what is under it would.
             if let Some(at) = backdrop {
@@ -3283,6 +3306,7 @@ fn quad(
         mask: 0,
         filter: 0,
         round: 0,
+        blend: 0,
     }
 }
 

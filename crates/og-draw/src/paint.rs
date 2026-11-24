@@ -74,6 +74,21 @@ pub enum PaintKind {
 /// [`PaintKind::Group`]'s flags: cut to the quad's rounded box.
 pub const GROUP_SHAPED: u32 = 1;
 
+/// How a [`PaintQuad`] blends into what is behind it (in the pass's encoded
+/// values): CSS's `mix-blend-mode` and `<Particles>`'s emitter `blend`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(u32)]
+pub enum PaintBlend {
+    #[default]
+    Normal = 0,
+    /// Additive (`mix-blend-plus-lighter`, additive particles): `src * a + dst`.
+    Add = 1,
+    /// Screen (`mix-blend-screen`): `src * a + dst * (1 - src * a)`.
+    Screen = 2,
+    /// Multiply (`mix-blend-multiply`, multiply particles): `dst * mix(1, src, a)`.
+    Multiply = 3,
+}
+
 /// One quad of the arena (`struct PaintIn` in ui_paint.wgsl's terms
 /// before the renderer resolves glyphs).
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
@@ -112,6 +127,8 @@ pub struct PaintQuad {
     /// in, or a spotlight's hole): `round - 1` of [`Paint::rounds`],
     /// which every kind is cut by, antialiased; 0 none.
     pub round: u32,
+    /// Its blend mode ([`PaintBlend`]): 0 normal, 1 add, 2 screen, 3 multiply.
+    pub blend: u32,
 }
 
 /// A rounded clip ([`PaintQuad::round`]): the box `rect` (x0, y0, x1, y1,

@@ -10,11 +10,15 @@
     "Reward.pop": "animate-rise",
     "Tab.indicator": "transition-layout ease-spring-[300,34] glide-tab",
     "Bar.fill": "transition-layout duration-400 ease-out",
-    "Bar.trail": "transition-layout duration-500 delay-500 ease-out",
+    "Bar.trail": "transition-layout duration-trail delay-trail-hold ease-out",
     "Attention.cue": "animate-nudge",
     "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-260 ease-out starting:opacity-0 exit:opacity-0 exit:duration-180 exit:ease-exit"
   },
   "theme": {
+    "duration": {
+      "trail": 500,
+      "trail-hold": 450
+    },
     "scale": {
       "nudge": 0.99,
       "lift": 1.03,

@@ -1,0 +1,21 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI classes mix-blend-normal, mix-blend-add, mix-blend-screen, mix-blend-multiply",
+      "summary": "A UI element and the particles it emits blend with what lies under them by its mix-blend class (normal, add, screen or multiply), down its subtree."
+    },
+    {
+      "member": "haptic (TSX prop), pack.json haptics",
+      "summary": "A node's haptic prop (tick, tap, thud, double, buzz, success, warning, error, or none to silence it) plays when it fires an interaction or sound cue other than hover; a pack's haptics table sets them per slot and event, falling back like sounds, scaled by the player's haptic strength."
+    },
+    {
+      "member": "theme.json effects, density",
+      "summary": "A theme's effects (glow, pixel-burst, ink-splash …) and density (comfortable, touch …) compile into its pack's shadows, text shadows and control heights; the cartoon, fantasy, ink, minimal, pixel and storybook themes tune their Combat HUD with them."
+    }
+  ],
+  "fixed": [
+    "MTSDF text fills by the median of its channels and strokes and glows by its true distance, so outlined and glowing UI text no longer shows seams at its corners.",
+    "The default pack's Hit.arc, Hold.fill.danger and Bar.trail slots name classes that exist (stroke-arc, bg-danger-fg, duration-trail delay-trail-hold)."
+  ]
+}

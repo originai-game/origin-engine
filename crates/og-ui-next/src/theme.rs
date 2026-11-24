@@ -1023,6 +1023,150 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             }
         }
     }
+    if let Some(ef) = &effects {
+        let accent_hex = col("accent")
+            .or_else(|| col("source"))
+            .and_then(|c| lch(c).ok())
+            .map(hex);
+        let glow = ef.get("textGlow").and_then(Value::as_f64).unwrap_or(0.0);
+        if glow > 0.0 {
+            let blur = (glow * 24.0).round().clamp(4.0, 18.0) as u32;
+            let alpha = (glow.clamp(0.0, 1.0) * 255.0).round() as u8;
+            let tint = accent_hex.as_deref().unwrap_or("#ffffff");
+            let mut ts = Map::new();
+            ts.insert(
+                "glow".into(),
+                json!(format!("0 0 {blur}px {tint}{alpha:02x}")),
+            );
+            ts.insert(
+                "tag".into(),
+                json!(format!(
+                    "1.5px 0 0 contrast-color(currentColor), -1.5px 0 0 contrast-color(currentColor), 0 1.5px 0 contrast-color(currentColor), 0 -1.5px 0 contrast-color(currentColor), 0 0 {blur}px {tint}{alpha:02x}"
+                )),
+            );
+            deep(
+                theme.entry("textShadow").or_insert(json!({})),
+                &Value::Object(ts),
+            );
+        }
+        if let Some(kind) = ef.get("shadow").and_then(Value::as_str) {
+            let pixel = ef.get("pixel").and_then(Value::as_bool).unwrap_or(false);
+            let mut sh = Map::new();
+            match kind {
+                "none" if pixel => {
+                    sh.insert("panel".into(), json!("0 3px 0 0 #00000099"));
+                    sh.insert("plate".into(), json!("0 2px 0 0 #00000080"));
+                    sh.insert("float".into(), json!("0 2px 0 0 #00000099"));
+                    sh.insert("overlay".into(), json!("0 4px 0 0 #000000b3"));
+                    sh.insert("raise".into(), json!("0 2px 0 0 #00000073"));
+                    sh.insert("raise-hover".into(), json!("0 3px 0 0 #00000099"));
+                }
+                "none" => {
+                    for k in ["panel", "plate", "float", "overlay", "raise", "raise-hover"] {
+                        sh.insert(k.into(), json!("none"));
+                    }
+                }
+                "glow" => {
+                    let tint = accent_hex.as_deref().unwrap_or("#38e8ff");
+                    sh.insert("glow-sm".into(), json!(format!("0 0 8px 0 {tint}cc")));
+                    sh.insert("glow".into(), json!(format!("0 0 14px 0 {tint}cc")));
+                    sh.insert("glow-lg".into(), json!(format!("0 0 22px 0 {tint}e6")));
+                    sh.insert(
+                        "plate".into(),
+                        json!(format!(
+                            "inset 0 1px 0 0 #ffffff1f, 0 0 14px -2px {tint}59, 0 6px 18px -6px #00000099"
+                        )),
+                    );
+                    sh.insert(
+                        "panel".into(),
+                        json!(format!(
+                            "inset 0 1px 0 0 #ffffff24, 0 0 20px -4px {tint}4d, 0 20px 44px -16px #000000cc"
+                        )),
+                    );
+                }
+                "soft" => {
+                    sh.insert(
+                        "panel".into(),
+                        json!({
+                            "light": "inset 0 1px 0 0 #ffffffcc, 0 14px 36px -12px #0a10202e",
+                            "dark": "inset 0 1px 0 0 #ffffff14, 0 18px 42px -12px #00000099"
+                        }),
+                    );
+                    sh.insert(
+                        "plate".into(),
+                        json!({
+                            "light": "inset 0 1px 0 0 #ffffffb3, 0 6px 18px -4px #0a102026",
+                            "dark": "inset 0 1px 0 0 #ffffff12, 0 8px 22px -4px #00000073"
+                        }),
+                    );
+                    sh.insert(
+                        "float".into(),
+                        json!({
+                            "light": "0 8px 24px -6px #0a102026",
+                            "dark": "0 10px 28px -6px #00000080"
+                        }),
+                    );
+                }
+                "drop" => {
+                    if let Some(tint) = accent_hex.as_deref() {
+                        sh.insert("glow-sm".into(), json!(format!("0 0 8px 0 {tint}")));
+                        sh.insert("glow".into(), json!(format!("0 0 12px 0 {tint}")));
+                        sh.insert("glow-lg".into(), json!(format!("0 0 16px 0 {tint}")));
+                    }
+                }
+                _ => {}
+            }
+            if !sh.is_empty() {
+                deep(
+                    theme.entry("shadow").or_insert(json!({})),
+                    &Value::Object(sh),
+                );
+            }
+        }
+    }
+    if let Some(d) = density
+        .as_ref()
+        .and_then(|d| d.get("density").and_then(Value::as_str))
+    {
+        let extra: &[(&str, &str)] = match d {
+            "comfortable" => &[
+                ("Button.plate", "min-h-10 px-4"),
+                ("Button.plate.primary", "min-h-10 px-4"),
+                ("Button.plate.danger", "min-h-10 px-4"),
+                ("Field.frame", "min-h-11 px-3.5 py-2.5"),
+                ("Row.frame", "min-h-11 px-3.5 py-2"),
+                ("Tab.item", "min-h-11 px-4"),
+            ],
+            "touch" => &[
+                ("Button.plate", "min-h-11 px-4"),
+                ("Button.plate.primary", "min-h-11 px-4"),
+                ("Button.plate.danger", "min-h-11 px-4"),
+                ("Field.frame", "min-h-12 px-4 py-2.5"),
+                ("Row.frame", "min-h-12 px-4 py-2.5"),
+                ("Tab.item", "min-h-12 px-4"),
+            ],
+            _ => &[],
+        };
+        for &(slot, add) in extra {
+            let base = variants
+                .get(slot)
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+                .unwrap_or_else(|| {
+                    crate::pack::design::SLOTS
+                        .iter()
+                        .find(|(k, _, _)| *k == slot)
+                        .map(|(_, _, v)| (*v).to_owned())
+                        .unwrap_or_default()
+                });
+            let merged = if base.is_empty() {
+                add.to_owned()
+            } else {
+                format!("{base} {add}")
+            };
+            variants.insert(slot.into(), json!(merged));
+        }
+    }
     if pack.contains_key("seeds") {
         solve_pairs(&seed_css(&pack), &mut colors);
     }

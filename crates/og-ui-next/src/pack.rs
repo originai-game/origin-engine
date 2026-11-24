@@ -140,8 +140,33 @@ pub struct NineSlice {
     pub tint: bool,
 }
 
+/// The haptic preset names a pack or element prop accepts.
+pub const HAPTIC_PRESETS: [&str; 9] = [
+    "tick", "tap", "thud", "double", "buzz", "success", "warning", "error", "none",
+];
+
+/// Parses a haptic preset name (`"none"` yields [`og_ui_model::Haptic::NONE`]).
+pub fn parse_haptic(name: &str) -> Option<og_ui_model::Haptic> {
+    use og_ui_model::{Haptic, HapticPreset as P};
+    Some(match name {
+        "tick" => Haptic::preset(P::Tick),
+        "tap" => Haptic::preset(P::Tap),
+        "thud" => Haptic::preset(P::Thud),
+        "double" => Haptic::preset(P::Double),
+        "buzz" => Haptic::preset(P::Buzz),
+        "success" => Haptic::preset(P::Success),
+        "warning" => Haptic::preset(P::Warning),
+        "error" => Haptic::preset(P::Error),
+        "none" => Haptic::NONE,
+        _ => return None,
+    })
+}
+
 /// The sounds of one scope, by event.
 pub type Sounds = BTreeMap<String, Sound>;
+
+/// The haptic preset names of one scope, by event.
+pub type Haptics = BTreeMap<String, String>;
 
 /// One `pack.json` as read: nothing merged yet.
 #[derive(Clone, Debug, Default)]
@@ -169,6 +194,8 @@ pub struct Layer {
     pub images: [BTreeMap<String, NineSlice>; 2],
     /// The pack-wide sounds under `""`, a slot's under its key.
     pub sounds: BTreeMap<String, Sounds>,
+    /// The pack-wide haptics under `""`, a slot's under its key.
+    pub haptics: BTreeMap<String, Haptics>,
 }
 
 /// The layers merged: what the cook compiles and the runtime loads.
@@ -186,6 +213,7 @@ pub struct Pack {
     pub icon_sets: Vec<String>,
     images: [BTreeMap<String, NineSlice>; 2],
     pub sounds: BTreeMap<String, Sounds>,
+    pub haptics: BTreeMap<String, Haptics>,
 }
 
 impl Layer {
@@ -328,9 +356,47 @@ impl Layer {
                         }
                     }
                 }
+                "haptics" => {
+                    let preset = |v: &Value, at: &str| -> Result<String, String> {
+                        let name = v
+                            .as_str()
+                            .ok_or_else(|| format!("{at}: one of {}", HAPTIC_PRESETS.join(", ")))?;
+                        if !HAPTIC_PRESETS.contains(&name) {
+                            return Err(format!("{at}: one of {}", HAPTIC_PRESETS.join(", ")));
+                        }
+                        Ok(name.to_owned())
+                    };
+                    for (k, v) in object(v, "haptics")? {
+                        if SOUND_EVENTS.contains(&k.as_str()) {
+                            let h = preset(v, &format!("haptics.{k}"))?;
+                            layer
+                                .haptics
+                                .entry(String::new())
+                                .or_default()
+                                .insert(k.clone(), h);
+                        } else if variant_key(k) {
+                            let slot = layer.haptics.entry(k.clone()).or_default();
+                            for (event, v) in object(v, &format!("haptics.{k}"))? {
+                                if !SOUND_EVENTS.contains(&event.as_str()) {
+                                    return Err(format!(
+                                        "haptics.{k}.{event}: one of {}",
+                                        SOUND_EVENTS.join(", ")
+                                    ));
+                                }
+                                let h = preset(v, &format!("haptics.{k}.{event}"))?;
+                                slot.insert(event.clone(), h);
+                            }
+                        } else {
+                            return Err(format!(
+                                "haptics.{k}: an event ({}) or Component.slot[.variant]",
+                                SOUND_EVENTS.join(", ")
+                            ));
+                        }
+                    }
+                }
                 other => {
                     return Err(format!(
-                        "{other}: not a pack key; one of about, scheme, seeds, theme, contrast, variants, images, fonts, icons, iconSet, sounds"
+                        "{other}: not a pack key; one of about, scheme, seeds, theme, contrast, variants, images, fonts, icons, iconSet, sounds, haptics"
                     ));
                 }
             }
@@ -484,6 +550,21 @@ impl Layer {
             }
             root.insert("sounds".into(), Value::Object(m));
         }
+        if !self.haptics.is_empty() {
+            let mut m = Map::new();
+            for (scope, haptics) in &self.haptics {
+                let events: Map<String, Value> = haptics
+                    .iter()
+                    .map(|(e, p)| (e.clone(), Value::String(p.clone())))
+                    .collect();
+                if scope.is_empty() {
+                    m.extend(events);
+                } else {
+                    m.insert(scope.clone(), Value::Object(events));
+                }
+            }
+            root.insert("haptics".into(), Value::Object(m));
+        }
         Value::Object(root).to_string()
     }
 }
@@ -507,6 +588,7 @@ impl Pack {
             icon_sets: Vec::new(),
             images: Default::default(),
             sounds: BTreeMap::new(),
+            haptics: BTreeMap::new(),
         };
         let seeds: Vec<_> = layers.iter().flat_map(|l| &l.seeds).collect();
         let derived = (!seeds.is_empty()).then(|| {
@@ -554,6 +636,12 @@ impl Pack {
                     .entry(scope.clone())
                     .or_default()
                     .extend(sounds.clone());
+            }
+            for (scope, haptics) in &layer.haptics {
+                pack.haptics
+                    .entry(scope.clone())
+                    .or_default()
+                    .extend(haptics.clone());
             }
         }
         pack.themes = themes;
@@ -919,6 +1007,13 @@ mod tests {
                     .filter(|k| !k.is_empty())
                     .map(|k| ("sounds", k)),
             );
+            let keys = keys.chain(
+                layer
+                    .haptics
+                    .keys()
+                    .filter(|k| !k.is_empty())
+                    .map(|k| ("haptics", k)),
+            );
             for (what, key) in keys {
                 if !declared.contains(key) {
                     stray.push(format!("{}: {what}.{key}", file.display()));
@@ -930,5 +1025,22 @@ mod tests {
             "pack keys no component declares (declared: {declared:?}):\n{}",
             stray.join("\n")
         );
+    }
+
+    #[test]
+    fn haptics_parse_roundtrip_and_merge() {
+        let a = Layer::parse(
+            r#"{ "haptics": { "press": "tick", "Button.plate.danger": { "confirm": "thud", "hover": "none" } } }"#,
+        )
+        .unwrap();
+        let again = Layer::parse(&a.to_json()).unwrap();
+        assert_eq!(again.haptics, a.haptics);
+        let b = Layer::parse(r#"{ "haptics": { "press": "tap" } }"#).unwrap();
+        let p = Pack::new(&[Layer::default_pack(), a, b]);
+        assert_eq!(p.haptics[""]["press"], "tap");
+        assert_eq!(p.haptics["Button.plate.danger"]["confirm"], "thud");
+        assert_eq!(p.haptics["Button.plate.danger"]["hover"], "none");
+        assert!(Layer::parse(r#"{ "haptics": { "press": "bogus" } }"#).is_err());
+        assert!(Layer::parse(r#"{ "haptics": { "not_a_slot": { "press": "tap" } } }"#).is_err());
     }
 }

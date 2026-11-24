@@ -67,6 +67,8 @@ pub(crate) struct Next {
     /// The pack's sounds with their clips loaded, by scope and event,
     /// loaded with its images ([`pack_images`]).
     sounds: Rc<og_ui_next::tree::SoundTable>,
+    /// The pack's haptics by scope and event, loaded with its images.
+    haptics_table: Rc<og_ui_next::tree::HapticTable>,
     /// Warnings of a build an op batch made, for the tick's end.
     held: Vec<String>,
     /// The game's stores: their values, reads and checkpoints.
@@ -285,11 +287,23 @@ pub(crate) fn pack_images(engine: u32) {
     }
     eng.render.borrow_mut().ui_icons.under = under;
     let sounds = Rc::new(sounds);
+    let mut haptics_table = og_ui_next::tree::HapticTable::new();
+    for (scope, events) in &all.haptics {
+        let entry = haptics_table.entry(scope.clone()).or_default();
+        for (event, preset) in events {
+            if let Some(h) = og_ui_next::pack::parse_haptic(preset) {
+                entry.insert(event.clone(), h);
+            }
+        }
+    }
+    let haptics_table = Rc::new(haptics_table);
     if let Some(next) = &mut eng.render.borrow_mut().ui_next {
         if let Some(tree) = &mut next.tree {
             tree.set_sounds(sounds.clone());
+            tree.set_haptics(haptics_table.clone());
         }
         next.sounds = sounds;
+        next.haptics_table = haptics_table;
         next.images = slots;
         next.icons = icons;
         // The glyphs draw the new pack's art.
@@ -660,6 +674,7 @@ impl Next {
             cover: None,
             vcursor: None,
             sounds: Rc::default(),
+            haptics_table: Rc::default(),
             held: Vec::new(),
             store: Session::default(),
             paint: og_render::paint::Paint::default(),
@@ -698,6 +713,7 @@ impl Next {
         let t0 = now();
         let mut tree = Tree::new();
         tree.set_sounds(self.sounds.clone());
+        tree.set_haptics(self.haptics_table.clone());
         // An image's source is a Texture handle (`og.load.texture`, a
         // video player's texture).
         let (textures, sizes) = (self.textures.clone(), self.texture_sizes.clone());
@@ -792,20 +808,33 @@ impl Next {
         out
     }
 
-    /// og.ui.feedback: UI event `event`'s pack sound (the pack-wide one;
-    /// confirm and back fall back to press), its pitch at `rise` of its
+    /// og.ui.feedback: UI event `event`'s pack sound (falling back along
+    /// [`og_ui_next::pack::sound_fallback`]), its pitch at `rise` of its
     /// range when given, and its haptic pattern at the player's strength.
     pub(crate) fn feedback(&mut self, event: &str, rise: Option<f32>) {
         let table = self.sounds.get("");
-        let fallback = matches!(event, "confirm" | "back").then_some("press");
-        let cue = [Some(event), fallback]
-            .into_iter()
-            .flatten()
+        let cue = std::iter::successors(Some(event), |ev| og_ui_next::pack::sound_fallback(ev))
             .find_map(|ev| table?.get(ev));
         if let Some(play) = cue.and_then(|c| c.pick(&mut self.feedback_rng, rise)) {
             self.plays.push(play);
         }
-        let mut h = og_ui_model::event_haptic(event);
+        let h_table = self.haptics_table.get("");
+        let mut h = std::iter::successors(Some(event), |ev| {
+            (*ev != "tick")
+                .then(|| og_ui_next::pack::sound_fallback(ev))
+                .flatten()
+        })
+        .find_map(|ev| h_table?.get(ev).copied())
+        .unwrap_or_else(|| {
+            if matches!(event, "hover" | "tick") {
+                og_ui_model::Haptic::NONE
+            } else {
+                std::iter::successors(Some(event), |ev| og_ui_next::pack::sound_fallback(ev))
+                    .map(og_ui_model::event_haptic)
+                    .find(|h| h.count > 0)
+                    .unwrap_or(og_ui_model::Haptic::NONE)
+            }
+        });
         let k = self.haptic_strength;
         if h.count > 0 && k > 0.0 && self.haptics.len() < 16 {
             for p in &mut h.pulses {
@@ -816,9 +845,29 @@ impl Next {
         }
     }
 
-    /// The haptic patterns og.ui.feedback played since the last take.
+    /// The haptic patterns og.ui.feedback and the tree's controls played
+    /// since the last take, scaled by the player's haptic strength.
     pub(crate) fn take_haptics(&mut self) -> Vec<og_ui_model::Haptic> {
-        std::mem::take(&mut self.haptics)
+        let mut out = std::mem::take(&mut self.haptics);
+        if let Some(t) = self.tree.as_mut() {
+            let tree_haptics = t.take_haptics();
+            let k = self.haptic_strength;
+            if k > 0.0 {
+                for mut h in tree_haptics {
+                    if out.len() >= 16 {
+                        break;
+                    }
+                    if h.count > 0 {
+                        for p in &mut h.pulses {
+                            p.low *= k;
+                            p.high *= k;
+                        }
+                        out.push(h);
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// The string tables the batches since the last call named, for the

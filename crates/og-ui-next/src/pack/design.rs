@@ -1007,7 +1007,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Hit.arc",
         "one hit's direction arc, fading as its hit goes",
-        "stroke-foe stroke-3 transition duration-arc exit:opacity-0",
+        "stroke-foe stroke-arc transition duration-arc exit:opacity-0",
     ),
     (
         "Hit.arc.shield",
@@ -1198,7 +1198,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Hold.fill.danger",
         "a destructive hold's progress",
-        "bg-danger",
+        "bg-danger-fg",
     ),
     (
         "Hold.fill.primary",
@@ -1583,12 +1583,11 @@ impl Timing<'_> {
         )
     }
 
-    /// `Bar.trail`: what was lost draining after the fill, on the trail row.
+    /// `Bar.trail`: what was lost draining after the fill, using the
+    /// theme's `duration.trail` and `duration.trail-hold` tokens.
     fn trail(&self) -> String {
         format!(
-            "transition-layout duration-{} delay-{} ease-{}",
-            self.ms("--motion-timing-trail-duration"),
-            self.ms("--motion-timing-trail-delay"),
+            "transition-layout duration-trail delay-trail-hold ease-{}",
             self.ease("--motion-timing-bar-easing")
         )
     }

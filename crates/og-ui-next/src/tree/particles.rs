@@ -19,17 +19,19 @@
 //! turned by its rotation or along its velocity (`align velocity`). What
 //! needs the scene does not: wind and force fields, collision, lighting,
 //! distortion, trails, meshes, effect materials, texture arrays, glow and
-//! sub-emitters; the arena blends alpha whatever `blend` says
-//! ([`Particles::undrawn`] names the first such line for a warning).
+//! sub-emitters; `Additive` and `Multiply` particle blend modes draw
+//! through the UI painter's blend pipelines while `Subtractive` falls back
+//! to alpha ([`Particles::undrawn`] names the first undrawn line for a
+//! warning).
 
 use super::Tree;
 use og_core::glam::{Mat4, Vec3};
 use og_core::math;
-use og_draw::paint::{IMAGE_FILL, Paint, PaintKind, PaintQuad};
+use og_draw::paint::{IMAGE_FILL, Paint, PaintBlend, PaintKind, PaintQuad};
 use og_env::force::Forces;
 use og_render_data::{
-    CpuParticles, EmitterHandle, EmitterShape, ParticleAlign, ParticleEmitter, ParticleRender,
-    ParticleSystem, SimulationSpace, appearance, sheet_frames,
+    CpuParticles, EmitterHandle, EmitterShape, ParticleAlign, ParticleBlend, ParticleEmitter,
+    ParticleRender, ParticleSystem, SimulationSpace, appearance, sheet_frames,
 };
 
 /// A `<Particles>` node's props and its running system.
@@ -206,6 +208,13 @@ impl Particles {
         let frames = sheet_frames(&e.sheet);
         let texture = e.texture.map(|t| t.to_bits());
         let local = e.space == SimulationSpace::Local;
+        let blend = match e.blend {
+            Some(ParticleBlend::Additive) => PaintBlend::Add as u32,
+            Some(ParticleBlend::Multiply) => PaintBlend::Multiply as u32,
+            None | Some(ParticleBlend::Alpha | ParticleBlend::Subtractive) => {
+                PaintBlend::Normal as u32
+            }
+        };
         for s in self.sim.slots.iter().filter(|s| s.alive()) {
             let ([w, h], color, rotation, frame) = appearance(e, s, frames);
             let alpha = ink[3] * color[3].clamp(0.0, 1.0);
@@ -250,6 +259,7 @@ impl Particles {
                 mask: 0,
                 filter: 0,
                 round: 0,
+                blend,
             };
             match texture {
                 Some(bits) => {

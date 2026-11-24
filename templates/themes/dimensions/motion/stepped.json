@@ -10,11 +10,14 @@
     "Reward.pop": "animate-pop",
     "Tab.indicator": "glide-tab",
     "Bar.fill": "",
-    "Bar.trail": "transition-layout duration-0 delay-400",
+    "Bar.trail": "transition-layout duration-0 delay-trail-hold",
     "Attention.cue": "animate-nudge",
     "Modal.scrim": "absolute inset-0 bg-scrim"
   },
   "theme": {
+    "duration": {
+      "trail-hold": 350
+    },
     "scale": {
       "nudge": 1,
       "lift": 1,

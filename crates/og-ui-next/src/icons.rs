@@ -303,6 +303,7 @@ impl IconFace {
                 mask: 0,
                 filter: 0,
                 round: 0,
+                blend: 0,
             },
             slot.plot,
         ))

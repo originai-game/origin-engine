@@ -150,10 +150,11 @@ struct GlyphPage {
     written: Vec<u32>,
 }
 
-/// Consecutive instances drawn with one group 1 bound.
+/// Consecutive instances drawn with one group 1 and one blend mode bound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PaintRun {
     pub bind: PaintBind,
+    pub blend: u8,
     pub first: u32,
     pub count: u32,
 }
@@ -193,10 +194,50 @@ pub(crate) fn encoded_format(output: wgpu::TextureFormat) -> wgpu::TextureFormat
     }
 }
 
+/// The hardware blend state for [`og_draw::paint::PaintBlend`] (`0` normal,
+/// `1` add, `2` screen, `3` multiply). Screen and multiply pair with
+/// `fs_paint`'s alpha-weighted output so `a = 0` is a no-op.
+fn blend_state(mode: u8) -> wgpu::BlendState {
+    let alpha = wgpu::BlendComponent {
+        src_factor: wgpu::BlendFactor::One,
+        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+        operation: wgpu::BlendOperation::Add,
+    };
+    match mode {
+        1 => wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha,
+        },
+        2 => wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrc,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha,
+        },
+        3 => wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::Dst,
+                dst_factor: wgpu::BlendFactor::Zero,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha,
+        },
+        _ => wgpu::BlendState::ALPHA_BLENDING,
+    }
+}
+
 pub(crate) struct PaintRenderer {
     format: wgpu::TextureFormat,
     output_format: wgpu::TextureFormat,
-    pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// One pipeline per [`og_draw::paint::PaintBlend`] mode (`[0]` started at
+    /// boot; `[1..=3]` started on first use).
+    pipelines: [crate::deferred::Deferred<wgpu::RenderPipeline>; 4],
     /// Draws the layer over an output that is not in `format`: blended by
     /// the output, and over a copy of what is behind it, in encoded values.
     composite: Option<(
@@ -234,19 +275,21 @@ pub(crate) struct PaintRenderer {
     pub runs: Vec<PaintRun>,
     /// Glyphs no page of their font has (yet).
     pub missing: u32,
-    /// The pass in a group's layer (in the filter passes' format), asked
-    /// for when a paint first has a group.
-    layer_pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The pass in a group's layer (in the filter passes' format), per blend
+    /// mode, asked for when a paint first has a group using that mode.
+    layer_pipelines: [crate::deferred::Deferred<wgpu::RenderPipeline>; 4],
     /// This upload's groups, each group's (by its index in the paint),
     /// the main list, the filter groups' layers in the order they draw
     /// (innermost first), each quad's first instance and each instance's
-    /// group 1 (`None`: it samples nothing).
+    /// group 1 (`None`: it samples nothing) and blend mode.
     layers: Vec<GroupLayer>,
     layer_of: Vec<Option<usize>>,
     main: Vec<Step>,
     order: Vec<usize>,
     at: Vec<u32>,
     binds: Vec<Option<PaintBind>>,
+    blends: Vec<u8>,
+    used_blends: [bool; 4],
     /// A filter group's layer target, frame uniform and group 0, by layer.
     targets: Vec<Option<LayerTarget>>,
     frames: Vec<wgpu::Buffer>,
@@ -562,8 +605,16 @@ impl PaintRenderer {
             bind_group_layouts: &[Some(&layout), Some(sprite_layout), Some(sprite_layout)],
             immediate_size: 0,
         });
-        let main = pipeline(format, &pl, blend, "vs_paint", "fs_paint");
-        crate::deferred::Start::start(&main);
+        let pipelines = std::array::from_fn(|m| {
+            pipeline(
+                format,
+                &pl,
+                Some(blend_state(m as u8)),
+                "vs_paint",
+                "fs_paint",
+            )
+        });
+        crate::deferred::Start::start(&pipelines[0]);
         let composite = (format != output_format).then(|| {
             let (blended, behind) = (
                 pipeline(output_format, &pl, blend, "vs_layer", "fs_layer"),
@@ -575,13 +626,15 @@ impl PaintRenderer {
         });
         // A layer stores premultiplied values: what it draws over is
         // transparent, so blending as alpha leaves them so.
-        let layer_pipeline = pipeline(
-            super::pass::LAYER_FORMAT,
-            &pl,
-            blend,
-            "vs_paint",
-            "fs_paint",
-        );
+        let layer_pipelines = std::array::from_fn(|m| {
+            pipeline(
+                super::pass::LAYER_FORMAT,
+                &pl,
+                Some(blend_state(m as u8)),
+                "vs_paint",
+                "fs_paint",
+            )
+        });
         let blank = crate::target_texture(
             device,
             "ui paint blank",
@@ -594,7 +647,7 @@ impl PaintRenderer {
         PaintRenderer {
             format,
             output_format,
-            pipeline: main,
+            pipelines,
             composite,
             layer: None,
             layout,
@@ -648,13 +701,15 @@ impl PaintRenderer {
             stop_rows: Vec::new(),
             runs: Vec::new(),
             missing: 0,
-            layer_pipeline,
+            layer_pipelines,
             layers: Vec::new(),
             layer_of: Vec::new(),
             main: Vec::new(),
             order: Vec::new(),
             at: Vec::new(),
             binds: Vec::new(),
+            blends: Vec::new(),
+            used_blends: [true, false, false, false],
             targets: Vec::new(),
             frames: Vec::new(),
             layer_groups: Vec::new(),
@@ -716,6 +771,11 @@ impl PaintRenderer {
         }
         self.uploaded = Some(now);
         self.resolve(paint, texture, scale);
+        for m in 1..4 {
+            if self.used_blends[m] {
+                crate::deferred::Start::start(&self.pipelines[m]);
+            }
+        }
         let mut grew = self.group.is_none();
         grew |= self.quads.grow_and_write(
             device,
@@ -829,7 +889,11 @@ impl PaintRenderer {
         if self.layers.is_empty() {
             return;
         }
-        crate::deferred::Start::start(&self.layer_pipeline);
+        for m in 0..4 {
+            if self.used_blends[m] {
+                crate::deferred::Start::start(&self.layer_pipelines[m]);
+            }
+        }
         self.fx.borrow().filters.warm();
         let n = self.layers.len();
         self.targets.resize_with(n.max(self.targets.len()), || None);
@@ -1005,6 +1069,8 @@ impl PaintRenderer {
     fn resolve(&mut self, paint: &Paint, texture: impl Fn(TextureHandle) -> bool, scale: f32) {
         self.gpu.clear();
         self.binds.clear();
+        self.blends.clear();
+        self.used_blends = [true, false, false, false];
         self.runs.clear();
         self.at.clear();
         self.layers.clear();
@@ -1014,6 +1080,8 @@ impl PaintRenderer {
         self.missing = 0;
         for (i, q) in paint.quads.iter().enumerate() {
             self.at.push(self.gpu.len() as u32);
+            let blend = q.blend.min(3) as u8;
+            self.used_blends[blend as usize] = true;
             let mut g = PaintGpu {
                 // A border's other sides' colour (an image sets its own).
                 uv: if q.kind == PaintKind::Border as u32 {
@@ -1029,7 +1097,7 @@ impl PaintRenderer {
                 k: [q.kind, q.a, q.b, q.xf],
                 // The mask in w, which only an image's wipe shares (xyz).
                 w: [0.0, 0.0, 0.0, q.mask as f32],
-                // Its colour matrix's five rows follow the gradients'.
+                // Its colour matrix's five rows follow the gradients'; z carries blend mode.
                 f: [
                     match q.filter {
                         0 => 0,
@@ -1044,15 +1112,16 @@ impl PaintRenderer {
                                 + 1
                         }
                     },
-                    0,
+                    u32::from(blend),
                     0,
                 ],
             };
             if q.kind == PaintKind::Line as u32 {
                 let from = self.gpu.len();
                 self.segments_of(q, &paint.points, g);
-                self.binds
-                    .resize(self.binds.len() + self.gpu.len() - from, None);
+                let added = self.gpu.len() - from;
+                self.binds.resize(self.binds.len() + added, None);
+                self.blends.resize(self.blends.len() + added, blend);
                 continue;
             }
             // What the quad samples; a quad that samples nothing draws with
@@ -1169,24 +1238,27 @@ impl PaintRenderer {
             }
             self.gpu.push(g);
             self.binds.push(wants);
+            self.blends.push(blend);
         }
         self.at.push(self.gpu.len() as u32);
         self.main = self.steps(paint, 0..paint.quads.len());
     }
 
     /// The draw list of quads `span`: each run of instances that one
-    /// group 1 draws; a filter group's composite, its quads drawn into its
-    /// layer's own list; a backdrop's capture, then its composite.
+    /// group 1 and one blend mode draw; a filter group's composite, its quads
+    /// drawn into its layer's own list; a backdrop's capture, then its composite.
     fn steps(&mut self, paint: &Paint, span: Range<usize>) -> Vec<Step> {
         let mut steps = Vec::new();
         // This list's runs not yet in `runs` (a nested group's list lands
         // there first), and the run being made.
         let mut list: Vec<PaintRun> = Vec::new();
-        let mut run: Option<(Option<PaintBind>, u32, u32)> = None;
-        let close = |list: &mut Vec<PaintRun>, run: &mut Option<(Option<PaintBind>, u32, u32)>| {
-            if let Some((bind, first, count)) = run.take() {
+        let mut run: Option<(Option<PaintBind>, u8, u32, u32)> = None;
+        let close = |list: &mut Vec<PaintRun>,
+                     run: &mut Option<(Option<PaintBind>, u8, u32, u32)>| {
+            if let Some((bind, blend, first, count)) = run.take() {
                 list.push(PaintRun {
                     bind: bind.unwrap_or(PaintBind::White),
+                    blend,
                     first,
                     count,
                 });
@@ -1218,6 +1290,7 @@ impl PaintRenderer {
                     // not draw this frame.
                     list.push(PaintRun {
                         bind: PaintBind::Group(k as u16),
+                        blend: q.blend.min(3) as u8,
                         first: a,
                         count: b - a,
                     });
@@ -1227,9 +1300,11 @@ impl PaintRenderer {
             }
             for inst in a..b {
                 let want = self.binds[inst as usize];
+                let blend = self.blends[inst as usize];
                 match &mut run {
-                    Some((bind, first, count))
+                    Some((bind, rblend, first, count))
                         if *first + *count == inst
+                            && *rblend == blend
                             && (want.is_none() || bind.is_none() || *bind == want) =>
                     {
                         *count += 1;
@@ -1237,7 +1312,7 @@ impl PaintRenderer {
                     }
                     _ => {
                         close(&mut list, &mut run);
-                        run = Some((want, inst, 1));
+                        run = Some((want, blend, inst, 1));
                     }
                 }
             }
@@ -1389,31 +1464,38 @@ impl PaintRenderer {
         pass: &mut wgpu::RenderPass<'p>,
         group1: impl Fn(PaintBind) -> &'p wgpu::BindGroup,
     ) -> u32 {
-        let (Some(group), Some(pipeline)) = (&self.group, self.pipeline.get()) else {
+        let (Some(group), Some(normal)) = (&self.group, self.pipelines[0].get()) else {
             return 0;
         };
-        pass.set_pipeline(pipeline);
+        let pipelines = [
+            normal,
+            self.pipelines[1].get().unwrap_or(normal),
+            self.pipelines[2].get().unwrap_or(normal),
+            self.pipelines[3].get().unwrap_or(normal),
+        ];
         pass.set_bind_group(0, group, &[]);
         let fx = self.fx.borrow();
         let mut draws = 0;
         for step in &self.main {
             if let Step::Runs(runs) = step {
-                draws += self.draw_runs(pass, &fx, runs.clone(), &group1);
+                draws += self.draw_runs(pass, &fx, &pipelines, runs.clone(), &group1);
             }
         }
         draws
     }
 
-    /// Draws `runs` with the pipeline and group 0 bound; a group's
-    /// composite whose result did not draw is left out.
+    /// Draws `runs` with group 0 bound, switching pipeline when a run's blend
+    /// mode changes; a group's composite whose result did not draw is left out.
     fn draw_runs<'g>(
         &self,
         pass: &mut wgpu::RenderPass<'_>,
         fx: &Fx,
+        pipelines: &[&wgpu::RenderPipeline; 4],
         runs: Range<usize>,
         group1: &dyn Fn(PaintBind) -> &'g wgpu::BindGroup,
     ) -> u32 {
         let mut draws = 0;
+        let mut current: Option<u8> = None;
         for r in &self.runs[runs] {
             let bound = match r.bind {
                 PaintBind::Glyphs(tier, page) => {
@@ -1425,6 +1507,11 @@ impl PaintRenderer {
                 },
                 bind => group1(bind),
             };
+            let blend = r.blend.min(3);
+            if current != Some(blend) {
+                pass.set_pipeline(pipelines[blend as usize]);
+                current = Some(blend);
+            }
             pass.set_bind_group(1, bound, &[]);
             pass.draw(0..6, r.first..r.first + r.count);
             draws += 1;
@@ -1446,9 +1533,15 @@ impl PaintRenderer {
         fx.results.clear();
         fx.results.resize(self.layers.len(), None);
         let mut draws = 0;
-        let Some(pipeline) = self.layer_pipeline.get() else {
+        let Some(normal) = self.layer_pipelines[0].get() else {
             return 0;
         };
+        let pipelines = [
+            normal,
+            self.layer_pipelines[1].get().unwrap_or(normal),
+            self.layer_pipelines[2].get().unwrap_or(normal),
+            self.layer_pipelines[3].get().unwrap_or(normal),
+        ];
         for &k in &self.order {
             let (Some(target), Some(Some(group0))) = (&self.targets[k], self.layer_groups.get(k))
             else {
@@ -1463,7 +1556,7 @@ impl PaintRenderer {
                 encoder,
                 cx,
                 (&target.view, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)),
-                (pipeline, group0),
+                (&pipelines, group0),
                 &l.steps,
                 (&under, origin.map(|v| v / scale)),
             );
@@ -1490,22 +1583,28 @@ impl PaintRenderer {
         load: wgpu::LoadOp<wgpu::Color>,
         under: Under<'_>,
     ) -> u32 {
-        let (Some(group), Some(pipeline)) = (&self.group, self.pipeline.get()) else {
+        let (Some(group), Some(normal)) = (&self.group, self.pipelines[0].get()) else {
             return 0;
         };
+        let pipelines = [
+            normal,
+            self.pipelines[1].get().unwrap_or(normal),
+            self.pipelines[2].get().unwrap_or(normal),
+            self.pipelines[3].get().unwrap_or(normal),
+        ];
         let mut fx = self.fx.borrow_mut();
         self.record_list(
             &mut fx,
             encoder,
             cx,
             (view, load),
-            (pipeline, group),
+            (&pipelines, group),
             &self.main,
             (&under, [0.0; 2]),
         )
     }
 
-    /// Draws `steps` into `target` with `pass` (the pipeline and group 0),
+    /// Draws `steps` into `target` with `pass` (the blend pipelines and group 0),
     /// a pass a stretch, capturing for each backdrop what `under` (the
     /// target as a texture, its top left at `origin` CSS px) holds.
     #[allow(clippy::too_many_arguments)]
@@ -1515,7 +1614,7 @@ impl PaintRenderer {
         encoder: &mut crate::Encoder,
         cx: &GroupCx<'_>,
         (view, mut load): (&wgpu::TextureView, wgpu::LoadOp<wgpu::Color>),
-        (pipeline, group0): (&wgpu::RenderPipeline, &wgpu::BindGroup),
+        (pipelines, group0): (&[&wgpu::RenderPipeline; 4], &wgpu::BindGroup),
         steps: &[Step],
         (under, origin): (&Under<'_>, [f32; 2]),
     ) -> u32 {
@@ -1540,9 +1639,8 @@ impl PaintRenderer {
                         multiview_mask: None,
                     });
                     load = wgpu::LoadOp::Load;
-                    pass.set_pipeline(pipeline);
                     pass.set_bind_group(0, group0, &[]);
-                    draws += self.draw_runs(&mut pass, fx, runs.clone(), cx.group1);
+                    draws += self.draw_runs(&mut pass, fx, pipelines, runs.clone(), cx.group1);
                 }
                 &Step::Backdrop(k) => draws += self.capture(fx, encoder, cx, k, under, origin),
             }

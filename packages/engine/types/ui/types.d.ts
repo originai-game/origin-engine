@@ -126,6 +126,8 @@ export interface HostProps {
      * confirm, cancel and back sound by themselves.
      */
     sound?: "open" | "close" | "error" | "reward" | "toggle" | "tab" | "levelup" | "purchase" | "countdown" | "tick" | "step" | "swipe" | "notify" | "unlock" | undefined;
+    /** Haptic preset played when this node fires a non-hover interaction or sound cue (`"none"` silences the pack/default haptic). */
+    haptic?: "tick" | "tap" | "thud" | "double" | "buzz" | "success" | "warning" | "error" | "none" | undefined;
     /** crates/og-ui-next/CONVENTIONS.md §Accessibility. */
     role?: string | undefined;
     label?: string | undefined;

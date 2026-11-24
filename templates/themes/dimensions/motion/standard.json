@@ -10,7 +10,7 @@
     "Reward.pop": "animate-pop",
     "Tab.indicator": "transition-layout ease-spring-[439,33.5] glide-tab",
     "Bar.fill": "transition-layout duration-240 ease-out",
-    "Bar.trail": "transition-layout duration-350 delay-450 ease-out",
+    "Bar.trail": "transition-layout duration-trail delay-trail-hold ease-out",
     "Attention.cue": "animate-nudge",
     "Modal.scrim": "absolute inset-0 bg-scrim transition-opacity duration-180 ease-out starting:opacity-0 exit:opacity-0 exit:duration-120 exit:ease-exit"
   }

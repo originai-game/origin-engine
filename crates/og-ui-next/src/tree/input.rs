@@ -149,6 +149,9 @@ pub(super) struct Per {
     /// `sound`: the pack event the node sounds when it first paints
     /// (empty: none, or sounded already).
     pub cue: Box<str>,
+    /// `haptic`: preset override played with non-hover interactions and cues
+    /// (empty: pack/default; `"none"`: silence).
+    pub haptic: Box<str>,
     /// `draggable`: its data (non-empty: a drag source), and `dropTarget`:
     /// its id (non-empty: a drop target).
     pub drag: Box<str>,
@@ -258,6 +261,11 @@ impl Cue {
 /// The pack's sounds with their clips loaded: by scope (`""` the pack's
 /// generic ones, else `Component.slot[.variant]`), then by event.
 pub type SoundTable = std::collections::BTreeMap<String, std::collections::BTreeMap<String, Cue>>;
+
+/// The pack's haptic patterns: by scope (`""` pack-wide, else
+/// `Component.slot[.variant]`), then by event.
+pub type HapticTable =
+    std::collections::BTreeMap<String, std::collections::BTreeMap<String, og_ui_model::Haptic>>;
 
 /// One sound to play ([`Tree::take_sounds`]).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -464,6 +472,9 @@ pub struct Input {
     sounds: std::rc::Rc<SoundTable>,
     plays: Vec<Play>,
     sound_rng: u64,
+    /// The pack's haptics and what this frame's UI interactions played.
+    haptics_table: std::rc::Rc<HapticTable>,
+    haptics: Vec<og_ui_model::Haptic>,
     /// A press `confirm` made: it sounds `confirm`, not `press`.
     confirming: bool,
     drag: Option<Drag>,
@@ -918,25 +929,75 @@ impl Tree {
         std::mem::take(&mut self.input.plays)
     }
 
+    /// The pack's haptics by scope and event (the host's).
+    pub fn set_haptics(&mut self, haptics: std::rc::Rc<HapticTable>) {
+        self.input.haptics_table = haptics;
+    }
+
+    /// The haptic patterns this frame's UI interactions played, oldest first.
+    pub fn take_haptics(&mut self) -> Vec<og_ui_model::Haptic> {
+        std::mem::take(&mut self.input.haptics)
+    }
+
     /// `e` plays `event`: its slot's sound (with its variant, then
     /// without), else the pack's generic one; an event no scope has falls
     /// back along [`crate::pack::sound_fallback`] (`purchase` to
-    /// `confirm`, then `press`). Nothing when the pack has none.
+    /// `confirm`, then `press`). Also emits its haptic pattern (explicit
+    /// `haptic` prop, else pack `haptics` by scope, else
+    /// [`og_ui_model::event_haptic`], skipping `hover` and `tick` defaults).
     pub(super) fn sound(&mut self, e: u32, event: &str) {
-        let table = &self.input.sounds;
-        if table.is_empty() {
-            return;
-        }
-        let slot = self.input.per(e).map_or("", |p| &*p.slot);
+        let per = self.input.per.get(e as usize);
+        let slot = per.map_or("", |p| &*p.slot);
         let bare = slot
             .rsplit_once('.')
             .map(|x| x.0)
             .filter(|b| b.contains('.'));
         let scopes = [Some(slot).filter(|s| !s.is_empty()), bare, Some("")];
-        let cue = std::iter::successors(Some(event), |ev| crate::pack::sound_fallback(ev))
-            .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)));
-        if let Some(play) = cue.and_then(|c| c.pick(&mut self.input.sound_rng, None)) {
-            self.input.plays.push(play);
+        if !self.input.sounds.is_empty() {
+            let table = &self.input.sounds;
+            let cue = std::iter::successors(Some(event), |ev| crate::pack::sound_fallback(ev))
+                .find_map(|ev| scopes.iter().flatten().find_map(|s| table.get(*s)?.get(ev)));
+            if let Some(play) = cue.and_then(|c| c.pick(&mut self.input.sound_rng, None)) {
+                self.input.plays.push(play);
+            }
+        }
+        let override_haptic = if event != "hover" {
+            per.map(|p| &*p.haptic)
+                .filter(|h| !h.is_empty())
+                .and_then(crate::pack::parse_haptic)
+        } else {
+            None
+        };
+        let haptic = override_haptic.unwrap_or_else(|| {
+            let h_table = &self.input.haptics_table;
+            let from_pack = if h_table.is_empty() {
+                None
+            } else {
+                std::iter::successors(Some(event), |ev| {
+                    (*ev != "tick")
+                        .then(|| crate::pack::sound_fallback(ev))
+                        .flatten()
+                })
+                .find_map(|ev| {
+                    scopes
+                        .iter()
+                        .flatten()
+                        .find_map(|s| h_table.get(*s)?.get(ev).copied())
+                })
+            };
+            from_pack.unwrap_or_else(|| {
+                if matches!(event, "hover" | "tick") {
+                    og_ui_model::Haptic::NONE
+                } else {
+                    std::iter::successors(Some(event), |ev| crate::pack::sound_fallback(ev))
+                        .map(og_ui_model::event_haptic)
+                        .find(|h| h.count > 0)
+                        .unwrap_or(og_ui_model::Haptic::NONE)
+                }
+            })
+        });
+        if haptic.count > 0 && self.input.haptics.len() < 16 {
+            self.input.haptics.push(haptic);
         }
     }
 

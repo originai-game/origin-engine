@@ -247,6 +247,7 @@ impl Tree {
             mask: 0,
             filter: 0,
             round: 0,
+            blend: 0,
         };
         quads.extend([
             disc(r + 3.0, shadow),

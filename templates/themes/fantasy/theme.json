@@ -8,5 +8,14 @@
   "ornament": { "panel": "runes", "plate": "studs" },
   "effects": "dust",
   "sound": "wood",
-  "icons": "sticker"
+  "icons": "sticker",
+  "pack": {
+    "variants": {"Ability.box": "size-16 compact:size-11", "Ability.box.ultimate": "size-24 compact:size-14"},
+    "theme": {
+      "duration": {"ready-pulse": 1700, "flash": 240, "damage": 950, "damage-stagger": 55, "trail-hold": 320, "trail": 580, "hit": 460, "arc": 720},
+      "scale": {"ready-pulse": 1.05, "damage-pop": 1.48, "combo-pop": 1.24, "press": 0.94},
+      "opacity": {"sweep": 0.68, "flash": 0.78},
+      "stroke": {"arc": 12}
+    }
+  }
 }

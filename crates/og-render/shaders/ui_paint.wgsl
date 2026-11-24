@@ -346,11 +346,14 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
         a *= m.a;
       } else {
         // A distance field, `p.z` atlas pixels across: grown by `p.x`, and
-        // blurred by `p.y` (CSS's radius, a deviation of half).
+        // blurred by `p.y` (CSS's radius, a deviation of half). Sharp fills
+        // use the multi-channel median for crisp corners; strokes and glows
+        // use the true-SDF alpha channel (`m.a`) to avoid corner spikes.
         let size = vec2<f32>(textureDimensions(page));
         let px_range = max(0.5 * dot(vec2<f32>(q.p.z) / size, screen_tex), 1.0);
         let grow = min(q.p.x * scale, max(0.5 * px_range - 0.75, 0.0));
-        let d = px_range * (median(m.r, m.g, m.b) - 0.5) + grow;
+        let sd = select(median(m.r, m.g, m.b), m.a, q.p.x > 0.0 || q.p.y > 0.0);
+        let d = px_range * (sd - 0.5) + grow;
         if (q.p.y * scale > 1.0) {
           a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
         } else {
@@ -536,6 +539,13 @@ fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
     // ramp shows no bands.
     let n = fract(52.9829189 * fract(dot(in.position.xy, vec2<f32>(0.06711056, 0.00583715))));
     rgb += vec3<f32>((n - 0.5) * frame.extra.x);
+  }
+  // Blend mode adaptation (`q.f.z`: 0 normal, 1 add, 2 screen, 3 multiply).
+  if (q.f.z == 2u) {
+    return vec4<f32>(rgb * a, a);
+  }
+  if (q.f.z == 3u) {
+    return vec4<f32>(mix(vec3<f32>(1.0), rgb, a), a);
   }
   return vec4<f32>(rgb, a);
 }
