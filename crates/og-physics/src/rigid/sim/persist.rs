@@ -97,16 +97,19 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
     let mut full = Vec::with_capacity(bytes.len());
     let mut from = 0;
     for hole in holes {
-        let at = usize::try_from(hole.at).ok().filter(|&at| at >= from && at <= bytes.len()).ok_or_else(|| {
-            Error::new(
-                ErrorKind::Parse,
-                format!(
-                    "the physics block's asset shape offset {} is out of order or past {}",
-                    hole.at,
-                    bytes.len()
-                ),
-            )
-        })?;
+        let at = usize::try_from(hole.at)
+            .ok()
+            .filter(|&at| at >= from && at <= bytes.len())
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Parse,
+                    format!(
+                        "the physics block's asset shape offset {} is out of order or past {}",
+                        hole.at,
+                        bytes.len()
+                    ),
+                )
+            })?;
         full.extend_from_slice(&bytes[from..at]);
         from = at;
         let c = Collider {

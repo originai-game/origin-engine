@@ -4,16 +4,14 @@
 
 use super::*;
 
-/// Accelerates every dynamic body by the fields at its centre of mass,
-/// before the step: in entity order, each alone. A body a field reaches
-/// is kept awake, as one afloat is, so a field switched on moves what
-/// rested in it and a replay and a restore agree.
+/// Accelerates every dynamic body by the force fields at its centre of mass
+/// inside each substep, via `add_force` so `LockedAxes` are respected.
 pub(crate) fn force_fields(
     scene: &Scene,
     forces: &og_env::force::Forces,
-    dt: f32,
     sim: &mut Sim,
     handles: &super::super::sim::Handles<'_>,
+    forced_bodies: &mut Vec<rp::RigidBodyHandle>,
 ) {
     if forces.is_empty() {
         return;
@@ -26,9 +24,17 @@ pub(crate) fn force_fields(
         if !rb.is_dynamic() {
             continue;
         }
-        let gain = flat(forces.at(unv(rb.center_of_mass())) * dt);
-        if gain != Vec3::ZERO {
-            rb.set_linvel(v(unv(rb.linvel()) + gain), true);
+        let accel = flat(forces.at(unv(rb.center_of_mass())));
+        if accel == Vec3::ZERO {
+            continue;
+        }
+        if rb.is_sleeping() && accel.length_squared() < 1e-4 {
+            continue;
+        }
+        let mass = rb.mass();
+        if mass > 0.0 {
+            rb.add_force(v(accel * mass), true);
+            forced_bodies.push(h);
         }
     }
 }

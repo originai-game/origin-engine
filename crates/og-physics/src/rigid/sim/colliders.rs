@@ -91,7 +91,9 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
     })?;
     let built = match baked(shared, c, mesh_s, &mesh) {
         Some(b) => b,
-        None => from_mesh(c.shape, &mesh, mesh_s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?,
+        None => {
+            from_mesh(c.shape, &mesh, mesh_s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?
+        }
     };
     let cached = cache(shared);
     if cached.len() >= SHAPE_CACHE_LIMIT {

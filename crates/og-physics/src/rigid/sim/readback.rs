@@ -2,11 +2,11 @@ use super::*;
 
 /// What the rest rule makes of a dynamic body after the step.
 enum Rest {
-    /// Supported and slow before and after: back to its pose before the
-    /// step, its velocity dropped.
-    Still(rp::Pose),
+    /// Supported, slow before and after, and under no external force: damp
+    /// residual micro-velocities without hard-resetting pose.
+    Still,
     Moving,
-    /// Asleep through the step: rapier left it where it was.
+    /// Asleep after the step: rapier left it where it was.
     Asleep,
 }
 
@@ -22,16 +22,16 @@ type Read = (
 );
 
 /// The touching pairs, the rest rule and sleep after the step: what each
-/// dynamic body's component values become. `sleeping` is, per scene body,
-/// whether it slept through the step (empty: none did).
+/// dynamic body's component values become. `had_force` marks body handle
+/// indices that received an external force or impulse this tick (exempt
+/// from rest velocity zeroing so gentle continuous forces are never glued).
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(super) fn after_step(
     settings: &Physics,
     scene: &Scene,
     sim: &mut Sim,
     handles: &Handles<'_>,
-    before: Vec<rp::Pose>,
-    sleeping: &[bool],
+    had_force: &[bool],
     hits: &Hits<'_>,
     split: bool,
 ) -> (
@@ -46,7 +46,7 @@ pub(super) fn after_step(
     } = sim;
     let grains = crate::lanes::now();
     // The pairs split only when the step is on the pool: below it, waking
-    // the pool for them costs more than it saves (the former test sample
+    // the pool for them costs more than it saves.
     let pairs = if split { grains.pairs } else { usize::MAX };
     // The solid pairs: each one's contact (its entities in order, the
     // deepest point and normal, the hit), its deepest penetration and the
@@ -138,48 +138,45 @@ pub(super) fn after_step(
         ));
     }
     let mut touching = sorted(touching, pairs);
-    // A body on two chunks of one field touches its entity once: the
-    // hardest hit stands for the pair.
-    if !ext.fields.is_empty() {
-        let fields = &ext.fields;
-        touching.dedup_by(|later, kept| {
-            let same = later.0 == kept.0
-                && (fields.contains_key(&kept.0.a) || fields.contains_key(&kept.0.b));
-            if same && later.1.impulse > kept.1.impulse {
-                kept.1 = later.1;
+    // Global deduplication by entity pair (and solid vs sensor): handles
+    // multi-collider entities (2D vehicles, ragdolls, chunked heightfields)
+    // without emitting duplicate Contact/CollisionStarted events. Solid
+    // impulses are summed and the hardest hit's point/normal/velocity kept;
+    // sensor bitmasks are OR'd.
+    touching.dedup_by(|later, kept| {
+        let same_kind = (later.0.sensor == 0) == (kept.0.sensor == 0);
+        if later.0.a == kept.0.a && later.0.b == kept.0.b && same_kind {
+            if kept.0.sensor == 0 {
+                let total = kept.1.impulse + later.1.impulse;
+                if later.1.impulse > kept.1.impulse {
+                    kept.1 = later.1;
+                }
+                kept.1.impulse = total;
+            } else {
+                kept.0.sensor |= later.0.sensor;
             }
-            same
-        });
-    }
+            true
+        } else {
+            false
+        }
+    });
 
     // Each body read back by ranges of bodies on the lanes (rapier's
     // bodies read only), the rest rule decided there; then, in body order,
     // the resting bodies stilled in rapier and the tracked values kept.
     let (rest, calm) = (settings.rest_speed, settings.sleep_speed);
-    let firsts: Vec<usize> = {
-        let mut k = 0;
-        scene
-            .bodies
-            .iter()
-            .map(|b| {
-                let at = k;
-                k += usize::from(simulated(b));
-                at
-            })
-            .collect()
-    };
     let read: Vec<Read> = {
-        let (bodies, deepest, before, firsts) = (&w.bodies, &deepest, &before, &firsts);
+        let (bodies, deepest) = (&w.bodies, &deepest);
         by_bodies(scene.bodies.len(), |r| {
-            let start = r.start;
             scene.bodies[r.clone()]
                 .iter()
-                .zip(&handles.by_body[r.clone()])
-                .zip(&firsts[r])
-                .enumerate()
-                .map(|(i, ((b, &h), &k))| {
-                    let asleep = sleeping.get(start + i).copied().unwrap_or(false);
-                    read_body(b, h, bodies, deepest, before.get(k), (rest, calm), asleep)
+                .zip(&handles.by_body[r])
+                .map(|(b, &h)| {
+                    let forced = had_force
+                        .get(h.into_raw_parts().0 as usize)
+                        .copied()
+                        .unwrap_or(false);
+                    read_body(b, h, bodies, deepest, (rest, calm), forced)
                 })
                 .collect()
         })
@@ -197,14 +194,12 @@ pub(super) fn after_step(
             out = Some((position, quaternion, Some(Velocity::default())));
             (t.position, t.quaternion, t.velocity) =
                 (position, quaternion, Some(Velocity::default()));
-        } else if let Some(rest) = rest {
-            // Touched in body order, as one thread reading them back would.
+        } else if let Some(Rest::Still) = rest {
+            // Damp residual micro-velocity without resetting pose (which would
+            // wake sleeping contact partners and glue bodies against gentle forces).
             let rb = &mut w.bodies[h];
-            if let Rest::Still(pre) = rest {
-                rb.set_position(pre, false);
-                rb.set_linvel(v(Vec3::ZERO), false);
-                rb.set_angvel(angvel(Vec3::ZERO), false);
-            }
+            rb.set_linvel(v(Vec3::ZERO), false);
+            rb.set_angvel(angvel(Vec3::ZERO), false);
         }
         moved.push(out);
         kept.push(t);
@@ -268,24 +263,23 @@ fn sorted(
         .collect()
 }
 
-/// A body after the step: the rest rule for a dynamic one (`pre` its pose
-/// before the step) and the values its components and [`Tracked`] take.
+/// A body after the step: checks post-step sleep state directly (so bodies
+/// woken mid-step by impacts are written back on the same tick), applies
+/// the rest rule for unsupported/unforced slow bodies, and builds [`Tracked`].
 fn read_body(
     b: &Body,
     h: rp::RigidBodyHandle,
     bodies: &rp::RigidBodySet,
     deepest: &[Option<f32>],
-    pre: Option<&rp::Pose>,
     (rest, calm_speed): (f32, f32),
-    asleep: bool,
+    forced: bool,
 ) -> Read {
     let mut calm = false;
-    let (rest_rule, out) = if asleep {
-        // Asleep through the step: where it was, its components as they are.
+    let rb = &bodies[h];
+    let (rest_rule, out) = if simulated(b) && rb.is_sleeping() {
+        // Still asleep after the step: where it was, its components as they are.
         (Some(Rest::Asleep), None)
     } else if simulated(b) {
-        let pre = pre.expect("one pre-step pose per dynamic body");
-        let rb = &bodies[h];
         let velocity = unlocked(
             Velocity {
                 linear: unv(rb.linvel()),
@@ -293,9 +287,6 @@ fn read_body(
             },
             b.body.lock,
         );
-        // Resting: supported with at most REST_PENETRATION of overlap, and
-        // slow before and after the step. It keeps its pose and loses its
-        // residual velocity, in the components and in rapier.
         let prior = unlocked(b.velocity.unwrap_or_default(), b.body.lock);
         let supported = deepest
             .get(h.into_raw_parts().0 as usize)
@@ -303,13 +294,13 @@ fn read_body(
             .flatten()
             .is_some_and(|d| d >= -REST_PENETRATION);
         calm = slow(&prior, calm_speed) && slow(&velocity, calm_speed);
-        if rest > 0.0 && supported && slow(&prior, rest) && slow(&velocity, rest) {
+        let (position, quaternion) = unpose(rb.position(), b.position);
+        if !forced && rest > 0.0 && supported && slow(&prior, rest) && slow(&velocity, rest) {
             (
-                Some(Rest::Still(*pre)),
-                Some((b.position, b.quaternion, Some(Velocity::default()))),
+                Some(Rest::Still),
+                Some((position, quaternion, Some(Velocity::default()))),
             )
         } else {
-            let (position, quaternion) = unpose(rb.position(), b.position);
             (
                 Some(Rest::Moving),
                 Some((position, quaternion, Some(velocity))),
@@ -317,7 +308,7 @@ fn read_body(
         }
     } else if moves_itself(b) {
         // A kinematic body moving by its velocity: where the step took it.
-        let (position, quaternion) = unpose(bodies[h].position(), b.position);
+        let (position, quaternion) = unpose(rb.position(), b.position);
         (None, Some((position, quaternion, None)))
     } else {
         (None, None)

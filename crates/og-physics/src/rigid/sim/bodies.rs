@@ -59,20 +59,6 @@ pub(super) fn moves_itself(b: &Body) -> bool {
     lin != Vec3::ZERO || ang != angvel(Vec3::ZERO)
 }
 
-/// The dynamic bodies' poses before the step, for the rest rule, in body
-/// order (by ranges of bodies on the lanes).
-pub(super) fn rest_poses(scene: &Scene, sim: &Sim, handles: &Handles<'_>) -> Vec<rp::Pose> {
-    let bodies = &sim.world.bodies;
-    by_bodies(scene.bodies.len(), |r| {
-        scene.bodies[r.clone()]
-            .iter()
-            .zip(&handles.by_body[r])
-            .filter(|(b, _)| simulated(b))
-            .map(|(_, &h)| *bodies[h].position())
-            .collect()
-    })
-}
-
 /// What [`sync`] does to a body, decided from the body and what physics
 /// last left it at (read only, by ranges of bodies on the lanes), then
 /// done to the rapier world in body order.
@@ -285,7 +271,10 @@ fn exact(s: &Static) -> bool {
 }
 
 fn patch_collider_in_place(c: &mut rp::Collider, next: &Collider, entity: Entity) -> Result<()> {
-    for (what, x) in [("friction", next.friction), ("restitution", next.restitution)] {
+    for (what, x) in [
+        ("friction", next.friction),
+        ("restitution", next.restitution),
+    ] {
         if !(x >= 0.0 && x.is_finite()) {
             return Err(invalid(what, x).context(format!("entity {entity}")));
         }
@@ -314,7 +303,10 @@ pub(super) fn sync<'s>(
     if !settings.gravity.is_finite() {
         return Err(Error::new(
             ErrorKind::Invalid,
-            format!("og.Physics.gravity must be finite, got {}", settings.gravity),
+            format!(
+                "og.Physics.gravity must be finite, got {}",
+                settings.gravity
+            ),
         ));
     }
     let substeps = settings.substeps.clamp(1, 16);
@@ -470,10 +462,18 @@ pub(super) fn sync<'s>(
                 }
                 if patch_children {
                     let skip = usize::from(b.collider.is_some());
-                    let handles_copy: Vec<_> =
-                        w.bodies[handle].colliders().iter().skip(skip).copied().collect();
+                    let handles_copy: Vec<_> = w.bodies[handle]
+                        .colliders()
+                        .iter()
+                        .skip(skip)
+                        .copied()
+                        .collect();
                     for (child, ch) in b.children.iter().zip(handles_copy) {
-                        patch_collider_in_place(&mut w.colliders[ch], &child.collider, child.entity)?;
+                        patch_collider_in_place(
+                            &mut w.colliders[ch],
+                            &child.collider,
+                            child.entity,
+                        )?;
                     }
                     compounds.insert(
                         b.entity.to_bits(),
@@ -528,8 +528,9 @@ pub(super) fn sync<'s>(
         let at = pose(s.position, s.quaternion) * local_pose(&s.collider, s.scale);
         let field = chunked(&s.collider, shared);
         let fields = &mut ext.fields;
-        let same_topo =
-            |t: &TrackedStatic| same_collider_topology(&t.collider, &s.collider) && t.scale == s.scale;
+        let same_topo = |t: &TrackedStatic| {
+            same_collider_topology(&t.collider, &s.collider) && t.scale == s.scale
+        };
         // A static field whose every change was a region edit rebuilds
         // only the chunks the edits reached, in chunk order.
         let partial = field.as_ref().and_then(|f| {
@@ -568,7 +569,11 @@ pub(super) fn sync<'s>(
                         }
                         if params_changed {
                             for &h in chunks.iter() {
-                                patch_collider_in_place(&mut w.colliders[h], &s.collider, s.entity)?;
+                                patch_collider_in_place(
+                                    &mut w.colliders[h],
+                                    &s.collider,
+                                    s.entity,
+                                )?;
                             }
                         }
                     }
@@ -577,7 +582,11 @@ pub(super) fn sync<'s>(
                             w.colliders[t.handle].set_position(at);
                         }
                         if params_changed {
-                            patch_collider_in_place(&mut w.colliders[t.handle], &s.collider, s.entity)?;
+                            patch_collider_in_place(
+                                &mut w.colliders[t.handle],
+                                &s.collider,
+                                s.entity,
+                            )?;
                         }
                     }
                 }
@@ -638,13 +647,19 @@ pub(super) fn sync<'s>(
     })
 }
 
-/// Applies what game code pushed the bodies with since the last step
-/// (og.physics.applyForce and friends), in the order it asked: a force or
-/// torque over this step (as the impulse it gives in `dt`), an impulse at
-/// once. Only dynamic bodies move; the others ignore it.
-pub(crate) fn apply_pushes(sim: &mut Sim, handles: &Handles<'_>, pushes: &[crate::Push], dt: f32) {
+/// Applies instantaneous impulses (og.physics.applyImpulse / applyTorqueImpulse)
+/// once before the substep loop, in the order given.
+pub(crate) fn apply_impulses(
+    sim: &mut Sim,
+    handles: &Handles<'_>,
+    pushes: &[crate::Push],
+    pushed_bodies: &mut Vec<rp::RigidBodyHandle>,
+) {
     use crate::PushKind;
     for p in pushes {
+        if !matches!(p.kind, PushKind::Impulse | PushKind::TorqueImpulse) {
+            continue;
+        }
         let Some(&h) = handles.get(&p.entity) else {
             continue;
         };
@@ -652,18 +667,48 @@ pub(crate) fn apply_pushes(sim: &mut Sim, handles: &Handles<'_>, pushes: &[crate
         if !rb.is_dynamic() {
             continue;
         }
-        let scale = match p.kind {
-            PushKind::Force | PushKind::Torque => dt,
-            PushKind::Impulse | PushKind::TorqueImpulse => 1.0,
-        };
-        let x = p.vector * scale;
         match p.kind {
-            PushKind::Force | PushKind::Impulse => match p.point {
-                Some(at) => rb.apply_impulse_at_point(v(flat(x)), v(at), true),
-                None => rb.apply_impulse(v(flat(x)), true),
+            PushKind::Impulse => match p.point {
+                Some(at) => rb.apply_impulse_at_point(v(flat(p.vector)), v(at), true),
+                None => rb.apply_impulse(v(flat(p.vector)), true),
             },
-            PushKind::Torque | PushKind::TorqueImpulse => rb.apply_torque_impulse(angvel(x), true),
+            PushKind::TorqueImpulse => rb.apply_torque_impulse(angvel(p.vector), true),
+            _ => unreachable!(),
         }
+        pushed_bodies.push(h);
+    }
+}
+
+/// Applies continuous forces and torques (og.physics.applyForce / applyTorque)
+/// inside each substep via Rapier's `add_force` / `add_torque` so they respect
+/// `LockedAxes` and integrate consistently regardless of substep count.
+pub(crate) fn apply_forces(
+    sim: &mut Sim,
+    handles: &Handles<'_>,
+    pushes: &[crate::Push],
+    forced_bodies: &mut Vec<rp::RigidBodyHandle>,
+) {
+    use crate::PushKind;
+    for p in pushes {
+        if !matches!(p.kind, PushKind::Force | PushKind::Torque) {
+            continue;
+        }
+        let Some(&h) = handles.get(&p.entity) else {
+            continue;
+        };
+        let rb = &mut sim.world.bodies[h];
+        if !rb.is_dynamic() {
+            continue;
+        }
+        match p.kind {
+            PushKind::Force => match p.point {
+                Some(at) => rb.add_force_at_point(v(flat(p.vector)), v(at), true),
+                None => rb.add_force(v(flat(p.vector)), true),
+            },
+            PushKind::Torque => rb.add_torque(angvel(p.vector), true),
+            _ => unreachable!(),
+        }
+        forced_bodies.push(h);
     }
 }
 

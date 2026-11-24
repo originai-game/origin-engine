@@ -137,7 +137,8 @@ impl QueryWorld {
                     .get(h.into_raw_parts().0 as usize)
                     .is_some_and(|&c| c)
         };
-        let predicate = |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f, &self.hooks);
+        let predicate =
+            |h: rp::ColliderHandle, c: &rp::Collider| !chunk(h) && keep(c, f, &self.hooks);
         let mut filter = rp::QueryFilter::new().predicate(&predicate);
         if !f.include_sensors {
             filter = filter.exclude_sensors();

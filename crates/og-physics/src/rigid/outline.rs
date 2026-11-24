@@ -138,7 +138,8 @@ pub fn outline(mesh: &MeshDesc) -> Vec<Vec<u32>> {
                 closed = true;
                 break;
             }
-            let cands = &outgoing[out_start[b as usize] as usize..out_start[b as usize + 1] as usize];
+            let cands =
+                &outgoing[out_start[b as usize] as usize..out_start[b as usize + 1] as usize];
             // At a pinch vertex (multiple unused outgoing edges), pick the
             // sharpest right turn (keeps solid on the left, avoids figure-8).
             let mut next = None;

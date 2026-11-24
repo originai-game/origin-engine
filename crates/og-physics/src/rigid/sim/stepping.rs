@@ -107,9 +107,16 @@ pub(super) fn hit(
 }
 
 /// After a substep but the last: each touching solid pair's impulse added
-/// to what it carried, its first relative velocity kept; a pair no longer
-/// touching drops out (a contact that starts again starts afresh).
-fn carry(w: &rp::PhysicsWorld, motions: &Motions, carried: &mut Carried) {
+/// to what it carried, its first relative velocity kept; also records every
+/// active solid contact into `seen` (keyed by canonical entity pair) so
+/// transient impacts that separate before the final substep still fire
+/// CollisionStarted + CollisionEnded.
+fn carry(
+    w: &rp::PhysicsWorld,
+    motions: &Motions,
+    carried: &mut Carried,
+    seen: &mut BTreeMap<(u64, u64), CollisionStarted>,
+) {
     let mut next = Carried::new();
     for pair in w.narrow_phase.contact_pairs() {
         if !pair.has_any_active_contact() {
@@ -122,6 +129,44 @@ fn carry(w: &rp::PhysicsWorld, motions: &Motions, carried: &mut Carried) {
             None => (impulse, velocity),
         };
         next.insert(key, entry);
+
+        let (c1, c2) = (&w.colliders[pair.collider1], &w.colliders[pair.collider2]);
+        let (e1, e2) = (entity_of(c1).to_bits(), entity_of(c2).to_bits());
+        if e1 == e2 {
+            continue;
+        }
+        let (mut point, mut normal) = (Vec3::ZERO, Vec3::ZERO);
+        if let Some((manifold, contact)) = pair.find_deepest_contact() {
+            point = unv(c1.position().transform_point(contact.local_p1));
+            normal = unv(manifold.data.normal);
+        }
+        let (a, b, normal, rel_vel) = if e1 < e2 {
+            (e1, e2, normal, velocity)
+        } else {
+            (e2, e1, -normal, -velocity)
+        };
+        match seen.get_mut(&(a, b)) {
+            Some(prev) => {
+                if impulse > prev.impulse {
+                    prev.point = point;
+                    prev.normal = normal;
+                }
+                prev.impulse += impulse;
+            }
+            None => {
+                seen.insert(
+                    (a, b),
+                    CollisionStarted {
+                        a,
+                        b,
+                        point,
+                        normal,
+                        impulse,
+                        relative_velocity: rel_vel,
+                    },
+                );
+            }
+        }
     }
     *carried = next;
 }
@@ -217,7 +262,8 @@ pub(super) fn insert_body(
             let pass_mass = if custom_com && !c.sensor { -1.0 } else { share };
             let built = collider(c, b.scale, local, e, pass_mass, shared)?;
             if custom_com && !c.sensor {
-                total_mp += collider_mass_props(&built.shape, c.density, share).transform_by(&local);
+                total_mp +=
+                    collider_mass_props(&built.shape, c.density, share).transform_by(&local);
             }
             Some(built)
         }
@@ -239,12 +285,19 @@ pub(super) fn insert_body(
         } else {
             share
         };
-        let built = collider(&child.collider, child.scale, at, child.entity, pass_mass, shared)?
-            // Its body in the high bits (entity_of reads the low ones).
-            .user_data(child.entity.to_bits() as u128 | (e.to_bits() as u128) << 64);
+        let built = collider(
+            &child.collider,
+            child.scale,
+            at,
+            child.entity,
+            pass_mass,
+            shared,
+        )?
+        // Its body in the high bits (entity_of reads the low ones).
+        .user_data(child.entity.to_bits() as u128 | (e.to_bits() as u128) << 64);
         if custom_com && !child.collider.sensor {
-            total_mp += collider_mass_props(&built.shape, child.collider.density, share)
-                .transform_by(&at);
+            total_mp +=
+                collider_mass_props(&built.shape, child.collider.density, share).transform_by(&at);
         }
         children.push(built);
     }
@@ -425,6 +478,7 @@ fn step_here(
     split: bool,
 ) -> Result<StepOut> {
     let substeps = settings.substeps.clamp(1, 16);
+    let sub_dt = dt / substeps as f32;
     let mut out = StepOut::default();
     let mut laps = Laps::start();
     // Poses before this tick moved anything (game code teleporting
@@ -433,18 +487,17 @@ fn step_here(
     let asleep = sleep::asleep(sim);
     let handles = sync(settings, dt, scene, shared, sim)?;
     let pushes = std::mem::take(&mut shared.pushes);
-    apply_pushes(sim, &handles, &pushes, dt);
+    let mut pushed_handles: Vec<rp::RigidBodyHandle> = Vec::new();
+    apply_impulses(sim, &handles, &pushes, &mut pushed_handles);
     // A vortex turns about the profile's up.
     shared.air.axis = if sim.flat() { Vec3::Z } else { Vec3::Y };
-    ext::air_drag(scene, &shared.air, dt, sim, &handles);
-    ext::force_fields(scene, &shared.forces, dt, sim, &handles);
     laps.lap(Phase::Sync);
     ext::sync_joints(scene, sim, &handles)?;
     super::vehicles(scene, dt, sim, &handles, &mut out)?;
     laps.lap(Phase::Joints);
     super::ragdolls(scene, dt, sim, shared, &mut out)?;
     laps.lap(Phase::Ragdolls);
-    let cuts = ext::water(
+    let mut cuts = ext::water(
         scene,
         settings,
         dt,
@@ -454,44 +507,83 @@ fn step_here(
         &handles,
         &mut out,
     )?;
-    ext::buoyancy(
-        scene,
-        settings,
-        dt,
-        tick,
-        &shared.waters,
-        sim,
-        &handles,
-        &mut out,
-        cuts,
-    );
     laps.lap(Phase::Water);
-    let sleeping = sleep::before_step(settings, scene, sim, &handles);
-    let pre = rest_poses(scene, sim, &handles);
+    sync_hooks(scene, sim);
+    let _ = sleep::before_step(settings, scene, sim, &handles);
     laps.lap(Phase::Readout);
 
-    // Each substep starts from the bodies' motions recorded before it: what
-    // the solver met a contact with. The pairs touching after a substep
-    // but the last carry their impulse and first relative velocity on.
+    // Track every body that received an external force or impulse this tick so
+    // the rest rule never glues a body against a gentle continuous force.
+    let mut had_force = vec![false; sim.world.bodies.len().max(1)];
+    let mark_forced = |flags: &mut Vec<bool>, hs: &[rp::RigidBodyHandle]| {
+        for &h in hs {
+            let i = h.into_raw_parts().0 as usize;
+            if i >= flags.len() {
+                flags.resize(i + 1, false);
+            }
+            flags[i] = true;
+        }
+    };
+    mark_forced(&mut had_force, &pushed_handles);
+
+    // Each substep applies continuous forces through Rapier's `add_force` /
+    // `add_torque` (respecting LockedAxes and substep-independent integration),
+    // steps the solver, clears those forces, and carries contact impulses and
+    // transient hits forward.
     let mut carried = BTreeMap::new();
+    let mut substep_seen: BTreeMap<(u64, u64), CollisionStarted> = BTreeMap::new();
     let mut motions = Vec::new();
-    sync_hooks(scene, sim);
+    let mut forced_bodies: Vec<rp::RigidBodyHandle> = Vec::new();
     let solver_dt = {
         let p = &sim.world.integration_parameters;
         p.dt / p.num_solver_iterations.max(1) as f32
     };
     for k in 0..substeps {
+        forced_bodies.clear();
+        apply_forces(sim, &handles, &pushes, &mut forced_bodies);
+        ext::air_drag(
+            scene,
+            &shared.air,
+            sub_dt,
+            sim,
+            &handles,
+            &mut forced_bodies,
+        );
+        ext::force_fields(scene, &shared.forces, sim, &handles, &mut forced_bodies);
+        ext::buoyancy_substep(
+            scene,
+            settings,
+            sub_dt,
+            &shared.waters,
+            sim,
+            &handles,
+            &mut out,
+            &mut cuts,
+            k + 1 == substeps,
+            &mut forced_bodies,
+        );
+        mark_forced(&mut had_force, &forced_bodies);
+
         motions = motions_now(&sim.world);
         if scene.hooks.is_empty() {
             sim.world.step();
         } else {
             sim.world.step_with_events(&Hooks(&scene.hooks), &());
         }
+        // Clear per-substep user forces/torques so they never leak across
+        // substeps, ticks, or saved snapshots.
+        for &h in &forced_bodies {
+            if let Some(rb) = sim.world.bodies.get_mut(h) {
+                rb.reset_forces(false);
+                rb.reset_torques(false);
+            }
+        }
         ext::break_joints(sim, solver_dt, &mut out);
         if k + 1 < substeps {
-            carry(&sim.world, &motions, &mut carried);
+            carry(&sim.world, &motions, &mut carried, &mut substep_seen);
         }
     }
+    ext::record_water_wakes(sim, dt, tick, cuts);
     laps.lap(Phase::Rapier);
     if split {
         laps.split(Phase::Rapier);
@@ -501,8 +593,15 @@ fn step_here(
         motions: &motions,
         carried: &carried,
     };
-    let (touching, moved) =
-        after_step(settings, scene, sim, &handles, pre, &sleeping, &hits, split);
+    let (touching, moved) = after_step(settings, scene, sim, &handles, &had_force, &hits, split);
+    if !substep_seen.is_empty() {
+        for ((a, b), cs) in substep_seen {
+            let probe = Contact { a, b, sensor: 0 };
+            if touching.binary_search_by_key(&probe, |t| t.0).is_err() {
+                out.transient_started.push(cs);
+            }
+        }
+    }
     out.touching = touching;
     out.moved = moved;
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
@@ -527,18 +626,32 @@ fn all_hooks() -> rp::ActiveHooks {
         | rp::ActiveHooks::MODIFY_SOLVER_CONTACTS
 }
 
-/// Turns the contact hooks on for the colliders of the entities that have
-/// an og.ContactHook and off for the others, touching only those that
-/// change; nothing while no collider has them.
+/// Turns the contact hooks on for the colliders of the entities (or their
+/// compound parent bodies) that have an og.ContactHook and off for the others.
+/// When a hook is added, removed or edited, wakes affected bodies and their
+/// touching partners so sleeping bodies respond immediately (e.g. a conveyor
+/// turning on or an ignore list changing).
 fn sync_hooks(scene: &Scene, sim: &mut Sim) {
     if scene.hooks.is_empty() && !sim.ext.hooked {
         return;
     }
+    let mut changed_entities: BTreeSet<u64> = BTreeSet::new();
+    for (&e, h) in scene.hooks.iter() {
+        if sim.ext.last_hooks.get(&e) != Some(h) {
+            changed_entities.insert(e);
+        }
+    }
+    for &e in sim.ext.last_hooks.keys() {
+        if !scene.hooks.contains_key(&e) {
+            changed_entities.insert(e);
+        }
+    }
     let mut change = Vec::new();
+    let mut wake_colliders = Vec::new();
     for (h, c) in sim.world.colliders.iter() {
-        let want = if scene.hooks.get(&entity_of(c).to_bits()).is_some()
-            || scene.hooks.get(&body_of(c).to_bits()).is_some()
-        {
+        let ce = entity_of(c).to_bits();
+        let cb = body_of(c).to_bits();
+        let want = if scene.hooks.get(&ce).is_some() || scene.hooks.get(&cb).is_some() {
             all_hooks()
         } else {
             rp::ActiveHooks::empty()
@@ -546,10 +659,33 @@ fn sync_hooks(scene: &Scene, sim: &mut Sim) {
         if c.active_hooks() != want {
             change.push((h, want));
         }
+        if !changed_entities.is_empty()
+            && (changed_entities.contains(&ce) || changed_entities.contains(&cb))
+        {
+            wake_colliders.push(h);
+        }
     }
     for (h, want) in change {
         if let Some(c) = sim.world.colliders.get_mut(h) {
             c.set_active_hooks(want);
+        }
+    }
+    if !wake_colliders.is_empty() {
+        let mut wake_bodies = Vec::new();
+        for ch in wake_colliders {
+            if let Some(p) = sim.world.colliders.get(ch).and_then(|c| c.parent()) {
+                wake_bodies.push(p);
+            }
+            for pair in sim.world.narrow_phase.contact_pairs_with(ch) {
+                for other in [pair.collider1, pair.collider2] {
+                    if let Some(p) = sim.world.colliders.get(other).and_then(|c| c.parent()) {
+                        wake_bodies.push(p);
+                    }
+                }
+            }
+        }
+        for bh in wake_bodies {
+            sim.world.wake_up(bh, true);
         }
     }
     sim.ext.hooked = !scene.hooks.is_empty();
@@ -564,12 +700,14 @@ fn sync_hooks(scene: &Scene, sim: &mut Sim) {
 /// the same on any number of threads.
 pub(super) struct Hooks<'a>(pub(super) &'a IdMap<u64, ContactHook>);
 
-/// How far from its direction a one-way surface still holds (45°).
-const ONE_WAY_ANGLE: f32 = std::f32::consts::FRAC_PI_4;
+/// Cosine of the 45° one-way acceptance cone.
+const ONE_WAY_COS: f32 = std::f32::consts::FRAC_1_SQRT_2;
 
 impl Hooks<'_> {
     fn of(&self, c: &rp::Collider) -> Option<&ContactHook> {
-        self.0.get(&entity_of(c).to_bits())
+        self.0
+            .get(&entity_of(c).to_bits())
+            .or_else(|| self.0.get(&body_of(c).to_bits()))
     }
 
     /// Whether either collider's hook ignores the other (its entity or its body).
@@ -582,6 +720,36 @@ impl Hooks<'_> {
                 .any(|&x| x != 0 && (x == e || x == b))
         };
         self.of(c1).is_some_and(|h| ignores(h, c2)) || self.of(c2).is_some_and(|h| ignores(h, c1))
+    }
+}
+
+/// Independent 2-bit one-way state for one side of a contact manifold
+/// (`shift` = 0 for collider1, 2 for collider2): 0 unknown, 1 allowed, 2 forbidden.
+fn check_one_way(
+    local_n1: rp::Vector,
+    allowed_local_n1: rp::Vector,
+    user_data: &mut u32,
+    shift: u32,
+) -> bool {
+    const UNKNOWN: u32 = 0;
+    const ALLOWED: u32 = 1;
+    const FORBIDDEN: u32 = 2;
+    let state = (*user_data >> shift) & 0b11;
+    let ok = local_n1.dot(allowed_local_n1) >= ONE_WAY_COS;
+    match state {
+        UNKNOWN => {
+            if ok {
+                *user_data = (*user_data & !(0b11 << shift)) | (ALLOWED << shift);
+                true
+            } else {
+                if local_n1.length_squared() > 0.1 {
+                    *user_data = (*user_data & !(0b11 << shift)) | (FORBIDDEN << shift);
+                }
+                false
+            }
+        }
+        FORBIDDEN => false,
+        _ => true,
     }
 }
 
@@ -599,32 +767,75 @@ impl rp::PhysicsHooks for Hooks<'_> {
     fn modify_solver_contacts(&self, ctx: &mut rp::ContactModificationContext) {
         let (c1, c2) = (&ctx.colliders[ctx.collider1], &ctx.colliders[ctx.collider2]);
         let (h1, h2) = (self.of(c1).copied(), self.of(c2).copied());
+        if h1.is_none() && h2.is_none() {
+            return;
+        }
         let to_local1 = c1.position().rotation.inverse();
-        // The normal runs from collider 1 to collider 2: a hook on collider
-        // 2 sees its surface from the other side.
-        for (h, side) in [(h1, 1.0), (h2, -1.0)] {
-            let Some(h) = h else {
-                continue;
-            };
-            let one_way = flat(h.one_way);
-            if one_way != Vec3::ZERO {
-                let allowed = to_local1 * v(one_way.normalize() * side);
-                ctx.update_as_oneway_platform(allowed, ONE_WAY_ANGLE);
-            }
-            let Some(m) = ctx.rigid_mut() else {
-                continue;
-            };
-            if h.friction >= 0.0 {
-                *m.friction = h.friction;
-            }
-            if h.restitution >= 0.0 {
-                *m.restitution = h.restitution;
-            }
-            let surface = flat(h.surface_velocity);
-            if surface != Vec3::ZERO {
-                for c in m.solver_contacts.iter_mut() {
-                    c.tangent_velocity = v(surface * side);
+        let Some(m) = ctx.rigid_mut() else {
+            return;
+        };
+        // Evaluate each side's one-way constraint independently using disjoint
+        // 2-bit slots in `user_data` so two one-way hooks never clobber each other.
+        let mut forbidden = false;
+        if let Some(h) = h1 {
+            let ow = flat(h.one_way);
+            if ow != Vec3::ZERO && ow.is_finite() {
+                let allowed = to_local1 * v(ow.normalize());
+                if !check_one_way(m.manifold.local_n1, allowed, m.user_data, 0) {
+                    forbidden = true;
                 }
+            }
+        }
+        if let Some(h) = h2 {
+            let ow = flat(h.one_way);
+            if ow != Vec3::ZERO && ow.is_finite() {
+                let allowed = to_local1 * v(-ow.normalize());
+                if !check_one_way(m.manifold.local_n1, allowed, m.user_data, 2) {
+                    forbidden = true;
+                }
+            }
+        }
+        if forbidden {
+            m.solver_contacts.clear();
+            return;
+        }
+        // Symmetric, handle-order-independent merging of friction and restitution.
+        let f1 = h1
+            .map(|h| h.friction)
+            .filter(|&x| x >= 0.0 && x.is_finite());
+        let f2 = h2
+            .map(|h| h.friction)
+            .filter(|&x| x >= 0.0 && x.is_finite());
+        match (f1, f2) {
+            (Some(a), Some(b)) => *m.friction = 0.5 * (a + b),
+            (Some(a), None) | (None, Some(a)) => *m.friction = a,
+            (None, None) => {}
+        }
+        let r1 = h1
+            .map(|h| h.restitution)
+            .filter(|&x| x >= 0.0 && x.is_finite());
+        let r2 = h2
+            .map(|h| h.restitution)
+            .filter(|&x| x >= 0.0 && x.is_finite());
+        match (r1, r2) {
+            (Some(a), Some(b)) => *m.restitution = 0.5 * (a + b),
+            (Some(a), None) | (None, Some(a)) => *m.restitution = a,
+            (None, None) => {}
+        }
+        // Additive conveyor velocity: c1 pushes c2 by +s1, c2 pushes c1 by +s2,
+        // so the net tangent velocity of c2 relative to c1 is s1 - s2.
+        let s1 = h1
+            .map(|h| flat(h.surface_velocity))
+            .filter(|s| s.is_finite())
+            .unwrap_or(Vec3::ZERO);
+        let s2 = h2
+            .map(|h| flat(h.surface_velocity))
+            .filter(|s| s.is_finite())
+            .unwrap_or(Vec3::ZERO);
+        let net_surface = s1 - s2;
+        if net_surface != Vec3::ZERO {
+            for c in m.solver_contacts.iter_mut() {
+                c.tangent_velocity = v(net_surface);
             }
         }
     }

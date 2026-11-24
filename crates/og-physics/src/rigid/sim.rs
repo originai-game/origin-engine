@@ -389,7 +389,8 @@ impl Sim {
         // Always update body-attached collider world poses right away, even
         // when no body is asleep, so saves/queries immediately after a shift
         // see the shifted poses.
-        w.bodies.propagate_modified_body_positions_to_colliders(&mut w.colliders);
+        w.bodies
+            .propagate_modified_body_positions_to_colliders(&mut w.colliders);
         // Rapier wakes every contact partner of a collider whose pose
         // changed, so a whole resting world would wake at the shift. Refresh
         // broad-phase/contacts using the active ContactHook snapshot so

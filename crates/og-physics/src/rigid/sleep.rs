@@ -82,27 +82,52 @@ fn links(w: &rp::PhysicsWorld) -> Vec<(rp::RigidBodyHandle, rp::RigidBodyHandle)
     out
 }
 
-/// Wakes every sleeping body linked to an active one, until none is.
+/// Wakes every sleeping body transitively linked (by contacts or joints) to
+/// an active body, in O(V + E + J) via BFS.
 fn wake_touching(w: &mut rp::PhysicsWorld) {
-    loop {
-        let mut wake = Vec::new();
-        for (a, b) in links(w) {
-            let (Some(ra), Some(rb)) = (w.bodies.get(a), w.bodies.get(b)) else {
+    let index = |h: rp::RigidBodyHandle| h.into_raw_parts().0 as usize;
+    let n = w
+        .bodies
+        .iter()
+        .map(|(h, _)| index(h) + 1)
+        .max()
+        .unwrap_or(0);
+    if n == 0 {
+        return;
+    }
+    let mut adj: Vec<Vec<rp::RigidBodyHandle>> = vec![Vec::new(); n];
+    for (a, b) in links(w) {
+        let (ia, ib) = (index(a), index(b));
+        if ia < n && ib < n {
+            adj[ia].push(b);
+            adj[ib].push(a);
+        }
+    }
+    let mut queued = vec![false; n];
+    let mut queue = std::collections::VecDeque::new();
+    for (h, rb) in w.bodies.iter() {
+        if active(rb) {
+            let i = index(h);
+            queued[i] = true;
+            queue.push_back(h);
+        }
+    }
+    let mut to_wake = Vec::new();
+    while let Some(u) = queue.pop_front() {
+        for &v in &adj[index(u)] {
+            let iv = index(v);
+            if queued[iv] {
                 continue;
-            };
-            if dozing(ra) && active(rb) {
-                wake.push(a);
             }
-            if dozing(rb) && active(ra) {
-                wake.push(b);
+            if w.bodies.get(v).is_some_and(dozing) {
+                queued[iv] = true;
+                to_wake.push(v);
+                queue.push_back(v);
             }
         }
-        if wake.is_empty() {
-            return;
-        }
-        for h in wake {
-            w.wake_up(h, true);
-        }
+    }
+    for h in to_wake {
+        w.wake_up(h, true);
     }
 }
 
@@ -175,23 +200,6 @@ pub(super) fn decide(
         wake_touching(w);
     }
 
-    // The ticks each awake body has rested, by entity.
-    let mut next: Vec<(u64, u32)> = Vec::new();
-    for (k, (b, &h)) in scene.bodies.iter().zip(&handles.by_body).enumerate() {
-        let key = b.entity.to_bits();
-        if simulated(b) && b.body.can_sleep && calm[k] && !dozing(&w.bodies[h]) {
-            let n = counts.get(&key).copied().unwrap_or(0).saturating_add(1);
-            ready[k] = n >= ticks;
-            next.push((key, n));
-        }
-    }
-    next.sort_unstable_by_key(|e| e.0);
-    *counts = next.into_iter().collect();
-    if !ready.contains(&true) {
-        return ready;
-    }
-
-    // The groups, by union-find over the links between dynamic bodies.
     let index = |h: rp::RigidBodyHandle| h.into_raw_parts().0 as usize;
     let n = w
         .bodies
@@ -199,12 +207,59 @@ pub(super) fn decide(
         .map(|(h, _)| index(h) + 1)
         .max()
         .unwrap_or(0);
+    let mut is_scene = vec![false; n];
+    for &h in &handles.by_body {
+        let i = index(h);
+        if i < n {
+            is_scene[i] = true;
+        }
+    }
+
+    // The ticks each awake body has rested, by entity (or tagged handle index
+    // for auxiliary dynamic bodies such as ragdoll bones and 2D vehicle wheels).
+    let mut next: Vec<(u64, u32)> = Vec::new();
+    for (k, (b, &h)) in scene.bodies.iter().zip(&handles.by_body).enumerate() {
+        let key = b.entity.to_bits();
+        if simulated(b) && b.body.can_sleep && calm[k] && !dozing(&w.bodies[h]) {
+            let count = counts.get(&key).copied().unwrap_or(0).saturating_add(1);
+            ready[k] = count >= ticks;
+            next.push((key, count));
+        }
+    }
+    let sleep_speed = settings.sleep_speed;
+    let mut aux_ready: Vec<(rp::RigidBodyHandle, u64)> = Vec::new();
+    for (h, rb) in w.bodies.iter() {
+        let i = index(h);
+        if i >= n || is_scene[i] || !rb.is_dynamic() || dozing(rb) {
+            continue;
+        }
+        let lin = unv(rb.linvel()).length();
+        let ang = unangvel(rb.angvel()).length();
+        if lin < sleep_speed && ang < sleep_speed {
+            let key = (1u64 << 63) | (i as u64);
+            let count = counts.get(&key).copied().unwrap_or(0).saturating_add(1);
+            if count >= ticks {
+                aux_ready.push((h, key));
+            }
+            next.push((key, count));
+        }
+    }
+    next.sort_unstable_by_key(|e| e.0);
+    *counts = next.into_iter().collect();
+    if !ready.contains(&true) && aux_ready.is_empty() {
+        return ready;
+    }
+
+    // The groups, by union-find over the links between dynamic bodies.
     let mut ok = vec![false; n];
     for (h, rb) in w.bodies.iter() {
         ok[index(h)] = dozing(rb);
     }
     for (k, &h) in handles.by_body.iter().enumerate() {
         ok[index(h)] |= ready[k];
+    }
+    for &(h, _) in &aux_ready {
+        ok[index(h)] = true;
     }
     let mut root: Vec<usize> = (0..n).collect();
     fn find(root: &mut [usize], mut i: usize) -> usize {
@@ -242,6 +297,12 @@ pub(super) fn decide(
         ready[k] &= group_ok[find(&mut root, index(h))];
         if ready[k] {
             counts.remove(&b.entity.to_bits());
+        }
+    }
+    for (h, key) in aux_ready {
+        if group_ok[find(&mut root, index(h))] {
+            w.bodies[h].sleep();
+            counts.remove(&key);
         }
     }
     ready

@@ -28,6 +28,10 @@ pub(crate) struct StepOut {
     /// Every touching pair, sorted by (a, b), with the event it starts as
     /// (point, normal from a to b and the hit; zero for sensor overlaps).
     pub touching: Vec<(Contact, CollisionStarted)>,
+    /// Solid pairs that collided during an earlier substep of this tick and
+    /// separated before the final substep (emits Started + Ended when not
+    /// already touching on the prior tick).
+    pub transient_started: Vec<CollisionStarted>,
     /// The components a step writes back.
     pub controls: Vec<(Entity, ControlOut)>,
     pub joints: Vec<(Entity, Joint)>,
@@ -207,9 +211,29 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
             (None, None) => break,
             (Some(p), Some(c)) if key(p) == key(c) => {
                 if p.sensor != c.sensor {
-                    // The same overlap, but which side is the sensor changed.
-                    sensor_events(ctx, p, false)?;
-                    sensor_events(ctx, c, true)?;
+                    // Only emit Exited/Entered for the sensor bits that actually flipped.
+                    let exited = p.sensor & !c.sensor;
+                    let entered = c.sensor & !p.sensor;
+                    if exited != 0 {
+                        sensor_events(
+                            ctx,
+                            &Contact {
+                                sensor: exited,
+                                ..*p
+                            },
+                            false,
+                        )?;
+                    }
+                    if entered != 0 {
+                        sensor_events(
+                            ctx,
+                            &Contact {
+                                sensor: entered,
+                                ..*c
+                            },
+                            true,
+                        )?;
+                    }
                 }
                 i += 1;
                 j += 1;
@@ -231,6 +255,20 @@ fn run_here(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> R
                 j += 1;
             }
             (Some(_), None) => unreachable!("handled by the arm above"),
+        }
+    }
+    // Transient solid hits that occurred on an earlier substep and separated
+    // before tick end: if not already touching on the prior tick, emit both
+    // Started and Ended so fast impacts are never lost.
+    for cs in &out.transient_started {
+        let probe = Contact {
+            a: cs.a,
+            b: cs.b,
+            sensor: 0,
+        };
+        if previous.binary_search(&probe).is_err() {
+            ctx.send(*cs)?;
+            ctx.send(CollisionEnded { a: cs.a, b: cs.b })?;
         }
     }
     for c in current {
