@@ -1,0 +1,10 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "Water.wind, Water.river",
+      "change": "Ocean surface inversion uses three Newton steps. River queries use a canonical segment AABB grid and f32 geometry; translated rivers translate their index with the course.",
+      "fix": "Expect corrected water queries and floating motion; no alternate solver or legacy save format is retained."
+    }
+  ]
+}
