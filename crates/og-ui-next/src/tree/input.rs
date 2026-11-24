@@ -40,10 +40,10 @@ fn near(a: (f32, f32), b: (f32, f32)) -> bool {
 
 /// A finger that travels further than this (px) pans what scrolls under
 /// it, and is no tap (Rune's `TOUCH_SLOP`).
-const TOUCH_SLOP: f32 = 8.0;
+pub(super) const TOUCH_SLOP: f32 = 8.0;
 /// A finger held still this long (s) is a long press (Rune's
 /// `LONG_PRESS`, Chromium's).
-const LONG_PRESS: f64 = 0.5;
+pub(super) const LONG_PRESS: f64 = 0.5;
 /// A pan let go after resting this long (s) throws nothing (Rune's
 /// `FLING_HOLD`).
 const FLING_HOLD: f64 = 0.1;
@@ -2907,7 +2907,12 @@ impl Tree {
         let (dx, dy) = (x - ox, y - oy);
         if f.mode == Touch::Pending && dx * dx + dy * dy > TOUCH_SLOP * TOUCH_SLOP {
             let horizontal = dx.abs() > dy.abs();
-            let mode = if self.input.capture != NONE || self.input.drag.is_some_and(|d| d.live) {
+            // A finger selecting text (after its long press) drags.
+            let selecting = self.select_press.is_some_and(|p| p.held);
+            let mode = if selecting
+                || self.input.capture != NONE
+                || self.input.drag.is_some_and(|d| d.live)
+            {
                 Touch::Drag
             } else {
                 self.chain_at(ox, oy);

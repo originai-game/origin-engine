@@ -2815,6 +2815,7 @@ impl Tree {
     /// come under it), or a button changed.
     pub fn pointer(&mut self, x: f32, y: f32, pressed: bool, released: bool) {
         let was = std::mem::replace(&mut self.last_pointer, (x, y, self.paints));
+        self.select_due(x, y);
         if self.has_ops() && (was != self.last_pointer || pressed || released) {
             let moved = (was.0, was.1) != (x, y);
             self.pointer_ops(x, y, moved, pressed, released);

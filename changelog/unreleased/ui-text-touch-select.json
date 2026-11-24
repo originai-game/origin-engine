@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Text",
+      "summary": "On a touch screen a `select-text` text is selected the way phones do: a long press selects the word under the finger, and dragging then extends the selection until the finger lifts. A plain drag still scrolls and selects nothing."
+    }
+  ]
+}

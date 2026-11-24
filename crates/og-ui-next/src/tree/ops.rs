@@ -7965,4 +7965,49 @@ mod tests {
         );
         assert!(w > 20.0 && h > 10.0, "{w} {h}");
     }
+
+    /// On a touch screen a drag across a `select-text` paragraph selects
+    /// nothing (it pans); a finger held still long-presses the word under
+    /// it into the selection, and its moves then extend it until it lifts.
+    #[test]
+    fn a_finger_selects_by_long_press_then_drag() {
+        let mut t = paragraph("sel", "red", "1250");
+        t.set_device(true, false);
+        let g = para_leaf(&t, 1);
+        let [ox, oy, ..] = t.op_box(1).unwrap();
+        let at = |g: &crate::text::Leaf, i: usize| {
+            let mut r = None;
+            g.selection(i..i + 1, |x| r = Some(x));
+            let r = r.unwrap();
+            (ox + r[0] + 1.0, oy + r[1] + r[3] / 2.0)
+        };
+        let (from, mid, to) = (at(g, 1), at(g, 6), at(g, 12));
+        t.set_time(1.0, false);
+        t.pointer(from.0, from.1, true, false);
+        t.set_time(1.1, false);
+        t.pointer(to.0, to.1, false, false);
+        t.pointer(to.0, to.1, false, true);
+        assert!(
+            !t.key("KeyC", false, true, false, false),
+            "a swipe selects nothing"
+        );
+        // Held still: nothing until the long press is due.
+        t.set_time(3.0, false);
+        t.pointer(mid.0, mid.1, true, false);
+        t.set_time(3.3, false);
+        t.pointer(mid.0, mid.1, false, false);
+        assert!(!t.key("KeyC", false, true, false, false));
+        t.set_time(3.6, false);
+        t.pointer(mid.0, mid.1, false, false);
+        assert!(t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("1250"));
+        t.pointer(to.0, to.1, false, false);
+        t.pointer(to.0, to.1, false, true);
+        assert!(t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("1250 co"));
+        // After the lift, a move selects no further.
+        t.pointer(from.0, from.1, false, false);
+        assert!(t.key("KeyC", false, true, false, false));
+        assert_eq!(t.take_copy().as_deref(), Some("1250 co"));
+    }
 }

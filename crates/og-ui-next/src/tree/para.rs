@@ -39,14 +39,16 @@ pub(super) struct Selected {
 }
 
 /// A press in a selectable text: its element, time, place and how many
-/// presses in a row; and whether the pointer is still down selecting.
+/// presses in a row; whether the pointer is still down selecting, and
+/// whether it is down at all (a finger waiting to long-press).
 #[derive(Clone, Copy, Debug)]
 pub(super) struct SelectPress {
     e: u32,
     at: f64,
     place: (f32, f32),
     count: u8,
-    held: bool,
+    pub(super) held: bool,
+    down: bool,
 }
 
 /// Whether `kind` can be in a paragraph's line.
@@ -496,13 +498,23 @@ impl Tree {
                 }
                 _ => 1,
             };
+            // A finger's first press selects nothing: a drag pans, and a
+            // still finger selects the word when it long-presses.
+            let touch = self.input.touch && count == 1;
             self.select_press = Some(SelectPress {
                 e,
                 at: self.time,
                 place: (x, y),
                 count,
-                held: count == 1,
+                held: count == 1 && !touch,
+                down: true,
             });
+            if touch {
+                if self.select.take().is_some() {
+                    self.paint = true;
+                }
+                return;
+            }
             let all = self
                 .texts
                 .leaf(self.els[e as usize].leaf.unwrap_or(0))
@@ -525,6 +537,40 @@ impl Tree {
         }
         if released && let Some(p) = &mut self.select_press {
             p.held = false;
+            p.down = false;
+        }
+    }
+
+    /// A finger held still on a selectable text for a long press selects
+    /// the word under it, and from then on its moves extend the selection
+    /// (as `select_pointer`'s drag) until it lifts.
+    pub(super) fn select_due(&mut self, x: f32, y: f32) {
+        let Some(p) = self.select_press else { return };
+        if !self.input.touch
+            || !p.down
+            || p.held
+            || p.count != 1
+            || self.time - p.at < super::input::LONG_PRESS
+        {
+            return;
+        }
+        let (dx, dy) = (x - p.place.0, y - p.place.1);
+        let still = dx * dx + dy * dy <= super::input::TOUCH_SLOP * super::input::TOUCH_SLOP;
+        let word = still
+            .then(|| self.select_hit(p.e, p.place.0, p.place.1))
+            .flatten();
+        self.select_press = Some(SelectPress {
+            held: word.is_some(),
+            down: word.is_some(),
+            ..p
+        });
+        if let Some((_, word)) = word {
+            self.select = Some(Selected {
+                e: p.e,
+                anchor: word.start,
+                head: word.end,
+            });
+            self.paint = true;
         }
     }
 

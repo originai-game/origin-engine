@@ -486,7 +486,9 @@ its own at half its size centred over its first piece; the lines its
 runs are on grow by it above and below. `select-text` (inherited) makes a text, a
 paragraph or one string, selectable read only: a drag selects, a second
 press selects the word, a third all of it, and Control or Command + C
-copies it through `Tree::take_copy` (+ A selects all).
+copies it through `Tree::take_copy` (+ A selects all). On a touch
+screen a drag pans instead; a finger held still (a long press) selects the
+word under it, and its moves then extend the selection until it lifts.
 
 `writing-vertical-rl` (inherited; `writing-horizontal-tb` undoes it) lays
 a text or a paragraph out in columns, CSS's `writing-mode: vertical-rl`
