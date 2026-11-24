@@ -58,6 +58,9 @@ pub(crate) struct InterpState {
     /// og-anim's output as the last tick started, by entity bits: each
     /// skeleton's joint palette and blendshape weights.
     poses: IdMap<u64, Pose>,
+    /// Previous-tick ragdoll bone world poses, by entity bits, for smooth
+    /// display-frame interpolation.
+    ragdolls: IdMap<u64, Vec<(Vec3, Quat)>>,
     /// Set while `engine::tick`'s render extracts a display frame (with
     /// or without an alpha): what per-object motion blur moves from.
     pub display: bool,
@@ -143,6 +146,14 @@ impl InterpState {
         self.stale = true;
     }
 
+    pub(crate) fn snap_sq(&self) -> f32 {
+        self.active.map_or(f32::INFINITY, |(_, snap_sq, _)| snap_sq)
+    }
+
+    pub(crate) fn ragdoll_prev(&self, entity: u64) -> Option<&[(Vec3, Quat)]> {
+        self.ragdolls.get(&entity).map(Vec::as_slice)
+    }
+
     /// What a display frame after the snapshot's tick blends with, for a
     /// presentation checkpoint (the transforms are the raycast record's,
     /// kept beside it).
@@ -154,6 +165,7 @@ impl InterpState {
             camera_snap: self.camera_snap,
             stale: self.stale,
             poses: self.poses.clone(),
+            ragdolls: self.ragdolls.clone(),
         }
     }
 
@@ -164,6 +176,7 @@ impl InterpState {
         self.camera_snap = c.camera_snap;
         self.stale = c.stale;
         self.poses = c.poses.clone();
+        self.ragdolls = c.ragdolls.clone();
         self.active = None;
         self.drawn = None;
     }
@@ -178,6 +191,7 @@ pub(crate) struct InterpCheckpoint {
     camera_snap: Option<u64>,
     stale: bool,
     poses: IdMap<u64, Pose>,
+    ragdolls: IdMap<u64, Vec<(Vec3, Quat)>>,
 }
 
 /// og.Camera's position and unit rotation.
@@ -214,6 +228,14 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
             old: &mut old,
             new: &mut rs.interp.poses,
         });
+    }
+    rs.interp.ragdolls.clear();
+    if let Some(physics) = rs.draw.atmo.physics.as_ref() {
+        for &e in rs.atmo.rigs.keys() {
+            if let Some(pose) = physics.ragdoll_pose(og_ecs::Entity::from_bits(e)) {
+                rs.interp.ragdolls.insert(e, pose);
+            }
+        }
     }
 }
 

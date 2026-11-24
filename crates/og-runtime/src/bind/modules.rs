@@ -169,7 +169,14 @@ pub(crate) fn mount_back(
     physics: PhysicsSystem,
     link: Option<og_audio::AudioLink>,
     actions: og_input::SharedActions,
+    feel: &crate::present::feel::Feel,
+    feel_records: &crate::present::feel::Records,
 ) -> Result<Mounted, String> {
+    crate::bind::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
+    crate::bind::garment::schedule(world, engine_id, &physics)?;
+    crate::bind::physics_ext::schedule_env(world, engine_id, &physics)?;
+    physics.schedule(world).map_err(err)?;
+    crate::present::feel::install_camera(world, engine_id, feel, feel_records, &physics)?;
     let feed = ui_world::Feed::of(world);
     let zones_to = actions.clone();
     world
@@ -263,9 +270,6 @@ pub(crate) fn mount_back(
             },
         )
         .map_err(err)?;
-    crate::bind::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
-    crate::bind::garment::schedule(world, engine_id, &physics)?;
-    physics.schedule(world).map_err(err)?;
     // Queue feedback before og.audio publishes this tick's packet. The
     // mixer receives it after hashing the simulation stream, with no ECS voice.
     world

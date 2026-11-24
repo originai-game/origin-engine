@@ -87,7 +87,7 @@ impl Records {
     }
 }
 
-/// Installs og.tilemap and og.camera (after og.anim, before the UI's end and physics).
+/// Installs og.tilemap (after og.anim, before physics).
 pub(crate) fn install_middle(
     world: &mut World,
     engine_id: u32,
@@ -100,7 +100,6 @@ pub(crate) fn install_middle(
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
     let tiles = feel.tiles.clone();
     let rec = r.clone();
-    let camera_physics = physics.clone();
     let physics = physics.clone();
     world
         .add_system(
@@ -123,6 +122,21 @@ pub(crate) fn install_middle(
             Box::new(TileBlock(feel.tiles.clone(), engine_id)),
         )
         .map_err(err)?;
+    Ok(())
+}
+
+/// Installs og.camera (after og.physics, before og.ui.end and audio: follows
+/// the tick's final physics poses with zero frame lag).
+pub(crate) fn install_camera(
+    world: &mut World,
+    engine_id: u32,
+    feel: &Feel,
+    r: &Records,
+    physics: &og_physics::PhysicsSystem,
+) -> Result<(), String> {
+    let names =
+        |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
+    let camera_physics = physics.clone();
     let shared = feel.shared.clone();
     let rec = r.clone();
     world

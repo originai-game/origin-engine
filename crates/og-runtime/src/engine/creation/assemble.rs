@@ -386,6 +386,15 @@ pub(crate) fn assemble(
     for m in crate::registry::FRONT {
         m(&mut world, &modules)?;
     }
+    // Terrain's post-restore edit replay must run before og.physics.queries
+    // snapshots colliders at tick start.
+    if world.systems().contains(&"og.terrain")
+        && world.systems().contains(&og_physics::QUERY_SYSTEM_NAME)
+    {
+        world
+            .move_system_before("og.terrain", og_physics::QUERY_SYSTEM_NAME)
+            .map_err(err)?;
+    }
 
     // State machines, before the systems bound to them.
     for state in &game.states {
@@ -605,7 +614,15 @@ pub(crate) fn assemble(
     for m in crate::registry::BACK {
         m(&mut world, &modules)?;
     }
-    let mounted = super::modules::mount_back(&mut world, engine_id, physics, previous, actions)?;
+    let mounted = super::modules::mount_back(
+        &mut world,
+        engine_id,
+        physics,
+        previous,
+        actions,
+        &feel,
+        &feel_records,
+    )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     for name in lazy_named {
         crate::engine::lazy::enable(&mut world, mount, name)?;

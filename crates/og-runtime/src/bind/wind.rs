@@ -96,20 +96,28 @@ fn motor(v: &record::WindMotor, position: Vec3, forward: Vec3) -> Motor {
     }
 }
 
-/// As each tick starts: the world's air (og.Wind and every og.WindMotor at
-/// its entity's world pose, in entity order), kept for the tick's systems
-/// and given to the physics that moves ropes, cloths, garments and bodies
-/// through it.
-pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
-    let (wind, motors, physics) = {
+/// Runs right before `og.physics` (`og.physics.env`): reads the world's air
+/// (og.Wind and every og.WindMotor at its entity's world pose, in entity order),
+/// keeps it for particle systems and gives it to physics so changes made by
+/// game systems, scenes or streamed cells act in the same tick.
+pub(crate) fn sync_env(
+    eng: &crate::engine::Engine,
+    physics: Option<&og_physics::PhysicsSystem>,
+    r: &crate::bind::physics_ext::Reader<'_>,
+) {
+    let (wind, motors) = {
         let st = eng.state.borrow();
         (
             st.layouts.get("og.Wind").cloned(),
             st.layouts.get("og.WindMotor").cloned(),
-            st.physics.clone(),
         )
     };
-    let r = crate::bind::physics_ext::Reader::World(world);
+    let wind_vel = r
+        .resource(wind.as_ref())
+        .and_then(|w| record::Wind::from_json(&w).ok())
+        .map_or(Vec3::ZERO, |w| {
+            Vec3::new(w.direction.x, 0.0, w.direction.z).normalize_or_zero() * w.speed.max(0.0)
+        });
     let motors = r
         .rows(motors.as_ref())
         .unwrap_or_default()
@@ -121,7 +129,7 @@ pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
         })
         .collect();
     let air = Air {
-        wind: WorldWind::read(world, wind.as_ref()).velocity,
+        wind: wind_vel,
         motors,
         ..Default::default()
     };

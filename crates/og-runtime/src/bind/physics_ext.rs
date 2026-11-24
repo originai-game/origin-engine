@@ -378,6 +378,21 @@ impl<'a> Reader<'a> {
         Ok(glam::DVec3::new(o.x, o.y, o.z))
     }
 
+    /// A resource row decoded as JSON, if registered and present.
+    pub(crate) fn resource(&self, layout: Option<&crate::host::codec::Layout>) -> Option<Value> {
+        let l = layout?;
+        match self {
+            Reader::World(w) => crate::present::fx::resource(w, Some(l)).map(|v| (*v).clone()),
+            Reader::System(c) => {
+                let id = c.id_by_name(&l.schema).ok()?;
+                if !c.has_resource_id(id).unwrap_or(false) {
+                    return None;
+                }
+                Some(l.decode(&c.resource_bytes(id).ok()?))
+            }
+        }
+    }
+
     fn time(&self) -> og_core::Time {
         match self {
             Reader::World(w) => w.time(),
@@ -392,7 +407,11 @@ impl<'a> Reader<'a> {
         let (at, _) = og_physics::world_pose(
             e,
             (t.position, t.quaternion),
-            |c| self.get::<Parent>(c).map(|p| Entity::from_bits(p.entity)),
+            |c| {
+                self.get::<Parent>(c)
+                    .filter(|p| p.entity != 0)
+                    .map(|p| Entity::from_bits(p.entity))
+            },
             |p| self.get::<Transform>(p),
         );
         Some(at)
@@ -426,7 +445,11 @@ impl<'a> Reader<'a> {
         let (at, q) = og_physics::world_pose(
             e,
             (t.position, t.quaternion),
-            |c| self.get::<Parent>(c).map(|p| Entity::from_bits(p.entity)),
+            |c| {
+                self.get::<Parent>(c)
+                    .filter(|p| p.entity != 0)
+                    .map(|p| Entity::from_bits(p.entity))
+            },
             |p| self.get::<Transform>(p),
         );
         Some((at, q, t.scale))
@@ -499,16 +522,63 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
         .collect())
 }
 
-/// As each tick starts (after og.WorldOrigin's shift): the og.Water bodies
-/// this tick's bodies cross, cut and (og.Buoyancy) float on, read only
-/// once a game names og.Water.
-pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
-    let Ok(p) = physics(eng) else {
-        return;
-    };
-    if world.id_by_name("og.Water").is_ok() {
-        p.set_waters(waters(eng, &Reader::World(world)).unwrap_or_default());
+/// The name of the pre-physics environment sync system (og.Water, og.Wind,
+/// og.WindMotor and og.ForceField), running after game systems and scene/cell
+/// loads so physics and particles see same-tick environment state with zero lag.
+pub(crate) const ENV_SYSTEM: &str = "og.physics.env";
+
+const ENV_LAZY: &[&str] = &[
+    "og.Water",
+    "og.Terrain",
+    "og.Wind",
+    "og.WindMotor",
+    "og.ForceField",
+    "og.Volume",
+    crate::world::origin::RESOURCE,
+];
+
+/// Grants a lazily registered environment record to [`ENV_SYSTEM`].
+pub(crate) fn enable_env(world: &mut World, name: &str) -> og_core::Result<()> {
+    match world.grant(ENV_SYSTEM, &[name]) {
+        Err(e) if e.kind() == og_core::ErrorKind::NotFound && !e.reason().contains("type") => {
+            Ok(())
+        }
+        r => r,
     }
+}
+
+/// Schedules [`ENV_SYSTEM`] right before `og.physics`: gathers og.Water,
+/// og.Wind, og.WindMotor and og.ForceField from the world's current state
+/// after game systems, scenes, timelines and streamed cells have run.
+pub(crate) fn schedule_env(
+    world: &mut World,
+    engine_id: u32,
+    physics: &PhysicsSystem,
+) -> Result<(), String> {
+    let mut desc = og_ecs::SystemDesc::new(ENV_SYSTEM);
+    desc.reads.push("og.Transform".into());
+    desc.reads.push("og.Parent".into());
+    for &name in ENV_LAZY {
+        if world.id_by_name(name).is_ok() {
+            desc.reads.push(name.into());
+        }
+    }
+    let physics = physics.clone();
+    world
+        .add_system(desc, move |ctx| {
+            let Ok(eng) = engine(engine_id) else {
+                return Ok(());
+            };
+            let r = Reader::System(ctx);
+            if ctx.id_by_name("og.Water").is_ok() {
+                physics.set_waters(waters(&eng, &r).unwrap_or_default());
+            }
+            crate::bind::wind::sync_env(&eng, Some(&physics), &r);
+            crate::bind::forces::sync_env(&eng, Some(&physics), &r);
+            Ok(())
+        })
+        .map(|_| ())
+        .map_err(|e| e.reason().to_string())
 }
 
 /// An og.Water's surface (a lake's level, a sea's waves, a river's
@@ -803,6 +873,7 @@ pub(crate) fn schedule_ragdoll_targets(
                             |c| {
                                 ctx.get::<Parent>(c)
                                     .ok()
+                                    .filter(|p| p.entity != 0)
                                     .map(|p| Entity::from_bits(p.entity))
                             },
                             |p| ctx.get::<Transform>(p).ok(),
@@ -847,6 +918,9 @@ pub fn og_physics_ragdoll_rig_from_skeleton(
             .anim
             .clone()
             .ok_or("this engine has no animation")?;
+        if skeleton.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&skeleton) {
+            return Err(format!("{skeleton} is not a skeleton handle"));
+        }
         let s = anim
             .skeleton(skeleton as u64)
             .ok_or_else(|| format!("{skeleton} is not a loaded skeleton (og.load.animation)"))?;
@@ -858,24 +932,27 @@ pub fn og_physics_ragdoll_rig_from_skeleton(
 
 /// The ragdolls' drawing: each posed model (palette `palettes[e]`) whose
 /// entity has a rig from its skeleton gets its joints blended towards the
-/// bones' bodies by og.Ragdoll.blend.
+/// bones' bodies by og.Ragdoll.blend, interpolated between the previous
+/// tick's bone poses and the current tick's during display frames.
 // Rendering only: the drawn ragdoll's skin palette.
 #[allow(clippy::disallowed_methods)]
 pub(crate) fn draw_ragdolls(
     world: &World,
     rs: &mut RenderState,
-    world_of: &mut dyn FnMut(u64) -> Mat4,
+    world_and_alpha: &mut dyn FnMut(u64) -> (Mat4, Option<f32>),
 ) {
     let RenderState {
         scene,
         fx,
         draw,
         atmo,
+        interp,
         ..
     } = rs;
     let (Some(physics), Some(anim)) = (draw.atmo.physics.as_ref(), fx.anim.as_ref()) else {
         return;
     };
+    let snap_sq = interp.snap_sq();
     let layout = draw.atmo.ragdoll.as_ref();
     for (e, v) in rows(world, layout) {
         let Ok(v) = record::Ragdoll::from_json(&v) else {
@@ -905,13 +982,25 @@ pub(crate) fn draw_ragdolls(
         else {
             continue;
         };
-        let to_model = world_of(e).inverse();
+        let (world_mat, alpha) = world_and_alpha(e);
+        let prev = alpha
+            .and_then(|_| interp.ragdoll_prev(e))
+            .filter(|prev| prev.len() == bodies.len());
+        let to_model = world_mat.inverse();
         for (bone, &(p, q)) in bodies.iter().enumerate() {
             let Some(j) = kept.joints.get(bone).and_then(|&j| usize::try_from(j).ok()) else {
                 continue;
             };
             let (Some(m), Some(ib)) = (matrices.get_mut(j), skin.inverse_bind.get(j)) else {
                 continue;
+            };
+            let (p, q) = match (alpha, prev) {
+                (Some(a), Some(prev)) if prev[bone].0.distance_squared(p) <= snap_sq => {
+                    let (p0, q0) = prev[bone];
+                    let q1 = if q0.dot(q) < 0.0 { -q } else { q };
+                    (p0.lerp(p, a), q0.slerp(q1, a))
+                }
+                _ => (p, q),
             };
             let animated = *m * ib.inverse();
             let simulated = to_model * Mat4::from_rotation_translation(q, p);

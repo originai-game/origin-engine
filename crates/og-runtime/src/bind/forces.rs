@@ -61,26 +61,29 @@ fn field(
     })
 }
 
-/// As each tick starts: every enabled og.ForceField at its entity's world
-/// pose with the og.Volume beside it, in entity order, kept for the tick's
-/// particle systems and given to physics.
-pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
-    let (fields, volumes, physics) = {
+/// Runs right before `og.physics` (`og.physics.env`): every enabled
+/// og.ForceField at its entity's world pose with the og.Volume beside it,
+/// in entity order, kept for particle systems and given to physics in the
+/// same tick.
+pub(crate) fn sync_env(
+    eng: &crate::engine::Engine,
+    physics: Option<&og_physics::PhysicsSystem>,
+    r: &crate::bind::physics_ext::Reader<'_>,
+) {
+    let (fields, volumes) = {
         let st = eng.state.borrow();
         (
             st.layouts.get("og.ForceField").cloned(),
             st.layouts.get("og.Volume").cloned(),
-            st.physics.clone(),
         )
     };
-    let r = crate::bind::physics_ext::Reader::World(world);
     let fields = r
         .rows(fields.as_ref())
         .unwrap_or_default()
         .into_iter()
         .filter_map(|(e, v)| {
             let e = og_ecs::Entity::from_bits(e);
-            let volume = crate::world::region::volume_of(world, volumes.as_ref(), e);
+            let volume = r.volume(volumes.as_ref(), e);
             field(&v, r.pose(e)?, volume)
         })
         .collect();

@@ -154,8 +154,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     weather::extract(world, scene, layouts, atmo, world_wind, fog_tint);
     fog_volumes(world, scene, layouts, h);
 
-    // Ragdolls blended into their models' palettes.
-    crate::bind::physics_ext::draw_ragdolls(world, rs, &mut |e| h.world_of(e));
+    // Ragdolls blended into their models' palettes, interpolated across display frames.
+    crate::bind::physics_ext::draw_ragdolls(world, rs, &mut |e| (h.world_of(e), h.blend_alpha(e)));
     water::extract(world, rs, h);
     fluid::extract(world, rs, h);
     soft::extract(world, rs)

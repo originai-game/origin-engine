@@ -44,6 +44,9 @@ pub(crate) const HOOKS: &[(&str, &str)] = &[
     ("og.LookAt", "target"),
     // Always in the skeleton entity's Transform frame.
     ("og.IkTarget2D", "target"),
+    // Rope hang grip and anchor in the skeleton entity's Transform frame.
+    ("og.Hang", "point"),
+    ("og.Hang", "anchor"),
 ];
 
 /// A field's place in the world: its own schema's `worldspace`, else the
@@ -318,6 +321,15 @@ fn hooks(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), String> {
                     if on {
                         let p = t.target.as_dvec2() + d.truncate();
                         v["target"] = json!({ "x": p.x as f32, "y": p.y as f32 });
+                    }
+                    on
+                }
+                "og.Hang" => {
+                    let h = record::Hang::from_json(&v)?;
+                    let on = skeleton_root(h.skeleton);
+                    if on {
+                        v["point"] = moved(h.point, d);
+                        v["anchor"] = moved(h.anchor, d);
                     }
                     on
                 }

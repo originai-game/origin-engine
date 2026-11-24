@@ -331,10 +331,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         enable: |_, _| Ok(()),
     },
     // R12: the runtime's before-tick hook reads and writes them
-    // (crate::world::origin); no module to grant. Naming either registers both.
+    // (crate::world::origin); og.physics.env reads zero for sea wave coordinates.
     Lazy {
         name: crate::world::origin::RESOURCE,
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, crate::world::origin::RESOURCE),
     },
     Lazy {
         name: crate::world::origin::EVENT,
@@ -426,7 +426,7 @@ pub(crate) const LAZY: &[Lazy] = &[
     // surface grows (the sea, the flow map).
     Lazy {
         name: "og.Water",
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, "og.Water"),
     },
     // R6: the grass, read by extraction alone: a world without grass keeps
     // its type table and hash.
@@ -434,12 +434,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Grass",
         enable: |_, _| Ok(()),
     },
-    // The terrain component, read by extraction (and describe) alone: a
-    // world without a terrain keeps its type table and hash as it grows
-    // fields (T5's horizonShadows).
+    // The terrain component, read by extraction (and describe) and og.physics.env (seabed).
     Lazy {
         name: "og.Terrain",
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, "og.Terrain"),
     },
     // T3: terrain stamps, read by extraction alone: a world without one
     // keeps its type table and hash.
@@ -447,22 +445,19 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.TerrainStamp",
         enable: |_, _| Ok(()),
     },
-    // Area 4: the scattered copies and the wind, read by extraction alone:
-    // a world without them keeps its type table and hash as they grow
-    // (G4's placement rules, G2's simulated field).
+    // Area 4: the scattered copies and the wind.
     Lazy {
         name: "og.TerrainScatter",
         enable: |_, _| Ok(()),
     },
     Lazy {
         name: "og.Wind",
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, "og.Wind"),
     },
-    // Area 4 (G2, G3): the wind's motors and the grass's pushers, read by
-    // extraction alone: a world without them keeps its type table and hash.
+    // Area 4 (G2, G3): the wind's motors and the grass's pushers.
     Lazy {
         name: "og.WindMotor",
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, "og.WindMotor"),
     },
     Lazy {
         name: "og.GrassPusher",
@@ -474,11 +469,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.ScatterClearing",
         enable: |_, _| Ok(()),
     },
-    // A region's acceleration, read as the tick starts
-    // (bind::forces): a world without one keeps its type table and hash.
+    // A region's acceleration, read right before physics (og.physics.env).
     Lazy {
         name: "og.ForceField",
-        enable: |_, _| Ok(()),
+        enable: |w, _| crate::bind::physics_ext::enable_env(w, "og.ForceField"),
     },
     // Fog inside a region, read by extraction alone.
     Lazy {
@@ -486,10 +480,13 @@ pub(crate) const LAZY: &[Lazy] = &[
         enable: |_, _| Ok(()),
     },
     // The shape of a region on its entity: og.audio bounds an
-    // og.ReverbZone by it, and the cells read it as the tick starts.
+    // og.ReverbZone by it, and og.physics.env reads it for og.ForceField.
     Lazy {
         name: "og.Volume",
-        enable: |w, _| og_audio::enable_volumes(w),
+        enable: |w, _| {
+            og_audio::enable_volumes(w)?;
+            crate::bind::physics_ext::enable_env(w, "og.Volume")
+        },
     },
     // G4: the kinds of blade og.Grass fields list.
     Lazy {
@@ -792,14 +789,6 @@ pub(crate) const BEFORE_TICK: &[fn(&Engine, &mut World)] = &[
     // The world's zero follows its focus (R12), before anything reads a
     // place: cells, the raycast record, interpolation.
     origin::before_tick,
-    // The water og.Buoyancy floats on this tick, at the new zero.
-    |e, w| crate::bind::physics_ext::before_tick(e, w),
-    // The air this tick's bodies and particles move through.
-    |e, w| wind::before_tick(e, w),
-    // The force fields this tick's bodies are accelerated by.
-    |e, w| forces::before_tick(e, w),
-    // What each team sees this tick (og.sight), from where things stand.
-    |e, w| sight::before_tick(e, w),
     // A scene change asked for puts its scene in place, before the cells
     // it places are seen.
     scenes::before_tick,
@@ -807,6 +796,8 @@ pub(crate) const BEFORE_TICK: &[fn(&Engine, &mut World)] = &[
     timeline::before_tick,
     // World cells load and unload as the tick starts (G3-3).
     stream::cells::before_tick,
+    // What each team sees this tick (og.sight), from where things stand.
+    |e, w| sight::before_tick(e, w),
 ];
 
 /// A module's probe actions and the names it registers them under, which
