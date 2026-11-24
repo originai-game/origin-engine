@@ -22861,6 +22861,17 @@
           "description": "Up to 16 beats in rising time, six numbers each: time (on `time`'s clock), screen height (above 0), x and y (the centre's place, fractions of the frame from its top left), yaw (degrees about +Y from +Z towards +X, eased as written) and pitch (degrees above the horizon). Empty frames nothing.",
           "default": []
         },
+        "area": {
+          "$ref": "#/$defs/Vector2",
+          "description": "A level rectangle framed whole instead of `height`: its width across the view and depth along the ground ahead, through `centre`. A beat's screen height is then the share of the frame its on-screen bounds fill in their tighter direction; x and y centre those bounds. Zero uses `height`.",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-worldspace": "none"
+        },
         "ticks": {
           "type": "boolean",
           "description": "Beat times count ticks instead of seconds.",

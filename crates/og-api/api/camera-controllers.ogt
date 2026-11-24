@@ -164,6 +164,11 @@
       unit m
     }
     field beats List.f32.96 "Up to 16 beats in rising time, six numbers each: time (on `time`'s clock), screen height (above 0), x and y (the centre's place, fractions of the frame from its top left), yaw (degrees about +Y from +Z towards +X, eased as written) and pitch (degrees above the horizon). Empty frames nothing."
+    field area Vector2 "A level rectangle framed whole instead of `height`: its width across the view and depth along the ground ahead, through `centre`. A beat's screen height is then the share of the frame its on-screen bounds fill in their tighter direction; x and y centre those bounds. Zero uses `height`." {
+      worldspace none
+      unit m
+      min 0
+    }
     field ticks bool "Beat times count ticks instead of seconds."
     field time f32 "The clock the beats are read on: a tick frames the time it holds, then advances it by `speed` seconds (ticks with `ticks`), so the first tick after adding the component frames time 0. A game may set it, such as to the second of a clip a state stands for." {
       tunable true

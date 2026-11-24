@@ -218,6 +218,7 @@ interface FramingValue {
   height: number;
   centre: V3;
   beats: readonly number[];
+  area: { x: number; y: number };
   ticks: boolean;
   time: number;
   speed: number;
@@ -247,6 +248,69 @@ function framing(beats: readonly number[], s: number): { h: number; x: number; y
   return { h: 1 / inv, x: mix(2), y: mix(3), yaw: mix(4) * DEG, pitch: mix(5) * DEG };
 }
 
+const dot = (a: V3, b: V3) => a.x * b.x + a.y * b.y + a.z * b.z;
+
+/**
+ * The eye that frames a level rectangle (width across the yawed view, depth along the ground
+ * ahead, centred on c): its on-screen bounds fill h of the frame in their tighter direction and
+ * their centre sits at (nx, ny), in -1..1 with +y up. Under perspective the near edge projects
+ * wider than the far one, so no closed form: the distance along the view is bisected on the fill,
+ * and at each distance the sideways and upward shift (which leave every corner's depth alone) is
+ * solved for the bounds' centre. Fixed iteration counts keep it deterministic.
+ */
+function frameArea(c: V3, width: number, depth: number, sy: number, cy: number, forward: V3, side: V3, up: V3, tx: number, ty: number, h: number, nx: number, ny: number): V3 {
+  // The corners relative to c, in the view's axes: k across, m up, z along the view.
+  const k: number[] = [];
+  const m: number[] = [];
+  const z: number[] = [];
+  for (const [i, j] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    // Across the view is the screen's right (-cy, 0, sy); ahead on the ground is (sy, 0, cy).
+    const v = { x: (-cy * i * width + sy * j * depth) / 2, y: 0, z: (sy * i * width + cy * j * depth) / 2 };
+    k.push(dot(v, side));
+    m.push(dot(v, up));
+    z.push(dot(v, forward));
+  }
+  const near = Math.max(...z.map((v) => -v)) + 1e-3 * (width + depth);
+  let shiftX = 0;
+  let shiftY = 0;
+  // The bounds' fill at distance l, after solving the shift that centres them where the beat says.
+  const fill = (l: number): number => {
+    const mean = l + (z[0]! + z[1]! + z[2]! + z[3]!) / 4;
+    let w = 0;
+    let t = 0;
+    for (let n = 0; n < 16; n++) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (let q = 0; q < 4; q++) {
+        const d = l + z[q]!;
+        const x = (k[q]! - shiftX) / (d * tx);
+        const y = (m[q]! - shiftY) / (d * ty);
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      }
+      w = (x1 - x0) / 2;
+      t = (y1 - y0) / 2;
+      // Moving the eye right moves every corner left by about 1/(depth tx).
+      shiftX += ((x0 + x1) / 2 - nx) * mean * tx;
+      shiftY += ((y0 + y1) / 2 - ny) * mean * ty;
+    }
+    return Math.max(w, t);
+  };
+  let lo = near;
+  let hi = near + (width + depth) / (ty < tx ? ty : tx);
+  for (let n = 0; n < 40 && fill(hi) > h; n++) hi = near + (hi - near) * 2;
+  for (let n = 0; n < 48; n++) {
+    const mid = (lo + hi) / 2;
+    if (fill(mid) > h) lo = mid;
+    else hi = mid;
+  }
+  fill(hi);
+  return {
+    x: c.x - hi * forward.x + shiftX * side.x + shiftY * up.x,
+    y: c.y - hi * forward.y + shiftX * side.y + shiftY * up.y,
+    z: c.z - hi * forward.z + shiftX * side.z + shiftY * up.z,
+  };
+}
+
 /** og.framingCamera: the subject's height and place in the frame, and the view's yaw and pitch, per beat. */
 export const framingCamera = defineSystem(
   "og.framingCamera",
@@ -265,7 +329,8 @@ export const framingCamera = defineSystem(
       const beats = f.beats;
       const cam = camera(world);
       const projection = cam as unknown as ProjectionValue | null;
-      if (!cam || projection!.orthographic || !(f.height > 0) || beats.length < BEAT) return;
+      const area = f.area.x > 0 && f.area.y > 0;
+      if (!cam || projection!.orthographic || !(area || f.height > 0) || beats.length < BEAT) return;
       for (let k = 1; k < beats.length; k += BEAT) if (!(beats[k]! > 0)) return;
       const p = a.column(Transform).position;
       const b = framing(beats, now);
@@ -283,17 +348,22 @@ export const framingCamera = defineSystem(
       const ty = sf / cf;
       const view = ui.viewport(world as never) as { width: number; height: number };
       const tx = ty * (view.height > 0 ? view.width / view.height : 1);
-      // At depth d along the view the subject's height fills h of the frame.
-      const d = f.height / (2 * ty * b.h);
       const nx = 2 * b.x - 1;
       const ny = 1 - 2 * b.y;
-      const ray = {
-        x: forward.x + nx * tx * side.x + ny * ty * up.x,
-        y: forward.y + nx * tx * side.y + ny * ty * up.y,
-        z: forward.z + nx * tx * side.z + ny * ty * up.z,
-      };
       const c = { x: p[0]! + f.centre.x, y: p[1]! + f.centre.y, z: p[2]! + f.centre.z };
-      const eye = { x: c.x - d * ray.x, y: c.y - d * ray.y, z: c.z - d * ray.z };
+      let eye: V3;
+      if (area) {
+        eye = frameArea(c, f.area.x, f.area.y, sy, cy, forward, side, up, tx, ty, b.h, nx, ny);
+      } else {
+        // At depth d along the view the subject's height fills h of the frame.
+        const d = f.height / (2 * ty * b.h);
+        const ray = {
+          x: forward.x + nx * tx * side.x + ny * ty * up.x,
+          y: forward.y + nx * tx * side.y + ny * ty * up.y,
+          z: forward.z + nx * tx * side.z + ny * ty * up.z,
+        };
+        eye = { x: c.x - d * ray.x, y: c.y - d * ray.y, z: c.z - d * ray.z };
+      }
       aim(cam, eye, { x: eye.x + forward.x, y: eye.y + forward.y, z: eye.z + forward.z });
       return;
     }

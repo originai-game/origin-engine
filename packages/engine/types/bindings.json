@@ -1093,6 +1093,14 @@
           "default": []
         },
         {
+          "name": "area",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
           "name": "ticks",
           "column": "bool",
           "default": false

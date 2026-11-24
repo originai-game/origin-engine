@@ -145,4 +145,4 @@ resource CameraBrain {
 }
 ```
 
-<sub>Module `camera` line 600</sub>
+<sub>Module `camera` line 605</sub>

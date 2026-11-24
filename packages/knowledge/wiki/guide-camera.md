@@ -219,6 +219,68 @@ export default og.game({
 });
 ```
 
+### Framing a level area
+
+A shooter's playfield, an arena or a board is framed whole, not by a
+subject's height: give `area`, its width across the view and its depth
+along the ground ahead, lying level through `centre`. Each beat's screen
+height is then the fraction of the frame the area's on-screen bounds fill
+in their tighter direction (0.94 leaves 3% each side), and x and y place
+the centre of those bounds. Under perspective the near edge spans wider
+than the far one; the system solves that, so the same beats fit the field
+on a 9:19.5 phone and at 16:9, at any pitch and fov. A vertical shooter
+keeps one beat; an arena intro eases the pitch over a few. Put the
+component on the field's own entity (it never moves) rather than the
+player, and drive the follow and lead with og.VirtualCamera if the view
+should track the ship.
+
+```ts recipe ticks=40
+import { defineSystem, og } from "@origingame/engine";
+import type { Result, Vector3 } from "@origingame/engine";
+
+function must<T>(r: Result<T>): T {
+  if (!r.ok) throw new Error(r.reason);
+  return r.value;
+}
+
+// The playfield: 18 m across, 32 m deep, seen from 40 degrees above.
+const W = 18;
+const D = 32;
+const FILL = 0.94;
+const BEATS = [0, FILL, 0.5, 0.5, 180, -40];
+
+// Project the four corners and compare their bounds with the beat.
+const Check = defineSystem("Check", { reads: [og.Camera, og.FramingCamera], writes: [] }, (_q, _time, world) => {
+  const camera = must(world.resource(og.Camera));
+  const view = og.ui.viewport(world);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const [x, z] of [[-W / 2, -D / 2], [W / 2, -D / 2], [-W / 2, D / 2], [W / 2, D / 2]] as const) {
+    const s = camera.worldToScreen({ x, y: 0, z } as Vector3);
+    if (!s) return;
+    xs.push(s.x / view.width);
+    ys.push(s.y / view.height);
+  }
+  const w = Math.max(...xs) - Math.min(...xs);
+  const h = Math.max(...ys) - Math.min(...ys);
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+  const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  og.assert.always(Math.abs(Math.max(w, h) - FILL) < 0.002, "the field's bounds fill the beat's share in their tighter direction", { w, h });
+  og.assert.always(w <= FILL + 0.002 && h <= FILL + 0.002, "the whole field is in frame", { w, h });
+  og.assert.always(Math.abs(cx - 0.5) < 0.002 && Math.abs(cy - 0.5) < 0.002, "the bounds sit centred", { cx, cy });
+  og.assert.reachable("the field was framed", {});
+});
+
+export default og.game({
+  systems: [...og.systems.cameras, Check],
+  start(world) {
+    must(world.resource(og.Camera)).fov = 50;
+    const field = must(world.spawn({ name: "field" }));
+    must(world.insert(field, og.FramingCamera, { area: { x: W, y: D }, beats: BEATS }));
+  },
+});
+```
+
 <a id="guide-camera-6"></a>
 ### `camera §6` Pitfalls
 

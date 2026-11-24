@@ -5673,6 +5673,14 @@ export interface FramingCamera {
    * @capacity 96 elements (List.f32.96): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
   beats: readonly number[];
+  /**
+   * A level rectangle framed whole instead of `height`: its width across the view and depth along the ground ahead, through `centre`. A beat's screen height is then the share of the frame its on-screen bounds fill in their tighter direction; x and y centre those bounds. Zero uses `height`.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  area: Vector2;
   /** Beat times count ticks instead of seconds. */
   ticks: boolean;
   /**
@@ -35744,7 +35752,7 @@ export declare namespace og {
    * Frames the entity carrying it with og.Camera by beats, as a shot list states them: per beat the subject's height as a fraction of the frame's, where its centre sits, and the view's yaw and pitch. It solves the camera's distance and place from og.Camera's fov and the play surface's aspect, easing between beats (smoothstep); before the first the first holds, after the last the last. Perspective only. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
    * See `camera §5`.
    */
-  const FramingCamera: ComponentType<{ readonly height: FieldSpec<"f32">; readonly centre: FieldSpec<"Vector3">; readonly beats: ListSpec<"f32">; readonly ticks: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32"> }, FramingCamera>;
+  const FramingCamera: ComponentType<{ readonly height: FieldSpec<"f32">; readonly centre: FieldSpec<"Vector3">; readonly beats: ListSpec<"f32">; readonly area: FieldSpec<"Vector2">; readonly ticks: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32"> }, FramingCamera>;
   /**
    * A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it.
    */

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "FramingCamera.area",
+      "summary": "og.FramingCamera frames a level rectangle whole: set `area` (its width across the view and its depth along the ground ahead, lying through `centre`) and each beat's screen height becomes the share of the frame the rectangle's on-screen bounds fill in their tighter direction, with x and y placing the centre of those bounds. The system solves the perspective (the near edge spans wider than the far one), so one beat fits a shooter's playfield or an arena on a phone and at 16:9, at any pitch and fov. The camera guide's §5 has a recipe."
+    }
+  ]
+}
