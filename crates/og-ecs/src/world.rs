@@ -1305,6 +1305,65 @@ impl World {
     }
 
     /// Entities each query of `system` matches now, in query order.
+    /// The systems that ran but whose queries never matched an entity on a
+    /// tick they ran, in run order, each with the smallest set of the
+    /// components its queries require that no archetype the world made
+    /// has ever held together (by type name in id order; empty when every
+    /// required set has an archetype, which then never held an entity while
+    /// the system ran, or which its `without` excludes). Systems whose
+    /// queries require no component (resource-only ones) are left out.
+    pub fn never_matched(&self) -> Vec<(String, Vec<String>)> {
+        self.systems
+            .iter()
+            .filter(|s| s.last_tick.is_some() && !s.ever_matched)
+            .filter(|s| !s.queries.is_empty() && s.queries.iter().all(|q| !q.required.is_empty()))
+            .map(|s| {
+                let apart = s
+                    .queries
+                    .iter()
+                    .map(|q| self.apart(&q.required))
+                    .filter(|a| !a.is_empty())
+                    .min_by_key(Vec::len)
+                    .unwrap_or_default();
+                let names = apart
+                    .iter()
+                    .map(|id| self.registry.name(*id).to_owned())
+                    .collect();
+                (s.name.clone(), names)
+            })
+            .collect()
+    }
+
+    /// The smallest subset of `required` no archetype holds all of (the
+    /// first in subset order among the smallest), or empty when one holds
+    /// them all. Past 16 components, the whole set when none holds it.
+    fn apart(&self, required: &[SchemaId]) -> Vec<SchemaId> {
+        let held = |set: &[SchemaId]| {
+            self.archetypes
+                .iter()
+                .any(|a| set.iter().all(|id| a.has(*id)))
+        };
+        if held(required) {
+            return Vec::new();
+        }
+        let n = required.len();
+        if n > 16 {
+            return required.to_vec();
+        }
+        let mut masks: Vec<u32> = (1..(1u32 << n)).collect();
+        masks.sort_by_key(|m| (m.count_ones(), *m));
+        for m in masks {
+            let set: Vec<SchemaId> = (0..n)
+                .filter(|b| m & (1 << b) != 0)
+                .map(|b| required[b])
+                .collect();
+            if !held(&set) {
+                return set;
+            }
+        }
+        required.to_vec()
+    }
+
     fn match_counts(&self, system: &System) -> Vec<usize> {
         system
             .queries
@@ -1400,6 +1459,9 @@ impl World {
                 let matched = self.match_counts(&self.systems[i]);
                 self.systems[i].matched = matched;
                 self.systems[i].matched_at = Some(self.structural);
+            }
+            if self.systems[i].matched.iter().any(|&n| n > 0) {
+                self.systems[i].ever_matched = true;
             }
             self.systems[i].last_tick = Some(tick);
             self.reactive.change_tick += 1;

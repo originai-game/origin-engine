@@ -15,6 +15,7 @@ One system. The engine fills reads, writes and matched for every system the game
 | `reads` | `readonly string[] \| null` | `null` | — | — | — | What it declared it reads; null when undeclared. |
 | `writes` | `readonly string[] \| null` | `null` | — | — | — | What it declared it writes; null when undeclared. |
 | `ms` | `number \| null` | `null` | — | `ms` | — | Time it took on the last tick; null when not measured. |
+| `neverMatched` | `readonly string[] \| null` | `null` | — | — | optional | For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one. |
 
 ```ogt
 struct SystemDump {
@@ -25,6 +26,9 @@ struct SystemDump {
   field writes Option.List.String "What it declared it writes; null when undeclared."
   field ms Option.f32 "Time it took on the last tick; null when not measured." {
     unit ms
+  }
+  field neverMatched Option.List.String "For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one." {
+    optional true
   }
 }
 ```

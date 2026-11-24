@@ -437,6 +437,9 @@ module probe {
     field ms Option.f32 "Time it took on the last tick; null when not measured." {
       unit ms
     }
+    field neverMatched Option.List.String "For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one." {
+      optional true
+    }
   }
 
   struct WorldDump {

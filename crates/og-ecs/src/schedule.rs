@@ -103,6 +103,8 @@ pub(crate) struct System {
     /// The world's structural count `matched` was counted at: counted
     /// again only after an entity moved, came or went.
     pub matched_at: Option<u64>,
+    /// Whether any of its queries matched an entity on a tick it ran.
+    pub ever_matched: bool,
     /// The tick the system last ran in.
     pub last_tick: Option<u64>,
     /// The clock's reading when its last run began, the wall-clock
@@ -249,6 +251,7 @@ impl System {
             condition: None,
             matched: vec![0; queries.len()],
             matched_at: None,
+            ever_matched: false,
             queries,
             desc_queries: desc.queries,
             last_tick: None,

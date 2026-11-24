@@ -19786,6 +19786,7 @@ pub struct SystemDump {
     pub reads: Option<Vec<String>>,
     pub writes: Option<Vec<String>>,
     pub ms: Option<f32>,
+    pub never_matched: Option<Vec<String>>,
 }
 
 impl Default for SystemDump {
@@ -19796,6 +19797,7 @@ impl Default for SystemDump {
             reads: Default::default(),
             writes: Default::default(),
             ms: Default::default(),
+            never_matched: Default::default(),
         }
     }
 }
@@ -19812,6 +19814,7 @@ impl FromJson for SystemDump {
             reads: field(o, "reads", d.reads)?,
             writes: field(o, "writes", d.writes)?,
             ms: field(o, "ms", d.ms)?,
+            never_matched: field(o, "neverMatched", d.never_matched)?,
         })
     }
 }
@@ -19824,6 +19827,7 @@ impl ToJson for SystemDump {
         o.insert("reads".into(), self.reads.to_json());
         o.insert("writes".into(), self.writes.to_json());
         o.insert("ms".into(), self.ms.to_json());
+        o.insert("neverMatched".into(), self.never_matched.to_json());
         Value::Object(o)
     }
 }

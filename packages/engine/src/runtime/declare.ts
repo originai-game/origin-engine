@@ -90,6 +90,9 @@ export interface SystemEntry {
   readonly writes: ReadonlySet<string>;
 }
 
+/** The systems that took their frame query's archetypes (q.archetypes()) at least once: og run warns only about these when their query never matched an entity. */
+export const iteratedSystems = new Set<string>();
+
 /** Systems by callback id: the dispatcher refuses any other id. */
 export const systems = new Map<number, SystemEntry>();
 const systemHandles = new WeakMap<object, number>();

@@ -1,5 +1,5 @@
 import { componentId, forgetComponents } from "./components.ts";
-import type { SystemEntry, Token } from "./declare.ts";
+import { iteratedSystems, type SystemEntry, type Token } from "./declare.ts";
 import { COLUMNS, type ColumnArray, type ColumnSpec, abi, words } from "./host.ts";
 import { FRAME_QUERY_WORD } from "../generated/abi.ts";
 import { type Result, parse, refused } from "./result.ts";
@@ -213,6 +213,7 @@ export class QueryImpl {
    */
   archetypes(): readonly ArchetypeViewImpl[] {
     if (this.#cached && this.#cachedEpoch === rt.epoch) return this.#cached;
+    if (this.#system) iteratedSystems.add(this.#system.name);
     const list: ArchetypeViewImpl[] = [];
     let at = FRAME_QUERY_WORD;
     if (this.#described !== rt.sharedStamp) {

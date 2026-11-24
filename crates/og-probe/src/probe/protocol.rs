@@ -1146,10 +1146,17 @@ impl Probe {
         // queries matched when it last ran and, when the host gave the world
         // a clock (World::set_clock), the milliseconds of that run (null
         // without one) and of every timed run summed, with their count.
+        // `neverMatched`: for a system that ran but never matched an entity,
+        // the smallest set of its required components no entity ever had
+        // together (World::never_matched); null otherwise.
+        let never = world.never_matched();
         let systems: Vec<Value> = world
             .system_info()
             .into_iter()
-            .map(|s| json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": s.ms, "totalMs": s.total_ms, "runs": s.runs}))
+            .map(|s| {
+                let apart = never.iter().find(|(n, _)| *n == s.name).map(|(_, a)| a.clone());
+                json!({"name": s.name, "matched": s.matched, "reads": s.reads, "writes": s.writes, "ms": s.ms, "totalMs": s.total_ms, "runs": s.runs, "neverMatched": apart})
+            })
             .collect();
         let resources: Vec<String> = world
             .schemas()

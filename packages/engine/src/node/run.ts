@@ -88,6 +88,7 @@ import { openAudio, type AudioSink } from "./audio.ts";
 import { decodePng } from "./png.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
+import { iteratedSystems } from "../runtime/declare.ts";
 import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken, type Result } from "../runtime.ts";
 
 const hostProcess = process;
@@ -923,6 +924,19 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const audioStats = sink.stats();
     if (frameFailed) process.stderr.write(`og run: ${frameFailed}\n`);
     const dump = engine.probe.dump({ what: "world" }) as unknown as { hash: string; entities: number; tick: number; systems?: SystemTimes };
+    // A game system that iterated its query but never matched an entity: a fact, not a failure
+    // (SystemDump.neverMatched). A system that never takes q.archetypes() reaches entities another way.
+    for (const s of (dump.systems ?? []) as Array<{ name: string; neverMatched?: string[] | null }>) {
+      if (!s.neverMatched || s.name.startsWith("og.") || !iteratedSystems.has(s.name)) continue;
+      const why = s.neverMatched.length > 1
+        ? `no entity ever had ${s.neverMatched.join(" and ")} together`
+        : s.neverMatched.length === 1
+          ? `no entity ever had ${s.neverMatched[0]}`
+          : "every entity with its components was excluded or gone while it ran";
+      const line = `WARN tick ${dump.tick}: system '${s.name}' ran but its query never matched an entity: ${why}`;
+      warnings.push(line);
+      process.stderr.write(line + "\n");
+    }
     // The script's expectations (`expect:` steps): a failure fails the run.
     const expectations = engine.probe.expectations();
     drain();

@@ -280,3 +280,64 @@ fn a_components_write_stamp_moves_on_every_write_of_it_and_on_no_other() {
         assert_eq!(view.written(sleeping), None);
     }
 }
+
+#[test]
+fn never_matched_names_the_systems_that_never_found_an_entity_and_the_components_kept_apart() {
+    let mut w = world();
+    w.spawn((p(), v())).unwrap();
+    w.spawn((p(), Sleeping)).unwrap();
+    let noop = |_: &mut og_ecs::SystemContext<'_>| Ok(());
+    // Pos + Vel + Sleeping: no entity has Vel and Sleeping together.
+    w.add_system(
+        SystemDesc::new("wreck")
+            .read::<Vel>()
+            .read::<Sleeping>()
+            .write::<Pos>()
+            .query(
+                QueryDesc::new()
+                    .read::<Vel>()
+                    .read::<Sleeping>()
+                    .write::<Pos>(),
+            ),
+        noop,
+    )
+    .unwrap();
+    w.add_system(
+        SystemDesc::new("move")
+            .write::<Pos>()
+            .query(QueryDesc::new().write::<Pos>()),
+        noop,
+    )
+    .unwrap();
+    // Vel exists only beside Pos, which it excludes: nothing is kept apart.
+    w.add_system(
+        SystemDesc::new("drift")
+            .read::<Vel>()
+            .read::<Pos>()
+            .query(QueryDesc::new().read::<Vel>().without::<Pos>()),
+        noop,
+    )
+    .unwrap();
+    // Resource-only: never reported.
+    w.add_system(SystemDesc::new("tally").read::<Spawner>(), noop)
+        .unwrap();
+    assert!(w.never_matched().is_empty(), "nothing ran yet");
+
+    w.step().unwrap();
+    w.step().unwrap();
+    assert_eq!(
+        w.never_matched(),
+        [
+            (
+                "wreck".to_string(),
+                vec!["Vel".to_string(), "Sleeping".to_string()]
+            ),
+            ("drift".to_string(), vec![]),
+        ]
+    );
+
+    // An entity that brings Vel and Sleeping together later: wreck matched once.
+    w.spawn((p(), v(), Sleeping)).unwrap();
+    w.step().unwrap();
+    assert_eq!(w.never_matched(), [("drift".to_string(), vec![])]);
+}

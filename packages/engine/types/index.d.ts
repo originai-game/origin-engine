@@ -27747,6 +27747,10 @@ export interface SystemDump {
    * @unit ms (milliseconds)
    */
   readonly ms: number | null;
+  /**
+   * For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one.
+   */
+  readonly neverMatched?: readonly string[] | null;
 }
 
 /** The world: tables, systems, resources. */

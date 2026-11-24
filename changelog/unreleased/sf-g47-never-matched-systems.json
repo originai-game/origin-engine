@@ -1,0 +1,13 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "SystemDump.neverMatched",
+      "summary": "dump_world names, for each system that ran but whose query never matched an entity, the smallest set of its required components no entity ever had together (such as Boss and og.Chunk), so a system silently disabled by a component in its reads or writes shows up."
+    },
+    {
+      "member": "og run / og test warnings",
+      "summary": "After a run, og run and og test print a WARN line on stderr and add it to `warnings` in --json for each game system whose query never matched an entity, with the components kept apart. A fact, never a failure; the JSON shape is unchanged."
+    }
+  ]
+}
