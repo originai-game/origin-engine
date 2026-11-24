@@ -74,6 +74,7 @@ the L4 and restates its target there at the same ratio.
 | Watercolour look | a watercolour primitive (Bousseau, MNPR) in place of today's oil-like result, with the art review | — |
 | Distant impostors | their own shadow, the view from below and sway, with the art review | — |
 | Latest features on wasm, determinism and browser tiers | measured before a release | — |
+| Cloud depth composite | clouds occluded by scene depth at no more than +0.1 ms on ordinary scenes | deferred (2026-11-24): branch fix/cloud-depth-composite occludes correctly and passes 472 tests, but adds +0.32–0.48 ms at 1080p on ordinary scenes and +0.61 ms with a fuller-screen occluder (L4, 975082e9d); unlanded |
 | TAAU edges | thin edges and moving silhouettes as clean as the full-resolution reference | deferred by the owner (2026-11-24): stepped fringe on moving spheres, jagged and gapped fence silhouettes, broad softness, lost thin-edge coverage; history is not depth-aware and reprojects without translation (L4 at 975082e9d; findings artifact thin-edge-coverage-findings) |
 | Physical depth of field | defocused edges within quantisation of a raster-disc oracle at f/1, f/2, f/4, DoF at most 0.75 ms | deferred by the owner (2026-11-24): the layered half-resolution gather fits the budget (0.52 ms) but misses the oracle by 34/85/87 codes, with false exterior tails, an f/1 edge of 208 over its 197 bound and card-edge outlining; work kept on branch camera/physical-dof (physical-camera-evidence artifact) |
 
