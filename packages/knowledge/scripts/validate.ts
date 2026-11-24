@@ -434,7 +434,9 @@ function apiNames(roots: Roots, problems: string[]): void {
       const ok = api.members.has(head) ? api.members.get(head)!.has(member) : (api.fields.get(head)?.has(member) ?? false);
       if (!ok) bad.add(whole);
     }
-    for (const x of text.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
+    // A component's generated "Pack slots:" line names pack slots (`Ability.frame`), not API fields.
+    const prose = text.replace(/^Pack slots: .*$/gm, "");
+    for (const x of prose.matchAll(/(?<![\w./@-])([A-Z][A-Za-z0-9]*)\.([a-z]\w*)\b/g)) {
       const have = api.fields.get(x[1]!);
       if (have && !have.has(x[2]!)) bad.add(x[0]);
     }

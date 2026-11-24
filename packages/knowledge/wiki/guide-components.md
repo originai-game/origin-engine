@@ -3335,7 +3335,7 @@ Fixtures: `default`, `places`.
 <a id="guide-components-145"></a>
 ### `components §145` ShooterAbilities
 
-The ability bar at the foot of the screen: each ability in an octagon with a lit edge, its cooldown a dark sweep over the art with the seconds left, its charges on a tag and its key cap under it; the ultimate in a larger hexagon inside a ring that fills with its charge. The game owns every cooldown and charge; read only. Every part is a pack slot (`Ability.frame`, `.face`, `.ring`, `.sweep`, `.count`, `.chip.*`), so a theme sets its size, shape, ring, glow, sweep and type.
+The ability bar at the foot of the screen: each ability in an octagon with a lit edge, its cooldown a dark sweep over the art with the seconds left, its charges on a tag and its key cap under it; the ultimate in a larger hexagon inside a ring that fills with its charge. The game owns every cooldown and charge; read only. Every part is an Ability pack slot (listed below), so a theme sets its size, shape, ring, glow, sweep and type.
 
 `import { ShooterAbilities } from "@origingame/engine/ui/components"` (kit `shooter`, `packages/engine/src/ui/components/shooter/abilities.tsx`).
 

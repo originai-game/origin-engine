@@ -38,9 +38,8 @@ export interface ShooterAbilitiesProps {
  * with a lit edge, its cooldown a dark sweep over the art with the seconds
  * left, its charges on a tag and its key cap under it; the ultimate in a
  * larger hexagon inside a ring that fills with its charge. The game owns
- * every cooldown and charge; read only. Every part is a pack slot
- * (`Ability.frame`, `.face`, `.ring`, `.sweep`, `.count`, `.chip.*`), so a
- * theme sets its size, shape, ring, glow, sweep and type.
+ * every cooldown and charge; read only. Every part is an Ability pack slot
+ * (listed below), so a theme sets its size, shape, ring, glow, sweep and type.
  */
 export function ShooterAbilities(props: ShooterAbilitiesProps) {
   return (
