@@ -196,7 +196,7 @@ Both are kinematic: they slide, step and snap by their own settings, push
 dynamic bodies they walk into and ride the platform they stand on. Give the
 entity a capsule (CharacterController) or a box or capsule
 (PlatformerController), set the input fields every tick from one system,
-and read the written fields after the step. For walking, set CharacterController's `up` to the desired up axis (usually `{ x: 0, y: 1, z: 0 }`); zero leaves grounded movement off.
+and read the written fields after the step. CharacterController's default `up` of zero derives its up axis opposite `Physics.gravity` each step. Set a nonzero `up` only to override that direction. With zero world gravity and zero `up`, there is no grounded walking axis; movement is free in all directions.
 
 ```ts
 c.move = { x: stick.x * 6, y: 0, z: stick.y * 6 };

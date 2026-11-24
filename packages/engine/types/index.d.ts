@@ -16204,7 +16204,7 @@ export interface CharacterController {
    */
   addVelocity: Vector3;
   /**
-   * Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity.
+   * Walking and jumping up axis; normalized when nonzero. Zero derives up opposite Physics.gravity each step; zero world gravity supplies no inferred up.
    */
   up: Vector3;
   /**
@@ -16259,7 +16259,7 @@ export interface CharacterController {
    */
   readonly groundQuaternion: Quaternion;
   /**
-   * The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick.
+   * Wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale zero or no explicit or gravity-derived up, all components move freely. Set it every tick.
    *
    * @unit mps (metres per second)
    */
