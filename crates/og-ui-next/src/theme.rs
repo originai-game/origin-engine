@@ -15,6 +15,7 @@
 
 use crate::pack::{Layer, Scheme};
 use serde_json::{Map, Value, json};
+use std::collections::BTreeMap;
 
 /// The keys a recipe may set.
 pub const RECIPE_KEYS: [&str; 14] = [
@@ -225,6 +226,101 @@ pub struct Theme {
 }
 
 impl Theme {
+    /// Ground registration from the drawn art (plan §4): `faces` are each
+    /// piece's ground as drawn, by piece name (`button`, `button-hover`,
+    /// `panel` …): the 10th and 90th percentile of its centre's opaque
+    /// pixels, a gloss or a grain included, where the recipe's faces are
+    /// only the colours the face was painted from. Each art slot's ink is
+    /// moved until it holds 4.5:1 on its pieces as drawn, and every ink
+    /// role is solved again over those grounds. Returns what still misses
+    /// its ratio, for the cook to report.
+    pub fn register(&mut self, faces: &BTreeMap<String, Vec<String>>) -> Vec<String> {
+        let mut missed = Vec::new();
+        let Some(colors) = self
+            .pack
+            .get_mut("theme")
+            .and_then(|t| t.get_mut("colors"))
+            .and_then(Value::as_object_mut)
+        else {
+            return missed;
+        };
+        let mut grounds: [Vec<String>; 2] = [Vec::new(), Vec::new()];
+        for (_, image) in ART_SLOTS {
+            let drawn: Vec<String> = faces
+                .iter()
+                .filter(|(n, _)| {
+                    *n == image
+                        || n.strip_prefix(image)
+                            .is_some_and(|s| s == "-hover" || s == "-pressed")
+                })
+                .flat_map(|(_, f)| f.iter().cloned())
+                .collect();
+            if drawn.is_empty() {
+                continue;
+            }
+            let name = format!("art-{image}-fg");
+            if let Some(ink) = colors.get(&name).and_then(Value::as_str).map(str::to_owned) {
+                let worst = drawn
+                    .iter()
+                    .map(|g| contrast(&ink, g))
+                    .fold(f32::MAX, f32::min);
+                if worst < 4.5 {
+                    let hue = lch(&ink).unwrap_or(Lch {
+                        l: 0.5,
+                        c: 0.0,
+                        h: 0.0,
+                    });
+                    let (fixed, r) = solve(hue, &drawn, 4.5);
+                    if r < 4.5 {
+                        missed.push(format!("{name} {fixed}: {r:.2}:1 on the drawn {image}"));
+                    }
+                    colors.insert(name, json!(fixed));
+                }
+            }
+            let light =
+                drawn.iter().map(|f| luminance(f)).sum::<f32>() / drawn.len() as f32 >= 0.18;
+            grounds[usize::from(!light)].extend(drawn);
+        }
+        let mut solved = Map::new();
+        let seeds = seed_css(&self.pack_seeds());
+        solve_inks(&seeds, &grounds, &mut solved, false);
+        let mut more = Map::new();
+        solve_inks(&seeds, &grounds, &mut more, true);
+        set_more(&mut self.pack, more);
+        // The ink solve moved by the drawn grounds wins over the one by
+        // the painted faces: those grounds are what the text stands on.
+        let Some(colors) = self
+            .pack
+            .get_mut("theme")
+            .and_then(|t| t.get_mut("colors"))
+            .and_then(Value::as_object_mut)
+        else {
+            return missed;
+        };
+        for (role, pair) in solved {
+            colors.insert(role, pair);
+        }
+        // A fill the solve moved (`accent`) takes its own ink along.
+        let seeds = seed_css(&self.pack_seeds());
+        if let Some(colors) = self
+            .pack
+            .get_mut("theme")
+            .and_then(|t| t.get_mut("colors"))
+            .and_then(Value::as_object_mut)
+        {
+            solve_pairs(&seeds, colors);
+        }
+        missed
+    }
+
+    /// The pack's seeds alone, as [`seed_css`] reads them.
+    fn pack_seeds(&self) -> Map<String, Value> {
+        self.pack
+            .get("seeds")
+            .map(|s| Map::from_iter([("seeds".to_owned(), s.clone())]))
+            .unwrap_or_default()
+    }
+
     /// The layer, with `images` (the drawn art's pack entries, by name)
     /// under the recipe's own pack: what the cook lays over the default.
     pub fn layer(&self, images: Map<String, Value>) -> Result<Layer, String> {
@@ -399,7 +495,7 @@ fn seed_css(pack: &Map<String, Value>) -> String {
 /// `Scheme::ALL` order) and the design's own surfaces. Hue and chroma are
 /// the design's; only OKLCH lightness moves, away from the grounds. A role
 /// the solve leaves where the design put it in both schemes is not written.
-fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Value>) {
+fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Value>, more: bool) {
     let design = crate::pack::design::colors(seeds);
     const SURFACES: [&str; 8] = [
         "bg",
@@ -412,6 +508,13 @@ fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Valu
         "layer-4",
     ];
     for (role, ratio) in INKS {
+        // High contrast (`contrast: more`) holds body inks at 7:1 and the
+        // large-figure ones at 4.5:1.
+        let ratio = match (more, ratio >= 4.5) {
+            (false, _) => ratio,
+            (true, true) => 7.0,
+            (true, false) => 4.5,
+        };
         let mut pair = Map::new();
         let mut moved = false;
         for (i, scheme) in ["light", "dark"].into_iter().enumerate() {
@@ -443,6 +546,26 @@ fn solve_inks(seeds: &str, art: &[Vec<String>; 2], colors: &mut Map<String, Valu
         if moved && pair.len() == 2 {
             colors.entry(role.to_owned()).or_insert(Value::Object(pair));
         }
+    }
+}
+
+/// The high-contrast inks (`solve_inks` with `more`) as the pack's
+/// `contrast` layer, over any it had.
+fn set_more(pack: &mut Map<String, Value>, more: Map<String, Value>) {
+    if more.is_empty() {
+        return;
+    }
+    let c = pack
+        .entry("contrast")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .and_then(|c| {
+            c.entry("colors")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+        });
+    if let Some(c) = c {
+        c.extend(more);
     }
 }
 
@@ -501,7 +624,7 @@ fn solve_pairs(seeds: &str, colors: &mut Map<String, Value>) {
             pair.insert(scheme.into(), json!(best.0));
         }
         if moved && pair.len() == 2 {
-            colors.entry(role).or_insert(Value::Object(pair));
+            colors.insert(role, Value::Object(pair));
         }
     }
 }
@@ -782,7 +905,10 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
                 >= 0.18;
             grounds[usize::from(!light)].extend(faces);
         }
-        solve_inks(&seed_css(&pack), &grounds, &mut colors);
+        solve_inks(&seed_css(&pack), &grounds, &mut colors, false);
+        let mut more = Map::new();
+        solve_inks(&seed_css(&pack), &grounds, &mut more, true);
+        set_more(&mut pack, more);
         art = json!({
             "scale": 4,
             "palette": palette,
@@ -1214,6 +1340,69 @@ mod tests {
             }
         }
         assert!(bad.is_empty(), "{bad:#?}");
+    }
+
+    /// Ground registration reads the art as drawn: a panel drawn lighter
+    /// than its painted faces (a gloss band, paper grain) moves the panel's
+    /// ink and the scheme's role inks until they hold on it.
+    ///
+    /// Ways this could fail: the drawn face ignored for the painted one, a
+    /// role solved against the design surfaces only, a moved fill leaving
+    /// its own ink behind.
+    #[test]
+    fn registration_holds_the_inks_on_the_art_as_drawn() {
+        let mut r = Map::new();
+        r.insert("material".into(), json!("plastic"));
+        r.insert(
+            "color".into(),
+            json!({ "source": "#ffb02e", "neutral": "#5b3fb0", "scheme": "dark" }),
+        );
+        let mut t = compile(&r, &mut templates()).unwrap();
+        let ink = |t: &Theme, k: &str, scheme: &str| match &t.pack["theme"]["colors"][k] {
+            Value::Object(p) => p[scheme].as_str().unwrap().to_owned(),
+            Value::String(c) => c.clone(),
+            _ => crate::pack::design::colors(&seed_css(&t.pack))[usize::from(scheme == "dark")][k]
+                .as_str()
+                .unwrap()[..7]
+                .to_owned(),
+        };
+        // A gloss too bright for any ink is reported, not hidden.
+        let mut glossed = t.clone();
+        let lit = BTreeMap::from([(
+            "panel".to_owned(),
+            vec!["#2a1f55".to_owned(), "#8a80b0".to_owned()],
+        )]);
+        assert!(glossed.register(&lit)[0].starts_with("art-panel-fg"));
+        // A dark panel lit at its top, and a light paper plate.
+        let panel = vec!["#2a1f55".to_owned(), "#5a4f90".to_owned()];
+        let paper = vec!["#e9dcc0".to_owned(), "#d8c8a4".to_owned()];
+        let faces = BTreeMap::from([
+            ("panel".to_owned(), panel.clone()),
+            ("plate".to_owned(), paper.clone()),
+        ]);
+        let missed = t.register(&faces);
+        assert!(missed.is_empty(), "{missed:?}");
+        let on = |t: &Theme, k: &str, s: &str, g: &[String]| {
+            let i = ink(t, k, s);
+            g.iter().map(|g| contrast(&i, g)).fold(f32::MAX, f32::min)
+        };
+        assert!(on(&t, "art-panel-fg", "dark", &panel) >= 4.5);
+        assert!(on(&t, "art-plate-fg", "light", &paper) >= 4.5);
+        // The roles of the paper's (light) scheme hold on the paper too.
+        for role in ["fg-muted", "danger", "gold"] {
+            let r = on(&t, role, "light", &paper);
+            assert!(r >= 4.5, "{role} {r:.2}");
+        }
+        // High contrast holds the same roles at 7:1 on the same grounds.
+        let more = &t.pack["contrast"]["colors"]["fg-muted"]["light"];
+        let r = paper
+            .iter()
+            .map(|g| contrast(more.as_str().unwrap(), g))
+            .fold(f32::MAX, f32::min);
+        assert!(r >= 7.0, "fg-muted in contrast: more {r:.2}");
+        let fill = ink(&t, "accent", "light");
+        let r = contrast(&ink(&t, "accent-fg", "light"), &fill);
+        assert!(r >= 4.5, "accent-fg on accent {r:.2}");
     }
 
     #[test]

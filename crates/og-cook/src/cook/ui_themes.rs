@@ -74,14 +74,35 @@ pub fn compile(text: &str, at: &str) -> Result<theme::Theme, String> {
 /// style directory: `pack.json`, and each piece of art and its settings
 /// under `art/`. `cache` keeps drawn art by spec.
 pub fn files(text: &str, at: &str, cache: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
-    let t = compile(text, at)?;
+    Ok(cook(text, at, cache)?.0)
+}
+
+/// A theme's cooked files, relative to its style directory.
+pub type Files = Vec<(String, Vec<u8>)>;
+
+/// [`files`], and the inks that still miss their ratio on the drawn art.
+pub fn cook(text: &str, at: &str, cache: &Path) -> Result<(Files, Vec<String>), String> {
+    let mut t = compile(text, at)?;
     let mut out = Vec::new();
     let mut images = Map::new();
+    let mut missed = Vec::new();
     if !t.art.is_null() {
         let dir = super::ui_art::draw_cached(&t.art, cache).map_err(|e| format!("{at}: {e}"))?;
         let read = |p: PathBuf| std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()));
         let drawn: Map<String, Value> = serde_json::from_slice(&read(dir.join("images.json"))?)
             .map_err(|e| format!("{at}: the drawn art's images.json: {e}"))?;
+        // Ground registration: each piece's centre as drawn.
+        let mut faces = std::collections::BTreeMap::new();
+        for (name, entry) in &drawn {
+            let file = dir.join(format!("art/{name}.png"));
+            let img = image::open(&file)
+                .map_err(|e| format!("{}: {e}", file.display()))?
+                .to_rgba8();
+            if let Some(f) = centre_faces(&img, entry) {
+                faces.insert(name.clone(), f);
+            }
+        }
+        missed = t.register(&faces);
         for (name, entry) in drawn {
             // A piece the recipe's pack replaces is not bundled.
             if t.over.get("images").and_then(|i| i.get(&name)).is_some() {
@@ -102,7 +123,40 @@ pub fn files(text: &str, at: &str, cache: &Path) -> Result<Vec<(String, Vec<u8>)
         "pack.json".into(),
         serde_json::to_vec_pretty(&pack).map_err(|e| e.to_string())?,
     ));
-    Ok(out)
+    Ok((out, missed))
+}
+
+/// The ground a nine-slice piece draws under text: the 10th and 90th
+/// percentile by luminance of the opaque pixels inside its slice (the
+/// stretched centre), as `#rrggbb`. `None` when the centre is empty or
+/// see-through.
+fn centre_faces(img: &image::RgbaImage, entry: &Value) -> Option<Vec<String>> {
+    let s = &entry["slice"];
+    let inset = |i: usize| s.get(i).or(Some(s)).and_then(Value::as_u64).unwrap_or(0) as u32;
+    let (t, r, b, l) = (inset(0), inset(1), inset(2), inset(3));
+    let (w, h) = img.dimensions();
+    if l + r >= w || t + b >= h {
+        return None;
+    }
+    let mut px: Vec<[u8; 3]> = Vec::new();
+    for y in t..h - b {
+        for x in l..w - r {
+            let p = img.get_pixel(x, y).0;
+            if p[3] >= 250 {
+                px.push([p[0], p[1], p[2]]);
+            }
+        }
+    }
+    if px.is_empty() {
+        return None;
+    }
+    let lum = |p: &[u8; 3]| {
+        0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2])
+    };
+    px.sort_by(|a, b| lum(a).total_cmp(&lum(b)));
+    let at = |q: f32| px[((px.len() - 1) as f32 * q).round() as usize];
+    let hex = |p: [u8; 3]| format!("#{:02x}{:02x}{:02x}", p[0], p[1], p[2]);
+    Some(vec![hex(at(0.1)), hex(at(0.9))])
 }
 
 /// The engine theme `name`'s files by bundle id (`@themes/<name>/…`),
@@ -175,7 +229,8 @@ mod tests {
     }
 
     /// Every engine theme (`templates/themes/<name>/theme.json`) resolves,
-    /// compiles and cooks into a pack with its art.
+    /// compiles and cooks into a pack with its art, and every art slot's ink
+    /// holds 4.5:1 on its pieces as drawn.
     ///
     /// Ways this could fail: a recipe naming a dimension value that does not
     /// exist, an `extends` to a missing theme, a compiled pack the layer
@@ -199,8 +254,11 @@ mod tests {
         for name in &names {
             let at = format!("@themes/{name}/{RECIPE}");
             let text = std::fs::read_to_string(dir.join(name).join(RECIPE)).unwrap();
-            match files(&text, &at, &cache) {
-                Ok(f) if f.iter().any(|(n, _)| n == "art/panel.png") => {}
+            match cook(&text, &at, &cache) {
+                // Every ink holds on the art as drawn (ground registration).
+                Ok((f, missed)) if f.iter().any(|(n, _)| n == "art/panel.png") => {
+                    bad.extend(missed.into_iter().map(|m| format!("{at}: {m}")));
+                }
                 Ok(_) => bad.push(format!("{at}: no art")),
                 Err(e) => bad.push(e),
             }
