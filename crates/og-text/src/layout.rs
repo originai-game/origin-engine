@@ -106,6 +106,11 @@ pub struct Style<'a> {
     /// Boxes laid out in the line (an inline icon or image), by the byte
     /// they stand before, in order.
     pub boxes: &'a [Inline],
+    /// CSS `writing-mode: vertical-rl` with `text-orientation: upright`:
+    /// each line a column, the first on the right, its glyphs upright and
+    /// in their vertical forms (`vert`). The width it breaks at is the
+    /// columns' height.
+    pub vertical: bool,
 }
 
 /// A range of a paragraph's text in its own font, size, weight, slant and
@@ -165,6 +170,7 @@ impl Default for Style<'_> {
             trim: Trim::default(),
             spans: &[],
             boxes: &[],
+            vertical: false,
         }
     }
 }
@@ -212,6 +218,9 @@ pub struct Text {
     /// A narrow line had to reshape across a ligature. Restore natural
     /// shaping before reflow, so an untaken break never loses its ligature.
     resegmented: bool,
+    /// Laid out as columns ([`Style::vertical`]): every place it gives is
+    /// its line layout's turned a quarter clockwise.
+    vertical: bool,
     /// Scratch for paint's glyphs and a run's location.
     glyphs: Vec<parley::layout::Glyph>,
     coords: Vec<i16>,
@@ -226,6 +235,7 @@ impl Text {
     /// [`Text::break_at`].
     pub fn shape(&mut self, fonts: &mut Collection, text: &str, style: &Style) {
         (self.hyphen, self.content) = build(fonts, &mut self.layout, text, style);
+        self.vertical = style.vertical;
         self.cut = None;
         self.resegmented = false;
         self.width = None;
@@ -284,14 +294,50 @@ impl Text {
         self.cut.as_deref().unwrap_or(text)
     }
 
-    /// Its widest line, CSS px.
+    /// Its widest line, CSS px; in columns, their line boxes' sum.
     pub fn width(&self) -> f32 {
-        self.layout.width()
+        if self.vertical {
+            self.across()
+        } else {
+            self.layout.width()
+        }
     }
 
-    /// Its height: its line boxes', less what `text-box-trim` takes.
+    /// Its height: its line boxes', less what `text-box-trim` takes; in
+    /// columns, the longest's.
     pub fn height(&self) -> f32 {
+        if self.vertical {
+            self.layout.width()
+        } else {
+            self.across()
+        }
+    }
+
+    /// Its line boxes' sum, less what `text-box-trim` takes.
+    fn across(&self) -> f32 {
         (self.layout.height() - self.trimmed[0] - self.trimmed[1]).max(0.0)
+    }
+
+    /// A rectangle of the line layout, `[x, y, w, h]` with y below its
+    /// trimmed top, as the box places it: itself, or turned into columns
+    /// (a line's top edge at the box's right).
+    fn placed(&self, [x, y, w, h]: [f32; 4]) -> [f32; 4] {
+        if self.vertical {
+            [self.across() - y - h, x, h, w]
+        } else {
+            [x, y, w, h]
+        }
+    }
+
+    /// A point of the box as the line layout sees it, y from its untrimmed
+    /// top.
+    fn unplaced(&self, x: f32, y: f32) -> (f32, f32) {
+        let (x, y) = if self.vertical {
+            (y, self.across() - x)
+        } else {
+            (x, y)
+        };
+        (x, y + self.trimmed[0])
     }
 
     /// CSS's min-content and max-content widths (Parley's content widths:
@@ -342,11 +388,13 @@ impl Text {
         let cursor =
             parley::Cursor::from_byte_index(&self.layout, at, parley::Affinity::Downstream);
         let b = cursor.geometry(&self.layout, 0.0);
-        [
+        let [x, y, _, h] = self.placed([
             b.x0 as f32,
             b.y0 as f32 - self.trimmed[0],
+            0.0,
             (b.y1 - b.y0) as f32,
-        ]
+        ]);
+        [x, y, h]
     }
 
     /// The caret position nearest the point (x, y), CSS px from the box's
@@ -354,14 +402,16 @@ impl Text {
     /// the caret (Parley's cursor: the nearer edge of the cluster under it,
     /// on the line under it or the nearest one).
     pub fn hit(&self, x: f32, y: f32) -> usize {
-        parley::Cursor::from_point(&self.layout, x, y + self.trimmed[0]).index()
+        let (x, y) = self.unplaced(x, y);
+        parley::Cursor::from_point(&self.layout, x, y).index()
     }
 
     /// The word at the point (x, y), as a byte range of the laid-out text
     /// (UAX #29 words, with dictionaries for scripts written without
     /// spaces): what a double press selects.
     pub fn word_at(&self, x: f32, y: f32) -> std::ops::Range<usize> {
-        parley::Selection::word_from_point(&self.layout, x, y + self.trimmed[0]).text_range()
+        let (x, y) = self.unplaced(x, y);
+        parley::Selection::word_from_point(&self.layout, x, y).text_range()
     }
 
     /// Where the caret at byte `at` goes `lines` lines down (up when
@@ -382,12 +432,12 @@ impl Text {
         parley::Selection::new(cursor(range.start), cursor(range.end)).geometry_with(
             &self.layout,
             |b, _| {
-                f([
+                f(self.placed([
                     b.x0 as f32,
                     b.y0 as f32 - self.trimmed[0],
                     (b.x1 - b.x0) as f32,
                     (b.y1 - b.y0) as f32,
-                ])
+                ]))
             },
         );
     }
@@ -429,7 +479,12 @@ impl Text {
         for line in self.layout.lines() {
             for item in line.items() {
                 if let PositionedLayoutItem::InlineBox(b) = item {
-                    f(b.id, [b.x, b.y - top, b.width, b.height]);
+                    // A box stands upright in a column, centred where
+                    // its place in the line turns to.
+                    let [x, y, w, h] = self.placed([b.x, b.y - top, b.width, b.height]);
+                    let (cx, cy) = (x + 0.5 * w, y + 0.5 * h);
+                    let (w, h) = (b.width, b.height);
+                    f(b.id, [cx - 0.5 * w, cy - 0.5 * h, w, h]);
                 }
             }
         }
@@ -470,16 +525,29 @@ impl Text {
     /// Calls `f` with each glyph run, line by line in visual order.
     pub fn runs(&mut self, fonts: &Collection, mut f: impl FnMut(GlyphRun)) {
         let top = self.trimmed[0];
+        let (vertical, across) = (self.vertical, self.across());
+        // `col`: in columns, the middle of the line's column from the box's
+        // left.
         let mut emit =
-            |run: parley::layout::GlyphRun<'_, u16>, x: f32, y: f32, ink: Option<u16>| {
+            |run: parley::layout::GlyphRun<'_, u16>, x: f32, y: f32, col: f32, ink: Option<u16>| {
                 let r = run.run();
                 let Some(face) = fonts.face_of(r.font()) else {
                     return;
                 };
+                // An upright glyph in a column: its advance centred across
+                // the column, and its em box (ascent over descent) centred
+                // in the stretch of the column its advance takes.
+                let m = r.font_metrics();
+                let rise = 0.5 * (m.ascent - m.descent);
                 self.glyphs.clear();
                 self.glyphs.extend(run.positioned_glyphs().map(|mut g| {
                     g.x += x;
-                    g.y += y - top;
+                    if vertical {
+                        let half = 0.5 * g.advance;
+                        (g.x, g.y) = (col - half, g.x + half + rise);
+                    } else {
+                        g.y += y - top;
+                    }
                     g
                 }));
                 self.coords.clear();
@@ -493,18 +561,24 @@ impl Text {
                     coords: &self.coords,
                     embolden: synthesis.embolden(),
                     skew: synthesis.skew(),
-                    baseline: run.baseline() + y - top,
+                    baseline: if vertical {
+                        col
+                    } else {
+                        run.baseline() + y - top
+                    },
                     glyphs: &self.glyphs,
                     ink: ink.unwrap_or(run.style().brush),
                 });
             };
         for line in self.layout.lines() {
+            let m = line.metrics();
+            let col = across - (0.5 * (m.block_min_coord + m.block_max_coord) - top);
             // A hyphen a break adds is drawn in the ink of the text it ends.
             let mut last = 0;
             for item in line.items() {
                 if let PositionedLayoutItem::GlyphRun(run) = item {
                     last = run.style().brush;
-                    emit(run, 0., 0., None);
+                    emit(run, 0., 0., col, None);
                 }
             }
             if let (Some(x), Some(hyphen)) = (line.discretionary_offset(), &self.hyphen) {
@@ -512,7 +586,7 @@ impl Text {
                     let y = line.metrics().baseline - ending.metrics().baseline;
                     for item in ending.items() {
                         if let PositionedLayoutItem::GlyphRun(run) = item {
-                            emit(run, x, y, Some(last));
+                            emit(run, x, y, col, Some(last));
                         }
                     }
                 }
@@ -656,10 +730,17 @@ fn shape_layout(
     b.push_default(StyleProperty::FontVariations(
         parley::style::FontVariations::List(Cow::Borrowed(&optical)),
     ));
-    if !style.features.is_empty() {
-        b.push_default(StyleProperty::FontFeatures(FontFeatures::List(
-            Cow::Borrowed(style.features),
-        )));
+    // In columns, the glyphs' vertical forms (`vert`, `vrt2`): CJK
+    // punctuation set in its corner, brackets and dashes turned.
+    let features: Cow<[FontFeature]> = if style.vertical {
+        let mut f = style.features.to_vec();
+        f.extend([feature(b"vert", 1), feature(b"vrt2", 1)]);
+        Cow::Owned(f)
+    } else {
+        Cow::Borrowed(style.features)
+    };
+    if !features.is_empty() {
+        b.push_default(StyleProperty::FontFeatures(FontFeatures::List(features)));
     }
     if let Some(l) = style.locale.and_then(|l| l.parse().ok()) {
         b.push_default(StyleProperty::Locale(Some(l)));
@@ -945,6 +1026,27 @@ mod tests {
             fonts.add(file(src)).unwrap();
         }
         fonts
+    }
+
+    /// In columns a glyph takes its vertical form: the ideographic full
+    /// stop sits in its cell's upper right, set by the font's `vert`.
+    #[test]
+    fn a_column_takes_the_vertical_forms() {
+        let mut fonts = fonts();
+        let ids = |fonts: &mut Collection, vertical| {
+            let style = Style {
+                family: FAMILY,
+                vertical,
+                ..Style::default()
+            };
+            let mut t = laid(fonts, "月。", &style, None);
+            let mut ids = Vec::new();
+            t.runs(fonts, |r| ids.extend(r.glyphs.iter().map(|g| g.id)));
+            ids
+        };
+        let (flat, upright) = (ids(&mut fonts, false), ids(&mut fonts, true));
+        assert_eq!(flat[0], upright[0]);
+        assert_ne!(flat[1], upright[1], "{flat:?} {upright:?}");
     }
 
     fn laid(fonts: &mut Collection, text: &str, style: &Style, width: Option<f32>) -> Text {

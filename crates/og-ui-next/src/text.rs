@@ -282,6 +282,7 @@ fn style<'a>(
         },
         ellipsis,
         max_lines: run.clamp,
+        vertical: run.vertical,
         ..Default::default()
     }
 }
@@ -457,7 +458,7 @@ impl Texts {
         }
         let leaf = self.broken(fonts, id, text, run, avail, false);
         let width = match avail {
-            Avail::Min => leaf.layout.content_widths().0.max(leaf.layout.width()),
+            Avail::Min if !run.vertical => leaf.layout.content_widths().0.max(leaf.layout.width()),
             _ => leaf.layout.width(),
         };
         (width, leaf.layout.height())

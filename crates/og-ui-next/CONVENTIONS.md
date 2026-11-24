@@ -487,6 +487,15 @@ paragraph or one string, selectable read only: a drag selects, a second
 press selects the word, a third all of it, and Control or Command + C
 copies it through `Tree::take_copy` (+ A selects all).
 
+`writing-vertical-rl` (inherited; `writing-horizontal-tb` undoes it) lays
+a text or a paragraph out in columns, CSS's `writing-mode: vertical-rl`
+with `text-orientation: upright`: og-text breaks its lines at the box's
+height (only where the text says without one) and turns them a quarter
+clockwise, the first column on the right, each glyph upright and centred
+across its column, in its font's vertical forms (`vert`, `vrt2`). Hits,
+selection and inline boxes turn with it. A field's text stays in lines,
+and a column has no decoration lines and no ruby yet.
+
 ## Particles
 
 `<Particles emitter={e} seed={n} delay={s} restart={key} class="…" />` draws

@@ -914,6 +914,10 @@ fn record_of(style: &Style, props: &ClassProps) -> Record {
         t.wrap = w;
         t.set |= Text::WRAP;
     }
+    if let Some(v) = props.vertical {
+        t.vertical = v;
+        t.set |= Text::VERTICAL;
+    }
     if let Some(on) = props.selectable {
         t.select = on;
         t.set |= Text::SELECT;
@@ -1626,7 +1630,8 @@ mod tests {
             ("ClassProps", format!("{:#?}", ClassProps::default()),
                 &["ellipsize", "no_wrap", "pointer_events",
                   "number_of_lines", "space", "overflow_wrap",
-                  "placeholder_color", "selection_color", "caret_color", "selectable"],
+                  "placeholder_color", "selection_color", "caret_color", "selectable",
+                  "vertical"],
                 &[]),
         ];
         for (name, debug, read, not_drawn) in structs {

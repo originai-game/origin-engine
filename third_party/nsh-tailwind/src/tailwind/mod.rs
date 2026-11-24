@@ -600,6 +600,9 @@ pub struct ClassProps {
     /// Origin Engine: `overflow-wrap` (`break-normal` 0, `break-words` 1,
     /// `wrap-anywhere` 2). Inherited, as in CSS.
     pub overflow_wrap: Option<u8>,
+    /// Origin Engine: `writing-mode` (`writing-vertical-rl` true,
+    /// `writing-horizontal-tb` false). Inherited, as in CSS.
+    pub vertical: Option<bool>,
     /// `pointerEvents` (`pointer-events-none` / `-auto`).
     pub pointer_events: Option<PointerEvents>,
     /// `userSelect` (`select-none` / `select-text`; `auto`: none). A

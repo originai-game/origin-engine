@@ -66,6 +66,9 @@ pub struct Run {
     /// on one line and takes no more width than its box has, as an HTML
     /// input's text scrolls inside it instead of widening it.
     pub field: bool,
+    /// `writing-mode: vertical-rl`: its lines are columns, right to left,
+    /// its glyphs upright.
+    pub vertical: bool,
 }
 
 impl Run {
@@ -86,6 +89,7 @@ impl Run {
             ellipsis: false,
             align: 0,
             field: false,
+            vertical: false,
         }
     }
 
@@ -102,6 +106,7 @@ impl Run {
             self.ellipsis,
             self.align,
             self.field,
+            self.vertical,
         )
             .hash(h);
         self.clamp.hash(h);
@@ -474,7 +479,17 @@ impl Arena {
                         // CSS intrinsic sizes: min-content is the widest
                         // piece that cannot break, max-content the text
                         // broken only where it says.
+                        // Columns (`writing-vertical-rl`) break at the height
+                        // they may take: their intrinsic heights are the
+                        // shortest and the longest column.
                         let avail = match (known.width, avail.width) {
+                            _ if run.vertical => match (known.height, avail.height) {
+                                (Some(h), _) | (None, AvailableSpace::Definite(h)) => {
+                                    Avail::Width(h)
+                                }
+                                (None, AvailableSpace::MinContent) => Avail::Min,
+                                (None, AvailableSpace::MaxContent) => Avail::Max,
+                            },
                             (Some(w), _) | (None, AvailableSpace::Definite(w)) => Avail::Width(w),
                             (None, AvailableSpace::MinContent) => Avail::Min,
                             (None, AvailableSpace::MaxContent) => Avail::Max,

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui Text",
+      "summary": "`writing-vertical-rl` lays a `<Text>` (or a paragraph) out in columns, CSS's `writing-mode: vertical-rl` with upright glyphs: lines break at the box's height, the first column is on the right, and CJK punctuation takes its vertical forms. Selection and hits follow the columns; `writing-horizontal-tb` turns it back. Inputs stay horizontal; decoration lines and ruby are not drawn in columns yet."
+    }
+  ]
+}

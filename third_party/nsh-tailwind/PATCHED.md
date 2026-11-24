@@ -86,5 +86,9 @@ the changes after it are only these:
   `wrap-break-word` and `wrap-anywhere` set `ClassProps::overflow_wrap`
   (0, 1, 2), which og-ui-next hands to the text's line breaking.
 
+- `tailwind/utilities.rs` and `tailwind/mod.rs` add CSS `writing-mode`:
+  `writing-vertical-rl` and `writing-horizontal-tb` set
+  `ClassProps::vertical`, which og-ui-next lays out as columns.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

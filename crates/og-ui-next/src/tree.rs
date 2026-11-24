@@ -1281,6 +1281,8 @@ impl Tree {
                     ellipsis: eff.text.overflow == 1,
                     align: eff.text.align,
                     field: one_line,
+                    // A field's text stays in lines: its caret runs along them.
+                    vertical: eff.text.vertical && field.is_none(),
                 },
             );
         }
@@ -2393,7 +2395,8 @@ impl Tree {
                     leaf,
                     drawn,
                     &run,
-                    width,
+                    // Columns break at the box's height.
+                    if run.vertical { lb.h } else { width },
                     &look,
                     &mut self.missing,
                 );
@@ -2518,11 +2521,13 @@ impl Tree {
                         .get(usize::from(i) - 1)
                         .map_or((el.eff.decoration, own), |&(c, d)| (d, c)),
                 };
-                let decorated = if rich {
-                    g.inks.iter().any(|&(i, _)| look_of(i).0.line != 0)
-                } else {
-                    el.eff.decoration.line != 0
-                };
+                // A column's text has no decoration lines yet.
+                let decorated = !run.vertical
+                    && if rich {
+                        g.inks.iter().any(|&(i, _)| look_of(i).0.line != 0)
+                    } else {
+                        el.eff.decoration.line != 0
+                    };
                 if decorated {
                     // The lines the primary font gives, each a whole
                     // number of device pixels thick, on one.

@@ -143,6 +143,8 @@ pub(crate) enum PropDecl {
     NoWrap(bool),
     /// Origin Engine: `overflow-wrap` (`ClassProps::overflow_wrap`).
     OverflowWrap(u8),
+    /// Origin Engine: `writing-mode` (`ClassProps::vertical`).
+    Vertical(bool),
     Caret(Color),
     /// `space-x-*` (`false`) / `space-y-*` (`true`).
     Space(bool, PropertyValue),
@@ -230,6 +232,7 @@ impl Decl {
             Decl::Prop(p) => match p {
                 PropDecl::NoWrap(b) => props.no_wrap = Some(*b),
                 PropDecl::OverflowWrap(w) => props.overflow_wrap = Some(*w),
+                PropDecl::Vertical(v) => props.vertical = Some(*v),
                 PropDecl::Caret(c) => props.caret_color = Some(*c),
                 PropDecl::Space(y, v) => {
                     let space = props.space.get_or_insert_default();
@@ -1740,6 +1743,8 @@ fn keyword(u: &str) -> Option<Vec<Decl>> {
         "break-normal" | "wrap-normal" => Decl::Prop(PropDecl::OverflowWrap(0)),
         "break-words" | "wrap-break-word" => Decl::Prop(PropDecl::OverflowWrap(1)),
         "wrap-anywhere" => Decl::Prop(PropDecl::OverflowWrap(2)),
+        "writing-vertical-rl" => Decl::Prop(PropDecl::Vertical(true)),
+        "writing-horizontal-tb" => Decl::Prop(PropDecl::Vertical(false)),
         "whitespace-normal" | "text-wrap" | "text-balance" | "text-pretty" => {
             Decl::Prop(PropDecl::NoWrap(false))
         }

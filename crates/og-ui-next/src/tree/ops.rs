@@ -1972,6 +1972,14 @@ mod tests {
                         r.text.select = true;
                         r.text.set |= Text::SELECT;
                     }
+                    // Columns, right to left, 40 px tall.
+                    "vrl" => {
+                        r.text.vertical = true;
+                        r.text.set |= Text::VERTICAL;
+                        let mut l = taffy::Style::from(&r.layout);
+                        l.size.height = taffy::Dimension::length(40.0);
+                        r.layout = rune_taffy::CompactStyle::from(&l);
+                    }
                     _ => {}
                 }
             }
@@ -7882,5 +7890,51 @@ mod tests {
         // Every glyph of the base is drawn.
         let g = para_leaf(&t, 1);
         assert_eq!(g.fill.len(), "GoldTokyocoins!".len(), "{:?}", g.fill_ink);
+    }
+
+    /// `writing-vertical-rl`: each line a column broken at the box's
+    /// height, the first on the right, its glyphs upright going down; a
+    /// press at a column's top puts the caret at its first character.
+    #[test]
+    fn vertical_text_stands_in_columns_from_the_right() {
+        let mut t = tree();
+        let mut b = Batch::default();
+        b.op(1).u32(1).u8(1);
+        b.op(4).u32(1).str("vrl");
+        b.op(2).u32(2).str("Go up now");
+        b.op(8).u32(0).u32(1).u32(u32::MAX);
+        b.op(8).u32(1).u32(2).u32(u32::MAX);
+        t.apply(&b.bytes()).unwrap();
+        frame(&mut t);
+        frame(&mut t);
+        let e = t.op(2).unwrap() as usize;
+        let leaf = t.els[e].leaf.unwrap();
+        let lb = t.arena.box_of(leaf);
+        let g = t.texts.leaf(leaf).unwrap();
+        let columns = g.lines.len();
+        assert!(columns >= 2, "{:?}", g.line_text);
+        // Its columns side by side make its width; none is taller than
+        // the box.
+        assert!(lb.h <= 40.0 + 0.01, "{lb:?}");
+        assert!(
+            (lb.w - g.width()).abs() < 0.5,
+            "{lb:?} {:?} {}",
+            g.line_text,
+            g.width()
+        );
+        assert!(lb.w >= columns as f32 * 16.0, "{lb:?} {:?}", g.line_text);
+        let rects: Vec<[f32; 4]> = g.fill.iter().map(|q| q.rect).collect();
+        // "G" then "o" down the right column, "w" ends the left one.
+        let (gx, ox, wx) = (rects[0][0], rects[1][0], rects.last().unwrap()[0]);
+        assert!(rects[1][1] > rects[0][1] + 4.0, "{rects:?}");
+        assert!(
+            (gx + rects[0][2] / 2.0 - ox - rects[1][2] / 2.0).abs() < 2.0,
+            "{rects:?}"
+        );
+        assert!(gx > lb.w / 2.0 && wx < lb.w / 2.0, "{rects:?}");
+        assert!(rects.iter().all(|r| r[1] + r[3] <= 40.0 + 2.0), "{rects:?}");
+        // A press at the right column's top, and at the left one's.
+        assert_eq!(g.hit(lb.w - 4.0, 1.0), 0);
+        assert!(g.hit(4.0, 1.0) >= "Go up ".len(), "{}", g.hit(4.0, 1.0));
     }
 }
