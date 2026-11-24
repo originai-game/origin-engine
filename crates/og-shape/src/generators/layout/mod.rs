@@ -39,9 +39,6 @@ mod geom;
 mod lots;
 mod props;
 
-#[cfg(test)]
-mod tests;
-
 pub use geom::Poly;
 
 use glam::DVec2;

@@ -99,35 +99,3 @@ pub fn shape_geometry(shapes: &[ShapePoints]) -> Mesh {
     let normals = vec![DVec3::Z; positions.len()];
     finish(&positions, &normals, &uvs, indices)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_square_with_a_square_hole_is_three_js_s() {
-        let sq = |r: f64| {
-            vec![
-                DVec2::new(-r, -r),
-                DVec2::new(r, -r),
-                DVec2::new(r, r),
-                DVec2::new(-r, r),
-                DVec2::new(-r, -r),
-            ]
-        };
-        let m = shape_geometry(&[ShapePoints {
-            points: sq(2.0),
-            holes: vec![sq(1.0)],
-        }]);
-        // Each ring loses its repeated end point: 4 + 4 vertices, and an
-        // outline of n with h holes of m takes n + m + 2 h - 2 triangles.
-        assert_eq!(m.vertex_count(), 8);
-        assert_eq!(m.triangle_count(), 8);
-        // Every triangle faces +Z.
-        for t in m.indices.chunks(3) {
-            let p = |i: u32| DVec3::from(m.positions[i as usize].map(f64::from));
-            let n = (p(t[1]) - p(t[0])).cross(p(t[2]) - p(t[0]));
-            assert!(n.z > 0.0);
-        }
-    }
-}

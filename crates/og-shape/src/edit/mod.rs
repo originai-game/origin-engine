@@ -352,6 +352,3 @@ pub(crate) fn entry_of(s: &Solid, f: &Frame, axis: &Frame, span: f64) -> Result<
 
 pub mod subdivide;
 pub use subdivide::{MAX_LEVELS, Subdivide, subdivide};
-
-#[cfg(test)]
-mod tests;

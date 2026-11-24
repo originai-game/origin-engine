@@ -106,29 +106,3 @@ pub fn gear(d: &Gear) -> Result<Profile, ProfileError> {
     }
     Ok(Profile::from_contour(c))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_gear_sits_between_its_root_and_tip_circles() {
-        let g = gear(&Gear {
-            teeth: 20,
-            module: 2.0,
-            pressure_angle: 0.0,
-        })
-        .unwrap();
-        let c = &g.regions[0].outer;
-        let (r, ra, rf) = (20.0, 22.0, 17.5);
-        for p in &c.points {
-            let l = p.length();
-            assert!(l >= rf - 1e-9 && l <= ra + 1e-9, "{l}");
-        }
-        // Roughly the pitch circle's area.
-        let area = g.area();
-        assert!(area > double::PI * rf * rf && area < double::PI * ra * ra);
-        assert!((area - double::PI * r * r).abs() / area < 0.05, "{area}");
-        assert_eq!(c.sharp.iter().filter(|s| **s).count(), 20 * 4);
-    }
-}

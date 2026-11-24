@@ -299,7 +299,7 @@ else
   cargo install --locked cargo-nextest >/dev/null
 fi
 
-# wasmtime: runs og-shape's goldens built for wasm32-wasip1 (the
+# wasmtime: runs og-shape's determinism tests built for wasm32-wasip1 (the
 # shape-wasm32 step); the release archive, checked against its sha256.
 if command -v wasmtime >/dev/null && [ "$(wasmtime --version | awk '{print $2}')" = "$WASMTIME_VERSION" ]; then
   og_say "wasmtime $WASMTIME_VERSION: present"

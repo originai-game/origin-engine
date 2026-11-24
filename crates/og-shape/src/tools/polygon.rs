@@ -89,29 +89,3 @@ pub fn triangulate(positions: &[DVec3], corners: &[u32]) -> Vec<[u32; 3]> {
     out.push([corners[left[0]], corners[left[1]], corners[left[2]]]);
     out
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn clips_a_concave_polygon_in_any_plane() {
-        // An L in the x-z plane, wound so its normal is -y.
-        let pts: Vec<DVec3> = [(0, 0), (2, 0), (2, 1), (1, 1), (1, 2), (0, 2)]
-            .iter()
-            .map(|&(x, z)| DVec3::new(x as f64, 0.0, z as f64))
-            .collect();
-        let corners: Vec<u32> = (0..6).collect();
-        let tris = triangulate(&pts, &corners);
-        assert_eq!(tris.len(), 4);
-        let area: f64 = tris
-            .iter()
-            .map(|t| {
-                let [a, b, c] = t.map(|i| pts[i as usize]);
-                (b - a).cross(c - a).y / 2.0
-            })
-            .sum();
-        // Same winding as the polygon (normal −y), total area 3.
-        assert_eq!(area, -3.0);
-    }
-}

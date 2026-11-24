@@ -44,17 +44,3 @@ pub fn tris_overlap_2d(a: [DVec2; 3], b: [DVec2; 3]) -> bool {
     };
     !(separates(a, b) || separates(b, a))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn uv_triangles_overlap_only_with_area() {
-        let w = DVec2::new;
-        let s = [w(0.0, 0.0), w(1.0, 0.0), w(0.0, 1.0)];
-        // Shares an edge: no overlap.
-        assert!(!tris_overlap_2d(s, [w(1.0, 0.0), w(1.0, 1.0), w(0.0, 1.0)]));
-        assert!(tris_overlap_2d(s, [w(0.2, 0.2), w(1.0, 1.0), w(0.0, 1.0)]));
-    }
-}

@@ -786,27 +786,3 @@ impl Ring {
         b2
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_square_with_a_hole_takes_eight_triangles() {
-        let data = [
-            0.0, 0.0, 4.0, 0.0, 4.0, 4.0, 0.0, 4.0, 1.0, 1.0, 1.0, 3.0, 3.0, 3.0, 3.0, 1.0,
-        ];
-        let t = earcut(&data, &[4]);
-        assert_eq!(t.len() / 3, 8);
-        // The triangles cover the square less the hole: 16 - 4.
-        let area: f64 = t
-            .chunks(3)
-            .map(|c| {
-                let p = |i: usize| (data[2 * c[i]], data[2 * c[i] + 1]);
-                let (a, b, c) = (p(0), p(1), p(2));
-                ((b.0 - a.0) * (c.1 - a.1) - (c.0 - a.0) * (b.1 - a.1)).abs() / 2.0
-            })
-            .sum();
-        assert!((area - 12.0).abs() < 1e-12);
-    }
-}

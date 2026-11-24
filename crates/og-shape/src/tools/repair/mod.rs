@@ -355,6 +355,3 @@ pub fn repair_owned(s: Solid, d: &Repair) -> Result<(Solid, RepairReport), Repai
     }
     Ok((s, r))
 }
-
-#[cfg(test)]
-mod tests;

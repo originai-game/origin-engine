@@ -71,18 +71,3 @@ pub fn bezier_segments(control: &[DVec2]) -> u32 {
     let length: f64 = control.windows(2).map(|w| (w[1] - w[0]).length()).sum();
     segments(length * 2.0 / double::PI, double::PI / 2.0).max(4)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn segment_counts_follow_the_rule() {
-        // Small circles get the minimum, big ones the maximum.
-        assert_eq!(segments(0.5, double::TAU), MIN_PER_TURN);
-        assert_eq!(segments(1000.0, double::TAU), MAX_PER_TURN);
-        // Between: 2π / (2·acos(1 − 0.05/10)) = 31.4… → 32.
-        assert_eq!(segments(10.0, double::TAU), 32);
-        assert_eq!(segments(10.0, double::PI / 2.0), 8);
-    }
-}

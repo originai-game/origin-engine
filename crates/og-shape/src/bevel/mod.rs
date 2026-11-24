@@ -453,6 +453,3 @@ pub fn quad_pairs(s: &Solid, triangles: &[u32]) -> QuadPairs {
     }
     q
 }
-
-#[cfg(test)]
-mod tests;

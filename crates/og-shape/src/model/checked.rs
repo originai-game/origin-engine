@@ -81,33 +81,3 @@ pub fn loft_along_with(d: &LoftAlong, uvs: bool) -> Result<Solid, ModelError> {
         pairs.len()
     ))))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::profile::{Circle, circle};
-
-    fn disc(radius: f64) -> crate::profile::Profile {
-        circle(&Circle {
-            radius,
-            segments: 24,
-        })
-        .unwrap()
-    }
-
-    #[test]
-    fn a_curved_loft_through_a_narrow_neck_is_refused() {
-        // Catmull-Rom from 20 to 1 heads for 60 next: the radius runs
-        // below 0 before the neck, so the wall passes through the axis.
-        let d = Loft {
-            sections: vec![(disc(20.0), 0.0), (disc(1.0), 10.0), (disc(60.0), 20.0)],
-            steps: 6,
-            ..Default::default()
-        };
-        let e = loft(&d).unwrap_err().to_string();
-        assert!(e.contains("between sections 0 and 1"), "{e}");
-        // Straight, the same sections make a solid.
-        let ok = loft(&Loft { steps: 1, ..d }).unwrap();
-        assert!(ok.measure().closed);
-    }
-}

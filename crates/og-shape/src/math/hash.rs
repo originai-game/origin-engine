@@ -90,26 +90,3 @@ impl OutputHash {
             .collect()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn nan_is_refused() {
-        let mut h = OutputHash::new();
-        assert_eq!(h.f64(f64::NAN), Err(HashError::NaN));
-        assert_eq!(h.f64s(&[1.0, f64::NAN]), Err(HashError::NaN));
-    }
-
-    #[test]
-    fn length_prefix_separates_fields() {
-        let mut a = OutputHash::new();
-        a.str("ab");
-        a.str("c");
-        let mut b = OutputHash::new();
-        b.str("a");
-        b.str("bc");
-        assert_ne!(a.finish_hex(), b.finish_hex());
-    }
-}

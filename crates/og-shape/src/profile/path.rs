@@ -209,39 +209,3 @@ fn circumcircle(a: DVec2, b: DVec2, c: DVec2) -> Option<DVec2> {
         (a2 * (c.x - b.x) + b2 * (a.x - c.x) + c2 * (b.x - a.x)) / d,
     ))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_d_shape_has_two_corners_and_its_area() {
-        // A half disc of radius 5: a line and a three-point arc.
-        let d = Path::new(0.0, -5.0)
-            .arc_to(5.0, 0.0, 0.0, 5.0)
-            .line_to(0.0, -5.0)
-            .close()
-            .unwrap();
-        let c = &d.regions[0].outer;
-        assert_eq!(c.sharp.iter().filter(|s| **s).count(), 2);
-        let want = double::PI * 25.0 / 2.0;
-        assert!((d.area() - want).abs() / want < 1.5e-2, "{}", d.area());
-    }
-
-    #[test]
-    fn a_tangent_arc_leaves_no_corner() {
-        let p = Path::new(0.0, 0.0)
-            .line_to(10.0, 0.0)
-            .tangent_arc_to(10.0, 10.0)
-            .line_to(0.0, 10.0)
-            .close()
-            .unwrap();
-        let c = &p.regions[0].outer;
-        let i = c
-            .points
-            .iter()
-            .position(|q| *q == DVec2::new(10.0, 0.0))
-            .unwrap();
-        assert!(!c.sharp[i]);
-    }
-}

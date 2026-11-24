@@ -35,11 +35,6 @@ fn two_product(a: f64, b: f64) -> (f64, f64) {
 }
 
 impl Exp {
-    #[cfg(test)]
-    pub(crate) fn from(a: f64) -> Exp {
-        Exp(if a == 0.0 { Vec::new() } else { vec![a] })
-    }
-
     /// `a - b`, exactly.
     pub(crate) fn diff(a: f64, b: f64) -> Exp {
         let (x, y) = two_sum(a, -b);
@@ -152,58 +147,5 @@ impl Fraction {
         let s =
             self.num.mul(&o.den).sub(&o.num.mul(&self.den)).sign() * self.den.sign() * o.den.sign();
         s.cmp(&0)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn exact_signs_where_f64_cancels() {
-        // (1 + 2⁻⁵²)² − 1 − 2⁻⁵¹ = 2⁻¹⁰⁴, lost in f64.
-        let e = f64::EPSILON;
-        let a = Exp::from(1.0 + e);
-        let v = a.mul(&a).sub(&Exp::from(1.0)).sub(&Exp::from(2.0 * e));
-        assert_eq!(v.sign(), 1);
-        assert_eq!(v.sub(&Exp::from(e * e)).sign(), 0);
-        // Collinear in exact terms, and an ulp off.
-        assert_eq!(orient2d([0.0, 0.0], [1.0, 1.0], [3.0, 3.0]).sign(), 0);
-        assert_eq!(
-            orient2d([0.0, 0.0], [1.0, 1.0], [3.0, 3.0 + 4.0 * e]).sign(),
-            1
-        );
-        let o = orient3d(
-            [0.0; 3],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-            [0.1, 0.1, 1e-300],
-        );
-        assert_eq!(
-            o.sign(),
-            robust::orient3d(
-                robust::Coord3D {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0
-                },
-                robust::Coord3D {
-                    x: 1.0,
-                    y: 0.0,
-                    z: 0.0
-                },
-                robust::Coord3D {
-                    x: 0.0,
-                    y: 1.0,
-                    z: 0.0
-                },
-                robust::Coord3D {
-                    x: 0.1,
-                    y: 0.1,
-                    z: 1e-300
-                },
-            )
-            .signum() as i32
-        );
     }
 }

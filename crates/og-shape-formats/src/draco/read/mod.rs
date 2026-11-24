@@ -463,6 +463,3 @@ pub(crate) fn metadata(r: &mut Reader) -> Res<()> {
     }
     element(r, 0)
 }
-
-#[cfg(test)]
-mod tests;

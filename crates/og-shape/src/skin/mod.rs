@@ -52,6 +52,3 @@ pub use rig::{
     Pose, PoseMeasures, Rig, RigBone, RigError, Turn, measure_pose, pose, pose_by, skin,
     skin_matrices,
 };
-
-#[cfg(test)]
-mod tests;

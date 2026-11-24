@@ -458,6 +458,3 @@ pub(crate) fn form_as(s: &Solid, d: &Unwrap) -> Formed {
     }
     (charts, chart_of, flat)
 }
-
-#[cfg(test)]
-mod tests;

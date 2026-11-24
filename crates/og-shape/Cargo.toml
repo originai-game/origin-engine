@@ -26,8 +26,6 @@ serde_json = { version = "1.0.154", default-features = false, features = ["std",
 [dev-dependencies]
 # The integration tests read and write files (a test edge, not a layer edge).
 og-shape-formats = { path = "../og-shape-formats" }
-# Compresses the arrays of the hand-written binary FBX test files.
-miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-alloc"] }
 gltf = { version = "1.4.1", default-features = false, features = ["utils", "names", "extras"] }
 
 # The determinism lint (clippy.toml beside this file).

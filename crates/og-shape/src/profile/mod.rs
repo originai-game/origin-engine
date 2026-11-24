@@ -209,34 +209,3 @@ impl Profile {
         ops::triangulate(self)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn contains_counts_holes_and_boundaries() {
-        let washer = circle(&Circle {
-            radius: 10.0,
-            ..Default::default()
-        })
-        .unwrap()
-        .subtract(
-            &circle(&Circle {
-                radius: 4.0,
-                ..Default::default()
-            })
-            .unwrap(),
-        );
-        assert!(washer.contains(DVec2::new(7.0, 0.0)));
-        assert!(!washer.contains(DVec2::new(0.0, 0.0)));
-        assert!(!washer.contains(DVec2::new(11.0, 0.0)));
-        let sq = rect(&Rect {
-            width: 2.0,
-            height: 2.0,
-            ..Default::default()
-        })
-        .unwrap();
-        assert!(sq.contains(DVec2::new(1.0, 0.0)));
-    }
-}

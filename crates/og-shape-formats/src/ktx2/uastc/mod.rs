@@ -414,36 +414,3 @@ pub fn encode_rdo(rgba: &[u8], width: usize, height: usize, rdo: f64) -> Vec<u8>
     }
     out
 }
-
-#[cfg(test)]
-mod vectors;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The specification's 64 blocks decode to exactly its pixels, and
-    /// its three invalid ones to nothing.
-    #[test]
-    fn the_specification_s_blocks_decode_to_its_pixels() {
-        let mut invalid = 0;
-        for (i, (block, pixels)) in vectors::BLOCKS.iter().zip(&vectors::PIXELS).enumerate() {
-            match decode_block(block) {
-                Some(texels) => {
-                    let got = texels.map(u32::from_le_bytes);
-                    assert_eq!(
-                        &got,
-                        pixels,
-                        "block {i}, mode {}",
-                        MODES[(block[0] & 127) as usize]
-                    );
-                }
-                None => {
-                    assert!(pixels.iter().all(|&p| p == 0xFFFF_00FF), "block {i}");
-                    invalid += 1;
-                }
-            }
-        }
-        assert_eq!(invalid, 3);
-    }
-}

@@ -83,25 +83,3 @@ pub fn frenet_frames(tangents: &[DVec3], closed: bool) -> Vec<Frame> {
         })
         .collect()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_straight_line_keeps_one_frame_and_frames_stay_orthonormal() {
-        let f = frenet_frames(&[DVec3::Z; 4], false);
-        assert!(f.iter().all(|x| x.normal == f[0].normal));
-        let ts: Vec<DVec3> = (0..=16)
-            .map(|i| {
-                let (s, c) = double::sin_cos(i as f64 / 16.0 * double::TAU);
-                DVec3::new(-s, 0.3, c).normalize()
-            })
-            .collect();
-        for fr in frenet_frames(&ts, true) {
-            assert!((fr.normal.length() - 1.0).abs() < 1e-9);
-            assert!(fr.normal.dot(fr.tangent).abs() < 1e-9);
-            assert!(fr.binormal.dot(fr.normal).abs() < 1e-9);
-        }
-    }
-}

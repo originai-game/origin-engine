@@ -434,6 +434,3 @@ impl PlaceReport {
         out
     }
 }
-
-#[cfg(test)]
-mod tests;

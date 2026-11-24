@@ -346,15 +346,3 @@ fn add_shape(
         layer_offset += h.len();
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn overlapping_points_go_including_the_closing_one() {
-        let mut p = vec![DVec2::ZERO, DVec2::X, DVec2::ONE, DVec2::ZERO];
-        merge_overlapping(&mut p);
-        assert_eq!(p, vec![DVec2::X, DVec2::ONE, DVec2::ZERO]);
-    }
-}

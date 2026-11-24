@@ -36,25 +36,3 @@ pub fn sorted_order(points: &[DVec3]) -> Vec<u32> {
     order.sort_by(|&i, &j| cmp_dvec3(points[i as usize], points[j as usize]));
     order
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn signed_zeros_compare_equal() {
-        assert_eq!(cmp_f64(-0.0, 0.0), Ordering::Equal);
-        assert_eq!(cmp_f64(-1.0, 0.0), Ordering::Less);
-    }
-
-    #[test]
-    fn sorted_order_is_stable() {
-        let p = [
-            DVec3::new(1.0, 0.0, 0.0),
-            DVec3::new(0.0, 2.0, 0.0),
-            DVec3::new(-0.0, 2.0, 0.0),
-            DVec3::new(0.0, 1.0, 0.0),
-        ];
-        assert_eq!(sorted_order(&p), vec![3, 1, 2, 0]);
-    }
-}

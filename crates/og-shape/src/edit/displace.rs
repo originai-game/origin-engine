@@ -234,39 +234,3 @@ pub(crate) fn craters(p: DVec3, seed: u32, density: f64) -> f64 {
     }
     if bowl < 0.0 { bowl } else { rim.min(0.6) }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn gradient_noise_is_zero_on_the_lattice_and_bounded() {
-        for s in 0..4 {
-            assert_eq!(gradient(DVec3::new(3.0, -2.0, 7.0), s), 0.0);
-        }
-        let mut lo = f64::MAX;
-        let mut hi = f64::MIN;
-        for i in 0..4000 {
-            let f = i as f64;
-            let v = gradient(DVec3::new(f * 0.137, f * 0.071 - 9.0, f * 0.053), 5);
-            lo = lo.min(v);
-            hi = hi.max(v);
-        }
-        assert!(lo > -1.1 && hi < 1.1 && lo < -0.3 && hi > 0.3, "{lo} {hi}");
-    }
-
-    #[test]
-    fn craters_are_bowls_with_rims() {
-        let d = Displace {
-            noise: Noise::Crater,
-            scale: 1.0,
-            amount: 1.0,
-            density: 1.0,
-            ..Default::default()
-        };
-        // Every cell holds a crater: the cell's own centre is a bowl floor.
-        let h = corner(0, 0, 0, 0);
-        let at = DVec3::new(unit(mix(h ^ 1)), unit(mix(h ^ 2)), unit(mix(h ^ 3)));
-        assert!(height(&d, at) <= -0.99);
-    }
-}

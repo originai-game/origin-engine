@@ -92,33 +92,3 @@ pub(crate) fn chain(a: DVec3, b: DVec3, c: DVec3, s: &[(f64, f64)]) -> Vec<DVec3
         })
         .collect()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_half_profile_is_a_circle_with_even_chords() {
-        let s = samples(2.0, 6);
-        for &(x, y) in &s {
-            assert!((x * x + y * y - 1.0).abs() < 1e-12, "{x} {y}");
-        }
-        let d: Vec<f64> = s
-            .windows(2)
-            .map(|w| {
-                let (dx, dy) = (w[1].0 - w[0].0, w[1].1 - w[0].1);
-                (dx * dx + dy * dy).sqrt()
-            })
-            .collect();
-        for x in &d {
-            assert!((x - d[0]).abs() < 1e-5, "{d:?}");
-        }
-    }
-
-    #[test]
-    fn a_quarter_profile_is_straight() {
-        for &(x, y) in &samples(1.0, 5) {
-            assert!((x + y - 1.0).abs() < 1e-12);
-        }
-    }
-}

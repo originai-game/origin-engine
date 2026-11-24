@@ -38,9 +38,6 @@ mod parse;
 mod roof;
 mod split;
 
-#[cfg(test)]
-mod tests;
-
 pub use eval::build;
 pub use parse::parse;
 

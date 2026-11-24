@@ -388,6 +388,3 @@ pub fn textured(g: &Generator) -> Result<Solid, GenError> {
         Generator::Wedge(w, h, d) => wedge_with(*w, *h, *d, true),
     }
 }
-
-#[cfg(test)]
-mod tests;

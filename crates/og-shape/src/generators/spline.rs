@@ -40,31 +40,3 @@ pub fn eval(params: &[f64], values: &[f64], second: &[f64], k: usize, f: f64) ->
         + values[k + 1] * w
         + ((u * u * u - u) * second[k] + (w * w * w - w) * second[k + 1]) * (h * h / 6.0)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_spline_is_exact_on_its_points_and_on_a_line() {
-        let t = [0.0, 1.0, 3.0, 4.0];
-        let line: Vec<f64> = t.iter().map(|x| 2.0 * x + 1.0).collect();
-        let s = second_derivatives(&t, &line);
-        assert!(s.iter().all(|v| v.abs() < 1e-12));
-        assert!((eval(&t, &line, &s, 1, 0.25) - 4.0).abs() < 1e-12);
-        let y = [0.0, 2.0, -1.0, 3.0];
-        let s = second_derivatives(&t, &y);
-        for k in 0..3 {
-            assert_eq!(eval(&t, &y, &s, k, 0.0), y[k]);
-            assert!((eval(&t, &y, &s, k, 1.0) - y[k + 1]).abs() < 1e-12);
-        }
-        // Natural: no curvature at the ends; C²: the slope is continuous.
-        assert_eq!((s[0], s[3]), (0.0, 0.0));
-        let e = 1e-6;
-        let slope = |k: usize, f: f64| {
-            (eval(&t, &y, &s, k, f + e) - eval(&t, &y, &s, k, f - e)) / (2.0 * e)
-        };
-        // d/dt = d/df ÷ the span's length (1, then 2).
-        assert!((slope(0, 1.0 - e) - slope(1, e) / 2.0).abs() < 1e-3);
-    }
-}

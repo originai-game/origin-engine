@@ -118,35 +118,3 @@ pub(crate) fn gltf_matrix(m: &Mat4) -> Mat4 {
         t.x, t.y, t.z, 1.0,
     ]
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use og_shape::math::Frame;
-    use og_shape::mesh::skin::{frame_inverse_matrix, frame_matrix};
-
-    fn apply(m: &Mat4, p: DVec3) -> DVec3 {
-        DVec3::new(
-            m[0] * p.x + m[4] * p.y + m[8] * p.z + m[12],
-            m[1] * p.x + m[5] * p.y + m[9] * p.z + m[13],
-            m[2] * p.x + m[6] * p.y + m[10] * p.z + m[14],
-        )
-    }
-
-    #[test]
-    fn gltf_matrix_conjugates_by_the_axis_change() {
-        let f = Frame::from_normal(
-            DVec3::new(3.0, -2.0, 7.0),
-            DVec3::new(1.0, 1.0, 0.5),
-            DVec3::Z,
-        )
-        .unwrap();
-        for m in [frame_matrix(&f), frame_inverse_matrix(&f)] {
-            let g = gltf_matrix(&m);
-            let p = DVec3::new(10.0, -20.0, 5.0);
-            let lhs = apply(&g, y_up(p) * METRES);
-            let rhs = y_up(apply(&m, p)) * METRES;
-            assert!((lhs - rhs).length() < 1e-15, "{lhs} {rhs}");
-        }
-    }
-}

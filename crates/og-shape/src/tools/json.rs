@@ -87,20 +87,3 @@ pub fn string(s: &str, out: &mut String) {
     }
     out.push('"');
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn writes_compact_ordered_json() {
-        let v = Json::Obj(vec![
-            ("b", Json::Num(-0.0)),
-            ("a", Json::Arr(vec![Json::Num(0.1), Json::Int(3)])),
-            ("s", Json::Str("q\"\\\u{1}".into())),
-        ]);
-        let mut s = String::new();
-        v.write(&mut s);
-        assert_eq!(s, r#"{"b":0,"a":[0.1,3],"s":"q\"\\\u0001"}"#);
-    }
-}

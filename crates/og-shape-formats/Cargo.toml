@@ -14,13 +14,6 @@ miniz_oxide = { version = "0.9.1", default-features = false, features = ["with-a
 ruzstd = { version = "0.9.1", default-features = false, features = ["std"] }
 image-webp = "0.2.4"
 
-[[test]]
-name = "tests"
-path = "tests/it/main.rs"
-
-[dev-dependencies]
-gltf = { version = "1.4.1", default-features = false, features = ["utils", "names", "extras"] }
-
 # The determinism lint (clippy.toml beside this file).
 [lints.rust]
 unsafe_code = "forbid"

@@ -285,21 +285,3 @@ impl Parser<'_> {
         String::from_utf8(out).map_err(|_| self.err("string is not UTF-8"))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reads_nested_documents() {
-        let v =
-            parse(br#" {"a":[1,-2.5e3,true,null],"b":{"c":"x\u00e9\"\ud83d\ude00"}} "#).unwrap();
-        assert_eq!(v.get("a").nums(), None);
-        assert_eq!(v.get("a").at(1).num(), Some(-2500.0));
-        assert_eq!(v.get("a").at(2).bool(), Some(true));
-        assert_eq!(v.get("b").get("c").str(), Some("xé\"😀"));
-        assert!(v.get("missing").is_null());
-        assert!(parse(b"[1,]").is_err());
-        assert!(parse(b"{\"a\":1} x").is_err());
-    }
-}

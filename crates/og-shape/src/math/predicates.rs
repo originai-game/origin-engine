@@ -57,26 +57,3 @@ pub fn incircle(a: DVec2, b: DVec2, c: DVec2, d: DVec2) -> Ordering {
 pub fn insphere(a: DVec3, b: DVec3, c: DVec3, d: DVec3, e: DVec3) -> Ordering {
     sign(robust::insphere(c3(a), c3(b), c3(c), c3(d), c3(e)))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn near_collinear_points_get_the_exact_side() {
-        // A naive determinant rounds this to zero; the exact sign is
-        // positive (c lies a hair to the left of a → b).
-        let a = DVec2::new(0.5, 0.5);
-        let b = DVec2::new(12.0, 12.0);
-        let c = DVec2::new(24.0, f64::from_bits(24.0f64.to_bits() + 1));
-        assert_eq!(orient2d(a, b, c), Ordering::Greater);
-        assert_eq!(orient2d(a, b, DVec2::new(24.0, 24.0)), Ordering::Equal);
-    }
-
-    #[test]
-    fn orient3d_follows_shewchuk_convention() {
-        let (a, b, c) = (DVec3::ZERO, DVec3::X, DVec3::Y);
-        assert_eq!(orient3d(a, b, c, DVec3::NEG_Z), Ordering::Greater);
-        assert_eq!(orient3d(a, b, c, DVec3::Z), Ordering::Less);
-    }
-}

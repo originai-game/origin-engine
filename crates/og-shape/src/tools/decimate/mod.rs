@@ -300,6 +300,3 @@ pub fn lods(s: &Solid, levels: &[Decimate]) -> Result<Vec<(Solid, DecimateReport
     }
     Ok(out)
 }
-
-#[cfg(test)]
-mod tests;

@@ -587,7 +587,7 @@ step_guide_recipes() {
 # changed since it last passed, as step_fixtures does. Each has a playtest
 # that reaches an og.assert.reachable site through its keys and ends two
 # runs on one hash. shared-walk is left out: without a world server it never
-# joins, and packages/engine/tests/web-shared.test.ts plays it against one.
+# joins.
 step_showcase() {
   local dir name log rc ran="" unchanged="" unchecked="" bad=""
   require_ready showcase native-ready || return 1
@@ -773,14 +773,14 @@ step_web_reference() {
   fi
 }
 
-# og-shape's goldens built for wasm32-wasip1 and run under wasmtime: the
-# kernel's f64 arithmetic, own trig and exact predicates must hash the same
-# on the web target as natively (docs/ci.md §Lanes). wasmtime comes from
-# scripts/install-tools.sh.
+# og-shape's determinism tests built for wasm32-wasip1 and run under
+# wasmtime: the kernel's f64 arithmetic, own trig and exact predicates must
+# give the web target the bits recorded natively (docs/ci.md §Lanes).
+# wasmtime comes from scripts/install-tools.sh.
 step_shape_wasm32() {
-  skip_unchanged shape-wasm32 "shape-wasm32" "$(python3 scripts/gate/inputs.py crates og-shape-formats)" && return $SKIP
+  skip_unchanged shape-wasm32 "shape-wasm32" "$(python3 scripts/gate/inputs.py crates og-shape)" && return $SKIP
   command -v wasmtime >/dev/null || { og_err "shape-wasm32: no wasmtime; run scripts/install-tools.sh"; return 1; }
   export RUSTC_WRAPPER=
   CARGO_TARGET_WASM32_WASIP1_RUNNER=wasmtime \
-    cargo test --locked --release --target wasm32-wasip1 -p og-shape-formats --test tests golden
+    cargo test --locked --release --target wasm32-wasip1 -p og-shape --test tests determinism
 }
