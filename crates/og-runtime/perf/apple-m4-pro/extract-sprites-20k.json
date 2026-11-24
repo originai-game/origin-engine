@@ -1,6 +1,0 @@
-{
-  "scene": "extract-sprites-20k",
-  "cpu": "apple-m4-pro",
-  "instances": 20000,
-  "frame_ms": 5.537
-}

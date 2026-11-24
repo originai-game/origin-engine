@@ -10,9 +10,6 @@ autotests = false
 [dependencies]
 og-core = { path = "../og-core" }
 
-[dev-dependencies]
-serde_json = { version = "1", features = ["float_roundtrip"] }
-
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"

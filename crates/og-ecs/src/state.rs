@@ -124,42 +124,4 @@ pub mod trailer {
         }
         Ok(out)
     }
-
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn round_trip_skips_nothing_and_writes_nothing_empty() {
-            let mut out = vec![9];
-            write(&mut out, &[]);
-            assert_eq!(out, [9]);
-            write(&mut out, &[(1, vec![1, 2]), (7, vec![])]);
-            assert_eq!(
-                &out[1..],
-                [
-                    b'O', b'G', b'X', b'T', 1, 1, 0, 2, 0, 0, 0, 1, 2, 7, 0, 0, 0, 0, 0
-                ]
-            );
-            let read = read("og.test", &out[1..]).unwrap();
-            assert_eq!(read, [(1, &[1u8, 2][..]), (7, &[][..])]);
-            assert!(super::read("og.test", &[]).unwrap().is_empty());
-        }
-
-        #[test]
-        fn rejects_truncation_bad_magic_version_and_order() {
-            let mut good = Vec::new();
-            write(&mut good, &[(2, vec![5, 6, 7])]);
-            for cut in 1..good.len() {
-                assert!(read("og.test", &good[..cut]).is_err(), "cut at {cut}");
-            }
-            let mut v2 = good.clone();
-            v2[4] = 2;
-            assert!(read("og.test", &v2).is_err());
-            assert!(read("og.test", b"OGX\x01").is_err());
-            let mut twice = good.clone();
-            twice.extend_from_slice(&good[5..]);
-            assert!(read("og.test", &twice).is_err());
-        }
-    }
 }

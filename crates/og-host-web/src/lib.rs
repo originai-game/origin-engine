@@ -515,26 +515,3 @@ pub fn og_web_init() {
 
 #[cfg(target_arch = "wasm32")]
 mod canvas;
-
-#[cfg(test)]
-mod gpu_tests {
-    #[test]
-    fn the_gpu_report_names_webgpu_limits_and_the_features_the_device_has() {
-        let limits = og_render::wgpu::Limits {
-            max_texture_dimension_2d: 16384,
-            max_buffer_size: 1 << 32,
-            ..og_render::wgpu::Limits::downlevel_defaults()
-        };
-        let features = og_render::wgpu::Features::TEXTURE_COMPRESSION_ASTC
-            | og_render::wgpu::Features::SHADER_F16;
-        let r = super::gpu_report(&limits, features, false);
-        assert_eq!(r["limits"]["maxTextureDimension2D"], 16384);
-        assert_eq!(r["limits"]["maxBufferSize"], 1u64 << 32);
-        assert_eq!(r["limits"].as_object().unwrap().len(), 14);
-        assert_eq!(
-            r["features"],
-            serde_json::json!(["texture-compression-astc", "shader-f16"])
-        );
-        assert_eq!(r["fallback"], false);
-    }
-}

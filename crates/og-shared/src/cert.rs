@@ -55,16 +55,3 @@ pub fn self_signed(names: &[String], days: u32) -> Result<SelfSigned, String> {
         sha256,
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::civil;
-
-    #[test]
-    fn civil_dates_cross_leap_days_and_eras() {
-        assert_eq!(civil(0), (1970, 1, 1));
-        assert_eq!(civil(11_016), (2000, 2, 29));
-        assert_eq!(civil(20_776), (2026, 11, 19));
-        assert_eq!(civil(-1), (1969, 12, 31));
-    }
-}

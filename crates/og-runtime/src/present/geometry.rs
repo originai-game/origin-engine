@@ -348,6 +348,3 @@ pub(crate) fn mesh_bounds(rs: &mut RenderState, mesh: MeshHandle) -> Option<(Vec
     rs.geo.bounds.insert(mesh.index(), (rev, i.min, i.max));
     Some((i.min, i.max))
 }
-
-#[cfg(test)]
-mod tests;

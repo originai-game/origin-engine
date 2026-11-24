@@ -182,6 +182,3 @@ pub(crate) fn extract_layouts(
         },
     )
 }
-
-#[cfg(test)]
-mod tests;

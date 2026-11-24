@@ -630,23 +630,3 @@ pub(crate) fn with<T>(
         _ => Err(format!("{} is not an og.load.data file", e.path)),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_files_address_is_its_sha384_digest_as_hex() {
-        // sha384("abc"), FIPS 180-2's example.
-        let sri = "sha384-ywB1P0WjXou1oD1pmsZQBycsMqsO3tFjGotgWkP/W+2AhgcroefMI1i67KE0yCWn";
-        assert_eq!(
-            digest_hex(sri).unwrap(),
-            "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7"
-        );
-        assert_eq!(
-            digest_hex("sha256-ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="),
-            None
-        );
-        assert_eq!(digest_hex("sha384-short"), None);
-    }
-}

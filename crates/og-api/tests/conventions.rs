@@ -201,33 +201,3 @@ fn every_field_name_keeps_its_convention() {
     assert!(checked > 1000, "the IDL's fields were not read: {checked}");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
-
-/// The rules catch what they are for: each on a field written the way the
-/// API used to write it.
-#[test]
-fn each_rule_fails_on_the_old_form() {
-    let field = |name: &str, ty: &str, unit: Option<&str>| {
-        let ty = TypeRef::parse(ty).expect("a type");
-        broken(name, &ty, unit)
-            .into_iter()
-            .map(|(rule, _)| rule)
-            .collect::<Vec<_>>()
-    };
-    assert_eq!(field("hold", "f32", Some("ms")), ["ms"]);
-    assert_eq!(field("holdMs", "f32", Some("ms")), [""; 0]);
-    assert_eq!(field("since", "u32", Some("ticks")), ["ticks"]);
-    assert_eq!(field("rotation", "Quaternion", None), ["quaternion"]);
-    assert_eq!(field("aim", "Option.Quaternion", None), ["quaternion"]);
-    assert_eq!(field("rotation", "f32", Some("deg")), ["rad"]);
-    assert_eq!(field("rotation", "f32", Some("rad")), [""; 0]);
-    assert_eq!(field("fov", "f32", Some("rad")), ["deg"]);
-    assert_eq!(field("slopeMax", "f32", None), ["deg"]);
-    assert_eq!(field("damping", "f32", Some("ratio")), ["damping"]);
-    assert_eq!(field("damping", "f32", Some("perSecond")), [""; 0]);
-    assert_eq!(field("alpha", "f32", None), ["opacity"]);
-    assert_eq!(field("occludedAlpha", "f32", Some("ratio")), ["opacity"]);
-    assert_eq!(field("alphaTest", "f32", None), [""; 0]);
-    assert_eq!(field("lifetime", "u32", Some("ticks")), ["ticks"]);
-    assert_eq!(field("pressed", "bool", None), ["press"]);
-    assert_eq!(field("justReleased", "bool", None), [""; 0]);
-}

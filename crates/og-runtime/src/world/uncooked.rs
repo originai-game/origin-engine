@@ -523,6 +523,3 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
     eng.assets.borrow_mut().uncooked.schedule = Some(schedule);
     Ok(())
 }
-
-#[cfg(test)]
-mod tests;

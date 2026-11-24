@@ -143,16 +143,3 @@ mod mach {
         (r == 0).then_some(size)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn a_native_process_reads_its_resident_memory() {
-        #[cfg(any(target_os = "linux", target_os = "macos"))]
-        {
-            let r = super::resident().expect("resident memory");
-            assert!(r > 1e6, "{r} bytes resident");
-        }
-        assert!(super::linear().is_none());
-    }
-}

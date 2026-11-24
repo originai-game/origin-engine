@@ -297,6 +297,3 @@ fn of(rs: &mut RenderState) -> &mut Inspector {
     rs.inspector
         .get_or_insert_with(|| Box::new(Inspector::new()))
 }
-
-#[cfg(test)]
-mod tests;

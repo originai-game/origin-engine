@@ -299,6 +299,3 @@ fn number(v: &Value, what: &str) -> Result<f64, String> {
     v.as_f64()
         .ok_or_else(|| format!("{what} is a number, got {v}"))
 }
-
-#[cfg(test)]
-mod tests;

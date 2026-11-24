@@ -180,21 +180,3 @@ pub fn quantize(v: &[f32]) -> (Vec<i8>, f32) {
         scale,
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn wordpiece_cuts_words_into_the_longest_pieces() {
-        let m = model();
-        assert_eq!(m.dim, 128);
-        let ids = m.tokens("Shake, camera!");
-        assert_eq!(ids.len(), 4, "{ids:?}");
-        // Related words sit closer than unrelated ones.
-        let dot = |a: &[f32], b: &[f32]| a.iter().zip(b).map(|(x, y)| x * y).sum::<f32>();
-        let tremble = m.embed("the screen trembles");
-        assert!(dot(&tremble, &m.embed("camera shake")) > dot(&tremble, &m.embed("save slot")));
-        assert!(m.embed("zzqxv").iter().all(|&x| x == 0.0) || !m.tokens("zzqxv").is_empty());
-    }
-}

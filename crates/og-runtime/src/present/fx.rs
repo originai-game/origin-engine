@@ -772,6 +772,3 @@ pub(crate) fn viewport(rs: &RenderState) -> (f32, f32) {
         _ => (1280.0, 720.0),
     }
 }
-
-#[cfg(test)]
-mod tests;

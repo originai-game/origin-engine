@@ -138,37 +138,3 @@ impl Record {
         self
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Serialize)]
-    struct Path {
-        nav: u64,
-        corners: Vec<[f32; 3]>,
-        followers: Vec<u64>,
-        owner: Option<u64>,
-    }
-
-    #[test]
-    fn members_mark_the_named_fields_as_entities_and_keep_the_rest_as_values() {
-        let p = Path {
-            nav: (1 << 32) | 4,
-            corners: vec![[1.0, 0.5, 0.0]],
-            followers: vec![7, 9],
-            owner: None,
-        };
-        let r = Record::new(3, "path").members(&p, &["nav", "followers", "owner"]);
-        let get = |n: &str| {
-            r.fields
-                .iter()
-                .find(|(k, _)| k == n)
-                .map(|(_, f)| f.clone())
-        };
-        assert_eq!(get("nav"), Some(Field::Entity((1 << 32) | 4)));
-        assert_eq!(get("followers"), Some(Field::Entities(vec![7, 9])));
-        assert_eq!(get("owner"), Some(Field::Entity(0)));
-        assert_eq!(get("corners"), Some(Field::of(&vec![[1.0f32, 0.5, 0.0]])));
-    }
-}

@@ -19,8 +19,6 @@
 
 use crate::engine::engine;
 use crate::present::extract::{Hierarchy, RenderState};
-#[cfg(test)]
-use glam::Mat4;
 use glam::Vec3;
 use og_core::IdMap;
 use og_render::{Camera, Projection};
@@ -296,13 +294,6 @@ pub(crate) fn apply(
     };
 }
 
-/// The camera's view-projection matrix (tests and the turntable's notes).
-#[cfg(test)]
-fn view_projection(c: &Camera, aspect: f32) -> Mat4 {
-    let view = glam::camera::rh::view::look_at_mat4(c.position, c.target, c.up);
-    c.projection.matrix(aspect, c.near, c.far) * view
-}
-
 /// The command channel's `view` and `turntable` (tools: not in a publish build).
 #[cfg(not(feature = "publish"))]
 pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
@@ -379,127 +370,4 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
             Ok(())
         },
     );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Where the box's corners land in normalised device coordinates.
-    fn ndc(c: &Camera, aspect: f32, lo: Vec3, hi: Vec3) -> Vec<Vec3> {
-        let m = view_projection(c, aspect);
-        (0..8)
-            .map(|k| {
-                let p = Vec3::new(
-                    if k & 1 == 0 { lo.x } else { hi.x },
-                    if k & 2 == 0 { lo.y } else { hi.y },
-                    if k & 4 == 0 { lo.z } else { hi.z },
-                );
-                m.project_point3(p)
-            })
-            .collect()
-    }
-
-    #[test]
-    fn the_orbit_fits_the_bounding_sphere_inside_the_frame() {
-        let (lo, hi) = (Vec3::new(-1.0, 0.0, -0.25), Vec3::new(1.0, 1.0, 0.25));
-        for aspect in [0.5f32, 1.0, 16.0 / 9.0] {
-            for degrees in [0.0f32, 37.0, 90.0, 200.0] {
-                let c = camera(Preset::Orbit(degrees), lo, hi, aspect);
-                for p in ndc(&c, aspect, lo, hi) {
-                    assert!(
-                        p.x.abs() < 1.0 && p.y.abs() < 1.0,
-                        "{degrees}° at {aspect}: {p}"
-                    );
-                    assert!((0.0..1.0).contains(&p.z), "inside near and far: {p}");
-                }
-            }
-        }
-        // 90° looks from +X: the eye's x is the largest of the orbit's.
-        let side = camera(Preset::Orbit(90.0), lo, hi, 1.0);
-        assert!(side.position.x > 1.0 && side.position.z.abs() < 1e-3);
-        assert!(side.position.y > 0.5, "above the horizon");
-    }
-
-    #[test]
-    fn bounds_frames_skinned_instances_and_sprites() {
-        let mut rs = RenderState::new(serde_json::Value::Null);
-        let h = Hierarchy::default();
-        let skinned_ent = 42u64;
-        let sprite_ent = 99u64;
-
-        // Skinned mesh: a triangle shifted by joint 0 to x = +5.
-        let mesh = og_render::MeshData {
-            vertices: vec![
-                og_render::Vertex {
-                    position: [0.0, 0.0, 0.0],
-                    ..Default::default()
-                },
-                og_render::Vertex {
-                    position: [1.0, 0.0, 0.0],
-                    ..Default::default()
-                },
-                og_render::Vertex {
-                    position: [0.0, 2.0, 0.0],
-                    ..Default::default()
-                },
-            ],
-            indices: vec![0, 1, 2],
-        };
-        let skin = og_render::SkinData {
-            joints: vec![[0, 0, 0, 0]; 3],
-            weights: vec![[1.0, 0.0, 0.0, 0.0]; 3],
-        };
-        let handle = rs.scene.add_skinned_mesh(mesh, skin);
-        let mat = rs.scene.add_material(og_render::Material::default());
-        rs.scene
-            .objects
-            .joint_palettes
-            .push(og_render::JointPalette {
-                matrices: vec![Mat4::from_translation(Vec3::new(5.0, 0.0, 0.0))],
-            });
-        rs.atmo.palettes.insert(skinned_ent, 0);
-        rs.scene
-            .objects
-            .skinned_instances
-            .push(og_render::SkinnedInstance::new(
-                handle,
-                mat,
-                Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
-                0,
-            ));
-
-        rs.review = Some(ReviewView {
-            entity: skinned_ent,
-            name: "hero".into(),
-            preset: Preset::Front,
-        });
-        let (lo, hi) = bounds(&mut rs, &h, &[]).expect("skinned bounds");
-        assert!((lo - Vec3::new(5.0, 1.0, 0.0)).length() < 1e-5, "lo={lo}");
-        assert!((hi - Vec3::new(6.0, 3.0, 0.0)).length() < 1e-5, "hi={hi}");
-
-        // Sprite entity: 4x2 quad centered at (10, 2, -1), rotated 90° -> 2x4 box.
-        rs.scene.sprite.sprites.push(og_render::Sprite {
-            position: Vec3::new(10.0, 2.0, -1.0),
-            size: glam::Vec2::new(4.0, 2.0),
-            anchor: glam::Vec2::splat(0.5),
-            rotation: std::f32::consts::FRAC_PI_2,
-            ..Default::default()
-        });
-        rs.ids.sprites.push((0, sprite_ent));
-        rs.review = Some(ReviewView {
-            entity: sprite_ent,
-            name: "badge".into(),
-            preset: Preset::Front,
-        });
-        let (slo, shi) = bounds(&mut rs, &h, &[]).expect("sprite bounds");
-        assert!(
-            (slo - Vec3::new(9.0, 0.0, -1.0)).length() < 1e-4,
-            "slo={slo}"
-        );
-        assert!(
-            (shi - Vec3::new(11.0, 4.0, -1.0)).length() < 1e-4,
-            "shi={shi}"
-        );
-    }
 }

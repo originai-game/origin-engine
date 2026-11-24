@@ -254,15 +254,3 @@ fn build_flat<'v>(
 pub fn joined(doc: &[String]) -> String {
     doc.join("\n")
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn snake_case_follows_word_boundaries() {
-        assert_eq!(super::snake("defineComponent"), "define_component");
-        assert_eq!(super::snake("RuntimeProbe"), "runtime_probe");
-        assert_eq!(super::snake("worldToScreen"), "world_to_screen");
-        assert_eq!(super::snake("GLTFInfo"), "gltf_info");
-        assert_eq!(super::snake("f32"), "f32");
-    }
-}

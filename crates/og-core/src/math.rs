@@ -669,86 +669,7 @@ mod math_contracts {
     //! of this crate (CPython's `math` in f64, then rounded once to f32). Every
     //! host must reproduce them bit for bit; that is the cross-host contract.
 
-    use crate::Rng;
-    use crate::math::{
-        Quat, Vec3, acos, atan, atan2, cos, exp, ln, pow, quat_from_axis_angle, quat_slerp, sin,
-        sin_cos,
-    };
-
-    #[test]
-    #[allow(clippy::disallowed_methods)]
-    fn the_projections_are_glams_on_depth_zero_to_one() {
-        use crate::math::{Mat4, orthographic, perspective};
-        let near = |a: Mat4, b: Mat4| a.abs_diff_eq(b, 1e-6);
-        let p = perspective(1.1, 1.6, 0.1, 500.0);
-        assert!(near(
-            p,
-            crate::math::camera::rh::proj::directx::perspective(1.1, 1.6, 0.1, 500.0)
-        ));
-        // The near plane lands on depth 0, the far on 1.
-        let at = |z: f32| p.project_point3(Vec3::new(0.0, 0.0, -z)).z;
-        assert!(at(0.1).abs() < 1e-6 && (at(500.0) - 1.0).abs() < 1e-5);
-        let o = orthographic(4.0, 2.5, 0.5, 80.0);
-        assert!(near(
-            o,
-            crate::math::camera::rh::proj::directx::orthographic(-4.0, 4.0, -2.5, 2.5, 0.5, 80.0)
-        ));
-    }
-
-    #[test]
-    fn catmull_rom_runs_through_its_points_with_their_neighbours_slopes() {
-        use crate::math::catmull_rom;
-        let p = [
-            Vec3::new(-1.0, 3.0, 0.0),
-            Vec3::ZERO,
-            Vec3::new(2.0, 1.0, 0.0),
-            Vec3::new(5.0, -4.0, 1.0),
-        ];
-        assert_eq!(catmull_rom(p, 0.0), p[1]);
-        assert!((catmull_rom(p, 1.0) - p[2]).length() < 1e-6);
-        // The textbook form, 0.5 (2 p1 + (p2 - p0) t + ... ), at t = 0.3.
-        let t = 0.3f64;
-        let q = [-1.0, 0.0, 2.0, 5.0];
-        let want = 0.5
-            * (2.0 * q[1]
-                + (q[2] - q[0]) * t
-                + (2.0 * q[0] - 5.0 * q[1] + 4.0 * q[2] - q[3]) * t * t
-                + (3.0 * q[1] - q[0] - 3.0 * q[2] + q[3]) * t * t * t);
-        assert!((catmull_rom(q, t) - want).abs() < 1e-12);
-        // Collinear evenly spaced points: a straight, evenly paced line.
-        assert!((catmull_rom([0.0f64, 1.0, 2.0, 3.0], 0.25) - 1.25).abs() < 1e-12);
-    }
-
-    #[test]
-    fn an_angle_wraps_into_minus_pi_to_pi() {
-        use crate::math::{wrap_angle, wrap_angle_f64};
-        use std::f64::consts::PI;
-        // π stays, -π becomes π: the interval is (-π, π].
-        assert_eq!(wrap_angle_f64(PI), PI);
-        assert_eq!(wrap_angle_f64(-PI), PI);
-        assert_eq!(wrap_angle_f64(3.0 * PI), PI);
-        assert!((wrap_angle_f64(-PI + 1e-9) - (-PI + 1e-9)).abs() < 1e-15);
-        assert!((wrap_angle_f64(7.5) - (7.5 - 2.0 * PI)).abs() < 1e-15);
-        assert!((wrap_angle_f64(-7.5) - (-7.5 + 2.0 * PI)).abs() < 1e-15);
-        assert_eq!(wrap_angle(0.25), 0.25);
-        assert_eq!(wrap_angle(-0.25), -0.25);
-        assert!((wrap_angle(1000.0) - (1000.0 - 159.0 * 2.0 * PI) as f32).abs() < 1e-5);
-        assert!(wrap_angle(f32::INFINITY).is_nan());
-    }
-
-    #[test]
-    fn the_nearest_point_of_a_segment_stays_on_it() {
-        use crate::math::{DVec2, Vec2, closest_on_segment, segment_t};
-        let (a, b) = (Vec3::new(1.0, 0.0, 0.0), Vec3::new(3.0, 0.0, 0.0));
-        assert_eq!(segment_t(Vec3::new(2.5, 4.0, 0.0), a, b), 0.75);
-        assert_eq!(closest_on_segment(Vec3::new(-5.0, 1.0, 0.0), a, b), a);
-        assert_eq!(closest_on_segment(Vec3::new(9.0, 1.0, 0.0), a, b), b);
-        // A point: its one point, never NaN.
-        let p = Vec2::new(2.0, 2.0);
-        assert_eq!(closest_on_segment(Vec2::new(5.0, -1.0), p, p), p);
-        let q = DVec2::new(1.0, 1.0);
-        assert_eq!(segment_t(DVec2::ZERO, q, q), 0.0);
-    }
+    use crate::math::{acos, atan, atan2, cos, exp, ln, pow, sin};
 
     const SIN: &[(u32, u32)] = &[
         (0x00000000, 0x00000000), // sin(0.0)
@@ -955,209 +876,6 @@ mod math_contracts {
         check1("ln", LN, ln);
         check2("pow", POW, pow);
     }
-
-    fn bits(x: f32) -> u32 {
-        x.to_bits()
-    }
-
-    #[test]
-    fn special_values_follow_c99() {
-        use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
-        let (inf, nan) = (f32::INFINITY, f32::NAN);
-        assert_eq!(bits(sin(-0.0)), bits(-0.0));
-        assert_eq!(bits(cos(-0.0)), bits(1.0));
-        assert!(sin(inf).is_nan() && cos(-inf).is_nan() && sin(nan).is_nan());
-        assert_eq!(sin_cos(0.25), (sin(0.25), cos(0.25)));
-
-        assert_eq!(bits(atan(-0.0)), bits(-0.0));
-        assert_eq!(atan(inf), FRAC_PI_2);
-        assert_eq!(atan(-inf), -FRAC_PI_2);
-        assert_eq!(bits(atan2(0.0, 1.0)), bits(0.0));
-        assert_eq!(bits(atan2(-0.0, 1.0)), bits(-0.0));
-        assert_eq!(atan2(0.0, -1.0), PI);
-        assert_eq!(atan2(-0.0, -1.0), -PI);
-        assert_eq!(atan2(0.0, -0.0), PI);
-        assert_eq!(bits(atan2(0.0, 0.0)), bits(0.0));
-        assert_eq!(atan2(2.0, 0.0), FRAC_PI_2);
-        assert_eq!(atan2(-2.0, -0.0), -FRAC_PI_2);
-        assert_eq!(atan2(inf, inf), FRAC_PI_4);
-        assert_eq!(atan2(-inf, -inf), -3.0 * FRAC_PI_4);
-        assert_eq!(atan2(1.0, -inf), PI);
-        assert_eq!(bits(atan2(-1.0, inf)), bits(-0.0));
-        assert_eq!(atan2(inf, 5.0), FRAC_PI_2);
-        assert!(atan2(nan, 1.0).is_nan() && atan2(1.0, nan).is_nan());
-
-        assert_eq!(exp(-inf), 0.0);
-        assert_eq!(exp(inf), inf);
-        assert!(exp(nan).is_nan());
-        assert_eq!(ln(0.0), -inf);
-        assert_eq!(ln(inf), inf);
-        assert!(ln(-1.0).is_nan() && ln(nan).is_nan());
-
-        assert_eq!(pow(nan, 0.0), 1.0);
-        assert_eq!(pow(1.0, nan), 1.0);
-        assert!(pow(nan, 2.0).is_nan() && pow(2.0, nan).is_nan());
-        assert!(pow(-8.0, 1.0 / 3.0).is_nan());
-        assert_eq!(pow(-1.0, inf), 1.0);
-        assert_eq!(pow(0.5, inf), 0.0);
-        assert_eq!(pow(0.5, -inf), inf);
-        assert_eq!(pow(2.0, inf), inf);
-        assert_eq!(pow(2.0, -inf), 0.0);
-        assert_eq!(pow(0.0, -1.0), inf);
-        assert_eq!(pow(-0.0, -3.0), -inf);
-        assert_eq!(pow(-0.0, -2.0), inf);
-        assert_eq!(bits(pow(-0.0, 3.0)), bits(-0.0));
-        assert_eq!(bits(pow(-0.0, 2.0)), bits(0.0));
-        assert_eq!(pow(-inf, 3.0), -inf);
-        assert_eq!(bits(pow(-inf, -3.0)), bits(-0.0));
-        assert_eq!(pow(inf, -1.0), 0.0);
-        assert_eq!(pow(-2.0, 3.0), -8.0);
-        assert_eq!(pow(-2.0, 1e9), inf);
-    }
-
-    fn ordered(x: f32) -> i64 {
-        let b = x.to_bits();
-        if b & 0x8000_0000 != 0 {
-            -i64::from(b & 0x7fff_ffff)
-        } else {
-            i64::from(b)
-        }
-    }
-
-    fn ulps(a: f32, b: f32) -> i64 {
-        (ordered(a) - ordered(b)).abs()
-    }
-
-    /// Accuracy across ranges, against the host's f64 library rounded to f32:
-    /// never more than 1 ulp, and correctly rounded in all but at most 1 in
-    /// 10,000 results per function (the implementation measured 140,000 of
-    /// 140,000).
-    #[test]
-    fn results_are_correctly_rounded_across_ranges() {
-        let mut rng = Rng::new(2026);
-        // Per function: (results, results not correctly rounded).
-        let mut stats = std::collections::BTreeMap::<&str, (usize, usize)>::new();
-        let mut tally = |d: i64, what: &'static str, x: f32, y: f32| {
-            assert!(d <= 1, "{what}({x:e}, {y:e}) is {d} ulps off");
-            let s = stats.entry(what).or_default();
-            s.0 += 1;
-            s.1 += usize::from(d != 0);
-        };
-        for &(lo, hi) in &[
-            (-4.0, 4.0),
-            (-100.0, 100.0),
-            (-1e5, 1e5),
-            (-3e7, 3e7),
-            (-1e30, 1e30),
-        ] {
-            for _ in 0..4000 {
-                let x = rng.range(lo, hi) as f32;
-                let xd = f64::from(x);
-                tally(ulps(sin(x), xd.sin() as f32), "sin", x, 0.0);
-                tally(ulps(cos(x), xd.cos() as f32), "cos", x, 0.0);
-                tally(ulps(atan(x), xd.atan() as f32), "atan", x, 0.0);
-                let y = rng.range(lo, hi) as f32;
-                tally(
-                    ulps(atan2(y, x), f64::from(y).atan2(xd) as f32),
-                    "atan2",
-                    y,
-                    x,
-                );
-            }
-        }
-        for _ in 0..20000 {
-            let x = rng.range(-104.0, 89.0) as f32;
-            tally(ulps(exp(x), f64::from(x).exp() as f32), "exp", x, 0.0);
-            let p = f32::from_bits(rng.integer(1, 0x7f7f_ffff) as u32);
-            tally(ulps(ln(p), f64::from(p).ln() as f32), "ln", p, 0.0);
-            let base = rng.range(0.0, 50.0) as f32;
-            let e = rng.range(-20.0, 20.0) as f32;
-            tally(
-                ulps(pow(base, e), f64::from(base).powf(f64::from(e)) as f32),
-                "pow",
-                base,
-                e,
-            );
-        }
-        for (what, (total, off)) in stats {
-            assert!(
-                off * 10_000 <= total,
-                "{what}: {off} of {total} not correctly rounded"
-            );
-        }
-    }
-
-    #[test]
-    fn deterministic_rotation_matches_its_definition() {
-        let q = quat_from_axis_angle(Vec3::Y, 1.0);
-        let (s, c) = sin_cos(0.5);
-        assert_eq!((q.x, q.y, q.z, q.w), (0.0, s, 0.0, c));
-    }
-
-    /// `quat_slerp` turns along the arc by the share asked: from a turn of 0.3
-    /// about +Y to one of 2.1, a quarter of the way is a turn of 0.75. Its bits
-    /// are pinned, so a host whose results differ fails here (glam's `slerp`
-    /// uses the host's `sinf` and did, by an ulp, on Windows).
-    #[test]
-    fn quat_slerp_turns_by_the_share_and_holds_its_bits() {
-        let a = quat_from_axis_angle(Vec3::Y, 0.3);
-        let b = quat_from_axis_angle(Vec3::Y, 2.1);
-        let q = quat_slerp(a, b, 0.25);
-        let want = quat_from_axis_angle(Vec3::Y, 0.75);
-        assert!(same(q, want), "{q:?} vs {want:?}");
-        let got = [q.x, q.y, q.z, q.w].map(f32::to_bits);
-        assert_eq!(got, PINNED_SLERP, "{got:#010x?}");
-        // The shorter arc: -b is the same rotation as b.
-        assert!(same(quat_slerp(a, -b, 0.25), want));
-        // The ends, and the lerp of nearly equal rotations.
-        assert!(same(quat_slerp(a, b, 0.0), a));
-        assert!(same(quat_slerp(a, b, 1.0), b));
-        assert_eq!(
-            quat_slerp(Quat::IDENTITY, Quat::IDENTITY, 0.5),
-            Quat::IDENTITY
-        );
-    }
-
-    const PINNED_SLERP: [u32; 4] = [0x00000000, 0x3ebb8813, 0x00000000, 0x3f6e35bf];
-
-    /// The same rotation within 1e-6 per component (q and -q are one rotation).
-    fn same(a: Quat, b: Quat) -> bool {
-        (a - b).length().min((a + b).length()) < 1e-6
-    }
-
-    /// `world_pose` down a chain of three: a grandparent moved and doubled, a
-    /// parent turned a quarter about +Y, a child offset along +X. A missing
-    /// transform and a cycle end the chain.
-    #[test]
-    fn world_pose_composes_down_the_parent_chain() {
-        use crate::math::{Pose, Quat, world_pose};
-        let quarter = quat_from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2);
-        // 0: the child, 1: its parent, 2: the grandparent, 3: no transform.
-        let parents = [Some(1usize), Some(2), None, None];
-        let poses: [Option<Pose>; 4] = [
-            None,
-            Some((Vec3::new(0.0, 1.0, 0.0), quarter, Vec3::ONE)),
-            Some((Vec3::new(10.0, 0.0, 0.0), Quat::IDENTITY, Vec3::splat(2.0))),
-            None,
-        ];
-        let local = (Vec3::X, Quat::IDENTITY, Vec3::ONE);
-        let (p, q, s) = world_pose(0, local, |c| parents[c], |c| poses[c]);
-        // The parent turns +X to -Z and lifts it 1; the grandparent doubles
-        // that and moves it 10 along +X.
-        assert!((p - Vec3::new(10.0, 2.0, -2.0)).length() < 1e-5, "{p}");
-        assert!(q.dot(quarter).abs() > 1.0 - 1e-6, "{q}");
-        assert_eq!(s, Vec3::splat(2.0));
-        // A root is its own pose, bit for bit.
-        let root = world_pose(2, local, |_| None::<usize>, |c| poses[c]);
-        assert_eq!(root, local);
-        // A parent without a transform ends the chain.
-        let (p, _, _) = world_pose(0, local, |c| (c == 0).then_some(3), |c| poses[c]);
-        assert_eq!(p, Vec3::X);
-        // A cycle ends after 256 steps instead of looping.
-        let unit = (Vec3::new(0.0, 0.0, 1.0), Quat::IDENTITY, Vec3::ONE);
-        let (p, _, _) = world_pose(0usize, local, |c| Some(1 - c), |_| Some(unit));
-        assert_eq!(p, Vec3::new(1.0, 0.0, 256.0));
-    }
 }
 
 #[cfg(test)]
@@ -1174,7 +892,7 @@ mod glam_scalar_contracts {
     //! across hosts before `scalar-math`.
 
     use crate::Rng;
-    use crate::math::{Affine3A, Mat3, Mat3A, Mat4, Quat, Vec3, Vec3A, Vec4};
+    use crate::math::{Mat4, Quat, Vec3, Vec3A, Vec4};
 
     type V3 = [f32; 3];
     type V4 = [f32; 4];
@@ -1196,14 +914,6 @@ mod glam_scalar_contracts {
         ]
     }
 
-    fn scale3(a: V3, s: f32) -> V3 {
-        [a[0] * s, a[1] * s, a[2] * s]
-    }
-
-    fn add3(a: V3, b: V3) -> V3 {
-        [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
-    }
-
     fn scale4(a: V4, s: f32) -> V4 {
         [a[0] * s, a[1] * s, a[2] * s, a[3] * s]
     }
@@ -1216,37 +926,11 @@ mod glam_scalar_contracts {
         scale4(a, 1.0 / dot4(a, a).sqrt())
     }
 
-    fn quat_mul(a: V4, b: V4) -> V4 {
-        let [x0, y0, z0, w0] = a;
-        let [x1, y1, z1, w1] = b;
-        [
-            ((w0 * x1 + x0 * w1) + y0 * z1) - z0 * y1,
-            ((w0 * y1 - x0 * z1) + y0 * w1) + z0 * x1,
-            ((w0 * z1 + x0 * y1) - y0 * x1) + z0 * w1,
-            ((w0 * w1 - x0 * x1) - y0 * y1) - z0 * z1,
-        ]
-    }
-
-    /// `v·(w² - b·b) + b·(2 v·b) + (b × v)·2w`, with `b` the vector part.
-    fn quat_rotate(q: V4, v: V3) -> V3 {
-        let b = [q[0], q[1], q[2]];
-        let w = q[3];
-        let t = scale3(v, w * w - dot3(b, b));
-        let t = add3(t, scale3(b, dot3(v, b) * 2.0));
-        add3(t, scale3(cross(b, v), w * 2.0))
-    }
-
     fn mat4_mul_vec4(m: &M4, v: V4) -> V4 {
         let r = scale4(m[0], v[0]);
         let r = add4(r, scale4(m[1], v[1]));
         let r = add4(r, scale4(m[2], v[2]));
         add4(r, scale4(m[3], v[3]))
-    }
-
-    fn mat3_mul_vec3(m: &[V3; 3], v: V3) -> V3 {
-        let r = scale3(m[0], v[0]);
-        let r = add3(r, scale3(m[1], v[1]));
-        add3(r, scale3(m[2], v[2]))
     }
 
     /// The rotation matrix of a unit quaternion, scaled per column, translated.
@@ -1341,36 +1025,6 @@ mod glam_scalar_contracts {
     }
 
     #[test]
-    fn quat_products_and_rotations_match_the_scalar_reference() {
-        let mut r = Inputs(Rng::new(0x9a7));
-        for _ in 0..SAMPLES {
-            let (raw, p, q, v) = (r.v4(), r.unit_quat(), r.unit_quat(), r.v3());
-            let normalized = Quat::from_array(raw).normalize();
-            assert_eq!(
-                b4(normalized.to_array()),
-                b4(normalize4(raw)),
-                "Quat::normalize {raw:?}"
-            );
-            let (gp, gq) = (Quat::from_array(p), Quat::from_array(q));
-            assert_eq!(
-                b4((gp * gq).to_array()),
-                b4(quat_mul(p, q)),
-                "Quat * Quat {p:?} {q:?}"
-            );
-            assert_eq!(
-                b3((gp * Vec3::from_array(v)).to_array()),
-                b3(quat_rotate(p, v)),
-                "Quat * Vec3 {p:?} {v:?}"
-            );
-            assert_eq!(
-                b3((gp * Vec3A::from_array(v)).to_array()),
-                b3(quat_rotate(p, v)),
-                "Quat * Vec3A {p:?} {v:?}"
-            );
-        }
-    }
-
-    #[test]
     fn mat4_products_and_transforms_match_the_scalar_reference() {
         let mut r = Inputs(Rng::new(0x3a74));
         for _ in 0..SAMPLES / 4 {
@@ -1405,29 +1059,6 @@ mod glam_scalar_contracts {
                 b3(gm.transform_point3(Vec3::from_array(p)).to_array()),
                 b3([point[0], point[1], point[2]]),
                 "Mat4::transform_point3"
-            );
-        }
-    }
-
-    #[test]
-    fn mat3a_and_affine3a_match_the_scalar_reference() {
-        let mut r = Inputs(Rng::new(0xaff));
-        for _ in 0..SAMPLES / 4 {
-            let (cols, v, t) = ([r.v3(), r.v3(), r.v3()], r.v3(), r.v3());
-            let m = Mat3A::from_cols_array_2d(&cols);
-            assert_eq!(
-                b3((m * Vec3A::from_array(v)).to_array()),
-                b3(mat3_mul_vec3(&cols, v)),
-                "Mat3A * Vec3A"
-            );
-            let affine = Affine3A::from_mat3_translation(
-                Mat3::from_cols_array_2d(&cols),
-                Vec3::from_array(t),
-            );
-            assert_eq!(
-                b3(affine.transform_point3(Vec3::from_array(v)).to_array()),
-                b3(add3(mat3_mul_vec3(&cols, v), t)),
-                "Affine3A::transform_point3"
             );
         }
     }

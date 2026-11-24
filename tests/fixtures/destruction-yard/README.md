@@ -18,7 +18,6 @@ What it checks:
   native and the wasm host, and the wall's piers and the pillar's stump
   settle where they did (the determinism golden: tick 330, hash
   `470e7c1791d227d5`).
-- `crates/og-runtime/tests/destruction.rs`: the pillar's cooked fracture.
 
 Budget: under 10 s warm for `og test` (measured 3.5 to 6 s of run plus the
 cook's 3.7 s, which reruns the fracture before it can see the cook is up

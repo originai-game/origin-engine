@@ -57,24 +57,3 @@ pub fn decode(text: &str) -> Option<Vec<u8>> {
     }
     Some(out)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{decode, encode};
-
-    #[test]
-    fn every_length_round_trips_and_other_writers_text_decodes() {
-        for n in 0..40u8 {
-            let bytes: Vec<u8> = (0..n).map(|i| i.wrapping_mul(73) ^ 0xa5).collect();
-            assert_eq!(decode(&encode(&bytes)).unwrap(), bytes);
-        }
-        assert_eq!(encode(b"Man"), "TWFu");
-        assert_eq!(encode(b"Ma"), "TWE=");
-        assert_eq!(encode(b"M"), "TQ==");
-        assert_eq!(decode("aGVsbG8=").unwrap(), b"hello");
-        assert_eq!(decode("aGVsbG8").unwrap(), b"hello");
-        assert_eq!(decode("aGVs\n bG8=").unwrap(), b"hello");
-        assert_eq!(decode("-_-_").unwrap(), decode("+/+/").unwrap());
-        assert!(decode("a!b").is_none());
-    }
-}

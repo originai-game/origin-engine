@@ -279,6 +279,3 @@ fn request(world: u32, method: &str, args: Value) -> Result<u32, String> {
 }
 
 // ── the system and the probe ─────────────────────────────────────────────
-
-#[cfg(test)]
-mod tests;

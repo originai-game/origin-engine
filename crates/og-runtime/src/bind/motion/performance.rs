@@ -288,28 +288,6 @@ impl Performance {
         }
         stepping
     }
-
-    /// A performance holding `clip` at `strength`, `at` seconds into it (at
-    /// most 10), fully blended in, to compose in tests.
-    #[cfg(test)]
-    pub(crate) fn holding(clip: u64, strength: f32, at: f32, direction: [f32; 3]) -> Performance {
-        let mut time = Envelope::new(20.0, 0.0);
-        time.elapsed = at;
-        Performance {
-            reaction: Some(Reaction {
-                clip,
-                direction,
-                strength,
-                hold_start: 0.0,
-                hold_end: 10.0,
-                duration: 10.0,
-                hand: String::new(),
-                hand_target: [0.0; 3],
-                time,
-            }),
-            ..Default::default()
-        }
-    }
 }
 
 fn look_chain(skeleton: &SkeletonAsset, map: &HumanoidMap) -> Result<Vec<u32>, String> {

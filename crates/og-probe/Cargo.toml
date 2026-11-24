@@ -26,9 +26,6 @@ miniz_oxide = "0.8"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"], optional = true }
 
-[dev-dependencies]
-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
-
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"

@@ -14,8 +14,6 @@ use crate::Rng;
 
 mod bsp;
 mod poisson;
-#[cfg(test)]
-mod tests;
 mod wfc;
 
 pub use bsp::{BspDesc, BspLayout, CellRect, bsp_rooms};

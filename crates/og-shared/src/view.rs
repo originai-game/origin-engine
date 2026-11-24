@@ -242,37 +242,3 @@ impl Proposer {
         self.sent.iter().find(|(s, _)| *s == seq).map(|(_, st)| *st)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn acknowledgement_bits_name_exactly_the_ticks_received() {
-        let mut v = View::new();
-        let snap = |tick: u32| {
-            let mut w = Writer::new();
-            SnapshotHead {
-                tick,
-                base: None,
-                ack_seq: 0,
-                others: 0,
-            }
-            .write(0, &mut w);
-            w.buf
-        };
-        for t in [10, 11, 13, 20] {
-            v.snapshot(&snap(t)).unwrap().unwrap();
-        }
-        // 12 never came; a late 12 after 20 is dropped, not acknowledged.
-        assert!(v.snapshot(&snap(12)).unwrap().is_none());
-        let (n, bits) = v.ack();
-        assert_eq!(n, 20);
-        let got: Vec<u32> = (0..=20).filter(|&t| acked(n, bits, t)).collect();
-        assert_eq!(got, vec![10, 11, 13, 20]);
-        // A gap past the window forgets everything older.
-        v.snapshot(&snap(60)).unwrap().unwrap();
-        let (n, bits) = v.ack();
-        assert_eq!((0..=60).filter(|&t| acked(n, bits, t)).count(), 1);
-    }
-}

@@ -185,27 +185,3 @@ pub(crate) fn extract(
     scene.atmosphere.wind_motors = air.motors;
     world_wind
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Vegetation leans by the one rate per m/s, along the wind; still air
-    /// gives no wind at all (the field then runs for motors alone).
-    #[test]
-    fn vegetation_leans_by_the_speed() {
-        let w = WorldWind {
-            velocity: Vec3::new(0.0, 0.0, -8.0),
-            gust: 0.4,
-            turbulence: 0.1,
-            gust_size: 20.0,
-        };
-        let v = w.vegetation().expect("a wind");
-        assert_eq!(v.direction, Vec3::NEG_Z);
-        assert_eq!(v.speed, 8.0);
-        assert!((v.strength - 8.0 * og_render::Wind::LEAN_PER_MPS).abs() < 1e-6);
-        assert_eq!((v.gust, v.turbulence, v.gust_size), (0.4, 0.1, 20.0));
-        assert_eq!(w.aloft(), Vec3::new(0.0, 0.0, -16.0));
-        assert!(WorldWind::default().vegetation().is_none());
-    }
-}

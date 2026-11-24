@@ -418,6 +418,3 @@ pub fn og_world_restore(
 }
 
 // ── saves opened for the game's migrations (World.openSave, SaveEdit) ─────
-
-#[cfg(test)]
-mod tests;

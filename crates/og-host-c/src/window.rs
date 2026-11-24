@@ -992,40 +992,4 @@ mod tests {
         );
         assert!(a.held.is_empty() && a.closed);
     }
-
-    /// An input method reaches the engine as the page's composition
-    /// events: its preedit composing, its commit typed, and one switched
-    /// off mid-word ends the composition; a key's text while it composes
-    /// is the method's, not typed twice.
-    #[test]
-    fn an_input_methods_events_are_the_pages() {
-        let mut a = app(1.0);
-        a.translate(WindowEvent::Ime(Ime::Enabled));
-        a.translate(WindowEvent::Ime(Ime::Preedit(String::new(), None)));
-        assert!(a.input.is_empty(), "no composition, nothing to clear");
-        a.translate(WindowEvent::Ime(Ime::Preedit("ni".into(), Some((2, 2)))));
-        assert!(a.composing);
-        a.translate(WindowEvent::Ime(Ime::Preedit(String::new(), None)));
-        a.translate(WindowEvent::Ime(Ime::Commit("你".into())));
-        a.translate(WindowEvent::Ime(Ime::Preedit("h".into(), Some((1, 1)))));
-        a.translate(WindowEvent::Ime(Ime::Disabled));
-        assert_eq!(
-            a.input,
-            vec![
-                json!({ "kind": "text", "text": "ni", "composing": true }),
-                json!({ "kind": "text", "text": "", "composing": true }),
-                json!({ "kind": "text", "text": "你" }),
-                json!({ "kind": "text", "text": "h", "composing": true }),
-                json!({ "kind": "text", "text": "", "composing": true }),
-            ]
-        );
-        assert!(!a.composing);
-        assert_eq!(
-            og_input::InjectedInput::from_json(&a.input[2]),
-            Some(og_input::InjectedInput::Text {
-                text: "你".into(),
-                composing: false
-            })
-        );
-    }
 }

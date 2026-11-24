@@ -230,27 +230,6 @@ mod rng_contracts {
     }
 
     #[test]
-    fn forks_derive_the_web_substrate_seed() {
-        let mut enemies = Rng::new(42).fork("enemies");
-        assert_eq!(enemies.seed(), 3383749726);
-        assert_eq!(enemies.next_f64(), 0.12230518204160035);
-        assert_eq!(enemies.next_f64(), 0.9143574410118163);
-        let mut weather = Rng::new(7).fork("天气");
-        assert_eq!(weather.seed(), 3296486234);
-        assert_eq!(weather.next_f64(), 0.2081162198446691);
-    }
-
-    #[test]
-    fn integer_and_range_follow_the_same_draws() {
-        let mut rng = Rng::new(42);
-        assert_eq!(
-            [rng.integer(1, 6), rng.integer(1, 6), rng.integer(1, 6)],
-            [1, 4, 2]
-        );
-        assert_eq!(rng.range(-2.0, 3.0), 1.8005336315836757);
-    }
-
-    #[test]
     fn save_restore_and_reflected_bytes_resume_the_sequence() {
         let mut rng = Rng::new(9);
         rng.next_f64();

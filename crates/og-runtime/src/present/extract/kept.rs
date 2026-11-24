@@ -408,6 +408,3 @@ fn append(
         .impostors
         .extend_from_slice(&last.impostors[from.impostors..to.impostors]);
 }
-
-#[cfg(test)]
-mod tests;

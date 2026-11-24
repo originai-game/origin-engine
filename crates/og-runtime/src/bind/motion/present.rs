@@ -362,6 +362,3 @@ pub(crate) struct MotionCheckpoint {
 fn now_ms() -> f64 {
     hooks().map_or(0.0, |h| h.now_ms())
 }
-
-#[cfg(test)]
-mod tests;

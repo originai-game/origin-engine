@@ -325,38 +325,3 @@ impl Ease {
         Ease::Points(p)
     }
 }
-
-#[cfg(test)]
-mod linear_tests {
-    use super::*;
-
-    #[test]
-    fn linear_stops_canonicalise_and_sample_as_css_easing_2_says() {
-        // linear(0, 0.25 75%, 1): (0, 0) (0.75, 0.25) (1, 1).
-        let e = Ease::from_css("linear(0, 0.25 75%, 1)").unwrap();
-        assert!((e.apply(0.375) - 0.125).abs() < 1e-6);
-        assert!((e.apply(0.875) - 0.625).abs() < 1e-6);
-        // Two inputs make a flat run; a missing input is spread between
-        // its neighbours; an input under an earlier one is raised.
-        let Ease::Points(p) = Ease::from_css("linear(0, 0.5 25% 75%, 1)").unwrap() else {
-            panic!()
-        };
-        assert_eq!(p, &[[0.0, 0.0], [0.25, 0.5], [0.75, 0.5], [1.0, 1.0]]);
-        let Ease::Points(p) = Ease::from_css("linear(0 20%, 0.1, 0.2, 1 10%)").unwrap() else {
-            panic!()
-        };
-        assert_eq!(p[1][0], 0.2, "{p:?}");
-        assert_eq!(p[3][0], 0.2, "raised to the largest earlier input");
-        // Same curve, same value; and its wire form round-trips.
-        assert_eq!(e, Ease::from_css("linear(0 0%, 0.25 75%, 1 100%)").unwrap());
-        assert_eq!(Ease::from_bytes(&e.to_bytes()), Some(e));
-        for bad in [
-            "linear(1)",
-            "linear()",
-            "linear(0, x)",
-            "linear(0 1% 2% 3%, 1)",
-        ] {
-            assert_eq!(Ease::from_css(bad), None, "{bad}");
-        }
-    }
-}

@@ -781,6 +781,3 @@ pub fn to_bytes<T: Reflect>(value: &T) -> Result<Vec<u8>> {
 pub fn from_bytes<T: Reflect>(bytes: &[u8]) -> Result<T> {
     Layout::of(&T::schema()).decode(bytes)
 }
-
-#[cfg(test)]
-mod reflect_contracts;

@@ -297,12 +297,6 @@ impl Hierarchy {
         self.pending = pending;
     }
 
-    /// Whether a read of the world waits to be applied to the slots.
-    #[cfg(test)]
-    pub(crate) fn pending(&self) -> bool {
-        self.pending.is_some()
-    }
-
     /// The second half of [`Hierarchy::refresh`]: the slots brought to the
     /// last [`Hierarchy::capture`] (nothing when there is none pending).
     #[inline(never)]

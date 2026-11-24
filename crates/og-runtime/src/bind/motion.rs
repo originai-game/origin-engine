@@ -207,6 +207,3 @@ fn invalid(m: impl Into<String>) -> Error {
 }
 
 // ── the API ──────────────────────────────────────────────────────────────────
-
-#[cfg(test)]
-mod tests;

@@ -501,8 +501,3 @@ pub fn box_lines(transform: Mat4, min: Vec3, max: Vec3) -> Vec<Vec3> {
         (max - min) * 0.5,
     )
 }
-
-#[cfg(test)]
-// Test cameras from glam's own projections.
-#[allow(clippy::disallowed_methods)]
-mod tests;

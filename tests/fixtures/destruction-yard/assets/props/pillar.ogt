@@ -3,8 +3,7 @@ version 1
 ---
 # A concrete pillar, 0.5 m across and 3 m tall, anchored at its foot: a blow
 # at its middle takes that band away in lumps and the top falls onto the
-# stump. crates/og-runtime/tests/destruction.rs recooks it at 48 chunks
-# (the `chunks 44` line below), where a massless sliver once froze in the air.
+# stump.
 material "concrete" {
   color 0.62 0.61 0.58
   roughness 0.85

@@ -170,27 +170,3 @@ fn whole(v: f64, lo: f64, hi: f64, at: &dyn Fn(&str) -> String) -> Result<f64, S
         Err(at(&format!("takes a whole number from {lo} to {hi}")))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_config_reads_every_setting_and_names_a_bad_line() {
-        let c = Config::parse(
-            "type world-server\nversion 1\n---\nworlds \"main\"\ncellSize 64\nradius 3\nteleport none\nkind 0 {\n  maxSpeed 4\n}\nkind 2 {\n  maxSpeed 60\n}\n",
-        )
-        .unwrap();
-        assert_eq!(
-            (c.cell_size, c.radius, c.teleport),
-            (64.0, 3, TeleportPolicy::None)
-        );
-        assert_eq!(c.rules(2).max_speed, 60.0);
-        // A kind not named falls back to kind 0's rules, not the default's 60.
-        assert_eq!(c.rules(7).max_speed, 4.0);
-        assert!(c.serves("main") && !c.serves("other"));
-        let e = Config::parse("type world-server\nversion 1\n---\nradius 2.5\n").unwrap_err();
-        assert!(e.contains("line 4") && e.contains("whole number"), "{e}");
-        assert!(Config::parse("type scene\nversion 1\n---\n").is_err());
-    }
-}

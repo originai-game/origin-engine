@@ -1,4 +1,0 @@
-# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
-/tests/fixtures/axes-test.ttf
-/tests/fixtures/palette-test.ttf
-# og-assets end
