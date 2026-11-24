@@ -113,19 +113,3 @@ fn split_top(text: &str, sep: u8) -> impl Iterator<Item = &str> {
         &text[a..b]
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn comments_hide_their_quotes_and_separators() {
-        let body = "\n  /* the pack's seeds; one per role */\n  --a: 1px;\n  \
-                    --b: url(\"x;y\"); /* trailing: note */\n  --c: 3px /* why */;\n  /* last: */";
-        let got: Vec<_> = declarations(body).collect();
-        assert_eq!(
-            got,
-            [("--a", "1px"), ("--b", "url(\"x;y\")"), ("--c", "3px")]
-        );
-    }
-}

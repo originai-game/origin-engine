@@ -62,11 +62,11 @@ the standard layout), and `padmap` maps it: SDL_GameControllerDB's lines
 (third_party/SDL_GameControllerDB, desktop builds only) and og's own for
 the browser's non-standard pads and Windows.Gaming.Input, by GUID, then
 without CRC and version, then by vendor; its family comes from the vendor,
-else the mapping's name (`tests/padmap.rs`); edges are
+else the mapping's name; edges are
 computed against the previous state, so a press and a release between two
 ticks leave both edges, and a disconnected pad holds nothing and forgets
 its family. Pad 8 or more is refused. Both resources are world state: snapshots carry them and replays
-are exact (`tests/pads.rs`). Hosts map nothing: the web shell
+are exact. Hosts map nothing: the web shell
 (`gamepad.ts`) and og-host-c send what their drivers give.
 
 ## Mouse-look
@@ -79,7 +79,7 @@ is zero again when the tick ends; a move whose movement is not zero raises
 `PointerMove` even at the same position. `og.PointerLock.wanted` is the
 game's ask for the lock; the host reports the lock with `{ "kind":
 "pointerLock", "locked" }` (ring kind 6), which sets `locked` and nothing
-else. `tests/mouselook.rs` holds both, and the ring and JSON round trips.
+else.
 
 ## Semantics
 
@@ -220,29 +220,6 @@ are unchanged.
 
 ## Tests
 
-`cargo test -p og-input`:
-
-- `tests/edges.rs`: a seven-tick script (hold, release, press, click, two
-  wheel steps, a sub-tick tap, a repeat, an axis, an unknown code) observed
-  by a game system tick by tick, against the expected table; writes
-  `$CARGO_TARGET_TMPDIR/input-edges-transcript.json`. A snapshot between
-  ticks restored into a fresh world replays the rest identically. A key
-  event's modifiers are held for its tick (Command as `MetaLeft`, not
-  Control), a held one stays, an `up` releases none.
-- `tests/ring.rs`: `tests/fixtures/ring.bin`, written by the web shell's own
-  `writeRing` with the live events across the slot wrap, decodes to what its
-  `drainRing` read (`ring.json`); the Rust writer round-trips, a full ring
-  refuses, a bad slot is skipped with a reason; the layer drains a ring into
-  the world. Regenerate the fixture with
-  `node crates/og-input/tests/fixtures/make-ring.mjs` when `input.ts`
-  changes (it now has 17 events, a second touch and pads 1 and 7 among them).
-- `tests/mouselook.rs`: movement summed over a tick and gone the next, a
-  touch's movement not counted, `PointerMove` at a still position, the lock
-  report reaching `locked` and leaving `wanted`; movement and lock reports
-  across protocol 5 JSON and the ring.
-- `tests/pads.rs`: two touches and a pad over a seven-tick script (edges
-  for one tick, a sub-tick tap on B, ids on events, og.Input following only
-  pointer 0, a click on touch 3, pointer 5 and pad 4 refused, a disconnect
-  holding nothing), observed by a game system; writes
-  `$CARGO_TARGET_TMPDIR/input-pads-transcript.json`. A snapshot restored
-  mid-script replays the rest to the same hash.
+`cargo test -p og-input`: `tests/actions.rs` defines actions, injects keys
+tick by tick, snapshots mid-hold and replays the rest in a fresh world
+restored from it, to the same action states and world hash.

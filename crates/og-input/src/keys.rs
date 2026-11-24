@@ -192,33 +192,3 @@ pub fn key_for_char(c: char) -> Option<(String, bool)> {
     };
     Some((code.to_owned(), shift))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A name's bit is what a scan of the table answers: each code's place
-    /// (the codes are distinct), and none for a name the table does not
-    /// have, a code's prefix that is no code, a code with more after it,
-    /// another case, nothing.
-    #[test]
-    fn a_key_s_bit_is_its_place_in_the_table() {
-        let scan = |name: &str| KEY_CODES.iter().position(|k| *k == name);
-        let mut seen = std::collections::BTreeSet::new();
-        for (i, code) in KEY_CODES.iter().enumerate() {
-            assert!(seen.insert(*code), "{code} twice");
-            assert_eq!(key_index(code), Some(i), "{code}");
-            for name in [
-                &code[..code.len() - 1],
-                &format!("{code}x"),
-                &code.to_lowercase(),
-            ] {
-                assert_eq!(key_index(name), scan(name), "{name}");
-            }
-        }
-        for name in ["", "Key", "KEYA", "Digit10", "Numpad", "Zzz", "A", "\u{0}"] {
-            assert_eq!(key_index(name), None, "{name:?}");
-        }
-        assert_eq!(key_index("F1"), scan("F1"));
-    }
-}

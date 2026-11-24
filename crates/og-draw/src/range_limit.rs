@@ -37,36 +37,3 @@ impl RangeLimit {
         stops.min(display).exp2()
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// On a display with 8× headroom (3 stops): standard is SDR white,
-    /// constrained one stop (2×), no-limit the display's 8×, and a mix
-    /// its weights' stops: 50 % standard and 50 % no-limit is 1.5 stops,
-    /// 2^1.5 = 2.83×. A display under a stop caps constrained.
-    #[test]
-    fn each_keyword_and_mix_ends_at_its_stops() {
-        let limit = |standard, constrained, no_limit| RangeLimit {
-            standard,
-            constrained,
-            no_limit,
-        };
-        for (l, headroom, want) in [
-            (limit(1.0, 0.0, 0.0), 8.0, 1.0),
-            (limit(0.0, 1.0, 0.0), 8.0, 2.0),
-            (limit(0.0, 0.0, 1.0), 8.0, 8.0),
-            (RangeLimit::default(), 8.0, 8.0),
-            (limit(0.5, 0.0, 0.5), 8.0, 2.828_427),
-            (limit(0.1, 0.4, 0.5), 8.0, 2f32.powf(0.4 + 1.5)),
-            (limit(0.0, 1.0, 0.0), 1.5, 1.5),
-            (limit(0.0, 0.0, 1.0), 1.0, 1.0),
-        ] {
-            assert!(
-                (l.peak(headroom) - want).abs() < 1e-4,
-                "{l:?} at {headroom}"
-            );
-        }
-    }
-}

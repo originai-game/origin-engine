@@ -54,15 +54,3 @@ Dependencies: og-core, og-ecs. No serde, builds for `wasm32-unknown-unknown`.
   curve, elapsed, resolved start and end, group progress) in handle order,
   little-endian (`src/codec.rs`), so equal state gives equal bytes and a
   restore continues mid-tween.
-
-## Tests
-
-`tests/tweens.rs`: every ease's endpoints and shape; one lane moving
-alone, the completion sent once; delay, relative, loops with yoyo ending at
-the start, integer rounding, one value for a vector; a sequence's leftover
-time, a parallel group waiting for its last child and replaying its spans
-on loop; scale 0.5 and a hit stop holding scaled tweens while an unscaled
-one runs; cancelled and orphaned tweens ending without events; a snapshot
-mid-group restoring into a fresh world with the same hash 60 ticks later;
-refused targets and values. Each was broken once
-(`tests/evidence/E4/break-and-restore.md`).

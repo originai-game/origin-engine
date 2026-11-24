@@ -1,5 +1,4 @@
 [package]
-autotests = false
 name = "og-tween"
 version = "0.9.0"
 edition.workspace = true
@@ -12,7 +11,3 @@ og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 # The state block's per-entity form (`StateBlock::form`) holds JSON values.
 serde_json = "1"
-
-[[test]]
-name = "tests"
-path = "tests/it/main.rs"

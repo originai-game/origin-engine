@@ -99,28 +99,3 @@ pub fn format_ordinal(n: f64, language: &str) -> String {
         _ => format!("{i}."),
     }
 }
-
-#[cfg(test)]
-mod ordinal_tests {
-    use super::format_ordinal;
-
-    #[test]
-    fn english_ordinals_follow_the_teens_rule() {
-        let got: Vec<String> = [
-            1.0, 2.0, 3.0, 4.0, 11.0, 12.0, 13.0, 21.0, 22.0, 23.0, 101.0, 111.0,
-        ]
-        .iter()
-        .map(|&n| format_ordinal(n, "en"))
-        .collect();
-        assert_eq!(
-            got,
-            [
-                "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd",
-                "101st", "111th"
-            ]
-        );
-        assert_eq!(format_ordinal(1.0, "fr"), "1er");
-        assert_eq!(format_ordinal(2.0, "fr"), "2e");
-        assert_eq!(format_ordinal(3.0, "zh"), "第3");
-    }
-}

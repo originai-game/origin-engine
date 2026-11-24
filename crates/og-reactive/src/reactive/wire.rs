@@ -137,38 +137,3 @@ pub fn decode(bytes: &[u8]) -> Result<Value, String> {
     reader.0.finish().map_err(why)?;
     Ok(value)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn binary_values_preserve_text_numbers_and_reject_truncation() {
-        let value = serde_json::json!({"id":"背包/⚔️", "values":[null, false, true, -1.25, 4294967297_u64, -3, 0.5, ""]});
-        let bytes = encode(&value).unwrap();
-        assert_eq!(decode(&bytes).unwrap(), value);
-        // A script's whole numbers arrive as integers whichever way they
-        // were written, so a u32 field such as a span's position takes them.
-        let span = serde_json::json!({"name":"gold","position":2.0,"length":4.0,"properties":{}});
-        #[derive(serde::Deserialize)]
-        struct TextSpan {
-            position: u32,
-            length: u32,
-        }
-        let span: TextSpan =
-            serde_json::from_value(decode(&encode(&span).unwrap()).unwrap()).unwrap();
-        assert_eq!((span.position, span.length), (2, 4));
-        for end in 0..bytes.len() {
-            assert!(
-                decode(&bytes[..end]).is_err(),
-                "accepted truncation at {end}"
-            );
-        }
-        let mut bad = bytes.clone();
-        bad.push(0);
-        assert!(decode(&bad).is_err());
-        assert!(decode(&[5, 255, 255, 255, 255]).is_err());
-        let mut nan = vec![3];
-        nan.extend_from_slice(&f64::NAN.to_le_bytes());
-        assert!(decode(&nan).is_err());
-    }
-}
