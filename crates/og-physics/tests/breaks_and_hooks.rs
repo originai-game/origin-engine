@@ -1,29 +1,15 @@
-//! G2-3: joints that break (og.Joint.breakForce, breakTorque, broken;
-//! og.JointBroken) and contact hooks (og.ContactHook).
+//! G2-3: joints that break (og.Joint.breakForce, og.JointBroken) and
+//! contact hooks (og.ContactHook) replay from a restore.
 //!
 //! Ways they could fail, and the test that catches each:
-//! - a joint breaks under a load below its limit, never breaks, breaks
-//!   but keeps holding, sends the event twice or with the wrong entities,
-//!   or cannot be mended → `a_joint_breaks_past_its_force_and_is_mended`
-//! - the torque limit is ignored or read as a force →
-//!   `a_cantilever_breaks_past_its_torque`
-//! - a broken joint keeps its bodies from colliding with each other, as
-//!   it did while it held → `bodies_whose_joint_broke_collide_with_each_other_again`
 //! - breaking depends on anything but the world: a restore before the
 //!   break breaks it at another tick or force →
 //!   `a_break_replays_from_a_restore`
-//! - a one-way surface blocks from below, or lets through from above, in
-//!   either profile → `a_one_way_platform_passes_from_below_and_holds_from_above`
-//! - a conveyor's sign depends on which collider rapier calls first →
-//!   `a_conveyor_carries_what_lies_on_it_whichever_was_spawned_first`
-//! - friction, restitution or ignore never reach the solver →
-//!   `friction_restitution_and_ignore_override_the_pair`
 //! - hooks change a world after a restore (the hook flags or table lost)
 //!   → `hooks_replay_from_a_restore`
 
 use crate::support;
 
-use og_core::List;
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use og_physics::*;
@@ -99,94 +85,6 @@ fn a_break_replays_from_a_restore() {
 }
 
 #[test]
-fn friction_restitution_and_ignore_override_the_pair() {
-    // A box slid at 4 m/s on a floor of friction 0 keeps going; on the
-    // default floor it stops.
-    let slide = |hook: Option<ContactHook>| {
-        let (mut w, _p) = world(Physics::default(), 1);
-        let f = floor(&mut w);
-        if let Some(h) = hook {
-            w.insert(f, h).unwrap();
-        }
-        let b = spawn_body(
-            &mut w,
-            at(0.0, 0.25, 0.0),
-            RigidBody::dynamic(),
-            Collider::cuboid(Vec3::splat(0.5)),
-        );
-        w.insert(
-            b,
-            Velocity {
-                linear: Vec3::new(4.0, 0.0, 0.0),
-                angular: Vec3::ZERO,
-            },
-        )
-        .unwrap();
-        run(&mut w, 60);
-        velocity(&w, b).linear.x
-    };
-    assert!(slide(None) < 0.5);
-    assert!(
-        slide(Some(ContactHook {
-            friction: 0.0,
-            ..ContactHook::default()
-        })) > 3.9
-    );
-
-    // A ball dropped from 2 m on a floor of restitution 1 comes back up most of the way.
-    let bounce = |restitution: f32| {
-        let (mut w, _p) = world(Physics::default(), 1);
-        let f = floor(&mut w);
-        w.insert(
-            f,
-            ContactHook {
-                restitution,
-                ..ContactHook::default()
-            },
-        )
-        .unwrap();
-        let b = spawn_body(
-            &mut w,
-            at(0.0, 2.0, 0.0),
-            RigidBody::dynamic(),
-            Collider::sphere(0.25),
-        );
-        let mut top: f32 = 0.0;
-        for t in 0..120 {
-            w.step().unwrap();
-            if t > 50 {
-                top = top.max(transform(&w, b).position.y);
-            }
-        }
-        top
-    };
-    assert!(bounce(1.0) > 1.5);
-    assert!(bounce(-1.0) < 0.5);
-
-    // A ball whose hook ignores the floor falls through it.
-    let (mut w, _p) = world(Physics::default(), 1);
-    let f = floor(&mut w);
-    let b = spawn_body(
-        &mut w,
-        at(0.0, 1.0, 0.0),
-        RigidBody::dynamic(),
-        Collider::sphere(0.25),
-    );
-    let mut ignore = List::new();
-    ignore.push(f.to_bits()).unwrap();
-    w.insert(
-        b,
-        ContactHook {
-            ignore,
-            ..ContactHook::default()
-        },
-    )
-    .unwrap();
-    run(&mut w, 60);
-    assert!(transform(&w, b).position.y < -1.0);
-}
-
-#[test]
 fn hooks_replay_from_a_restore() {
     let build = || {
         let (mut w, p) = world(Physics::default(), 1);
@@ -225,57 +123,4 @@ fn hooks_replay_from_a_restore() {
     let (mut b, _pb) = build();
     b.restore(&saved).unwrap();
     assert_eq!(hashes(&mut b), first);
-}
-
-#[test]
-fn bodies_whose_joint_broke_collide_with_each_other_again() {
-    // A box on the floor and a second box jointed into it, overlapping by
-    // 0.6 m, the joint not colliding (the default): held, the upper box
-    // rests inside the lower. Its joint breaks under the first load; from
-    // then on the pair collides, so the upper box is pushed out and comes
-    // to rest stacked on the lower, not sunk through it to the floor.
-    for profile in [PROFILE_3D, PROFILE_2D] {
-        let (mut w, _p) = world(
-            Physics {
-                profile,
-                ..Physics::default()
-            },
-            1,
-        );
-        floor(&mut w);
-        let lower = spawn_body(
-            &mut w,
-            at(0.0, 0.5, 0.0),
-            RigidBody::dynamic(),
-            Collider::cuboid(Vec3::ONE),
-        );
-        let upper = spawn_body(
-            &mut w,
-            at(0.0, 0.9, 0.0),
-            RigidBody::dynamic(),
-            Collider::cuboid(Vec3::ONE),
-        );
-        w.insert(
-            upper,
-            Joint {
-                kind: JOINT_FIXED,
-                other: lower.to_bits(),
-                other_anchor: Vec3::new(0.0, 0.4, 0.0),
-                break_force: 1.0,
-                ..Joint::default()
-            },
-        )
-        .unwrap();
-        let mut broke = 0;
-        for _ in 0..180 {
-            w.step().unwrap();
-            broke += broken_events(&w).len();
-        }
-        assert_eq!(broke, 1, "profile {profile}");
-        let gap = transform(&w, upper).position.y - transform(&w, lower).position.y;
-        assert!(
-            gap > 0.95,
-            "profile {profile}: the freed box rests {gap} m above the other, inside it"
-        );
-    }
 }

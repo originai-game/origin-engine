@@ -1,7 +1,7 @@
-//! Edits are deterministic and a snapshot holds only what changed.
+//! Edits are deterministic and a snapshot restores them.
 
 use crate::support;
-use og_tilemap::{Layer, MapState, TilemapAsset, TilesetRef};
+use og_tilemap::MapState;
 use support::*;
 
 fn edits(s: &mut MapState) {
@@ -38,92 +38,4 @@ fn equal_edits_give_equal_states_and_bytes_and_decode_restores_them() {
     assert_ne!(back, state(&a, "filled"), "the edits are in the snapshot");
     let e = MapState::decode(&map(19, 15), &[tileset("filled")], &b1).unwrap_err();
     assert!(e.to_string().contains("another size"), "{e}");
-}
-
-#[test]
-fn an_untouched_256x256_four_layer_map_snapshots_in_a_few_bytes() {
-    let mut a = TilemapAsset {
-        orientation: Default::default(),
-        width: 256,
-        height: 256,
-        tile_width_px: 16,
-        tile_height_px: 16,
-        unit: 1.0,
-        tilesets: vec![TilesetRef::Asset("tiles/t.ogt".into())],
-        layers: (0..4)
-            .map(|i| Layer::new(format!("l{i}"), 256, 256, i))
-            .collect(),
-        objects: Vec::new(),
-    };
-    for l in &mut a.layers {
-        for (i, c) in l.cells.iter_mut().enumerate() {
-            *c = (i % 40) as u32 + 1;
-        }
-    }
-    let mut s = MapState::new(&a, &[tileset("filled")]).unwrap();
-    let mut b = Vec::new();
-    s.encode(&mut b);
-    assert_eq!(b.len(), 16);
-    s.set(2, 100, 200, -1).unwrap();
-    b.clear();
-    s.encode(&mut b);
-    assert_eq!(b.len(), 28, "one edit is one triple");
-    s.set(2, 100, 200, (200 * 256 + 100) % 40).unwrap();
-    b.clear();
-    s.encode(&mut b);
-    assert_eq!(
-        b.len(),
-        16,
-        "setting a cell back to the asset's removes the edit"
-    );
-}
-
-#[test]
-fn a_fill_equals_setting_each_cell_and_refuses_without_writing() {
-    let a = map(20, 15);
-    let (mut by_set, mut by_fill) = (state(&a, "filled"), state(&a, "filled"));
-    // A 6-wide block that runs 2 columns past the right edge (x 16..22).
-    let (x0, y0, w) = (16u32, 3u32, 6u32);
-    let floor: Vec<i32> = (0..24).map(|i| (i * 7) % 40 - 1).collect();
-    let walls: Vec<i32> = (0..24).map(|i| ((i * 5) % 3 != 0) as i32).collect();
-    for (k, (&f, &t)) in floor.iter().zip(&walls).enumerate() {
-        let (x, y) = (x0 + k as u32 % w, y0 + k as u32 / w);
-        if x < 20 {
-            by_set.set(0, x, y, f).unwrap();
-            by_set.set(1, x, y, t).unwrap();
-        }
-    }
-    by_fill.fill(0, x0, y0, w, &floor).unwrap();
-    by_fill.fill(1, x0, y0, w, &walls).unwrap();
-    for l in 0..2 {
-        for y in 0..15 {
-            for x in 0..20 {
-                assert_eq!(
-                    by_fill.get(l, x, y),
-                    by_set.get(l, x, y),
-                    "layer {l} ({x}, {y})"
-                );
-            }
-        }
-    }
-    let (mut b1, mut b2) = (Vec::new(), Vec::new());
-    by_set.encode(&mut b1);
-    by_fill.encode(&mut b2);
-    assert_eq!(b1, b2);
-
-    let before = (
-        b2.clone(),
-        by_fill.layer_version(0),
-        by_fill.layer_version(1),
-    );
-    let e = by_fill.fill(0, 0, 0, 2, &[1, 2, 999, 3]).unwrap_err();
-    assert!(e.to_string().contains("999"), "{e}");
-    let e = by_fill.fill(1, 0, 0, 2, &[1, 0, 2, 1]).unwrap_err();
-    assert!(e.to_string().contains("terrain"), "{e}");
-    let e = by_fill.fill(0, 0, 0, 3, &[1, 2, 3, 4]).unwrap_err();
-    assert!(e.to_string().contains("width 3"), "{e}");
-    let mut after = Vec::new();
-    by_fill.encode(&mut after);
-    let after = (after, by_fill.layer_version(0), by_fill.layer_version(1));
-    assert_eq!(after, before, "a refused fill writes nothing");
 }

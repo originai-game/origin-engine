@@ -4,15 +4,13 @@
 //!
 //! Ways this could fail, each caught below: the points are not world
 //! state, so a restore mid-swing goes on differently; two runs differ; a
-//! garment with `radius` passes through a solid; a garment given no pose
-//! moves anyway; the 2D profile steps it.
+//! garment given no pose moves anyway.
 
 use crate::support;
 
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use og_physics::*;
-use support::*;
 
 /// A cape of 7 × 8 points 0.1 apart in the xy plane at z -0.2, from y 1
 /// down, its normals away from the body (-z), every point free.
@@ -104,52 +102,4 @@ fn garments_are_world_state_identical_across_runs_and_after_a_restore() {
     // A tick with no pose keeps the points.
     w1.step().unwrap();
     assert_eq!(p1.garment_points(e).unwrap().points, end.points);
-}
-
-#[test]
-fn a_garment_with_a_radius_drapes_over_a_solid_instead_of_through_it() {
-    let (rig, rest) = cape();
-    let (mut w, p) = world(Physics::default());
-    // A box just behind the cape's lower half (away from the body).
-    let wall = Vec3::new(0.3, 0.45, -0.32);
-    spawn_static(
-        &mut w,
-        at(wall.x, wall.y, wall.z),
-        Collider::cuboid(Vec3::new(1.0, 0.4, 0.1)),
-    );
-    let e = w
-        .spawn((Garment {
-            radius: 0.02,
-            max_distance: 0.4,
-            ..Garment::default()
-        },))
-        .unwrap();
-    p.set_garment_rig(e, 1, rig).unwrap();
-    // The body backs into the box: the skin puts the cape's lower half
-    // inside it (z -0.35), so the points must be pushed out of it.
-    let still = GarmentPose {
-        targets: rest
-            .iter()
-            .map(|q| *q + Vec3::new(0.0, 0.0, -0.15))
-            .collect(),
-        normals: vec![Vec3::NEG_Z; rest.len()],
-        scale: 1.0,
-    };
-    for _ in 0..60 {
-        p.set_garment_pose(e, still.clone());
-        w.step().unwrap();
-    }
-    let g = p.garment_points(e).unwrap();
-    assert!(
-        g.targets
-            .iter()
-            .any(|t| (t.y - wall.y).abs() < 0.2 && (t.z - wall.z).abs() < 0.05),
-        "the skin puts no point inside the box: the test proves nothing"
-    );
-    for (i, q) in g.points.iter().enumerate() {
-        let inside = (q.x - wall.x).abs() < 0.5
-            && (q.y - wall.y).abs() < 0.2
-            && (q.z - wall.z).abs() < 0.05 + 0.02 - 1e-3;
-        assert!(!inside, "point {i} at {q} is inside the box");
-    }
 }

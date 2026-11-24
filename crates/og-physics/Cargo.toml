@@ -36,17 +36,6 @@ rapier3d = { version = "0.36.1", default-features = false, features = ["parallel
 rapier2d = { version = "0.36.1", default-features = false, features = ["parallel"] }
 rapier3d = { version = "0.36.1", default-features = false, features = ["parallel"] }
 
-[dev-dependencies]
-# tests/unchanged.rs: the portable hash (og replay's), which new types and
-# fields do not move.
-og-net = { path = "../og-net" }
-# tests/platformer_ground.rs: a floor of tilemap collision rectangles.
-og-tilemap = { path = "../og-tilemap" }
-# tests/lanes.rs: which pool a thread belongs to after a query.
-rayon = "1.12.0"
-# tests/saves.rs: the block form's values, searched for rapier handles.
-serde_json = "1"
-
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"

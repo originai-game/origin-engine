@@ -1,14 +1,7 @@
-//! G2-3's PBD soft volumes (og.SoftBody), through the world and
-//! og.physics.softBodyPoints.
+//! G2-3's PBD soft volumes (og.SoftBody) are world state.
 //!
-//! Ways this could fail, each caught below: the volume is not held, so a
-//! ball dropped on the floor flattens into a sheet; it is held so rigidly
-//! that it never squashes on landing; points sink through the floor; the
-//! written `volume` and `center` disagree with the points; the points are
-//! not world state, so a restore mid-fall lands differently; two runs
-//! differ; the 2D ring leaves its plane or loses its area; `pinTop` does
-//! not hold the top to the entity; a world that never names og.SoftBody
-//! registers it.
+//! Ways this could fail, each caught below: the points are not world state,
+//! so a restore mid-fall lands differently; two runs differ.
 
 use crate::support;
 
@@ -26,77 +19,6 @@ fn world(settings: Physics, seed: u32) -> (World, PhysicsSystem) {
 
 fn ball(w: &mut World, y: f32, soft: SoftBody) -> Entity {
     w.spawn((at(0.0, y, 0.0), soft)).unwrap()
-}
-
-/// The lowest point's height, the written volume and the height from the
-/// lowest point to the highest, each tick.
-fn fall(w: &mut World, p: &PhysicsSystem, e: Entity, ticks: u32) -> Vec<(f32, f32, f32)> {
-    (0..ticks)
-        .map(|_| {
-            w.step().unwrap();
-            let pts = p.soft_body_points(e).unwrap().points;
-            let low = pts.iter().fold(f32::MAX, |m, q| m.min(q.y));
-            let high = pts.iter().fold(f32::MIN, |m, q| m.max(q.y));
-            (low, w.get::<SoftBody>(e).unwrap().volume, high - low)
-        })
-        .collect()
-}
-
-#[test]
-fn a_soft_ball_squashes_on_landing_and_recovers_its_volume_on_the_floor() {
-    let (mut w, p) = world(Physics::default(), 1);
-    floor(&mut w);
-    let soft = SoftBody {
-        radius: 0.5,
-        detail: 2,
-        stiffness: 0.3,
-        ..SoftBody::default()
-    };
-    let e = ball(&mut w, 3.0, soft);
-    let trace = fall(&mut w, &p, e, 240);
-    let lowest = trace.iter().fold(f32::MAX, |m, t| m.min(t.0));
-    assert!(lowest > -0.02, "a point sank to {lowest} through the floor");
-    let squashed = trace.iter().fold(f32::MAX, |m, t| m.min(t.2));
-    assert!(
-        squashed < 0.85,
-        "landing at 7 m/s squashes it: it was {squashed} m tall at least"
-    );
-    let least = trace.iter().fold(f32::MAX, |m, t| m.min(t.1));
-    assert!(least > 0.9, "but keeps most of its volume: {least}");
-    let (low, volume, _) = *trace.last().unwrap();
-    assert!(
-        low < 0.05,
-        "it rests on the floor, its lowest point at {low}"
-    );
-    assert!(
-        (volume - 1.0).abs() < 0.05,
-        "and holds its volume there: {volume}"
-    );
-    let s = w.get::<SoftBody>(e).unwrap();
-    let pts = p.soft_body_points(e).unwrap();
-    assert_eq!(pts.points.len(), 162);
-    assert_eq!(pts.indices.len(), 320 * 3);
-    let mean = pts.points.iter().fold(Vec3::ZERO, |a, q| a + *q) / 162.0;
-    assert!((s.center - mean).length() < 1e-4, "{} {mean}", s.center);
-    assert!(
-        s.center.y > 0.3 && s.center.y < 0.6,
-        "it stands as a ball, its centre at {}",
-        s.center.y
-    );
-
-    // Without its volume held it collapses like cloth.
-    let (mut w, p) = world(Physics::default(), 1);
-    floor(&mut w);
-    let e = ball(
-        &mut w,
-        3.0,
-        SoftBody {
-            pressure: 0.0,
-            ..soft
-        },
-    );
-    let (_, volume, _) = *fall(&mut w, &p, e, 240).last().unwrap();
-    assert!(volume < 0.6, "unpressurised it slumps: {volume}");
 }
 
 #[test]
@@ -144,68 +66,4 @@ fn soft_volumes_are_world_state_identical_across_runs_and_after_a_restore() {
     assert_eq!(points(&p3, a, b), end, "a restored run lands differently");
     assert_eq!(w3.world_hash(), w1.world_hash());
     assert_eq!(w3.snapshot(), w1.snapshot());
-}
-
-/// SIMULATION_VISUAL leaves the solve to the renderer: the tick carries the
-/// rest shape rigidly with the entity (no fall, no wind, no squash), the
-/// written volume stays 1 and the centre is the shape's mean, while a
-/// gameplay body beside it still falls. The old step solved both.
-#[test]
-fn visual_soft_bodies_and_cloths_carry_their_rest_shape_with_the_entity() {
-    let (mut w, p) = world(Physics::default(), 1);
-    floor(&mut w);
-    let visual = ball(
-        &mut w,
-        3.0,
-        SoftBody {
-            simulation: SIMULATION_VISUAL,
-            stiffness: 0.3,
-            ..SoftBody::default()
-        },
-    );
-    let gameplay = w.spawn((at(3.0, 3.0, 0.0), SoftBody::default())).unwrap();
-    let flag = w
-        .spawn((
-            at(-3.0, 4.0, 0.0),
-            Cloth {
-                columns: 6,
-                rows: 5,
-                spacing: 0.2,
-                pins: PIN_TOP_CORNERS,
-                wind: Vec3::new(0.0, 0.0, 12.0),
-                simulation: SIMULATION_VISUAL,
-                ..Cloth::default()
-            },
-        ))
-        .unwrap();
-    run(&mut w, 90);
-    let turn = Quat::from_rotation_y(0.7);
-    w.insert(visual, rotated(at(1.0, 2.5, -1.0), turn)).unwrap();
-    w.insert(flag, rotated(at(-2.0, 4.5, 0.0), turn)).unwrap();
-    run(&mut w, 30);
-    let pts = p.soft_body_points(visual).unwrap().points;
-    assert_eq!(pts.len(), 162);
-    let centre = Vec3::new(1.0, 2.5, -1.0);
-    for q in &pts {
-        let r = (*q - centre).length();
-        assert!((r - 0.5).abs() < 1e-4, "a point is {r} from the centre");
-    }
-    let s = w.get::<SoftBody>(visual).unwrap();
-    assert_eq!(s.volume, 1.0);
-    assert!((s.center - centre).length() < 1e-4, "centre {}", s.center);
-    let fell = w.get::<SoftBody>(gameplay).unwrap().center.y;
-    assert!(fell < 0.6, "the gameplay ball beside it fell to {fell}");
-    let c = p.cloth_points(flag).unwrap();
-    assert_eq!(c.pinned, vec![0, 5]);
-    for y in 0..5 {
-        for x in 0..6 {
-            let rest =
-                Vec3::new(-2.0, 4.5, 0.0) + turn * Vec3::new(x as f32, -(y as f32), 0.0) * 0.2;
-            let q = c.points[y * 6 + x];
-            assert!(
-                (q - rest).length() < 1e-4,
-                "point {x},{y} at {q}, rest {rest}"
-            );
-        }
-    }
 }

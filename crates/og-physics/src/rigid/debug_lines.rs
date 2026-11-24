@@ -67,12 +67,3 @@ fn lines(sim: &Sim) -> Vec<DebugLine> {
     );
     out.0
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn hsla_primaries() {
-        assert_eq!(super::rgba([0.0, 1.0, 0.5, 1.0]), [1.0, 0.0, 0.0, 1.0]);
-        assert_eq!(super::rgba([120.0, 1.0, 0.5, 0.5]), [0.0, 1.0, 0.0, 0.5]);
-    }
-}

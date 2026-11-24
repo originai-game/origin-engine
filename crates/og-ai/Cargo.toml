@@ -24,7 +24,7 @@ default = []
 bake = []
 
 [dev-dependencies]
-# The tests bake levels, so they build the voxeliser.
+# The nav_costs example bakes levels, so it builds the voxeliser.
 og-ai = { path = ".", features = ["bake"] }
 
 [[test]]

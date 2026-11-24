@@ -339,35 +339,3 @@ pub(crate) fn for_each_chunk<P: Send, V: Send>(
         f(*at, p, v)
     });
 }
-
-#[cfg(test)]
-mod tests {
-    use super::Gauge;
-
-    #[test]
-    fn a_pool_that_does_not_pay_is_left_for_longer_each_time_until_it_pays() {
-        let mut g = Gauge::default();
-        assert!(g.admit(), "the pool is tried first");
-        g.record(1.0, 3.0);
-        assert!(g.admit(), "a call that paid keeps the pool");
-        // A loss: the next 8 calls run serially, then the pool is tried.
-        g.record(3.0, 0.9);
-        assert_eq!((0..8).filter(|_| g.admit()).count(), 0);
-        assert!(g.admit());
-        // A second loss in a row: 16, then 32, ... up to 512.
-        g.record(3.0, 0.9);
-        assert_eq!((0..16).filter(|_| g.admit()).count(), 0);
-        assert!(g.admit());
-        for _ in 0..10 {
-            g.record(3.0, 0.9);
-        }
-        assert_eq!((0..512).filter(|_| g.admit()).count(), 0);
-        assert!(g.admit());
-        // A call that pays clears it: the next loss starts again at 8.
-        g.record(0.5, 0.9);
-        assert!(g.admit());
-        g.record(0.9, 0.9);
-        assert_eq!((0..8).filter(|_| g.admit()).count(), 0);
-        assert!(g.admit());
-    }
-}

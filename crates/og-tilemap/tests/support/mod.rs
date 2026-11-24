@@ -12,14 +12,6 @@ pub fn blob_masks() -> Vec<u8> {
     m
 }
 
-/// Tile id of reduced mask `m` in [`blob_tileset`].
-pub fn blob_tile(m: u8) -> u32 {
-    blob_masks()
-        .iter()
-        .position(|&x| x == m)
-        .expect("a reduced mask") as u32
-}
-
 pub fn blob_tileset(edge: &str) -> String {
     let mut t = String::from(
         "type tileset\nversion 1\n---\ntexture \"tiles/t.png\"\ngrid 16 16 8 8\nsolid 60\ntile 61 {\n  collide 0 8 16 8\n}\ntile 62 {\n  collide 2 0 4 4\n}\ntile 50 {\n  frames 50 51 52\n  fps 4\n}\nterrain wall {\n  mode blob47\n",

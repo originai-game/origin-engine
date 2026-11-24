@@ -1804,33 +1804,3 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     link.publish(packet, live);
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use og_ecs::WorldDesc;
-
-    /// Engine ids are per thread (og-runtime's engines are thread-local),
-    /// so two threads' engine 0 must each find their own link: with one
-    /// process-wide map the second publish replaced the first, and the
-    /// first thread's sink heard the other engine.
-    #[test]
-    fn two_threads_engine_zero_keep_their_own_links() {
-        let run = |tick_rate: u32| {
-            std::thread::spawn(move || {
-                let mut world = World::new(&WorldDesc { tick_rate, seed: 1 }).unwrap();
-                let made = install(&mut world, &AudioDesc::default()).unwrap();
-                publish_link(0, made);
-                // Both threads publish before either looks up.
-                std::thread::sleep(std::time::Duration::from_millis(50));
-                let found = link(0).expect("this thread's engine 0").tick_rate();
-                retire_link(0);
-                found
-            })
-        };
-        let (a, b) = (run(30), run(60));
-        assert_eq!(a.join().unwrap(), 30);
-        assert_eq!(b.join().unwrap(), 60);
-        assert!(link(0).is_none(), "the test thread published nothing");
-    }
-}

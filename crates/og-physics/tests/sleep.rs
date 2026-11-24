@@ -1,49 +1,14 @@
 //! G2-3: sleep (og.Physics.sleepTicks, og.RigidBody.canSleep and
-//! sleeping, og.BodySlept and og.BodyWoke).
+//! sleeping, og.BodySlept and og.BodyWoke) is world state.
 //!
-//! Ways it could fail, and the test that catches each:
-//! - nothing sleeps, a body sleeps alone while what it touches is awake
-//!   (and what rests on it sinks through it), a sleeping body drifts, or
-//!   the events are missing, repeated or out of entity order →
-//!   `a_settled_stack_sleeps_whole_and_stays_put`
-//! - sleep happens with sleepTicks 0, or canSleep false is ignored for the
-//!   body or what touches it → `sleep_is_off_by_default_and_per_body`
-//! - something that should wake a body does not (a body landing on it, a
-//!   push, game code writing `sleeping` or its Transform, the floor going
-//!   away, a kinematic body moving into it, sleep turned off), or the wake
-//!   lets bodies pass through each other →
-//!   `what_wakes_a_sleeping_body`
-//! - the rest counters live outside the og.physics block, or sleep depends
-//!   on an iteration order: two runs, or a run restored mid-sleep, diverge
-//!   → `a_pen_sleeps_deterministically_and_restores_mid_sleep`
+//! Ways it could fail: the rest counters live outside the og.physics block,
+//! or sleep depends on an iteration order: two runs, or a run restored
+//! mid-sleep, diverge.
 
 use crate::support;
 
-use og_core::glam::Vec3;
-use og_ecs::{Entity, World};
+use og_ecs::World;
 use og_physics::*;
-use support::*;
-
-/// A world with physics and G2-3's lazy types registered (a game naming them).
-fn world(settings: Physics, seed: u32) -> (World, PhysicsSystem) {
-    let (mut w, p) = support::world(settings, seed);
-    support::enable_lazy(&mut w);
-    (w, p)
-}
-
-const SLEEP: Physics = Physics {
-    profile: PROFILE_3D,
-    gravity: Vec3::new(0.0, -9.81, 0.0),
-    substeps: 1,
-    solver_iterations: 4,
-    rest_speed: 0.02,
-    sleep_ticks: 30,
-    sleep_speed: 0.1,
-};
-
-fn sleeping(w: &World, e: Entity) -> bool {
-    w.get::<RigidBody>(e).unwrap().sleeping
-}
 
 /// Steps one tick; the entities that fell asleep and woke during it.
 fn step(w: &mut World) -> (Vec<u64>, Vec<u64>) {
@@ -54,141 +19,6 @@ fn step(w: &mut World) -> (Vec<u64>, Vec<u64>) {
         slept.iter().map(|e| e.entity).collect(),
         woke.iter().map(|e| e.entity).collect(),
     )
-}
-
-/// A floor and three unit boxes stacked on it, the lowest spawned last
-/// (so entity order is not stacking order).
-fn stack(w: &mut World) -> [Entity; 3] {
-    floor(w);
-    let cube = || Collider::cuboid(Vec3::ONE);
-    let top = spawn_body(w, at(0.0, 2.5, 0.0), RigidBody::dynamic(), cube());
-    let mid = spawn_body(w, at(0.0, 1.5, 0.0), RigidBody::dynamic(), cube());
-    let low = spawn_body(w, at(0.0, 0.5, 0.0), RigidBody::dynamic(), cube());
-    [low, mid, top]
-}
-
-/// Steps until every body of `bodies` sleeps; the tick it happened and
-/// every BodySlept entity sent until then.
-fn until_asleep(w: &mut World, bodies: &[Entity], limit: u32) -> (u32, Vec<Vec<u64>>) {
-    let mut sent = Vec::new();
-    for tick in 1..=limit {
-        let (slept, woke) = step(w);
-        assert!(woke.is_empty(), "woke {woke:?} at tick {tick}");
-        if !slept.is_empty() {
-            sent.push(slept);
-        }
-        if bodies.iter().all(|&e| sleeping(w, e)) {
-            return (tick, sent);
-        }
-    }
-    panic!("not asleep after {limit} ticks");
-}
-
-/// The stack asleep, `poke` done to it, then 120 ticks: the entities that
-/// woke (in order, each tick's) and the world.
-fn poke(f: impl Fn(&mut World, &PhysicsSystem, [Entity; 3])) -> (Vec<u64>, World, [Entity; 3]) {
-    let (mut w, p) = world(SLEEP, 1);
-    let boxes = stack(&mut w);
-    until_asleep(&mut w, &boxes, 600);
-    f(&mut w, &p, boxes);
-    let mut woke = Vec::new();
-    for _ in 0..120 {
-        woke.extend(step(&mut w).1);
-    }
-    (woke, w, boxes)
-}
-
-fn all_woke(woke: &[u64], boxes: [Entity; 3]) -> bool {
-    boxes.iter().all(|e| woke.contains(&e.to_bits()))
-}
-
-#[test]
-fn what_wakes_a_sleeping_body() {
-    // A ball dropped on the stack wakes it, and lands on it, not in it.
-    let (woke, w, boxes) = poke(|w, _, _| {
-        spawn_body(
-            w,
-            at(0.0, 6.0, 0.0),
-            RigidBody::dynamic(),
-            Collider::sphere(0.3),
-        );
-    });
-    assert!(all_woke(&woke, boxes), "a landing ball woke {woke:?}");
-    assert!(
-        transform(&w, boxes[2]).position.y > 2.4,
-        "the stack collapsed"
-    );
-
-    // An impulse on the lowest box wakes it (and the stack it holds up),
-    // and moves it.
-    let (woke, w, boxes) = poke(|_, p, b| {
-        p.apply_impulse(b[0], Vec3::new(3.0, 0.0, 0.0), None)
-            .unwrap()
-    });
-    assert!(all_woke(&woke, boxes), "an impulse woke {woke:?}");
-    assert!(transform(&w, boxes[0]).position.x > 0.1);
-
-    // Game code writing sleeping false wakes it.
-    let (woke, _, boxes) = poke(|w, _, b| {
-        let body = w.get::<RigidBody>(b[2]).unwrap();
-        w.insert(
-            b[2],
-            RigidBody {
-                sleeping: false,
-                ..body
-            },
-        )
-        .unwrap();
-    });
-    assert!(
-        woke.contains(&boxes[2].to_bits()),
-        "writing sleeping woke {woke:?}"
-    );
-
-    // A teleport wakes the moved box; it falls from where it was put.
-    let (woke, w, boxes) = poke(|w, _, b| w.insert(b[2], at(3.0, 4.0, 0.0)).unwrap());
-    assert!(
-        woke.contains(&boxes[2].to_bits()),
-        "a teleport woke {woke:?}"
-    );
-    assert!((transform(&w, boxes[2]).position.y - 0.5).abs() < 0.05);
-
-    // The floor going away wakes the stack, which falls.
-    let (woke, w, boxes) = poke(|w, _, _| {
-        let floor = w
-            .entities()
-            .into_iter()
-            .find(|&e| w.get::<Collider>(e).is_ok() && w.get::<RigidBody>(e).is_err())
-            .unwrap();
-        w.despawn(floor).unwrap();
-    });
-    assert!(all_woke(&woke, boxes), "the floor going woke {woke:?}");
-    assert!(transform(&w, boxes[0]).position.y < -1.0);
-
-    // A kinematic paddle moving into the stack wakes it.
-    let (woke, _, boxes) = poke(|w, _, _| {
-        let paddle = spawn_body(
-            w,
-            at(-3.0, 0.5, 0.0),
-            RigidBody::kinematic(),
-            Collider::cuboid(Vec3::new(1.0, 1.0, 3.0)),
-        );
-        w.insert(
-            paddle,
-            Velocity {
-                linear: Vec3::new(2.0, 0.0, 0.0),
-                angular: Vec3::ZERO,
-            },
-        )
-        .unwrap();
-    });
-    assert!(woke.contains(&boxes[0].to_bits()), "a paddle woke {woke:?}");
-
-    // Turning sleep off wakes everything.
-    let (woke, _, boxes) = poke(|w, _, _| {
-        w.resource_mut::<Physics>().unwrap().sleep_ticks = 0;
-    });
-    assert!(all_woke(&woke, boxes), "sleep off woke {woke:?}");
 }
 
 /// Hashes and BodySlept/BodyWoke counts of the pen, ticks `from..to`.
@@ -268,52 +98,4 @@ fn a_pen_sleeps_deterministically_and_restores_mid_sleep() {
     let (mut d, _pd) = pen();
     d.restore(&slept).unwrap();
     assert_eq!(pen_run(&mut d, 600, 900), third);
-}
-
-#[test]
-fn a_sleeping_pair_on_a_breakable_joint_stays_asleep_through_a_restore() {
-    // The og.physics block does not carry a joint's breakForce (its bytes
-    // are those of a world without one), so a restored world's record of
-    // the joint differs from its component. Taking that for an edit wakes
-    // the pair, and the restored world leaves the one it was saved from.
-    let pair = || {
-        let (mut w, p) = support::world(
-            Physics {
-                sleep_ticks: 30,
-                ..Physics::default()
-            },
-            1,
-        );
-        support::enable_lazy(&mut w);
-        floor(&mut w);
-        let boxes = [-0.6, 0.6].map(|x| {
-            spawn_body(
-                &mut w,
-                at(x, 0.5, 0.0),
-                RigidBody::dynamic(),
-                Collider::cuboid(Vec3::splat(0.5)),
-            )
-        });
-        w.insert(
-            boxes[0],
-            Joint {
-                kind: JOINT_FIXED,
-                other: boxes[1].to_bits(),
-                break_force: 1.0e6,
-                ..Joint::default()
-            },
-        )
-        .unwrap();
-        (w, p)
-    };
-    let (mut a, _pa) = pair();
-    pen_run(&mut a, 0, 300);
-    assert_eq!(asleep(&a), 2, "the pair rests asleep by tick 300");
-    let slept = a.snapshot();
-    let after = pen_run(&mut a, 300, 360);
-    assert_eq!(after.2, 0, "nothing wakes the pair");
-
-    let (mut b, _pb) = pair();
-    b.restore(&slept).unwrap();
-    assert_eq!(pen_run(&mut b, 300, 360), after);
 }

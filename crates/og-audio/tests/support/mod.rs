@@ -45,7 +45,7 @@ pub fn world_with(bank: &SoundBank, systems: impl FnOnce(&mut World)) -> (World,
     world.register::<Transform>().unwrap();
     world.register::<AudioSource>().unwrap();
     world.register::<SoundEnded>().unwrap();
-    // The camera resource (a game always has it); tests read it with set_camera.
+    // The camera resource (a game always has it).
     world.register::<CameraPose>().unwrap();
     systems(&mut world);
     let link = install(
@@ -57,11 +57,6 @@ pub fn world_with(bank: &SoundBank, systems: impl FnOnce(&mut World)) -> (World,
     )
     .expect("install");
     (world, link)
-}
-
-/// Sets the camera's pose (without a listener entity, audio hears from it).
-pub fn set_camera(w: &mut World, pose: CameraPose) {
-    w.insert_resource(pose).expect("camera");
 }
 
 /// Tags the moving spatial source of the scene.
@@ -219,42 +214,6 @@ pub fn scene(bank: &SoundBank, sounds: SceneSounds, options: SceneOptions) -> (W
 #[derive(Clone, Copy, Debug, Default, Reflect)]
 #[reflect(name = "Music")]
 pub struct Music {}
-
-/// Left and right channels of interleaved stereo.
-pub fn split(pcm: &[f32]) -> (Vec<f32>, Vec<f32>) {
-    (
-        pcm.iter().step_by(2).copied().collect(),
-        pcm.iter().skip(1).step_by(2).copied().collect(),
-    )
-}
-
-/// The largest jump between consecutive samples of one channel.
-pub fn max_step(ch: &[f32]) -> (f32, usize) {
-    ch.windows(2)
-        .enumerate()
-        .map(|(i, w)| ((w[1] - w[0]).abs(), i))
-        .fold((0.0, 0), |a, b| if b.0 > a.0 { b } else { a })
-}
-
-/// Index of the last sample louder than `threshold` (either channel), in frames.
-pub fn last_sound(pcm: &[f32], threshold: f32) -> Option<usize> {
-    pcm.as_chunks::<2>()
-        .0
-        .iter()
-        .rposition(|f| f[0].abs() > threshold || f[1].abs() > threshold)
-}
-
-/// Index of the first sample louder than `threshold`, in frames.
-pub fn first_sound(pcm: &[f32], threshold: f32) -> Option<usize> {
-    pcm.as_chunks::<2>()
-        .0
-        .iter()
-        .position(|f| f[0].abs() > threshold || f[1].abs() > threshold)
-}
-
-pub fn rms(ch: &[f32]) -> f32 {
-    (ch.iter().map(|x| x * x).sum::<f32>() / ch.len().max(1) as f32).sqrt()
-}
 
 /// Where scratch evidence goes: `$OG_EVIDENCE_DIR/M6/` (default target/evidence/M6).
 pub fn evidence_dir() -> std::path::PathBuf {

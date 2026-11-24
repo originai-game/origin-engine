@@ -505,6 +505,3 @@ fn sq_cube_root(x: f32) -> f32 {
     let r = cube_root(x);
     r * r
 }
-
-#[cfg(test)]
-mod tests;

@@ -5,6 +5,4 @@ use wgpu as gpu_wgpu;
 mod gpu_tests;
 
 mod gpu;
-mod intent;
-mod reference;
 mod shaders;
