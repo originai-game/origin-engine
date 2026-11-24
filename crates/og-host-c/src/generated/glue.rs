@@ -1584,6 +1584,11 @@ unsafe extern "C" fn og_load_replay_completions(args: *const crate::OgValue, out
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_physics_resize_character(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as PhysicsApi>::og_physics_resize_character(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 unsafe extern "C" fn og_physics_water(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as PhysicsApi>::og_physics_water(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
     unsafe { crate::IntoC::into_c(r, out) }
@@ -3767,6 +3772,7 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_load_image_info", arity: 2, call: og_load_image_info },
     crate::Symbol { name: c"og_load_completions", arity: 1, call: og_load_completions },
     crate::Symbol { name: c"og_load_replay_completions", arity: 2, call: og_load_replay_completions },
+    crate::Symbol { name: c"og_physics_resize_character", arity: 4, call: og_physics_resize_character },
     crate::Symbol { name: c"og_physics_water", arity: 2, call: og_physics_water },
     crate::Symbol { name: c"og_physics_water_height", arity: 4, call: og_physics_water_height },
     crate::Symbol { name: c"og_physics_cast_ray", arity: 2, call: og_physics_cast_ray },

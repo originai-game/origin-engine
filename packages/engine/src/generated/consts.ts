@@ -34,6 +34,7 @@ export const CHARACTER_WALL_JUMPED: typeof Api.CHARACTER_WALL_JUMPED = 3;
 export const CHARACTER_AIR_JUMPED: typeof Api.CHARACTER_AIR_JUMPED = 4;
 export const CHARACTER_LEFT_GROUND: typeof Api.CHARACTER_LEFT_GROUND = 5;
 export const CHARACTER_BUMPED: typeof Api.CHARACTER_BUMPED = 6;
+export const CHARACTER_CRUSHED: typeof Api.CHARACTER_CRUSHED = 7;
 export const PIN_TOP: typeof Api.PIN_TOP = 1;
 export const PIN_TOP_CORNERS: typeof Api.PIN_TOP_CORNERS = 2;
 export const PIN_LEFT: typeof Api.PIN_LEFT = 4;

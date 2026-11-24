@@ -6,7 +6,7 @@ use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
-use rapier2d::parry::query::ShapeCastOptions;
+use rapier2d::parry::query::{ShapeCastOptions, contact};
 use rapier2d::prelude as rp;
 use std::collections::BTreeMap;
 

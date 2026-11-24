@@ -1899,6 +1899,12 @@ pub fn og_load_replay_completions(env: Env, world: u32, completions: String) -> 
     <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
 }
 
+#[napi(js_name = "og_physics_resize_character")]
+pub fn og_physics_resize_character(env: Env, world: u32, entity: f64, height: f64, radius: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_resize_character(&Host, world, entity, height, radius)
+}
+
 #[napi(js_name = "og_physics_water")]
 pub fn og_physics_water(env: Env, world: u32, point: String) -> String {
     let _env = crate::EnvScope::enter(&env);

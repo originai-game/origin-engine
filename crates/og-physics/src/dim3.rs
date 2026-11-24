@@ -7,7 +7,7 @@ use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 #[path = "vehicle/raycast_vehicle.rs"]
 pub(crate) mod ctl;
-use rapier3d::parry::query::ShapeCastOptions;
+use rapier3d::parry::query::{ShapeCastOptions, contact};
 use rapier3d::prelude as rp;
 use std::collections::BTreeMap;
 
@@ -429,13 +429,23 @@ pub(crate) fn hinge_angle(f1: &rp::Pose, f2: &rp::Pose) -> f32 {
 
 /// The 2D platformer controller is 2D only.
 pub(crate) fn platformers(
-    _scene: &crate::gather::Scene,
+    scene: &crate::gather::Scene,
     _settings: &Physics,
     _dt: f32,
     _sim: &mut Sim,
-    _poses: &sim::BodyPoses,
+    _handles: &sim::Handles<'_>,
     _out: &mut crate::StepOut,
 ) -> Result<()> {
+    if scene
+        .bodies
+        .iter()
+        .any(|b| matches!(b.control, Some(crate::gather::Control::Platformer(_))))
+    {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "og.PlatformerController requires the 2D physics profile",
+        ));
+    }
     Ok(())
 }
 

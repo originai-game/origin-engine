@@ -673,6 +673,7 @@ export const og = Object.freeze({
     replayCompletions: (world: { readonly id: number }, completions: unknown): unknown => JSON.parse(abi().og_load_replay_completions(world.id, JSON.stringify(completions ?? []))) as unknown,
   }),
   physics: Object.freeze({
+    resizeCharacter: (world: { readonly id: number }, entity: number, height: number, radius: number): unknown => JSON.parse(abi().og_physics_resize_character(world.id, entity, height, radius)) as unknown,
     water: (world: { readonly id: number }, point: unknown): unknown => JSON.parse(abi().og_physics_water(world.id, JSON.stringify(point))) as unknown,
     waterHeight: (world: { readonly id: number }, entity: number, x: number, z: number): unknown => JSON.parse(abi().og_physics_water_height(world.id, entity, x, z)) as unknown,
     castRay: (world: { readonly id: number }, desc?: unknown): unknown => JSON.parse(abi().og_physics_cast_ray(world.id, json(desc))) as unknown,

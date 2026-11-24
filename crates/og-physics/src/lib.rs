@@ -10,7 +10,7 @@
 //! | [`PhysicsSystem`] | the system's handle: [`PhysicsSystem::set_mesh`] for convex and triangle-mesh shapes, [`PhysicsSystem::query`] for scene queries |
 //! | [`PhysicsQuery`], [`raycast`], [`shape_cast`], [`overlap`] | raycast, shape cast and overlap over the colliders as the world holds them |
 //! | [`Joint`] | fixed, hinge (limits, motor), slider, spring, rope and ball joints between bodies or to the world |
-//! | [`CharacterController`], [`PlatformerController`], [`CharacterEvent`] | kinematic characters moved after the step: slopes, steps, snapping, platforms; the 2D platformer's coyote time, buffer, variable jump, wall jumps, one-way platforms, corner correction |
+//! | [`CharacterController`], [`PlatformerController`], [`CharacterEvent`] | virtual characters moved before rigid integration: slopes, steps, snapping, platforms; the 2D platformer's coyote time, buffer, variable jump, wall jumps, one-way platforms, corner correction |
 //! | [`Vehicle`], [`WheelPose`] | the 3D raycast car and the 2D wheel-joint car; [`PhysicsSystem::vehicle_wheels`] |
 //! | [`Rope`], [`Cloth`] | Verlet ropes and cloth pinned to entities, colliding with solids; [`PhysicsSystem::rope_points`], [`PhysicsSystem::cloth_points`] |
 //! | [`SoftBody`] | PBD soft volumes (edges and a volume constraint), colliding with solids; [`PhysicsSystem::soft_body_points`] |
@@ -106,6 +106,9 @@ use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 mod desc;
+#[path = "character/resize.rs"]
+mod resize;
+pub use resize::resize_character;
 pub mod destruction;
 mod persist;
 #[path = "rigid/query.rs"]

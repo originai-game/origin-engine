@@ -16,7 +16,18 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `move` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick. |
+| `mass` | `number` | `0` | ≥ 0 | `kg` | — | Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing. |
+| `addVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | Velocity added once next step, then cleared: knockback or a spring. |
+| `up` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity. |
+| `jumpBuffer` | `number` | `0` | ≥ 0 | `s` | — | Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps. |
+| `platformInherit` | `number` | `0` | 0 … 1 | — | — | Share of supporting platform velocity retained on leaving it; zero inherits none. |
+| `buffer` | `number` | `0` | — | — | read only | Written: unconsumed jump buffer time. |
+| `inheritedVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Written: retained inertia from airborne vertical motion, knockback and platforms. |
+| `groundBody` | `Entity` | `0` | — | — | read only | Written: supporting collider parent body, including compound platforms. |
+| `groundPoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting contact point in world space. |
+| `groundPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting frame position at the last controller move. |
+| `groundQuaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | read only | Written: supporting frame rotation at the last controller move. |
+| `move` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick. |
 | `jump` | `boolean` | `false` | — | — | — | Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time). |
 | `jumpSpeed` | `number` | `6` | ≥ 0 | `mps` | tunable | The upward speed of a jump. |
 | `gravityScale` | `number` | `1` | 0 … 10 | — | tunable | Multiplies og.Physics.gravity; 0 for top-down movement in any direction. |
@@ -27,7 +38,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `coyoteTime` | `number` | `0.1` | ≥ 0 | `s` | tunable | After leaving an edge, a jump still starts within this time. |
 | `maxFallSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The fastest fall. |
 | `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into, with at most `pushStrength`. |
-| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does. See `physics §6`. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does. See `physics §6`. |
 | `waterSpeed` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under. See `physics §8`. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on walkable ground after the step. |
 | `sliding` | `boolean` | `false` | — | — | read only | Written: sliding down a slope steeper than maxSlope. |
@@ -42,7 +53,43 @@ component CharacterController {
   doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
   guide "physics §6"
   aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
-  field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick." {
+  field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
+    min 0
+    unit kg
+  }
+  field addVelocity Vector3 "Velocity added once next step, then cleared: knockback or a spring." {
+    unit mps
+  }
+  field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity."
+  field jumpBuffer f32 "Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps." {
+    min 0
+    unit s
+  }
+  field platformInherit f32 "Share of supporting platform velocity retained on leaving it; zero inherits none." {
+    min 0
+    max 1
+  }
+  field buffer f32 "Written: unconsumed jump buffer time." {
+    readonly true
+  }
+  field inheritedVelocity Vector3 "Written: retained inertia from airborne vertical motion, knockback and platforms." {
+    readonly true
+  }
+  field groundBody Entity "Written: supporting collider parent body, including compound platforms." {
+    readonly true
+  }
+  field groundPoint Vector3 "Written: supporting contact point in world space." {
+    readonly true
+    worldspace world
+  }
+  field groundPosition Vector3 "Written: supporting frame position at the last controller move." {
+    readonly true
+    worldspace world
+  }
+  field groundQuaternion Quaternion "Written: supporting frame rotation at the last controller move." {
+    readonly true
+  }
+  field move Vector3 "The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick." {
     unit mps
   }
   field jump bool "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time)."
@@ -97,7 +144,7 @@ component CharacterController {
   field pushBodies bool "Push dynamic bodies it walks into, with at most `pushStrength`." {
     default true
   }
-  field pushStrength f32 "The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does." {
+  field pushStrength f32 "Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does." {
     guide "physics §6"
     default 1000
     min 0

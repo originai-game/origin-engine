@@ -1,73 +1,89 @@
-//! Moving a kinematic shape: what a platform carries and what a mover pushes.
+//! Supporting-frame carry and finite-mass contact-point impulses.
 
+use super::super::mover::Hit;
 use super::*;
 
-/// Where a point on a body moved during the step (the body's motion from
-/// its pre-step pose), for riding moving platforms.
-pub(crate) fn carried(
-    poses: &BodyPoses,
-    w: &rp::PhysicsWorld,
-    body: rp::RigidBodyHandle,
-    point: Vec3,
-) -> Vec3 {
-    let Some(before) = poses.get(body) else {
-        return Vec3::ZERO;
-    };
-    let after = *w.bodies[body].position();
-    let moved = after * before.inverse();
-    flat(unv(moved.transform_point(v(point)))) - flat(point)
+/// Carry is measured at the saved foot contact, not the capsule centre.
+/// Keep only twist about up; a pitching deck must not tip a character over.
+pub(crate) fn carried(before: rp::Pose, after: rp::Pose, point: Vec3, up: Vec3) -> (Vec3, Quat) {
+    let relative = after * before.inverse();
+    let delta = flat(unv(relative.transform_point(v(point))) - point);
+    let (_, q) = unpose(&relative, Vec3::ZERO);
+    let vector = Vec3::new(q.x, q.y, q.z);
+    let twist = up * vector.dot(up);
+    let yaw = Quat::from_xyzw(twist.x, twist.y, twist.z, q.w);
+    (
+        delta,
+        if yaw.length_squared() > 1e-12 {
+            yaw.normalize()
+        } else {
+            Quat::IDENTITY
+        },
+    )
 }
 
-/// The body a collider's entity is, by the tracked bodies.
-pub(crate) fn body_of(sim: &Sim, entity: u64) -> Option<rp::RigidBodyHandle> {
-    sim.bodies.get(&entity).map(|t| t.handle)
-}
-
-/// Pushes the dynamic bodies a controller walked into, one rule for both
-/// controllers: each body is asked to take (most of) the controller's speed
-/// into it along the contact normal, an impulse of its mass times that
-/// speed; the bodies of one tick share at most `strength` (N) times `dt`,
-/// each its share of what it asked for, so a light body is shoved at the
-/// controller's speed and a heavy one only as far as the force beats its
-/// friction (a tonne on the ground holds), and two bodies walked into at
-/// once split the push instead of the first taking it all. A body hit more
-/// than once in the tick asks once, its largest.
+/// Inelastic momentum exchange using point velocity and effective inverse
+/// mass (including angular inertia and locked axes). Side pushes share the
+/// force budget. Weight is a separate physical load at the support point.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn push(
     w: &mut rp::PhysicsWorld,
-    hits: &[(rp::ColliderHandle, Vec3)],
+    hits: &[Hit],
+    ground: Option<Hit>,
     velocity: Vec3,
+    mass: f32,
     strength: f32,
+    gravity: Vec3,
     dt: f32,
+    forced: &mut Vec<u64>,
 ) {
-    let budget = strength.max(0.0) * dt;
-    if budget <= 0.0 {
+    if mass <= 0.0 || strength <= 0.0 {
         return;
     }
-    // (body, direction, impulse asked), in hit order.
-    let mut asks: Vec<(rp::RigidBodyHandle, Vec3, f32)> = Vec::new();
-    for &(h, normal) in hits {
-        let Some(parent) = w.colliders.get(h).and_then(|c| c.parent()) else {
+    let mut asks: Vec<(rp::RigidBodyHandle, Vec3, Vec3, f32)> = Vec::new();
+    for hit in hits {
+        let Some(parent) = w.colliders[hit.handle].parent() else {
             continue;
         };
         let rb = &w.bodies[parent];
-        if !rb.is_dynamic() {
+        if !rb.is_dynamic() || ground.is_some_and(|g| g.handle == hit.handle) {
             continue;
         }
-        let into = -normal;
-        let speed = velocity.dot(into) - unv(rb.linvel()).dot(into);
-        if speed <= 0.0 {
-            continue;
-        }
-        let ask = speed * rb.mass() * 0.8;
+        let into = -hit.normal;
+        let point = v(hit.point);
+        let speed = (velocity - unv(rb.velocity_at_point(point)))
+            .dot(into)
+            .max(0.0);
+        let n = v(into);
+        let props = rb.mass_properties();
+        let torque = angvel((hit.point - unv(rb.center_of_mass())).cross(into));
+        let angular = unangvel(torque).dot(unangvel(props.effective_world_inv_inertia * torque));
+        let inv = (props.effective_inv_mass * n).dot(n) + angular;
+        let ask = speed / (mass.recip() + inv);
         match asks.iter_mut().find(|a| a.0 == parent) {
-            Some(a) if a.2 < ask => *a = (parent, into, ask),
+            Some(a) if a.3 < ask => *a = (parent, into, hit.point, ask),
             Some(_) => {}
-            None => asks.push((parent, into, ask)),
+            None => asks.push((parent, into, hit.point, ask)),
         }
     }
-    let asked: f32 = asks.iter().map(|a| a.2).sum();
-    let share = if asked > budget { budget / asked } else { 1.0 };
-    for (body, into, ask) in asks {
-        w.bodies[body].apply_impulse(v(flat(into * (ask * share))), true);
+    let asked: f32 = asks.iter().map(|a| a.3).sum();
+    let share = if asked > 0.0 {
+        (strength * dt / asked).min(1.0)
+    } else {
+        0.0
+    };
+    for (body, into, point, ask) in asks {
+        if ask * share > 0.0 {
+            forced.push(w.bodies[body].user_data as u64);
+            w.bodies[body].apply_impulse_at_point(v(flat(into * (ask * share))), v(point), true);
+        }
+    }
+    if let Some(g) = ground
+        && gravity != Vec3::ZERO
+        && let Some(parent) = w.colliders[g.handle].parent()
+        && w.bodies[parent].is_dynamic()
+    {
+        forced.push(w.bodies[parent].user_data as u64);
+        w.bodies[parent].apply_impulse_at_point(v(flat(gravity * mass * dt)), v(g.point), true);
     }
 }

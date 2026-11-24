@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 118 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 120 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -75,7 +75,9 @@ module physics {
 | [`CHARACTER_AIR_JUMPED`](#const-CHARACTER_AIR_JUMPED) | constant |  | `CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps). |
 | [`CHARACTER_LEFT_GROUND`](#const-CHARACTER_LEFT_GROUND) | constant |  | `CharacterEvent.kind`: left the ground without jumping (ran off an edge). |
 | [`CHARACTER_BUMPED`](#const-CHARACTER_BUMPED) | constant |  | `CharacterEvent.kind`: hit a ceiling while rising. |
+| [`CHARACTER_CRUSHED`](#const-CHARACTER_CRUSHED) | constant |  | `CharacterEvent.kind`: opposing solid surfaces crushed the character. |
 | [`og.CharacterEvent`](physics/record-CharacterEvent.md) | event |  | Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. |
+| [`og.physics.resizeCharacter`](physics/fn-resizeCharacter.md) | function | `(world: World, entity: Entity, height: number, radius: number): Result<boolean>` | Resize a character capsule after checking headroom and the final volume. |
 | [`VehicleDrive`](physics/type-VehicleDrive.md) | enum |  | Which wheels the engine drives: Vehicle.drive. |
 | [`VehicleDrive()`](#column-VehicleDrive) | column kind |  | A VehicleDrive field: the variant's index. |
 | [`VehicleModel`](physics/type-VehicleModel.md) | enum |  | How a vehicle's engine is modelled: Vehicle.model. |
@@ -259,7 +261,7 @@ column VehicleDrive {
 }
 ```
 
-<sub>Module `physics` line 847</sub>
+<sub>Module `physics` line 926</sub>
 
 ```ogt
 column VehicleModel {
@@ -270,7 +272,7 @@ column VehicleModel {
 }
 ```
 
-<sub>Module `physics` line 860</sub>
+<sub>Module `physics` line 939</sub>
 
 ```ogt
 column Simulation {
@@ -281,7 +283,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1178</sub>
+<sub>Module `physics` line 1257</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -292,7 +294,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1363</sub>
+<sub>Module `physics` line 1442</sub>
 
 ## Constants
 
@@ -313,6 +315,7 @@ column SoftBodyShape {
 | <a id="const-CHARACTER_AIR_JUMPED"></a>`CHARACTER_AIR_JUMPED` | `number` | `4` | `CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps). |
 | <a id="const-CHARACTER_LEFT_GROUND"></a>`CHARACTER_LEFT_GROUND` | `number` | `5` | `CharacterEvent.kind`: left the ground without jumping (ran off an edge). |
 | <a id="const-CHARACTER_BUMPED"></a>`CHARACTER_BUMPED` | `number` | `6` | `CharacterEvent.kind`: hit a ceiling while rising. |
+| <a id="const-CHARACTER_CRUSHED"></a>`CHARACTER_CRUSHED` | `number` | `7` | `CharacterEvent.kind`: opposing solid surfaces crushed the character. |
 | <a id="const-PIN_TOP"></a>`PIN_TOP` | `number` | `1` | `Cloth.pins` bit: the whole top row is pinned. |
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
@@ -379,76 +382,82 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 821</sub>
+<sub>Module `physics` line 889</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 822</sub>
+<sub>Module `physics` line 890</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 823</sub>
+<sub>Module `physics` line 891</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 824</sub>
+<sub>Module `physics` line 892</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 825</sub>
+<sub>Module `physics` line 893</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 826</sub>
+<sub>Module `physics` line 894</sub>
+
+```ogt
+const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces crushed the character."
+```
+
+<sub>Module `physics` line 895</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1185</sub>
+<sub>Module `physics` line 1264</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1186</sub>
+<sub>Module `physics` line 1265</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1187</sub>
+<sub>Module `physics` line 1266</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1188</sub>
+<sub>Module `physics` line 1267</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 1917</sub>
+<sub>Module `physics` line 1996</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 1918</sub>
+<sub>Module `physics` line 1997</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 1919</sub>
+<sub>Module `physics` line 1998</sub>

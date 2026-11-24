@@ -121,7 +121,11 @@ pub fn scene3d(w: &mut World, physics: &PhysicsSystem) -> Cast {
         (
             at(0.0, 0.95, 0.0),
             Collider::capsule(0.4, 1.0),
-            CharacterController::default(),
+            CharacterController {
+                up: Vec3::Y,
+                mass: 60.0,
+                ..CharacterController::default()
+            },
         ),
     );
     // A motor hinge and a chain of ball joints hanging from the world.

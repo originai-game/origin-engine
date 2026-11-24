@@ -86,7 +86,10 @@ fn swimmer(w: &mut World, x: f32, y: f32, b: Option<Buoyancy>) -> Entity {
         .spawn((
             at(x, y, 0.0),
             Collider::capsule(0.4, 1.0),
-            CharacterController::default(),
+            CharacterController {
+                up: Vec3::Y,
+                ..CharacterController::default()
+            },
         ))
         .unwrap();
     if let Some(b) = b {

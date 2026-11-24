@@ -14,6 +14,16 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
+| `mass` | `number` | `0` | ≥ 0 | `kg` | — | Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing. |
+| `platformInherit` | `number` | `0` | 0 … 1 | — | — | Share of supporting platform velocity retained on leaving it; zero inherits none. |
+| `wallCoyoteTime` | `number` | `0` | ≥ 0 | `s` | — | Seconds a wall jump remains available after leaving the wall; zero disables it. |
+| `wallCoyote` | `number` | `0` | — | — | read only | Written: wall coyote time remaining. |
+| `lastWall` | `number` | `0` | — | — | read only | Written: last contacted wall side, for wall coyote time. |
+| `groundBody` | `Entity` | `0` | — | — | read only | Written: supporting collider parent body. |
+| `groundPoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting contact point in world space. |
+| `groundPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting frame position at the last controller move. |
+| `groundQuaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | read only | Written: supporting frame rotation at the last controller move. |
+| `droppingThrough` | `Entity` | `0` | — | — | read only | Written: only this one-way entity is ignored until the character bounds clear it; replaces dropTime. |
 | `run` | `number` | `0` | -1 … 1 | — | — | The run input, -1 (left) to 1 (right). Set it every tick. |
 | `jump` | `boolean` | `false` | — | — | — | Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump. |
 | `down` | `boolean` | `false` | — | — | — | Held to drop through a one-way platform. |
@@ -53,7 +63,6 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 | `coyote` | `number` | `0` | — | — | read only | Written: seconds of coyote time left. |
 | `buffer` | `number` | `0` | — | — | read only | Written: seconds a buffered jump press stays valid. |
 | `wallLock` | `number` | `0` | — | — | read only | Written: seconds the run input stays locked after a wall jump. |
-| `dropTime` | `number` | `0` | — | — | read only | Written: seconds one-way platforms stay passable after dropping through. |
 | `jumpWasHeld` | `boolean` | `false` | — | — | read only | Written: `jump` as the last step saw it. |
 | `ground` | `Entity` | `0` | — | — | read only | Written: the entity it stands on (0 in the air); a moving one carries it. |
 
@@ -61,6 +70,41 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 component PlatformerController {
   doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
   guide "physics §6"
+  field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
+    min 0
+    unit kg
+  }
+  field platformInherit f32 "Share of supporting platform velocity retained on leaving it; zero inherits none." {
+    min 0
+    max 1
+  }
+  field wallCoyoteTime f32 "Seconds a wall jump remains available after leaving the wall; zero disables it." {
+    min 0
+    unit s
+  }
+  field wallCoyote f32 "Written: wall coyote time remaining." {
+    readonly true
+  }
+  field lastWall i32 "Written: last contacted wall side, for wall coyote time." {
+    readonly true
+  }
+  field groundBody Entity "Written: supporting collider parent body." {
+    readonly true
+  }
+  field groundPoint Vector3 "Written: supporting contact point in world space." {
+    readonly true
+    worldspace world
+  }
+  field groundPosition Vector3 "Written: supporting frame position at the last controller move." {
+    readonly true
+    worldspace world
+  }
+  field groundQuaternion Quaternion "Written: supporting frame rotation at the last controller move." {
+    readonly true
+  }
+  field droppingThrough Entity "Written: only this one-way entity is ignored until the character bounds clear it; replaces dropTime." {
+    readonly true
+  }
   field run f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
     min -1
     max 1
@@ -245,9 +289,6 @@ component PlatformerController {
   field wallLock f32 "Written: seconds the run input stays locked after a wall jump." {
     readonly true
   }
-  field dropTime f32 "Written: seconds one-way platforms stay passable after dropping through." {
-    readonly true
-  }
   field jumpWasHeld bool "Written: `jump` as the last step saw it." {
     readonly true
   }
@@ -257,4 +298,4 @@ component PlatformerController {
 }
 ```
 
-<sub>Module `physics` line 623</sub>
+<sub>Module `physics` line 659</sub>

@@ -34,6 +34,8 @@ pub(crate) struct StepOut {
     pub transient_started: Vec<CollisionStarted>,
     /// The components a step writes back.
     pub controls: Vec<(Entity, ControlOut)>,
+    /// Dynamic bodies receiving virtual-controller impulses this tick.
+    pub controller_impulses: Vec<u64>,
     pub joints: Vec<(Entity, Joint)>,
     /// The joints that broke, in the order they did.
     pub broken: Vec<JointBroken>,
