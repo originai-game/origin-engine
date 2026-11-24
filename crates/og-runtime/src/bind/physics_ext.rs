@@ -553,6 +553,8 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 return Some(og_physics::WaterBody {
                     entity: id,
                     position,
+                    rotation: q,
+                    depth: w.depth,
                     size: w.size,
                     endless: false,
                     sea: None,
@@ -568,6 +570,8 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
             Some(og_physics::WaterBody {
                 entity: id,
                 position,
+                rotation: r.pose(e)?.1,
+                depth: w.depth,
                 size: w.size,
                 endless: w.endless,
                 shore: crate::bind::seabed::coast(

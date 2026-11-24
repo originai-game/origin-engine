@@ -17,6 +17,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `size` | `Vector2` | `{ x: 16, y: 16 }` | — | `m` | tunable | The extent along the entity's x and z. |
+| `depth` | `number` | `0` | ≥ 0 | `m` | tunable | Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume. |
 | `geometry` | `Geometry` | `0` | — | — | — | Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid. See `render §8`. |
 | `river` | `Path` | `0` | — | — | — | A river along this path (og.path; its heights the water's level): a ribbon riverWidth across in place of the grid, its current riverSpeed mid-stream, slowing to nothing at the banks; og.Buoyancy bodies drift with it in the tick. Where it drops steeper than 45 degrees it falls. 0: none. See `render §8`. |
 | `riverWidth` | `number` | `6` | ≥ 0 | `m` | tunable | The river's width across. |
@@ -122,6 +123,11 @@ component Water {
   group "Shape"
   field size Vector2 "The extent along the entity's x and z." {
     default 16 16
+    unit m
+    tunable true
+  }
+  field depth f32 "Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume." {
+    min 0
     unit m
     tunable true
   }

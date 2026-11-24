@@ -11,6 +11,9 @@ use std::collections::BTreeMap;
 
 pub(crate) const PROFILE_NAME: &str = "3D";
 
+#[path = "water/geometry3.rs"]
+pub(crate) mod water_geometry;
+
 /// Drops what the profile does not simulate (nothing, in 3D).
 pub(crate) fn flat(x: Vec3) -> Vec3 {
     x

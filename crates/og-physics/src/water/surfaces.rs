@@ -5,7 +5,11 @@ use super::*;
 /// The bodies water acts on, from the rapier world: every dynamic body (it
 /// floats), every controller (it splashes) and every og.Ragdoll with
 /// og.Buoyancy (it splashes), with its colliders' box, in entity order.
-fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) -> Vec<Floater> {
+fn floaters(
+    scene: &Scene,
+    sim: &mut Sim,
+    handles: &super::super::sim::Handles<'_>,
+) -> Vec<Floater> {
     let mut list = Vec::new();
     for b in &scene.bodies {
         let moving = b.body.kind == BODY_DYNAMIC && b.control.is_none();
@@ -26,7 +30,11 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
         let mut min = Vec3::splat(f32::MAX);
         let mut max = Vec3::splat(f32::MIN);
         for &c in rb.colliders() {
-            let aabb = sim.world.colliders[c].compute_aabb();
+            let c = &sim.world.colliders[c];
+            if c.is_sensor() {
+                continue;
+            }
+            let aabb = c.compute_aabb();
             min = min.min(unv(aabb.mins));
             max = max.max(unv(aabb.maxs));
         }
@@ -42,6 +50,21 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
             Some(crate::gather::Control::Platformer(p)) => p.velocity,
             None => unv(rb.linvel()),
         };
+        let centre = (min + max) * 0.5;
+        let samples = scene
+            .floats
+            .iter()
+            .find(|f| f.0 == b.entity)
+            .map_or(4, |f| f.1.samples);
+        let hull = super::buoyancy::cached_hull(
+            &mut sim.ext.water_hulls,
+            &sim.world.colliders,
+            rb,
+            h,
+            samples,
+        );
+        let triangles = hull.map_or_else(Vec::new, |h| h.world_triangles(rb.position(), centre));
+        let volume = hull.map_or(0.0, |h| h.volume());
         list.push(Floater {
             entity: b.entity.to_bits(),
             min,
@@ -50,12 +73,14 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
             velocity: flat(velocity),
             dynamic,
             hull: floats,
+            triangles,
+            volume,
         });
     }
     // A ragdoll with og.Buoyancy (its bones are bodies of no entity): its
     // bones' box splashes; its lift and its cut are `buoyancy`'s.
     let bodies = list.len();
-    for (e, _) in &scene.floats {
+    for (e, buoyancy) in &scene.floats {
         let key = e.to_bits();
         let Some(state) = sim.ragdolls.get(&key) else {
             continue;
@@ -66,6 +91,7 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
         let mut min = Vec3::splat(f32::MAX);
         let mut max = Vec3::splat(f32::MIN);
         let (mut velocity, mut mass) = (Vec3::ZERO, 0.0);
+        let (mut triangles, mut volume) = (Vec::new(), 0.0);
         for &h in &state.bones {
             let rb = &sim.world.bodies[h];
             let Some((lo, hi)) = super::buoyancy::solid_box(&sim.world, rb) else {
@@ -75,18 +101,36 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
             max = max.max(hi);
             velocity += unv(rb.linvel()) * rb.mass();
             mass += rb.mass();
+            if let Some(hull) = super::buoyancy::cached_hull(
+                &mut sim.ext.water_hulls,
+                &sim.world.colliders,
+                rb,
+                h,
+                buoyancy.samples,
+            ) {
+                triangles.extend(hull.world_triangles(rb.position(), Vec3::ZERO));
+                volume += hull.volume();
+            }
         }
         if min.x > max.x || mass <= 0.0 {
             continue;
+        }
+        let centre = (min + max) * 0.5;
+        for triangle in &mut triangles {
+            for point in triangle {
+                *point -= centre;
+            }
         }
         list.push(Floater {
             entity: key,
             min,
             max,
-            centre: (min + max) * 0.5,
+            centre,
             velocity: flat(velocity / mass),
             dynamic: false,
             hull: true,
+            triangles,
+            volume,
         });
     }
     if list.len() > bodies {
@@ -130,7 +174,6 @@ pub(crate) fn water(
     }
     let list = floaters(scene, sim, handles);
     let g = -settings.gravity.y;
-    let mut forces: Vec<WaterForce> = Vec::new();
     sim.surfaces.retain(|e, _| live.contains(e));
     for (e, position, surface) in &scene.surfaces {
         let key = e.to_bits();
@@ -142,13 +185,12 @@ pub(crate) fn water(
             sim.surfaces.insert(key, SurfaceState::new(surface));
         }
         let state = sim.surfaces.get_mut(&key).expect("inserted");
-        let (f, crossings) = state.step(surface, dt, g, *position, &list);
+        let crossings = state.step(surface, dt, *position, &list);
         let (size, cell) = (state.size, state.cell());
         sim.wakes
             .entry(key)
             .or_default()
             .record(surface, size, cell, dt, tick, *position, &list);
-        forces.extend(f);
         for c in crossings {
             out.splashes.push(Splash {
                 water: key,
@@ -171,8 +213,7 @@ pub(crate) fn water(
         }
         let state = sim.lines.get_mut(&key).expect("inserted");
         let centre = Vec2::new(position.x, position.y);
-        let (f, crossings) = state.step(line, dt, g, centre, &list);
-        forces.extend(f);
+        let crossings = state.step(line, dt, g, centre, &list);
         for c in crossings {
             out.splashes.push(Splash {
                 water: key,
@@ -181,15 +222,6 @@ pub(crate) fn water(
                 speed: c.speed,
             });
         }
-    }
-    for f in forces {
-        let Some(&h) = handles.get(&f.entity) else {
-            continue;
-        };
-        let rb = &mut sim.world.bodies[h];
-        let linvel = rb.linvel();
-        rb.set_linvel(linvel * f.keep, true);
-        rb.apply_impulse(v(flat(f.impulse)), true);
     }
     // An og.Water with an og.WaterSurface is that surface's: it has splashed above.
     let alone = waters
@@ -205,4 +237,93 @@ pub(crate) fn water(
         });
     }
     Ok(wet.cuts)
+}
+
+/// Automatic pool buoyancy shares the substep force lifetime with hull
+/// buoyancy. Each body chooses one enclosing pool, highest level first;
+/// overlaps never add a second lift or read a velocity modified by water.
+pub(super) fn surface_buoyancy_substep(
+    scene: &Scene,
+    settings: &Physics,
+    dt: f32,
+    sim: &mut Sim,
+    handles: &super::super::sim::Handles<'_>,
+    forced: &mut Vec<rp::RigidBodyHandle>,
+) {
+    if scene.surfaces.is_empty() && scene.lines.is_empty() {
+        return;
+    }
+    for f in floaters(scene, sim, handles).iter().filter(|f| f.dynamic) {
+        let surfaces = scene
+            .surfaces
+            .iter()
+            .filter(|(_, p, w)| {
+                let half = w.size * 0.5;
+                w.depth > 0.0
+                    && f.min.x <= p.x + half
+                    && f.max.x >= p.x - half
+                    && f.min.z <= p.z + half
+                    && f.max.z >= p.z - half
+                    && f.min.y <= p.y
+                    && f.max.y >= p.y - w.depth
+            })
+            .map(|(_, p, w)| {
+                (
+                    p.y,
+                    w.depth,
+                    w.buoyancy,
+                    w.drag,
+                    *p - Vec3::new(w.size * 0.5, 0.0, w.size * 0.5),
+                    *p + Vec3::new(w.size * 0.5, 0.0, w.size * 0.5),
+                )
+            });
+        let lines = scene
+            .lines
+            .iter()
+            .filter(|(_, p, w)| {
+                w.depth > 0.0
+                    && f.min.x <= p.x + w.width * 0.5
+                    && f.max.x >= p.x - w.width * 0.5
+                    && f.min.y <= p.y
+                    && f.max.y >= p.y - w.depth
+            })
+            .map(|(_, p, w)| {
+                (
+                    p.y,
+                    w.depth,
+                    w.buoyancy,
+                    w.drag,
+                    Vec3::new(p.x - w.width * 0.5, p.y, f.min.z),
+                    Vec3::new(p.x + w.width * 0.5, p.y, f.max.z),
+                )
+            });
+        let mut best: Option<(f32, f32, f32, f32, Vec3, Vec3)> = None;
+        for pool in surfaces.chain(lines) {
+            if best.is_none_or(|b| pool.0 > b.0) {
+                best = Some(pool);
+            }
+        }
+        let Some((level, depth, lift, drag, min, max)) = best else {
+            continue;
+        };
+        let (volume, centre, _) = f.immersed(level, depth, min, max);
+        if volume <= 0.0 || f.volume <= 0.0 {
+            continue;
+        }
+        let fraction = (volume / f.volume).clamp(0.0, 1.0);
+        let h = *handles.get(&f.entity).expect("floater has a body");
+        let rb = &mut sim.world.bodies[h];
+        let com = unv(rb.center_of_mass());
+        let buoyancy = Vec3::Y * (lift * volume * (-settings.gravity.y / 9.81));
+        let keep = og_core::math::exp(-drag.max(0.0) * fraction * dt);
+        let resistance = if dt > 0.0 {
+            f.velocity * (rb.mass() * (1.0 - keep) / dt)
+        } else {
+            Vec3::ZERO
+        };
+        rb.add_force(v(flat(buoyancy - resistance)), true);
+        rb.add_torque(angvel((centre - com).cross(buoyancy)), true);
+        rb.set_angvel(angvel(unangvel(rb.angvel()) * keep), true);
+        forced.push(h);
+    }
 }

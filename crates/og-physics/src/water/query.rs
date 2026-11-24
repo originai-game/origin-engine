@@ -7,23 +7,39 @@ use og_core::glam::{Vec2, Vec3};
 use og_ecs::Entity;
 use og_env::ocean::SurfacePoint;
 
-/// The water surface over world point (`x`, `z`): its height (world y)
-/// and the water's velocity and acceleration there; the highest of the og.WaterSurface squares
-/// and og.Water bodies over it (one entity with both: its rest level and
-/// its sea together); `None` over no water. An og.WaterSurface lifts at its
-/// rest level, as its own buoyancy does: its waves are the bodies'
-/// splashes, and a body riding its own wake would pump them.
+/// A single merged water volume enclosing a vertical sample interval.
+pub(crate) struct Volume {
+    pub surface: SurfacePoint,
+    pub bottom: f32,
+}
+
+/// Highest enclosing level at a world point, expanded by the sample's
+/// vertical half-height. Surface fields lift at rest level so a body's
+/// own splash does not pump its buoyancy.
 pub(crate) fn level(
     surfaces: &[(Entity, Vec3, WaterSurface)],
+    lines: &[(Entity, Vec3, crate::schema::WaterLine)],
     waters: &[WaterBody],
-    x: f32,
-    z: f32,
+    point: Vec3,
+    half: f32,
     seconds: f64,
-) -> Option<SurfacePoint> {
-    let mut level: Option<SurfacePoint> = None;
-    let mut take = |y: f32, p: SurfacePoint| {
-        if level.is_none_or(|l| y > l.height) {
-            level = Some(SurfacePoint { height: y, ..p });
+) -> Option<Volume> {
+    let (x, y, z) = (point.x, point.y, point.z);
+    let mut level: Option<Volume> = None;
+    let mut selected = u64::MAX;
+    let mut take = |entity: u64, height: f32, depth: f32, p: SurfacePoint| {
+        if depth > 0.0
+            && y + half >= height - depth
+            && y - half <= height
+            && level.as_ref().is_none_or(|l| {
+                height > l.surface.height || (height == l.surface.height && entity < selected)
+            })
+        {
+            selected = entity;
+            level = Some(Volume {
+                surface: SurfacePoint { height, ..p },
+                bottom: height - depth,
+            });
         }
     };
     let (x64, z64) = (f64::from(x), f64::from(z));
@@ -38,14 +54,19 @@ pub(crate) fn level(
             .find(|w| w.entity == key)
             .and_then(|w| w.surface(x64, z64, seconds))
             .unwrap_or_default();
-        take(position.y + sea.height, sea);
+        take(key, position.y + sea.height, surface.depth, sea);
     }
     for w in waters {
         if surfaces.iter().any(|s| s.0.to_bits() == w.entity) {
             continue;
         }
         if let Some(p) = w.surface(x64, z64, seconds) {
-            take(w.position.y + p.height, p);
+            take(w.entity, w.position.y + p.height, w.depth, p);
+        }
+    }
+    for (e, position, line) in lines {
+        if (x - position.x).abs() <= line.width * 0.5 {
+            take(e.to_bits(), position.y, line.depth, SurfacePoint::default());
         }
     }
     level
@@ -79,7 +100,7 @@ pub struct WaterAt {
     pub water: u64,
     /// The surface over the point (world y), as it is drawn.
     pub height: f32,
-    /// How far the point is under the surface (negative over it).
+    /// How far the enclosing point is under the surface.
     pub depth: f32,
     /// The water's velocity and acceleration at the surface there.
     pub velocity: Vec3,
@@ -123,7 +144,7 @@ fn drawn(
         let flat = Vec2::new(centre.x, centre.y);
         return Some(SurfacePoint {
             height: centre.y + l.height_at(flat, x),
-            velocity: Vec3::Y * l.velocity_at(flat, x),
+            velocity: Vec3::new(l.flow_at(flat, x), l.velocity_at(flat, x), 0.0),
             acceleration: Vec3::ZERO,
         });
     }
@@ -165,7 +186,16 @@ pub(crate) fn at(
         let Some(p) = read(entity, centre, point.x, point.z) else {
             continue;
         };
-        if best.is_none_or(|b| p.height > b.2.height) {
+        let depth = surfaces
+            .get(&entity)
+            .map(|s| s.depth)
+            .or_else(|| lines.get(&entity).map(|l| l.depth))
+            .or_else(|| waters.iter().find(|w| w.entity == entity).map(|w| w.depth))
+            .unwrap_or(0.0);
+        if depth <= 0.0 || point.y < p.height - depth || point.y > p.height {
+            continue;
+        }
+        if best.is_none_or(|b| p.height > b.2.height || (p.height == b.2.height && entity < b.0)) {
             best = Some((entity, centre, p));
         }
     }

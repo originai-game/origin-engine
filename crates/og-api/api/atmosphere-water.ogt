@@ -7,6 +7,11 @@
       unit m
       tunable true
     }
+    field depth f32 "Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume." {
+      min 0
+      unit m
+      tunable true
+    }
     field geometry Geometry "Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid." {
       guide "render §8"
     }
@@ -276,4 +281,3 @@
 }
 
 # ── anim ──────────────────────────────────────────────────────────────────
-

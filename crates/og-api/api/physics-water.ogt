@@ -1,5 +1,5 @@
   component WaterSurface {
-    doc "Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them."
+    doc "3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights."
     field resolution u32 "Grid points along each side." {
       default 64
       min 8
@@ -11,16 +11,31 @@
       unit m
       tunable true
     }
+    field depth f32 "Vertical depth below the surface; zero disables the water volume." {
+      min 0
+      unit m
+      tunable true
+    }
     field waveSpeed f32 "How fast waves travel." {
       default 3
       min 0
       unit mps
       tunable true
     }
-    field damping f32 "How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping." {
+    field damping f32 "Exponential wave velocity damping per second; zero preserves motion." {
       default 0.9
       min 0
       max 100
+      unit perSecond
+      tunable true
+    }
+    field spongeWidth f32 "Width of the absorbing border; zero disables it." {
+      min 0
+      unit m
+      tunable true
+    }
+    field spongeDamping f32 "Extra exponential damping at the outer edge; zero disables it." {
+      min 0
       unit perSecond
       tunable true
     }
@@ -29,7 +44,7 @@
       min 0
       tunable true
     }
-    field buoyancy f32 "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink)." {
+    field buoyancy f32 "Upward force per displaced cubic metre. Planar convex hulls and oriented boxes use clipped volume; other shapes approximate the immersed fraction. Zero disables lift." {
       default 9.81
       min 0
       tunable true
@@ -43,7 +58,7 @@
   }
 
   component WaterLine {
-    doc "2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it."
+    doc "2D shallow water: a width × depth pool at the entity's y, centred on its x. Waves travel at sqrt(gravity × depth), with CFL substeps and reflecting walls. Bodies crossing splash it and float by buoyancy; og.Water2D draws it."
     field width f32 "The pool's width." {
       default 12
       min 0.1
@@ -56,26 +71,15 @@
       unit m
       tunable true
     }
-    field columns u32 "Springs along the surface." {
+    field columns u32 "Grid points along the surface." {
       default 96
       min 4
       max 512
     }
-    field tension f32 "How hard each spring pulls back to rest." {
-      default 60
-      min 0
-      tunable true
-    }
-    field damping f32 "How fast a spring's motion dies (0: never)." {
+    field damping f32 "Exponential horizontal momentum damping per second; zero preserves motion." {
       default 2.5
       min 0
       unit perSecond
-      tunable true
-    }
-    field spread f32 "How much of a spring's height its neighbours feel each pass (waves travel)." {
-      default 0.25
-      min 0
-      max 0.5
       tunable true
     }
     field splash f32 "How strongly crossing bodies splash." {
@@ -98,7 +102,7 @@
 
   component Buoyancy {
     aliases "bob on the sea, float on water, floating, buoyant hull"
-    doc "Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under."
+    doc "Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift."
     guide "physics §8"
     field waterDensity f32 "The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks." {
       default 2
@@ -151,7 +155,7 @@
     field height f32 "The surface over the point (world y), as it is drawn: og.physics.waterHeight's." {
       unit m
     }
-    field depth f32 "How far the point is under the surface; negative over it." {
+    field depth f32 "How far the enclosed point is below the surface." {
       unit m
     }
     field velocity Vector3 "How the water moves at the surface there: a sea's waves carrying it round, a river's current, a splash's rise; zero on still water." {
@@ -164,7 +168,7 @@
   }
 
   fn water {
-    doc "The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform."
+    doc "The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform."
     guide "physics §8"
     aliases "is underwater, water depth, in water, swimming, water current, flow velocity, wave normal, water at point"
     param world World "The world."
@@ -180,4 +184,3 @@
     param z f32 "World z, in metres (3D)."
     returns Result.f32 "Refused for an entity without water; outside the water, its rest level."
   }
-

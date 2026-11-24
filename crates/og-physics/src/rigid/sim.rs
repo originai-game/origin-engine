@@ -150,6 +150,8 @@ pub(crate) struct SimExt {
     /// The bodies near each og.Water's surface and which side of it they
     /// were on ([`crate::water::Under`]).
     pub(crate) under: crate::water::Under,
+    /// Derived local hull samples, invalidated by collider geometry, never saved.
+    pub(crate) water_hulls: super::ext::HullCache,
     /// Snapshot of the last tick's `og.ContactHook` map, so a query or an
     /// origin shift (`Sim::shift`) preserves one-way/ignore filtering when
     /// refreshing sleeping contacts.
