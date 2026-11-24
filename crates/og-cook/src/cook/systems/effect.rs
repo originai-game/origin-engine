@@ -200,15 +200,22 @@ pub(crate) static EFFECT: KindDef = KindDef {
 
 fn plan_effect<'a>(
     cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
     let text = String::from_utf8_lossy(&s.bytes);
     let refs: Vec<String> = og_bundle::effect::effect_references(&text)
         .into_iter()
+        .inspect(|r| {
+            parsed_refs
+                .entry(s.rel.clone())
+                .or_default()
+                .insert(r.clone());
+        })
         .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
         .collect();
     let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);

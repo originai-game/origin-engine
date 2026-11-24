@@ -7,22 +7,6 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
-/// Every asset id the file names with whether it is known, so the stamp
-/// moves when one appears or goes (an unparsable file stamps on its bytes).
-pub(crate) fn stamp_inputs(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
-    let text = String::from_utf8_lossy(&s.bytes);
-    let Ok(v) = og_bundle::vfx::parse_vfx(&text) else {
-        return String::new();
-    };
-    let r = v.references();
-    [r.emitters, r.effects, r.models, r.sounds, r.flipbooks]
-        .concat()
-        .iter()
-        .map(|id| format!("{id}={}", known(crate::runtime::asset_id(id))))
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 pub(crate) fn cook_vfx(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
@@ -93,13 +77,28 @@ pub(crate) static KINDS: &[&KindDef] = &[&VFX];
 
 fn plan_vfx<'a>(
     cx: &Cx<'a>,
-    _state: &mut PlanState,
+    state: &mut PlanState,
     s: &'a Source,
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
     let Cx { known, .. } = *cx;
-    let st = stamp_inputs(s, &|id| known.contains(id));
+    let text = String::from_utf8_lossy(&s.bytes);
+    let st = if let Ok(v) = og_bundle::vfx::parse_vfx(&text) {
+        let r = v.references();
+        let entry = state.parsed_refs.entry(s.rel.clone()).or_default();
+        let mut lines = Vec::new();
+        for id in [r.emitters, r.effects, r.models, r.sounds, r.flipbooks].concat() {
+            entry.insert(id.clone());
+            lines.push(format!(
+                "{id}={}",
+                known.contains(crate::runtime::asset_id(&id))
+            ));
+        }
+        lines.join("\n")
+    } else {
+        String::new()
+    };
     let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
     outs.push((s.rel.clone(), format::Vfx::NAME, st, Box::new(VfxJob(s))));
 }

@@ -398,6 +398,7 @@ pub fn parse_effect_block(
     let mut edge = (0.0, [1.0; 4]);
     let mut flow_map: Option<EffectTexture> = None;
     let mut flow = (0.05, 0.5);
+    let mut has_shader = false;
     let mut params: Vec<ShaderParam> = Vec::new();
     let mut named: Vec<(usize, String, Vec<f32>)> = Vec::new();
     for e in &block.entries {
@@ -503,6 +504,7 @@ pub fn parse_effect_block(
                     .first()
                     .and_then(Value::as_str)
                     .ok_or_else(|| format!("line {line}: shader \"<asset id>\""))?;
+                has_shader = true;
                 if let Some((h, p)) =
                     shader(id).map_err(|r| format!("line {line}: shader {id}: {r}"))?
                 {
@@ -544,6 +546,9 @@ pub fn parse_effect_block(
             speed: flow.1,
         });
     }
+    if !has_shader && let Some((line, name, _)) = named.first() {
+        return Err(format!("line {line}: param `{name}` needs a `shader` line"));
+    }
     // Parameters by name: the shader's defaults, then the lines. A cook
     // that resolves no shader only checks their form.
     if m.shader.is_some() {
@@ -555,6 +560,12 @@ pub fn parse_effect_block(
                 .iter()
                 .position(|p| p.name == name)
                 .ok_or_else(|| format!("line {line}: the shader declares no parameter `{name}`"))?;
+            if i >= EFFECT_PARAMS {
+                return Err(format!(
+                    "line {line}: parameter `{name}` is at slot {}, past the {EFFECT_PARAMS} effect parameter slots",
+                    i + 1
+                ));
+            }
             let mut x = [0.0; 4];
             x[..v.len()].copy_from_slice(&v);
             m.params[i] = x;

@@ -499,6 +499,9 @@ pub fn emitter_references(text: &str) -> Vec<String> {
                 .iter()
                 .filter_map(|e| match e.key.as_str() {
                     "texture" | "array" => e.values.first(),
+                    "shape" if e.values.first().and_then(Value::as_word) == Some("mesh") => {
+                        e.values.get(1)
+                    }
                     "render" => e.values.get(1),
                     "subEmitter" => e.values.get(1),
                     "effect" | "field" => e.values.first(),

@@ -391,11 +391,14 @@ pub fn anim3(e: &El, ty: i32, k: &Kinds<'_>, ids: [i32; 4], d: Vec3) -> Option<A
             ease,
         })
     } else if ty == fcurve {
-        let c = FCurve::channels(
+        let mut c = FCurve::channels(
             e.at(k.fcurve).and_then(|b| b.child("FCurve")),
             &["X", "Y", "Z"],
             0.0,
         );
+        for (ch, def) in c.iter_mut().zip([d.x, d.y, d.z]) {
+            ch.default = def;
+        }
         let mut it = c.into_iter().map(Anim::Curve);
         [it.next()?, it.next()?, it.next()?]
     } else {

@@ -264,7 +264,8 @@ def preview(args):
                 fractions = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9]
                 n = min(range(6), key=lambda n: abs(fractions[n] * record["shownSeconds"] - record["impactSeconds"]))
             sheet = Image.open(record["sheet"]).convert("RGB")
-            sheet.crop(((n % 3) * W, (n // 3) * H, (n % 3 + 1) * W, (n // 3 + 1) * H)).save(out / "cover.png", optimize=True)
+            w, h = sheet.width // 3, sheet.height // 2
+            sheet.crop(((n % 3) * w, (n // 3) * h, (n % 3 + 1) * w, (n // 3 + 1) * h)).save(out / "cover.png", optimize=True)
 
         for e in assets["effects"]:
             record = records.get(e["path"])

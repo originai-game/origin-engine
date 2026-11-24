@@ -236,11 +236,14 @@ pub fn build(
     let r = engine::render(&fx.recipe);
     let n = r.frames.len();
     let (w, h) = (r.w, r.h);
+    if n == 0 || w == 0 || h == 0 || r.fps == 0 {
+        return Err("the vfx2d recipe rendered no frames".into());
+    }
     let looping = fx.looping.unwrap_or(r.looping);
     let duration = fx.duration.unwrap_or(n as f32 / r.fps as f32);
     let impact = match fx.impact {
         Some(t) => frame_at(t, n, duration, "impact")?,
-        None => r.impact,
+        None => r.impact.min(n - 1),
     };
     let mut events = vec![(impact, IMPACT.to_string())];
     for (t, name) in &fx.events {
@@ -254,13 +257,18 @@ pub fn build(
     }
     og_core::sort::sort_by_key(&mut events, |e| e.0);
     // The Forge's sheet: one row when it fits in 4096 texels.
-    let cols = if n as u32 * w <= 4096 {
+    let cols = if (n as u32).saturating_mul(w) <= 4096 {
         n as u32
     } else {
-        (f64::from(n as u32 * h) / f64::from(w)).sqrt().ceil() as u32
+        ((f64::from(n as u32 * h) / f64::from(w)).sqrt().ceil() as u32).clamp(1, n as u32)
     };
     let rows = (n as u32).div_ceil(cols);
-    let (tw, th) = (cols * w, rows * h);
+    let (tw, th) = (cols.saturating_mul(w), rows.saturating_mul(h));
+    if tw == 0 || th == 0 || tw > 8192 || th > 8192 {
+        return Err(format!(
+            "the packed vfx2d sheet ({tw}x{th}) exceeds the 8192x8192 sheet limit"
+        ));
+    }
     let mut sheet = vec![0u8; (tw * th * 4) as usize];
     let origin = |i: usize| ((i as u32 % cols) * w, (i as u32 / cols) * h);
     for (i, f) in r.frames.iter().enumerate() {
@@ -281,7 +289,11 @@ pub fn build(
     // The recipe's pivot is a canvas point from the top left; a sheet's
     // is from the bottom left.
     let pivot = |i: usize, d: f64| match fx.recipe.get("pivot") {
-        Some(json::Val::Arr(p)) => p.get(i).map_or(d, json::Val::num),
+        Some(json::Val::Arr(p)) => p
+            .get(i)
+            .map(json::Val::num)
+            .filter(|v| v.is_finite())
+            .unwrap_or(d),
         _ => d,
     };
     let (px, py) = (pivot(0, 0.5), 1.0 - pivot(1, 0.5));

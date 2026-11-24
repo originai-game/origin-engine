@@ -665,7 +665,10 @@ pub fn render(recipe: &Val) -> Rendered {
             };
             super::layers::draw(layer.ty, &mut c, l);
             if l.t("glow") {
-                c.dilate(min(4.0, round(l.n("glow", 0.0))), l.n("glowFalloff", 0.5));
+                let radius = round(l.n("glow", 0.0));
+                if radius.is_finite() && radius > 0.0 {
+                    c.dilate(min(4.0, radius), c01(l.n("glowFalloff", 0.5)));
+                }
             }
             paint(&heat, w, layer, li, &r, &mut color, &mut owner, &mut kind);
         }
@@ -718,7 +721,14 @@ fn paint(
     let l = layer.l;
     let ramp = &layer.ramp;
     let n = ramp.len();
+    if n == 0 {
+        return;
+    }
     let cut = l.n("cut", 0.1);
+    if !cut.is_finite() || cut >= 1.0 {
+        return;
+    }
+    let cut = cut.max(0.0);
     let dith = l.opt("dither").map_or(r.dither, Val::num);
     let gamma = l.n("gamma", 1.0);
     let under = l.s("blend") == Some("under");

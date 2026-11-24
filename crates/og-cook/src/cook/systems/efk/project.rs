@@ -118,6 +118,29 @@ pub enum Uv {
     Curve,
 }
 
+/// Alpha-cutoff erosion parameters (`AdvancedRendererCommonValues.AlphaCutoffParam`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct AlphaCutoff {
+    /// Threshold over the particle/mesh life (0..1).
+    pub threshold: Anim,
+    /// Glowing edge band width (0 off).
+    pub edge_threshold: f32,
+    /// Linear edge colour (0..1 RGB, alpha).
+    pub edge_color: [f32; 4],
+    pub edge_scaling: f32,
+}
+
+/// A local force field acting on particles (`LocationAbsValues`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum LocalForce {
+    /// Radial attraction (positive) or repulsion (negative) in units/frame².
+    Attractor { pos: Vec3, power: f32, radius: f32 },
+    /// Curl turbulence (`Power` in units/frame, spatial `Scale`).
+    Turbulence { power: f32, scale: f32 },
+    /// Drag coefficient per frame.
+    Drag(f32),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Render {
     /// As written, relative to the project file.
@@ -135,6 +158,16 @@ pub struct Render {
     pub material: i32,
     /// `ColorInheritType`: 0 not bound, 1 when created, 2 always.
     pub color_inherit: i32,
+    /// Soft particle depth fade distance in world units (`SoftParticleParams`).
+    pub soft_distance: Option<f32>,
+    /// Optional alpha mask texture path (`AlphaTextureParam`).
+    pub alpha_texture: Option<String>,
+    /// Optional UV distortion flow map path and intensity (`UVDistortionParam`).
+    pub uv_distortion: Option<(String, f32)>,
+    /// Optional fresnel falloff `(power, invert)` (`FalloffParam`).
+    pub falloff: Option<(f32, bool)>,
+    /// Optional alpha cutoff / dissolve erosion (`AlphaCutoffParam`).
+    pub alpha_cutoff: Option<AlphaCutoff>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -174,6 +207,8 @@ pub struct Node {
     pub spawn_rotates: bool,
     /// Units per frame².
     pub gravity: Vec3,
+    /// Parsed local force fields (attractors, turbulence, drag).
+    pub forces: Vec<LocalForce>,
     pub render: Render,
     pub color: Color,
     pub children: Vec<Node>,
@@ -371,7 +406,11 @@ fn node(e: &El, path: String) -> Result<Node, String> {
             [a.clone(), a.clone(), a]
         }
         6 => {
-            let c = value::FCurve::channels(sv.child("SingleFCurve"), &["S"], 1.0);
+            // Effekseer wraps SingleFCurve keys inside <SingleFCurve><FCurve><Keys><S>,
+            // while older projects placed <Keys> directly under <SingleFCurve>.
+            let single = sv.child("SingleFCurve");
+            let fc = single.and_then(|b| b.child("FCurve")).or(single);
+            let c = value::FCurve::channels(fc, &["S"], 1.0);
             let a = Anim::Curve(c.into_iter().next().unwrap_or_default());
             [a.clone(), a.clone(), a]
         }
@@ -421,15 +460,66 @@ fn node(e: &El, path: String) -> Result<Node, String> {
     // Forces in the effect's space.
     let la = e.child("LocationAbsValues").unwrap_or(&empty);
     let mut gravity = Vec3::ZERO;
+    let mut forces = Vec::new();
     match int(la, "Type", 0) {
         0 => {}
         1 => gravity = v3(la.at("Gravity/Gravity"), Vec3::ZERO),
-        2 => unread.push("attraction to the target".into()),
+        2 => {
+            let af = la.child("AttractiveForce").or(la.child("AttractionForces"));
+            let power = af.map_or(0.0, |b| f(b, "Force", 0.0));
+            let radius = af.map_or(0.0, |b| f(b, "MaxRange", 0.0)).max(0.0);
+            if power.abs() > 1e-6 {
+                forces.push(LocalForce::Attractor {
+                    pos: Vec3::ZERO,
+                    power,
+                    radius,
+                });
+            }
+        }
         t => unread.push(format!("absolute location type {t}")),
     }
-    if let Some(ff) = la.child("LocalForceField1").or(la.child("LocalForceField"))
-        && int(ff, "Type", 0) != 0
-    {
+    let mut unmapped_ff = false;
+    for key in [
+        "LocalForceField1",
+        "LocalForceField2",
+        "LocalForceField3",
+        "LocalForceField4",
+        "LocalForceField",
+    ] {
+        let Some(ff) = la.child(key) else {
+            continue;
+        };
+        let ty = int(ff, "Type", 0);
+        if ty == 0 {
+            continue;
+        }
+        let pos = v3(ff.child("Position"), Vec3::ZERO);
+        let power = f(ff, "Power", 1.0);
+        match ty {
+            1 => {
+                // Force: radial pull/push towards Position.
+                let radius = f(ff, "Falloff/MaxDistance", 0.0).max(0.0);
+                forces.push(LocalForce::Attractor { pos, power, radius });
+            }
+            3 => {
+                // Turbulence: curl noise field.
+                let tb = ff.child("Turbulence");
+                let scale = tb.map_or(1.0, |b| f(b, "FieldScale", 1.0)).max(1e-3);
+                forces.push(LocalForce::Turbulence { power, scale });
+            }
+            4 => {
+                // Drag.
+                forces.push(LocalForce::Drag(power.max(0.0)));
+            }
+            5 => {
+                // Gravity.
+                let g = v3(ff.at("Gravity/Gravity"), Vec3::new(0.0, -1.0, 0.0));
+                gravity += g * power;
+            }
+            _ => unmapped_ff = true,
+        }
+    }
+    if unmapped_ff {
         unread.push("local force fields".into());
     }
 
@@ -524,25 +614,96 @@ fn node(e: &El, path: String) -> Result<Node, String> {
     if material == 128 {
         unread.push("a custom material file".into());
     }
+    let mut soft_distance = None;
+    let mut alpha_texture = None;
+    let mut uv_distortion = None;
+    let mut falloff = None;
+    let mut alpha_cutoff = None;
     if let Some(a) = e
         .child("AdvancedRendererCommonValuesValues")
         .or(e.child("AdvancedRendererCommonValues"))
     {
-        for (k, what) in [
-            ("AlphaTextureParam", "an alpha texture"),
-            ("UVDistortionParam", "UV distortion"),
-            ("AlphaCutoffParam", "alpha cutoff"),
-            ("FalloffParam", "falloff"),
-            ("BlendTextureParams", "a blend texture"),
-        ] {
-            if a.child(k).is_some_and(|p| boolean(p, "Enabled", false)) {
-                unread.push(what.into());
+        if let Some(p) = a
+            .child("SoftParticleParams")
+            .filter(|p| boolean(p, "Enabled", false))
+        {
+            let d = value::num(p.child("DistanceFar"))
+                .or_else(|| value::num(p.child("Distance")))
+                .unwrap_or(1.0)
+                .max(0.0);
+            if d > 0.0 {
+                soft_distance = Some(d);
             }
         }
-        if a.child("SoftParticleParams")
+        if let Some(p) = a
+            .child("AlphaTextureParam")
+            .filter(|p| boolean(p, "Enabled", false))
+        {
+            if let Some(tex) = file_path(p, "Texture") {
+                alpha_texture = Some(tex);
+            } else {
+                unread.push("an alpha texture".into());
+            }
+        }
+        if let Some(p) = a
+            .child("UVDistortionParam")
+            .filter(|p| boolean(p, "Enabled", false))
+        {
+            if let Some(tex) = file_path(p, "Texture") {
+                let intensity = f(p, "Intensity", 1.0);
+                uv_distortion = Some((tex, intensity));
+            } else {
+                unread.push("UV distortion".into());
+            }
+        }
+        if let Some(p) = a
+            .child("FalloffParam")
+            .filter(|p| boolean(p, "Enabled", false))
+        {
+            let pow = f(p, "Pow", 1.0).max(0.1);
+            let begin_a = value::color(p.child("BeginColor"), [255.0; 4])[3];
+            let end_a = value::color(p.child("EndColor"), [255.0; 4])[3];
+            falloff = Some((pow, begin_a > end_a));
+        }
+        if let Some(p) = a
+            .child("AlphaCutoffParam")
+            .filter(|p| boolean(p, "Enabled", false))
+        {
+            let th = p.child("Threshold").unwrap_or(&empty);
+            let threshold = match int(th, "Type", 0) {
+                0 => Anim::Fixed(f(th, "Fixed/Threshold", 0.0).clamp(0.0, 1.0)),
+                1 => {
+                    let b = th.child("FourPointInterpolation").or(th.child("PVA"));
+                    Anim::Easing {
+                        s: rnd(b.and_then(|b| b.child("BeginThreshold")), 0.0),
+                        e: rnd(b.and_then(|b| b.child("EndThreshold")), 1.0),
+                        ease: Ease::LINEAR,
+                    }
+                }
+                2 => {
+                    let b = th.child("Easing");
+                    Anim::Easing {
+                        s: rnd(b.and_then(|b| b.child("Start")), 0.0),
+                        e: rnd(b.and_then(|b| b.child("End")), 1.0),
+                        ease: Ease::read(b),
+                    }
+                }
+                _ => Anim::Fixed(0.5),
+            };
+            let edge_threshold = f(p, "EdgeThreshold", 0.0).max(0.0);
+            let edge_color = value::color(p.child("EdgeColor"), [255.0; 4]);
+            let edge_scaling = f(p, "EdgeColorScaling", 1.0).max(0.0);
+            alpha_cutoff = Some(AlphaCutoff {
+                threshold,
+                edge_threshold,
+                edge_color,
+                edge_scaling,
+            });
+        }
+        if a.child("BlendTextureParams")
             .is_some_and(|p| boolean(p, "Enabled", false))
         {
-            unread.push("soft particles".into());
+            unread.push("a blend texture".into());
         }
     }
     for (k, what) in [
@@ -715,6 +876,7 @@ fn node(e: &El, path: String) -> Result<Node, String> {
         spawn,
         spawn_rotates,
         gravity,
+        forces,
         render: Render {
             texture,
             blend,
@@ -725,6 +887,11 @@ fn node(e: &El, path: String) -> Result<Node, String> {
             distortion,
             material,
             color_inherit: int(rc, "ColorInheritType", 0),
+            soft_distance,
+            alpha_texture,
+            uv_distortion,
+            falloff,
+            alpha_cutoff,
         },
         color,
         children: children(e, &path)?,

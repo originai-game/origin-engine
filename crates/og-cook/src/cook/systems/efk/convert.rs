@@ -12,7 +12,7 @@
 
 use super::curve;
 use super::glb;
-use super::project::{Draw, Node, Project, Rotation, Spawn, Uv};
+use super::project::{AlphaCutoff, Draw, LocalForce, Node, Project, Rotation, Spawn, Uv};
 use super::value::{Anim, Color, Rng, at3};
 use glam::{Mat3, Quat, Vec3};
 use std::fmt::Write as _;
@@ -142,6 +142,21 @@ fn spin_z(r: &Rotation, life: f32) -> (Rng, Rng) {
     }
 }
 
+/// Degrees per second a mesh node turns about x, y, z.
+fn spin_xyz(r: &Rotation, life: f32) -> Vec3 {
+    match r {
+        Rotation::Euler(a) => {
+            Vec3::new(
+                a[0].rate(life).c(),
+                a[1].rate(life).c(),
+                a[2].rate(life).c(),
+            ) * FPS
+        }
+        Rotation::Axis { axis, angle } => axis.normalize_or(Vec3::Y) * (angle.rate(life).c() * FPS),
+        _ => Vec3::ZERO,
+    }
+}
+
 fn count(n: &Node) -> Option<u32> {
     n.max_generation
 }
@@ -263,13 +278,18 @@ impl Ctx<'_> {
     /// The texture's asset id and its size in pixels, or a finding.
     fn texture(&mut self, node: &Node) -> Option<(String, Option<[f32; 2]>)> {
         let p = node.render.texture.clone()?;
-        let Some(bytes) = (self.links.read)(&p) else {
+        self.texture_path(node, &p)
+    }
+
+    /// Resolves and registers a project-relative texture path, or records a finding.
+    fn texture_path(&mut self, node: &Node, p: &str) -> Option<(String, Option<[f32; 2]>)> {
+        let Some(bytes) = (self.links.read)(p) else {
             self.find(node, format!("texture not found: {p}"));
             return None;
         };
-        let id = (self.links.asset)(&p);
+        let id = (self.links.asset)(p);
         if !self.textures.iter().any(|t| t.1 == id) {
-            self.textures.push((p, id.clone()));
+            self.textures.push((p.to_string(), id.clone()));
         }
         Some((id, png_size(&bytes)))
     }
@@ -758,9 +778,29 @@ fn effect_file(
     alpha: Option<&[(f32, [f32; 4])]>,
     blend: &str,
     polar: bool,
+    life: f32,
 ) -> Option<String> {
     let uv = uv_block(cx, node, texture.and_then(|t| t.1));
-    if !mesh && uv.is_none() {
+    let alpha_tex = node
+        .render
+        .alpha_texture
+        .as_deref()
+        .and_then(|p| cx.texture_path(node, p))
+        .map(|(id, _)| id);
+    let flow_tex = node
+        .render
+        .uv_distortion
+        .as_ref()
+        .and_then(|(p, intensity)| {
+            cx.texture_path(node, p)
+                .map(|(id, _)| (id, (*intensity * 0.05).clamp(0.005, 0.25)))
+        });
+    let has_advanced = alpha_tex.is_some()
+        || flow_tex.is_some()
+        || node.render.falloff.is_some()
+        || node.render.alpha_cutoff.is_some()
+        || (mesh && node.render.soft_distance.is_some());
+    if !mesh && uv.is_none() && !has_advanced {
         return None;
     }
     let mut s = String::from("type effect\nversion 1\n---\n");
@@ -770,6 +810,60 @@ fn effect_file(
     let polar_line = if polar { "  polar true\n" } else { "" };
     if !name.is_empty() || !body.is_empty() || !polar_line.is_empty() {
         let _ = writeln!(s, "main{name} rgba {{\n{body}{polar_line}}}");
+    }
+    if let Some(id) = alpha_tex {
+        let _ = writeln!(s, "mask \"{id}\" alpha");
+    }
+    if let Some((id, strength)) = flow_tex {
+        let _ = writeln!(s, "flowMap \"{id}\"");
+        let _ = writeln!(s, "flow {} 0.5", n(strength));
+    }
+    if let Some((pow, invert)) = node.render.falloff {
+        let _ = writeln!(
+            s,
+            "fresnel {} 1{}",
+            n(pow),
+            if invert { " invert" } else { "" }
+        );
+    }
+    if mesh && let Some(d) = node.render.soft_distance {
+        let _ = writeln!(s, "softDepth {}", n(d.max(0.0)));
+    }
+    if let Some(AlphaCutoff {
+        threshold,
+        edge_threshold,
+        edge_color,
+        edge_scaling,
+    }) = &node.render.alpha_cutoff
+    {
+        let l = life.max(1.0);
+        if threshold.is_fixed() {
+            let _ = writeln!(s, "erosion {}", n(threshold.at(0.0, l).clamp(0.0, 1.0)));
+        } else {
+            let keys = curve::keys(
+                |t| [threshold.at(t * l, l).clamp(0.0, 1.0)],
+                &[],
+                og_render_data::MAX_CURVE_KEYS,
+                0.01,
+            );
+            if keys.len() > 1 && !curve::flat(&keys, 1e-3) {
+                let _ = writeln!(s, "erosion curve {}", curve_line(&keys));
+            } else {
+                let _ = writeln!(s, "erosion {}", n(keys[0].1[0]));
+            }
+        }
+        s.push_str("erosionSoftness 0.05\n");
+        if *edge_threshold > 0.0 {
+            let r = linear(edge_color[0]) * edge_scaling;
+            let g = linear(edge_color[1]) * edge_scaling;
+            let b = linear(edge_color[2]) * edge_scaling;
+            let _ = writeln!(
+                s,
+                "erosionEdge {} {}",
+                n(*edge_threshold),
+                ns(&[r, g, b, edge_color[3]])
+            );
+        }
     }
     if let Some(keys) = alpha {
         let a = keys.iter().map(|k| k.1[3]).fold(0.0, f32::max).max(1e-4);
@@ -897,8 +991,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
                     "a ring whose thickness changes over its life: its middle thickness kept",
                 );
             }
-            let fr = colors.len() / 2;
-            let at = colors.get(fr).map_or(0.0, |k| k.0) * life;
+            let at = mid * life;
             let lin = |c: &Color| {
                 let c = c.at(at, life);
                 [linear(c[0]), linear(c[1]), linear(c[2]), c[3]]
@@ -974,9 +1067,10 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         Some(&colors),
         blend,
         false,
+        life * share,
     )
     .expect("a mesh's effect");
-    let (_, spin) = spin_z(&node.rotation, life * share);
+    let spin = spin_xyz(&node.rotation, life * share);
     let c0 = colors.iter().fold([0.0f32; 4], |m, k| {
         // The brightest key: the colour the alpha curve scales.
         if k.1[3] > m[3] { k.1 } else { m }
@@ -1060,8 +1154,8 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
         } else {
             let _ = writeln!(s, "  scale {}", n(base * scale[0].1[0]));
         }
-        if spin.c().abs() > 1e-3 {
-            let _ = writeln!(s, "  spin 0 0 {}", n(spin.c()));
+        if spin.length() > 1e-3 {
+            let _ = writeln!(s, "  spin {}", ns(&[spin.x, spin.y, spin.z]));
         }
         let _ = writeln!(s, "  color {}", ns(&col));
         let _ = writeln!(s, "  blend {blend}");
@@ -1272,7 +1366,22 @@ fn emitter(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule) {
                 .iter()
                 .map(|n| at3(&n.location, 0.0, n.life.c()) + spawn_offset(&n.spawn))
                 .sum();
-            arm.length() * p.scale < 1e-3
+            let p_sch = schedule(chain[a]);
+            let simultaneous_point = p_sch
+                .count
+                .is_some_and(|c| p_sch.interval * (c.saturating_sub(1) as f32) < 1.0)
+                && matches!(
+                    &chain[a].spawn,
+                    Spawn::Point(pt)
+                        if pt.iter().all(|r| r.h().abs() < 1e-4 && r.c().abs() < 1e-4)
+                )
+                && chain[a]
+                    .location
+                    .iter()
+                    .all(|l| l.is_fixed() && l.start().h().abs() < 1e-4)
+                && chain[a].gravity.length() < 1e-4
+                && chain[a].forces.is_empty();
+            arm.length() * p.scale < 1e-3 && !simultaneous_point
         });
     if let Some(a) = outer {
         let rest = p.nested / count(chain[a]).map_or(8.0, |c| c as f32);
@@ -1458,6 +1567,7 @@ fn emitter_file(
     let mut rot = Quat::from_rotation_arc(Vec3::Y, dir);
     let mut half = mo.start_half;
     let mut center = mo.start;
+    let mut emitted_shape = matches!(g.spawn, Spawn::Sphere { .. } | Spawn::Circle { .. });
     match &g.spawn {
         Spawn::Point(pt) => {
             half += Vec3::new(pt[0].h(), pt[1].h(), pt[2].h()).abs();
@@ -1479,9 +1589,11 @@ fn emitter_file(
         } => {
             let r = radius.c() * s;
             let (a0, a1) = (start.c(), end.c());
+            let closed = (a1 - a0).abs() >= 359.0;
+            let denom = if closed { 8.0 } else { 7.0 };
             let pts: Vec<String> = (0..8)
                 .map(|i| {
-                    let a = (a0 + (a1 - a0) * i as f32 / 8.0).to_radians();
+                    let a = (a0 + (a1 - a0) * i as f32 / denom).to_radians();
                     let (sn, cs) = og_core::math::sin_cos(a);
                     let v = match axis {
                         0 => Vec3::new(0.0, sn * r, cs * r),
@@ -1493,7 +1605,6 @@ fn emitter_file(
                     ns(&[v.x, v.y, v.z])
                 })
                 .collect();
-            let closed = (a1 - a0).abs() >= 359.0;
             let _ = writeln!(
                 e,
                 "shape spline {}{}",
@@ -1510,12 +1621,30 @@ fn emitter_file(
         Spawn::Line { from, to } => {
             let a = Vec3::new(from[0].c(), from[1].c(), from[2].c());
             let b = Vec3::new(to[0].c(), to[1].c(), to[2].c());
-            center += (a + b) * 0.5;
-            half += ((b - a) * 0.5).abs();
+            let line_safe = mo.start_half.length() <= 1e-4
+                && (b - a).length() > 1e-4
+                && (speed[1] * so < 1e-3
+                    || spread >= 179.0
+                    || g.spawn_rotates
+                    || (b - a).normalize_or_zero().dot(dir).abs() > 0.95);
+            if line_safe {
+                let pa = rot.inverse() * (a * s);
+                let pb = rot.inverse() * (b * s);
+                let _ = writeln!(
+                    e,
+                    "shape spline {}  {}",
+                    ns(&[pa.x, pa.y, pa.z]),
+                    ns(&[pb.x, pb.y, pb.z])
+                );
+                emitted_shape = true;
+            } else {
+                center += (a + b) * 0.5;
+                half += ((b - a) * 0.5).abs();
+            }
         }
         Spawn::Model => {}
     }
-    if !matches!(g.spawn, Spawn::Sphere { .. } | Spawn::Circle { .. }) {
+    if !emitted_shape {
         if half.length() > 1e-4 {
             let h = (rot.inverse() * half).abs() * s;
             let _ = writeln!(
@@ -1626,6 +1755,50 @@ fn emitter_file(
         // In the simulation's (world) space: turned as the node's parents are.
         let gl = p.rot * gravity;
         let _ = writeln!(e, "gravity {}", ns(&[gl.x, gl.y, gl.z]));
+    } else {
+        e.push_str("gravity 0 0 0\n");
+    }
+    let mut drag_sum = 0.0f32;
+    let mut curl_emitted = false;
+    let mut attractors = 0usize;
+    for m in &chain[p.generator..] {
+        for f in &m.forces {
+            match f {
+                LocalForce::Drag(d) => drag_sum += *d,
+                LocalForce::Turbulence { power, scale } => {
+                    if !curl_emitted && power.abs() > 1e-4 {
+                        let _ = writeln!(
+                            e,
+                            "field curl {} {} 0.2",
+                            n(*power * FPS * so),
+                            n(1.0 / scale.max(0.1))
+                        );
+                        curl_emitted = true;
+                    }
+                }
+                LocalForce::Attractor { pos, power, radius } => {
+                    if attractors < og_render_data::MAX_ATTRACTORS && power.abs() > 1e-4 {
+                        let ap = rot.inverse() * ((*pos - center) * s);
+                        let strength = *power * FPS * FPS * so;
+                        let rad = *radius * s;
+                        if rad > 1e-3 {
+                            let _ = writeln!(
+                                e,
+                                "attractor {} {}",
+                                ns(&[ap.x, ap.y, ap.z, strength]),
+                                n(rad)
+                            );
+                        } else {
+                            let _ = writeln!(e, "attractor {}", ns(&[ap.x, ap.y, ap.z, strength]));
+                        }
+                        attractors += 1;
+                    }
+                }
+            }
+        }
+    }
+    if drag_sum > 1e-4 {
+        let _ = writeln!(e, "drag {}", n(drag_sum * FPS));
     }
     if drawn {
         let blend = blend(cx, node, false);
@@ -1637,6 +1810,9 @@ fn emitter_file(
             }
         }
         let _ = writeln!(e, "blend {blend}");
+        if let Some(d) = node.render.soft_distance {
+            let _ = writeln!(e, "softDistance {}", n(d.max(0.0)));
+        }
         if let Some(d) = node.render.distortion {
             let _ = writeln!(e, "distortion {}", n((d * 0.02).clamp(0.002, 0.1)));
         }
@@ -1649,6 +1825,7 @@ fn emitter_file(
             None,
             blend,
             false,
+            lc,
         ) {
             let _ = writeln!(e, "effect \"{fx}\"");
         }
@@ -1711,6 +1888,7 @@ fn trail(cx: &mut Ctx<'_>, chain: &[&Node]) {
         None,
         blend,
         false,
+        life,
     );
     // How long it lays points: its generator's span, else its life.
     let span = match sch.count {
