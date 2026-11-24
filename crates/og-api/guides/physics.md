@@ -196,7 +196,7 @@ Both are kinematic: they slide, step and snap by their own settings, push
 dynamic bodies they walk into and ride the platform they stand on. Give the
 entity a capsule (CharacterController) or a box or capsule
 (PlatformerController), set the input fields every tick from one system,
-and read the written fields after the step.
+and read the written fields after the step. For walking, set CharacterController's `up` to the desired up axis (usually `{ x: 0, y: 1, z: 0 }`); zero leaves grounded movement off.
 
 ```ts
 c.move = { x: stick.x * 6, y: 0, z: stick.y * 6 };
@@ -222,11 +222,7 @@ A knock-back, a spring or a recoil is `addVelocity`, taken on the next step:
 `{ x: away * 6, y: 7 }` with `run` 0 for its few ticks. An upward y leaves
 the ground.
 
-Pushing: each tick the bodies a character walks into share an impulse of at
-most `pushStrength` times the tick's length. With the default 1000 N a box
-of a few kilograms is shoved at the character's speed, and a tonne on the
-ground does not move; set crates' real mass (og.RigidBody.mass) so their
-weight tells.
+Pushing: set the controller's `mass` in kg; its zero default pushes nothing. Each tick side contacts share an impulse budget of `pushStrength` times dt, using the controller's mass and the body's contact-point effective mass. Standing applies the controller's own weight at its foot contact. Set crates' real mass (og.RigidBody.mass) so their weight tells; `pushBodies` false or `pushStrength` zero disables all pushing.
 
 og.CharacterEvent is read the tick after: a jump pressed in tick T moves the
 character in T and its CHARACTER_JUMPED arrives in T + 1. Drive dust,

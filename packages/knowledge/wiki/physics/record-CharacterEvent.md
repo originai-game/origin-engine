@@ -13,16 +13,16 @@ Token `og.CharacterEvent`, registered under the schema name `og.CharacterEvent`;
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `entity` | `Entity` | `0` | — | — | — | The character. |
-| `kind` | `number` | `0` | 0 … 6 | — | — | CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6. |
+| `kind` | `number` | `0` | 0 … 7 | — | — | CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6, CRUSHED 7. |
 | `speed` | `number` | `0` | — | `mps` | — | The vertical speed at the moment (a landing's impact speed is negative). |
 
 ```ogt
 event CharacterEvent {
   doc "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1."
   field entity Entity "The character."
-  field kind u32 "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6." {
+  field kind u32 "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6, CRUSHED 7." {
     min 0
-    max 6
+    max 7
   }
   field speed f32 "The vertical speed at the moment (a landing's impact speed is negative)." {
     unit mps
@@ -30,4 +30,4 @@ event CharacterEvent {
 }
 ```
 
-<sub>Module `physics` line 828</sub>
+<sub>Module `physics` line 897</sub>

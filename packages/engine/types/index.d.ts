@@ -16191,7 +16191,75 @@ export interface Joint {
  */
 export interface CharacterController {
   /**
-   * The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick.
+   * Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing.
+   *
+   * @range 0..
+   * @unit kg (kilograms)
+   */
+  mass: number;
+  /**
+   * Velocity added once next step, then cleared: knockback or a spring.
+   *
+   * @unit mps (metres per second)
+   */
+  addVelocity: Vector3;
+  /**
+   * Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity.
+   */
+  up: Vector3;
+  /**
+   * Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  jumpBuffer: number;
+  /**
+   * Share of supporting platform velocity retained on leaving it; zero inherits none.
+   *
+   * @range 0..1
+   */
+  platformInherit: number;
+  /**
+   * Written: unconsumed jump buffer time.
+   *
+   * @readonly written by the engine
+   */
+  readonly buffer: number;
+  /**
+   * Written: retained inertia from airborne vertical motion, knockback and platforms.
+   *
+   * @readonly written by the engine
+   */
+  readonly inheritedVelocity: Vector3;
+  /**
+   * Written: supporting collider parent body, including compound platforms.
+   *
+   * @readonly written by the engine
+   */
+  readonly groundBody: Entity;
+  /**
+   * Written: supporting contact point in world space.
+   *
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly groundPoint: Vector3;
+  /**
+   * Written: supporting frame position at the last controller move.
+   *
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly groundPosition: Vector3;
+  /**
+   * Written: supporting frame rotation at the last controller move.
+   *
+   * @readonly written by the engine
+   */
+  readonly groundQuaternion: Quaternion;
+  /**
+   * The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick.
    *
    * @unit mps (metres per second)
    */
@@ -16277,7 +16345,7 @@ export interface CharacterController {
    */
   pushBodies: boolean;
   /**
-   * The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does.
+   * Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does.
    * See `physics §6`.
    *
    * @default 1000
@@ -16348,6 +16416,70 @@ export interface CharacterController {
  * The value of the `PlatformerController` component (token `og.PlatformerController`).
  */
 export interface PlatformerController {
+  /**
+   * Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing.
+   *
+   * @range 0..
+   * @unit kg (kilograms)
+   */
+  mass: number;
+  /**
+   * Share of supporting platform velocity retained on leaving it; zero inherits none.
+   *
+   * @range 0..1
+   */
+  platformInherit: number;
+  /**
+   * Seconds a wall jump remains available after leaving the wall; zero disables it.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  wallCoyoteTime: number;
+  /**
+   * Written: wall coyote time remaining.
+   *
+   * @readonly written by the engine
+   */
+  readonly wallCoyote: number;
+  /**
+   * Written: last contacted wall side, for wall coyote time.
+   *
+   * @readonly written by the engine
+   */
+  readonly lastWall: number;
+  /**
+   * Written: supporting collider parent body.
+   *
+   * @readonly written by the engine
+   */
+  readonly groundBody: Entity;
+  /**
+   * Written: supporting contact point in world space.
+   *
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly groundPoint: Vector3;
+  /**
+   * Written: supporting frame position at the last controller move.
+   *
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly groundPosition: Vector3;
+  /**
+   * Written: supporting frame rotation at the last controller move.
+   *
+   * @readonly written by the engine
+   */
+  readonly groundQuaternion: Quaternion;
+  /**
+   * Written: only this one-way entity is ignored until the character bounds clear it; replaces dropTime.
+   *
+   * @readonly written by the engine
+   */
+  readonly droppingThrough: Entity;
   /**
    * The run input, -1 (left) to 1 (right). Set it every tick.
    *
@@ -16638,12 +16770,6 @@ export interface PlatformerController {
    */
   readonly wallLock: number;
   /**
-   * Written: seconds one-way platforms stay passable after dropping through.
-   *
-   * @readonly written by the engine
-   */
-  readonly dropTime: number;
-  /**
    * Written: `jump` as the last step saw it.
    *
    * @readonly written by the engine
@@ -16675,6 +16801,9 @@ export declare const CHARACTER_LEFT_GROUND: 5;
 /** `CharacterEvent.kind`: hit a ceiling while rising. */
 export declare const CHARACTER_BUMPED: 6;
 
+/** `CharacterEvent.kind`: opposing solid surfaces crushed the character. */
+export declare const CHARACTER_CRUSHED: 7;
+
 /**
  * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1.
  *
@@ -16684,9 +16813,9 @@ export interface CharacterEvent {
   /** The character. */
   readonly entity: Entity;
   /**
-   * CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6.
+   * CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6, CRUSHED 7.
    *
-   * @range 0..6
+   * @range 0..7
    */
   readonly kind: number;
   /**
@@ -16696,6 +16825,7 @@ export interface CharacterEvent {
    */
   readonly speed: number;
 }
+
 
 /**
  * Which wheels the engine drives: Vehicle.drive.
@@ -38723,12 +38853,12 @@ export declare namespace og {
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
    */
-  const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
+  const CharacterController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly addVelocity: FieldSpec<"Vector3">; readonly up: FieldSpec<"Vector3">; readonly jumpBuffer: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly inheritedVelocity: FieldSpec<"Vector3">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
    * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
    */
-  const PlatformerController: ComponentType<{ readonly run: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly addVelocity: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayMask: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly dropTime: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
+  const PlatformerController: ComponentType<{ readonly mass: FieldSpec<"f32">; readonly platformInherit: FieldSpec<"f32">; readonly wallCoyoteTime: FieldSpec<"f32">; readonly wallCoyote: FieldSpec<"f32">; readonly lastWall: FieldSpec<"i32">; readonly groundBody: FieldSpec<"Entity">; readonly groundPoint: FieldSpec<"Vector3">; readonly groundPosition: FieldSpec<"Vector3">; readonly groundQuaternion: FieldSpec<"Quaternion">; readonly droppingThrough: FieldSpec<"Entity">; readonly run: FieldSpec<"f32">; readonly jump: FieldSpec<"bool">; readonly down: FieldSpec<"bool">; readonly addVelocity: FieldSpec<"Vector2">; readonly maxSpeed: FieldSpec<"f32">; readonly acceleration: FieldSpec<"f32">; readonly deceleration: FieldSpec<"f32">; readonly airAcceleration: FieldSpec<"f32">; readonly airDeceleration: FieldSpec<"f32">; readonly jumpHeight: FieldSpec<"f32">; readonly timeToApex: FieldSpec<"f32">; readonly fallGravity: FieldSpec<"f32">; readonly jumpCut: FieldSpec<"f32">; readonly apexGravity: FieldSpec<"f32">; readonly apexThreshold: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly jumpBuffer: FieldSpec<"f32">; readonly airJumps: FieldSpec<"u32">; readonly wallJumps: FieldSpec<"bool">; readonly wallSlideSpeed: FieldSpec<"f32">; readonly wallJump: FieldSpec<"Vector2">; readonly wallJumpLock: FieldSpec<"f32">; readonly oneWayMask: FieldSpec<"u32">; readonly cornerCorrection: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly onWall: FieldSpec<"i32">; readonly facing: FieldSpec<"i32">; readonly velocity: FieldSpec<"Vector3">; readonly jumping: FieldSpec<"bool">; readonly airJumpsLeft: FieldSpec<"u32">; readonly coyote: FieldSpec<"f32">; readonly buffer: FieldSpec<"f32">; readonly wallLock: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, PlatformerController>;
   /**
    * Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1.
    */
@@ -38798,6 +38928,17 @@ export declare namespace og {
    * See `physics`.
    */
   namespace physics {
+    /**
+     * Resize a character capsule after checking headroom and the final volume. Keeps its feet fixed by adjusting Collider.offset, preserves body velocity and joints, and returns false without changing anything when blocked. Works in both physics profiles, inside a system or between ticks; inside a system read Transform, Parent and the controller and write Collider.
+     * See `physics §6`.
+     *
+     * @param world The world.
+     * @param entity An entity with CharacterController or PlatformerController and a capsule Collider.
+     * @param height New cylindrical segment height (as Collider.height), excluding caps; finite and >= 0.
+     * @param radius New capsule radius; finite and > 0.
+     * @returns True when resized, false when blocked; refused for invalid sizes or a non-capsule/non-controller entity.
+     */
+    function resizeCharacter(world: World, entity: Entity, height: number, radius: number): Result<boolean>;
     /**
      * The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform.
      * See `physics §8`.

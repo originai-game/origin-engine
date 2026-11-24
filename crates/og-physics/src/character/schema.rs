@@ -2,7 +2,7 @@
 //! og.PlatformerController, their events) and of ragdolls.
 
 use og_core::Reflect;
-use og_core::glam::{Vec2, Vec3};
+use og_core::glam::{Quat, Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 
 /// A kinematic character (3D, or top-down 2D): the entity's capsule (or any
@@ -19,7 +19,40 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.CharacterController")]
 pub struct CharacterController {
-    /// The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.
+    /// Virtual mass for pushing and weight; zero pushes nothing.
+    #[reflect(min = 0, unit = "kg")]
+    pub mass: f32,
+    /// Velocity added once next tick, then cleared (knockback or a spring).
+    #[reflect(name = "addVelocity", unit = "m/s")]
+    pub add_velocity: Vec3,
+    /// Up axis for walking, jumping and slopes. Zero disables grounded motion.
+    pub up: Vec3,
+    /// How long a jump press remains buffered; zero disables buffering.
+    #[reflect(name = "jumpBuffer", min = 0, unit = "s")]
+    pub jump_buffer: f32,
+    /// Share of platform velocity retained on leaving it; zero inherits none.
+    #[reflect(name = "platformInherit", min = 0, max = 1)]
+    pub platform_inherit: f32,
+    /// Written: unconsumed buffered jump time.
+    pub buffer: f32,
+    /// Written: retained airborne vertical, knockback and platform inertia.
+    #[reflect(name = "inheritedVelocity", unit = "m/s")]
+    pub inherited_velocity: Vec3,
+    /// Written: supporting collider's parent body (compound platforms).
+    #[reflect(name = "groundBody")]
+    pub ground_body: u64,
+    /// Written: last supporting point in world space.
+    #[reflect(name = "groundPoint", worldspace = "world")]
+    pub ground_point: Vec3,
+    /// Written: supporting frame at the last controller move.
+    #[reflect(name = "groundPosition", worldspace = "world")]
+    pub ground_position: Vec3,
+    /// Written: supporting frame rotation at the last controller move.
+    #[reflect(name = "groundQuaternion")]
+    pub ground_quaternion: Quat,
+    /// Wanted world velocity across the ground; its up component is ignored
+    /// while walking, or used as a swimming stroke. With gravityScale or up
+    /// zero all components move freely. Set it every tick.
     #[reflect(name = "move", unit = "m/s")]
     pub movement: Vec3,
     /// Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time).
@@ -89,6 +122,17 @@ pub struct CharacterController {
 impl Default for CharacterController {
     fn default() -> Self {
         CharacterController {
+            mass: 0.0,
+            add_velocity: Vec3::ZERO,
+            up: Vec3::ZERO,
+            jump_buffer: 0.0,
+            platform_inherit: 0.0,
+            buffer: 0.0,
+            inherited_velocity: Vec3::ZERO,
+            ground_body: 0,
+            ground_point: Vec3::ZERO,
+            ground_position: Vec3::ZERO,
+            ground_quaternion: Quat::IDENTITY,
             movement: Vec3::ZERO,
             jump: false,
             jump_speed: 6.0,
@@ -113,8 +157,8 @@ impl Default for CharacterController {
     }
 }
 
-/// The controllers' `pushStrength` default (N): a body of a few kilograms
-/// is shoved at the controller's speed, one of a tonne on the ground holds.
+/// Default side-push force budget in N. A zero controller mass still
+/// disables pushing, regardless of this budget.
 pub const DEFAULT_PUSH_STRENGTH: f32 = 1000.0;
 
 /// A 2D platformer character (the 2D profile): run, jump and fall with
@@ -134,6 +178,36 @@ pub const DEFAULT_PUSH_STRENGTH: f32 = 1000.0;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.PlatformerController", version = 2)]
 pub struct PlatformerController {
+    /// Virtual mass for pushing and weight; zero pushes nothing.
+    #[reflect(min = 0, unit = "kg")]
+    pub mass: f32,
+    /// Share of platform velocity inherited on leaving it; zero inherits none.
+    #[reflect(name = "platformInherit", min = 0, max = 1)]
+    pub platform_inherit: f32,
+    /// How long a wall jump remains available after leaving a wall.
+    #[reflect(name = "wallCoyoteTime", min = 0, unit = "s")]
+    pub wall_coyote_time: f32,
+    /// Written: seconds of wall coyote time remaining.
+    #[reflect(name = "wallCoyote")]
+    pub wall_coyote: f32,
+    /// Written: the last wall's side, used during wall coyote time.
+    #[reflect(name = "lastWall")]
+    pub last_wall: i32,
+    /// Written: supporting collider's parent body.
+    #[reflect(name = "groundBody")]
+    pub ground_body: u64,
+    /// Written: last supporting point in world space.
+    #[reflect(name = "groundPoint", worldspace = "world")]
+    pub ground_point: Vec3,
+    /// Written: supporting frame at the last controller move.
+    #[reflect(name = "groundPosition", worldspace = "world")]
+    pub ground_position: Vec3,
+    /// Written: supporting frame rotation at the last controller move.
+    #[reflect(name = "groundQuaternion")]
+    pub ground_quaternion: Quat,
+    /// Written: only this one-way entity is ignored until its bounds clear.
+    #[reflect(name = "droppingThrough")]
+    pub dropping_through: u64,
     /// The run input, -1 (left) to 1 (right). Set it every tick.
     #[reflect(min = -1, max = 1)]
     pub run: f32,
@@ -275,9 +349,6 @@ pub struct PlatformerController {
     /// Written: seconds the run input stays locked after a wall jump.
     #[reflect(name = "wallLock")]
     pub wall_lock: f32,
-    /// Written: seconds one-way platforms stay passable after dropping through.
-    #[reflect(name = "dropTime")]
-    pub drop_time: f32,
     /// Written: `jump` as the last step saw it.
     #[reflect(name = "jumpWasHeld")]
     pub jump_was_held: bool,
@@ -288,6 +359,16 @@ pub struct PlatformerController {
 impl Default for PlatformerController {
     fn default() -> Self {
         PlatformerController {
+            mass: 0.0,
+            platform_inherit: 0.0,
+            wall_coyote_time: 0.0,
+            wall_coyote: 0.0,
+            last_wall: 0,
+            ground_body: 0,
+            ground_point: Vec3::ZERO,
+            dropping_through: 0,
+            ground_position: Vec3::ZERO,
+            ground_quaternion: Quat::IDENTITY,
             run: 0.0,
             jump: false,
             down: false,
@@ -327,7 +408,6 @@ impl Default for PlatformerController {
             coyote: 0.0,
             buffer: 0.0,
             wall_lock: 0.0,
-            drop_time: 0.0,
             jump_was_held: false,
             ground: 0,
         }
@@ -346,6 +426,8 @@ pub const CHARACTER_AIR_JUMPED: u32 = 4;
 pub const CHARACTER_LEFT_GROUND: u32 = 5;
 /// `CharacterEvent.kind`: hit a ceiling while rising.
 pub const CHARACTER_BUMPED: u32 = 6;
+/// `CharacterEvent.kind`: opposing solids crushed the character.
+pub const CHARACTER_CRUSHED: u32 = 7;
 
 /// Something a CharacterController or PlatformerController did this step:
 /// the hooks for dust, squash, sounds and camera kicks. Read the next tick.
@@ -354,8 +436,8 @@ pub const CHARACTER_BUMPED: u32 = 6;
 pub struct CharacterEvent {
     /// The character.
     pub entity: u64,
-    /// CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6.
-    #[reflect(min = 1, max = 6)]
+    /// CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6, CRUSHED 7.
+    #[reflect(min = 1, max = 7)]
     pub kind: u32,
     /// The vertical speed at the moment (a landing's impact speed is negative).
     #[reflect(unit = "m/s")]

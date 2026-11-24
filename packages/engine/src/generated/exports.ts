@@ -90,7 +90,7 @@ export const VehicleDrive = ((value = "rear" as Api.VehicleDrive, options) => sp
 export const VehicleModel = ((value = "arcade" as Api.VehicleModel, options) => spec("VehicleModel", value, options)) as typeof Api.VehicleModel;
 export const Simulation = ((value = "gameplay" as Api.Simulation, options) => spec("Simulation", value, options)) as typeof Api.Simulation;
 export const SoftBodyShape = ((value = "sphere" as Api.SoftBodyShape, options) => spec("SoftBodyShape", value, options)) as typeof Api.SoftBodyShape;
-export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS, QUERY_DYNAMIC, QUERY_FIXED, QUERY_KINEMATIC } from "./consts.ts";
+export { MAX_RAYCAST_HITS, LOCK_TRANSLATION_X, LOCK_TRANSLATION_Y, LOCK_TRANSLATION_Z, LOCK_ROTATION_X, LOCK_ROTATION_Y, LOCK_ROTATION_Z, PROFILE_2D, PROFILE_3D, CHARACTER_JUMPED, CHARACTER_LANDED, CHARACTER_WALL_JUMPED, CHARACTER_AIR_JUMPED, CHARACTER_LEFT_GROUND, CHARACTER_BUMPED, CHARACTER_CRUSHED, PIN_TOP, PIN_TOP_CORNERS, PIN_LEFT, PIN_TOP_RINGS, QUERY_DYNAMIC, QUERY_FIXED, QUERY_KINEMATIC } from "./consts.ts";
 
 // atmosphere
 export const CloudKind = ((value = "cumulus" as Api.CloudKind, options) => spec("CloudKind", value, options)) as typeof Api.CloudKind;

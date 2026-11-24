@@ -33112,6 +33112,17 @@ pub mod record {
     /// `CharacterController`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct CharacterController {
+        pub mass: f32,
+        pub add_velocity: Vec3,
+        pub up: Vec3,
+        pub jump_buffer: f32,
+        pub platform_inherit: f32,
+        pub buffer: f32,
+        pub inherited_velocity: Vec3,
+        pub ground_body: u64,
+        pub ground_point: Vec3,
+        pub ground_position: Vec3,
+        pub ground_quaternion: Quat,
         pub r#move: Vec3,
         pub jump: bool,
         pub jump_speed: f32,
@@ -33137,6 +33148,17 @@ pub mod record {
     impl Default for CharacterController {
         fn default() -> Self {
             Self {
+                mass: Default::default(),
+                add_velocity: Default::default(),
+                up: Default::default(),
+                jump_buffer: Default::default(),
+                platform_inherit: Default::default(),
+                buffer: Default::default(),
+                inherited_velocity: Default::default(),
+                ground_body: Default::default(),
+                ground_point: Default::default(),
+                ground_position: Default::default(),
+                ground_quaternion: Default::default(),
                 r#move: Default::default(),
                 jump: Default::default(),
                 jump_speed: 6.0_f32,
@@ -33168,6 +33190,17 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
+                mass: field(o, "mass", d.mass)?,
+                add_velocity: field(o, "addVelocity", d.add_velocity)?,
+                up: field(o, "up", d.up)?,
+                jump_buffer: field(o, "jumpBuffer", d.jump_buffer)?,
+                platform_inherit: field(o, "platformInherit", d.platform_inherit)?,
+                buffer: field(o, "buffer", d.buffer)?,
+                inherited_velocity: field(o, "inheritedVelocity", d.inherited_velocity)?,
+                ground_body: field(o, "groundBody", d.ground_body)?,
+                ground_point: field(o, "groundPoint", d.ground_point)?,
+                ground_position: field(o, "groundPosition", d.ground_position)?,
+                ground_quaternion: field(o, "groundQuaternion", d.ground_quaternion)?,
                 r#move: field(o, "move", d.r#move)?,
                 jump: field(o, "jump", d.jump)?,
                 jump_speed: field(o, "jumpSpeed", d.jump_speed)?,
@@ -33195,6 +33228,16 @@ pub mod record {
     /// `PlatformerController`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct PlatformerController {
+        pub mass: f32,
+        pub platform_inherit: f32,
+        pub wall_coyote_time: f32,
+        pub wall_coyote: f32,
+        pub last_wall: i32,
+        pub ground_body: u64,
+        pub ground_point: Vec3,
+        pub ground_position: Vec3,
+        pub ground_quaternion: Quat,
+        pub dropping_through: u64,
         pub run: f32,
         pub jump: bool,
         pub down: bool,
@@ -33234,7 +33277,6 @@ pub mod record {
         pub coyote: f32,
         pub buffer: f32,
         pub wall_lock: f32,
-        pub drop_time: f32,
         pub jump_was_held: bool,
         pub ground: u64,
     }
@@ -33242,6 +33284,16 @@ pub mod record {
     impl Default for PlatformerController {
         fn default() -> Self {
             Self {
+                mass: Default::default(),
+                platform_inherit: Default::default(),
+                wall_coyote_time: Default::default(),
+                wall_coyote: Default::default(),
+                last_wall: Default::default(),
+                ground_body: Default::default(),
+                ground_point: Default::default(),
+                ground_position: Default::default(),
+                ground_quaternion: Default::default(),
+                dropping_through: Default::default(),
                 run: Default::default(),
                 jump: Default::default(),
                 down: Default::default(),
@@ -33281,7 +33333,6 @@ pub mod record {
                 coyote: Default::default(),
                 buffer: Default::default(),
                 wall_lock: Default::default(),
-                drop_time: Default::default(),
                 jump_was_held: Default::default(),
                 ground: Default::default(),
             }
@@ -33295,6 +33346,16 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
+                mass: field(o, "mass", d.mass)?,
+                platform_inherit: field(o, "platformInherit", d.platform_inherit)?,
+                wall_coyote_time: field(o, "wallCoyoteTime", d.wall_coyote_time)?,
+                wall_coyote: field(o, "wallCoyote", d.wall_coyote)?,
+                last_wall: field(o, "lastWall", d.last_wall)?,
+                ground_body: field(o, "groundBody", d.ground_body)?,
+                ground_point: field(o, "groundPoint", d.ground_point)?,
+                ground_position: field(o, "groundPosition", d.ground_position)?,
+                ground_quaternion: field(o, "groundQuaternion", d.ground_quaternion)?,
+                dropping_through: field(o, "droppingThrough", d.dropping_through)?,
                 run: field(o, "run", d.run)?,
                 jump: field(o, "jump", d.jump)?,
                 down: field(o, "down", d.down)?,
@@ -33334,7 +33395,6 @@ pub mod record {
                 coyote: field(o, "coyote", d.coyote)?,
                 buffer: field(o, "buffer", d.buffer)?,
                 wall_lock: field(o, "wallLock", d.wall_lock)?,
-                drop_time: field(o, "dropTime", d.drop_time)?,
                 jump_was_held: field(o, "jumpWasHeld", d.jump_was_held)?,
                 ground: field(o, "ground", d.ground)?,
             })

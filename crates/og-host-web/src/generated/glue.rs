@@ -1584,6 +1584,11 @@ pub fn og_load_replay_completions(world: u32, completions: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_resize_character(world: u32, entity: f64, height: f64, radius: f64) -> String {
+    <Host as PhysicsApi>::og_physics_resize_character(&Host, world, entity, height, radius)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_water(world: u32, point: String) -> String {
     <Host as PhysicsApi>::og_physics_water(&Host, world, point)
 }

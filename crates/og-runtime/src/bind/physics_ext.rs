@@ -94,6 +94,65 @@ fn push(
     })()
 }
 
+pub fn og_physics_resize_character(
+    world: u32,
+    e: f64,
+    height: f64,
+    radius: f64,
+) -> Result<bool, String> {
+    let eng = engine(world)?;
+    let p = physics(&eng)?;
+    let e = entity(e)?;
+    if let Some(f) = running(world) {
+        // SAFETY: the frame is published while this system runs.
+        let ctx = unsafe { f.ctx() };
+        if ctx.get::<og_physics::CharacterController>(e).is_err()
+            && ctx.get::<og_physics::PlatformerController>(e).is_err()
+        {
+            return Err("resizeCharacter requires a character controller".into());
+        }
+        let t = ctx
+            .get::<og_physics::Transform>(e)
+            .map_err(|e| e.to_string())?;
+        let c = ctx
+            .get::<og_physics::Collider>(e)
+            .map_err(|e| e.to_string())?;
+        let (position, quaternion, scale) = og_core::math::world_pose(
+            e,
+            (t.position, t.quaternion, t.scale),
+            |e| {
+                ctx.get::<og_physics::Parent>(e)
+                    .ok()
+                    .filter(|p| p.entity != 0)
+                    .map(|p| Entity::from_bits(p.entity))
+            },
+            |e| {
+                ctx.get::<og_physics::Transform>(e)
+                    .ok()
+                    .map(|t| (t.position, t.quaternion, t.scale))
+            },
+        );
+        let frame = og_physics::Transform {
+            position,
+            quaternion,
+            scale,
+        };
+        let Some(c) = p
+            .tick_query()
+            .map_err(|e| e.to_string())?
+            .resized_character_capsule(e, frame, c, height as f32, radius as f32)
+            .map_err(|e| e.to_string())?
+        else {
+            return Ok(false);
+        };
+        ctx.set(e, c).map_err(|e| e.to_string())?;
+        Ok(true)
+    } else {
+        og_physics::resize_character(eng.world()?, &p, e, height as f32, radius as f32)
+            .map_err(|e| e.to_string())
+    }
+}
+
 pub fn og_physics_apply_force(
     world: u32,
     e: f64,

@@ -71,6 +71,9 @@ pub const CHARACTER_LEFT_GROUND: u32 = 5;
 /// `CharacterEvent.kind`: hit a ceiling while rising.
 pub const CHARACTER_BUMPED: u32 = 6;
 
+/// `CharacterEvent.kind`: opposing solid surfaces crushed the character.
+pub const CHARACTER_CRUSHED: u32 = 7;
+
 /// `Cloth.pins` bit: the whole top row is pinned.
 pub const PIN_TOP: u32 = 1;
 

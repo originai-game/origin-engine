@@ -1,34 +1,7 @@
 use super::*;
 
-/// Every body's pose at the start of the tick, by handle index (with the
-/// handle, so a slot reused by a rebuilt body is not mistaken for it): how
-/// far a platform moved this tick.
-#[derive(Default)]
-pub(crate) struct BodyPoses(Vec<Option<(rp::RigidBodyHandle, rp::Pose)>>);
-
-impl BodyPoses {
-    fn record(w: &rp::PhysicsWorld) -> BodyPoses {
-        let mut poses = Vec::new();
-        for (h, rb) in w.bodies.iter() {
-            let i = h.into_raw_parts().0 as usize;
-            if i >= poses.len() {
-                poses.resize(i + 1, None);
-            }
-            poses[i] = Some((h, *rb.position()));
-        }
-        BodyPoses(poses)
-    }
-
-    pub(crate) fn get(&self, h: rp::RigidBodyHandle) -> Option<&rp::Pose> {
-        match self.0.get(h.into_raw_parts().0 as usize)? {
-            Some((handle, pose)) if *handle == h => Some(pose),
-            _ => None,
-        }
-    }
-}
-
 /// Every body's linear and angular velocity before a substep, by handle
-/// index (with the handle, as [`BodyPoses`]): the motions the solver meets
+/// index (with the generation-bearing handle): the motions the solver meets
 /// a new contact with. A body a controller moves is taken at the velocity
 /// that carries it to its target, as rapier gives it inside the step.
 pub(crate) type Motions = Vec<Option<(rp::RigidBodyHandle, Vec3, Vec3)>>;
@@ -485,9 +458,6 @@ fn step_here(
     let sub_dt = dt / substeps as f32;
     let mut out = StepOut::default();
     let mut laps = Laps::start();
-    // Poses before this tick moved anything (game code teleporting
-    // kinematic platforms included): how far each body moved this tick.
-    let poses = BodyPoses::record(&sim.world);
     let asleep = sleep::asleep(sim);
     let handles = sync(settings, dt, scene, shared, sim)?;
     let pushes = std::mem::take(&mut shared.pushes);
@@ -542,7 +512,15 @@ fn step_here(
         let p = &sim.world.integration_parameters;
         p.dt / p.num_solver_iterations.max(1) as f32
     };
-    let controller_paths = pre_step_controllers(scene, settings, dt, shared, sim, &poses, &mut out)?;
+    let controller_paths =
+        pre_step_controllers(scene, settings, dt, shared, sim, &handles, &mut out)?;
+    // Controller impulses are already applied; preserve gentle pushes through
+    // the rest rule, just like the game's explicit impulses.
+    for e in &out.controller_impulses {
+        if let Some(&h) = handles.get(e) {
+            mark_forced(&mut had_force, &[h]);
+        }
+    }
     laps.lap(Phase::Controllers);
     for k in 0..substeps {
         for &(h, start, end) in &controller_paths {
@@ -645,12 +623,29 @@ fn step_here(
 /// Refresh queries without consuming Rapier's pending collision changes or
 /// contact events. The solver still observes all of them in its next step.
 pub(crate) fn refresh_controller_queries(w: &mut rp::PhysicsWorld) {
-    w.bodies.propagate_modified_body_positions_to_colliders(&mut w.colliders);
+    w.bodies
+        .propagate_modified_body_positions_to_colliders(&mut w.colliders);
     for (h, c) in w.colliders.iter() {
         if c.is_enabled() {
-            w.broad_phase.set_aabb(&w.integration_parameters, h, c.compute_aabb());
+            w.broad_phase
+                .set_aabb(&w.integration_parameters, h, c.compute_aabb());
         }
     }
+}
+
+/// Current supporting frame, for compound bodies and moved static colliders.
+pub(crate) fn support_pose(
+    sim: &Sim,
+    handles: &Handles<'_>,
+    body: u64,
+    collider: u64,
+) -> Option<rp::Pose> {
+    if let Some(&h) = handles.get(&body) {
+        return Some(*sim.world.bodies[h].position());
+    }
+    sim.statics
+        .get(&collider)
+        .map(|t| *sim.world.colliders[t.handle].position())
 }
 
 /// Publish one virtual character immediately, so the next character queries
@@ -660,15 +655,33 @@ pub(crate) fn write_controller_pose(sim: &mut Sim, handle: rp::RigidBodyHandle, 
     rb.set_position(at, false);
     rb.set_next_kinematic_position(at);
     let colliders = rb.colliders().to_vec();
+    sim.world
+        .bodies
+        .propagate_modified_body_positions_to_colliders(&mut sim.world.colliders);
     for h in colliders {
         sim.world.colliders[h].set_solver_groups(rp::InteractionGroups::new(
-            rp::Group::empty(), rp::Group::empty(), rp::InteractionTestMode::And,
+            rp::Group::empty(),
+            rp::Group::empty(),
+            rp::InteractionTestMode::And,
         ));
+        let c = &sim.world.colliders[h];
+        if c.is_enabled() {
+            sim.world
+                .broad_phase
+                .set_aabb(&sim.world.integration_parameters, h, c.compute_aabb());
+        }
     }
-    refresh_controller_queries(&mut sim.world);
 }
 
 type ControllerPath = (rp::RigidBodyHandle, rp::Pose, rp::Pose);
+
+/// A game-authored pose edit detaches saved support; it is not platform carry.
+/// New or rebuilt bodies have no tracked frame to inherit support from.
+pub(crate) fn controller_teleported(sim: &Sim, b: &Body) -> bool {
+    sim.bodies
+        .get(&b.entity.to_bits())
+        .is_none_or(|t| t.position != b.position || t.quaternion != b.quaternion)
+}
 
 /// The pre-step controller phase: sync has finished; every controller sees
 /// the current broad phase and publishes its pose before the next one moves.
@@ -678,18 +691,26 @@ fn pre_step_controllers(
     dt: f32,
     shared: &Shared,
     sim: &mut Sim,
-    poses: &BodyPoses,
+    handles: &Handles<'_>,
     out: &mut StepOut,
 ) -> Result<Vec<ControllerPath>> {
     refresh_controller_queries(&mut sim.world);
-    let starts: Vec<_> = scene.bodies.iter().filter(|b| b.control.is_some()).map(|b| {
-        let h = sim.bodies[&b.entity.to_bits()].handle;
-        (h, *sim.world.bodies[h].position())
-    }).collect();
+    let starts: Vec<_> = scene
+        .bodies
+        .iter()
+        .filter(|b| b.control.is_some())
+        .map(|b| {
+            let h = *handles.get(&b.entity.to_bits()).unwrap();
+            (h, *sim.world.bodies[h].position())
+        })
+        .collect();
     out.moved.resize(scene.bodies.len(), None);
-    ext::characters(scene, settings, dt, shared, sim, poses, out)?;
-    super::platformers(scene, settings, dt, sim, poses, out)?;
-    Ok(starts.into_iter().map(|(h, start)| (h, start, *sim.world.bodies[h].position())).collect())
+    ext::characters(scene, settings, dt, shared, sim, handles, out)?;
+    super::platformers(scene, settings, dt, sim, handles, out)?;
+    Ok(starts
+        .into_iter()
+        .map(|(h, start)| (h, start, *sim.world.bodies[h].position()))
+        .collect())
 }
 
 /// The hooks every collider of a hooked entity runs (og.ContactHook).

@@ -10,7 +10,7 @@
 //! each one's joint) hold what the profiles do differently.
 
 use super::mover::Mover;
-use super::sim::{BodyPoses, Sim};
+use super::sim::Sim;
 use super::{
     DIM, angvel, flat, heightfield_surface, joint_frame, pose, rp, surface_only, unangvel, unpose,
     unv, v,
@@ -26,10 +26,6 @@ use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
-
-pub(crate) fn entity_of(c: &rp::Collider) -> u64 {
-    c.user_data as u64
-}
 
 #[path = "rigid/air.rs"]
 mod air;

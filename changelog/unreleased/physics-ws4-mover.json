@@ -1,9 +1,40 @@
 {
+  "simulation": "changed",
   "breaking": [
     {
       "member": "physics controller stepping",
       "change": "Controllers move before rigid-body substeps, publish poses sequentially, and exclusively own dynamic pushing. Teleports no longer become kinematic sweeps.",
-      "fix": "Read controller and sensor results on the next game tick as before; set pushBodies and pushStrength explicitly for virtual pushing."
+      "fix": "Read controller and sensor results on the next game tick as before; set pushBodies, mass and pushStrength explicitly for virtual pushing."
+    },
+    {
+      "member": "CharacterController.mass, PlatformerController.mass, pushBodies, pushStrength",
+      "change": "Dynamic pushing uses virtual controller mass, contact-point effective mass and torque, with a shared pushStrength impulse budget. Standing applies controller weight at the support point. Both new mass fields default to zero and push nothing.",
+      "fix": "Set mass in kg, pushBodies true and pushStrength in N to enable pushing; retune old forces that depended on infinite kinematic mass."
+    },
+    {
+      "member": "CharacterController.up, addVelocity, jumpBuffer, buffer, inheritedVelocity, platformInherit; PlatformerController.platformInherit",
+      "change": "Characters use an explicit up axis for grounding, slopes and jumping; zero disables grounded movement. Added velocity is consumed once; jumpBuffer holds presses; platformInherit controls momentum on leaving support. New numbers default to zero (off).",
+      "fix": "Set up to (0,1,0) for ordinary walking or to the desired nonzero up axis. Set jumpBuffer seconds and platformInherit share explicitly; use addVelocity for springs and knockback. Do not write buffer or inheritedVelocity."
+    },
+    {
+      "member": "CharacterController and PlatformerController groundBody, groundPoint, groundPosition, groundQuaternion; CharacterController.velocity",
+      "change": "Support tracks the collider and parent frame separately, carrying compound and moved static platforms with swept displacement and 3D yaw. Character velocity includes carry. New support fields are written state and shift with WorldOrigin.",
+      "fix": "Use ground for the supporting collider, groundBody for its parent; leave support points and frames to physics. Do not add platform velocity to CharacterController.velocity again."
+    },
+    {
+      "member": "PlatformerController.dropTime, droppingThrough, wallCoyoteTime, wallCoyote, lastWall, oneWayMask",
+      "change": "dropTime is deleted. Drop-through ignores only droppingThrough until the character bounds clear that entity, clears coyote time, and accepts sloped one-way faces. Wall coyote time is explicit and zero means off; walls exclude walkable slopes and prefer input in narrow gaps.",
+      "fix": "Remove dropTime reads and writes; read droppingThrough instead. Set wallCoyoteTime to enable grace after leaving a wall and leave wallCoyote/lastWall to physics."
+    },
+    {
+      "member": "physics.resizeCharacter",
+      "change": "New clearance-checked capsule resize returns a boolean, preserves feet through Collider.offset, and edits the existing body without losing velocity or joints.",
+      "fix": "Use resizeCharacter(world, entity, cylindricalHeight, radius), rather than replacing Collider to crouch or stand. Handle false for blocked clearance; inside systems declare Collider writes and Transform, Parent and controller reads."
+    },
+    {
+      "member": "CHARACTER_CRUSHED, CHARACTER_BUMPED, CharacterEvent.speed; PlatformerController gravity; controller ContactHook",
+      "change": "CRUSHED is kind 7; BUMPED comes from actual upward hits and LANDED reports this tick's impact speed. Movers recover overlaps, resolve multiple planes, and obey ContactHook.ignore/oneWay/surfaceVelocity. Platformer gravity scaling now preserves designed jump height, apex hang applies on both sides, and 3D platformers return an error. Swimming retains entry momentum and blends flow by immersion.",
+      "fix": "Handle CHARACTER_CRUSHED alongside existing events, use the 2D profile for PlatformerController, and retune jump/water behavior that relied on the old bugs. Apply ContactHook rules to controllers just as to bodies."
     }
   ]
 }

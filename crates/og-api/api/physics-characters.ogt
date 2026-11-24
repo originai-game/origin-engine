@@ -2,7 +2,43 @@
     doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
     guide "physics §6"
     aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
-    field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick." {
+    field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
+      min 0
+      unit kg
+    }
+    field addVelocity Vector3 "Velocity added once next step, then cleared: knockback or a spring." {
+      unit mps
+    }
+    field up Vector3 "Walking and jumping up axis; normalized when nonzero. Zero disables grounded motion; set (0,1,0) for ordinary gravity."
+    field jumpBuffer f32 "Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps." {
+      min 0
+      unit s
+    }
+    field platformInherit f32 "Share of supporting platform velocity retained on leaving it; zero inherits none." {
+      min 0
+      max 1
+    }
+    field buffer f32 "Written: unconsumed jump buffer time." {
+      readonly true
+    }
+    field inheritedVelocity Vector3 "Written: retained inertia from airborne vertical motion, knockback and platforms." {
+      readonly true
+    }
+    field groundBody Entity "Written: supporting collider parent body, including compound platforms." {
+      readonly true
+    }
+    field groundPoint Vector3 "Written: supporting contact point in world space." {
+      readonly true
+      worldspace world
+    }
+    field groundPosition Vector3 "Written: supporting frame position at the last controller move." {
+      readonly true
+      worldspace world
+    }
+    field groundQuaternion Quaternion "Written: supporting frame rotation at the last controller move." {
+      readonly true
+    }
+    field move Vector3 "The wanted world-space velocity across the ground. The up-axis component is ignored while walking, or used as a swimming stroke with og.Buoyancy. With gravityScale or up zero all components move freely. Set it every tick." {
       unit mps
     }
     field jump bool "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time)."
@@ -57,7 +93,7 @@
     field pushBodies bool "Push dynamic bodies it walks into, with at most `pushStrength`." {
       default true
     }
-    field pushStrength f32 "The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does." {
+    field pushStrength f32 "Maximum side-push force: contacts share an impulse budget of this times dt, using virtual mass and dynamic contact-point effective mass. Standing weight is applied separately. Zero disables all pushing, as mass zero or pushBodies false does." {
       guide "physics §6"
       default 1000
       min 0
@@ -99,6 +135,41 @@
   component PlatformerController {
     doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
     guide "physics §6"
+    field mass f32 "Virtual mass in kg for contact-point pushing and weight. Zero pushes nothing." {
+      min 0
+      unit kg
+    }
+    field platformInherit f32 "Share of supporting platform velocity retained on leaving it; zero inherits none." {
+      min 0
+      max 1
+    }
+    field wallCoyoteTime f32 "Seconds a wall jump remains available after leaving the wall; zero disables it." {
+      min 0
+      unit s
+    }
+    field wallCoyote f32 "Written: wall coyote time remaining." {
+      readonly true
+    }
+    field lastWall i32 "Written: last contacted wall side, for wall coyote time." {
+      readonly true
+    }
+    field groundBody Entity "Written: supporting collider parent body." {
+      readonly true
+    }
+    field groundPoint Vector3 "Written: supporting contact point in world space." {
+      readonly true
+      worldspace world
+    }
+    field groundPosition Vector3 "Written: supporting frame position at the last controller move." {
+      readonly true
+      worldspace world
+    }
+    field groundQuaternion Quaternion "Written: supporting frame rotation at the last controller move." {
+      readonly true
+    }
+    field droppingThrough Entity "Written: only this one-way entity is ignored until the character bounds clear it; replaces dropTime." {
+      readonly true
+    }
     field run f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
       min -1
       max 1
@@ -283,9 +354,6 @@
     field wallLock f32 "Written: seconds the run input stays locked after a wall jump." {
       readonly true
     }
-    field dropTime f32 "Written: seconds one-way platforms stay passable after dropping through." {
-      readonly true
-    }
     field jumpWasHeld bool "Written: `jump` as the last step saw it." {
       readonly true
     }
@@ -300,15 +368,26 @@
   const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
   const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
   const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+  const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces crushed the character."
 
   event CharacterEvent {
     doc "Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. Read the next tick: the controllers move in the physics step, after the game's systems, so a jump pressed in tick T moves the character in T and its CHARACTER_JUMPED is read in T + 1."
     field entity Entity "The character."
-    field kind u32 "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6." {
+    field kind u32 "CHARACTER_JUMPED 1, LANDED 2, WALL_JUMPED 3, AIR_JUMPED 4, LEFT_GROUND 5, BUMPED 6, CRUSHED 7." {
       min 0
-      max 6
+      max 7
     }
     field speed f32 "The vertical speed at the moment (a landing's impact speed is negative)." {
       unit mps
     }
+  }
+
+  fn resizeCharacter {
+    doc "Resize a character capsule after checking headroom and the final volume. Keeps its feet fixed by adjusting Collider.offset, preserves body velocity and joints, and returns false without changing anything when blocked. Works in both physics profiles, inside a system or between ticks; inside a system read Transform, Parent and the controller and write Collider."
+    guide "physics §6"
+    param world World "The world."
+    param entity Entity "An entity with CharacterController or PlatformerController and a capsule Collider."
+    param height f32 "New cylindrical segment height (as Collider.height), excluding caps; finite and >= 0."
+    param radius f32 "New capsule radius; finite and > 0."
+    returns Result.bool "True when resized, false when blocked; refused for invalid sizes or a non-capsule/non-controller entity."
   }

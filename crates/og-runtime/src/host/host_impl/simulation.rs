@@ -34,6 +34,17 @@ macro_rules! __og_host_bindings_simulation {
             fn og_physics_vehicle_wheels(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::answer($crate::og_physics_vehicle_wheels(world, entity))
             }
+            fn og_physics_resize_character(
+                &self,
+                world: u32,
+                entity: f64,
+                height: f64,
+                radius: f64,
+            ) -> String {
+                $crate::host_impl::answer($crate::og_physics_resize_character(
+                    world, entity, height, radius,
+                ))
+            }
             fn og_physics_apply_force(
                 &self,
                 world: u32,

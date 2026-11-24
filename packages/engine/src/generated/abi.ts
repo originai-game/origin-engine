@@ -657,6 +657,8 @@ export interface HostAbi<A, V> {
   og_load_completions(world: number): string;
   /** `og.load.replayCompletions` */
   og_load_replay_completions(world: number, completions: string): string;
+  /** `og.physics.resizeCharacter` */
+  og_physics_resize_character(world: number, entity: number, height: number, radius: number): string;
   /** `og.physics.water` */
   og_physics_water(world: number, point: string): string;
   /** `og.physics.waterHeight` */
@@ -1660,6 +1662,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_image_info",
   "og_load_completions",
   "og_load_replay_completions",
+  "og_physics_resize_character",
   "og_physics_water",
   "og_physics_water_height",
   "og_physics_cast_ray",
@@ -2140,6 +2143,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_render_reveal(world: number, entity: number, seconds: number) {
       if (typeof entity !== "number") notEntity("og.render.reveal", "entity", entity);
       return abi.og_render_reveal(world, entity, seconds);
+    },
+    og_physics_resize_character(world: number, entity: number, height: number, radius: number) {
+      if (typeof entity !== "number") notEntity("og.physics.resizeCharacter", "entity", entity);
+      return abi.og_physics_resize_character(world, entity, height, radius);
     },
     og_physics_water_height(world: number, entity: number, x: number, z: number) {
       if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);

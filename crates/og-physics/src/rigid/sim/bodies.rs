@@ -71,7 +71,6 @@ enum Plan {
         patch_body: bool,
         patch_own_collider: bool,
         patch_children: bool,
-        next: Option<rp::Pose>,
         position: Option<rp::Pose>,
         velocity: Option<(rp::Vector, rp::AngVector)>,
     },
@@ -165,6 +164,21 @@ fn plan(
         Some(t) if same_body_topology(&t.body, &b.body) && t.scale == b.scale => {
             let own_ok = match (&t.collider, &b.collider) {
                 (None, None) => true,
+                (Some(tc), Some(bc))
+                    if b.control.is_some()
+                        && tc.shape == SHAPE_CAPSULE
+                        && bc.shape == SHAPE_CAPSULE =>
+                {
+                    same_collider_topology(
+                        &Collider {
+                            height: bc.height,
+                            radius: bc.radius,
+                            offset: bc.offset,
+                            ..*tc
+                        },
+                        bc,
+                    )
+                }
                 (Some(tc), Some(bc)) => same_collider_topology(tc, bc) && !stale_mesh(bc),
                 _ => false,
             };
@@ -178,7 +192,6 @@ fn plan(
             let patch_body = body_params_differ(&t.body, &b.body);
             let patch_own_collider = t.collider != b.collider;
             let kind = b.body.kind;
-            let next = None;
             let mut position = None;
             if t.position != b.position || t.quaternion != b.quaternion {
                 // Game code moved it (a kinematic body moving by its
@@ -204,7 +217,6 @@ fn plan(
                 patch_body,
                 patch_own_collider,
                 patch_children,
-                next,
                 position,
                 velocity,
             }
@@ -410,7 +422,6 @@ pub(super) fn sync<'s>(
                 patch_body,
                 patch_own_collider,
                 patch_children,
-                next,
                 position,
                 velocity,
             } => {
@@ -482,6 +493,13 @@ pub(super) fn sync<'s>(
                     && let Some(&ch) = w.bodies[handle].colliders().first()
                 {
                     patch_collider_in_place(&mut w.colliders[ch], bc, b.entity)?;
+                    if b.control.is_some()
+                        && bc.shape == SHAPE_CAPSULE
+                        && let Some(shape) = primitive(bc, b.scale.abs())?
+                    {
+                        w.colliders[ch].set_shape(shape);
+                        w.colliders[ch].set_position_wrt_parent(local_pose(bc, b.scale));
+                    }
                 }
                 if patch_children {
                     let skip = usize::from(b.collider.is_some());
@@ -504,9 +522,7 @@ pub(super) fn sync<'s>(
                     );
                 }
                 let rb = &mut w.bodies[handle];
-                if let Some(at) = next {
-                    rb.set_next_kinematic_position(at);
-                } else if let Some(at) = position {
+                if let Some(at) = position {
                     rb.set_position(at, true);
                 }
                 if let Some((linear, angular)) = velocity {
