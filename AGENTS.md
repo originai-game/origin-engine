@@ -127,7 +127,27 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `scripts/lock.sh` (source it, never copy it).
 - **Tests never run `cargo`.** Rust tests use `env!("CARGO_BIN_EXE_og")`, bun
   tests `tests/support/og-bin.ts`.
-- **A test is kept only when it fails on a plausible regression.** A missing
+- **Tests are few and guard contracts.** A test exists only for one of: a
+  public contract (the list above, the IDL and its drift); determinism
+  (fixed tick, seeded randomness, snapshot and restore, replay); a crash or
+  validation failure on a host (shader and pipeline validation, wasm and
+  native parity); a repository rule check (drift, literals, changelog,
+  structure); or one end-to-end path per public subsystem. Nothing else gets
+  a test: not a private helper, a call order, a format, a default or
+  constant, a near-duplicate case, or a look.
+- **A fix brings no test by default.** Add one only when the bug broke one
+  of the kinds above and can plausibly come back; otherwise the fix, its
+  commit message and the evidence in the report are enough. "It fails
+  without the fix" is not a reason to keep a test. Extend an existing test
+  before writing a new one, and never append to a shared inline
+  `mod tests`.
+- **Quality is never a test.** Looks, layout and feel are judged by eye on
+  captures; no pixel, number or snapshot test stands in for them, and green
+  tests never mean the work is done.
+- **Deleting a test is ordinary work.** A test outside the kinds above, or
+  whose regression nobody can name, is deleted with the helpers and
+  fixtures only it used. A cleanup only lowers the test count.
+- **GPU results.** A missing
   GPU makes a test skipped or unchecked, never passed. Lavapipe is neither
   a standard nor a check: a GPU result from lavapipe is unchecked, and no
   frame, timing or landing is judged on it. SwiftShader (headless Chrome's
@@ -169,13 +189,14 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `anthropic/claude-fable-5-2`. A stopped thread is not resumed.
 - A stream finishes its work whole and sends it as one stack of logical
   commits (a move and a logic edit never share one). Authors run only fast
-  checks: `cargo check --workspace --all-targets`, Clippy, their crates'
-  tests, and any identity check the change relies on.
-- **Landing** goes through `scripts/land.sh`, a merge queue; never push main
-  directly. A head touching packages/engine, the IDL or og-runtime's answers
-  also runs `scripts/check.sh full --only fixtures` and `--only bun-test`
-  (which builds only the development wasm). A head whose tree passed
-  `full --all` lands without land.sh's opening quick.
+  checks: fmt, `cargo check --workspace --all-targets`, Clippy on the
+  touched crates, those crates' tests, and `og api gen` then `og api check`
+  last. Verification never runs for hours: no full gate, fixtures or L4 run
+  for an ordinary head.
+- **Landing** is fast: the coordinator lands a head on the author's checks
+  plus engine typecheck and the changelog check, as a fast-forward of
+  origin/main. The full gate, fixtures and `bun-test` run periodically on
+  main, never as a per-head wait; a failure there gets a fix head.
   A head that changes rendering or a look has its frames captured on Colab
   and looked at for quality before it lands (a new feature's look needs
   the owner's approval). Every other head is landed by its own thread.
