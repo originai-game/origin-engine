@@ -16,8 +16,6 @@ mod pass;
 mod scene;
 mod screen;
 mod targets;
-#[cfg(test)]
-mod tests;
 pub(crate) use config::*;
 use cx::PlanCx;
 pub(crate) use names::*;

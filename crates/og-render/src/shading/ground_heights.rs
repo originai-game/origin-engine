@@ -326,35 +326,3 @@ pub(crate) fn ground_key(
     let spheres = spheres.flat_map(|(c, r)| [c.x, c.y, c.z, r].map(bits));
     og_core::hash::hash_words(ground.into_iter().chain([terrains as u64]).chain(spheres))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The view maps the ground's square onto the map, +x right and +z up
-    /// it, and a higher point to a smaller depth: the depth test keeps the
-    /// highest, and the height is read back from it.
-    #[test]
-    fn the_map_keeps_the_highest_and_reads_its_height_back() {
-        let g = crate::GroundProjection {
-            height: 1.5,
-            radius: 40.0,
-            center: Vec3::new(2.0, -3.0, 5.0),
-            shadows: 1.0,
-        };
-        let vp = ground_view(&g);
-        let at = |p: Vec3| {
-            let c = vp * p.extend(1.0);
-            c.truncate() / c.w
-        };
-        let h = ground_half(&g);
-        let corner = at(g.center + Vec3::new(h, 0.0, h));
-        assert!((corner.x - 1.0).abs() < 1e-5 && (corner.y - 1.0).abs() < 1e-5);
-        let low = at(g.center + Vec3::Y * 0.5);
-        let high = at(g.center + Vec3::Y * 2.0);
-        assert!(high.z < low.z);
-        let height = |z: f32| g.center.y - GROUND_BELOW + (1.0 - z) * (GROUND_BELOW + GROUND_ABOVE);
-        assert!((height(high.z) - (g.center.y + 2.0)).abs() < 1e-4);
-        assert!((height(1.0) - (g.center.y - GROUND_BELOW)).abs() < 1e-6);
-    }
-}

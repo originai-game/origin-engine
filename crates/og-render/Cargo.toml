@@ -41,10 +41,6 @@ miniz_oxide = "0.8"
 gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
-# tests/shader_capabilities.rs reads the table through reach.rs.
-og-render-data = { path = "../og-render-data", features = ["reach"] }
-# tests/png.rs decodes what png_best writes and the committed references.
-image = { workspace = true }
 # tests/shaders.rs: every module translated as the Metal, Vulkan and DX12
 # backends do (wgpu's own naga).
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
@@ -97,7 +93,3 @@ wasm-bindgen-futures = "=0.4.79"
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
-
-[[test]]
-name = "upload_budget"
-path = "tests/upload_budget.rs"

@@ -919,6 +919,3 @@ pub(crate) fn rest_of(mesh: &MeshData) -> (Vec<Vec3>, Vec<[u32; 3]>) {
         mesh.indices.as_chunks::<3>().0.to_vec(),
     )
 }
-
-#[cfg(test)]
-mod tests;

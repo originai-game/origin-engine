@@ -171,12 +171,6 @@ fn deposits(n: usize) -> (Vec<f64>, Vec<Vec<f64>>) {
     (heights, deposits)
 }
 
-#[cfg(test)]
-pub(super) fn emission_rows(e0: f64, n: usize) -> Vec<[f64; 3]> {
-    let (heights, deposits) = deposits(n);
-    emission_rows_of(e0, &heights, &deposits)
-}
-
 /// The table: `TABLE_ROWS` rows of `n` texels (rgba: prompt N₂, 557.7,
 /// 630.0, 0), each row's characteristic energy `TABLE_E0` times
 /// 2^(row × `TABLE_OCTAVES`).

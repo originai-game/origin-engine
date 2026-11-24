@@ -129,11 +129,6 @@ pub fn ripple_map(scene: &mut RenderScene) -> og_render::TextureHandle {
     }))
 }
 
-/// A flat normal map (every texel straight up).
-pub fn flat_normal_map(scene: &mut RenderScene) -> og_render::TextureHandle {
-    scene.add_texture(texture(4, ColorSpace::Linear, |_, _| [128, 128, 255, 255]))
-}
-
 /// A lake rippled by [`ripple_map`] (Water2's flow: 0.25 repeats a metre,
 /// sliding 0.2 uv a second along x), seen at a slant under a sunlit sky, the
 /// planar reflection off.
@@ -785,15 +780,6 @@ pub fn water_planar_two_scene() -> RenderScene {
 // ---------------------------------------------------------------------------
 // The terrain's visibility and its scatter's shadows.
 // ---------------------------------------------------------------------------
-
-/// The flags scene's terrain: 48 m square, flat at 2 m.
-pub fn flags_terrain() -> TerrainData {
-    let n = 49;
-    TerrainData {
-        heights: Arc::from(vec![2.0; n * n]),
-        ..TerrainData::flat(Vec2::splat(48.0), n as u32, n as u32)
-    }
-}
 
 // ---------------------------------------------------------------------------
 // `terrain-hidden`: an overgrown viaduct whose plants stand on a hidden

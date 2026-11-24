@@ -6,11 +6,5 @@ mod gpu_tests;
 
 #[path = "../device_formats.rs"]
 mod device_formats;
-#[path = "../gfx.rs"]
-mod gfx;
 #[path = "../render.rs"]
 mod render;
-#[path = "../terrain.rs"]
-mod terrain;
-#[path = "../ui.rs"]
-mod ui;

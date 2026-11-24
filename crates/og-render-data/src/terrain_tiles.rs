@@ -726,6 +726,3 @@ pub fn cover(layout: &TerrainLayout, level: u32, a: Vec2, b: Vec2, mut f: impl F
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

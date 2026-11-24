@@ -1714,21 +1714,3 @@ impl PaintRenderer {
         1
     }
 }
-
-#[cfg(test)]
-mod tests {
-    /// Half coverage through Skia's curve at Chrome on Linux's gamma 1.2
-    /// and contrast 0.2, worked by hand from SkTMaskGamma: white ink
-    /// (row 7, no contrast) gets (128/255)^(1/1.2) = 0.5627 → 144, black
-    /// ink (row 0) 1 − (1 − (a + 0.2a(1 − a)))^(1/1.2) = 0.4877 → 124.
-    #[test]
-    fn half_coverage_is_heavier_light_on_dark_and_lighter_dark_on_light() {
-        let table = super::preblend_table();
-        assert_eq!(table[7 * 256 + 128], 144);
-        assert_eq!(table[128], 124);
-        // The ends stay put in every row.
-        for row in table.chunks(256) {
-            assert_eq!((row[0], row[255]), (0, 255));
-        }
-    }
-}

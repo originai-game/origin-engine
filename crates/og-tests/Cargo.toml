@@ -41,8 +41,6 @@ serde_json = "1"
 
 [dev-dependencies]
 pollster = { workspace = true }
-# render_without: the renderer's one-time warnings, collected.
-log = { workspace = true }
 
 [[example]]
 name = "surface"

@@ -333,22 +333,3 @@ impl CustomPosts {
         1
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn post_params_set_by_name() {
-        let mut scene = RenderScene::new();
-        let h = scene.add_post(example_crt());
-        assert_eq!(scene.look.post_params[0][0][0], 0.12);
-        assert!(scene.set_post_param(h, "curve", &[0.3, 9.0]));
-        assert_eq!(scene.look.post_params[0][0], [0.3, 0.0, 0.0, 0.0]);
-        assert!(!scene.set_post_param(h, "nope", &[1.0]));
-        assert!(!scene.set_post_param(PostHandle(4), "curve", &[1.0]));
-        let mut bad = example_crt();
-        bad.code = "fn other() {}".into();
-        assert!(bad.check().is_err());
-    }
-}

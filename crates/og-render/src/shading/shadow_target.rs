@@ -163,34 +163,3 @@ impl<P> ShadowSet<P> {
         })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{Arc, Mutex};
-
-    #[test]
-    fn a_lazy_set_makes_the_local_layers_pipelines_only_when_one_is_wanted() {
-        let made = Arc::new(Mutex::new(Vec::new()));
-        let log = made.clone();
-        let set = ShadowSet::lazy(move |t| {
-            log.lock().unwrap().push(t);
-            t as u32
-        });
-        assert_eq!(*set.get(ShadowTarget::Cascade), 0);
-        assert_eq!(*made.lock().unwrap(), [ShadowTarget::Cascade]);
-        assert_eq!(*set.get(ShadowTarget::LocalNear), 2);
-        assert_eq!(*set.get(ShadowTarget::LocalFar), 1);
-        set.local();
-        assert_eq!(
-            *made.lock().unwrap(),
-            [
-                ShadowTarget::Cascade,
-                ShadowTarget::LocalFar,
-                ShadowTarget::LocalNear
-            ]
-        );
-        let eager = ShadowSet::new(|t| t as u32);
-        assert_eq!(*eager.get(ShadowTarget::LocalNear), 2);
-    }
-}

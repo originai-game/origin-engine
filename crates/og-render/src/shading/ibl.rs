@@ -720,5 +720,3 @@ impl IblGenerator {
 
 /// The IBL generator's module (`crate::shaders` validates it).
 pub(crate) const IBL_WGSL: &str = wgsl!("ibl.wgsl");
-#[cfg(test)]
-mod tests;

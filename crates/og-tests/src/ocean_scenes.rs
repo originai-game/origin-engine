@@ -476,13 +476,6 @@ fn river(scene: &mut RenderScene) {
     };
 }
 
-/// Clear sea water over a white slope (`water-shallows`): the seabed's
-/// depth under the surface at frame x (m), from 0 at x = -[`SHALLOWS_HALF`]
-/// to 20 at +[`SHALLOWS_HALF`].
-pub fn shallows_depth(x: f32) -> f32 {
-    ((x + SHALLOWS_HALF) / (2.0 * SHALLOWS_HALF) * 20.0).max(0.0)
-}
-
 /// Half the width of `water-shallows`' slope across the frame (m).
 pub const SHALLOWS_HALF: f32 = 12.0;
 

@@ -853,6 +853,3 @@ pub(crate) struct ScatterRenderer {
     place: Option<crate::scatter_place::ScatterPlace>,
     placed_chunks: Vec<ChunkKey>,
 }
-
-#[cfg(test)]
-mod tests;

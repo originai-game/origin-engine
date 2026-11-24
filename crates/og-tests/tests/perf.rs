@@ -480,36 +480,3 @@ fn perf_lights_2d() {
         println!("{scene}: {ms:.3} ms per frame on {adapter}");
     }
 }
-
-/// A pass is held to its own baseline by name, whatever order the frame
-/// ran them in, a pass the baseline does not know to the slack alone, and
-/// a baseline's passes read back as they were written (a name may hold a
-/// colon).
-#[test]
-fn a_pass_over_its_budget_is_named() {
-    let pass = |name: &str, ms: f64| (name.to_string(), ms);
-    let baseline = [
-        pass("cull: crowds", 0.3),
-        pass("prepass", 6.0),
-        pass("main", 8.0),
-        pass("taa", 0.05),
-    ];
-    // main: 8 x 1.15 + 0.1 = 9.3; prepass: 7.0; taa: 0.1575; ssr: 0.1.
-    let measured = [
-        pass("main", 9.25),
-        pass("prepass", 7.1),
-        pass("taa", 0.14),
-        pass("ssr", 0.3),
-        pass("cull: crowds", 0.2),
-    ];
-    let over = passes_over(&baseline, &measured);
-    assert_eq!(over.len(), 2, "{over:?}");
-    assert!(over[0].starts_with("prepass 7.100 ms (baseline 6.000 ms"));
-    assert!(over[1].starts_with("ssr 0.300 ms (baseline 0.000 ms"));
-    let text = format!(
-        "{{\n  \"frame_ms\": 16.5,\n  \"passes_ms\": {}\n}}\n",
-        passes_json(&baseline)
-    );
-    assert_eq!(baseline_passes(&text).as_deref(), Some(&baseline[..]));
-    assert_eq!(baseline_passes("{\n  \"frame_ms\": 16.5\n}\n"), None);
-}

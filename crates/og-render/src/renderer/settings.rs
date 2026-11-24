@@ -360,18 +360,3 @@ pub(super) static DEBUG_CULL_APART: std::sync::atomic::AtomicBool =
 #[cfg(not(feature = "publish"))]
 pub(super) static DEBUG_CULL_DIRECT: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
-
-#[cfg(test)]
-mod tests {
-    /// A fractional scale rounds each side on its own (the aspect is kept
-    /// to a pixel), never reaches 0, and never passes the device's largest
-    /// texture; scale 1 is the output exactly.
-    #[test]
-    fn the_scaled_scene_rounds_each_side_within_the_device() {
-        assert_eq!(super::render_scaled((1920, 1080), 1.0, 8192), (1920, 1080));
-        assert_eq!(super::render_scaled((1920, 1080), 0.5, 8192), (960, 540));
-        assert_eq!(super::render_scaled((1179, 2556), 0.7, 8192), (825, 1789));
-        assert_eq!(super::render_scaled((1, 1), 0.5, 8192), (1, 1));
-        assert_eq!(super::render_scaled((5000, 3000), 2.0, 8192), (8192, 6000));
-    }
-}

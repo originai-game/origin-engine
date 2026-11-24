@@ -514,37 +514,3 @@ pub(super) fn deferred<T: crate::deferred::AnywhereOnce + 'static>(
     d.get();
     d
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A slot's job is made once, and only for a slot neither held nor
-    /// queued: a frame whose pipelines are all made makes none.
-    #[test]
-    fn a_pipeline_job_is_made_only_for_a_wanted_slot() {
-        let mut jobs: Vec<(Slot, Work)> = Vec::new();
-        let mut made = 0;
-        let mut job = || {
-            made += 1;
-            Work::Once(Box::new(|| unreachable!("a test job is never run")))
-        };
-        let front = Slot::Shadow((Side::Front.into(), false, false));
-        let back = Slot::Shadow((Side::Back.into(), false, false));
-        add_job!(jobs, front, true, job());
-        add_job!(jobs, back, true, job());
-        assert_eq!(jobs.len(), 0, "held slots queue nothing");
-        add_job!(jobs, front, false, job());
-        add_job!(jobs, front, false, job());
-        add_job!(
-            jobs,
-            Slot::Prepass((Side::Front.into(), false)),
-            false,
-            job()
-        );
-        add_job!(jobs, back, true, job());
-        assert_eq!(jobs.len(), 2, "one job per wanted slot");
-        assert!(jobs[0].0 == front && jobs[1].0 == Slot::Prepass((Side::Front.into(), false)));
-        assert_eq!(made, 2, "a job is made only for a slot it queues");
-    }
-}

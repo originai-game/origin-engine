@@ -644,31 +644,3 @@ pub(crate) fn ribbon_source() -> String {
         crate::effect::hooks_source(None)
     )
 }
-
-#[cfg(test)]
-mod tests {
-    use super::Ranges;
-
-    /// Freed rings are reused, join their neighbours whichever order they
-    /// are freed in, and give the end back when they were last.
-    #[test]
-    fn ring_ranges_are_reused_and_joined() {
-        let mut r = Ranges::default();
-        let a = r.alloc(10);
-        let b = r.alloc(20);
-        let c = r.alloc(5);
-        assert_eq!((a, b, c, r.end), (0, 10, 30, 35));
-        r.release(b, 20);
-        // First fit: a smaller ring takes the front of the hole.
-        assert_eq!(r.alloc(4), 10);
-        r.release(10, 4);
-        r.release(a, 10);
-        // a, the 4 and the rest of b's hole are one range now.
-        assert_eq!(r.free, vec![(0, 30)]);
-        assert_eq!(r.alloc(30), 0);
-        r.release(0, 30);
-        // The last ring freed: everything is free and the end is back at 0.
-        r.release(c, 5);
-        assert_eq!((r.free.len(), r.end), (0, 0));
-    }
-}

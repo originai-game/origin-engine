@@ -412,36 +412,6 @@ fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> {
     }
 }
 
-/// The skinned cylinders of the `skinning` scene drawn with
-/// [`ripple_shader`]: rippling, banded and lifted 0.4 m off the ground by
-/// their material shader, casting their displaced shadows; ambient
-/// occlusion and outlines read their displaced depth.
-pub fn skinned_hooks_scene() -> RenderScene {
-    let mut scene = crate::fx_scenes::skinning_scene();
-    let ripple = scene.add_shader(ripple_shader());
-    let m = scene.add_standard_material(og_render::StandardMaterial {
-        color: Vec3::new(0.75, 0.3, 0.55),
-        roughness: 0.45,
-        outlineWidth: 2.0,
-        outlineColor: Vec3::new(0.05, 0.02, 0.04),
-        ..Default::default()
-    });
-    scene.set_material_shader(m, Some(ripple));
-    scene.set_shader_param(m, "offset", &[0.0, 0.4, 0.0]);
-    scene.set_shader_param(m, "bulge", &[0.05]);
-    for s in &mut scene.objects.skinned_instances {
-        s.material = m;
-    }
-    scene.look.post.ao = Some(og_render::AmbientOcclusion {
-        radius: 0.6,
-        intensity: 1.0,
-        method: og_render::AoMethod::Gtao,
-        ..Default::default()
-    });
-    scene.frame.tick = 30;
-    scene
-}
-
 /// The 3D fluid's pool (owed row 29): `spacing` apart on a jittered
 /// lattice filling a basin's floor to a gently waving surface, as
 /// og-physics' og.Fluid3D leaves particles at rest (about half its radius

@@ -46,8 +46,6 @@ mod emission;
 mod map;
 mod strip;
 
-#[cfg(test)]
-use emission::emission_rows;
 use emission::{columns, line_colors, table};
 pub(crate) use map::{AuroraMap, FOOTPRINT_WGSL};
 use strip::{kh_strip, strip_mips};
@@ -396,6 +394,3 @@ fn value_noise(seed: u64, x: f64) -> f64 {
     };
     (octave(x) * 0.7 + octave(x * 2.7 + 17.0) * 0.3).clamp(0.0, 1.0)
 }
-
-#[cfg(test)]
-mod tests;

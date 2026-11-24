@@ -90,21 +90,6 @@ impl PhysicalLens {
         (scale.is_finite() && bias.is_finite()).then_some(ThinLensCoc { scale, bias })
     }
 
-    /// Fraction of the interval represented by the motion vectors that
-    /// the shutter exposes. A closed shutter or absent history gives zero.
-    /// Values above one extrapolate the measured velocity; no silent cap.
-    pub fn shutter_fraction(self, interval: f32) -> f32 {
-        if interval.is_finite()
-            && interval > 0.0
-            && self.shutter_speed.is_finite()
-            && self.shutter_speed > 0.0
-        {
-            self.shutter_speed / interval
-        } else {
-            0.0
-        }
-    }
-
     /// Blend the continuous authored values, not independently derived effects.
     /// The caller resolves different discrete gate fits at their endpoints.
     pub fn blend(self, to: Self, weight: f32) -> Self {
@@ -119,76 +104,5 @@ impl PhysicalLens {
             iso: l(self.iso, to.iso),
             shift: self.shift.lerp(to.shift, weight),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn gate_fit_crops_without_stretching_in_both_orientations() {
-        let mut lens = PhysicalLens {
-            focal_length: 50.0,
-            sensor_size: Vec2::new(36.0, 24.0),
-            ..Default::default()
-        };
-        for (fit, landscape, portrait) in [
-            (GateFit::Vertical, 24.0, 24.0),
-            (GateFit::Horizontal, 18.0, 72.0),
-            (GateFit::Fill, 18.0, 24.0),
-            (GateFit::Overscan, 24.0, 72.0),
-        ] {
-            lens.gate_fit = fit;
-            assert_eq!(lens.gate_height(2.0), Some(landscape));
-            assert_eq!(lens.gate_height(0.5), Some(portrait));
-        }
-        lens.gate_fit = GateFit::Vertical;
-        assert!((lens.focal_y(2.0, 1.0).unwrap() - 4.166_666_5).abs() < 1e-6);
-        assert!((lens.focal_y(2.0, 1.7).unwrap() - 7.083_333).abs() < 1e-6);
-        assert_eq!(PhysicalLens::default().focal_y(2.0, 1.0), None);
-        lens.sensor_size.x = f32::NAN;
-        assert_eq!(lens.focal_y(2.0, 1.0), None);
-    }
-
-    #[test]
-    fn thin_lens_radius_has_correct_sign_units_focus_and_crop() {
-        let mut lens = PhysicalLens {
-            focal_length: 50.0,
-            sensor_size: Vec2::new(36.0, 24.0),
-            aperture: 2.0,
-            focus_distance: 5.0,
-            ..Default::default()
-        };
-        let coc = lens.coc_coefficients(16.0 / 9.0, 1.0).unwrap();
-        for (depth, pixels) in [
-            (2.0, -8.522_727),
-            (5.0, 0.0),
-            (10.0, 2.840_909),
-            (f32::INFINITY, 5.681_818),
-        ] {
-            assert!(((coc.scale + coc.bias / depth) * 1080.0 - pixels).abs() < 1e-5);
-        }
-        lens.aperture = 1.0;
-        let cropped = lens.coc_coefficients(16.0 / 9.0, 1.7).unwrap();
-        assert!((cropped.scale / coc.scale - 3.4).abs() < 1e-6);
-        lens.focus_distance = 0.05;
-        assert_eq!(lens.coc_coefficients(1.0, 1.0), None);
-        assert_eq!(PhysicalLens::default().coc_coefficients(1.0, 1.0), None);
-    }
-
-    #[test]
-    fn physical_shutter_uses_the_represented_interval_without_a_hidden_cap() {
-        let lens = PhysicalLens {
-            shutter_speed: 0.01,
-            ..Default::default()
-        };
-        for interval in [1.0 / 30.0, 1.0 / 144.0, 0.023] {
-            let vector_pixels = 200.0 * interval;
-            assert!((vector_pixels * lens.shutter_fraction(interval) - 2.0).abs() < 1e-6);
-        }
-        assert!(lens.shutter_fraction(1.0 / 240.0) > 1.0);
-        assert_eq!(lens.shutter_fraction(0.0), 0.0);
-        assert_eq!(PhysicalLens::default().shutter_fraction(0.02), 0.0);
     }
 }

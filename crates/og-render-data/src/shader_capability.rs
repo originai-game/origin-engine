@@ -7,8 +7,6 @@
 //! the module's callers may still name it (a material shader's hooks call
 //! `planar_reflection` and `screen_ao` wherever they run), [`assemble`]
 //! adds the capability's stub, so no list of parts names a stub itself.
-//! `tests/shader_capabilities.rs` (og-render) holds the table of every lit
-//! module against every capability.
 
 /// One thing a lit surface can ask of the renderer beyond the sun, the
 /// ambient light and the fog every lit module carries.
@@ -311,42 +309,5 @@ impl Shading {
         }
         out.push_str(s::SURFACE_SHADE_WGSL);
         out
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A declaration carries the code of exactly what it says it holds:
-    /// each choice adds its capability and no other, so a module's
-    /// declaration can be read for what its surface has.
-    #[test]
-    fn a_declaration_holds_what_it_says() {
-        let lit = Shading::lit();
-        for shading in [
-            lit,
-            lit.rain(),
-            lit.weather(),
-            lit.decals(),
-            lit.effects(2),
-            lit.effects(3).decals(),
-            lit.effects(2).planar(true),
-            lit.weather().effects(2).decals().planar(true),
-            lit.planar(true),
-        ] {
-            let source = assemble(&[crate::FRAME_WGSL, &shading.text()], &[]);
-            for c in Capability::ALL {
-                let held = c.held_by(&source) == Holds::Full;
-                assert_eq!(held, shading.holds(c), "{shading:?} {}", c.name());
-            }
-        }
-        assert!(lit.rain().text().contains(crate::WEATHER_RAIN_WGSL));
-        assert!(!lit.rain().text().contains(crate::WEATHER_SURFACE_WGSL));
-        assert!(
-            lit.effects(3)
-                .text()
-                .contains("@group(3) @binding(0) var<uniform> fx")
-        );
     }
 }

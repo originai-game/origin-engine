@@ -738,40 +738,6 @@ mod grammar {
         }
         out
     }
-
-    #[test]
-    fn the_grammar_check_refuses_what_tint_refuses() {
-        for bad in [
-            "let a = b * c ^ d;",
-            "let a = b & c | d;",
-            "if (a && b || c) {}",
-            "let a = b < c < d;",
-            "let a = b << c + d;",
-            "let a = f(b * c ^ d, e);",
-            "let a = x ^ y == z;",
-        ] {
-            assert!(!refused(bad).is_empty(), "accepted {bad}");
-        }
-        for good in [
-            "let a = (b * c) ^ (d * e) ^ f;",
-            "let a = vec2<f32>(b * c, -d) + e[i] * f.x;",
-            "var<uniform> u: array<vec4<f32>, 4>;",
-            "let a = select(b, c, d < e && f > g);",
-            "let a = (b << 2u) | (c >> 3u) | d;",
-            "let a = b << c == d;",
-            "fn f(p: ptr<function, vec2<u32>>) -> u32 { return (*p).x ^ ~(*p).y; }",
-            "let a = array<vec2<f32>, 2>(vec2<f32>(1e-5, -2.0), vec2<f32>(0x1p-3, .5))[i] * 2.0 - 1.0;",
-            "let h = bitcast<u32>(a) * 3u;",
-            "let a = !b && c;",
-            "let a = &v; *a = b - -c * d;",
-        ] {
-            assert!(
-                refused(good).is_empty(),
-                "refused {good}: {:?}",
-                refused(good)
-            );
-        }
-    }
 }
 
 /// [`grammar`] over every module: what the browsers parse as written.

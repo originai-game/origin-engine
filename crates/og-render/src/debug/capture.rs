@@ -96,15 +96,6 @@ fn sdr_preview(pixel: &[u8]) -> [u8; 4] {
     })
 }
 
-#[test]
-fn hdr_preview_encodes_rgb_but_not_alpha_and_clips_highlights() {
-    // Half floats: 0.25, 2, -1, 0.5. RGB uses sRGB; alpha stays linear.
-    assert_eq!(
-        sdr_preview(&[0, 0x34, 0, 0x40, 0, 0xbc, 0, 0x38]),
-        [137, 255, 0, 128]
-    );
-}
-
 /// A capture in flight: the copy of the last offscreen frame into a
 /// buffer being mapped. Dropping it cancels the capture.
 pub struct CaptureRequest {

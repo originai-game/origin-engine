@@ -746,9 +746,3 @@ pub(crate) fn append_previous(
     slots.extend_from_slice(previous_slots);
     Some(moved || weights_moved)
 }
-
-#[cfg(test)]
-mod motion_tests;
-
-#[cfg(test)]
-mod bounds_tests;

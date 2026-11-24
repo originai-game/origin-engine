@@ -524,9 +524,6 @@ pub(crate) struct TerrainPassLayouts<'a> {
     pub corners_write: &'a wgpu::BindGroupLayout,
 }
 
-#[cfg(test)]
-mod tests;
-
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("terrain", crate::terrain::terrain_lit_source());

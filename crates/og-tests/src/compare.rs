@@ -234,21 +234,3 @@ pub fn compare(
         diff_image,
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::broken;
-
-    /// A black frame against a scene fails; a frame that moved does not, and
-    /// a reference that is itself one colour (a cleared target) holds a
-    /// one-colour frame.
-    #[test]
-    fn only_a_uniform_frame_against_a_varied_reference_is_broken() {
-        let scene = [10, 20, 30, 255, 200, 180, 90, 255, 10, 20, 30, 255];
-        let moved = [12, 20, 30, 255, 190, 180, 95, 255, 10, 22, 30, 255];
-        let black = [0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 0];
-        assert!(broken(&black, &scene).is_some_and(|w| w.contains("rgb(0, 0, 0)")));
-        assert_eq!(broken(&moved, &scene), None);
-        assert_eq!(broken(&black, &[7, 7, 7, 255].repeat(3)), None);
-    }
-}

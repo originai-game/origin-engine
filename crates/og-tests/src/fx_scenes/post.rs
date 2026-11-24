@@ -316,17 +316,6 @@ pub fn room_probes() -> og_render::ProbeGlobalIllumination {
     }
 }
 
-/// [`gi_scene`]'s room lit by the probe GI instead of the screen-space one
-/// (`probes`; without, no GI at all): the sunlit red wall and floor bounce
-/// into the shade wherever the camera looks, so the floor along the red
-/// wall and the block's left face turn pink, the floor by the green wall
-/// and the sphere's right side mint.
-pub fn gi_probe_scene(probes: bool) -> RenderScene {
-    let mut scene = gi_scene(false);
-    scene.look.post.gi_probes = probes.then(room_probes);
-    scene
-}
-
 /// A farm's lean-to under an overcast sky: a plank roof on a rubble back
 /// wall and an ochre-plastered left wall, open to the yard in front and on
 /// the right, its stores inside (crates, barrels, a ladder's worth of

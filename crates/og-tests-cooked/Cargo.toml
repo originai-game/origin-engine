@@ -27,7 +27,6 @@ serde_json = "1"
 
 [dev-dependencies]
 pollster = { workspace = true }
-og-core = { path = "../og-core" }
 image = { workspace = true }
 
 [[bin]]

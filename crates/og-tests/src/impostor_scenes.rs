@@ -7,59 +7,15 @@
 //! renderer's cards apart from the cook's bake (og-cook's
 //! `model/impostor.rs` has its own test).
 
-use crate::fork_scenes::flags_terrain;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::impostors::{frame_basis, frame_direction};
 use og_render::{
-    Background, Camera, ColorSpace, DirectionalLight, Environment, Impostor, ImpostorDraw, Mips,
-    ProceduralSky, Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain, TerrainLayer,
-    TerrainScatter, TextureData, shapes,
+    Camera, ColorSpace, Impostor, ImpostorDraw, Mips, Projection, RenderScene, ScatterDraw,
+    StandardMaterial, Terrain, TerrainLayer, TerrainScatter, TextureData, shapes,
 };
 
 /// The ball's radius in its mesh (`shapes::sphere`).
 pub const BALL: f32 = 0.5;
-
-/// The ball's colour at a point of its surface (its mesh's space).
-fn ball_color(p: Vec3) -> [u8; 3] {
-    if p.x >= 0.0 {
-        [230, 40, 30]
-    } else {
-        [30, 60, 230]
-    }
-}
-
-/// The ball's mesh: vertex colours red on its +x half, blue on its −x.
-pub fn ball_mesh() -> og_render::MeshData {
-    painted_sphere(32, 20, &ball_color)
-}
-
-/// A sphere of radius [`BALL`] whose vertices take `color` at their point.
-fn painted_sphere(
-    segments: u32,
-    rings: u32,
-    color: &dyn Fn(Vec3) -> [u8; 3],
-) -> og_render::MeshData {
-    let mut m = shapes::sphere(segments, rings);
-    for v in &mut m.vertices {
-        let c = color(Vec3::from(v.position));
-        let lin = |x: u8| {
-            let v = x as f32 / 255.0;
-            if v <= 0.04045 {
-                v / 12.92
-            } else {
-                ((v + 0.055) / 1.055).powf(2.4)
-            }
-        };
-        v.color = [lin(c[0]), lin(c[1]), lin(c[2]), 1.0];
-    }
-    m
-}
-
-/// The ball's impostor atlases (`grid` frames of `frame` px): albedo and
-/// coverage, and normal and depth in each frame's basis.
-pub fn ball_atlases(grid: u32, frame: u32) -> (TextureData, TextureData) {
-    painted_atlases(grid, frame, &ball_color)
-}
 
 /// The impostor atlases of a sphere of radius [`BALL`] painted by `color`.
 fn painted_atlases(
@@ -136,18 +92,6 @@ fn painted_atlases(
     )
 }
 
-/// The ball's impostor in `scene` (8 × 8 frames of 128 px).
-pub fn ball_impostor(scene: &mut RenderScene) -> Impostor {
-    ball_impostor_with(scene, None)
-}
-
-/// The ball's impostor with, given a translucency, the cook's material
-/// atlas (roughness 0.85, that translucency, metallic 0 everywhere): a
-/// leaf ball.
-pub fn ball_impostor_with(scene: &mut RenderScene, translucency: Option<f32>) -> Impostor {
-    painted_impostor(scene, ball_atlases(8, 128), translucency)
-}
-
 /// The impostor of a painted sphere from its atlases (8 × 8 frames), with
 /// the material atlas when given a translucency.
 fn painted_impostor(
@@ -185,197 +129,6 @@ fn painted_impostor(
         below: false,
         trim: og_render::CardTrim::FULL,
     }
-}
-
-fn light(scene: &mut RenderScene) {
-    let sun = Vec3::new(0.35, 0.8, 0.45).normalize();
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        max_shadow_distance: 40.0,
-        ..Default::default()
-    };
-    scene.lighting.environment = Environment {
-        sky: ProceduralSky {
-            sun_direction: sun,
-            ..Default::default()
-        },
-        intensity: 0.8,
-        background: Background::Color(Vec3::new(0.55, 0.7, 0.9)),
-        ..Environment::default()
-    };
-}
-
-/// Where `impostors` stands its two balls (2 m across): the mesh left,
-/// the impostor right.
-pub const BALL_MESH_AT: Vec3 = Vec3::new(-1.4, 1.2, 0.0);
-pub const BALL_CARD_AT: Vec3 = Vec3::new(1.4, 1.2, 0.0);
-
-/// `impostors` with the right ball its mesh too (`card` false): what the
-/// card must look like where it stands. The camera sees the two balls from
-/// opposite sides, so the card is compared with this, not with the left one.
-pub fn impostors_scene_with(card: bool) -> RenderScene {
-    let mut scene = RenderScene::new();
-    light(&mut scene);
-    let floor = scene.add_mesh(shapes::cuboid(Vec3::new(14.0, 0.2, 10.0)));
-    let grey = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.5),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    scene.add_instance(
-        floor,
-        grey,
-        Mat4::from_translation(Vec3::new(0.0, -0.1, -1.0)),
-    );
-    let ball = scene.add_mesh(ball_mesh());
-    let white = scene.add_standard_material(StandardMaterial {
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let at =
-        |p: Vec3| Mat4::from_scale_rotation_translation(Vec3::splat(2.0), Default::default(), p);
-    scene.add_instance(ball, white, at(BALL_MESH_AT));
-    if card {
-        let impostor = ball_impostor(&mut scene);
-        scene.objects.impostors.push(ImpostorDraw {
-            impostor,
-            transform: at(BALL_CARD_AT),
-            cast_shadows: true,
-            sway: 0.0,
-            top: 0.0,
-            reveal: 1.0,
-            fade_out: false,
-            foliage: None,
-        });
-    } else {
-        scene.add_instance(ball, white, at(BALL_CARD_AT));
-    }
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 2.4, 6.5),
-        target: Vec3::new(0.0, 1.0, 0.0),
-        projection: Projection::Perspective {
-            fov_y_degrees: 40.0,
-        },
-        ..Default::default()
-    };
-    scene
-}
-
-/// `impostor-backlit`: the ball's card alone, 2 m across over the grey
-/// floor, seen against a low sun behind it and to the left; with a
-/// translucency, the cook's material atlas says it is leaves, which let
-/// the sun through to the eye.
-pub fn impostor_backlit_scene(translucency: Option<f32>) -> RenderScene {
-    let mut scene = RenderScene::new();
-    let sun = Vec3::new(-0.3, 0.35, -0.9).normalize();
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        max_shadow_distance: 40.0,
-        ..Default::default()
-    };
-    scene.lighting.environment = Environment {
-        sky: ProceduralSky {
-            sun_direction: sun,
-            ..Default::default()
-        },
-        intensity: 0.8,
-        background: Background::Color(Vec3::new(0.55, 0.7, 0.9)),
-        ..Environment::default()
-    };
-    let floor = scene.add_mesh(shapes::cuboid(Vec3::new(14.0, 0.2, 10.0)));
-    let grey = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.5),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    scene.add_instance(
-        floor,
-        grey,
-        Mat4::from_translation(Vec3::new(0.0, -0.1, -1.0)),
-    );
-    let impostor = ball_impostor_with(&mut scene, translucency);
-    scene.objects.impostors.push(ImpostorDraw {
-        impostor,
-        transform: Mat4::from_scale_rotation_translation(
-            Vec3::splat(2.0),
-            Default::default(),
-            BACKLIT_AT,
-        ),
-        cast_shadows: true,
-        sway: 0.0,
-        top: 0.0,
-        reveal: 1.0,
-        fade_out: false,
-        foliage: None,
-    });
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 1.6, 5.0),
-        target: BACKLIT_AT,
-        projection: Projection::Perspective {
-            fov_y_degrees: 40.0,
-        },
-        ..Default::default()
-    };
-    scene
-}
-
-/// Where `impostor-backlit` stands its card.
-pub const BACKLIT_AT: Vec3 = Vec3::new(0.0, 1.2, 0.0);
-
-/// `impostor-scatter`: balls 1.2 m across scattered over a 48 m flat
-/// terrain, seen from its edge; past `impostor_distance` (0: never) the
-/// copies draw as the ball's impostor.
-pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
-    let mut scene = RenderScene::new();
-    light(&mut scene);
-    let h = scene.add_terrain(flags_terrain());
-    scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            color: Vec3::new(0.35, 0.5, 0.25),
-            ..Default::default()
-        }],
-        fade_in: false,
-        ..Terrain::new(h)
-    });
-    let ball = scene.add_mesh(ball_mesh());
-    let white = scene.add_standard_material(StandardMaterial {
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let impostor = ball_impostor(&mut scene);
-    scene.world.scatters.push(ScatterDraw {
-        id: 0,
-        terrain: 0,
-        mesh: ball,
-        material: white,
-        lod_materials: [None; 2],
-        scatter: TerrainScatter {
-            density: 0.08,
-            distance: 80.0,
-            fade: 0.0,
-            scale: [2.4, 2.4],
-            seed: 9,
-            sway: 0.0,
-            ..TerrainScatter::default()
-        },
-        cast_shadows: true,
-        impostor: Some(impostor),
-        impostor_distance,
-        with: None,
-        lods: [None; 2],
-    });
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 6.0, 26.0),
-        target: Vec3::new(0.0, 2.0, -6.0),
-        far: 200.0,
-        projection: Projection::Perspective {
-            fov_y_degrees: 50.0,
-        },
-        ..Default::default()
-    };
-    scene
 }
 
 // ---------------------------------------------------------------------------

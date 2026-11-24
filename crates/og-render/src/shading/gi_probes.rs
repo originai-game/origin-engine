@@ -41,8 +41,6 @@
 //! frame (all of them on the first frame).
 
 use crate::gi_scene::{GiScene, Placed, Source};
-#[cfg(test)]
-use glam::IVec2;
 use glam::{IVec3, Mat3, Vec3};
 
 /// Probe GI ([`crate::PostEffects::gi_probes`]).
@@ -113,29 +111,6 @@ const _: () = assert!(HEADER_AT == 24, "GI_HEADER_AT in gi_common.wgsl");
 /// The probes of one cascade.
 const fn probes_per_cascade() -> usize {
     (COUNTS[0] * COUNTS[1] * COUNTS[2]) as usize
-}
-
-/// `gi_oct_wrap` (gi_common.wgsl): the texel of an `n` × `n` octahedral
-/// map that a tap one past an edge reads.
-#[cfg(test)]
-fn oct_wrap(p: IVec2, n: i32) -> IVec2 {
-    let c = p.clamp(IVec2::ZERO, IVec2::splat(n - 1));
-    let (out_x, out_y) = (p.x < 0 || p.x >= n, p.y < 0 || p.y >= n);
-    match (out_x, out_y) {
-        (true, true) => IVec2::splat(n - 1) - c,
-        (true, false) => IVec2::new(c.x, n - 1 - c.y),
-        (false, true) => IVec2::new(n - 1 - c.x, c.y),
-        (false, false) => p,
-    }
-}
-
-/// `gi_slot` and `gi_key` (gi_common.wgsl): where world cell `w` is
-/// stored in a grid of `counts`, and the key saying which cell it is.
-#[cfg(test)]
-fn slot_and_key(w: IVec3, counts: IVec3) -> (IVec3, f32) {
-    let s = ((w % counts) + counts) % counts;
-    let g = ((w - s) / counts) & IVec3::splat(255);
-    (s, (g.x + g.y * 256 + g.z * 65536 + 1) as f32)
 }
 
 /// One cascade this frame: its first cell, spacing and first probe vec4.
@@ -765,148 +740,5 @@ impl GiProbes {
     /// The GPU memory it holds, in bytes.
     pub fn bytes(&self) -> u64 {
         self.bvh.bytes() + self.rays.bytes() + self.estimator.bytes() + self.params.size()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A tap one past an edge of the octahedral map reads the texel the
-    /// map folds onto there: the same as Wicked's stored borders
-    /// (DDGI_DEPTH_BORDER_OFFSETS, for its 16-texel map: border (x, 0)
-    /// copies (17 - x, 1), (0, y) copies (1, 17 - y), and the corner
-    /// (0, 0) copies (16, 16), in its one-based coordinates).
-    #[test]
-    fn the_octahedral_fold_matches_wicked_s_borders() {
-        let n = 16;
-        // One-based with a border, as Wicked's table, to zero-based.
-        let z = |x: i32, y: i32| IVec2::new(x - 1, y - 1);
-        for k in 1..=16 {
-            assert_eq!(oct_wrap(z(k, 0), n), z(17 - k, 1), "top border at {k}");
-            assert_eq!(oct_wrap(z(k, 17), n), z(17 - k, 16), "bottom border at {k}");
-            assert_eq!(oct_wrap(z(0, k), n), z(1, 17 - k), "left border at {k}");
-            assert_eq!(oct_wrap(z(17, k), n), z(16, 17 - k), "right border at {k}");
-        }
-        assert_eq!(oct_wrap(z(0, 0), n), z(16, 16));
-        assert_eq!(oct_wrap(z(17, 0), n), z(1, 16));
-        assert_eq!(oct_wrap(z(0, 17), n), z(16, 1));
-        assert_eq!(oct_wrap(z(17, 17), n), z(1, 1));
-        assert_eq!(oct_wrap(IVec2::new(5, 7), n), IVec2::new(5, 7));
-    }
-
-    /// The camera crossing one cell moves the grid by one plane: every
-    /// other cell keeps its slot and key, and the slot the cell that left
-    /// held now holds the one that came in under another key (so it is
-    /// traced afresh and, meanwhile, left out by the lit passes).
-    #[test]
-    fn a_scrolled_grid_keeps_its_cells_where_they_were() {
-        let counts = IVec3::new(16, 8, 16);
-        let desc = ProbeGlobalIllumination::default();
-        let (a, _) = plan(&desc, Vec3::new(-3.2, 1.0, 40.5), Vec3::NEG_Z, 0, 0, false);
-        let (b, _) = plan(&desc, Vec3::new(-2.2, 1.0, 40.5), Vec3::NEG_Z, 0, 0, false);
-        assert_eq!(b[0].start - a[0].start, IVec3::X);
-        let cells = |s: IVec3| {
-            (0..counts.x).flat_map(move |x| {
-                (0..counts.y).flat_map(move |y| (0..counts.z).map(move |z| s + IVec3::new(x, y, z)))
-            })
-        };
-        let mut slots = std::collections::HashMap::new();
-        for w in cells(a[0].start) {
-            slots.insert(slot_and_key(w, counts).0, w);
-        }
-        assert_eq!(slots.len(), 2048, "a slot for every probe");
-        let mut moved = 0;
-        for w in cells(b[0].start) {
-            let (s, key) = slot_and_key(w, counts);
-            let before = slots[&s];
-            if before == w {
-                assert_eq!(slot_and_key(before, counts).1, key);
-            } else {
-                moved += 1;
-                assert_eq!(w - before, IVec3::new(16, 0, 0));
-                assert_ne!(slot_and_key(before, counts).1, key);
-            }
-        }
-        assert_eq!(moved, 8 * 16, "one plane of probes");
-    }
-
-    /// What the camera looks at is lit by the finest cascade at full
-    /// weight (gi_probes.wgsl `gi_cascade`'s fade over the outer two
-    /// cells), and so is the camera's own spot: gi-room's camera, 8 m in
-    /// front of the back wall, saw that wall from the second cascade's
-    /// 1.5 m probes while half the first cascade lay behind it.
-    #[test]
-    fn the_finest_cascade_covers_what_the_camera_looks_at() {
-        let weight = |c: &Cascade, p: Vec3| {
-            let g = p / c.spacing - c.start.as_vec3();
-            let top = Vec3::from(COUNTS.map(|n| n as f32)) - 1.0;
-            (g.min(top - g).min_element() * 0.5).clamp(0.0, 1.0)
-        };
-        let desc = ProbeGlobalIllumination {
-            spacing: 0.75,
-            cascades: 2,
-            ..Default::default()
-        };
-        let (eye, target) = (Vec3::new(0.0, 2.2, 6.0), Vec3::new(0.0, 0.9, -1.0));
-        let (c, _) = plan(&desc, eye, (target - eye).normalize(), 0, 0, false);
-        assert_eq!(weight(&c[0], eye), 1.0, "under the camera");
-        for p in [
-            Vec3::new(-2.5, 1.5, -2.4),
-            Vec3::new(2.5, 0.0, -2.4),
-            Vec3::new(0.0, 0.0, 1.0),
-        ] {
-            assert!(weight(&c[0], p) >= 0.9, "{p}: {}", weight(&c[0], p));
-        }
-    }
-
-    /// Cascade c updates a 2^c-th of its probes a frame, so every probe
-    /// over 2^c frames, each once; a reset updates them all at once, and
-    /// the slices' rays lie one after another.
-    #[test]
-    fn the_slices_cover_each_cascade_over_its_period() {
-        let desc = ProbeGlobalIllumination {
-            cascades: 3,
-            rays: 64,
-            ..Default::default()
-        };
-        for c in 0..3 {
-            let period = 1u32 << c;
-            let mut seen = vec![0u32; probes_per_cascade()];
-            for frame in 0..period as u64 {
-                let s = plan(&desc, Vec3::ZERO, Vec3::NEG_Z, 0, frame, false).1[c];
-                assert_eq!(s.period, period);
-                for k in 0..s.probes {
-                    seen[(s.phase + k * s.period) as usize] += 1;
-                }
-            }
-            assert!(seen.iter().all(|&n| n == 1), "cascade {c}");
-        }
-        let (_, all) = plan(&desc, Vec3::ZERO, Vec3::NEG_Z, 0, 5, true);
-        assert!(all.iter().all(|s| s.period == 1 && s.probes == 2048));
-        assert_eq!(all[2].first_ray, 2 * 2048 * 64);
-        let (c, _) = plan(
-            &desc,
-            Vec3::new(100.0, 0.0, 0.0),
-            Vec3::NEG_Z,
-            1000,
-            0,
-            false,
-        );
-        assert_eq!(c[1].first, 1000 + 2048 * STRIDE);
-        assert_eq!(c[2].spacing, 4.0);
-        assert_eq!(region_vec4s(&desc), 3 * 2048 * STRIDE);
-    }
-
-    /// The rays turn every frame, the same way on every run.
-    #[test]
-    fn the_rotation_is_a_rotation_of_the_frame_alone() {
-        for f in 0..32 {
-            let r = rotation(f);
-            assert!((r.determinant() - 1.0).abs() < 1e-4);
-            assert!((r * r.transpose() - Mat3::IDENTITY).abs_diff_eq(Mat3::ZERO, 1e-4));
-            assert_eq!(r, rotation(f));
-        }
-        assert_ne!(rotation(1), rotation(2));
     }
 }

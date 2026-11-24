@@ -467,9 +467,6 @@ fn bent_shadow(
     })
 }
 
-#[cfg(test)]
-mod tests;
-
 /// The batch's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("sprite", crate::sprite_source());

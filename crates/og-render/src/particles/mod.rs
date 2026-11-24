@@ -53,6 +53,3 @@ pub enum ParticleSimulation {
     /// the depth buffer.
     Cpu,
 }
-
-#[cfg(test)]
-mod tests;

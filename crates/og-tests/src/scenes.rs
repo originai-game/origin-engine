@@ -319,22 +319,6 @@ fn crowd_perf(g: &mut GfxScene, count: u32) -> Result<(), String> {
     Ok(())
 }
 
-/// Scenes drawn at the mini-game WebGPU tier (`Tier::MiniGame`: no
-/// multiple render targets, asynchronous pipelines or timestamps): each is
-/// the scene after `mini-game-`, made for that tier on whatever device runs
-/// it. These are the scenes the tier draws whole today: a 3D scene with
-/// shadows and the sky, physical materials, lit tiles, 2D effects and the
-/// UI's shapes. A scene whose passes read the depth prepass (AO, contact
-/// shadows, outlines, soft particles) cannot build its graph at this tier
-/// yet, and secondary views draw nothing (docs/roadmap.md §Structure).
-pub const MINI_GAME_SCENES: &[&str] = &[
-    "mini-game-gltf-reference",
-    "mini-game-materials",
-    "mini-game-tilemap-lit",
-    "mini-game-fx-2d",
-    "mini-game-ui-shapes",
-];
-
 /// Scenes drawn at the WebGPU compatibility tier (`Tier::Compat`, what a
 /// GLES or D3D11 device's browser gives): each is the scene after
 /// `compat-`, made for that tier on whatever device runs it, so its
@@ -529,7 +513,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             // TAAU itself, the fallback where FSR does not run (the
-            // default draws FSR below render scale 1: tests/fsr.rs).
+            // default draws FSR below render scale 1).
             g.scene.frame.quality.upscaler = og_render::Upscaler::Taau;
             g.render_scale = 0.5;
             g.frames = 64;
@@ -541,7 +525,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             // TAAU itself, the fallback where FSR does not run (the
-            // default draws FSR below render scale 1: tests/fsr.rs).
+            // default draws FSR below render scale 1).
             g.scene.frame.quality.upscaler = og_render::Upscaler::Taau;
             g.render_scale = 0.5;
             g.frames = 24;

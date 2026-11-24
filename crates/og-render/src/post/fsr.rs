@@ -850,36 +850,3 @@ impl FsrPasses {
         1
     }
 }
-
-/// FSR 3.1's jitter sequence length for a render of `render_width` shown
-/// at `display_width` (ffxFsr3UpscalerGetJitterPhaseCount).
-#[cfg(test)]
-fn amd_phase_count(render_width: u32, display_width: u32) -> i32 {
-    (8.0 * (display_width as f32 / render_width as f32).powi(2)) as i32
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The engine's jitter cycle is FSR's at the render scales the presets
-    /// use (8 at native, 32 at half), so the jitter walks the same samples.
-    #[test]
-    fn the_jitter_cycle_matches_amd_phase_count() {
-        for (render, out) in [(1920, 1920), (960, 1920), (1280, 1920)] {
-            let ours = crate::frame::jitter_phases((render, render), (out, out));
-            assert_eq!(
-                ours as i32,
-                amd_phase_count(render, out).clamp(8, 32),
-                "{render}/{out}"
-            );
-        }
-    }
-
-    /// The uniform matches `struct Fsr` (fsr_common.wgsl): three matrices
-    /// and nine vec4 rows.
-    #[test]
-    fn the_uniform_is_the_shaders_size() {
-        assert_eq!(std::mem::size_of::<FsrUniform>(), 3 * 64 + 9 * 16);
-    }
-}

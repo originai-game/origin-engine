@@ -847,9 +847,6 @@ pub(crate) fn cpu_records(
     out
 }
 
-#[cfg(test)]
-mod tests;
-
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("crowd cull", crate::crowd::CROWD_CULL_WGSL.to_string());

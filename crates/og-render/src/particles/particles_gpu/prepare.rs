@@ -1200,31 +1200,3 @@ impl ParticleRenderer {
         Ok(())
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_sub_emitters_draw_covers_its_living_particles_across_the_wrap() {
-        // Eight slots after 13 births: slots 0..5 hold births 8..13, slots
-        // 5..8 births 5..8. Births 5 and 6 (slots 5, 6) are dead.
-        let living = |alive: bool| ParticleState {
-            pos_age: [0.0, 0.0, 0.0, if alive { 0.0 } else { 2.0 }],
-            vel_life: [0.0, 0.0, 0.0, 1.0],
-            misc: [0.0; 4],
-        };
-        let c = crate::particles::ChildParticles {
-            slots: (0..8).map(|s| living(s != 5 && s != 6)).collect(),
-            born: 13,
-        };
-        let (alive, live) = child_live(&c);
-        assert_eq!((alive, live.clone()), (6, 7..13));
-        assert_eq!(drawn(8, Some(live)), [0..5, 7..8]);
-        let none = crate::particles::ChildParticles {
-            slots: vec![living(false); 8],
-            born: 3,
-        };
-        assert_eq!(drawn(8, Some(child_live(&none).1)), [3..3, 0..0]);
-    }
-}

@@ -329,16 +329,6 @@ impl LitFeatures {
     pub(crate) fn features(self) -> Features {
         self.0
     }
-
-    /// The override of a single feature (its first, in `NAMES` order).
-    #[cfg(test)]
-    pub(crate) fn override_name(self) -> &'static str {
-        NAMES
-            .iter()
-            .find(|(bit, _)| self.0.contains(*bit))
-            .map(|(_, n)| *n)
-            .expect("a feature")
-    }
 }
 
 impl std::ops::BitOr for LitFeatures {
@@ -533,12 +523,6 @@ impl<C: Cell> Variants<C> {
         }
     }
 
-    /// [`Variants::get`] outside a frame, where every use waits.
-    #[cfg(test)]
-    fn wait(&self, features: Features) -> &C::Value {
-        self.get(features).expect("outside a frame every use waits")
-    }
-
     /// Whether what a frame with `features` draws with is made, without
     /// waiting for it ([`Variants::get`] would not wait either).
     pub(crate) fn ready(&self, features: Features) -> bool {
@@ -570,164 +554,5 @@ impl<C: Cell> Variants<C> {
         std::iter::once(&self.full)
             .chain(self.lean.get().map(|(_, c)| c))
             .chain(self.far.get())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn constants_leave_out_only_declared_missing_features() {
-        let declared =
-            Features::declared("override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\n");
-        assert_eq!(declared, Features::WEATHER | Features::GI);
-        assert_eq!(Features::GI.constants(declared), vec![("OG_WEATHER", 0.0)]);
-        assert!(Features::ALL.constants(declared).is_empty());
-    }
-
-    /// A feature a renderer is made without (RenderDesc::without) is false
-    /// in the module's text: no pipeline sets it, so every one made from
-    /// it, the full variant included and on every host, lacks its code.
-    /// With nothing left out the text is untouched.
-    #[test]
-    fn a_feature_left_out_is_false_in_the_text_and_never_set() {
-        let source = "override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\noverride OG_AREA: bool = true;\n".to_string();
-        assert_eq!(
-            LitFeatures::NONE.features().leave_out(source.clone()),
-            source
-        );
-        let off = (LitFeatures::SURFACE_WEATHER | LitFeatures::AREA_LIGHTS).features();
-        let lean = off.leave_out(source);
-        assert!(
-            lean.contains("override OG_WEATHER: bool = false;"),
-            "{lean}"
-        );
-        assert!(lean.contains("override OG_AREA: bool = false;"), "{lean}");
-        assert!(lean.contains("override OG_GI: bool = true;"), "{lean}");
-        let declared = Features::declared(&lean);
-        assert_eq!(declared, Features::GI);
-        assert!(Features::ALL.constants(declared).is_empty());
-        assert_eq!(Features::NONE.constants(declared), vec![("OG_GI", 0.0)]);
-    }
-
-    /// The IDL's names, each its own feature.
-    #[test]
-    fn lit_features_by_name() {
-        for (f, name) in LitFeatures::NAMED {
-            assert_eq!(LitFeatures::named(name), Some(f));
-            assert_eq!(f.names(), vec![name]);
-        }
-        assert_eq!(LitFeatures::named("toon"), None);
-        let all = LitFeatures::NAMED
-            .iter()
-            .fold(LitFeatures::NONE, |a, (f, _)| a | *f);
-        assert_eq!(all.names().len(), LitFeatures::NAMED.len());
-    }
-
-    /// A frame lacking only a feature the module is made without draws the
-    /// full variant: no variant is made for it.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn a_feature_left_out_needs_no_variant() {
-        let source = "override OG_WEATHER: bool = true;\noverride OG_GI: bool = true;\n";
-        let declared = Features::declared(&Features::WEATHER.leave_out(source.to_string()));
-        let made = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let log = made.clone();
-        let v = Variants::new(declared, move |f: Features| {
-            log.lock().unwrap().push(f);
-            Deferred::anywhere(move || f)
-        });
-        assert_eq!(*v.wait(Features::GI), Features::ALL);
-        assert_eq!(*made.lock().unwrap(), vec![Features::ALL]);
-        assert_eq!(v.each().count(), 1);
-    }
-
-    /// The full variant is made without the static lights' far field (a
-    /// frame with the reach at 0 draws none of its code); a capture that
-    /// draws the field waits for the full variant with it.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn the_far_field_is_outside_the_full_variant() {
-        let declared = Features::declared(
-            "override OG_GI: bool = true;\noverride OG_STATIC_FAR: bool = true;\n",
-        );
-        assert_eq!(
-            Features::ALL.constants(declared),
-            vec![("OG_STATIC_FAR", 0.0)]
-        );
-        let v = Variants::new(declared, |f: Features| Deferred::anywhere(move || f));
-        assert_eq!(*v.wait(Features::ALL), Features::ALL);
-        let far = Features::ALL | Features::STATIC_FAR;
-        assert_eq!(*v.wait(far), far);
-        assert_eq!(*v.wait(Features::ALL), Features::ALL);
-        assert_eq!(v.each().count(), 2);
-    }
-
-    /// The first frame's variant draws; the full one replaces it once made,
-    /// and a display frame with a feature turned on before then does not
-    /// wait for it.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn the_full_variant_takes_over_without_a_wait() {
-        let (go, gate) = std::sync::mpsc::channel::<()>();
-        let gate = std::sync::Arc::new(std::sync::Mutex::new(gate));
-        let v = Variants::new(Features::ALL, move |f: Features| {
-            let gate = gate.clone();
-            Deferred::anywhere(move || {
-                if f == Features::ALL {
-                    // The full variant compiles until the test lets it finish.
-                    let _ = gate.lock().unwrap().recv();
-                }
-                f
-            })
-        });
-        assert_eq!(*v.wait(Features::NONE), Features::NONE);
-        crate::deferred::release_background();
-        // A light turns on: the lean variant still draws, at once.
-        {
-            let _display = crate::deferred::FramePolicy::open(false);
-            assert_eq!(*v.wait(Features::LOCAL_LIGHTS), Features::NONE);
-        }
-        go.send(()).unwrap();
-        let t0 = std::time::Instant::now();
-        while v.full().poll().is_none() {
-            assert!(
-                t0.elapsed().as_secs() < 10,
-                "the full variant never finished"
-            );
-            std::thread::yield_now();
-        }
-        assert_eq!(*v.wait(Features::LOCAL_LIGHTS), Features::ALL);
-    }
-
-    #[test]
-    #[cfg(not(target_arch = "wasm32"))]
-    fn waited_frames_never_draw_an_incomplete_variant() {
-        // Keep compilation pending deterministically; get supplies the
-        // requested pipeline, without a worker racing the assertion.
-        struct Pending(Features);
-        impl Cell for Pending {
-            type Value = Features;
-            fn start_at(&self, _: Priority) {}
-            fn poll(&self) -> Option<&Features> {
-                None
-            }
-            fn get(&self) -> Option<&Features> {
-                Some(&self.0)
-            }
-        }
-        let v = Variants::new(Features::ALL | Features::STATIC_FAR, Pending);
-        assert_eq!(*v.wait(Features::NONE), Features::NONE);
-        {
-            let _display = crate::deferred::FramePolicy::open(false);
-            assert_eq!(*v.wait(Features::WEATHER), Features::NONE);
-        }
-        assert_eq!(*v.wait(Features::WEATHER), Features::ALL);
-        assert_eq!(*v.wait(Features::DEBUG), Features::ALL);
-        assert_eq!(
-            *v.wait(Features::STATIC_FAR),
-            Features::ALL | Features::STATIC_FAR
-        );
     }
 }

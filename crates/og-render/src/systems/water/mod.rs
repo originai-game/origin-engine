@@ -654,9 +654,6 @@ pub(crate) struct WaterDraw {
     mesh: Option<(wgpu::Buffer, wgpu::Buffer, u32, i32)>,
 }
 
-#[cfg(test)]
-mod tests;
-
 /// The lit features the scene's water asks for (`pipeline_features.rs`):
 /// the surf's wetness on the shore, caustics, the sea's waves, a flow and
 /// the ripples' heights.

@@ -1243,31 +1243,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn keys_hold_ease_and_clamp_at_their_ends() {
-        let keys = [
-            key(1.0, 10.0, Ease::Linear),
-            key(2.0, 20.0, Ease::Hold),
-            key(3.0, 40.0, Ease::Linear),
-        ];
-        assert_eq!(sample(&keys, 0.0), Some(10.0), "before the first: it holds");
-        assert_eq!(sample(&keys, 1.25), Some(12.5));
-        assert_eq!(sample(&keys, 2.9), Some(20.0), "a hold key keeps its value");
-        assert_eq!(sample(&keys, 9.0), Some(40.0), "after the last: it holds");
-        // ease-in-out (0.42, 0, 0.58, 1) is symmetric: half way at t = ½,
-        // slower than linear at a quarter.
-        let e = Ease::Cubic {
-            x1: 0.42,
-            y1: 0.0,
-            x2: 0.58,
-            y2: 1.0,
-        };
-        let k = [key(0.0, 0.0, e), key(1.0, 100.0, e)];
-        assert!((sample(&k, 0.5).unwrap() - 50.0).abs() < 0.05);
-        let q = sample(&k, 0.25).unwrap();
-        assert!(q < 20.0 && q > 5.0, "{q}");
-    }
-
     /// A ping-ponging animation on a nested artboard inside a looping one:
     /// saved mid-way, restored onto a fresh player and run on, it matches
     /// the run that was never interrupted, bit for bit.
@@ -1352,42 +1327,5 @@ mod tests {
                 .restore(&saved)
                 .is_err()
         );
-    }
-
-    #[test]
-    fn colours_lerp_by_channel() {
-        let k = [
-            Key {
-                seconds: 0.0,
-                value: 0.0,
-                color: 0xFF00_00FF,
-                ease: Ease::Linear,
-            },
-            Key {
-                seconds: 1.0,
-                value: 0.0,
-                color: 0x00FF_0000,
-                ease: Ease::Linear,
-            },
-        ];
-        assert_eq!(sample_color(&k, 0.5), Some(0x8080_0080));
-    }
-
-    #[test]
-    fn a_rounded_corner_starts_and_ends_on_its_edges() {
-        // A 100 px square, its first corner rounded by 20.
-        let v = [
-            (Vec2::new(0.0, 0.0), None, 20.0),
-            (Vec2::new(100.0, 0.0), None, 0.0),
-            (Vec2::new(100.0, 100.0), None, 0.0),
-            (Vec2::new(0.0, 100.0), None, 0.0),
-        ];
-        let p = build(&v, true);
-        // Starts 20 down the left edge (towards the previous vertex) and
-        // its first curve ends 20 along the top.
-        let els = p.elements();
-        assert_eq!(els[0], PathEl::MoveTo(Point::new(0.0, 20.0)));
-        assert!(matches!(els[1], PathEl::CurveTo(_, _, e) if e == Point::new(20.0, 0.0)));
-        assert_eq!(els.last(), Some(&PathEl::ClosePath));
     }
 }

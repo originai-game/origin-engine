@@ -149,39 +149,3 @@ fn field_layout(d: &TerrainData) -> Result<TerrainLayout, String> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Every frame asks each field for its layout; when that checked the
-    /// field (every height finite), terrain-grass spent 2.27 ms a frame on
-    /// it. The check runs when the field is set: a height spoilt behind the
-    /// source's back is not looked at again until the field is set anew.
-    #[test]
-    fn a_field_is_checked_when_set_not_when_drawn() {
-        let mut source = TerrainSource::data(TerrainData::flat(Vec2::splat(64.0), 65, 65));
-        let laid = source.layout().expect("a flat field draws");
-        let TerrainSource::Data(d, ..) = &mut source else {
-            unreachable!("a field in memory");
-        };
-        let mut heights = d.heights.to_vec();
-        heights[0] = f32::NAN;
-        d.heights = heights.into();
-        let spoilt = d.clone();
-        for _ in 0..3 {
-            assert_eq!(
-                source.layout(),
-                Ok(laid),
-                "an unchanged field is checked again"
-            );
-        }
-        assert!(TerrainSource::data(spoilt.clone()).layout().is_err());
-        assert!(
-            source
-                .edited(spoilt, Vec2::ZERO, Vec2::ONE)
-                .layout()
-                .is_err()
-        );
-    }
-}

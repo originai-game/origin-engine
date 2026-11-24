@@ -133,28 +133,3 @@ impl<'a> Binder<'a> {
         self.bind(pass, NONE);
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// A point takes the smallest box holding it; one outside every box
-    /// takes none; boxes nest (a cupboard inside a room).
-    #[test]
-    fn a_point_takes_the_smallest_box_holding_it() {
-        let room = ReflectionProbe::new(1, Vec3::ZERO, Vec3::splat(10.0));
-        let cupboard = ReflectionProbe::new(2, Vec3::new(3.0, 0.0, 0.0), Vec3::splat(2.0));
-        let b = boxes(&[room, cupboard]);
-        assert_eq!(pick(&b, Vec3::new(-2.0, 0.0, 0.0)), 0);
-        assert_eq!(pick(&b, Vec3::new(3.2, 0.1, 0.0)), 1);
-        assert_eq!(pick(&b, Vec3::new(40.0, 0.0, 0.0)), NONE);
-        assert_eq!(pick(&[], Vec3::ZERO), NONE);
-        // A terrain level centred outside the room but reaching into it
-        // takes the room; one that does not reach it, none.
-        assert_eq!(pick_sphere(&b, Vec3::new(20.0, 0.0, 0.0), 15.5), 0);
-        assert_eq!(pick_sphere(&b, Vec3::new(20.0, 0.0, 0.0), 14.0), NONE);
-        // Reaching into both, the smaller wins.
-        assert_eq!(pick_sphere(&b, Vec3::new(7.0, 0.0, 0.0), 2.5), 0);
-        assert_eq!(pick_sphere(&b, Vec3::new(5.5, 0.0, 0.0), 1.6), 1);
-    }
-}

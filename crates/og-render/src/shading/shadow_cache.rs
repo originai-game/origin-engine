@@ -610,6 +610,3 @@ fn worth_keeping(instances: &[Tracked], frustum: &Frustum, texels: u64) -> bool 
         triangles >= need
     })
 }
-
-#[cfg(test)]
-mod tests;

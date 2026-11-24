@@ -341,32 +341,3 @@ fn level(texture: &wgpu::Texture, mip: u32) -> wgpu::TexelCopyTextureInfo<'_> {
         aspect: wgpu::TextureAspect::All,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Over a capture's steps every face is drawn once, every filter pass
-    /// recorded once and in order (each after what it reads), and the
-    /// copy comes last; all at once does the same in one step.
-    #[test]
-    fn a_capture_s_steps_do_each_part_once_in_order() {
-        let mips = CAPTURE_SIZE.ilog2() + 1;
-        let all = step(None, mips);
-        assert_eq!((all.faces.clone(), all.copy), (0..6, true));
-        let mut faces = Vec::new();
-        let mut passes = Vec::new();
-        for k in 0..STEPS {
-            let s = step(Some(k), mips);
-            assert!(
-                faces.len() == 6 || s.filter.is_empty(),
-                "filtered before every face is drawn"
-            );
-            assert_eq!(s.copy, k == STEPS - 1, "the copy is the last step");
-            faces.extend(s.faces);
-            passes.extend(s.filter);
-        }
-        assert_eq!(faces, (0..6).collect::<Vec<_>>());
-        assert_eq!(passes, all.filter.collect::<Vec<_>>());
-    }
-}

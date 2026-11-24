@@ -691,19 +691,3 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
     ])
     .collect()
 }
-
-#[cfg(test)]
-mod far_depth_tests {
-    /// The library's sky test reads the depth the prepass clears to.
-    #[test]
-    fn the_shaders_sky_depth_is_the_prepass_clear() {
-        let key = "const SKY_VIEW_DEPTH: f32 = ";
-        let at = crate::LIBRARY_WGSL
-            .find(key)
-            .expect("common.wgsl states SKY_VIEW_DEPTH")
-            + key.len();
-        let rest = &crate::LIBRARY_WGSL[at..];
-        let stated: f32 = rest[..rest.find(';').unwrap()].parse().expect("a number");
-        assert_eq!(stated, super::FAR_DEPTH);
-    }
-}

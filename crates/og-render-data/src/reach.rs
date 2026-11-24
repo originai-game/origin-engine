@@ -1,9 +1,7 @@
-//! What a surface takes of the shared shading ([`Capability`]): the cell
-//! of og-render's capability table (`tests/shader_capabilities.rs`), read
-//! from a module's text and the code its entry points reach (naga's call
-//! graph). The table and `og check`'s findings on a game's material
-//! shaders both read it here; the `reach` feature builds it, never the
-//! runtime.
+//! What a surface takes of the shared shading ([`Capability`]), read from
+//! a module's text and the code its entry points reach (naga's call
+//! graph). `og check`'s findings on a game's material shaders read it
+//! here; the `reach` feature builds it, never the runtime.
 
 use crate::{Capability, Holds, MaterialShader, ShaderMode};
 use naga::Statement as St;
@@ -20,17 +18,6 @@ pub enum Cell {
     Stub,
     /// Neither.
     None,
-}
-
-impl Cell {
-    pub fn name(self) -> &'static str {
-        match self {
-            Cell::Full => "full",
-            Cell::Idle => "idle",
-            Cell::Stub => "stub",
-            Cell::None => "-",
-        }
-    }
 }
 
 /// A module's text and the functions its entry points reach.

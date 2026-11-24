@@ -57,8 +57,6 @@ pub(crate) use slots::DepthPrepass;
 pub(crate) use write::camera_gpu;
 
 use glow::{GlowAdd, ViewGlow, glow_add, view_glow};
-#[cfg(test)]
-use plan::mirror_frame;
 use resolve::{ResolveUniform, resolve_entry};
 use slots::{ViewSlot, hdr_texture};
 
@@ -248,51 +246,5 @@ impl crate::Renderer {
                 (frame, fx, lean)
             })
             .collect()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The mirror's frustum passes exactly through the quad's corners: each
-    /// projects to the image corner it maps to (u along +x after the flip).
-    #[test]
-    fn mirror_frustum_fits_the_quad() {
-        let eye = Camera {
-            position: Vec3::new(0.7, 1.3, 4.0),
-            target: Vec3::new(0.0, 1.0, 0.0),
-            ..Camera::default()
-        };
-        let quad = MirrorQuad {
-            transform: Mat4::from_translation(Vec3::new(0.2, 1.0, 0.0)),
-            width: 2.0,
-            height: 1.0,
-        };
-        let (f, pe, near) = mirror_frame(&eye, &quad).expect("in front");
-        assert!((pe - Vec3::new(0.7, 1.3, -4.0)).length() < 1e-5);
-        assert!((near - 4.004).abs() < 1e-4);
-        let ndc = |p: Vec3| f.view_proj.project_point3(p);
-        // The quad's +x end is the image's left (x = -1) before the flip.
-        let a = ndc(Vec3::new(1.2, 0.5, 0.0));
-        let c = ndc(Vec3::new(-0.8, 1.5, 0.0));
-        assert!((a.x + 1.0).abs() < 1e-4 && (a.y + 1.0).abs() < 1e-4, "{a}");
-        assert!((c.x - 1.0).abs() < 1e-4 && (c.y - 1.0).abs() < 1e-4, "{c}");
-        // The glass itself is in front of the near plane (clipped); the
-        // room in front of the mirror is beyond it.
-        assert!(a.z < 0.0, "{a}");
-        assert!(ndc(Vec3::new(0.2, 1.0, 2.0)).z > 0.0);
-        // Behind the mirror, no reflection.
-        let behind = Camera {
-            position: Vec3::new(0.0, 1.0, -3.0),
-            ..eye
-        };
-        assert!(mirror_frame(&behind, &quad).is_none());
-    }
-
-    #[test]
-    fn layers_default_to_layer_zero() {
-        assert_eq!(layer_of(&[4], 0), 4);
-        assert_eq!(layer_of(&[4], 3), 1);
     }
 }

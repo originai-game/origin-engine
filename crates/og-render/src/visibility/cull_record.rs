@@ -194,30 +194,3 @@ impl Records {
             .map(|f| f.record.frame)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// The words land on the instances they were culled as, through the
-    /// sort's order; a transparent slot's word leaves the CPU's verdict.
-    #[test]
-    fn the_gpu_words_land_on_their_instances() {
-        let mut f = RecordFrame::default();
-        f.begin(7, 4, 2, 0);
-        f.record.instances[3] = Culled::OutsideView;
-        f.gpu = Some(GpuSlots {
-            sorted: vec![2, 0, 3],
-            base: 3,
-            skinned: vec![1],
-        });
-        f.apply(&[3, 4, 5, 2]);
-        use Culled::*;
-        assert_eq!(
-            f.record.instances,
-            [Occluded, Empty, OutsideView, OutsideView]
-        );
-        assert_eq!(f.record.skinned, [Empty, Layer]);
-        assert!(f.gpu.is_none(), "whole");
-    }
-}

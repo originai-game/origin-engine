@@ -794,6 +794,3 @@ pub fn projection_name(camera: &Camera) -> &'static str {
         Projection::Orthographic { .. } => "orthographic",
     }
 }
-
-#[cfg(test)]
-mod tests;

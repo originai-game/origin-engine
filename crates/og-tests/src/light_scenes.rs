@@ -9,8 +9,7 @@
 use glam::{Mat3, Mat4, Quat, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, Environment, Exposure, LightCookie, LightDesc, LightKind,
-    MaterialShader, MeshData, Mips, RenderScene, ShaderMode, StandardMaterial, TextureData,
-    VolumetricFog, shapes,
+    MeshData, Mips, RenderScene, StandardMaterial, TextureData, VolumetricFog, shapes,
 };
 
 /// A mesh with every vertex moved by `m` (positions, normals).
@@ -510,32 +509,6 @@ fn cornell_view() -> RenderScene {
     scene
 }
 
-/// Two of [`baked_cornell_scene`]'s boxes side by side, 2.4 m apart, the
-/// right one with its red and green walls swapped, each baked on its own:
-/// its own pages and light volume, as two baked scenes loaded together hand
-/// them over (`og.load.scene` twice, or one scene streamed in beside
-/// another). The left box's short block is green on the side facing its
-/// green wall, the right box's tall block green on the side facing its
-/// green wall, only when each box draws its own pages: the other's are red
-/// there.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn baked_cornell_pair_scene() -> Result<RenderScene, String> {
-    let mut scene = RenderScene::new();
-    dark(&mut scene, 0.35);
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 1.0, 5.6),
-        target: Vec3::new(0.0, 0.95, 0.0),
-        projection: og_render::Projection::Perspective {
-            fov_y_degrees: 40.0,
-        },
-        exposure: Exposure::linear(0.85),
-        ..Default::default()
-    };
-    cornell_box(&mut scene, Vec3::new(-1.2, 0.0, 0.0), false, true, false)?;
-    cornell_box(&mut scene, Vec3::new(1.2, 0.0, 0.0), true, true, false)?;
-    Ok(scene)
-}
-
 /// [`baked_cornell_scene`]'s box with its parts drawn by every kind of lit
 /// batch (`baked-batches`): the ceiling a physical material, the back wall
 /// a plain material from compact vertices, the tall block an array-map
@@ -563,8 +536,7 @@ pub fn baked_batches_scene(baked: bool) -> Result<RenderScene, String> {
 /// crates lit by the cellar's light volume. The lantern and its shadows
 /// are drawn live; the bake carries the bounces: the pier's side and the
 /// floor take red from the left wall, the chest green from the right,
-/// and the ceiling is lit by bounces alone. [`baked_cornell_scene`] and
-/// [`baked_batches_scene`] are the plain fixtures `tests/light.rs` reads.
+/// and the ceiling is lit by bounces alone.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
     use crate::kit;
@@ -1058,116 +1030,4 @@ fn bake_parts(
         probes: Arc::new(volume.probes),
     });
     Ok(())
-}
-
-/// The island's meadow at night (`grass` with its scattered grass, else the
-/// bare terrain) lit by one upright one-sided rect light 10 m ahead of the
-/// camera, its face turned to the camera's left. With linearly transformed
-/// cosines the meadow left of the panel is lit and the meadow right of it,
-/// behind its back, stays dark; a point at its centre (how terrain and
-/// scatter lit rect lights before) lights both sides alike. Also the two
-/// ground points, left and right of the panel, 2.5 m from it.
-pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
-    use crate::terrain_scenes::{grass_scene, island_height, island_view};
-    let mut scene = if grass {
-        grass_scene()
-    } else {
-        island_view("near")
-    };
-    scene.lighting.light.intensity = 0.0;
-    scene.lighting.light.cast_shadows = false;
-    scene.lighting.environment.intensity = 0.02;
-    scene.lighting.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
-    scene.atmosphere.fog = None;
-    let eye = scene.frame.camera.position;
-    let ahead = (scene.frame.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
-    let forward = ahead.normalize();
-    let side = forward.cross(Vec3::Y).normalize();
-    let foot = eye + forward * 10.0;
-    let ground = |p: Vec3| Vec3::new(p.x, island_height(p.x, p.z), p.z);
-    let centre = ground(foot) + Vec3::Y * 0.9;
-    // Spanned by forward and up, so it faces -(forward × up): the left.
-    let panel = rect(
-        centre,
-        forward,
-        Vec3::Y,
-        (1.6, 1.4),
-        Vec3::new(1.0, 0.85, 0.6),
-        6.0,
-        false,
-    );
-    fixture(&mut scene, &panel);
-    scene.lighting.lights = vec![panel];
-    (
-        scene,
-        [ground(foot - side * 2.5), ground(foot + side * 2.5)],
-    )
-}
-
-/// A shadowed rect light: a 1.6 m square panel facing down 3 m over a
-/// matte floor and 1.2 m to the left of a 2 m post standing on it, the
-/// panel's emissive slab drawn where it is. With `cast` the post throws a
-/// shadow to the right, sharp at its foot and widening into penumbra
-/// toward its tip (x 2.4); without, the floor is lit through it. Returns
-/// the scene and floor points along the shadow's axis: by the post's foot
-/// and near the tip.
-pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
-    let mut scene = RenderScene::new();
-    dark(&mut scene, 0.02);
-    put(
-        &mut scene,
-        shapes::plane(14.0, 1.0),
-        matte(Vec3::splat(0.6), 0.9),
-        Mat4::IDENTITY,
-    );
-    put(
-        &mut scene,
-        shapes::cuboid(Vec3::new(0.3, 2.0, 0.3)),
-        matte(Vec3::new(0.7, 0.3, 0.2), 0.8),
-        Mat4::from_translation(Vec3::new(0.0, 1.0, 0.0)),
-    );
-    // Facing down: right × up = +y, so up is -z.
-    let mut panel = rect(
-        Vec3::new(-1.2, 3.0, 0.0),
-        Vec3::X,
-        Vec3::NEG_Z,
-        (1.6, 1.6),
-        Vec3::new(1.0, 0.9, 0.75),
-        4.0,
-        false,
-    );
-    panel.cast_shadows = cast;
-    fixture(&mut scene, &panel);
-    scene.lighting.lights = vec![panel];
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 4.5, 5.5),
-        target: Vec3::new(0.6, 0.3, 0.0),
-        exposure: Exposure::linear(1.0),
-        ..Default::default()
-    };
-    (scene, [Vec3::new(0.45, 0.0, 0.0), Vec3::new(2.1, 0.0, 0.0)])
-}
-
-/// [`rect_shadow_scene`] with the floor and the post drawn by a full
-/// custom lit shader that keeps the standard entries (`custom_lit.wgsl`):
-/// lit as the standard material is, the rect light as an area with its
-/// soft shadow. Lit as a point at the panel's centre without its shadow,
-/// as before the debt round 2, the floor reads otherwise and the post
-/// throws nothing.
-pub fn rect_shadow_custom_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
-    let (mut scene, points) = rect_shadow_scene(cast);
-    let shader = scene.add_shader(MaterialShader {
-        name: "standard-full".into(),
-        code: String::new(),
-        params: Vec::new(),
-        mode: ShaderMode::Full { lit: true },
-    });
-    let drawn: Vec<_> = scene.objects.instances[..2]
-        .iter()
-        .map(|i| i.material)
-        .collect();
-    for m in drawn {
-        assert!(scene.set_material_shader(m, Some(shader)));
-    }
-    (scene, points)
 }

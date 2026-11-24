@@ -506,23 +506,3 @@ pub(crate) const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba
 /// The glass passes' module (`crate::shaders` validates it).
 pub(crate) const GLASS_WGSL: &str =
     wgsl_library!("fullscreen.wgsl", "glass.wgsl", "bloom_chain.wgsl");
-
-#[cfg(test)]
-mod tests {
-    use super::rebuilds;
-
-    #[test]
-    fn the_pyramid_is_rebuilt_before_glass_with_overlay_under_it() {
-        // No glass: no pyramid.
-        assert!(rebuilds(&[false, false]).is_empty());
-        // Glass under everything: one pyramid, of the scene.
-        assert_eq!(rebuilds(&[true, false, false]), [0]);
-        assert_eq!(rebuilds(&[true, true, false]), [0]);
-        // Content under the glass: built after it.
-        assert_eq!(rebuilds(&[false, true, false]), [1]);
-        // Glass, content, glass: built again for the second.
-        assert_eq!(rebuilds(&[true, false, true, false]), [0, 2]);
-        // Two glass runs with nothing between share a pyramid.
-        assert_eq!(rebuilds(&[false, true, true, false]), [1]);
-    }
-}

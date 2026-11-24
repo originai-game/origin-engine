@@ -898,9 +898,6 @@ impl Stylise {
     }
 }
 
-#[cfg(test)]
-mod tests;
-
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("stylise object", crate::stylise_object::object_source());

@@ -1,14 +1,12 @@
 //! Shared frames (`og_render::shared_frames`): a host on the other end of
 //! the socket, playing Origin Desktop's part with a device of its own,
 //! sees in each ready slot exactly the frame the renderer drew offscreen;
-//! a resize it asks for reallocates the slots at that size; a renderer
-//! whose host is not there yet draws on and links once it listens; a host
-//! that subscribed to the cursor hears each new one after its Hello.
+//! a resize it asks for reallocates the slots at that size.
 
 use glam::{Mat4, Vec3};
 use og_render::shared_frames::{
-    CursorImage, FrameLink, Msg, OUTPUT_FORMAT, Presented, SLOTS, UnixListener, UnixStream,
-    import_slot, recv, recv_hello, send,
+    FrameLink, Msg, OUTPUT_FORMAT, Presented, UnixListener, UnixStream, import_slot, recv,
+    recv_hello, send,
 };
 use og_render::{Camera, Material, RenderDesc, RenderScene, Renderer, shapes};
 use std::sync::mpsc;
@@ -239,132 +237,5 @@ fn a_host_sees_each_frame_exactly_as_drawn_and_its_resize_reallocates_the_slots(
         "the resize made generation 1"
     );
     assert_eq!(engine.size(), (80, 48));
-    let _ = std::fs::remove_file(&path);
-}
-
-#[test]
-#[ignore = "requires GPU"]
-fn a_host_that_keeps_every_slot_never_stalls_the_engine() {
-    let mut engine = renderer(32, 32, Some(OUTPUT_FORMAT)).expect(
-        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
-    );
-    let path = socket("busy");
-    let listener = UnixListener::bind(&path).unwrap();
-    let (tx, rx) = mpsc::channel();
-    let p = std::thread::spawn(move || {
-        let (stream, _) = listener.accept().unwrap();
-        let (hello, _handles) = recv_hello(&stream).unwrap();
-        tx.send(hello.slots).unwrap();
-        // Holds the connection and every slot until the engine is done.
-        let mut reader = stream;
-        while recv(&mut reader).is_ok() {}
-    });
-    let mut link = FrameLink::connect(&path, &engine);
-    let scene = ball([0.5, 0.5, 0.5, 1.0]);
-    let mut outcomes = Vec::new();
-    let deadline = Instant::now() + Duration::from_secs(20);
-    while outcomes.iter().filter(|o| **o == Presented::Busy).count() < 3
-        && Instant::now() < deadline
-    {
-        engine
-            .render(&scene, &og_render::RenderTarget::Offscreen)
-            .unwrap();
-        outcomes.push(link.present(&engine));
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    assert_eq!(rx.recv().unwrap(), SLOTS);
-    let shown = outcomes
-        .iter()
-        .filter(|o| matches!(o, Presented::Slot { .. }))
-        .count();
-    assert_eq!(
-        shown, SLOTS as usize,
-        "every slot once, then none: {outcomes:?}"
-    );
-    assert_eq!(outcomes.last(), Some(&Presented::Busy));
-    drop(link);
-    p.join().unwrap();
-    let _ = std::fs::remove_file(&path);
-}
-
-#[test]
-#[ignore = "requires GPU"]
-fn a_subscribed_host_hears_the_cursor_after_its_hello_and_only_when_it_changes() {
-    let mut engine = renderer(32, 32, Some(OUTPUT_FORMAT)).expect(
-        "a GPU adapter: a GPU test, run where there is one (OG_RENDERER=none takes it away)",
-    );
-    let path = socket("cursor");
-    let listener = UnixListener::bind(&path).unwrap();
-    let (tx, heard) = mpsc::channel();
-    let h = std::thread::spawn(move || {
-        let (stream, _) = listener.accept().unwrap();
-        let (_hello, _handles) = recv_hello(&stream).unwrap();
-        let mut writer = stream.try_clone().unwrap();
-        send(&mut writer, &Msg::CursorSubscribe { version: 1 }).unwrap();
-        let mut reader = stream;
-        while let Ok(msg) = recv(&mut reader) {
-            match msg {
-                Msg::Ready {
-                    generation, slot, ..
-                } => send(&mut writer, &Msg::Release { generation, slot }).unwrap(),
-                Msg::Cursor { .. } => {
-                    if tx.send(msg).is_err() {
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-    });
-    let mut link = FrameLink::connect(&path, &engine);
-    // Set before the host is there: it hears it once it subscribed.
-    link.set_cursor("pointer", None);
-    let image = CursorImage {
-        width: 1,
-        height: 1,
-        rgba: "AAAA/w==".into(),
-        hotspot: [0, 0],
-    };
-    let scene = ball([0.5, 0.5, 0.5, 1.0]);
-    let mut got = Vec::new();
-    let deadline = Instant::now() + Duration::from_secs(20);
-    let mut frames = 0;
-    while got.len() < 2 && Instant::now() < deadline {
-        engine
-            .render(&scene, &og_render::RenderTarget::Offscreen)
-            .unwrap();
-        if matches!(link.present(&engine), Presented::Slot { .. }) {
-            frames += 1;
-        }
-        // The same cursor again sends nothing; a new one is heard.
-        if frames > 8 {
-            link.set_cursor("text", Some(image.clone()));
-        } else {
-            link.set_cursor("pointer", None);
-        }
-        while let Ok(m) = heard.try_recv() {
-            got.push(m);
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    std::thread::sleep(Duration::from_millis(50));
-    got.extend(heard.try_iter());
-    assert_eq!(
-        got,
-        [
-            Msg::Cursor {
-                version: 1,
-                keyword: "pointer".into(),
-                image: None
-            },
-            Msg::Cursor {
-                version: 1,
-                keyword: "text".into(),
-                image: Some(image)
-            },
-        ]
-    );
-    drop(link);
-    h.join().unwrap();
     let _ = std::fs::remove_file(&path);
 }

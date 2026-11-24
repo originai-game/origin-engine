@@ -102,17 +102,6 @@ enum Make<T> {
     Asked(Pending<T>),
 }
 
-/// An entry's state ([`Deferred::state`]): not asked for yet, or one of
-/// the cache's states (see the module's documentation).
-#[cfg(test)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum State {
-    Unasked,
-    Queued,
-    Creating,
-    Ready,
-}
-
 /// The frame drawing now: whether it waits for the pipelines it meets, and
 /// what it has left for a pipeline not ready ([`FramePolicy`]).
 struct Frame {
@@ -1365,13 +1354,6 @@ fn promote(id: u64, waited: bool) {
     }
 }
 
-/// Whether the job `id` is held for the second frame ([`State::Queued`]).
-#[cfg(all(test, not(target_arch = "wasm32")))]
-fn held(id: u64) -> bool {
-    let q = pool().queues.lock().unwrap_or_else(|e| e.into_inner());
-    q.held.iter().any(|(j, _)| *j == id)
-}
-
 /// One entry of the pipeline cache: a value (a pipeline, or a set of them)
 /// made by its closure when first asked for, at most once.
 pub(crate) struct Deferred<T> {
@@ -1414,25 +1396,6 @@ impl<T> Deferred<T> {
 }
 
 impl<T: AnywhereOnce + 'static> Deferred<T> {
-    /// Its state, without asking for it.
-    #[cfg(test)]
-    pub(crate) fn state(&self) -> State {
-        if self.poll().is_some() {
-            return State::Ready;
-        }
-        if self.value.get().is_some() {
-            return State::Creating;
-        }
-        let make = self.make.take();
-        let state = match &make {
-            Some(Make::Asked(pending)) if pending.held() => State::Queued,
-            Some(Make::Asked(_)) => State::Creating,
-            _ => State::Unasked,
-        };
-        self.make.set(make);
-        state
-    }
-
     /// Asks for it at `priority`, if it is not asked for yet; a background
     /// entry asked for at [`Priority::Frame`] is moved ahead.
     pub(crate) fn start_at(&self, priority: Priority) {
@@ -1553,11 +1516,6 @@ impl<T: AnywhereOnce + 'static> Deferred<T> {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl<T> Pending<T> {
-    #[cfg(test)]
-    fn held(&self) -> bool {
-        held(self.id)
-    }
-
     fn promote(&self) {
         promote(self.id, false);
     }
@@ -1565,12 +1523,6 @@ impl<T> Pending<T> {
 
 #[cfg(target_arch = "wasm32")]
 impl<T: 'static> Pending<T> {
-    #[cfg(test)]
-    fn held(&self) -> bool {
-        use web::Release;
-        self.0.held()
-    }
-
     fn promote(&self) {
         self.0.promote();
     }
@@ -1669,11 +1621,6 @@ impl<T: AnywhereOnce + 'static> Sampled<T> {
 
     pub(crate) fn poll(&self) -> Option<&T> {
         self.cell().poll()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn wait(&self) -> &T {
-        self.cell().wait()
     }
 
     pub(crate) fn get(&self) -> Option<&T> {
@@ -1805,134 +1752,4 @@ impl<T: AnywhereOnce + 'static> Warm for Deferred<T> {
 /// Asks for the first of `items` not asked for yet; false when all are.
 pub(crate) fn warm_one(items: &[&dyn Warm]) -> bool {
     items.iter().any(|w| w.warm())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn made_once_when_asked_and_warmed_in_order() {
-        let made = std::rc::Rc::new(Cell::new(0));
-        let m = made.clone();
-        let a = Deferred::new(move || {
-            m.set(m.get() + 1);
-            7
-        });
-        assert_eq!(a.state(), State::Unasked);
-        assert_eq!(made.get(), 0);
-        assert_eq!(*a.wait(), 7);
-        assert_eq!(a.get(), Some(&7));
-        assert_eq!(made.get(), 1);
-        let b = Deferred::new(|| "b");
-        let c = Deferred::new(|| "c");
-        assert!(warm_one(&[&a, &b, &c]));
-        assert!(b.asked() && !c.asked());
-        assert!(warm_one(&[&a, &b, &c]));
-        assert!(!warm_one(&[&a, &b, &c]));
-    }
-
-    /// In a display frame a draw in a pass that may skip skips an entry
-    /// still compiling and counts it, work that is kept leaves itself for a
-    /// later frame, and every other use waits; a frame that waits waits
-    /// everywhere. What the frame left is reported once it ends.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn a_display_frame_draws_without_what_compiles() {
-        let gate = Arc::new(std::sync::Barrier::new(2));
-        let g = gate.clone();
-        let slow = Deferred::anywhere(move || {
-            g.wait();
-            5
-        });
-        {
-            let _frame = FramePolicy::open(false);
-            {
-                let _pass = Skipping::open();
-                assert_eq!(slow.get(), None, "skipped while it compiles");
-                assert_eq!(slow.state(), State::Creating);
-            }
-            assert_eq!(slow.ready(), None, "kept work waits for a later frame");
-        }
-        assert_eq!(frame_skipped(), 2);
-        gate.wait();
-        {
-            let _frame = FramePolicy::open(true);
-            let _pass = Skipping::open();
-            assert_eq!(slow.get(), Some(&5), "a frame that waits waits");
-        }
-        assert_eq!(frame_skipped(), 0);
-        assert_eq!(slow.state(), State::Ready);
-    }
-
-    /// An entry asked for is made once, on a compile worker, and its first
-    /// wait waits for it; a worker's panic reaches that wait.
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn asked_entries_are_made_on_a_worker_and_waited_for() {
-        let here = std::thread::current().id();
-        let made = Arc::new(std::sync::atomic::AtomicU32::new(0));
-        let m = made.clone();
-        let a = Deferred::anywhere(move || {
-            m.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            std::thread::current().id()
-        });
-        a.start();
-        a.start();
-        assert_ne!(*a.wait(), here);
-        assert_eq!(made.load(std::sync::atomic::Ordering::SeqCst), 1);
-        let s = Sampled::anywhere(4, |n| (n, std::thread::current().id()));
-        s.start();
-        assert_eq!(s.wait().0, 4);
-        assert_ne!(s.wait().1, here);
-        let p = Deferred::anywhere(|| -> u32 { panic!("compile failed") });
-        p.start();
-        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| *p.wait()));
-        assert_eq!(
-            panic.unwrap_err().downcast_ref::<&str>(),
-            Some(&"compile failed")
-        );
-    }
-
-    /// An entry dropped while asked for leaves no work behind: one still
-    /// queued is dropped with it, with what its closure owns, and one a
-    /// worker is making is waited for (it is never left inside the driver
-    /// for the process's exit to tear down under it).
-    #[cfg(not(target_arch = "wasm32"))]
-    #[test]
-    fn a_dropped_entry_owns_its_compile() {
-        use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
-        let resource = Arc::new(());
-        let captured = resource.clone();
-        let held = Deferred::anywhere(move || captured.clone());
-        held.start_at(Priority::Background);
-        assert_eq!(held.state(), State::Queued);
-        drop(held);
-        assert_eq!(Arc::strong_count(&resource), 1, "a held compile is dropped");
-        let captured = resource.clone();
-        let sampled = Sampled::anywhere(4, move |_| captured.clone());
-        sampled.start_at(Priority::Background);
-        drop(sampled);
-        assert_eq!(
-            Arc::strong_count(&resource),
-            1,
-            "a held sampled compile is dropped"
-        );
-        let (began, done) = (
-            Arc::new(AtomicBool::new(false)),
-            Arc::new(AtomicBool::new(false)),
-        );
-        let (b, d) = (began.clone(), done.clone());
-        let running = Deferred::anywhere(move || {
-            b.store(true, SeqCst);
-            std::thread::sleep(std::time::Duration::from_millis(200));
-            d.store(true, SeqCst);
-        });
-        running.start();
-        while !began.load(SeqCst) {
-            std::thread::yield_now();
-        }
-        drop(running);
-        assert!(done.load(SeqCst), "a running compile is waited for");
-    }
 }

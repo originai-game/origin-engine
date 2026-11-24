@@ -27,14 +27,6 @@
 //! ```
 
 #![recursion_limit = "256"]
-#![cfg_attr(test, feature(custom_test_frameworks, test))]
-#![cfg_attr(test, test_runner(gpu_tests::run))]
-
-#[cfg(test)]
-use wgpu as gpu_wgpu;
-#[cfg(test)]
-#[path = "../../../tests/gpu.rs"]
-mod gpu_tests;
 
 /// A file of `shaders/` as the renderer compiles it: the copy build.rs
 /// wrote with its `//` comments removed (every token and line kept), so

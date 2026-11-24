@@ -79,8 +79,7 @@ pub enum AtriumGi {
 /// floor there; the rest of the room lies in the roof's shade, lit by
 /// what the GI carries: red off the sunlit wall onto the floor, the stump
 /// and the barrel, the floor's light up under the roof, green off the
-/// right wall onto the ball and the bench. `fx_scenes::gi_scene` is the
-/// plain room `tests/gi.rs` measures.
+/// right wall onto the ball and the bench.
 pub fn atrium_scene(gi: AtriumGi) -> RenderScene {
     use og_render::{Material, shapes};
     let mut scene = RenderScene::new();

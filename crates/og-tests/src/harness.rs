@@ -4,7 +4,6 @@
 //! frame it saves there). Headless native runs (a blocking renderer, files
 //! in [`out_dir`]); the browser's is og-tests-web.
 
-use crate::gfx::Rendered;
 use glam::Vec3;
 use og_render::{
     Camera, FrameStats, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
@@ -31,12 +30,6 @@ pub fn repeat(desc: &RenderDesc, scene: &RenderScene, frames: u32) -> (RgbaImage
     (renderer.read_offscreen().expect("capture"), stats)
 }
 
-/// One frame of `scene` at the scenes' base desc: its image.
-pub fn base_image(scene: &RenderScene) -> RgbaImage {
-    let (img, _) = frame(&crate::scenes::base_desc(), scene);
-    img
-}
-
 /// One frame of `scene` on `renderer`: its stats. The renderer's own; a
 /// suite that steps a scene over frames calls this once a frame.
 pub fn stepped(renderer: &mut Renderer, scene: &RenderScene) -> FrameStats {
@@ -58,33 +51,9 @@ pub fn px(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
     [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
 }
 
-/// [`px`] of the nearest pixel when (x, y) hangs off an edge (a probe a
-/// pixel wide walking a silhouette).
-pub fn px_clamped(img: &RgbaImage, x: u32, y: u32) -> [u8; 3] {
-    px(img, x.min(img.width - 1), y.min(img.height - 1))
-}
-
-/// [`px`] as f32 (0 to 255, not 0 to 1).
-pub fn px_f32(img: &RgbaImage, x: u32, y: u32) -> [f32; 3] {
-    px(img, x, y).map(f32::from)
-}
-
-/// The sRGB bytes of pixel (x, y) of a rendered frame (the overlay is
-/// 1280×720 CSS px on a 1280×720 frame: one CSS px a pixel).
-pub fn px_rendered(r: &Rendered, x: u32, y: u32) -> [f32; 3] {
-    let i = ((y * r.image.width + x) * 4) as usize;
-    let p = &r.image.pixels;
-    [f32::from(p[i]), f32::from(p[i + 1]), f32::from(p[i + 2])]
-}
-
 /// Rec. 709 luma of a pixel's RGB bytes.
 pub fn luma(p: &[u8]) -> f32 {
     0.2126 * f32::from(p[0]) + 0.7152 * f32::from(p[1]) + 0.0722 * f32::from(p[2])
-}
-
-/// [`luma`] of RGB floats, as [`px_f32`] reads them.
-pub fn luma_f32(p: [f32; 3]) -> f32 {
-    0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
 }
 
 /// The luma of the pixel at (x, y).

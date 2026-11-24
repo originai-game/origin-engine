@@ -14,7 +14,7 @@ use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     Background, Camera, ColorSpace, DirectionalLight, Environment, Exposure, Fog, Material,
     MeshData, ProceduralSky, Projection, RenderScene, ScatterDraw, Terrain, TerrainControl,
-    TerrainData, TerrainLayer, TerrainLod, TerrainScatter, Vertex, Water, shapes,
+    TerrainData, TerrainLayer, TerrainScatter, Vertex, Water, shapes,
 };
 use std::sync::{Arc, OnceLock};
 
@@ -852,29 +852,6 @@ pub fn grass_scatter() -> TerrainScatter {
         sway: 1.0,
         ..Default::default()
     }
-}
-
-/// Stones on layer 1 (rock), leaning with the slope (a test's scatter).
-pub fn stone_scatter() -> TerrainScatter {
-    TerrainScatter {
-        layer: 1,
-        density: 0.4,
-        distance: 120.0,
-        fade: 0.2,
-        scale: [0.6, 2.2],
-        align: 1.0,
-        seed: 9,
-        sway: 0.0,
-        ..Default::default()
-    }
-}
-
-/// The island's terrain at the lod a scene asks for (a test helper).
-pub fn with_lod(mut scene: RenderScene, lod: TerrainLod) -> RenderScene {
-    for t in &mut scene.world.terrains {
-        t.lod = lod;
-    }
-    scene
 }
 
 /// `scene` with every terrain's layer textures moved into two texture

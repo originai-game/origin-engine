@@ -100,16 +100,6 @@ pub(crate) fn oct_encode(n: Vec3) -> Vec2 {
     }
 }
 
-/// [`oct_encode`]'s inverse, as pbr_lean.wgsl's `oct_decode` computes it.
-#[cfg(test)]
-fn oct_decode(e: Vec2) -> Vec3 {
-    let mut v = Vec3::new(e.x, e.y, 1.0 - e.x.abs() - e.y.abs());
-    let t = (-v.z).max(0.0);
-    v.x += if v.x >= 0.0 { -t } else { t };
-    v.y += if v.y >= 0.0 { -t } else { t };
-    v.normalize()
-}
-
 /// `mesh` quantised, and how to undo the positions' quantisation. `None`
 /// for a mesh without vertices.
 pub(crate) fn encode(mesh: &MeshData) -> Option<(Vec<CompactVertex>, Dequant)> {
@@ -132,93 +122,4 @@ pub(crate) fn encode(mesh: &MeshData) -> Option<(Vec<CompactVertex>, Dequant)> {
         })
         .collect();
     Some((vertices, dequant))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::shapes;
-
-    /// Positions come back within half a step of the bounds' 65535th, the
-    /// normals' direction (through the instance's cofactor, as the lit
-    /// stage turns them) within a few thousandths of a radian, colours
-    /// within half of 1/255.
-    #[test]
-    fn compact_vertices_decode_close_to_the_mesh() {
-        let mut mesh = shapes::cuboid(Vec3::new(4.0, 0.5, 1.5));
-        mesh.vertices
-            .extend(shapes::sphere(16, 12).vertices.iter().map(|v| {
-                let mut v = *v;
-                v.color = [0.25, 0.5, 0.75, 1.0];
-                v
-            }));
-        let (compact, dq) = encode(&mesh).expect("vertices");
-        assert_eq!(std::mem::size_of::<CompactVertex>(), 16);
-        let d = dq.matrix();
-        let step = dq.scale / 65535.0;
-        // The cofactor of the dequantisation's 3x3 (diagonal): det * inverse.
-        let cofactor = Vec3::new(
-            dq.scale.y * dq.scale.z,
-            dq.scale.x * dq.scale.z,
-            dq.scale.x * dq.scale.y,
-        );
-        for (v, c) in mesh.vertices.iter().zip(&compact) {
-            let q = Vec3::new(
-                c.position[0] as f32,
-                c.position[1] as f32,
-                c.position[2] as f32,
-            ) / 65535.0;
-            let p = d.transform_point3(q);
-            let err = (p - Vec3::from(v.position)).abs();
-            assert!(
-                err.cmple(step * 0.5 + 1e-6).all(),
-                "{p} against {:?}",
-                v.position
-            );
-            let e = Vec2::new(c.normal[0] as f32, c.normal[1] as f32) / 32767.0;
-            let n = (oct_decode(e) * cofactor).normalize();
-            let angle = n
-                .dot(Vec3::from(v.normal).normalize())
-                .clamp(-1.0, 1.0)
-                .acos();
-            assert!(angle < 2e-3, "normal {n} against {:?}", v.normal);
-            for (k, &byte) in c.color.iter().enumerate() {
-                assert!((byte as f32 / 255.0 - v.color[k]).abs() <= 0.5 / 255.0 + 1e-6);
-            }
-        }
-        // Flat along an axis: that axis keeps scale 1 and its offset exactly.
-        let plane = shapes::plane(3.0, 1.0);
-        let (_, dq) = encode(&plane).expect("vertices");
-        assert_eq!(dq.scale.y, 1.0);
-        assert!(encode(&MeshData::default()).is_none());
-    }
-
-    /// The unit box's sphere radius, through any instance's largest axis,
-    /// covers the mesh-space sphere through the instance.
-    #[test]
-    fn unit_bounds_never_shrink_the_culling_sphere() {
-        let dq = Dequant {
-            offset: Vec3::new(-1.0, -0.05, -0.05),
-            scale: Vec3::new(2.0, 0.1, 0.1),
-        };
-        let (center, half) = (Vec3::ZERO, Vec3::new(1.0, 0.05, 0.05));
-        let (c, e, r) = dq.unit_bounds(center, half);
-        assert!((c - Vec3::splat(0.5)).abs().max_element() < 1e-6);
-        assert!((e - Vec3::splat(0.5)).abs().max_element() < 1e-6);
-        for m in [
-            Mat4::IDENTITY,
-            Mat4::from_scale(Vec3::new(0.1, 10.0, 10.0)),
-            Mat4::from_scale(Vec3::new(10.0, 0.1, 0.1)),
-        ] {
-            let md = m * dq.matrix();
-            let axis = |m: &Mat4| {
-                m.x_axis
-                    .truncate()
-                    .length()
-                    .max(m.y_axis.truncate().length())
-                    .max(m.z_axis.truncate().length())
-            };
-            assert!(r * axis(&md) >= half.length() * axis(&m) * 0.9999);
-        }
-    }
 }

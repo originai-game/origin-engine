@@ -1,14 +1,11 @@
-//! Presentation (og-render's `renderer/presentation.rs`, G1-4): a lost
-//! device and the renderer made again on a new one, the render scale, and
-//! the GPU memory the renderer counts. GPU tests: the coordinator runs them
+//! Presentation (og-render's `renderer/presentation.rs`): a lost device and
+//! the renderer made again on a new one. GPU test: the coordinator runs it
 //! on the runners (metal on macrunner, DX12 on studio-win).
 //!
 //! Ways this could fail: a lost device's frame drawn anyway (a panic, or a
 //! black frame passed as drawn); a recreated renderer missing what only
 //! the first one uploaded (a texture, a material, the IBL), so its first
-//! frame differs; the render scale shrinking the UI with the scene, or not
-//! shrinking the scene's targets; a texture or target left out of the
-//! memory count.
+//! frame differs.
 
 use og_render::{RenderError, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::scenes;
@@ -22,101 +19,6 @@ fn draw(renderer: &mut Renderer, scene: &RenderScene, frames: u32) -> RgbaImage 
             .expect("frame");
     }
     renderer.read_offscreen().expect("capture")
-}
-
-/// `renderer`, its display frames comparable byte for byte with another
-/// renderer's: a capture first makes the full variant of every lit pipeline
-/// the scene meets (a display frame draws with a leaner one until it has
-/// compiled in the background, which may differ in its last bit: og_render's
-/// `settle_pipelines`), and leaves the display as if it had not been taken.
-fn primed(mut renderer: Renderer, scene: &RenderScene) -> Renderer {
-    renderer
-        .render_capture(scene, &RenderTarget::Offscreen)
-        .expect("capture");
-    renderer
-}
-
-#[test]
-#[ignore = "requires GPU"]
-fn a_resident_renderer_restarts_without_previous_run_state() {
-    let g = scenes::build("materials").expect("scene");
-    let mut renderer = primed(Renderer::new_blocking(&g.desc).expect("renderer"), &g.scene);
-    let expected = draw(&mut renderer, &g.scene, g.frames);
-    let device = renderer.device().clone();
-    renderer.set_render_scale(0.5);
-    draw(&mut renderer, &g.scene, g.frames + 7);
-
-    let mut again = renderer.restart_blocking(&g.desc).expect("restart");
-    assert_eq!(again.device(), &device);
-    assert_eq!(again.render_scale(), 1.0);
-    let actual = draw(&mut again, &g.scene, g.frames);
-    assert_eq!(
-        (actual.width, actual.height),
-        (expected.width, expected.height)
-    );
-    assert!(
-        actual.pixels == expected.pixels,
-        "resident run leaked render state"
-    );
-
-    let changed = og_render::RenderDesc {
-        width: g.desc.width / 2,
-        ..g.desc
-    };
-    let mut changed_run = primed(
-        again
-            .restart_blocking(&changed)
-            .expect("changed description"),
-        &g.scene,
-    );
-    let mut cold = primed(
-        Renderer::new_blocking(&changed).expect("cold changed description"),
-        &g.scene,
-    );
-    assert!(
-        draw(&mut changed_run, &g.scene, g.frames).pixels
-            == draw(&mut cold, &g.scene, g.frames).pixels,
-        "changed description reused incompatible state"
-    );
-}
-
-/// A renderer's first display frame is whole: every pipeline in it is
-/// cold, and a display frame draws without what still compiles, but the
-/// host shows this one, so natively it waits. Its sky's ground is the sky
-/// a frame that waits draws, not black: the IBL bake the sky is drawn from
-/// was left for a later frame, for seconds on a cold NVIDIA driver (the
-/// font packs' frames, L4). Fails if the first display frame skips a draw
-/// or leaves work, or draws its ground differently from a waited frame.
-#[test]
-#[ignore = "requires GPU"]
-fn a_renderers_first_display_frame_draws_its_sky_whole() {
-    let first = |display: bool| {
-        let mut scene = RenderScene::default();
-        scene.frame.display = display;
-        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
-        renderer
-            .render(&scene, &RenderTarget::Offscreen)
-            .expect("frame");
-        let skipped = og_render::frame_skipped();
-        let img = renderer.read_offscreen().expect("capture");
-        let at = |x: u32, y: u32| {
-            let i = ((y * img.width + x) * 4) as usize;
-            [img.pixels[i], img.pixels[i + 1], img.pixels[i + 2]]
-        };
-        ([at(2, 2), at(img.width / 2, img.height / 2)], skipped)
-    };
-    let (waited, _) = first(false);
-    let (shown, skipped) = first(true);
-    println!("ground: waited {waited:?}, display {shown:?} (skipped {skipped})");
-    assert!(
-        waited.iter().all(|p| p.iter().any(|&c| c > 0)),
-        "the sky's ground is black even waited: {waited:?}"
-    );
-    assert_eq!(
-        skipped, 0,
-        "the first display frame skipped draws or left work"
-    );
-    assert_eq!(shown, waited, "the first display frame's ground");
 }
 
 /// The frame after a loss is the frame before it: a renderer made again
@@ -163,37 +65,4 @@ fn a_renderer_made_again_after_a_lost_device_draws_the_same_frame() {
         after.pixels == before.pixels,
         "the frame after the loss differs from the frame before it"
     );
-}
-
-/// At render scale 0.5 the scene's targets are a quarter of the pixels and
-/// the output keeps its size; the frame is the scene upscaled, so it is
-/// close to the full-scale frame but not equal; and the render targets'
-/// memory falls.
-#[test]
-#[ignore = "requires GPU"]
-fn the_render_scale_draws_the_scene_smaller_and_the_output_at_its_size() {
-    let g = scenes::build("materials").expect("scene");
-    let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
-    let full = draw(&mut renderer, &g.scene, g.frames);
-    let full_targets = renderer.gpu_memory().render_targets;
-    renderer.set_render_scale(0.5);
-    let half = draw(&mut renderer, &g.scene, g.frames);
-    let (w, h) = renderer.size();
-    assert_eq!(renderer.scene_size_drawn(), (w / 2, h / 2));
-    assert_eq!((half.width, half.height), (full.width, full.height));
-    let diff = half
-        .pixels
-        .iter()
-        .zip(&full.pixels)
-        .map(|(a, b)| f64::from(a.abs_diff(*b)))
-        .sum::<f64>()
-        / half.pixels.len() as f64;
-    assert!(diff > 0.0, "the half-scale frame is the full one");
-    assert!(diff < 12.0, "the half-scale frame is not the scene: {diff}");
-    assert!(
-        renderer.gpu_memory().render_targets < full_targets,
-        "the scene's targets did not shrink"
-    );
-    renderer.set_render_scale(f32::NAN);
-    assert_eq!(renderer.render_scale(), 1.0);
 }

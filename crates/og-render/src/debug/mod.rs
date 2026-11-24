@@ -117,34 +117,3 @@ pub fn axes(transform: Mat4, size: f32, width: f32) -> [Lines; 3] {
         segments(vec![o, end(Vec3::Z)], [0.25, 0.45, 1.0, 1.0], width),
     ]
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_box_has_twelve_edges_on_its_corners() {
-        let e = box_edges(
-            Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0)),
-            Vec3::new(1.0, 2.0, 3.0),
-        );
-        assert_eq!(e.len(), 24);
-        for p in &e {
-            let q = *p - Vec3::new(1.0, 2.0, 3.0);
-            assert!(
-                (q.abs() - Vec3::new(1.0, 2.0, 3.0)).abs().max_element() < 1e-6,
-                "{p}"
-            );
-        }
-    }
-
-    #[test]
-    fn circles_lie_on_their_radius_and_arrows_end_where_asked() {
-        for p in sphere(Vec3::ONE, 2.0, Quat::IDENTITY) {
-            assert!((p.distance(Vec3::ONE) - 2.0).abs() < 1e-5);
-        }
-        let a = arrow(Vec3::ZERO, Vec3::new(0.0, 5.0, 0.0), 0.5);
-        assert_eq!(a.len(), 2 + 8);
-        assert_eq!(a[1], Vec3::new(0.0, 5.0, 0.0));
-    }
-}

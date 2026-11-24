@@ -4,8 +4,6 @@ use super::*;
 
 /// The grass's hash: hash.wgsl's `pcg`, which the blades' shaders draw from.
 pub use og_core::hash::pcg as hash;
-#[cfg(test)]
-use og_core::hash::unit24 as unit;
 
 /// The blue-noise tile: [`TILE_POINTS`] points in the unit square,
 /// wrapping, in progressive order (every prefix is itself evenly spread,
@@ -24,36 +22,6 @@ pub fn blue_noise_tile() -> &'static [Vec2] {
             .map(|i| Vec2::new(f(2 * i), f(2 * i + 1)))
             .collect()
     })
-}
-
-/// The tile's generator: Mitchell's best candidate, 12 candidates a point,
-/// distances on the torus.
-#[cfg(test)]
-pub(super) fn best_candidate() -> Vec<Vec2> {
-    let mut points: Vec<Vec2> = Vec::with_capacity(TILE_POINTS as usize);
-    let mut rng = 0x6b8a_3a00u32;
-    let mut next = || {
-        rng = hash(rng);
-        unit(rng)
-    };
-    while points.len() < TILE_POINTS as usize {
-        let (mut best, mut best_d) = (Vec2::ZERO, -1.0f32);
-        for _ in 0..12 {
-            let c = Vec2::new(next(), next());
-            let d = points
-                .iter()
-                .map(|p| {
-                    let d = (*p - c).abs();
-                    d.min(Vec2::ONE - d).length_squared()
-                })
-                .fold(f32::INFINITY, f32::min);
-            if d > best_d {
-                (best, best_d) = (c, d);
-            }
-        }
-        points.push(best);
-    }
-    points
 }
 
 /// How density and detail fall off with distance, for a field reaching

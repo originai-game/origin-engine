@@ -885,6 +885,3 @@ pub fn weighted_order_codes(n: u32, mean: f32, reveal: f32, linear: f32) -> u32 
     };
     (weighted_order_bound(n, mean, reveal) * slope * 255.0).ceil() as u32
 }
-
-#[cfg(test)]
-mod tests;

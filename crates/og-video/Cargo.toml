@@ -21,7 +21,3 @@ decode = ["dep:rav1d", "dep:libc"]
 rav1d = { version = "1.1.0", default-features = false, features = ["bitdepth_8"], optional = true }
 # rav1d's errors are negated errno values (its own dependency).
 libc = { version = "0.2", optional = true }
-
-[[test]]
-name = "tests"
-path = "tests/it/main.rs"
