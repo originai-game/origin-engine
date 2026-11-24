@@ -1304,6 +1304,7 @@
     "Slot.frame": "",
     "Switch.thumb": "absolute top-0.5 left-0.5 size-5 rounded-capsule bg-knob shadow-raise transition-transform duration-200 ease-out checked:translate-x-5 checked:bg-accent-fg",
     "Switch.track": "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-1 inset-ring-border-strong transition duration-200 checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
+    "Tab.count": "min-w-5 px-1 rounded-capsule bg-layer-3 text-xs font-bold leading-snug tabular-nums text-center text-fg-muted group-selected/tab:bg-accent group-selected/tab:text-accent-fg",
     "Tab.indicator": "transition-layout ease-spring-[439,33.5] glide-tab",
     "Tab.item": "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-120 hover:text-fg selected:text-fg disabled:text-fg-subtle",
     "Tab.list": "flex-row items-stretch border-b border-border-muted",

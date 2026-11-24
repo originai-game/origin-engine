@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "Tab.count (pack slot)",
+      "summary": "A count beside a tab's label (`<Text class={packClass(\"Tab\", \"count\")}>`) sits on its own ground in that ground's ink, lit with the accent while its tab is selected. `Tab` is a `group/tab`, so a slot inside it can style itself with `group-selected/tab:`."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Shop, Backpack (built-in components)",
+      "summary": "Their category rows are `Tabs` and `Tab` with `Tab.count` counts, the bumper glyphs outside the scrolling row, so labels and counts no longer crowd or overlap at 390 px and the counts read in every theme. The shop sits on `Panel.frame`, its offer cards on `Plate.frame` and their pictures on `Slot.frame`, so a theme's art dresses them; its offer grid scrolls inside the panel instead of running past the panel's bottom edge, which hid the last row's prices; and its kicker is `fg-muted`, not the disabled `fg-subtle`."
+    }
+  ]
+}

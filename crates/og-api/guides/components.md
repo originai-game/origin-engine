@@ -1889,7 +1889,7 @@ A storefront: a band with a kicker over the title and the player's balances as c
 | `onTabNext?` | `(e: UiEvent, key?: string) => void` | The tabNext event, with the row's key where it comes from a row. |
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 
-Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Tab.indicator`.
+Pack slots: `Chip.frame`, `Count.roll`, `List.cascade`, `List.item`, `Panel.frame`, `Plate.frame`, `Slot.frame`, `Tab.count`.
 
 Fixtures: `default`, `purchased`, `empty`, `loading`, `error`, `overflow`.
 
@@ -1921,7 +1921,7 @@ Dropped from the .svelte: the load bar's lean (skew is not a class the record dr
 | `onTabPrev?` | `(e: UiEvent, key?: string) => void` | The tabPrev event, with the row's key where it comes from a row. |
 | `onMove?` | `(e: UiEvent, move: { dragged: string; target: string }) => void` | A tile dropped on another: the dragged item's key and the target's. A locked tile is not picked up; the dragged tile goes home, and the game reorders, swaps or stacks as it sees fit. |
 
-Pack slots: `Chip.frame`, `Panel.frame`, `Slot.frame`, `Tab.indicator`.
+Pack slots: `Chip.frame`, `Panel.frame`, `Slot.frame`, `Tab.count`.
 
 Fixtures: `default`, `empty`, `over`, `overflow`.
 
@@ -4171,7 +4171,7 @@ The tab list around `Tab`s (NSH base's `Tabs`): one stop of Tab, at the selected
 | `class?` | `string \| undefined` | Classes of the document that uses it, after its own. |
 | `children?` | `any` |  |
 
-Pack slots: `Tab.indicator`, `Tab.item`, `Tab.list`, `Tab.mark`.
+Pack slots: `Tab.count`, `Tab.indicator`, `Tab.item`, `Tab.list`, `Tab.mark`.
 
 A piece of a panel: drawn on a panel's ground.
 

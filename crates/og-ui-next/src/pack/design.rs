@@ -440,6 +440,11 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "w-2.5 h-0.5 rounded-capsule bg-accent-fg",
     ),
     (
+        "Tab.count",
+        "a count beside a tab's label, on its own ground (the selected tab's is lit)",
+        "min-w-5 px-1 rounded-capsule bg-layer-3 text-xs font-bold leading-snug tabular-nums text-center text-fg-muted group-selected/tab:bg-accent group-selected/tab:text-accent-fg",
+    ),
+    (
         "Tab.list",
         "a tab list's row",
         "flex-row items-stretch border-b border-border-muted",

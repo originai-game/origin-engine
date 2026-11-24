@@ -1,4 +1,5 @@
-import { For, Icon, Show, Text, View, formatCompact, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, View, formatCompact, formatNumber, packClass, t, type UiEvent } from "@origingame/engine/ui";
+import { Tab, Tabs } from "../../controls/tabs";
 import "./backpack.en.ogt";
 
 /** A binding's key cap: hidden on touch, where no key is pressed. */
@@ -80,25 +81,22 @@ export function RpgBackpack(props: RpgBackpackProps) {
         </Show>
       </View>
       <Show when={props.tabs.length}>
-        <View class="flex-row items-center w-full border-b border-rim-soft gap-1" role="tablist" label={t("rpg.backpack.tabs")} onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
+        <View class="flex-row items-center w-full gap-1" onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
           <Text glyph={"tabPrev"} class={keyCap} />
-          <View class="grow shrink basis-0 overflow-x-auto overflow-y-hidden">
-            <View class="flex-row items-center pr-12 gap-0">
+          <Scroll class="grow shrink basis-0" scrollbar={false}>
+            <Tabs label={t("rpg.backpack.tabs")}>
               <For each={props.tabs} key={(c) => c.id}>
                 {(c) => (
-                <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
-                  <Show when={c().id === props.tab}><View class={`absolute inset-x-1 bottom-0 h-0.75 bg-hud-accent shadow-glow pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
+                <Tab class="shrink-0 px-1.5 gap-1" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-xs font-bold py-0 px-1 nine-chip-cut bg-layer-2 ${c().id === props.tab ? "bg-hud-accent text-hud-accent-fg shadow-none" : `text-fg-muted ${packClass("Chip", "frame")}`}`}>
-                      {formatNumber(c().count)}
-                    </Text>
+                    <Text class={packClass("Tab", "count")}>{formatNumber(c().count)}</Text>
                   </Show>
-                </View>
+                </Tab>
                 )}
               </For>
-            </View>
-          </View>
+            </Tabs>
+          </Scroll>
           <Text glyph={"tabNext"} class={keyCap} />
         </View>
       </Show>

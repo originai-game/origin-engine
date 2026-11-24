@@ -40,13 +40,14 @@ export interface TabProps {
  * One tab of a tab list (NSH base's `Tab`), in `Tabs` with the others: it
  * owns its presses and its selected state for screen readers; the pack
  * dresses it (`Tab.item`) and the mark under the selected one (`Tab.mark`),
- * which slides from the tab it replaces (`Tab.indicator`).
+ * which slides from the tab it replaces (`Tab.indicator`). A count beside
+ * its label is a `Text` of `packClass("Tab", "count")`, lit while selected.
  */
 export function Tab(props: TabProps) {
   return (
     <View
       role="tab"
-      class={`relative ${packClass("Tab", "item")} ${props.class ?? ""}`}
+      class={`relative group/tab ${packClass("Tab", "item")} ${props.class ?? ""}`}
       selected={props.selected === true}
       disabled={props.disabled}
       label={props.label}
@@ -73,8 +74,8 @@ export const fixtures: Record<string, Partial<TabsProps>> = {
   default: {
     label: "Sections",
     children: () => [
-      <Tab selected onPress={press}><Text>Heroes</Text></Tab>,
-      <Tab onPress={press}><Text>Gear</Text></Tab>,
+      <Tab selected onPress={press}><Text>Heroes</Text><Text class={packClass("Tab", "count")}>3</Text></Tab>,
+      <Tab onPress={press}><Text>Gear</Text><Text class={packClass("Tab", "count")}>12</Text></Tab>,
       <Tab onPress={press}><Text>Skills</Text></Tab>,
       <Tab disabled onPress={press}><Text>Pets</Text></Tab>,
     ],

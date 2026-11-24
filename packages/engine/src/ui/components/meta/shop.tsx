@@ -2,8 +2,12 @@ import { For, Icon, Image, Scroll, Show, Text, packClass, type UiEvent, View, fo
 import type { Texture } from "@origingame/engine";
 import { Button } from "../../controls/button";
 import { Spinner } from "../base/spinner";
+import { Tab, Tabs } from "../../controls/tabs";
 import { Flourish } from "../hud/flourish";
 import "./general.en.ogt";
+
+/** A binding's key cap: hidden on touch, where no key is pressed. */
+const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 export interface ShopProps {
   /** Classes after the shop's own: it fills its parent by default; `grow-0 basis-auto` makes it hug its offers. */
@@ -62,12 +66,12 @@ export interface ShopProps {
  */
 export function Shop(props: ShopProps) {
   return (
-    <View class={`grow shrink basis-0 min-h-0 nine-panel-cut bg-glass-hi text-fg p-4 gap-2 disabled:text-fg-subtle ${props.class ?? ""}`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
+    <View class={`grow shrink basis-0 min-h-0 bg-layer-1 text-fg p-4 gap-2 disabled:text-fg-subtle ${packClass("Panel", "frame")} ${props.class ?? ""}`} label={props.title !== '' ? props.title : t("general.shop.name")} busy={props.loading}>
       <View class="absolute left-4 right-3/10 top-0 h-px bg-linear-to-r from-sheen to-transparent to-70% pointer-events-none" />
       <View class={`flex-row flex-wrap items-end min-h-12 border-b border-rim-soft w-full py-1 px-4 gap-3`}>
         <View class="grow shrink basis-30 gap-0.5 compact:basis-full">
           <Show when={props.kicker}>
-            <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-subtle whitespace-nowrap text-ellipsis overflow-hidden`}>
+            <Text class={`text-xs font-semibold tracking-kicker uppercase text-fg-muted whitespace-nowrap text-ellipsis overflow-hidden`}>
               {props.kicker}
             </Text>
           </Show>
@@ -91,24 +95,23 @@ export function Shop(props: ShopProps) {
         </Show>
       </View>
       <Show when={props.tabs.length}>
-        <View class="flex-row items-center w-full border-b border-rim-soft gap-1" role="tablist" label={t("general.shop.tabs")} onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
-          <Scroll class="grow shrink basis-0">
-            <View class="flex-row items-center pr-12 gap-0">
-              <For each={props.tabs}>
+        <View class="flex-row items-center w-full gap-1" onAction={{ tabNext: (e) => props.onTabNext?.(e), tabPrev: (e) => props.onTabPrev?.(e) }}>
+          <Text glyph={"tabPrev"} class={keyCap} />
+          <Scroll class="grow shrink basis-0" scrollbar={false}>
+            <Tabs label={t("general.shop.tabs")}>
+              <For each={props.tabs} key={(c) => c.id}>
                 {(c) => (
-                <View class={`flex-row items-center justify-center group/tab text-fg-muted transition duration-317 min-h-11 min-w-11 py-0 px-2 gap-1 data-selected:text-fg`} role="tab" selected={c().id === props.tab} label={c().label} onPress={(e) => props.onChoosetab?.(e, c().id)} data-selected={c().id === props.tab}>
-                  <Show when={c().id === props.tab}><View class={`absolute inset-x-1 bottom-0 h-0.75 bg-hud-accent shadow-glow pointer-events-none ${packClass("Tab", "indicator")}`} /></Show>
+                <Tab class="shrink-0 px-1.5 gap-1" selected={c().id === props.tab} onPress={(e) => props.onChoosetab?.(e, c().id)}>
                   <Text class="whitespace-nowrap">{c().label}</Text>
                   <Show when={c().count > 0}>
-                    <Text class={`text-xs font-bold text-fg-subtle py-0 px-1 rounded-capsule group-data-selected/tab:bg-none group-data-selected/tab:bg-hud-accent group-data-selected/tab:nine-none group-data-selected/tab:text-hud-accent-fg ${packClass("Chip", "frame")}`}>
-                      {formatNumber(c().count)}
-                    </Text>
+                    <Text class={packClass("Tab", "count")}>{formatNumber(c().count)}</Text>
                   </Show>
-                </View>
+                </Tab>
                 )}
               </For>
-            </View>
+            </Tabs>
           </Scroll>
+          <Text glyph={"tabNext"} class={keyCap} />
         </View>
       </Show>
       <Show when={props.error !== ''} fallback={
@@ -119,15 +122,15 @@ export function Shop(props: ShopProps) {
                     <Text class="text-center m-0">{t("general.shop.empty")}</Text>
                   </View>
               }>
-                <Scroll class="grow shrink basis-auto gap-2">
+                <Scroll class="grow shrink basis-auto min-h-0 gap-2">
                   <View class={`grid grid-cols-fill-45 w-full p-1 gap-1 compact:grid-cols-2 ${packClass("List", "cascade")}`} role="grid" label={props.title !== '' ? props.title : t("general.shop.name")}>
                     <For each={props.offers}>
                       {(o) => (
                       <Show when={!o().soldOut && !o().owned && o().affordable} fallback={
-                          <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                          <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} disabled={true} label={t("general.shop.refused", { name: o().name, status: o().soldOut ? t("general.shop.soldOut") : o().owned ? t("general.shop.owned") : t("general.shop.short") })} data-plain={!o().featured} data-featured={o().featured} data-refused={true} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                             <View class="w-full gap-1">
                               <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                                <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
+                                <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
                                   <View class="absolute opacity-26 inset-0" />
                                   <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
@@ -195,10 +198,10 @@ export function Shop(props: ShopProps) {
                             </Show>
                           </View>
                       }>
-                        <View class={`group/offer w-full pt-1 pb-2 bg-tile nine-plate-cut px-1 hover:bg-none hover:bg-tile data-featured:col-span-2 ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
+                        <View class={`group/offer w-full pt-1 pb-2 px-1 data-featured:col-span-2 ${packClass("Plate", "frame")} ${packClass("List", "item")}`} role="gridcell" data-sold-out={o().soldOut} data-owned={o().owned} data-affordable={o().affordable} selected={o().id === props.selected} label={o().name} onPress={(e) => props.onBuy?.(e, o().id)} data-plain={!o().featured} data-featured={o().featured} data-selected={o().id === props.selected} data-tier-common={(o().rarity || 'common') === "common"}>
                           <View class="w-full gap-1">
                             <Flourish kind="purchase" shots={(props.purchases ?? []).filter((b) => b.offer === o().id)} class="w-full">
-                              <View class={`justify-center items-center w-full h-24 text-border-strong bg-well nine-plate-cut gap-2 compact:h-15`}>
+                              <View class={`justify-center items-center w-full h-24 text-fg-muted bg-well gap-2 overflow-hidden compact:h-15 ${packClass("Slot", "frame")}`}>
                                 <View class="absolute opacity-26 inset-0" />
                                 <Show when={o().image} fallback={<Icon class="size-12 compact:size-9" name={o().icon} />}>
                                     <Image class="absolute inset-0 size-full object-cover" src={o().image} />
