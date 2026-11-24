@@ -1012,13 +1012,15 @@ A flourish around what it decorates, the engine's UI effect presets: a reward's 
 
 | Prop | Type | What |
 |---|---|---|
-| `kind` | `"reward" \| "levelUp" \| "purchase" \| "reveal" \| "highlight"` | Which one: reward (stars, rays and a ring of light thrown from it), levelUp (a column of light, a screen wash, stars rising and a ring), purchase (a fountain of spinning coins, the target popping), reveal (a charge drawn in, then a rarity's burst: richer from common to legendary) or highlight (an aura in the pack's primary colour pulsing, a sheen sweeping it and stars twinkling, while it shows). |
+| `kind` | `"reward" \| "levelUp" \| "purchase" \| "reveal" \| "collect" \| "highlight"` | Which one: reward (stars, rays and a ring of light thrown from it), levelUp (a column of light, a screen wash, stars rising and a ring), purchase (a fountain of spinning coins, the target popping), reveal (a charge drawn in, then a rarity's burst: richer from common to legendary), collect (coins flying from `from` into it, a counter, which flashes as they land) or highlight (an aura in the pack's primary colour pulsing, a sheen sweeping it and stars twinkling, while it shows). |
 | `shots?` | `ReadonlyArray<{ id: string }>` | Its plays, each { id } (the tick it fired, as text): a new id plays it again; a kept one plays once. highlight needs none. |
 | `rarity?` | `string` | reveal: the rarity whose colour and tier it takes (common, uncommon, rare, epic, legendary, mythic); empty is legendary. |
+| `from?` | `readonly [number, number]` | collect: where the coins start, px from its centre ([x, y], y down); default [0, 240], below it. |
+| `icon?` | `string` | collect: the icon that flies (a currency); default coin. |
 | `children?` | `any` | What it decorates (an icon, a slot, a price, a button); the effect is drawn over and around it. |
 | `class?` | `string \| undefined` | Classes after its own: it hugs what it decorates; `w-full` (or a grid cell's stretch) lets a full-width target fill its place. |
 
-Fixtures: `reward`, `levelUp`, `purchase`, `reveal`, `revealLegendary`, `highlight`.
+Fixtures: `reward`, `levelUp`, `purchase`, `reveal`, `collect`, `revealLegendary`, `highlight`.
 
 ## 43. HeroButton
 

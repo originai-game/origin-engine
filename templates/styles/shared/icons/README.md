@@ -45,9 +45,9 @@ Filled game-icons.net silhouettes (CC BY 3.0; authors in
 icon's ink (`text-*`, or `fill-*`).
 
 - **Combat and stats**: `attack`, `sword`, `axe`, `bow`, `staff`, `magic`, `armor`, `speed`, `crit`, `accuracy`, `strength`, `intellect`, `luck`, `levelUp`, `bomb`, `skull`, `flame`, `barrier`
-- **Navigation and menus**: `home`, `shop`, `bag`, `hero`, `team`, `friends`, `quest`, `map`, `mail`, `chat`, `leaderboard`, `calendar`, `event`, `castle`, `banner`, `compass`, `book`, `search`, `cards`, `dice`, `rocket`
-- **Settings and system**: `sound`, `soundOff`, `music`, `bell`, `vibrate`, `language`, `gamepad`, `save`, `exit`, `power`, `info`, `account`, `phone`, `unlock`
+- **Navigation and menus**: `home`, `shop`, `bag`, `hero`, `team`, `friends`, `quest`, `map`, `mail`, `chat`, `leaderboard`, `calendar`, `event`, `castle`, `banner`, `compass`, `book`, `search`, `cards`, `dice`, `rocket`, `inventory`, `skillTree`, `rank`
+- **Settings and system**: `sound`, `soundOff`, `music`, `bell`, `vibrate`, `language`, `gamepad`, `save`, `exit`, `power`, `info`, `account`, `phone`, `unlock`, `settings`, `refresh`
 - **Social**: `like`, `dislike`, `handshake`, `share`, `megaphone`, `trade`
-- **Shop**: `cart`, `sale`, `wallet`, `crate`, `piggyBank`, `coins`, `cash`, `bank`, `video`
-- **Rewards**: `chestOpen`, `medal`, `laurels`, `ribbon`, `lootBag`, `missions`, `target`, `sparkles`
+- **Shop**: `cart`, `sale`, `wallet`, `crate`, `piggyBank`, `coins`, `cash`, `bank`, `video`, `vip`, `pass`, `ad`
+- **Rewards**: `chestOpen`, `medal`, `laurels`, `ribbon`, `lootBag`, `missions`, `target`, `sparkles`, `claimAll`, `stamina`
 - **Status effects**: `burn`, `freeze`, `poison`, `bleed`, `stun`, `sleep`, `silence`, `slow`, `haste`, `regen`, `curse`, `blind`, `shock`, `ghost`, `root`, `weak`, `charm`

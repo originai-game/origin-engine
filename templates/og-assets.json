@@ -2354,6 +2354,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/icons/game/ad.svg",
+      "sha256": "6c492daa57eeaeae1bb071a5a3e3c12390ff8017fb266dbaf04c6b29fd5961fc",
+      "size": 994,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/icons/game/alert.svg",
       "sha256": "5dc56357761bfbdcec9f486b1d6fe7311c5f69abeffc341454508d4f3b763827",
       "size": 756,
@@ -2501,6 +2507,12 @@
       "path": "styles/shared/icons/game/chestOpen.svg",
       "sha256": "6e87ffca356252d392382154186a1689e281d2ec3fd766437ab79ad22ef8b984",
       "size": 3335,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/claimAll.svg",
+      "sha256": "2c1bba8aded270b9db703ca9de09fde50205cab2d248686d19ce39fad17393cc",
+      "size": 1635,
       "visibility": "public"
     },
     {
@@ -2666,6 +2678,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/icons/game/inventory.svg",
+      "sha256": "e4e9212c25d804041cd76d6216a5f74400c89ff079e3efa894658a32f4ce78b0",
+      "size": 3354,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/icons/game/key.svg",
       "sha256": "f64bacbc8f8f2488dc81b01828f63f297e2e895529cbb020a7d8d9bea7df426c",
       "size": 1084,
@@ -2751,8 +2769,8 @@
     },
     {
       "path": "styles/shared/icons/game/missions.svg",
-      "sha256": "31ab1ab7fa0098b3db945713672a8304c6d74ebeb7241da64c30d0db9b704404",
-      "size": 466,
+      "sha256": "592df0ce778f79d29afa391003d1c8a4500daf434e511c659d31251af1d2faaf",
+      "size": 368,
       "visibility": "public"
     },
     {
@@ -2765,6 +2783,12 @@
       "path": "styles/shared/icons/game/new.svg",
       "sha256": "256edcef8a2116dacf0843f927d24d87d1fbc001c07dabfc14d87897e7e6f902",
       "size": 702,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/pass.svg",
+      "sha256": "2c27c255b9575dbc7e9896368bc0d537d12d683822ffb5d8af72991f527bf768",
+      "size": 739,
       "visibility": "public"
     },
     {
@@ -2804,9 +2828,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/icons/game/rank.svg",
+      "sha256": "e6e54bbf9d6efe7d7b6d0d761140ec03d75014fe99b5153c195e432879788875",
+      "size": 410,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/icons/game/rarity.svg",
       "sha256": "e7291e01ce97da0ca0628c6247f7b1cbb5c02ef4f5e7bb5ea8fb68d376b18da9",
       "size": 375,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/refresh.svg",
+      "sha256": "c3d88620603e96464d110cfa45b555985cd08d44a3575e53acecaf0516368fc7",
+      "size": 465,
       "visibility": "public"
     },
     {
@@ -2852,6 +2888,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/icons/game/settings.svg",
+      "sha256": "a3add8037348c4235f4be53fb216db5e6d63e12dda20d9df10ef3e31f52620d3",
+      "size": 1336,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/icons/game/share.svg",
       "sha256": "ddc40ca8d338128b26c504fa87c3e7f5b86923dc5f0440cfa295d9f75e91e6cd",
       "size": 429,
@@ -2879,6 +2921,12 @@
       "path": "styles/shared/icons/game/silence.svg",
       "sha256": "050a80c9bfeaf6a007f54e953941a22e6ff0e8c704de3dafe4650b50745930be",
       "size": 2289,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/skillTree.svg",
+      "sha256": "3a92e17f422a00ec4bf50523dd9ede4ce2ccf892c502b2f1c9ffef6fb4e231ef",
+      "size": 907,
       "visibility": "public"
     },
     {
@@ -2927,6 +2975,12 @@
       "path": "styles/shared/icons/game/staff.svg",
       "sha256": "6206e9ce81892a422a59fc9b1dffe17350bebe1bac8b8f8476f52f736d31ad8a",
       "size": 1933,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/stamina.svg",
+      "sha256": "720ad21f8728af0a631f8eb62c47124e880454439a0c28f3aa3a54c659a18274",
+      "size": 1049,
       "visibility": "public"
     },
     {
@@ -2999,6 +3053,12 @@
       "path": "styles/shared/icons/game/video.svg",
       "sha256": "8ce9771721a8f7932c91baa257ec5c3d2291901ac690a2f52b6c757ca56e9990",
       "size": 1392,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/icons/game/vip.svg",
+      "sha256": "b524761d8501575d6979c4b8a4fdc67922ddbb4465aaeed2267757e41f575ba1",
+      "size": 996,
       "visibility": "public"
     },
     {

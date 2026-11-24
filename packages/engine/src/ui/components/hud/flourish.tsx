@@ -17,12 +17,16 @@ import twinkle from "./fx/twinkle.ogt";
 import wash from "./fx/wash.ogt";
 
 export interface FlourishProps {
-  /** Which one: reward (stars, rays and a ring of light thrown from it), levelUp (a column of light, a screen wash, stars rising and a ring), purchase (a fountain of spinning coins, the target popping), reveal (a charge drawn in, then a rarity's burst: richer from common to legendary) or highlight (an aura in the pack's primary colour pulsing, a sheen sweeping it and stars twinkling, while it shows). */
-  kind: "reward" | "levelUp" | "purchase" | "reveal" | "highlight";
+  /** Which one: reward (stars, rays and a ring of light thrown from it), levelUp (a column of light, a screen wash, stars rising and a ring), purchase (a fountain of spinning coins, the target popping), reveal (a charge drawn in, then a rarity's burst: richer from common to legendary), collect (coins flying from `from` into it, a counter, which flashes as they land) or highlight (an aura in the pack's primary colour pulsing, a sheen sweeping it and stars twinkling, while it shows). */
+  kind: "reward" | "levelUp" | "purchase" | "reveal" | "collect" | "highlight";
   /** Its plays, each { id } (the tick it fired, as text): a new id plays it again; a kept one plays once. highlight needs none. */
   shots?: ReadonlyArray<{ id: string }>;
   /** reveal: the rarity whose colour and tier it takes (common, uncommon, rare, epic, legendary, mythic); empty is legendary. */
   rarity?: string;
+  /** collect: where the coins start, px from its centre ([x, y], y down); default [0, 240], below it. */
+  from?: readonly [number, number];
+  /** collect: the icon that flies (a currency); default coin. */
+  icon?: string;
   /** What it decorates (an icon, a slot, a price, a button); the effect is drawn over and around it. */
   children?: any;
   /** Classes after its own: it hugs what it decorates; `w-full` (or a grid cell's stretch) lets a full-width target fill its place. */
@@ -39,7 +43,12 @@ function emitter(path: string): ParticleEmitter | 0 {
 const RARITIES = ["common", "uncommon", "rare", "epic", "legendary", "mythic"];
 
 /** The pack event each kind sounds as it plays. */
-const SOUND: Record<string, "reward" | "levelup" | "purchase"> = { reward: "reward", levelUp: "levelup", purchase: "purchase", reveal: "reward" };
+const SOUND: Record<string, "reward" | "levelup" | "purchase"> = { reward: "reward", levelUp: "levelup", purchase: "purchase", reveal: "reward", collect: "reward" };
+
+/** collect: each coin's scatter around `from` (px), its start (s) and the flight (s); the last lands at LANDED. */
+const COINS = [[-34, 6, 0], [22, -10, 0.05], [-8, 28, 0.1], [40, 22, 0.15], [-44, -18, 0.2], [6, -30, 0.25], [30, 36, 0.3], [-20, 40, 0.35]] as const;
+const FLIGHT = 0.55;
+const FIRST = FLIGHT, LANDED = 0.35 + FLIGHT;
 
 /** reveal: seconds of charge before the burst (the target's `animate-charge` gathers over the same 40% of its 0.6 s). */
 const BURST = 0.24;
@@ -149,6 +158,25 @@ export function Flourish(props: FlourishProps) {
                 <Particles class="absolute size-2 text-fg" emitter={fx.coinGlints} seed={5} />
                 <Particles class="absolute size-2 text-gold-hi" emitter={fx.glints} seed={6} />
               </Show>
+              <Show when={kind() == "collect"}>
+                <For each={COINS}>
+                  {(coin) => {
+                    const [dx, dy, at] = coin();
+                    const from = props.from ?? [0, 240];
+                    const fx0 = from[0], fy0 = from[1];
+                    const ms = (s: number) => Math.round(s * 1000);
+                    return (
+                      <View class={`absolute items-center justify-center transition-transform duration-[${ms(FLIGHT)}ms] delay-[${ms(at)}ms] ease-in starting:translate-x-[${fx0 + dx}px] starting:translate-y-[${fy0 + dy}px] starting:scale-swell`}>
+                        <Icon class={`size-7 transition-opacity duration-instant delay-[${ms(at + FLIGHT)}ms] starting:opacity-100 opacity-0`} name={props.icon ?? "coin"} />
+                      </View>
+                    );
+                  }}
+                </For>
+                <Particles class="absolute size-2 text-gold-hi" emitter={fx.flash} seed={1} delay={FIRST} />
+                <Particles class="absolute size-2 text-gold" emitter={fx.ring} seed={2} delay={LANDED} />
+                <Particles class="absolute size-2 text-gold-hi" emitter={fx.glints} seed={3} delay={FIRST} />
+                <Particles class="absolute size-2 text-gold" emitter={fx.coinGlints} seed={4} delay={LANDED} />
+              </Show>
               <Show when={kind() == "reveal"}>
                 <Particles class={`absolute size-2 ${ink()}`} emitter={fx.chargeGlow} seed={1} />
                 <Particles class={`absolute size-2 ${ink()}`} emitter={fx.charge} seed={2} />
@@ -182,6 +210,7 @@ export const fixtures: Record<string, Partial<FlourishProps>> = {
   levelUp: { kind: "levelUp", shots: [{ id: "1" }], children: () => <View class="px-6 py-2 rounded-panel bg-glass"><Text class="text-display-md font-bold text-gold">LV 12</Text></View> },
   purchase: { kind: "purchase", shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
   reveal: { kind: "reveal", rarity: "epic", shots: [{ id: "1" }], children: ICON("gem") },
+  collect: { kind: "collect", from: [0, 260], shots: [{ id: "1" }], children: () => <View class="flex-row items-center gap-1 pl-2 pr-4 h-10 rounded-full bg-glass"><Icon class="size-7" name="coin" /><Text class="text-lg font-bold text-fg">12,480</Text></View> },
   revealLegendary: { kind: "reveal", rarity: "legendary", shots: [{ id: "1" }], children: ICON("crown") },
   highlight: { kind: "highlight", children: () => <Button variant="primary" class="h-14 w-56" onPress={() => {}}><Text>Claim</Text></Button> },
 };

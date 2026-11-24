@@ -54,6 +54,8 @@ BORROWED = [
         ("banner", "lorc/flying-flag"), ("compass", "lorc/compass"), ("book", "lorc/book-cover"),
         ("search", "lorc/magnifying-glass"), ("cards", "faithtoken/card-pick"),
         ("dice", "delapouite/rolling-dices"), ("rocket", "lorc/rocket"),
+        ("inventory", "delapouite/backpack"), ("skillTree", "lorc/branch-arrow"),
+        ("rank", "skoll/rank-3"),
     ]),
     ("Settings and system", [
         ("sound", "delapouite/speaker"), ("soundOff", "delapouite/speaker-off"),
@@ -63,6 +65,7 @@ BORROWED = [
         ("exit", "delapouite/exit-door"), ("power", "lord-berandas/power-button"),
         ("info", "delapouite/info"), ("account", "delapouite/id-card"),
         ("phone", "delapouite/smartphone"), ("unlock", "delapouite/padlock-open"),
+        ("settings", "lorc/cog"), ("refresh", "delapouite/clockwise-rotation"),
     ]),
     ("Social", [
         ("like", "delapouite/thumb-up"), ("dislike", "delapouite/thumb-down"),
@@ -74,13 +77,15 @@ BORROWED = [
         ("wallet", "delapouite/wallet"), ("crate", "delapouite/wooden-crate"),
         ("piggyBank", "delapouite/piggy-bank"), ("coins", "delapouite/coins-pile"),
         ("cash", "delapouite/money-stack"), ("bank", "delapouite/bank"),
-        ("video", "delapouite/video-camera"),
+        ("video", "delapouite/video-camera"), ("vip", "lorc/crowned-heart"),
+        ("pass", "delapouite/vertical-banner"), ("ad", "delapouite/tv"),
     ]),
     ("Rewards", [
         ("chestOpen", "skoll/open-treasure-chest"), ("medal", "lorc/medal"),
         ("laurels", "lorc/laurels"), ("ribbon", "delapouite/ribbon-medal"),
-        ("lootBag", "lorc/swap-bag"), ("missions", "delapouite/checklist"),
+        ("lootBag", "lorc/swap-bag"), ("missions", "lorc/checkbox-tree"),
         ("target", "lorc/archery-target"), ("sparkles", "delapouite/sparkles"),
+        ("claimAll", "delapouite/basket"), ("stamina", "delapouite/lungs"),
     ]),
     ("Status effects", [
         ("burn", "lorc/flame-claws"), ("freeze", "lorc/snowflake-2"),

@@ -391,6 +391,7 @@
 /styles/shared/glyphs/view.svg
 /styles/shared/icons/game/account.svg
 /styles/shared/icons/game/accuracy.svg
+/styles/shared/icons/game/ad.svg
 /styles/shared/icons/game/alert.svg
 /styles/shared/icons/game/ammo.svg
 /styles/shared/icons/game/armor.svg
@@ -416,6 +417,7 @@
 /styles/shared/icons/game/chat.svg
 /styles/shared/icons/game/chest.svg
 /styles/shared/icons/game/chestOpen.svg
+/styles/shared/icons/game/claimAll.svg
 /styles/shared/icons/game/coin.svg
 /styles/shared/icons/game/coins.svg
 /styles/shared/icons/game/compass.svg
@@ -443,6 +445,7 @@
 /styles/shared/icons/game/hourglass.svg
 /styles/shared/icons/game/info.svg
 /styles/shared/icons/game/intellect.svg
+/styles/shared/icons/game/inventory.svg
 /styles/shared/icons/game/key.svg
 /styles/shared/icons/game/language.svg
 /styles/shared/icons/game/laurels.svg
@@ -460,13 +463,16 @@
 /styles/shared/icons/game/missions.svg
 /styles/shared/icons/game/music.svg
 /styles/shared/icons/game/new.svg
+/styles/shared/icons/game/pass.svg
 /styles/shared/icons/game/phone.svg
 /styles/shared/icons/game/piggyBank.svg
 /styles/shared/icons/game/poison.svg
 /styles/shared/icons/game/potion.svg
 /styles/shared/icons/game/power.svg
 /styles/shared/icons/game/quest.svg
+/styles/shared/icons/game/rank.svg
 /styles/shared/icons/game/rarity.svg
+/styles/shared/icons/game/refresh.svg
 /styles/shared/icons/game/regen.svg
 /styles/shared/icons/game/ribbon.svg
 /styles/shared/icons/game/rocket.svg
@@ -474,11 +480,13 @@
 /styles/shared/icons/game/sale.svg
 /styles/shared/icons/game/save.svg
 /styles/shared/icons/game/search.svg
+/styles/shared/icons/game/settings.svg
 /styles/shared/icons/game/share.svg
 /styles/shared/icons/game/shield.svg
 /styles/shared/icons/game/shock.svg
 /styles/shared/icons/game/shop.svg
 /styles/shared/icons/game/silence.svg
+/styles/shared/icons/game/skillTree.svg
 /styles/shared/icons/game/skull.svg
 /styles/shared/icons/game/sleep.svg
 /styles/shared/icons/game/slow.svg
@@ -487,6 +495,7 @@
 /styles/shared/icons/game/sparkles.svg
 /styles/shared/icons/game/speed.svg
 /styles/shared/icons/game/staff.svg
+/styles/shared/icons/game/stamina.svg
 /styles/shared/icons/game/star.svg
 /styles/shared/icons/game/strength.svg
 /styles/shared/icons/game/stun.svg
@@ -499,6 +508,7 @@
 /styles/shared/icons/game/unlock.svg
 /styles/shared/icons/game/vibrate.svg
 /styles/shared/icons/game/video.svg
+/styles/shared/icons/game/vip.svg
 /styles/shared/icons/game/wallet.svg
 /styles/shared/icons/game/weak.svg
 /styles/shared/icons/game/xp.svg
