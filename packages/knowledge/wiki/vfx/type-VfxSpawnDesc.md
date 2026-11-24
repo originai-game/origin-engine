@@ -22,6 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `hue` | `number` | `0` | — | `rad` | — | Its hue turn (og.Vfx.hue). |
 | `params` | `readonly number[]` | `[]` | — | — | — | Its params' values (og.Vfx.params; at most 4). |
 | `seed` | `number` | `0` | — | — | — | Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it. |
+| `delay` | `number` | `0` | ≥ 0 | `s` | — | Seconds before it starts (og.Vfx.startTick that many ticks on, rounded up): a chain of blasts spawned at once goes off in turn. 0 starts it this tick. |
 
 ```ogt
 struct VfxSpawnDesc {
@@ -50,6 +51,10 @@ struct VfxSpawnDesc {
   }
   field params List.f32 "Its params' values (og.Vfx.params; at most 4)."
   field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
+  field delay f32 "Seconds before it starts (og.Vfx.startTick that many ticks on, rounded up): a chain of blasts spawned at once goes off in turn. 0 starts it this tick." {
+    unit s
+    min 0
+  }
 }
 ```
 

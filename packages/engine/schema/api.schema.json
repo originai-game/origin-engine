@@ -57712,6 +57712,13 @@
           "maximum": 4294967295,
           "description": "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it.",
           "default": 0
+        },
+        "delay": {
+          "type": "number",
+          "description": "Seconds before it starts (og.Vfx.startTick that many ticks on, rounded up): a chain of blasts spawned at once goes off in turn. 0 starts it this tick.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
         }
       },
       "additionalProperties": false

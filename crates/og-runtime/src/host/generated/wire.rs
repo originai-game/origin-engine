@@ -25286,6 +25286,7 @@ pub struct VfxSpawnDesc {
     pub hue: f32,
     pub params: Vec<f32>,
     pub seed: u32,
+    pub delay: f32,
 }
 
 impl Default for VfxSpawnDesc {
@@ -25301,6 +25302,7 @@ impl Default for VfxSpawnDesc {
             hue: Default::default(),
             params: Default::default(),
             seed: Default::default(),
+            delay: Default::default(),
         }
     }
 }
@@ -25322,6 +25324,7 @@ impl FromJson for VfxSpawnDesc {
             hue: field(o, "hue", d.hue)?,
             params: field(o, "params", d.params)?,
             seed: field(o, "seed", d.seed)?,
+            delay: field(o, "delay", d.delay)?,
         })
     }
 }
@@ -25339,6 +25342,7 @@ impl ToJson for VfxSpawnDesc {
         o.insert("hue".into(), self.hue.to_json());
         o.insert("params".into(), self.params.to_json());
         o.insert("seed".into(), self.seed.to_json());
+        o.insert("delay".into(), self.delay.to_json());
         Value::Object(o)
     }
 }

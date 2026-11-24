@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "VfxSpawnDesc.delay",
+      "summary": "og.vfx.spawn takes `delay`, seconds before the effect starts (og.Vfx.startTick that many ticks on, rounded up), so a system can set off a timed chain of blasts in one call each: a spawned entity cannot be written by the system that spawned it before the system ends, so startTick could not be set at spawn."
+    }
+  ]
+}

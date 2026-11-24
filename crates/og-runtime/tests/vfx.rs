@@ -904,3 +904,56 @@ fn past_max_vfx_the_oldest_one_shot_effects_are_left_out() {
         (vec![-5, 0, 5], counts(3, 0))
     );
 }
+
+/// VfxSpawnDesc.delay holds the effect until its time: spawned with 0.5 s,
+/// fx/hit.ogt's impact (0.1 s in) comes 30 ticks later than it would
+/// undelayed (6 to 8 ticks after the spawn, as above), and nothing of it is
+/// sent before.
+///
+/// Ways it could fail: the delay ignored, read as ticks instead of
+/// seconds, or the held effect despawned before it started.
+#[test]
+fn a_spawn_delay_holds_the_effect_until_its_time() {
+    let seen = Seen::default();
+    set_hooks(Rc::new(Game(seen.clone())));
+    og_host_begin_bundle();
+    let watch = og_system_define_system(
+        "Watch".into(),
+        json!({ "reads": [{ "kind": "event", "name": "og.VfxEvent" }], "writes": [] }).to_string(),
+        WATCH,
+    );
+    let game = og_game_game(Some(json!({ "seed": 5, "systems": [watch] }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    ticks(engine, 1);
+    let hit = value(og_runtime::host_impl::answer(og_load_vfx(
+        engine,
+        "fx/hit.ogt".into(),
+    )));
+    let start = og_world_get_tick(engine);
+    let e = value(og_runtime::host_impl::answer(og_vfx_spawn(
+        engine,
+        Some(json!({ "asset": hit, "delay": 0.5 }).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    ticks(engine, 30);
+    assert!(
+        seen.borrow().is_empty(),
+        "nothing before its time: {:?}",
+        seen.borrow()
+    );
+    assert!(og_world_alive(engine, e), "held, not ended");
+    ticks(engine, 30);
+    let first = seen.borrow().clone();
+    assert_eq!(
+        first.first().map(|s| s.1.as_str()),
+        Some("impact"),
+        "{first:?}"
+    );
+    assert!(
+        (36..=38).contains(&(first[0].0 - start)),
+        "impact at tick {} of a spawn at {start} delayed 30 ticks",
+        first[0].0
+    );
+}

@@ -311,7 +311,7 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
         let mut v = json!({
             "asset": asset,
             "seed": seed,
-            "startTick": crate::host::api::og_world_get_tick(world),
+            "startTick": crate::host::api::og_world_get_tick(world) + delay_ticks(world, d.delay),
         });
         if given("scale") {
             v["scale"] = json!(d.scale);
@@ -669,4 +669,20 @@ fn system(
         ctx.despawn(e)?;
     }
     Ok(())
+}
+
+/// VfxSpawnDesc.delay in whole ticks of the world's fixed rate, rounded up.
+fn delay_ticks(world: u32, delay: f32) -> u32 {
+    if delay <= 0.0 {
+        return 0;
+    }
+    let tick = match crate::engine::running(world) {
+        // SAFETY: the frame is published while its system runs.
+        Some(f) => unsafe { f.ctx() }.time().seconds(1),
+        None => crate::engine::engine(world)
+            .ok()
+            .and_then(|e| e.world().map(|w| w.time().seconds(1)).ok())
+            .unwrap_or(1.0 / 60.0),
+    };
+    (f64::from(delay) / tick - 1e-9).ceil().max(0.0) as u32
 }

@@ -33290,6 +33290,14 @@ export interface VfxSpawnDesc {
    * @default 0
    */
   readonly seed?: number;
+  /**
+   * Seconds before it starts (og.Vfx.startTick that many ticks on, rounded up): a chain of blasts spawned at once goes off in turn. 0 starts it this tick.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly delay?: number;
 }
 
 /** A loaded composed effect. */

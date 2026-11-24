@@ -81,6 +81,10 @@ module vfx {
     }
     field params List.f32 "Its params' values (og.Vfx.params; at most 4)."
     field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
+    field delay f32 "Seconds before it starts (og.Vfx.startTick that many ticks on, rounded up): a chain of blasts spawned at once goes off in turn. 0 starts it this tick." {
+      unit s
+      min 0
+    }
   }
 
   struct VfxInfo {
