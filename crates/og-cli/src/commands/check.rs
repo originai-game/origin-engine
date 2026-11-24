@@ -1267,8 +1267,80 @@ fn class_resolver(pack: &og_ui_next::pack::Pack) -> Result<og_ui_next::classes::
     Ok(classes)
 }
 
-/// Check against the default pack under the game's own pack, using the
-/// same class resolver as runtime rather than a parallel parser contract.
+/// Loads a style directory's pack layer (`pack.json` or compiled `theme.json`).
+/// Returns `Err(())` when an existing file is malformed (deferring diagnostics to `og cook`).
+fn push_style_dir(
+    layers: &mut Vec<og_ui_next::pack::Layer>,
+    dir: &Path,
+    label: &str,
+) -> Result<(), ()> {
+    use og_ui_next::pack::Layer;
+    let pack_path = dir.join("pack.json");
+    if let Ok(text) = std::fs::read_to_string(&pack_path) {
+        let layer = Layer::parse(&text).map_err(|_| ())?;
+        layers.push(layer);
+        return Ok(());
+    }
+    let recipe_path = dir.join(og_cook::cook::ui_themes::RECIPE);
+    if let Ok(text) = std::fs::read_to_string(&recipe_path) {
+        let theme = og_cook::cook::ui_themes::compile(&text, label).map_err(|_| ())?;
+        let layer = theme.layer(Default::default()).map_err(|_| ())?;
+        layers.push(layer);
+    }
+    Ok(())
+}
+
+/// Resolves the UI pack layers active for `project_root`: default pack, the
+/// look's `ui` style or theme (from `project.ogt`'s `look`), and `styles/game`.
+fn project_style_layers(project_root: &Path) -> Result<Vec<og_ui_next::pack::Layer>, ()> {
+    use og_ui_next::pack::Layer;
+    let mut layers = vec![Layer::default_pack()];
+    let assets = project_root.join("assets");
+    let look_style = std::fs::read_to_string(project_root.join("project.ogt"))
+        .ok()
+        .and_then(|text| og_core::ogt::parse(&text).ok())
+        .and_then(|doc| og_cook::look::project_look(&doc.body).ok().flatten())
+        .and_then(|rel| og_cook::cook::look::look_ui_style(&assets, &rel));
+    if let Some(style_id) = look_style.as_deref() {
+        if let Some(theme_name) = style_id.strip_prefix("@themes/") {
+            if let Some(recipe_path) = og_cook::cook::ui_themes::builtin_recipe(theme_name)
+                && let Ok(text) = std::fs::read_to_string(&recipe_path)
+            {
+                let label = format!("@themes/{theme_name}/{}", og_cook::cook::ui_themes::RECIPE);
+                let theme = og_cook::cook::ui_themes::compile(&text, &label).map_err(|_| ())?;
+                let layer = theme.layer(Default::default()).map_err(|_| ())?;
+                layers.push(layer);
+            }
+        } else if style_id.starts_with("@styles/") {
+            if let Some((_, bytes)) = og_cook::cook::look::style_files(style_id)
+                .into_iter()
+                .find(|(id, _)| id.ends_with("/pack.json"))
+                && let Ok(text) = std::str::from_utf8(bytes)
+            {
+                let layer = Layer::parse(text).map_err(|_| ())?;
+                layers.push(layer);
+            }
+        } else {
+            push_style_dir(
+                &mut layers,
+                &assets.join(style_id),
+                &format!("{style_id}/{}", og_cook::cook::ui_themes::RECIPE),
+            )?;
+        }
+    }
+    if look_style.as_deref() != Some("styles/game") {
+        push_style_dir(
+            &mut layers,
+            &assets.join("styles/game"),
+            "styles/game/theme.json",
+        )?;
+    }
+    Ok(layers)
+}
+
+/// Check against the default pack under the project look's theme/style and the
+/// game's own pack, using the same class resolver as runtime rather than a
+/// parallel parser contract.
 fn unknown_classes(p: &Project, report: &mut Report) {
     // The game's code and its UI components, where the template's
     // tsconfig reads TSX.
@@ -1281,17 +1353,11 @@ fn unknown_classes(p: &Project, report: &mut Report) {
     if files.is_empty() {
         return;
     }
-    use og_ui_next::pack::{Layer, Pack};
-    let mut layers = vec![Layer::default_pack()];
-    let game = p.root.join("assets/styles/game/pack.json");
-    if let Ok(text) = std::fs::read_to_string(&game) {
-        match Layer::parse(&text) {
-            Ok(layer) => layers.push(layer),
-            // The cook refuses the same file and says why.
-            Err(_) => return,
-        }
-    }
-    let pack = Pack::new(&layers);
+    let Ok(layers) = project_style_layers(&p.root) else {
+        // The cook refuses the malformed pack/theme and says why.
+        return;
+    };
+    let pack = og_ui_next::pack::Pack::new(&layers);
     let Ok(mut classes) = class_resolver(&pack) else {
         return;
     };

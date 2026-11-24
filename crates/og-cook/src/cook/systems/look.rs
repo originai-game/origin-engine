@@ -97,6 +97,21 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
     ))
 }
 
+/// The UI style id resolved from the look at `assets/<rel>` (flattening its
+/// `extends` chain against the built-in presets), or `None` when the look does
+/// not name a non-default UI style or cannot be read.
+pub fn look_ui_style(assets_root: &Path, rel: &str) -> Option<String> {
+    let text = std::fs::read_to_string(assets_root.join(rel)).ok()?;
+    let mut seen = vec![rel.to_string()];
+    let mut bases = Vec::new();
+    let look = flatten(rel, &text, assets_root, PRESETS, &mut seen, &mut bases).ok()?;
+    let ui = look.ui.as_deref()?;
+    if ui == "default" {
+        return None;
+    }
+    resolve_style(ui, &|id| assets_root.join(id).is_dir()).ok()
+}
+
 /// The files of a built-in pack directory, by bundle ID.
 pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
     if !id.starts_with("@styles/") {

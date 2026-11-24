@@ -169,13 +169,123 @@ fn closest<'a>(name: &str, lib: &'a [Entry]) -> Vec<&'a str> {
     scored.into_iter().take(3).map(|(_, n)| n).collect()
 }
 
-/// What an eject wrote: the copy, its table, and the game files whose
-/// imports now point at the copy.
+/// What an eject wrote: the copy, its locale string tables, and the game files
+/// whose imports now point at the copy.
 #[derive(Debug)]
 pub(super) struct Ejected {
     pub copy: PathBuf,
     pub table: Option<PathBuf>,
+    pub extra_tables: Vec<PathBuf>,
     pub rewired: Vec<PathBuf>,
+}
+
+/// All exported symbols of `text` (functions, types, interfaces, and non-metadata
+/// consts), requiring at least one exported function.
+fn exported_symbols(text: &str, source: &Path) -> Result<BTreeSet<String>, String> {
+    let mut funcs = 0usize;
+    let mut out = BTreeSet::new();
+    fn ident(rest: &str) -> Option<&str> {
+        rest.trim_start()
+            .split(|c: char| !c.is_alphanumeric() && c != '_')
+            .next()
+            .filter(|s| !s.is_empty())
+    }
+    for line in text.lines() {
+        let t = line.trim_start();
+        if let Some(rest) = t.strip_prefix("export function ") {
+            if let Some(name) = ident(rest) {
+                out.insert(name.to_string());
+                funcs += 1;
+            }
+        } else if let Some(rest) = t
+            .strip_prefix("export interface ")
+            .or_else(|| t.strip_prefix("export type "))
+        {
+            if let Some(name) = ident(rest) {
+                out.insert(name.to_string());
+            }
+        } else if let Some(rest) = t.strip_prefix("export const ")
+            && let Some(name) = ident(rest)
+            && !matches!(name, "fixtures" | "actions" | "screen")
+        {
+            out.insert(name.to_string());
+        }
+    }
+    if funcs == 0 {
+        return Err(format!("{}: exports no function", source.display()));
+    }
+    Ok(out)
+}
+
+/// Barrel aliases in `components/index.tsx` pointing to `entry_rel`
+/// (e.g. `export { Menu as DropdownMenu } from "../controls/menu"` -> `DropdownMenu => Menu`).
+fn barrel_aliases(ui: &Path, entry_rel: &str) -> std::collections::BTreeMap<String, String> {
+    let mut map = std::collections::BTreeMap::new();
+    let index = ui.join("components/index.tsx");
+    let Ok(text) = std::fs::read_to_string(&index) else {
+        return map;
+    };
+    let comp_dir = ui.join("components");
+    for line in text.lines() {
+        let t = line.trim();
+        let Some(rest) = t.strip_prefix("export {") else {
+            continue;
+        };
+        let Some((names, tail)) = rest.split_once('}') else {
+            continue;
+        };
+        let Some(from) = tail
+            .trim()
+            .strip_prefix("from \"")
+            .and_then(|s| s.split('"').next())
+        else {
+            continue;
+        };
+        let resolved = normalize(&comp_dir.join(from));
+        let Ok(rel) = resolved.strip_prefix(ui) else {
+            continue;
+        };
+        if slash(rel) != entry_rel {
+            continue;
+        }
+        for item in names.split(',') {
+            let item = item.trim().trim_start_matches("type ").trim();
+            if let Some((orig, alias)) = item.split_once(" as ") {
+                map.insert(alias.trim().to_string(), orig.trim().to_string());
+            }
+        }
+    }
+    map
+}
+
+fn parse_table_lines(text: &str) -> Vec<(String, String)> {
+    text.lines()
+        .filter_map(|l| {
+            let rest = l.strip_prefix("string \"")?;
+            let key = &rest[..rest.find('"')?];
+            Some((key.to_string(), l.to_string()))
+        })
+        .collect()
+}
+
+fn build_locale_table(
+    locale: &str,
+    lines: &[(String, String)],
+    used: &BTreeSet<String>,
+) -> Option<String> {
+    let mut out = format!("type strings\nversion 1\n---\nlocale \"{locale}\"\n");
+    let mut seen = BTreeSet::new();
+    for (key, line) in lines {
+        if used.contains(key) && seen.insert(key.clone()) {
+            out.push_str(&line.replacen(
+                &format!("string \"{key}\""),
+                &format!("string \"{PREFIX}{key}\""),
+                1,
+            ));
+            out.push('\n');
+        }
+    }
+    (!seen.is_empty()).then_some(out)
 }
 
 /// Copies `name` from the package's `ui` directory into `project`.
@@ -207,20 +317,19 @@ pub(super) fn eject_from(
     let source = ui.join(format!("{}.tsx", entry.rel));
     let text =
         std::fs::read_to_string(&source).map_err(|e| format!("{}: {e}", source.display()))?;
-    let function = text
-        .split("export function ")
-        .nth(1)
-        .and_then(|r| r.split(|c: char| !c.is_alphanumeric() && c != '_').next())
-        .ok_or_else(|| format!("{}: exports no function", source.display()))?
-        .to_string();
+    let exports = exported_symbols(&text, &source)?;
+    let aliases = barrel_aliases(ui, &entry.rel);
     let source_dir = source.parent().expect("a file's directory");
     let copy = project.join("assets/ui").join(format!("{name}.tsx"));
     let table_path = project.join("assets/ui").join(format!("{name}.en.ogt"));
     let stem = name.rsplit('/').next().unwrap_or(name);
 
-    // The tables it imports, their keys, and the code with its keys renamed.
+    // The tables it imports, their sibling locales (`<base>.<locale>.ogt`),
+    // their keys, and the code with its keys renamed.
     let mut code = String::new();
     let mut tables = Vec::new();
+    let mut sibling_locales: std::collections::BTreeMap<String, Vec<String>> =
+        std::collections::BTreeMap::new();
     for line in text.split_inclusive('\n') {
         let t = line.trim();
         if let Some(rel) = t
@@ -232,6 +341,35 @@ pub(super) fn eject_from(
             tables.push(
                 std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?,
             );
+            if let Some(file_name) = path.file_name().and_then(|n| n.to_str())
+                && let Some(base) = file_name.strip_suffix(".en.ogt")
+                && let Some(parent) = path.parent()
+                && let Ok(entries) = std::fs::read_dir(parent)
+            {
+                let prefix = format!("{base}.");
+                let mut peers: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+                peers.sort();
+                for peer in peers {
+                    let Some(peer_name) = peer.file_name().and_then(|n| n.to_str()) else {
+                        continue;
+                    };
+                    let Some(loc) = peer_name
+                        .strip_prefix(&prefix)
+                        .and_then(|s| s.strip_suffix(".ogt"))
+                    else {
+                        continue;
+                    };
+                    if loc.is_empty() || loc == "en" {
+                        continue;
+                    }
+                    if let Ok(content) = std::fs::read_to_string(&peer) {
+                        sibling_locales
+                            .entry(loc.to_string())
+                            .or_default()
+                            .push(content);
+                    }
+                }
+            }
             if tables.len() == 1 {
                 code.push_str(&format!("import \"./{stem}.en.ogt\";\n"));
             }
@@ -239,15 +377,7 @@ pub(super) fn eject_from(
         }
         code.push_str(line);
     }
-    let lines: Vec<(String, String)> = tables
-        .iter()
-        .flat_map(|t| t.lines())
-        .filter_map(|l| {
-            let rest = l.strip_prefix("string \"")?;
-            let key = &rest[..rest.find('"')?];
-            Some((key.to_string(), l.to_string()))
-        })
-        .collect();
+    let lines: Vec<(String, String)> = tables.iter().flat_map(|t| parse_table_lines(t)).collect();
     let mut used = BTreeSet::new();
     for (key, _) in &lines {
         for q in ['"', '\'', '`'] {
@@ -279,29 +409,38 @@ pub(super) fn eject_from(
         }
     }
     let mut code = relative_imports(&code, source_dir, ui);
-    let table = (!used.is_empty()).then(|| {
-        let mut out = String::from("type strings\nversion 1\n---\nlocale \"en\"\n");
-        let mut seen = BTreeSet::new();
-        for (key, line) in &lines {
-            if used.contains(key) && seen.insert(key.clone()) {
-                out.push_str(&line.replacen(
-                    &format!("string \"{key}\""),
-                    &format!("string \"{PREFIX}{key}\""),
-                    1,
-                ));
-                out.push('\n');
-            }
-        }
-        out
-    });
+    let table = (!used.is_empty())
+        .then(|| build_locale_table("en", &lines, &used))
+        .flatten();
     if table.is_none() && !tables.is_empty() {
         code = code.replace(&format!("import \"./{stem}.en.ogt\";\n"), "");
+    }
+    let mut extra_writes = Vec::new();
+    let mut extra_imports = String::new();
+    if table.is_some() {
+        for (locale, texts) in &sibling_locales {
+            let loc_lines: Vec<(String, String)> =
+                texts.iter().flat_map(|t| parse_table_lines(t)).collect();
+            if let Some(built) = build_locale_table(locale, &loc_lines, &used) {
+                let path = project
+                    .join("assets/ui")
+                    .join(format!("{name}.{locale}.ogt"));
+                extra_writes.push((path, built));
+                extra_imports.push_str(&format!("import \"./{stem}.{locale}.ogt\";\n"));
+            }
+        }
+        if !extra_imports.is_empty() {
+            let en_import = format!("import \"./{stem}.en.ogt\";\n");
+            code = code.replacen(&en_import, &format!("{en_import}{extra_imports}"), 1);
+        }
     }
 
     let mut writes = vec![(copy.clone(), code)];
     if let Some(t) = &table {
         writes.push((table_path.clone(), t.clone()));
     }
+    let extra_tables: Vec<PathBuf> = extra_writes.iter().map(|(p, _)| p.clone()).collect();
+    writes.extend(extra_writes);
     for (path, _) in &writes {
         if path.exists() && !force {
             return Err(format!(
@@ -320,7 +459,7 @@ pub(super) fn eject_from(
             continue;
         };
         let target = relative(file.parent().expect("a file's directory"), &copy);
-        let after = rewire(&before, &function, &package_path, &target);
+        let after = rewire(&before, &exports, &aliases, &package_path, &target);
         if after != before {
             rewires.push((file, after));
         }
@@ -333,6 +472,7 @@ pub(super) fn eject_from(
     Ok(Ejected {
         copy,
         table: table.map(|_| table_path),
+        extra_tables,
         rewired: rewires.into_iter().map(|(p, _)| p).collect(),
     })
 }
@@ -414,9 +554,15 @@ fn game_sources(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// `text` with its imports of `function` (by name from the barrel) and of
-/// `package_path` (with or without `.tsx`) pointing at `target`.
-fn rewire(text: &str, function: &str, package_path: &str, target: &str) -> String {
+/// `text` with its imports of any symbol in `exports` or `aliases` (from the
+/// barrel) and of `package_path` (with or without `.tsx`) pointing at `target`.
+fn rewire(
+    text: &str,
+    exports: &BTreeSet<String>,
+    aliases: &std::collections::BTreeMap<String, String>,
+    package_path: &str,
+    target: &str,
+) -> String {
     let mut text = text
         .replace(&format!("\"{package_path}.tsx\""), &format!("\"{target}\""))
         .replace(&format!("\"{package_path}\""), &format!("\"{target}\""));
@@ -437,18 +583,40 @@ fn rewire(text: &str, function: &str, package_path: &str, target: &str) -> Strin
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .collect();
-        let is_it = |s: &str| {
-            s.trim_start_matches("type ")
-                .split(" as ")
-                .next()
-                .is_some_and(|n| n.trim() == function)
-        };
-        let Some(spec) = names.iter().find(|s| is_it(s)).map(|s| s.to_string()) else {
+        let mut moved = Vec::new();
+        let mut kept = Vec::new();
+        for spec in names {
+            let (is_type, rest) = match spec.strip_prefix("type ") {
+                Some(r) => (true, r.trim()),
+                None => (false, spec),
+            };
+            let (imported, local) = match rest.split_once(" as ") {
+                Some((i, l)) => (i.trim(), Some(l.trim())),
+                None => (rest.trim(), None),
+            };
+            if exports.contains(imported) {
+                moved.push(spec.to_string());
+            } else if let Some(orig) = aliases.get(imported) {
+                let prefix = if is_type { "type " } else { "" };
+                let bound = local.unwrap_or(imported);
+                if bound == orig {
+                    moved.push(format!("{prefix}{orig}"));
+                } else {
+                    moved.push(format!("{prefix}{orig} as {bound}"));
+                }
+            } else {
+                kept.push(spec);
+            }
+        }
+        if moved.is_empty() {
             search = end;
             continue;
-        };
-        let kept: Vec<&str> = names.into_iter().filter(|s| !is_it(s)).collect();
-        let own = format!("import {{ {spec} }} from \"{target}\";");
+        }
+        let own = format!(
+            "{}{{ {} }} from \"{target}\";",
+            &clause[..open],
+            moved.join(", ")
+        );
         let replacement = if kept.is_empty() {
             own
         } else {
@@ -505,6 +673,9 @@ pub(super) fn run(args: &[&str], usage: &str) -> ExitCode {
             let shown = |p: &Path| slash(p.strip_prefix(project).unwrap_or(p));
             println!("og ui eject: '{name}' into {}", shown(&done.copy));
             if let Some(t) = &done.table {
+                println!("  its strings into {}, keys under `{PREFIX}`", shown(t));
+            }
+            for t in &done.extra_tables {
                 println!("  its strings into {}, keys under `{PREFIX}`", shown(t));
             }
             for f in &done.rewired {

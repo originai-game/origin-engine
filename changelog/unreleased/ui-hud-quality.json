@@ -1,0 +1,28 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.ui.View",
+      "summary": "World-anchored UI nodes now support distance scaling (scaleAt, scaleMin, scaleMax), depth culling (maxDistance), and LOD state bands (lod -> data-lod-near, data-lod-mid, data-lod-far); Nameplate and InteractionPrompt wire maxDistance directly."
+    },
+    {
+      "member": "HudEditorScreen",
+      "summary": "HudEditorScreen now supports interactive pointer-draggable and keyboard-nudgeable HUD regions inside the safe-area guide frame with grid snapping and a scale, opacity, and visibility inspector dock."
+    },
+    {
+      "member": "@origingame/engine/ui/components",
+      "summary": "Re-exported previously internal controls (Accordion, Collapsible, ContextMenu, DropdownMenu, List, MenuItem, MenuLabel, MenuSeparator, NumberInput, Popover, Radio, RadioGroup, Sheet, Tab, ToastStack, Toggle, ToggleGroup, Toolbar, ToolbarSeparator) from the components barrel."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "Fixed reactivity freezes, semantic ink ordering over Plate.frame, SVG/Line viewBox geometry, contrast, layout, focusGroup navigation, safe-area insets, and broken group-data-* selectors across built-in HUD, world, genre, and menu components."
+    },
+    {
+      "member": "World.snapshot",
+      "summary": "UI presentation checkpoints now save and restore Tree interactive state (focus, keyboard modality, open modal stack, focusMemory, scroll offsets, Input text/caret, UI sound PRNG, and virtual cursor) alongside stores and feedback PRNG."
+    },
+    "og check (OG9105) now loads the project look's UI theme/style and game theme.json when checking TSX class names; og style list/add discovers pack.json packs and templates/themes recipes; og ui eject copies sibling locale .ogt tables and rewires all exported symbols and barrel aliases."
+  ]
+}

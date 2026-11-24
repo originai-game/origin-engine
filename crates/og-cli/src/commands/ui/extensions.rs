@@ -146,14 +146,15 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         ));
     }
     let path = directory.join("extension.json");
-    if !path.exists() && css_pack(directory) {
+    if !path.exists() && style_pack(directory) {
         let name = directory
             .file_name()
             .and_then(|n| n.to_str())
             .ok_or("style directory needs a UTF-8 basename")?;
+        let description = style_description(directory);
         let manifest = serde_json::from_value(serde_json::json!({
             "format": 1, "kind": "style", "name": name,
-            "version": "0.0.0", "description": "CSS style pack"
+            "version": "0.0.0", "description": description
         }))
         .map_err(|e| e.to_string())?;
         return Ok(Extension {
@@ -236,6 +237,36 @@ pub fn css_pack(directory: &Path) -> bool {
     })
 }
 
+/// Whether `directory` is a UI style pack (`pack.json`), a theme recipe
+/// (`theme.json`), or a legacy CSS style pack.
+pub fn style_pack(directory: &Path) -> bool {
+    directory.join("pack.json").is_file()
+        || directory.join(og_cook::cook::ui_themes::RECIPE).is_file()
+        || css_pack(directory)
+}
+
+fn style_description(directory: &Path) -> String {
+    let about_in = |file: &str| {
+        std::fs::read_to_string(directory.join(file))
+            .ok()
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .and_then(|v| {
+                v.get("about")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_owned)
+            })
+    };
+    if directory.join(og_cook::cook::ui_themes::RECIPE).is_file() {
+        about_in(og_cook::cook::ui_themes::RECIPE).unwrap_or_else(|| "UI theme recipe".into())
+    } else if directory.join("pack.json").is_file() {
+        about_in("pack.json").unwrap_or_else(|| "UI style pack".into())
+    } else {
+        "CSS style pack".into()
+    }
+}
+
 pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     let mut roots = Vec::new();
     if let Some(package) = crate::project::engine_package(Some(project)) {
@@ -243,6 +274,9 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     }
     if let Some(styles) = og_cook::cook::look::styles_dir() {
         roots.push((styles.to_path_buf(), false));
+    }
+    if let Some(themes) = og_cook::cook::ui_themes::themes_dir() {
+        roots.push((themes.to_path_buf(), false));
     }
     if let Some(fonts) = og_cook::cook::look::fonts_dir() {
         roots.push((fonts.to_path_buf(), false));
@@ -263,7 +297,7 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
             .map_err(|e| e.to_string())?;
         dirs.sort();
         for dir in dirs {
-            if !dir.join("extension.json").is_file() && !css_pack(&dir) {
+            if !dir.join("extension.json").is_file() && !style_pack(&dir) {
                 continue;
             }
             let extension = read(&dir, installed)?;
@@ -352,7 +386,7 @@ pub fn add(args: &[&str], kind: &str) -> ExitCode {
             }
         };
         let found = if Path::new(name).join("extension.json").is_file()
-            || (kind == "style" && css_pack(Path::new(name)))
+            || (kind == "style" && style_pack(Path::new(name)))
         {
             Some(read(Path::new(name), false)?)
         } else {
