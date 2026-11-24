@@ -38,9 +38,17 @@ fn tonemapped(uv: vec2<f32>) -> vec3<f32> {
   if (post.extra.y < 0.5) { return curved; }
   // Untonemapped sprites (sprite.wgsl `fs_untonemapped`) left the alpha at
   // the fraction of the pixel to tone map: the rest is their colour as
-  // given, without exposure, bloom or the curve.
+  // given, without exposure or the curve.
   let lit = sample_exact(source, linear_sampler, uv);
-  return mix(clamp(lit.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), curved, clamp(lit.a, 0.0, 1.0));
+  var raw = lit.rgb;
+  // The glow its neighbours spread over it (an authored LDR sky behind a
+  // bright shot) still lands on it, curved on its own: without it the glow
+  // shows only over tone-mapped pixels, outlining every mesh in front.
+  if (post.bloom.z > 0.0) {
+    let glow = textureSampleLevel(bloom_tex, linear_sampler, uv, 0.0).rgb * post.bloom.z;
+    if (post.hdr.x > 0.0) { raw += tone_curve_hdr(glow, post.mode.x, post.hdr); } else { raw += tone_curve(glow, post.mode.x); }
+  }
+  return mix(clamp(raw, vec3<f32>(0.0), vec3<f32>(1.0)), curved, clamp(lit.a, 0.0, 1.0));
 }
 
 // Filament's starburst (colorGrading.mat `starburst`, google/filament

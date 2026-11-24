@@ -432,3 +432,43 @@ fn spot_global_and_masked_2d_lights() {
         "no bleed from the next strip: {edge:?}"
     );
 }
+
+/// Bloom from a bright tone-mapped sprite still lands on the untonemapped
+/// pixels round it (an authored LDR backdrop behind a shot): it used to be
+/// dropped there, so the glow showed only over tone-mapped pixels and lit up
+/// every mesh silhouette near a shot instead of the plate (star-focus R10).
+#[test]
+#[ignore = "requires GPU"]
+fn bloom_lands_on_untonemapped_pixels() {
+    use og_render::{Bloom, SpriteFx};
+    let mut scene = flat();
+    scene.look.post.tonemap = Tonemap::Neutral;
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.add_sprite(Sprite {
+        size: Vec2::new(16.0, 10.0),
+        color: [0.1, 0.1, 0.1, 1.0],
+        layer: -1,
+        ..Default::default()
+    });
+    scene.sprite.sprite_fx.push(SpriteFx {
+        sprite: 0,
+        tone_mapped: false,
+        ..Default::default()
+    });
+    scene.add_sprite(Sprite {
+        size: Vec2::splat(0.4),
+        color: [8.0, 8.0, 8.0, 1.0],
+        layer: 1,
+        ..Default::default()
+    });
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("render");
+    let img = renderer.read_offscreen().expect("capture");
+    let (near, far) = (at(&img, 0.6, 0.0), at(&img, 5.0, 0.0));
+    assert!(
+        near[1] as i32 > far[1] as i32 + 12,
+        "the glow round the shot shows on the plate: near {near:?}, far {far:?}"
+    );
+}
