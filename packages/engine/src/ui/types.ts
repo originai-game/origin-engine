@@ -104,6 +104,10 @@ export interface HostProps {
   scrollbar?: boolean | undefined;
   /** An on-screen stick: its box feeds this input action's x and y (from its centre, y up), with no handler. Like `touchPad` and `touchButton`, it is `active:` while a touch holds it. */
   touchStick?: string | undefined;
+  /** Centre a `touchStick` where its finger lands. Its box remains the activation zone. */
+  floatingStick?: boolean | undefined;
+  /** A look pad: feed this action the drag since the last fixed tick in CSS px (x right, y up), not a stick deflection. Holding still reads zero. */
+  touchLook?: string | undefined;
   /** An on-screen d-pad: its box feeds this input action, the nearest of eight directions. Held, it carries the way it reads as `data-dir-up`, `data-dir-right`, `data-dir-down` and `data-dir-left` (two on a diagonal), so a class lights the pressed arm (`group-data-dir-up/pad:`). */
   touchPad?: string | undefined;
   /** An on-screen button: its box presses this input action while a touch that started on it is held. */

@@ -337,6 +337,9 @@ pub enum ZoneKind {
     Pad,
     /// A button: 1 while a press that started on it is held.
     Button,
+    /// A look pad: this tick's drag in CSS px, x right and y up.
+    /// The action map supplies the previous sampled pointer position.
+    Look,
 }
 
 /// An on-screen control the UI lays out (a document's `<joystick>`,
@@ -453,6 +456,7 @@ impl Reader<'_> {
         };
         r.value = match z.kind {
             ZoneKind::Button => Vec2::new(1.0, 0.0),
+            ZoneKind::Look => Vec2::ZERO,
             ZoneKind::Stick => {
                 let len = d.length();
                 let dz = dz(0.15);

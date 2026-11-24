@@ -21,6 +21,10 @@ export interface TouchControlsProps {
   pad?: boolean;
   /** A second stick at the end side and the two-axis action it feeds (look); empty leaves it out. */
   look?: string;
+  /** Centre the move stick where the finger lands inside its box. Ignored for a d-pad. */
+  floatingStick?: boolean;
+  /** Use a drag pad for look instead of a stick: CSS px per fixed tick, x right and y up; holding still reads zero. */
+  lookPad?: boolean;
   /** The sticks' dead zone as a part of their radius, up to 0.95; 0 is the engine's 0.15. */
   deadZone?: number;
   /** The buttons at the end side, the first nearest the corner: keyed rows of { id, action, label, icon, primary, charge, disabled }, each as ActionButton takes them. */
@@ -50,20 +54,24 @@ export interface TouchControlsProps {
 const ENGINE_DEAD_ZONE = 0.15;
 
 /** A touch stick: its ring and its knob, whose box is the action's stick zone. */
-function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
+function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string; floating?: boolean; lookPad?: boolean }) {
   return (
     <View
       class={`relative shrink-0 ${packClass("Touch", "base")}`}
-      role="slider"
+      role={props.lookPad ? "group" : "slider"}
       label={props.label}
       valueMin={-1}
       valueMax={1}
       valueText={props.label}
       disabled={props.disabled}
-      touchStick={props.action}
+      touchStick={props.lookPad ? "" : props.action}
+      touchLook={props.lookPad ? props.action : ""}
+      floatingStick={props.floating}
       deadZone={props.deadZone}
     >
-      <View knob class={`absolute -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${packClass("Touch", "knob")}`} />
+      <Show when={!props.lookPad}>
+        <View knob class={`absolute -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 ${packClass("Touch", "knob")}`} />
+      </Show>
     </View>
   );
 }
@@ -108,7 +116,7 @@ export function TouchControls(props: TouchControlsProps) {
     >
       <Show when={(props.move ?? "") !== ""}>
         <Show when={props.pad === true} fallback={
-          <Stick action={props.move ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.move")} />
+          <Stick action={props.move ?? ""} deadZone={dz()} disabled={props.disabled === true} floating={props.floatingStick === true} label={t("component.touch-controls.move")} />
         }>
           <Pad action={props.move ?? ""} disabled={props.disabled === true} label={t("component.touch-controls.move")} />
         </Show>
@@ -131,7 +139,7 @@ export function TouchControls(props: TouchControlsProps) {
           </View>
         </Show>
         <Show when={(props.look ?? "") !== ""}>
-          <Stick action={props.look ?? ""} deadZone={dz()} disabled={props.disabled === true} label={t("component.touch-controls.look")} />
+          <Stick action={props.look ?? ""} deadZone={dz()} disabled={props.disabled === true} lookPad={props.lookPad === true} label={t("component.touch-controls.look")} />
         </Show>
       </View>
     </View>
@@ -140,6 +148,8 @@ export function TouchControls(props: TouchControlsProps) {
 }
 
 export const fixtures: Record<string, Partial<TouchControlsProps>> = {
+  floating: {"move":"move","always":true,"floatingStick":true},
+  lookPad: {"move":"move","look":"look","always":true,"lookPad":true},
   leftHanded: {"move":"move","look":"look","always":true,"leftHanded":true,"actions":[{"id":"jump","action":"jump","label":"Jump","icon":"bolt","primary":true},{"id":"dash","action":"dash","label":"Dash","icon":"fire"}]},
   default: {"move":"move","pad":false,"look":"","deadZone":0,"always":true,"disabled":false,"actions":[{"id":"jump","action":"jump","label":"Jump","icon":"bolt","primary":true,"charge":-1,"disabled":false},{"id":"dash","action":"dash","label":"Dash","icon":"fire","primary":false,"charge":-1,"disabled":false},{"id":"use","action":"use","label":"Use","icon":"key","primary":false,"charge":-1,"disabled":false}]},
   pad: {"move":"move","pad":true,"look":"","deadZone":0,"always":true,"disabled":false,"actions":[{"id":"a","action":"confirm","label":"A","icon":"","primary":true,"charge":-1,"disabled":false},{"id":"b","action":"back","label":"B","icon":"","primary":false,"charge":-1,"disabled":false}]},

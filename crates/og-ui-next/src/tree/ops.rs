@@ -304,10 +304,11 @@ impl Tree {
                         "hold" => {
                             self.input.per[e as usize].hold = value.trim().parse().unwrap_or(0.0);
                         }
-                        "touchStick" | "touchPad" | "touchButton" => {
+                        "touchStick" | "touchPad" | "touchButton" | "touchLook" => {
                             let kind = match name {
                                 "touchStick" => og_input::ZoneKind::Stick,
                                 "touchPad" => og_input::ZoneKind::Pad,
+                                "touchLook" => og_input::ZoneKind::Look,
                                 _ => og_input::ZoneKind::Button,
                             };
                             let action = value.trim();
@@ -426,6 +427,10 @@ impl Tree {
                             self.input.per[e as usize].rides_knob =
                                 !matches!(value, "" | "false" | "0" | "null");
                             self.paint = true;
+                        }
+                        "floatingStick" => {
+                            self.input.per[e as usize].floating_stick =
+                                !matches!(value, "" | "false" | "0" | "null");
                         }
                         "deadZone" => {
                             self.input.per[e as usize].dead_zone =

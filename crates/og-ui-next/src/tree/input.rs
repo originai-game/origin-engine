@@ -93,6 +93,9 @@ pub(super) struct Per {
     /// with `deadZone` a stick's dead zone.
     pub zone: Option<(og_input::ZoneKind, Box<str>)>,
     pub dead_zone: f32,
+    pub floating_stick: bool,
+    /// Floating stick's centre relative to the zone's centre, tree units.
+    pub stick_centre: [f32; 2],
     /// An on-screen control's knob as og-input last read it (from the
     /// zone's middle, y down), and `knob`: this node moves by the knob of
     /// the control it is in, at paint.

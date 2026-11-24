@@ -79,6 +79,14 @@ impl ActionMap {
             "captured": self.captured.to_json(),
         });
         let mut v = v;
+        if !self.look_pointers.is_empty() {
+            v["lookPointers"] = self
+                .look_pointers
+                .iter()
+                .map(|(id, p)| json!([id, p.x, p.y]))
+                .collect::<Vec<_>>()
+                .into();
+        }
         // Only when set: a world whose player set none saves the bytes it
         // always did (and hashes the same).
         if !self.senses.is_empty() {
@@ -116,6 +124,15 @@ impl ActionMap {
         }
         for (k, l) in v["pending"].as_object().into_iter().flatten() {
             out.pending.insert(k.clone(), list_of(l)?);
+        }
+        for p in v["lookPointers"].as_array().into_iter().flatten() {
+            out.look_pointers.push((
+                p[0].as_u64().unwrap_or(0) as u32,
+                Vec2::new(
+                    p[1].as_f64().unwrap_or(0.0) as f32,
+                    p[2].as_f64().unwrap_or(0.0) as f32,
+                ),
+            ));
         }
         for (k, t) in v["pendingToggles"].as_object().into_iter().flatten() {
             out.pending_toggles

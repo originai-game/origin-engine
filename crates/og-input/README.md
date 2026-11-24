@@ -140,11 +140,22 @@ y up), each with default bindings over controls (`src/control.rs`): key
 codes, `mouse.left`/`middle`/`right`, `mouse.x`/`y`/`xy` (the movement,
 CSS px), `wheel.x`/`y` (notches of 100 px), `pad.<button>` (any pad),
 `pad.leftX`… `pad.rightTrigger`, `pad.leftXY`/`rightXY`/`dpad`, `touch`,
-a one-axis control's half with `+`/`-`. Touch sticks, d-pads and buttons
+a one-axis control's half with `+`/`-`. Touch sticks, d-pads, look pads and buttons
 are on-screen controls (`ControlZone`, `set_zones`), not bindings; what
 each shows reads back through `zone_states`. A binding is one control or a composite (`negative` and
 `positive`; `up`, `down`, `left`, `right` for WASD), with its own `scale`
-(sensitivity), `invert_y`, `deadzone` and touch `zone`. Every y is up.
+(sensitivity), `invert_y` and `deadzone`. Every y is up.
+
+`ControlZone.floating` centres a stick where its finger landed; the
+activation rect stays fixed. TSX exposes it as `floatingStick` on a
+`touchStick`, and the ring and knob follow that centre at paint time.
+`ZoneKind::Look` (`touchLook` in TSX, `TouchControls.lookPad`) instead
+reports displacement since the preceding fixed tick in CSS px, x right
+and y up, without radius normalization or a stick dead zone. Stationary
+and released fingers read zero; a press must start inside the rect.
+The action map checkpoints its previous pointer positions so a restored
+drag replays exactly. Look deltas use the action's device sensitivity
+and inversion, just as mouse look does.
 
 - **Sampling.** `install` adds the `og.input.actions` system, which the
   runtime puts first among the systems before og.ui.begin and the game's:

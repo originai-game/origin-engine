@@ -22,7 +22,7 @@ use crate::control::{
     Axis, Axis2, Control, ControlZone, Half, PadDeadzone, ReadOptions, Reader, Reading, Shape,
     Surface, ZoneKind, ZoneState, deadzone, deadzone2,
 };
-use crate::event::{GAMEPAD_BUTTONS, MAX_GAMEPADS};
+use crate::event::{GAMEPAD_BUTTONS, MAX_GAMEPADS, MAX_POINTERS};
 use crate::glyph::{Device, Glyph};
 use crate::resource::{Gamepad, GamepadAxis, Input, KeySet, Pointers};
 use og_core::glam::Vec2;
@@ -505,6 +505,9 @@ pub struct ActionMap {
     /// and what each showed at the last sample.
     zones: Vec<ControlZone>,
     zone_states: Vec<(Reading, ZoneState)>,
+    /// Previous sampled positions for look pads; world state so a restored
+    /// drag produces the same next delta. Empty when no look pad is live.
+    look_pointers: Vec<(u32, Vec2)>,
     /// Moves whenever an action's bindings may have changed: a define, a
     /// rebind, a reset, loaded bindings, a restore ([`ActionMap::bindings_rev`]).
     /// Session state: never saved.
@@ -880,8 +883,33 @@ impl ActionMap {
         let claims = self.live_claims();
         let contexts = self.contexts.clone();
         self.zone_states.clear();
-        self.zone_states
-            .extend(self.zones.iter().map(|z| reader.read_zone(z)));
+        for z in &self.zones {
+            let (mut r, mut state) = reader.read_zone(z);
+            if z.kind == ZoneKind::Look
+                && let Some(id) = state.pointer
+            {
+                let previous = if pointers.is_pressed(id) {
+                    pointers.start(id)
+                } else {
+                    self.look_pointers
+                        .iter()
+                        .find(|p| p.0 == id)
+                        .map_or(pointers.position(id), |p| p.1)
+                };
+                let delta = pointers.position(id) - previous;
+                r.value = Vec2::new(delta.x, -delta.y);
+                state.value = r.value;
+            }
+            self.zone_states.push((r, state));
+        }
+        self.look_pointers.clear();
+        if self.zones.iter().any(|z| z.kind == ZoneKind::Look) {
+            self.look_pointers.extend(
+                (0..MAX_POINTERS as u32)
+                    .filter(|&id| pointers.down(id))
+                    .map(|id| (id, pointers.position(id))),
+            );
+        }
         let zones = &self.zones;
         let zone_states = &self.zone_states;
         let senses = &self.senses;
@@ -910,6 +938,12 @@ impl ActionMap {
                     let mut r = *r;
                     if a.desc.kind == ActionKind::Axis && z.kind == ZoneKind::Button {
                         r.value.x = r.value.length();
+                    }
+                    if let (Some(s), Some(d)) = (sense, r.device)
+                        && a.desc.kind != ActionKind::Button
+                        && z.kind == ZoneKind::Look
+                    {
+                        r.value = s[sense_class(d)].apply(r.value, true);
                     }
                     any_pressed |= r.pressed;
                     let len = match a.desc.kind {

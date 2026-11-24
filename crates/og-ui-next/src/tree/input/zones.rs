@@ -31,6 +31,7 @@ impl Tree {
             let same = |z: &og_input::ControlZone| {
                 z.kind == *kind
                     && *z.action == **action
+                    && z.floating == p.floating_stick
                     && [z.x, z.y, z.width, z.height, z.dead_zone] == [x, y, b.w, b.h, p.dead_zone]
             };
             let next = || og_input::ControlZone {
@@ -41,7 +42,7 @@ impl Tree {
                 width: b.w,
                 height: b.h,
                 dead_zone: p.dead_zone,
-                floating: false,
+                floating: p.floating_stick,
             };
             match self.input.zone_from.get_mut(k) {
                 Some(f) => *f = e as u32,
@@ -90,18 +91,31 @@ impl Tree {
         let mut states = states.into_iter();
         for k in 0..self.input.zone_from.len() {
             let e = self.input.zone_from[k];
-            let (held, knob, value) = match states.next() {
+            let zone = &self.input.zones[k];
+            let (held, knob, value, centre) = match states.next() {
                 Some(s) => (
                     s.pointer.is_some(),
                     [s.knob.x / scale, s.knob.y / scale],
                     [s.value.x, s.value.y],
+                    if s.pointer.is_some() && zone.floating {
+                        [
+                            s.centre.x / scale - zone.x - zone.width / 2.0,
+                            s.centre.y / scale - zone.y - zone.height / 2.0,
+                        ]
+                    } else {
+                        [0.0; 2]
+                    },
                 ),
-                None => (false, [0.0; 2], [0.0; 2]),
+                None => (false, [0.0; 2], [0.0; 2], [0.0; 2]),
             };
             if self.els[e as usize].dead {
                 continue;
             }
             self.zone_state(e, held, knob, value);
+            if self.input.per[e as usize].stick_centre != centre {
+                self.input.per[e as usize].stick_centre = centre;
+                self.paint = true;
+            }
         }
         self.refresh_data();
     }
@@ -111,6 +125,10 @@ impl Tree {
     fn zone_state(&mut self, e: u32, held: bool, knob: [f32; 2], value: [f32; 2]) {
         self.set_state(e, PRESSED, held);
         let p = &mut self.input.per[e as usize];
+        if !held && p.stick_centre != [0.0; 2] {
+            p.stick_centre = [0.0; 2];
+            self.paint = true;
+        }
         if p.knob != knob {
             p.knob = knob;
             self.paint = true;
@@ -130,7 +148,14 @@ impl Tree {
     /// is marked `knob`, held inside the control's ring (its radius less
     /// the knob's, each half its box's smaller side): og-input keeps the
     /// finger's offset to the ring's edge, and the knob is drawn art.
+    /// A floating stick itself moves its ring and subtree to the sampled
+    /// centre at paint only; its laid-out activation box stays put.
     pub(in crate::tree) fn knob_of(&self, e: u32) -> [f32; 2] {
+        if let Some(p) = self.input.per(e)
+            && p.floating_stick
+        {
+            return p.stick_centre;
+        }
         if !self.input.per(e).is_some_and(|p| p.rides_knob) {
             return [0.0; 2];
         }
