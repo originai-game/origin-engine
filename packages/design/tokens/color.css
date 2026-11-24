@@ -125,8 +125,11 @@
   --color-key-lo: #c9d1e2;
   --color-key-fg: #262b38;
   --color-gold-fg: contrast-color(var(--color-gold));
-  --color-gold-hi: #fff2c4;
-  --color-epic-hi: #d9c6fe;
+  /* The highlights that also read as a large figure's ink (a result's
+     title, a milestone): 3:1 on every ground of their scheme, so each is
+     a light and dark pair. */
+  --color-gold-hi: #a06800;
+  --color-epic-hi: #7f4fd9;
   /* The icon set's tones (templates/styles/shared/icons/): an icon's
      material colours, the same in both schemes as art is, then the
      sticker every toned icon is drawn as: its outline, its drop shadow,
@@ -331,6 +334,8 @@
   --color-mana: #409cff;
   --color-xp: #de85ff;
   --color-gold: #ffcf5a;
+  --color-gold-hi: #fff2c4;
+  --color-epic-hi: #d9c6fe;
   --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-stick: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);

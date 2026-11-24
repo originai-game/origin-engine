@@ -1280,6 +1280,31 @@ mod tests {
         }
     }
 
+    /// The large-figure inks (`gold-hi`, `epic-hi`: a result's title, a
+    /// grade) read 3:1 on every ground of their scheme, the light paper
+    /// grounds included (`gold-hi` was one colour for both, 1.18:1 there).
+    #[test]
+    fn large_inks_hold_on_every_ground_of_their_scheme() {
+        const GROUNDS: [&str; 8] = [
+            "bg",
+            "bg-subtle",
+            "surface",
+            "surface-raised",
+            "layer-1",
+            "layer-2",
+            "layer-3",
+            "layer-4",
+        ];
+        for (i, c) in colors("").iter().enumerate() {
+            for ink in ["gold-hi", "epic-hi"] {
+                for g in GROUNDS {
+                    let r = contrast(c, ink, g);
+                    assert!(r >= 3.0, "{:?} {ink} on {g} {r:.2}", Scheme::ALL[i]);
+                }
+            }
+        }
+    }
+
     #[test]
     fn derived_palettes_keep_the_designs_contrast_pairs() {
         let css = include_str!("../../../../packages/design/tokens/contrast.css");

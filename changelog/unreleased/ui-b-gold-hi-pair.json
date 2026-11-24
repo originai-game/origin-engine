@@ -1,0 +1,13 @@
+{
+  "breaking": [
+    {
+      "member": "Theme colours gold-hi, epic-hi",
+      "change": "gold-hi and epic-hi are a light and dark pair: in the light scheme they are a deep gold (#a06800) and violet (#7f4fd9) that read 3:1 as a large figure's ink on the light grounds, where the one pale colour read 1.18:1. A gradient that ran from gold to gold-hi now darkens toward gold-hi in the light scheme.",
+      "fix": "A pack that sets gold-hi or epic-hi as one colour writes a pair, { \"light\": …, \"dark\": … }, with a light value that holds 3:1 on its light grounds.",
+      "find": [
+        "\"gold-hi\"",
+        "\"epic-hi\""
+      ]
+    }
+  ]
+}

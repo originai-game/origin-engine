@@ -604,7 +604,10 @@
         "dark": "#000000",
         "light": "#ffffff"
       },
-      "epic-hi": "#d9c6fe",
+      "epic-hi": {
+        "dark": "#d9c6fe",
+        "light": "#7f4fd9"
+      },
       "fever": "#ff3d8a",
       "fever-fg": "#000000",
       "fever-ink": {
@@ -673,7 +676,10 @@
         "dark": "#000000",
         "light": "#ffffff"
       },
-      "gold-hi": "#fff2c4",
+      "gold-hi": {
+        "dark": "#fff2c4",
+        "light": "#a06800"
+      },
       "health": {
         "dark": "#30d158",
         "light": "#1b7a38"
