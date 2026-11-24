@@ -1,6 +1,22 @@
 use super::*;
 
 impl RenderScene {
+    /// Visual surfaces store world-space coarse points, unlike ordinary meshes.
+    pub(crate) fn shift_visual_surfaces(&mut self, d: Vec3) {
+        for (i, visual) in self.mesh_visual.iter_mut().enumerate() {
+            let Some(body) = visual else {
+                continue;
+            };
+            for vertex in &mut self.meshes[i].vertices {
+                vertex.position = (Vec3::from(vertex.position) + d).to_array();
+            }
+            self.mesh_revisions[i] += 1;
+            if let Some(z) = &mut std::sync::Arc::make_mut(body).plane {
+                *z += d.z;
+            }
+        }
+    }
+
     /// Adds a mesh with a per-vertex skin (four joints and weights each),
     /// drawn posed by [`RenderScene::skinned_instances`]. The skin must have
     /// one entry per vertex ([`crate::RenderError::InvalidData`] at upload).

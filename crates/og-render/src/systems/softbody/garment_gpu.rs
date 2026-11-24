@@ -299,6 +299,8 @@ fn simulate(
         dt,
         list,
         g.world,
+        scene.frame.origin,
+        &scene.world.force_fields,
         points,
     );
     Some(())

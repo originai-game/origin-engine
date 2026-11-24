@@ -17,7 +17,7 @@
 @group(0) @binding(1) var<storage, read> colliders: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read_write> particles: array<Particle>;
 @group(0) @binding(3) var<storage, read_write> cells: array<atomic<i32>>;
-@group(0) @binding(4) var<storage, read_write> cursor: array<u32>;
+@group(0) @binding(4) var<storage, read_write> cursor: array<atomic<u32>>;
 @group(0) @binding(5) var<storage, read_write> instances: array<vec4<f32>>;
 
 struct Particle {
@@ -67,7 +67,9 @@ const METRE_SPEED: u32 = 56u;
 // Steps a tick.
 const SUBSTEPS: u32 = 57u;
 // The alive counts: before the frame, then after each of its ticks.
-const ALIVE: u32 = 58u;
+const ALIVE: u32 = 60u;
+// A frame's emission quotas follow its alive counts (header supplies offset).
+const QUOTAS: u32 = 59u;
 
 const DT: f32 = 0.2;
 // The fastest a particle moves, cells a time unit: under a cell a step,
@@ -79,8 +81,30 @@ fn vec(i: u32) -> vec3<f32> { return vec3<f32>(word(i), word(i + 1u), word(i + 2
 fn dims() -> vec3<i32> { return vec3<i32>(i32(head[DIMS]), i32(head[DIMS + 1u]), i32(head[DIMS + 2u])); }
 fn cell_count() -> u32 { return head[DIMS] * head[DIMS + 1u] * head[DIMS + 2u]; }
 
-fn encode(f: f32) -> i32 { return i32(f * word(FIXED)); }
-fn decode(i: i32) -> f32 { return f32(i) / word(FIXED); }
+fn encode(f: f32) -> i32 { return i32(clamp(f, -32767.0, 32767.0) * word(FIXED)); }
+
+// Two-word signed fixed point. A low-word wrap carries into the high
+// word, so even the entire pool cannot overflow a cell's sum. Both P2G
+// passes finish before a reader observes either word.
+fn accumulate(at: u32, f: f32) {
+    let delta = encode(f);
+    let add = bitcast<u32>(delta);
+    let old = bitcast<u32>(atomicAdd(&cells[at * 2u], delta));
+    let carry = select(0, 1, old + add < old);
+    atomicAdd(&cells[at * 2u + 1u], select(0, -1, delta < 0) + carry);
+}
+
+fn grid_value(at: u32) -> f32 {
+    let low = atomicLoad(&cells[at * 2u]);
+    let high = atomicLoad(&cells[at * 2u + 1u]) + select(0, 1, low < 0);
+    return (f32(low) + f32(high) * 4294967296.0) / word(FIXED);
+}
+
+fn grid_store(at: u32, f: f32) {
+    let value = encode(f);
+    atomicStore(&cells[at * 2u], value);
+    atomicStore(&cells[at * 2u + 1u], select(0, -1, value < 0));
+}
 
 fn cell_index(c: vec3<f32>) -> u32 {
     let d = dims();
@@ -100,9 +124,13 @@ fn hash(a: u32, b: u32, c: u32) -> f32 {
     return f32(h >> 8u) / f32(1u << 24u);
 }
 
-fn tick_index() -> u32 { return cursor[0]; }
+fn tick_index() -> u32 { return atomicLoad(&cursor[0]); }
 fn alive_before() -> u32 { return head[ALIVE + tick_index()]; }
 fn alive_now() -> u32 { return head[ALIVE + tick_index() + 1u]; }
+
+fn in_grid(p: vec3<f32>) -> vec3<f32> {
+    return clamp(p, vec3<f32>(1.5), vec3<f32>(dims()) - 2.5);
+}
 
 fn weights(diff: vec3<f32>) -> array<vec3<f32>, 3> {
     return array<vec3<f32>, 3>(
@@ -133,7 +161,7 @@ fn at_emitter(i: u32, n: u32) {
     // so the stream stretches into lumps and frays as it falls.
     let j = vec3<f32>(hash(s, n, 3u), hash(s, n, 4u), hash(s, n, 5u)) - 0.5;
     let spread = j * 0.06 * speed;
-    particles[i].position = vec4<f32>(to_cells(vec(EMIT_AT) + disc) + along, 1.0);
+    particles[i].position = vec4<f32>(in_grid(to_cells(vec(EMIT_AT) + disc) + along), 1.0);
     particles[i].v = vec4<f32>(v * (1.0 + 0.4 * j.x) + spread - v * dot(spread, v) / max(dot(v, v), 1e-12), 1.0);
     particles[i].C = mat3x3<f32>();
 }
@@ -150,14 +178,23 @@ fn spawn(@builtin(global_invocation_id) id: vec3<u32>) {
         first = 0u;
         particles[i].position.w = 0.0;
     }
-    if i < first || i >= alive_now() { return; }
+    if i < first {
+        if particles[i].position.w == 0.0 {
+            let quota = head[head[QUOTAS] + tick_index()];
+            if atomicAdd(&cursor[1], 1u) < quota {
+                at_emitter(i, i ^ (tick_index() * 7919u));
+            }
+        }
+        return;
+    }
+    if i >= alive_now() { return; }
     if i < head[COUNT] {
         let cols = head[LATTICE];
         let deep = head[LATTICE + 1u];
         let g = vec3<f32>(f32(i % cols), f32(i / (cols * deep)), f32((i / cols) % deep));
         let j = vec3<f32>(hash(head[SEED], i, 0u), hash(head[SEED], i, 1u), hash(head[SEED], i, 2u)) - 0.5;
         let step = vec(SPAWN_STEP);
-        particles[i].position = vec4<f32>(to_cells(vec(SPAWN_AT) + (g + j * 0.3) * step), 1.0);
+        particles[i].position = vec4<f32>(in_grid(to_cells(vec(SPAWN_AT) + (g + j * 0.3) * step)), 1.0);
         particles[i].v = vec4<f32>(0.0, 0.0, 0.0, 1.0);
         particles[i].C = mat3x3<f32>();
     } else {
@@ -168,7 +205,7 @@ fn spawn(@builtin(global_invocation_id) id: vec3<u32>) {
 @compute @workgroup_size(64)
 fn clear_grid(@builtin(global_invocation_id) id: vec3<u32>) {
     if id.x >= cell_count() { return; }
-    for (var k = 0u; k < 4u; k++) { atomicStore(&cells[id.x * 4u + k], 0); }
+    for (var k = 0u; k < 8u; k++) { atomicStore(&cells[id.x * 8u + k], 0); }
 }
 
 // Particle to grid, first half: mass and momentum (with the affine C).
@@ -187,10 +224,10 @@ fn p2g_1(@builtin(global_invocation_id) id: vec3<u32>) {
                 let q = p.C * ((cell_x + 0.5) - p.position.xyz);
                 let momentum = weight * (p.v.xyz + q);
                 let c = cell_index(cell_x);
-                atomicAdd(&cells[c], encode(momentum.x));
-                atomicAdd(&cells[c + 1u], encode(momentum.y));
-                atomicAdd(&cells[c + 2u], encode(momentum.z));
-                atomicAdd(&cells[c + 3u], encode(weight));
+                accumulate(c, momentum.x);
+                accumulate(c + 1u, momentum.y);
+                accumulate(c + 2u, momentum.z);
+                accumulate(c + 3u, weight);
             }
         }
     }
@@ -212,7 +249,7 @@ fn p2g_2(@builtin(global_invocation_id) id: vec3<u32>) {
             for (var gz = 0; gz < 3; gz++) {
                 let weight = w[gx].x * w[gy].y * w[gz].z;
                 let cell_x = cell_idx + vec3<f32>(f32(gx), f32(gy), f32(gz)) - 1.0;
-                density += decode(atomicLoad(&cells[cell_index(cell_x) + 3u])) * weight;
+                density += grid_value(cell_index(cell_x) + 3u) * weight;
             }
         }
     }
@@ -229,9 +266,9 @@ fn p2g_2(@builtin(global_invocation_id) id: vec3<u32>) {
                 let cell_x = cell_idx + vec3<f32>(f32(gx), f32(gy), f32(gz)) - 1.0;
                 let momentum = term * weight * ((cell_x + 0.5) - p.position.xyz);
                 let c = cell_index(cell_x);
-                atomicAdd(&cells[c], encode(momentum.x));
-                atomicAdd(&cells[c + 1u], encode(momentum.y));
-                atomicAdd(&cells[c + 2u], encode(momentum.z));
+                accumulate(c, momentum.x);
+                accumulate(c + 1u, momentum.y);
+                accumulate(c + 2u, momentum.z);
             }
         }
     }
@@ -243,13 +280,13 @@ fn p2g_2(@builtin(global_invocation_id) id: vec3<u32>) {
 fn update_grid(@builtin(global_invocation_id) id: vec3<u32>) {
     if id.x >= cell_count() { return; }
     let c = id.x * 4u;
-    let mass = atomicLoad(&cells[c + 3u]);
-    if mass <= 0 { return; }
+    let mass = grid_value(c + 3u);
+    if mass <= 0.0 { return; }
     var v = vec3<f32>(
-        decode(atomicLoad(&cells[c])),
-        decode(atomicLoad(&cells[c + 1u])),
-        decode(atomicLoad(&cells[c + 2u])),
-    ) / decode(mass);
+        grid_value(c),
+        grid_value(c + 1u),
+        grid_value(c + 2u),
+    ) / mass;
     v += vec(GRAVITY) * DT;
     let d = dims();
     let at = vec3<i32>(i32(id.x) / (d.z * d.y), (i32(id.x) / d.z) % d.y, i32(id.x) % d.z);
@@ -259,9 +296,9 @@ fn update_grid(@builtin(global_invocation_id) id: vec3<u32>) {
         if at[k] < lo[k] && v[k] < 0.0 { v[k] = 0.0; }
         if at[k] > hi[k] && v[k] > 0.0 { v[k] = 0.0; }
     }
-    atomicStore(&cells[c], encode(v.x));
-    atomicStore(&cells[c + 1u], encode(v.y));
-    atomicStore(&cells[c + 2u], encode(v.z));
+    grid_store(c, v.x);
+    grid_store(c + 1u, v.y);
+    grid_store(c + 2u, v.z);
 }
 
 // Grid to particle: the velocity and its affine part (APIC), the move,
@@ -284,9 +321,9 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
                 let dist = (cell_x + 0.5) - p.position.xyz;
                 let c = cell_index(cell_x);
                 let wv = vec3<f32>(
-                    decode(atomicLoad(&cells[c])),
-                    decode(atomicLoad(&cells[c + 1u])),
-                    decode(atomicLoad(&cells[c + 2u])),
+                    grid_value(c),
+                    grid_value(c + 1u),
+                    grid_value(c + 2u),
                 ) * weight;
                 B += mat3x3<f32>(wv * dist.x, wv * dist.y, wv * dist.z);
                 v += wv;
@@ -304,11 +341,11 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
     let loose = (1.0 - smoothstep(0.08, 0.2, p.v.w)) * smoothstep(1.5, 3.0, length(v) * per_ms);
     let foam = max((p.position.w - 1.0) * word(FOAM_KEEP), max(smoothstep(0.25, 1.0, jolt), loose));
     let d = vec3<f32>(dims());
-    var x = clamp(p.position.xyz + v * DT, vec3<f32>(1.0), d - 2.0);
+    var x = in_grid(p.position.xyz + v * DT);
     // The scene's colliders: pushed out, the velocity into them taken away.
     let hit = push_out(to_world(x), word(RADIUS), head[COLLIDER_LIST]);
     if hit.hit {
-        x = clamp(to_cells(hit.p), vec3<f32>(1.0), d - 2.0);
+        x = in_grid(to_cells(hit.p));
         v -= hit.n * min(dot(v, hit.n), 0.0);
     }
     // Upstream's soft walls: a particle heading through one is turned back.
@@ -323,18 +360,14 @@ fn g2p(@builtin(global_invocation_id) id: vec3<u32>) {
     if head[SINKING] != 0u {
         let at = to_world(x);
         if all(at >= vec(SINK_MIN)) && all(at <= vec(SINK_MAX)) {
-            if head[EMITTING] != 0u {
-                // Back at the emitter, as a new particle would be.
-                at_emitter(i, (i * 7919u) ^ bitcast<u32>(p.v.x));
-            } else {
-                particles[i].position.w = 0.0;
-            }
+            // Recycled by spawn, within the next tick's emission quota.
+            particles[i].position.w = 0.0;
         }
     }
 }
 
 @compute @workgroup_size(1)
-fn next_tick() { cursor[0] += 1u; }
+fn next_tick() { atomicAdd(&cursor[0], 1u); atomicStore(&cursor[1], 0u); }
 
 // The particles as the screen-space fluid's instances: world position and
 // drawn radius, colour and optical density (radius 0: not drawn). Foam is

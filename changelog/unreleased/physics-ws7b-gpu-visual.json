@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Cloth, SoftBody, Garment and Fluid3D visual simulation",
+      "change": "GPU visual bodies use relative air velocity for drag and lift, tick-normalised contact friction, corrected volume compliance and skinned garment rest lengths; they also sample ForceField acceleration at every point. Sensors and zero-layer colliders no longer collide, negative scales keep positive radii, and cylinders and convex hulls are extracted. Terrain collision uses an independent patch per body, respects holes and pushes along the surface normal. Visual fluid emitters clamp to the grid, accumulate pressure without signed-integer wrap, draw count-zero emitters at their requested radius and recycle sink particles only at emitRate. GPU simulation state survives render-origin and WorldOrigin shifts rather than restarting.",
+      "fix": "Use wind as air velocity in metres per second and friction as the share of slide lost per tick. Retune visual wind and volumeStiffness where needed; use sensor or layers: 0 for non-solid triggers. No game-code change is required for origin shifts."
+    }
+  ]
+}

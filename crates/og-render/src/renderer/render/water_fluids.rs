@@ -173,6 +173,7 @@ impl Renderer {
                 &scene.world.colliders,
                 scene.frame.tick,
                 scene.frame.tick_rate,
+                scene.frame.origin,
                 fluid3d.instances(),
             );
         }

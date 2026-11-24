@@ -197,6 +197,7 @@ pub(crate) fn posed_model(
         asset,
         world_matrix,
         &matrices,
+        out.skin,
     );
     scene.objects.joint_palettes.push(JointPalette { matrices });
     // Parts and nodes line up unless the parts are not the model's own

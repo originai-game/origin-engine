@@ -38,11 +38,42 @@ impl RenderScene {
         self.frame.origin += origin;
         let d = -origin;
         let d2 = d.truncate();
-        for i in &mut self.objects.instances {
-            moved(&mut i.transform, d);
+        self.shift_visual_surfaces(d);
+        for deformation in &mut self.objects.deformed_vertices {
+            if let Some(g) = &mut deformation.garment {
+                moved(&mut g.world, d);
+                for p in std::sync::Arc::make_mut(&mut g.points) {
+                    *p += d;
+                }
+                for p in std::sync::Arc::make_mut(&mut g.targets) {
+                    *p += d;
+                }
+                if let Some(body) = &mut g.visual
+                    && let Some(shapes) = &mut std::sync::Arc::make_mut(body).garment
+                {
+                    for p in std::sync::Arc::make_mut(&mut shapes.rest) {
+                        *p += d;
+                    }
+                }
+            }
         }
-        for m in &mut self.objects.previous_transforms {
-            moved(m, d);
+        for i in &mut self.objects.instances {
+            if self
+                .mesh_visual
+                .get(i.mesh.index())
+                .is_none_or(Option::is_none)
+            {
+                moved(&mut i.transform, d);
+            }
+        }
+        for (index, m) in self.objects.previous_transforms.iter_mut().enumerate() {
+            if self.objects.instances.get(index).is_none_or(|i| {
+                self.mesh_visual
+                    .get(i.mesh.index())
+                    .is_none_or(Option::is_none)
+            }) {
+                moved(m, d);
+            }
         }
         for m in self
             .objects
@@ -126,6 +157,8 @@ impl RenderScene {
             match c {
                 SceneCollider::Plane { normal, offset } => *offset += normal.dot(d),
                 SceneCollider::Box { transform, .. }
+                | SceneCollider::Cylinder { transform, .. }
+                | SceneCollider::Convex { transform, .. }
                 | SceneCollider::HeightField { transform, .. } => moved(transform, d),
                 SceneCollider::Sphere { center, .. } => *center += d,
                 SceneCollider::Capsule { a, b, .. } => {

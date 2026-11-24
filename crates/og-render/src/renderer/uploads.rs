@@ -325,6 +325,8 @@ impl Renderer {
                 dt,
                 list,
                 Mat4::IDENTITY,
+                scene.frame.origin,
+                &scene.world.force_fields,
                 source,
             );
         }

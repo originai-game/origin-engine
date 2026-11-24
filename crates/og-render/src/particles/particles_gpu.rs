@@ -611,7 +611,7 @@ fn fields_peak(forces: &og_env::force::Forces) -> f32 {
 const FIELD_ROWS: usize = 6;
 
 /// The force fields as `force_field_at` reads them.
-fn pack_fields(forces: &og_env::force::Forces) -> Vec<[f32; 4]> {
+pub(crate) fn pack_fields(forces: &og_env::force::Forces) -> Vec<[f32; 4]> {
     use og_env::force::FieldKind;
     let mut out = vec![[0.0; 4]];
     for f in forces.fields.iter().filter(|f| f.strength.is_finite()) {

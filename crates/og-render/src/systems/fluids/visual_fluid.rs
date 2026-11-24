@@ -38,11 +38,11 @@ pub(crate) fn source() -> String {
 
 /// The most particles a visual fluid has.
 pub const MAX_PARTICLES: u32 = 262_144;
-/// The most grid cells (each 16 bytes); a larger container takes larger cells.
+/// The most grid cells (each 32 bytes); a larger container takes larger cells.
 const MAX_CELLS: f32 = 2_097_152.0;
 /// Particles a cell holds at rest, at most and at least: the cell size is
 /// kept between them (fewer and the grid is too fine for them to meet;
-/// more and a cell's mass leaves the fixed-point range).
+/// more and the grid loses the fluid's spatial detail).
 const PER_CELL: (f32, f32) = (2.0, 8.0);
 /// Upstream's gravity, cells per time unit², the largest it is stable at.
 const MAX_GRAVITY: f32 = 0.3;
@@ -144,8 +144,10 @@ mod h {
     pub const FOAM_KEEP: usize = 55;
     pub const METRE_SPEED: usize = 56;
     pub const SUBSTEPS: usize = 57;
-    pub const ALIVE: usize = 58;
-    pub const LEN: usize = ALIVE + crate::fields::MAX_CATCH_UP as usize + 1;
+    pub const QUOTAS: usize = 59;
+    pub const ALIVE: usize = 60;
+    pub const QUOTA_TABLE: usize = ALIVE + crate::fields::MAX_CATCH_UP as usize + 1;
+    pub const LEN: usize = QUOTA_TABLE + crate::fields::MAX_CATCH_UP as usize;
 }
 
 /// Where a fluid's grid lies and how its time runs: everything the header
@@ -326,7 +328,9 @@ pub(crate) fn header(
     put(&mut w, h::STIFFNESS, 3.0 * f.stiffness.max(0.0));
     put(&mut w, h::VISCOSITY, 0.1 * f.viscosity.max(0.0));
     put(&mut w, h::REST_DENSITY, g.rest_density.max(0.5));
-    put(&mut w, h::FIXED, 1e7);
+    // Keep low velocities, with headroom for pressure in each contribution.
+    // The grid's two-word sums carry instead of wrapping at i32::MAX.
+    put(&mut w, h::FIXED, 65536.0);
     let walls = Vec3::from(g.dims.map(|d| d as f32));
     put3(&mut w, h::WALL_MIN, Vec3::splat(3.0));
     put3(&mut w, h::WALL_MAX, walls - 4.0);
@@ -363,6 +367,13 @@ pub(crate) fn header(
     let before = elapsed.saturating_sub(u64::from(plan.steps));
     for k in 0..=plan.steps as usize {
         w[h::ALIVE + k] = alive(f, g.n, before + k as u64, tick_dt);
+    }
+    w[h::QUOTAS] = h::QUOTA_TABLE as u32;
+    for k in 0..plan.steps as usize {
+        let tick = before + k as u64;
+        let emitted = alive(f, u32::MAX, tick + 1, tick_dt) - alive(f, u32::MAX, tick, tick_dt);
+        let allocated = w[h::ALIVE + k + 1] - w[h::ALIVE + k];
+        w[h::QUOTA_TABLE + k] = emitted.saturating_sub(allocated);
     }
     w
 }
@@ -412,6 +423,7 @@ pub(crate) struct VisualFluids {
     colliders: wgpu::Buffer,
     sims: HashMap<u64, Sim>,
     jobs: Vec<Job>,
+    origin: Vec3,
 }
 
 /// Whether two fluids spawn the same: a change starts it again.
@@ -485,6 +497,7 @@ impl VisualFluids {
             colliders: collider_buffer(device, 4096),
             sims: HashMap::new(),
             jobs: Vec::new(),
+            origin: Vec3::ZERO,
         }
     }
 
@@ -505,9 +518,21 @@ impl VisualFluids {
         colliders: &[SceneCollider],
         tick: u64,
         tick_rate: f32,
+        origin: Vec3,
         instances: &wgpu::Buffer,
     ) {
         self.jobs.clear();
+        let shift = self.origin - origin;
+        self.origin = origin;
+        for sim in self.sims.values_mut() {
+            // Particles are in grid cells: moving the grid carries all of
+            // them without touching their velocity, C, foam or lifetime.
+            sim.grid.origin += shift;
+            sim.grid.spawn_at += shift;
+            sim.shape.centre += shift;
+            sim.shape.emit_at += shift;
+            sim.shape.sink = sim.shape.sink.map(|(lo, hi)| (lo + shift, hi + shift));
+        }
         self.sims
             .retain(|key, _| slots.iter().any(|s| s.fluid.key == *key));
         if slots.is_empty() {
@@ -541,7 +566,14 @@ impl VisualFluids {
             if sim.grid.n != grid.n || sim.grid.dims != grid.dims {
                 *sim = make(device, &grid, f);
             }
-            let fresh = !same_spawn(&sim.shape, f) || sim.grid != grid;
+            // Re-evaluating centre - padding after a large origin shift
+            // can round differently from translating the cached corner.
+            // Positions do not describe a grid's allocation or time scale.
+            let mut previous = sim.grid.clone();
+            previous.origin = grid.origin;
+            previous.spawn_at = grid.spawn_at;
+            let fresh =
+                !same_spawn(&sim.shape, f) || sim.shape.centre != f.centre || previous != grid;
             let plan = plan(if fresh { None } else { sim.last }, tick);
             if plan.reset {
                 sim.start = tick;
@@ -561,7 +593,7 @@ impl VisualFluids {
                 slot.first,
             );
             crate::traffic::write_buffer(queue, &sim.head, 0, bytemuck::cast_slice(&words));
-            crate::traffic::write_buffer(queue, &sim.cursor, 0, bytemuck::bytes_of(&0u32));
+            crate::traffic::write_buffer(queue, &sim.cursor, 0, bytemuck::cast_slice(&[0u32; 4]));
             let entries: Vec<_> = [
                 &sim.head,
                 &self.colliders,
@@ -653,7 +685,7 @@ fn make(device: &wgpu::Device, grid: &Grid, f: &VisualFluid) -> Sim {
         shape: f.clone(),
         head: buffer("visual fluid header", h::LEN as u64 * 4),
         particles: buffer("visual fluid particles", u64::from(grid.n) * 80),
-        cells: buffer("visual fluid grid", u64::from(grid.cells()) * 16),
+        cells: buffer("visual fluid grid", u64::from(grid.cells()) * 32),
         cursor: buffer("visual fluid cursor", 16),
         last: None,
         start: 0,

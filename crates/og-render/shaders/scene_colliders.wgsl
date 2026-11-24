@@ -95,29 +95,75 @@ fn push_out(p_in: vec3<f32>, radius: f32, list: u32) -> Hit {
       let l = vec3<f32>(dot(m0, p4), dot(m1, p4), dot(m2, p4));
       let side = bitcast<u32>(info.w) & 0xffffu;
       let rows_n = bitcast<u32>(info.w) >> 16u;
-      let g = (vec2<f32>(l.x, l.z) - info.xy) / max(info.z, 1e-6);
+      let cell_size = vec2<f32>(info.z, head.z);
+      let g = (vec2<f32>(l.x, l.z) - info.xy) / max(cell_size, vec2<f32>(1e-6));
       if (side >= 2u && rows_n >= 2u && info.z > 0.0 && g.x >= 0.0 && g.y >= 0.0 && g.x <= f32(side - 1u) && g.y <= f32(rows_n - 1u)) {
         let cell = min(floor(g), vec2<f32>(f32(side - 2u), f32(rows_n - 2u)));
+        let hole = bitcast<u32>(head.w) + u32(cell.y) * side + u32(cell.x);
+        if collider_word(hole) > 0.5 { continue; }
         let f = g - cell;
         let first = bitcast<u32>(head.y) + u32(cell.y) * side + u32(cell.x);
         let h00 = collider_word(first);
         let h10 = collider_word(first + 1u);
         let h01 = collider_word(first + side);
         let h11 = collider_word(first + side + 1u);
-        let height = mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
-        let local_radius = radius * head.z;
-        if (l.y < height + local_radius) {
-          let dx = mix(h10 - h00, h11 - h01, f.y) / info.z;
-          let dz = mix(h01 - h00, h11 - h10, f.x) / info.z;
+        // The terrain's own diagonal rule and piecewise-planar surface.
+        var slope = vec2<f32>(h10 - h00, h01 - h00);
+        var height = h00 + dot(slope, f);
+        if abs(h00 - h11) <= abs(h10 - h01) {
+          if f.y >= f.x {
+            slope = vec2<f32>(h11 - h01, h01 - h00);
+          } else {
+            slope = vec2<f32>(h10 - h00, h11 - h10);
+          }
+          height = h00 + dot(slope, f);
+        } else if f.x + f.y > 1.0 {
+          slope = vec2<f32>(h11 - h01, h11 - h10);
+          height = h11 - dot(slope, 1.0 - f);
+        }
+        {
+          let dx = slope.x / cell_size.x;
+          let dz = slope.y / cell_size.y;
           let nl = collider_unit(vec3<f32>(-dx, 1.0, -dz));
-          let lp = vec4<f32>(l.x, height + local_radius, l.z, 1.0);
+          let lp = vec4<f32>(l.x, height, l.z, 1.0);
           let wp = vec3<f32>(dot(f0, lp), dot(f1, lp), dot(f2, lp));
           // Normals: the inverse transpose of local to world is world to
           // local's transpose.
-          let n = collider_unit(vec3<f32>(m0.x, m1.x, m2.x) * nl.x + vec3<f32>(m0.y, m1.y, m2.y) * nl.y + vec3<f32>(m0.z, m1.z, m2.z) * nl.z);
-          h = Hit(wp, n, true);
+          let n = collider_unit(m0.xyz * nl.x + m1.xyz * nl.y + m2.xyz * nl.z);
+          let depth = dot(out.p - wp, n);
+          if depth < radius { h = Hit(out.p + n * (radius - depth), n, true); }
         }
       }
+    } else if kind == 5u || kind == 6u {
+      let m0 = collider_record(r, 1u); let m1 = collider_record(r, 2u); let m2 = collider_record(r, 3u);
+      let p4 = vec4<f32>(out.p, 1.0);
+      let l = vec3<f32>(dot(m0, p4), dot(m1, p4), dot(m2, p4));
+      var distance = -1e30;
+      var normal = vec3<f32>(0.0, 1.0, 0.0);
+      if kind == 5u {
+        let shape = collider_record(r, 4u);
+        let radial = length(l.xz);
+        let q = vec2<f32>(radial - shape.x, abs(l.y) - shape.y);
+        let radial_n = vec3<f32>(select(vec2<f32>(1.0, 0.0), l.xz / max(radial, 1e-12), radial > 1e-12).x, 0.0,
+          select(vec2<f32>(1.0, 0.0), l.xz / max(radial, 1e-12), radial > 1e-12).y);
+        let cap_n = vec3<f32>(0.0, select(-1.0, 1.0, l.y >= 0.0), 0.0);
+        let outside = max(q, vec2<f32>(0.0));
+        distance = length(outside) + min(max(q.x, q.y), 0.0);
+        normal = select(cap_n, radial_n, q.x > q.y);
+        if all(q > vec2<f32>(0.0)) { normal = normalize(radial_n * q.x + cap_n * q.y); }
+        let wn = m0.xyz * normal.x + m1.xyz * normal.y + m2.xyz * normal.z;
+        distance /= max(length(wn), 1e-12);
+        normal = collider_unit(wn);
+      } else {
+        for (var j = 0u; j < bitcast<u32>(head.z); j++) {
+          let at = bitcast<u32>(head.y) + j * 4u;
+          let plane = vec4<f32>(collider_word(at), collider_word(at + 1u), collider_word(at + 2u), collider_word(at + 3u));
+          let wn = m0.xyz * plane.x + m1.xyz * plane.y + m2.xyz * plane.z;
+          let d = (dot(plane.xyz, l) - plane.w) / max(length(wn), 1e-12);
+          if d > distance { distance = d; normal = collider_unit(wn); }
+        }
+      }
+      if distance < radius { h = Hit(out.p + normal * (radius - distance), normal, true); }
     }
     if (h.hit) {
       out = Hit(h.p, h.n, true);

@@ -116,13 +116,21 @@ pub(super) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             };
             // Each particle stands for the spawn box's volume over the
             // count, and is drawn at least as wide as that spacing.
-            let volume = (size.x * size.y * size.z).max(1e-6) / count.max(1) as f32;
+            let volume = if count > 0 {
+                (size.x * size.y * size.z).max(1e-6) / count as f32
+            } else {
+                radius.powi(3)
+            };
             scene.world.fluids_3d.push(og_render::Fluid3d {
                 particles: Arc::from(Vec::new()),
                 colors: None,
                 color: rgb(&v.color),
                 opacity: v.opacity,
-                radius: (radius * v.draw_scale).max(0.9 * volume.cbrt()),
+                radius: if count > 0 {
+                    (radius * v.draw_scale).max(0.9 * volume.cbrt())
+                } else {
+                    radius * v.draw_scale
+                },
                 volume,
                 reflectivity: v.reflectivity,
                 refraction: v.refraction,
