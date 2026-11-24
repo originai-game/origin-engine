@@ -869,7 +869,7 @@ pub fn compile(recipe: &Map<String, Value>, read: &mut Read) -> Result<Theme, St
             };
             variants.insert(
                 slot.into(),
-                json!(format!("scheme-{s} nine-{image}{states} bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
+                json!(format!("scheme-{s} nine-{image}{states} bg-none bg-transparent hover:bg-transparent active:bg-transparent text-{fg}")),
             );
         }
         // The combat HUD's ability slot in the theme's own slot art (combat

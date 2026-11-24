@@ -373,7 +373,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Button.plate",
         "a button's body: rune-kit's neutral variant, and the states every variant shares (hover, pressed, a toggle's aria-pressed, selected, disabled, aria-busy)",
-        "rounded-button text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-rim transition duration-control hover:bg-none hover:bg-raised-hover-lo hover:shadow-plate hover:inset-ring-well-rim active:bg-none active:bg-raised-pressed aria-pressed:bg-none aria-pressed:bg-border-strong aria-pressed:inset-ring-regular aria-pressed:inset-ring-accent selected:bg-none selected:bg-border-strong selected:inset-ring-regular selected:inset-ring-accent disabled:text-fg-subtle disabled:bg-none disabled:bg-fill disabled:shadow-none disabled:inset-ring-hairline disabled:inset-ring-rim-soft aria-busy:opacity-80",
+        "rounded-button text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-border-strong transition duration-control hover:bg-none hover:bg-raised-hover-lo hover:shadow-plate hover:inset-ring-well-rim active:bg-none active:bg-raised-pressed aria-pressed:bg-none aria-pressed:bg-border-strong aria-pressed:inset-ring-regular aria-pressed:inset-ring-accent selected:bg-none selected:bg-border-strong selected:inset-ring-regular selected:inset-ring-accent disabled:text-fg-subtle disabled:bg-none disabled:bg-fill disabled:shadow-none disabled:inset-ring-hairline disabled:inset-ring-border aria-busy:opacity-80",
     ),
     (
         "Button.plate.primary",
@@ -483,12 +483,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "ToggleGroup.frame",
         "a toggle group's box: a segmented control's well",
-        "flex-row items-stretch gap-0.5 p-0.5 rounded-field bg-layer-2",
+        "flex-row items-stretch gap-0.5 p-0.5 rounded-field bg-layer-2 inset-ring-hairline inset-ring-border",
     ),
     (
         "Toolbar.frame",
         "a toolbar's bar",
-        "flex-row items-center gap-1 p-1 rounded-field bg-layer-2",
+        "flex-row items-center gap-1 p-1 rounded-field bg-layer-2 inset-ring-hairline inset-ring-border",
     ),
     (
         "Toolbar.separator",
@@ -528,12 +528,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Dialog.frame",
         "a dialog's panel, over Modal.scrim (Modal.frame is how it pops in)",
-        "flex-col gap-3 w-115 max-w-full m-auto p-6 compact:p-4 rounded-panel bg-layer-1 text-fg shadow-overlay",
+        "flex-col gap-3 w-115 max-w-full m-auto p-6 compact:p-4 rounded-panel bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-overlay inset-ring-hairline inset-ring-border",
     ),
     (
         "Dialog.title",
         "a dialog's heading",
-        "font-display text-2xl font-bold leading-tight text-fg",
+        "font-display text-title font-bold leading-tight text-fg",
     ),
     (
         "Dialog.body",
@@ -548,7 +548,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Sheet.frame",
         "a sheet's panel at the bottom of the screen",
-        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-layer-1 text-fg shadow-overlay transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
+        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-overlay inset-ring-hairline inset-ring-border transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
     ),
     (
         "Sheet.grabber",
@@ -568,12 +568,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Popover.frame",
         "a popover's panel by its trigger",
-        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
+        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
     ),
     (
         "Menu.frame",
         "a menu's popup by its trigger, around its items",
-        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-layer-2 text-fg shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
+        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
     ),
     (
         "Menu.item",
@@ -618,7 +618,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Toast.frame",
         "a toast",
-        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-layer-2 text-fg shadow-float pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
+        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
     ),
     (
         "Toast.frame.success",
@@ -638,7 +638,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Select.list",
         "a select's open list of options",
-        "flex-col p-1 rounded-card bg-layer-2 shadow-float transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
+        "flex-col p-1 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-float inset-ring-hairline inset-ring-border transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
     ),
     (
         "Select.option",
@@ -677,15 +677,19 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     ),
     (
         "Panel.frame",
-        "a window or panel's frame (the first layer)",
-        "bg-layer-1",
+        "a window or panel's frame (the first glass layer)",
+        "rounded-panel bg-linear-to-b from-glass-hi to-glass-lo text-fg shadow-panel inset-ring-hairline inset-ring-border",
     ),
     (
         "Plate.frame",
-        "a plate over the scene or inside a panel (the layer above a panel's)",
-        "bg-layer-2 text-fg",
+        "a plate over the scene or inside a panel (the second glass layer)",
+        "rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
-    ("Slot.frame", "an ability or item slot", ""),
+    (
+        "Slot.frame",
+        "an ability or item slot",
+        "rounded-card bg-well text-fg shadow-sunk inset-ring-hairline inset-ring-border",
+    ),
     (
         "Ability.box",
         "an ability's side on a HUD's ability bar (combat HUD design §4.1)",
@@ -759,7 +763,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Ability.chip.ult",
         "an ultimate's charge in figures while it charges (42%): its type and place",
-        "text-caption leading-none font-bold tabular-nums text-fg bg-raised-pressed inset-ring-hairline inset-ring-rim px-1.5 py-0.5 rounded-capsule",
+        "text-caption leading-none font-bold tabular-nums text-fg bg-raised-pressed inset-ring-hairline inset-ring-border px-1.5 py-0.5 rounded-capsule",
     ),
     (
         "Ability.chip.ready",
@@ -800,7 +804,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Ability.chip.cost",
         "an ability's cost at its foot while it is ready",
-        "text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana text-shadow-tag px-2 rounded-capsule",
+        "text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-border text-mana text-shadow-tag px-2 rounded-capsule",
     ),
     (
         "Ability.chip.short",
@@ -815,7 +819,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Bar.frame",
         "a HUD bar's well: its height, track and rim (HudBar, a boss's health, StatBar)",
-        "h-1.5 overflow-hidden bg-track shadow-plate ring ring-rim",
+        "h-1.5 overflow-hidden rounded-capsule bg-track shadow-plate ring ring-border",
     ),
     (
         "Bar.frame.thick",
@@ -938,7 +942,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Orb.value",
         "the orb's figure, on its own ground so it reads on any liquid",
-        "text-display-sm font-bold tabular-nums text-fg bg-raised-pressed inset-ring-hairline inset-ring-rim px-2 rounded-capsule",
+        "text-display-sm font-bold tabular-nums text-fg bg-raised-pressed inset-ring-hairline inset-ring-border px-2 rounded-capsule",
     ),
     (
         "Orb.label",
@@ -1028,7 +1032,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Combo.plate",
         "the combo readout's plate",
-        "gap-y-1 p-2 rounded-block border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate",
+        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
     (
         "Combo.count",
@@ -1043,7 +1047,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Feed.row",
         "a row of a killfeed or pickup feed over the scene",
-        "gap-x-1.5 bg-glass transition duration-base ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0",
+        "gap-x-1.5 rounded-control bg-glass text-fg inset-ring-hairline inset-ring-border transition duration-base ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0",
     ),
     (
         "Feed.row.self",
@@ -1063,7 +1067,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Feed.plate",
         "a pickup feed's plate",
-        "gap-y-1 p-2 rounded-block border border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate",
+        "gap-y-1 p-2 rounded-card bg-linear-to-b from-plate-hi to-plate-lo text-fg shadow-plate inset-ring-hairline inset-ring-border",
     ),
     (
         "Celebrate.title",
@@ -1078,7 +1082,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Touch.base",
         "a touch stick's ring, the stick zone's box",
-        "size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate opacity-soft active:opacity-100 active:bg-tile-pressed disabled:opacity-dim",
+        "size-40 compact:size-28 rounded-full inset-ring-regular inset-ring-border-strong bg-tile shadow-plate opacity-soft active:opacity-100 active:bg-tile-pressed disabled:opacity-dim",
     ),
     (
         "Touch.knob",
@@ -1093,12 +1097,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Touch.button",
         "a touch action button",
-        "size-16 rounded-capsule border-regular border-rim-strong bg-raised-hi text-fg shadow-float transition duration-fast active:scale-press disabled:opacity-dim",
+        "size-16 rounded-capsule inset-ring-regular inset-ring-border-strong bg-raised-hi text-fg shadow-float transition duration-fast active:scale-press disabled:opacity-dim",
     ),
     (
         "Touch.button.primary",
         "the main touch action (attack, fire, jump): larger, in the accent",
-        "size-20 border-transparent bg-accent text-accent-fg",
+        "size-20 inset-ring-0 bg-accent text-accent-fg",
     ),
     (
         "Touch.charge",
@@ -1153,22 +1157,22 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Hero.frame",
         "a hero action's large button (End turn, Ultimate): its face, edge and the lift it stands on",
-        "min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-panel border-regular border-rim bg-accent shadow-key transition duration-fast hover:-translate-y-px active:translate-y-0.5 disabled:translate-y-0 disabled:opacity-dim",
+        "min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-card bg-linear-to-b from-sheen to-transparent to-48% bg-accent text-accent-fg shadow-key inset-ring-hairline inset-ring-lit transition duration-fast hover:-translate-y-px active:translate-y-0.5 disabled:translate-y-0 disabled:opacity-dim",
     ),
     (
         "Hero.frame.premium",
         "a premium hero action",
-        "bg-none bg-gold",
+        "bg-linear-to-b from-sheen to-transparent to-48% bg-gold text-gold-fg",
     ),
     (
         "Hero.frame.secondary",
         "a secondary hero action",
-        "bg-none bg-fg-subtle",
+        "bg-none bg-raised-lo text-fg inset-ring-hairline inset-ring-border-strong",
     ),
     (
         "Hero.frame.danger",
         "a destructive hero action",
-        "bg-none bg-danger",
+        "bg-linear-to-b from-sheen to-transparent to-48% bg-danger text-danger-fg",
     ),
     (
         "Hero.frame.ready",
@@ -1208,9 +1212,13 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Ability.chip.charges",
         "the charges or items an ability holds, on a tag at its corner",
-        "py-0 px-1.25 text-xs font-bold tabular-nums text-fg nine-chip-cut bg-tile",
+        "py-0 px-1.25 text-xs font-bold tabular-nums text-fg rounded-control bg-layer-3 inset-ring-hairline inset-ring-border",
     ),
-    ("Chip.frame", "a tag, badge or chip", ""),
+    (
+        "Chip.frame",
+        "a tag, badge or chip",
+        "rounded-control bg-layer-3 text-fg inset-ring-hairline inset-ring-border",
+    ),
     (
         "Field.frame",
         "a text field or input's box (an Input's own, by default): its focus, invalid value, read-only and disabled states",
@@ -1224,22 +1232,22 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Row.frame",
         "a row of a list, table or feed",
-        "bg-layer-3 text-fg",
+        "rounded-control bg-layer-3 text-fg",
     ),
     (
         "Row.frame.selected",
         "the chosen row, or the local player's",
-        "bg-layer-4 text-fg inset-shadow-bar",
+        "rounded-control bg-layer-4 text-fg inset-shadow-bar",
     ),
     (
         "Row.frame.muted",
         "a row out of play (disconnected, locked, spent)",
-        "bg-layer-3 text-fg-muted",
+        "rounded-control bg-layer-3 text-fg-muted",
     ),
     (
         "Head.frame",
         "a table or list's head row",
-        "bg-surface text-fg-muted",
+        "rounded-control bg-surface text-fg-muted",
     ),
 ];
 
