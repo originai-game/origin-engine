@@ -30,7 +30,7 @@ function RadialMeterWheel(props: { size: string; inset: string; fill: number; ex
   return (
     <View class={`absolute ${props.size}`}>
       <View class={`absolute inset-0 ${packClass("Radial", "track")}`} />
-      <View class={`absolute nine-ring ${packClass("Radial", "fill")} ${props.exhausted ? packClass("Radial", "fill", "exhausted") : ""}`} style={{ top: props.inset, right: props.inset, bottom: props.inset, left: props.inset }} wipe={props.fill} />
+      <View class={`absolute ${packClass("Radial", "fill")} ${props.exhausted ? packClass("Radial", "fill", "exhausted") : ""}`} style={{ top: props.inset, right: props.inset, bottom: props.inset, left: props.inset }} wipe={props.fill} />
       <View class={`absolute inset-0 ${packClass("Radial", "sheen")}`} />
     </View>
   );

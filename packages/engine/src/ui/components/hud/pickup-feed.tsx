@@ -1,4 +1,4 @@
-import { For, Icon, Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Spinner } from "../base/spinner";
 import "./pickup-feed.en.ogt";
 
@@ -31,7 +31,7 @@ export interface PickupFeedProps {
  */
 export function PickupFeed(props: PickupFeedProps) {
   return (
-    <View class={`flex-col max-w-full gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate rounded-block border p-2`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
+    <View class={`flex-col max-w-full ${packClass("Feed", "plate")}`} label={(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")} busy={props.loading}>
       <Text class="text-xs font-semibold tracking-label uppercase text-fg-muted text-shadow-tag">{(props.label ?? "") !== "" ? props.label : t("hud.pickup-feed.name")}</Text>
       <Show when={props.loading} fallback={
         <>

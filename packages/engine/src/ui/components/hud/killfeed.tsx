@@ -38,15 +38,15 @@ export function Killfeed(props: KillfeedProps) {
       <For each={props.rows ?? []} key={(r) => r.id}>
         {(r) => (
           <View
-            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 bg-glass compact:pl-2 transition duration-base ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0 ${packClass("Plate", "frame")}`}
+            class={`group/row relative flex-row items-center min-w-0 max-w-full pl-3 compact:pl-2 ${packClass("Feed", "row")} ${packClass("Plate", "frame")}`}
             label={t("shooter.killfeed.row", { killer: r().killer, victim: r().victim, weapon: r().weapon ?? "" })}
             data-self={r().self}
           >
-            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-tag text-ally-ink data-enemy:text-foe-ink data-self-ally:text-hud-accent-ink`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-0.75 whitespace-nowrap truncate ${packClass("Feed", "name")} text-ally-ink data-enemy:text-foe-ink data-self-ally:text-hud-accent-ink`} data-enemy={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") === "ally" && r().self}>
               {r().killer}
             </Text>
             <Text class={`shrink-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap truncate text-fg-muted text-shadow-tag`}>{r().weapon ?? ""}</Text>
-            <Text class={`shrink min-w-0 py-0.75 text-sm font-semibold whitespace-nowrap truncate text-shadow-tag text-foe-ink data-ally:text-ally-ink data-self-ally:text-hud-accent-ink`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
+            <Text class={`shrink min-w-0 py-0.75 whitespace-nowrap truncate ${packClass("Feed", "name")} text-foe-ink data-ally:text-ally-ink data-self-ally:text-hud-accent-ink`} data-ally={(r().team ?? "") !== "ally"} data-self-ally={(r().team ?? "") !== "ally" && r().self}>
               {r().victim}
             </Text>
             <Show when={r().headshot}>

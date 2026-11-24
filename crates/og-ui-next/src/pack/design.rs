@@ -885,6 +885,11 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "rounded-full bg-glass",
     ),
     (
+        "Ring.rest",
+        "the share of a progress ring still to fill, a ring of its own so it parts from the middle",
+        "nine-ring bg-fg-subtle opacity-muted",
+    ),
+    (
         "Ring.fill",
         "a progress ring's fill, clockwise from the top",
         "nine-ring bg-accent transition-layout duration-slow ease-out",
@@ -958,6 +963,11 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "rounded-full bg-linear-to-b from-sheen to-transparent to-42%",
     ),
     (
+        "Boss.phase",
+        "a phase's mark on a boss's health: dark on any fill, its rim light",
+        "bg-shade-deep ring-regular ring-fg",
+    ),
+    (
         "Boss.status",
         "an invulnerable or defeated boss's word, on its own ground",
         "text-xs font-semibold tracking-label uppercase text-fg bg-raised-pressed px-1.5 rounded-capsule",
@@ -966,6 +976,99 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
         "Boss.figure",
         "a boss's health in percent",
         "text-base leading-none font-bold tabular-nums text-fg bg-raised-pressed px-1.5 py-0.5 rounded-capsule compact:text-caption",
+    ),
+    (
+        "Damage.number",
+        "a damage number rising from a hit",
+        "text-lg font-bold tabular-nums text-fg text-shadow-tag animate-float",
+    ),
+    (
+        "Damage.number.crit",
+        "a critical hit's number: larger, in gold",
+        "text-3xl text-gold",
+    ),
+    ("Damage.number.heal", "a heal's number", "text-success"),
+    (
+        "Damage.number.shield",
+        "damage the shield took",
+        "text-info",
+    ),
+    ("Damage.number.weak", "a hit on a weakness", "text-warn"),
+    (
+        "Damage.number.miss",
+        "a miss or an immune hit",
+        "text-base text-fg-muted",
+    ),
+    (
+        "Hit.ring",
+        "the ring the hit direction arcs sit on, round the view's centre",
+        "size-22",
+    ),
+    (
+        "Hit.arc",
+        "one hit's direction arc, fading as its hit goes",
+        "stroke-foe stroke-3 transition duration-arc exit:opacity-0",
+    ),
+    (
+        "Hit.arc.shield",
+        "an arc for a hit the shield took",
+        "stroke-ally",
+    ),
+    ("Hit.arc.critical", "a critical hit's arc", "stroke-4"),
+    (
+        "Hit.vignette",
+        "the screen's edges flashing as a hit lands (HitFeedback)",
+        "inset-shadow-vignette opacity-0 transition-opacity duration-hit ease-out starting:opacity-flash",
+    ),
+    (
+        "Hit.vignette.critical",
+        "the edges pulsing while the game says the player is critical",
+        "opacity-muted animate-pulse",
+    ),
+    (
+        "Combo.plate",
+        "the combo readout's plate",
+        "gap-y-1 p-2 rounded-block border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate",
+    ),
+    (
+        "Combo.count",
+        "the combo count, popping as it rises",
+        "text-2xl font-bold tabular-nums text-fg text-shadow-tag",
+    ),
+    (
+        "Combo.multiplier",
+        "the combo's multiplier",
+        "text-lg font-bold tabular-nums text-gold text-shadow-tag",
+    ),
+    (
+        "Feed.row",
+        "a row of a killfeed or pickup feed over the scene",
+        "gap-x-1.5 bg-glass transition duration-base ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0",
+    ),
+    (
+        "Feed.row.self",
+        "a row the player took part in",
+        "inset-shadow-bar inset-shadow-hud-accent",
+    ),
+    (
+        "Feed.name",
+        "a name in a feed row",
+        "text-sm font-semibold text-shadow-tag",
+    ),
+    (
+        "Feed.plate",
+        "a pickup feed's plate",
+        "gap-y-1 p-2 rounded-block border border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate",
+    ),
+    (
+        "Celebrate.title",
+        "a level-up's big word, on its own dark band so it reads over the burst",
+        "text-title font-bold tracking-label uppercase text-gold bg-raised-pressed px-3 rounded-capsule animate-stamp",
+    ),
+    (
+        "Celebrate.halo",
+        "the ring of light behind a level-up",
+        "size-66 compact:size-23.75 rounded-full border-thick border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-glass animate-stamp",
     ),
     (
         "Hero.frame",

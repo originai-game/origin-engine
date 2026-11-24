@@ -105,7 +105,9 @@ export function BossBar(props: BossBarProps) {
             data-inv={invulnerable()}
             data-critical={critical()}
           >
-            <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`} data-ghost style={{ width: `${ghost() * 100}%` }} />
+            <Show when={!(props.defeated ?? false)}>
+              <View class={`absolute left-0 top-0 h-full ${packClass("Bar", "ghost")} ${packClass("Bar", "trail")}`} data-ghost style={{ width: `${ghost() * 100}%` }} />
+            </Show>
             <View
               class={`absolute left-0 top-0 h-full ${packClass("Bar", "fill")} ${packClass("Bar", "tone")} ${packClass("Bar", "tone", "boss")} ${invulnerable() ? packClass("Bar", "tone", "invulnerable") : ""}`}
               style={{ width: `${share() * 100}%` }}
@@ -114,7 +116,7 @@ export function BossBar(props: BossBarProps) {
             <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
               {(p, i) => (
                 <View
-                  class={`absolute size-2.25 rotate-45 bg-sheen ring-regular ring-entry-hi compact:size-1.75 data-passed:opacity-50`}
+                  class={`absolute size-2.25 rotate-45 compact:size-1.75 data-passed:opacity-muted ${packClass("Boss", "phase")}`}
                   data-passed={max() > 0 && (props.value ?? 0) / max() <= ((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length}
                   style={{ left: `calc(${(((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length) * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
                 />

@@ -1,4 +1,4 @@
-import { For, Line, View, t } from "@origingame/engine/ui";
+import { For, Line, View, packClass, t } from "@origingame/engine/ui";
 import "./damage-direction.en.ogt";
 
 export interface DamageDirectionHit {
@@ -50,13 +50,13 @@ export function DamageDirection(props: DamageDirectionProps) {
           const strength = Math.min(Math.max(h().strength ?? 0, 0), 1);
           return (
             <View
-              class="absolute inset-0 flex-row items-center justify-center transition duration-300 exit:opacity-0"
+              class="absolute inset-0 flex-row items-center justify-center"
               style={{ opacity: 0.5 + strength * 0.5 }}
             >
-              <View class="relative size-22">
+              <View class={`relative ${packClass("Hit", "ring")}`}>
                 <Line
                   points={arcPoints(h().angle, strength)}
-                  class={h().kind === "shield" ? "stroke-ally stroke-3" : h().kind === "critical" ? "stroke-foe stroke-4" : "stroke-foe stroke-3"}
+                  class={`${packClass("Hit", "arc")} ${h().kind === "shield" || h().kind === "critical" ? packClass("Hit", "arc", h().kind) : ""}`}
                 />
               </View>
             </View>

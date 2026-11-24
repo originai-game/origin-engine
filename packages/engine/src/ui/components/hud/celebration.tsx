@@ -1,5 +1,5 @@
 import { og, type ParticleEmitter } from "@origingame/engine";
-import { For, Particles, Show, Text, View, t, useWorld } from "@origingame/engine/ui";
+import { For, Particles, Show, Text, View, t, useWorld, packClass } from "@origingame/engine/ui";
 import "./celebration.en.ogt";
 import { Flourish } from "./flourish";
 import confetti from "./fx/confetti.ogt";
@@ -61,8 +61,8 @@ export function Celebration(props: CelebrationProps) {
             </Show>
             <Show when={kind() == "levelUp"}>
               <View class="relative w-105 max-w-full min-h-72 flex-col items-center justify-center">
-                <View class="absolute size-66 rounded-full border-4 border-gold shadow-glow-lg shadow-gold inset-shadow-glow inset-shadow-gold bg-glass animate-stamp compact:size-23.75" />
-                <Text class="relative max-w-full mb-3 text-title font-bold tracking-label uppercase text-center text-gold animate-stamp">
+                <View class={`absolute ${packClass("Celebrate", "halo")}`} />
+                <Text class={`relative max-w-full mb-3 text-center ${packClass("Celebrate", "title")}`}>
                   {props.title || t("component.celebration.level-up")}
                 </Text>
                 <Flourish kind="levelUp" shots={[shot()]}>
@@ -78,7 +78,7 @@ export function Celebration(props: CelebrationProps) {
               </View>
             </Show>
             <Show when={kind() == "burst"}>
-              <View class="size-16 rounded-full border-4 border-rim-strong shadow-glow-sm shadow-knob animate-ping" />
+              <View class="size-16 rounded-full border-thick border-rim-strong shadow-glow-sm shadow-knob animate-ping" />
               <View class="absolute size-2">
                 <Particles class="absolute inset-0 text-hud-accent-ink" emitter={fx.sparks} seed={1} />
                 <Particles class="absolute inset-0 text-gold" emitter={fx.sparks} seed={2} />

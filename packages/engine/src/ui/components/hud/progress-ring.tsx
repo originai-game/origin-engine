@@ -39,8 +39,9 @@ export function ProgressRing(props: ProgressRingProps) {
       <Show when={props.spinning} fallback={
         <>
           <View class={`absolute inset-0 ${packClass("Ring", "track")}`}>
+            <View class={`absolute inset-0 ${packClass("Ring", "rest")}`} />
             <View
-              class={`absolute inset-0 nine-ring ${packClass("Ring", "fill")} ${["success", "warn", "danger", "info"].includes(props.tone ?? "") ? packClass("Ring", "fill", props.tone) : ""}`}
+              class={`absolute inset-0 ${packClass("Ring", "fill")} ${["success", "warn", "danger", "info"].includes(props.tone ?? "") ? packClass("Ring", "fill", props.tone) : ""}`}
               wipe={share()}
             />
           </View>

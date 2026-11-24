@@ -1,4 +1,4 @@
-import { For, Text, formatNumber } from "@origingame/engine/ui";
+import { For, Text, formatNumber, packClass } from "@origingame/engine/ui";
 import type { Entity } from "@origingame/engine";
 
 export interface DamageHit {
@@ -9,8 +9,10 @@ export interface DamageHit {
   at: string;
   /** The damage, shown as the number. */
   amount: number;
-  /** The number's ink as #rrggbb (empty is white). */
+  /** The number's ink as #rrggbb (empty: its kind's). */
   color?: string;
+  /** normal (empty), crit (larger and gold), heal, shield, weak or miss: the theme's look for each (Damage.number.*). */
+  kind?: string;
 }
 
 export interface DamageNumbersProps {
@@ -27,6 +29,8 @@ export interface DamageNumbersProps {
  * the GPU) have no TSX surface: each number is a text node and the float
  * runs on the built-in animate-float.
  */
+const KINDS = ["crit", "heal", "shield", "weak", "miss"];
+
 export function DamageNumbers(props: DamageNumbersProps) {
   return (
     <For each={props.hits ?? []} key={(h) => h.id}>
@@ -35,7 +39,7 @@ export function DamageNumbers(props: DamageNumbersProps) {
         return (
           <Text
             anchor={h().entity ? (h().entity as Entity) : point}
-            class="-translate-x-1/2 animate-float text-lg font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag"
+            class={`-translate-x-1/2 whitespace-nowrap ${packClass("Damage", "number")} ${KINDS.includes(h().kind ?? "") ? packClass("Damage", "number", h().kind) : ""}`}
             style={{ color: h().color || undefined }}
           >
             {formatNumber(h().amount)}
@@ -47,5 +51,5 @@ export function DamageNumbers(props: DamageNumbersProps) {
 }
 
 export const fixtures: Record<string, Partial<DamageNumbersProps>> = {
-  default: {"hits":[{"id":"1","entity":0,"at":"0 2 0","amount":128,"color":""},{"id":"2","entity":0,"at":"0.5 2 0","amount":1240,"color":"#ffc93c"}]},
+  default: {"hits":[{"id":"1","entity":0,"at":"0 2 0","amount":128,"color":""},{"id":"2","entity":0,"at":"0.5 2 0","amount":1240,"color":"","kind":"crit"},{"id":"3","entity":0,"at":"-0.6 1.6 0","amount":40,"color":"","kind":"heal"}]},
 };

@@ -1,4 +1,4 @@
-import { Show, Text, View, formatNumber, t } from "@origingame/engine/ui";
+import { Show, Text, View, formatNumber, packClass, t } from "@origingame/engine/ui";
 import { Progress } from "../../controls/progress";
 import "./combo.en.ogt";
 
@@ -25,7 +25,7 @@ export function Combo(props: ComboProps) {
   const state = props.state ?? "idle";
   return (
     <View
-      class="group/combo flex-col gap-y-1 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate max-w-full p-2 rounded-block"
+      class={`group/combo flex-col max-w-full ${packClass("Combo", "plate")}`}
       role="status"
       data-active={state == "active"}
       data-broken={state == "broken"}
@@ -33,8 +33,8 @@ export function Combo(props: ComboProps) {
     >
       <Text class="text-base text-fg text-shadow-tag">{props.label || t("hud.combo.name")}</Text>
       <View class="flex-row flex-wrap items-baseline gap-x-2">
-        <Text class="text-2xl font-bold tabular-nums text-fg text-shadow-tag">{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
-        <Text class="text-lg font-bold tabular-nums text-fg text-shadow-tag">{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
+        <Text class={`transition-count duration-base ${packClass("Combo", "count")}`}>{formatNumber(Math.max(props.count ?? 0, 0))}</Text>
+        <Text class={packClass("Combo", "multiplier")}>{t("hud.combo.multiplier", { value: props.multiplier ?? 1 })}</Text>
       </View>
       <Text class="text-caption text-fg-muted group-data-active/combo:text-success group-data-broken/combo:text-danger text-shadow-tag">
         {state == "broken" ? t("hud.combo.broken") : state == "active" ? t("hud.combo.active") : t("hud.combo.idle")}

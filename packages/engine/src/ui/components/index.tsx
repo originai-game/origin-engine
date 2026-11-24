@@ -39,6 +39,7 @@ export { Combo } from "./hud/combo";
 export { Cooldown } from "./hud/cooldown";
 export { Crosshair } from "./hud/crosshair";
 export { DamageDirection } from "./hud/damage-direction";
+export { HitFeedback } from "./hud/hit-feedback";
 export { DamageNumbers } from "./hud/damage-numbers";
 export { HudEffect } from "./hud/effect";
 export { Flourish } from "./hud/flourish";

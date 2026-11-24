@@ -41,6 +41,9 @@
   --inset-shadow-lip: inset 0 -2px 0 0 var(--color-shade-deep);
   --inset-shadow-sunk: inset 0 1px 3px 0 var(--color-shade-deep);
   --inset-shadow-glow: inset 0 0 12px 0 var(--color-hud-accent);
+  /* The combat HUD's hit vignette (HitFeedback, combat HUD design §4.3):
+     how deep the edges glow and in what colour, a theme's to set. */
+  --inset-shadow-vignette: inset 0 0 120px 24px var(--color-danger);
   --inset-shadow-underline: inset 0 -3px 0 0 var(--color-hud-accent);
   --inset-shadow-overline: inset 0 2px 0 0 var(--color-hud-accent);
   --inset-shadow-bar: inset 3px 0 0 0 var(--color-hud-accent);

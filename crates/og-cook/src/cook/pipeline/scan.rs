@@ -259,9 +259,12 @@ pub(crate) fn scan_with(
             )
             .filter_map(|b| og_ui_next::pack::Layer::parse(&String::from_utf8(b).ok()?).ok())
             .collect();
+        // The default pack's own slots too: a component that names a slot
+        // (`packClass("Ring", "fill")`) draws the shapes its default
+        // dressing names, which its code never writes.
         nine.extend(super::graph::nine_names(
-            layers
-                .iter()
+            std::iter::once(&pack)
+                .chain(&layers)
                 .flat_map(|l| l.variants.values().map(String::as_str)),
         ));
         // A class whose image no pack the bundle holds has draws nothing:

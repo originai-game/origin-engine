@@ -13,7 +13,7 @@ By kit (the directory a component is filed in):
 - `arena`: `ArenaDraft`, `ArenaLobby`, `ArenaReady`, `ArenaRoster`, `ArenaRoundHud`, `ArenaScoreboard`, `ArenaSpectator`, `ArenaVersus`, `ArenaVote`
 - `base`: `Avatar`, `Currency`, `EmptyState`, `ErrorState`, `ItemSlot`, `ListItem`, `Pips`, `Ribbon`, `SkeletonGroup`, `Spinner`, `Steps`
 - `card`: `CardCollection`, `CardDeckList`, `CardFace`, `CardHand`, `CardPiles`, `CardReward`
-- `hud`: `AbilityBar`, `AbilitySlot`, `ActionButton`, `ActionHints`, `AmmoCounter`, `HudBar`, `BossBar`, `Celebration`, `RpgCombatLog`, `Combo`, `Cooldown`, `Crosshair`, `DamageDirection`, `DamageNumbers`, `HudEffect`, `Flourish`, `HeroButton`, `HudHint`, `HoldButton`, `HudTimer`, `Killfeed`, `HudLootEntry`, `OrbMeter`, `OverlayBar`, `PerfReadout`, `PickupFeed`, `HudPortrait`, `ProgressBar`, `ProgressRing`, `QtePrompt`, `RpgQuestTracker`, `RadialMenu`, `RadialMeter`, `HudSlot`, `StarBar`, `StatBar`, `StatusGrid`, `TouchControls`
+- `hud`: `AbilityBar`, `AbilitySlot`, `ActionButton`, `ActionHints`, `AmmoCounter`, `HudBar`, `BossBar`, `Celebration`, `RpgCombatLog`, `Combo`, `Cooldown`, `Crosshair`, `DamageDirection`, `HitFeedback`, `DamageNumbers`, `HudEffect`, `Flourish`, `HeroButton`, `HudHint`, `HoldButton`, `HudTimer`, `Killfeed`, `HudLootEntry`, `OrbMeter`, `OverlayBar`, `PerfReadout`, `PickupFeed`, `HudPortrait`, `ProgressBar`, `ProgressRing`, `QtePrompt`, `RpgQuestTracker`, `RadialMenu`, `RadialMeter`, `HudSlot`, `StarBar`, `StatBar`, `StatusGrid`, `TouchControls`
 - `idle`: `IdleGenerators`, `IdleOffline`, `IdlePrestige`, `IdlePurchases`, `IdleResources`
 - `meta`: `Achievements`, `Chat`, `DailyQuests`, `DailyRewards`, `Friends`, `Inbox`, `News`, `PassTrack`, `Profile`, `Reveal`, `ShopConfirm`, `Shop`
 - `panels`: `RpgBackpack`, `Breadcrumbs`, `Carousel`, `RpgConversationBacklog`, `RpgConversation`, `RpgCrafting`, `DataGrid`, `RpgItemCard`, `RpgLoot`, `Menu`, `RpgQuestLog`, `SplitView`, `TooltipCard`, `RpgTrade`
@@ -886,7 +886,7 @@ Each `BossBarWeakness`:
 | `icon?` | `Texture \| 0` | A texture (og.load.texture); 0 draws the glyph in its place. |
 | `glyph?` | `string` | An icon name, in art's place. |
 
-Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.frame.thick`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.boss`, `Bar.tone.invulnerable`, `Bar.tone.stamina`, `Bar.trail`, `Boss.figure`, `Boss.status`, `Plate.frame`.
+Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.frame.thick`, `Bar.ghost`, `Bar.tick`, `Bar.tone`, `Bar.tone.boss`, `Bar.tone.invulnerable`, `Bar.tone.stamina`, `Bar.trail`, `Boss.figure`, `Boss.phase`, `Boss.status`, `Plate.frame`.
 
 Fixtures: `default`, `critical`, `invulnerable`, `defeated`, `loading`, `overflow`.
 
@@ -903,6 +903,8 @@ A reward over the HUD: confetti thrown from the top edge, a burst's ring and spa
 | `shots?` | `ReadonlyArray<{ id: string }>` | Its plays, each { id } (the tick it fired, as text): a new id plays it again; a kept one plays once. |
 | `title?` | `string` | levelUp: the big word; empty is Level up. |
 | `value?` | `string` | levelUp: the new level (12); empty is none. |
+
+Pack slots: `Celebrate.halo`, `Celebrate.title`.
 
 Fixtures: `default`, `confetti`, `burst`, `fireworks`.
 
@@ -942,6 +944,8 @@ The combo readout on its HUD plate: the heading, the count and its multiplier as
 | `remaining?` | `number` | Remaining window, 0 to 1; negative hides the timer. The game advances it. Default -1. |
 | `state?` | `string` | idle, active or broken; zero remaining does not determine gameplay results. Default idle. |
 | `label?` | `string` | A custom heading; empty uses Combo. Default "". |
+
+Pack slots: `Combo.count`, `Combo.multiplier`, `Combo.plate`.
 
 Fixtures: `default`, `idle`, `broken`, `overflow`.
 
@@ -1001,12 +1005,31 @@ Each `DamageDirectionHit`:
 | `strength?` | `number` | 0 to 1: the arc's opacity and length. |
 | `kind?` | `string` | normal, shield (the shield took it) or critical. |
 
+Pack slots: `Hit.arc`, `Hit.arc.…`, `Hit.ring`.
+
 Fixtures: `default`, `crowded`.
 
 <a id="guide-components-40"></a>
-### `components §40` DamageNumbers
+### `components §40` HitFeedback
 
-Damage numbers rising from where each hit landed: one number per hit, anchored at the unit (or the world point) in the hit's colour, held in the tag halo so it reads over the scene. Each new row plays the float (rise and fade) once. Read only. The old anchor's pooled GPU mass figures (one instanced draw for a battle's numbers, the rise eased on the GPU) have no TSX surface: each number is a text node and the float runs on the built-in animate-float.
+What a hit feels like on the HUD, opt in: the screen's edges flash as a hit lands, pulse while the game says the player is critical, and an arc points to where each recent hit came from. Every look and timing is the theme's (Hit.vignette, Hit.vignette.critical, Hit.ring, Hit.arc and the duration-hit and duration-arc tokens). It decides nothing: the game names the hits and when the player is critical. Read only.
+
+`import { HitFeedback } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/hit-feedback.tsx`).
+
+| Prop | Type | What |
+|---|---|---|
+| `flash?` | `string` | The latest hit's id: each new id flashes the screen's edges once. Empty is none. |
+| `critical?` | `boolean` | The player is critical, as the game decides: the edges pulse until it clears. Default false. |
+| `hits?` | `ReadonlyArray<DamageDirectionHit>` | Recent hits, each drawn as an arc toward where it came from (DamageDirection). The game removes a hit when its mark should go. |
+
+Pack slots: `Hit.vignette`, `Hit.vignette.critical`.
+
+Fixtures: `default`, `critical`.
+
+<a id="guide-components-41"></a>
+### `components §41` DamageNumbers
+
+(No doc comment.)
 
 `import { DamageNumbers } from "@origingame/engine/ui/components"` (kit `hud`, `packages/engine/src/ui/components/hud/damage-numbers.tsx`).
 
@@ -1022,12 +1045,15 @@ Each `DamageHit`:
 | `entity` | `number` | The unit hit, by its bits (0: at, a world point x y z). |
 | `at` | `string` | A world point x y z without an entity. |
 | `amount` | `number` | The damage, shown as the number. |
-| `color?` | `string` | The number's ink as #rrggbb (empty is white). |
+| `color?` | `string` | The number's ink as #rrggbb (empty: its kind's). |
+| `kind?` | `string` | normal (empty), crit (larger and gold), heal, shield, weak or miss: the theme's look for each (Damage.number.*). |
+
+Pack slots: `Damage.number`, `Damage.number.…`.
 
 Fixtures: `default`.
 
-<a id="guide-components-41"></a>
-### `components §41` HudEffect
+<a id="guide-components-42"></a>
+### `components §42` HudEffect
 
 One buff or debuff of a HUD, a block an effects row is built from: a small tile whose edge is its fill (green for a boon, red for a harm), its art inset inside it, the time already run darkened round the art and its time or stacks on a tag under it. The game owns every timer; read only. The tile's cut corner has no TSX surface: it is a rounded one.
 
@@ -1046,8 +1072,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `harmful`, `untimed`, `empty`, `overflow`.
 
-<a id="guide-components-42"></a>
-### `components §42` Flourish
+<a id="guide-components-43"></a>
+### `components §43` Flourish
 
 A flourish around what it decorates, the engine's UI effect presets: a reward's flash, rays, ring and stars; a level-up's column of light, screen wash and rising stars; a purchase's fountain of spinning coins catching the light while the price pops; a rarity reveal that draws a charge in (glints gathering, a glow swelling, the target growing), then bursts (a flash, rays, a ring and shards, the target popping) and settles in lingering motes, each tier richer (rays from rare, double rays from epic, triple rays, a column and a screen wash from legendary); the beams draw behind the target, the rest over it; or a highlighted button's aura in the pack's primary colour, sweeping sheen and twinkling stars. Each play runs once per shot with its pack sound (highlight runs while it shows, silent). The particles are the engine's emitters (./fx/*.ogt) with the shared textures (`@styles/shared/fx/`), drawn by `Particles`, one node per ink, so a pack's colour roles colour them; reduced motion draws none.
 
@@ -1065,8 +1091,8 @@ A flourish around what it decorates, the engine's UI effect presets: a reward's 
 
 Fixtures: `reward`, `levelUp`, `purchase`, `reveal`, `collect`, `revealLegendary`, `highlight`.
 
-<a id="guide-components-43"></a>
-### `components §43` HeroButton
+<a id="guide-components-44"></a>
+### `components §44` HeroButton
 
 A hero action's button: its words in capitals and a keycap beside them, on a face that stands on its shadow (primary's primary, premium's gold, secondary's glass, danger's danger); it lifts under a pointer and sinks while held, and shows inert when disabled. With a charge, a bar fills along its foot and the button lights when it is full. Its face, words and charge are the Hero component's pack slots.
 
@@ -1085,8 +1111,8 @@ Pack slots: `Hero.charge`, `Hero.charge.fill`, `Hero.frame`, `Hero.frame.ready`,
 
 Fixtures: `default`, `premium`, `secondary`, `danger`, `charging`, `charged`, `disabled`.
 
-<a id="guide-components-44"></a>
-### `components §44` HudHint
+<a id="guide-components-45"></a>
+### `components §45` HudHint
 
 One input hint of a HUD, a block a hint row is built from: a key cap and what it does in small tracked capitals. Read only; hidden under a touch screen, where the controls on screen say it. No strings of its own; the svelte file carries none either.
 
@@ -1101,8 +1127,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `empty`, `overflow`.
 
-<a id="guide-components-45"></a>
-### `components §45` HoldButton
+<a id="guide-components-46"></a>
+### `components §46` HoldButton
 
 A confirm that must be held (Delete save): its icon and words, what it says while it is held, and a line under it saying what to do. Holding it for 1.2 s confirms, as does the input action it names; the hold's progress runs along the button's foot and the words swap while held.
 
@@ -1123,8 +1149,8 @@ Pack slots: `Hold.fill`, `Hold.fill.…`, `Plate.frame`.
 
 Fixtures: `default`, `label-only`, `disabled`, `overflow`.
 
-<a id="guide-components-46"></a>
-### `components §46` HudTimer
+<a id="guide-components-47"></a>
+### `components §47` HudTimer
 
 A HUD clock on its plate: a caption, the seconds in the HUD's large figure, and for a countdown with a total a ring of what is left, which warns and then turns red near zero; paused, the time dims and breathes. Read only.
 
@@ -1143,8 +1169,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-47"></a>
-### `components §47` Killfeed
+<a id="guide-components-48"></a>
+### `components §48` Killfeed
 
 Eliminations at the screen's top corner, newest first: each row the killer, the weapon's name and the victim, a headshot tag, names in their side's colour on a dark glass that fades toward the middle, an edge at the screen's side lit for the player's own rows. Read only. The weapon glyphs (svg silhouettes) have no TSX surface: every weapon shows in words. The rows' slide and fade transitions have no TSX surface and are dropped; a phone's compact trimming is the game's to do in the prop.
 
@@ -1167,12 +1193,12 @@ Each `KillfeedRow`:
 | `self?` | `boolean` | The player took part (the row's edge is lit and the player's name takes the HUD's accent). |
 | `team?` | `string` | Ally or enemy, the killer's side (the victim takes the other). |
 
-Pack slots: `Chip.frame`, `Plate.frame`.
+Pack slots: `Chip.frame`, `Feed.name`, `Feed.row`, `Plate.frame`.
 
 Fixtures: `default`, `words`, `long`.
 
-<a id="guide-components-48"></a>
-### `components §48` HudLootEntry
+<a id="guide-components-49"></a>
+### `components §49` HudLootEntry
 
 One row of a HUD's loot feed, a block a feed is built from: an icon, the item's name, its rarity on a tag and the count gained, on a dark glass that fades toward the middle with its edge at the screen's side tinted by rarity; a fading row dims. Read only. The art's cut corner (corner-shape) has no TSX surface: a rounded one stands in.
 
@@ -1193,8 +1219,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `gold`, `fading`, `empty`, `overflow`.
 
-<a id="guide-components-49"></a>
-### `components §49` OrbMeter
+<a id="guide-components-50"></a>
+### `components §50` OrbMeter
 
 A glass vessel in a bezel, over the scene: a bezel with its light and shade, a socket, a dark well in its liquid's hue with the liquid standing to the value, a surface line, a gleam blob riding the surface and the figure in the middle. The style's SVG waves, glare arcs and ornament have no TSX surface: the liquid is a flat fill with a surface line, the glare a white blob, the ornament dropped (the default pack draws none). The packs' --orb-meter-* tokens are resolved to the dark scheme's values here.
 
@@ -1213,8 +1239,8 @@ Pack slots: `Orb.box`, `Orb.fill`, `Orb.fill.mana`, `Orb.glass`, `Orb.label`, `O
 
 Fixtures: `default`, `mana`, `empty`, `full`.
 
-<a id="guide-components-50"></a>
-### `components §50` OverlayBar
+<a id="guide-components-51"></a>
+### `components §51` OverlayBar
 
 A map's overlays over the scene: a legend for the selected overlay (its name, its ramp low to high and the words at its ends) over a bar of buttons, one per overlay, its picture or icon beside its name; the bar scrolls along when the buttons run over. Read only; the buttons report their choice. The buttons' pressed state is worded, as the style words it; a pack's picture fills the button's face.
 
@@ -1241,8 +1267,8 @@ Each `OverlayBarOverlay`:
 
 Fixtures: `default`, `none`.
 
-<a id="guide-components-51"></a>
-### `components §51` PerfReadout
+<a id="guide-components-52"></a>
+### `components §52` PerfReadout
 
 A HUD plate of how the game runs: the connection state in its tone's colour, then four metrics — frames, frame time, ping and packet loss — each its caption over its figure, Unavailable where the game has no reading. The game supplies every value and threshold; the document samples no clocks or network. Read only.
 
@@ -1258,8 +1284,8 @@ A HUD plate of how the game runs: the connection state in its tone's colour, the
 
 Fixtures: `default`, `degraded`, `offline`, `connecting`, `unknown`, `zero`.
 
-<a id="guide-components-52"></a>
-### `components §52` PickupFeed
+<a id="guide-components-53"></a>
+### `components §53` PickupFeed
 
 A HUD plate of what the player just picked up: its heading, then its entries, each its icon, name and caption with the signed change in its trend's colour; the game owns ordering, expiry and retention, and the empty state says so. Read only.
 
@@ -1281,10 +1307,12 @@ Each `PickupFeedItem`:
 | `quantity?` | `number` | A signed change. |
 | `detail?` | `string` | Its caption (Crafting material); empty is none. |
 
+Pack slots: `Feed.plate`.
+
 Fixtures: `default`, `loading`, `overflow`.
 
-<a id="guide-components-53"></a>
-### `components §53` HudPortrait
+<a id="guide-components-54"></a>
+### `components §54` HudPortrait
 
 A portrait of a HUD, a block a plate is built from: the art (or the person glyph) inset in a lit edge. Its side is the HUD portrait size; a plate sets it on the place it gives the portrait. Read only. The style's octagon and its greying filter have no TSX surface: the edge is a rounded one and the dimmed art shows dimmed.
 
@@ -1298,8 +1326,8 @@ A portrait of a HUD, a block a plate is built from: the art (or the person glyph
 
 Fixtures: `default`, `dimmed`.
 
-<a id="guide-components-54"></a>
-### `components §54` ProgressBar
+<a id="guide-components-55"></a>
+### `components §55` ProgressBar
 
 A bar fills the width its container gives it: a caption over it at the start and its value in words at the end, a paler buffer ahead of the fill in a dark well with one lit rim, thinner than a vital's; with no known value a band sweeps the track instead. It sits on a HUD plate, so its words read over any scene. The style's lean (skewX) and the fill's sheen have no TSX surface: the lean is dropped and the sweeping band carries the shimmer.
 
@@ -1320,8 +1348,8 @@ Pack slots: `Bar.fill`, `Plate.frame`.
 
 Fixtures: `default`, `indeterminate`, `success`, `danger`.
 
-<a id="guide-components-55"></a>
-### `components §55` ProgressRing
+<a id="guide-components-56"></a>
+### `components §56` ProgressRing
 
 A ring that fills with its value, its percent (or the label's words) in the middle; with no known value the ring turns instead. Its side, track, fill, spin and label are the Ring component's pack slots. Read only.
 
@@ -1335,12 +1363,12 @@ A ring that fills with its value, its percent (or the label's words) in the midd
 | `name?` | `string` | What a screen reader calls it; empty is Progress, or Loading while spinning. |
 | `tone?` | `string` | The fill's tone: primary (empty), success, warn, danger or info. |
 
-Pack slots: `Ring.box`, `Ring.fill`, `Ring.fill.…`, `Ring.label`, `Ring.spin`, `Ring.track`.
+Pack slots: `Ring.box`, `Ring.fill`, `Ring.fill.…`, `Ring.label`, `Ring.rest`, `Ring.spin`, `Ring.track`.
 
 Fixtures: `default`, `spinning`, `labelled`, `danger`.
 
-<a id="guide-components-56"></a>
-### `components §56` QtePrompt
+<a id="guide-components-57"></a>
+### `components §57` QtePrompt
 
 A keyed prompt over the scene: what to attempt, a big trigger (press, hold or mash — the hold runs holdMs with its fill, and confirms when it completes), its state in words, and the game-supplied time left (and, for a mash, the response progress) as thin bars. Only the active state accepts input; the game owns resolution and expiry. Read only beyond the respond.
 
@@ -1363,8 +1391,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `hold`, `mash`, `success`, `failure`, `expired`, `waiting`, `disabled`, `overflow`.
 
-<a id="guide-components-57"></a>
-### `components §57` RpgQuestTracker
+<a id="guide-components-58"></a>
+### `components §58` RpgQuestTracker
 
 The tracked quest on the HUD: a heading in gold, the quest's name, then its objectives, the done ones struck through, the one in play lit with its progress on a tag and the upcoming ones dim. Read only; the journal owns choosing what to track.
 
@@ -1381,8 +1409,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `done`, `overflow`.
 
-<a id="guide-components-58"></a>
-### `components §58` RadialMenu
+<a id="guide-components-59"></a>
+### `components §59` RadialMenu
 
 A radial menu: slices clockwise from the top, the one the pointer or stick aims at lit, and its detail in the centre. It reports onAim and onChoose; the game decides what a slice does.
 
@@ -1411,8 +1439,8 @@ Each `RadialMenuItem`:
 
 Fixtures: `default`.
 
-<a id="guide-components-59"></a>
-### `components §59` RadialMeter
+<a id="guide-components-60"></a>
+### `components §60` RadialMeter
 
 A stamina wheel: up to three rings that drain and fill, red once exhausted until full again, faded out when the game hides it. Read only.
 
@@ -1430,8 +1458,8 @@ Pack slots: `Radial.box`, `Radial.fill`, `Radial.fill.exhausted`, `Radial.sheen`
 
 Fixtures: `default`.
 
-<a id="guide-components-60"></a>
-### `components §60` HudSlot
+<a id="guide-components-61"></a>
+### `components §61` HudSlot
 
 One slot of a HUD's skill bar, a block a bar is built from: the art in an octagon with a lit edge, its cooldown a dark sweep with a lit leading edge and the time left, a slot that cannot be paid for greyed with its reason on it, charge pips over a slot that holds charges, a consumable's count on a tag, and the ultimate in a hexagon inside a gold ring that fills with its charge; a key cap under it. Its side is --hud-slot-size. The game owns every cooldown, cost and charge; read only. The style cuts the cell with clip-path; here the cell is rounded and the sweep and the ring are pack art (a nine-disc wipe and a nine-ring wipe).
 
@@ -1459,8 +1487,8 @@ Pack slots: `Slot.frame`.
 
 Fixtures: `default`, `cooling`, `item`, `ultimate`, `unaffordable`, `empty`, `overflow`.
 
-<a id="guide-components-61"></a>
-### `components §61` StarBar
+<a id="guide-components-62"></a>
+### `components §62` StarBar
 
 A score against its thresholds: the figure over a track that fills in the style's gold, each threshold a star set on the track where it falls, lit once the score reaches it. The stars are the style's rating stars, the same as a level's or a results screen's. The style draws SVG stars; here each is the atlas star icon in a seat, which keeps their shape and colour but not the style's glow.
 
@@ -1486,8 +1514,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-62"></a>
-### `components §62` StatBar
+<a id="guide-components-63"></a>
+### `components §63` StatBar
 
 A stat with its bar: the icon and label before a leaning well that fills to value in its kind's colour, the heal and recoverable shares past it, the shield along its top, a notch at each block's end, and the figure at its end (inside the track on valueInside). Health turns warn under low and danger under critical. Read only. The old style's lean (skewX) and the blocks' mask have no TSX surface: the blocks are drawn as notch marks, the lean and the figure's font-stretch are dropped, and the ghost holds the fill's width instead of draining behind it.
 
@@ -1517,8 +1545,8 @@ Pack slots: `Bar.fill`, `Bar.frame`, `Bar.frame.low`, `Bar.tick`.
 
 Fixtures: `default`.
 
-<a id="guide-components-63"></a>
-### `components §63` StatusGrid
+<a id="guide-components-64"></a>
+### `components §64` StatusGrid
 
 Buffs and debuffs as a grid of tiles, the debuffs in their own row bordered by type, and the effects past the shown ones folded into a +n tile. Read only.
 
@@ -1545,8 +1573,8 @@ Each `StatusGridEffect`:
 
 Fixtures: `default`.
 
-<a id="guide-components-64"></a>
-### `components §64` TouchControls
+<a id="guide-components-65"></a>
+### `components §65` TouchControls
 
 On-screen controls for touch: a stick (or a d-pad) at the start side feeding a move action, an optional look stick and the action buttons at the end side. They feed og.input's actions and show only where touch is the last input, unless always is set.
 
@@ -1576,8 +1604,8 @@ Each `TouchAction`:
 
 Fixtures: `default`, `pad`, `twin`, `many`, `disabled`.
 
-<a id="guide-components-65"></a>
-### `components §65` IdleGenerators
+<a id="guide-components-66"></a>
+### `components §66` IdleGenerators
 
 The generator list of an idle game: one cut row per producer with its art in a socket and its level on a hexagon at the socket's foot, its name and how many are owned, its yield in green, its running cycle as a leaning bar with the time left, and its Auto and boost tags. The game runs the cycles and owns every number; the list reports choose (a row's key) and the chosen row is washed in the accent. A locked row is disabled and greyed, and says Locked with what unlocks it. It fills its height and scrolls, its foot fading while there is more.
 
@@ -1594,8 +1622,8 @@ Pack slots: `Chip.frame`, `Panel.frame`, `Row.frame`, `Row.frame.selected`, `Slo
 
 Fixtures: `default`, `empty`, `disabled`, `selected`, `overflow`.
 
-<a id="guide-components-66"></a>
-### `components §66` IdleOffline
+<a id="guide-components-67"></a>
+### `components §67` IdleOffline
 
 The welcome-back panel of an idle game: how long the player was away, large (the game's words, or its seconds as a duration), then what was gathered as sockets glowing gold from their foot, each with its art, the amount and its name. Collect reports collect; Double, the game's gold offer and shown only when it sets canDouble, reports double with what it asks under its word. The game computes the haul and applies it. Many currencies wrap and the haul scrolls.
 
@@ -1616,8 +1644,8 @@ Pack slots: `Panel.frame`.
 
 Fixtures: `default`, `disabled`, `empty`, `overflow`.
 
-<a id="guide-components-67"></a>
-### `components §67` IdlePrestige
+<a id="guide-components-68"></a>
+### `components §68` IdlePrestige
 
 The prestige panel of an idle game: the currency in a socket glowing in the epic purple, what the player holds and, in that purple, what a reset would give; each changed bonus now and after the reset; and the requirement with its leaning bar, green once met, and Ready or Not yet in words. Prestige reports request; the game then sets confirming and the panel asks inline, Reset (confirm) and Cancel (cancel, or Escape and pad B while asking). Cancel comes first so no key resets by accident. The game decides whether a reset is allowed and what it gives.
 
@@ -1646,8 +1674,8 @@ Fixtures: `default`, `disabled`, `confirming`, `empty`, `overflow`.
 
 Actions: `back` (Cancel).
 
-<a id="guide-components-68"></a>
-### `components §68` IdlePurchases
+<a id="guide-components-69"></a>
+### `components §69` IdlePurchases
 
 The upgrade shop of an idle game: a ×1 / ×10 / ×100 / Max choice of how many to buy (chooseamount, the amount's key), then one row per upgrade with its icon, name, effect, level, how many the chosen amount buys and what that costs, and Buy (buy, the upgrade's key). The game prices every amount and decides what can be bought: Buy is enabled only when the row is affordable and neither maxed nor locked, and each refused state is a word (Not enough, Maxed, Locked). It fills its height and scrolls.
 
@@ -1666,8 +1694,8 @@ Pack slots: `Chip.frame`, `Panel.frame`, `Row.frame`, `Slot.frame`, `Tab.indicat
 
 Fixtures: `default`, `max`, `disabled`, `maxed`, `empty`, `overflow`.
 
-<a id="guide-components-69"></a>
-### `components §69` IdleResources
+<a id="guide-components-70"></a>
+### `components §70` IdleResources
 
 The resource bar of an idle game: one cut chip per currency with its art in a socket, its name, the amount large and the income under it, green when it rises. A store at its cap gets a gold rim and a Full tag. The game owns every number: a formatted value or rate it passes wins, else the bare number is compacted (12.3K) and counts to each new amount. While loading each chip keeps its art and name and shows a placeholder, which a pack may animate; the row's name says it is loading. It reports no intents. The chips wrap onto more lines when they do not fit.
 
@@ -1682,8 +1710,8 @@ Pack slots: `Chip.frame`, `Count.roll`, `Slot.frame`.
 
 Fixtures: `default`, `loading`, `full`, `draining`, `empty`, `overflow`.
 
-<a id="guide-components-70"></a>
-### `components §70` Achievements
+<a id="guide-components-71"></a>
+### `components §71` Achievements
 
 The achievement list: a band with the title, then the overall count as a large figure over a leaning gold bar; then one entry per achievement, a card with two corners cut: its medal (a hexagon rimmed in its tier's colour), its name, description, its state in words (locked, a bar for one in progress, the date for one unlocked) and its tier on a chip; at the end the share of players who have it, large, and a gold Claim while a reward waits (Claimed once taken). A hidden achievement shows as one, hatched, with neither name nor description, until it is unlocked. On a narrow list the rarity takes a line under the words and Claim takes a line of its own. The game owns every number; the list reports claim (an achievement's key). It fills its height and scrolls inside it.
 
@@ -1701,8 +1729,8 @@ Pack slots: `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `overflow`.
 
-<a id="guide-components-71"></a>
-### `components §71` Chat
+<a id="guide-components-72"></a>
+### `components §72` Chat
 
 A chat panel: channel tabs with unread badges, the message log (system lines, the player's own messages and others' with sender and time, long text wrapping and long words breaking) and an input row. The game owns the channels, the messages, moderation and the clock; the panel reports choosetab (a channel's key), send (the Send button) and onDraft (the field's text, trimmed to maxLength). The log fills the height it is given and scrolls inside it, newest at the foot.
 
@@ -1725,8 +1753,8 @@ Pack slots: `Chip.frame`, `Field.frame`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `disabled`, `overflow`.
 
-<a id="guide-components-72"></a>
-### `components §72` DailyQuests
+<a id="guide-components-73"></a>
+### `components §73` DailyQuests
 
 Today's quests: a band with the title and when they refresh (the game counts it down), then one entry per quest: its icon in an octagon socket, its name over a leaning bar with the count beside it, and its prize in a dark box at the end. A done quest is lit gold, its prize box glows and a gold Claim stands beside it; a claimed one dims behind a Claimed stamp. On a narrow list the socket goes and the prize and Claim take a line of their own. The game owns progress, rewards and the clock; the list reports claim (a quest's key).
 
@@ -1744,8 +1772,8 @@ Pack slots: `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `empty`, `loading`, `overflow`.
 
-<a id="guide-components-73"></a>
-### `components §73` DailyRewards
+<a id="guide-components-74"></a>
+### `components §74` DailyRewards
 
 A login reward calendar: a grid of day tiles with two corners cut, each a header strip with its day, the reward's icon large in the middle, its amount, and a foot with its state in words and a mark. Today is lit gold (a gold header and foot, a glow round the tile); a day taken carries a check stamp over its dimmed art; a missed day is hatched with its word in danger; a milestone is violet with a ribbon. The game owns the schedule, the rewards and the clock; the calendar reports claim (today's key) while canClaim holds: only then is today's tile a button, its Claim foot pulsing with the highlight's aura, sheen and stars; every other day is a labelled tile that takes no focus and reports nothing. A day shows the word of the state the game gave it. Seven across on a desktop, four on a narrow panel, three on a phone, where a last day alone on its row takes the whole row.
 
@@ -1764,8 +1792,8 @@ Pack slots: `List.cascade`, `List.item`, `Panel.frame`.
 
 Fixtures: `default`, `disabled`, `overflow`.
 
-<a id="guide-components-74"></a>
-### `components §74` Friends
+<a id="guide-components-75"></a>
+### `components §75` Friends
 
 The friends panel: a band with the title and Add friend, the friend requests with Accept and Decline, then the friends with an avatar, the name, the status in words beside a mark (online, in game, away, offline), what they are doing and Invite. The game owns the list, presence and whether an invite may go; the panel reports add, accept and decline (a request's key), choose and invite (a friend's key). It fills its height and scrolls inside it.
 
@@ -1787,8 +1815,8 @@ Pack slots: `Panel.frame`, `Row.frame`, `Row.frame.selected`.
 
 Fixtures: `default`, `empty`, `requests`, `overflow`.
 
-<a id="guide-components-75"></a>
-### `components §75` Inbox
+<a id="guide-components-76"></a>
+### `components §76` Inbox
 
 A mail inbox: the messages with their sender, date and unread state, the selected message's body and its attachments to claim, and Claim and Delete. Loading, a pending claim and an error each have their state. The game owns the messages and what a claim grants.
 
@@ -1814,8 +1842,8 @@ Fixtures: `default`, `empty`, `loading`, `error`, `expired`.
 
 Actions: `choose` (Read the message by stable key), `claim` (Claim the selected message's attachments by stable message key), `delete` (Request deleting the selected message by stable key), `retry` (Retry loading messages).
 
-<a id="guide-components-76"></a>
-### `components §76` News
+<a id="guide-components-77"></a>
+### `components §77` News
 
 News and updates: articles with their date, kind, picture and summary, one expanded at a time with its body and action. Loading and an error each have their state; the game owns the articles.
 
@@ -1838,8 +1866,8 @@ Fixtures: `default`, `empty`, `loading`, `error`, `overflow`.
 
 Actions: `choose` (Toggle an article by stable key), `open` (Take the selected article's optional action by stable key), `retry` (Retry loading articles).
 
-<a id="guide-components-77"></a>
-### `components §77` PassTrack
+<a id="guide-components-78"></a>
+### `components §78` PassTrack
 
 A season pass: a kicker with the season and the time left over the title, a gold Get premium while premium is not owned, the level on a hexagon beside a leaning bar to the next tier, and two lanes of tier tiles, premium (in gold) over free. Each lane scrolls sideways on its own; on a narrow screen its name sits above it. A tile says its tier, shows the reward and how much, and ends in Claim when it is ready and owned, Claimed once taken, or Locked (a premium tile always reads Locked without premium). The game owns progress, entitlement and every reward's state; the track reports claim (a reward's key), upgrade and retry.
 
@@ -1868,8 +1896,8 @@ Fixtures: `default`, `empty`, `loading`, `error`, `premium`.
 
 Actions: `claim` (Claim the available reward by stable key), `upgrade` (Inspect the premium upgrade), `retry` (Retry loading the track).
 
-<a id="guide-components-78"></a>
-### `components §78` Profile
+<a id="guide-components-79"></a>
+### `components §79` Profile
 
 A player profile: the avatar with level and presence, the name, handle, rank and bio, the stats the game formats and the actions it offers (friend, invite, report). Private stats, loading, an error and no profile each have their state.
 
@@ -1897,8 +1925,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `private`, `pending`, `loading`, `error`, `empty`, `no-stats`, `overflow`.
 
-<a id="guide-components-79"></a>
-### `components §79` Reveal
+<a id="guide-components-80"></a>
+### `components §80` Reveal
 
 A reward reveal: a kicker naming the source over the title; sealed, the prize large over a gold glow with the game's words under it and Open; revealing, a spinner and Skip; revealed, each reward in a socket of its rarity (its count in a corner, a dot when it is new), each bursting in as it shows with a reveal of its rarity's light, with the rarity in words over its name, and Continue. Rewards stay hidden until the game says they are revealed; a reward is a button that reports inspect with its key. The game owns the roll, the timing and the rewards; the panel reports open, skip, inspect, continue and retry.
 
@@ -1927,8 +1955,8 @@ Fixtures: `default`, `loading`, `revealing`, `revealed`, `empty`, `error`.
 
 Actions: `open` (Open the sealed rewards), `skip` (Finish the reveal early), `inspect` (Inspect a revealed reward by its key), `continue` (Continue after the reveal), `retry` (Retry the reveal).
 
-<a id="guide-components-80"></a>
-### `components §80` ShopConfirm
+<a id="guide-components-81"></a>
+### `components §81` ShopConfirm
 
 The purchase confirmation the game shows after a shop's buy: a small heading over the offer's name, its art in a socket of its rarity beside its detail, and a ledger with one group per currency: the price (a discount's old price struck before it, and named: 700 Gems, was 1,000), then the balance before and after, or, for a currency the player lacks, Not enough and how much more it takes. The game decides whether it may be bought and what it costs; the panel reports confirm (Buy) and cancel (Cancel, or Escape and pad B anywhere in it). Enter and pad A press the focused button, Cancel first, so no key buys by accident. A refused purchase disables Buy and says why (the short currency's row, or the game's reason over the buttons); a failed one shows the game's error on a strip and leaves Buy to try again. While busy Buy is disabled. The ledger scrolls when it must; the buttons stay at the foot. It is content, not a dialog: the host that shows it (the built-in confirm screen, a sheet at the foot of a phone, or the game's own modal) owns modality and focus.
 
@@ -1955,8 +1983,8 @@ Fixtures: `default`, `disabled`, `refused`, `loading`, `error`, `overflow`.
 
 Actions: `back` (Cancel).
 
-<a id="guide-components-81"></a>
-### `components §81` Shop
+<a id="guide-components-82"></a>
+### `components §82` Shop
 
 A storefront: a band with a kicker over the title and the player's balances as chips, category tabs with their counts between the bumper caps, and a grid of offer tiles. A tile is its art in a well over a glow of its rarity, corner tags (Featured, and a badge the game words), its name and detail, and one ruled foot with its price in one or more currencies (a discount's old price struck before it, and named: 700 Gems, was 1,000). The game owns the catalogue, every price and every verdict (sold out, owned, unaffordable), and says when a purchase went through (a fountain of coins from the offer's art); the shop reports buy (a tile's key, which the game answers with a ShopConfirm), choosetab (a category's key), tabNext and tabPrev (E/Q, bumpers) and retry. A tile the game refused has no buy handler: it keeps the focus so a player can read it, is marked disabled (aria-disabled), dims its art and says why in words on its foot. The selected tile wears corner brackets. The grid fills the height it is given and scrolls inside it; narrow, it is two columns and the tabs scroll sideways.
 
@@ -1988,8 +2016,8 @@ Fixtures: `default`, `purchased`, `empty`, `loading`, `error`, `overflow`.
 
 Actions: `tabPrev` (Previous category), `tabNext` (Next category).
 
-<a id="guide-components-82"></a>
-### `components §82` RpgBackpack
+<a id="guide-components-83"></a>
+### `components §83` RpgBackpack
 
 A bag of items: a band with a kicker, the title and the purse, category tabs between the action's key caps, how full the bag is, a grid of item tiles and a footer with the carried weight. The game owns what a category holds, the order and every number; the bag reports choose (an item's key), choosetab (a category's key), tabNext and tabPrev. A tile drags onto another (a locked one stays put) and the bag reports move with { dragged, target }, the two items' keys. A tile shows its rarity as its bar along the foot and its tags; its stack, Equipped, New, Locked and Broken sit in its corners, each named in words for a screen reader, Broken also on the tile. The selected tile wears corner brackets. The grid fills the height it is given and scrolls inside it.
 
@@ -2021,8 +2049,8 @@ Fixtures: `default`, `empty`, `over`, `overflow`.
 
 Actions: `tabPrev` (Previous category), `tabNext` (Next category).
 
-<a id="guide-components-83"></a>
-### `components §83` Breadcrumbs
+<a id="guide-components-84"></a>
+### `components §84` Breadcrumbs
 
 A trail in type: dim links, faint chevrons, the current page bold on a lit underline. The trail wraps between crumbs, and a long current page takes a line of its own and wraps between its words. Reports choose (a crumb's key).
 
@@ -2042,8 +2070,8 @@ Fixtures: `default`, `long`.
 
 Actions: `choose` (Go back).
 
-<a id="guide-components-84"></a>
-### `components §84` Carousel
+<a id="guide-components-85"></a>
+### `components §85` Carousel
 
 Pages of art on the HUD plate: the current one ringed in the accent, its neighbours set back; the place is a row of leaning pips between cut arrow keys. Reports prev and next.
 
@@ -2065,8 +2093,8 @@ Fixtures: `default`, `empty`, `first`.
 
 Actions: `prev` (Previous), `next` (Next).
 
-<a id="guide-components-85"></a>
-### `components §85` RpgConversationBacklog
+<a id="guide-components-86"></a>
+### `components §86` RpgConversationBacklog
 
 The conversation's history: the title and Close, then the lines as cut cards — the speaker in gold small capitals, narration quiet and in italics, the line replaying washed gold with a gold bar — with Load earlier lines over them and Replay or Stop replay under a replayable one. Reports close, older, replay and stop (an entry's key). Answers the back action.
 
@@ -2092,8 +2120,8 @@ Fixtures: `default`, `empty`, `loading`, `playing`.
 
 Actions: `back` (Close history).
 
-<a id="guide-components-86"></a>
-### `components §86` RpgConversation
+<a id="guide-components-87"></a>
+### `components §87` RpgConversation
 
 A conversation across the foot of the screen: the speaker's portrait, name and line, and the player's numbered replies. Reports reply (a reply's key) and next (the Continue button, or confirm, while there are no replies). With a rate the line shows a few characters at a time by the world's tick (always whole to a screen reader) and reports revealed once it is whole; the game decides what a press before that does.
 
@@ -2127,8 +2155,8 @@ Fixtures: `default`, `line`, `controls`, `typing`, `auto`, `disabled`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-87"></a>
-### `components §87` RpgCrafting
+<a id="guide-components-88"></a>
+### `components §88` RpgCrafting
 
 A crafting station: a band with the station's name, the recipes as rows (the result's icon in a socket, its rarity on the row's edge and in its name, why it cannot be made in words), and beside them (under them when narrow) the selected recipe: its art large over a glow of its rarity, what it does and how many the player holds, the ingredients as have / need with a short one marked in words, the batch stepper with the cost, and Craft. The game decides every requirement; the panel reports choose, increase, decrease and craft, each with the recipe's key.
 
@@ -2158,8 +2186,8 @@ Pack slots: `Button.plate`, `Panel.frame`, `Row.frame`, `Row.frame.selected`, `S
 
 Fixtures: `default`, `empty`, `loading`, `busy`, `missing`.
 
-<a id="guide-components-88"></a>
-### `components §88` DataGrid
+<a id="guide-components-89"></a>
+### `components §89` DataGrid
 
 The HUD's smoked-glass plate: headings in small tracked capitals over a faint rule, rows dense and plain so the data reads first, figures condensed and tabular. The chosen row is washed in the accent from its leading edge. In a narrow shell each row becomes a two-line card: the first column and the last on one line, the rest as a caption under. Reports choose (a row's key) and retry.
 
@@ -2187,8 +2215,8 @@ Fixtures: `default`, `loading`, `error`, `empty`, `selected`.
 
 Actions: `choose` (Select), `retry` (Retry).
 
-<a id="guide-components-89"></a>
-### `components §89` RpgItemCard
+<a id="guide-components-90"></a>
+### `components §90` RpgItemCard
 
 One item in detail: its art large over a glow of its rarity, the rarity and kind as a kicker in the rarity's ink over the name, the headline figure large with its change against what is equipped, the other figures as rows (this, change, now), the lore under a rule of the rarity, and up to two buttons, with the reason the main one is refused in words. The game words every figure and decides the trend; the card reports equip (the main button, X or pad Y) and discard (the second button). It fills the height it is given: the figures and the lore scroll when needed; the buttons stay at its foot; the art and the name scroll with the figures. Narrow, the art sits in a socket beside the name and the rows drop the equipped column.
 
@@ -2221,8 +2249,8 @@ Fixtures: `default`, `plain`, `refused`.
 
 Actions: `details` (Equip).
 
-<a id="guide-components-90"></a>
-### `components §90` RpgLoot
+<a id="guide-components-91"></a>
+### `components §91` RpgLoot
 
 What a chest, a body or a reward holds: a band with the source's name and how many things it holds, one row per item (its icon in a socket and its rarity on the row's edge, the name in that colour over what it is and, when the game refuses it, why in words; the count on the name's line and Take), and Close beside Take all. The game decides what can be taken; the panel reports take (an item's key), takeAll and close (Close, or Escape and pad B anywhere in it). The rows scroll inside the height given.
 
@@ -2248,8 +2276,8 @@ Fixtures: `default`, `empty`, `loading`, `busy`, `error`.
 
 Actions: `back` (Close).
 
-<a id="guide-components-91"></a>
-### `components §91` Menu
+<a id="guide-components-92"></a>
+### `components §92` Menu
 
 A menu: a dense smoked plate with a lit top edge, its rows dim type that wash in the accent from a lit leading edge under the pointer, the keys or the focus, a shortcut on a dark key chip, a check drawn in the accent, the chosen radio a lit diamond, a destructive command in the danger ink and a disabled row faint. A submenu's rows show in place of the menu's under a back row, and a header or a separator parts the entries. Reports choose (an entry's key) and back.
 
@@ -2271,8 +2299,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Choose), `back` (Back).
 
-<a id="guide-components-92"></a>
-### `components §92` RpgQuestLog
+<a id="guide-components-93"></a>
+### `components §93` RpgQuestLog
 
 The quest list, grouped as the game groups it (main, side, finished): each group a gold label in small capitals behind a short gold rule (a finished group's quiet), each quest a row with its mark. The mark is a diamond: hollow, lit gold on the quest the HUD tracks, filled in the success colour once the quest is done. The selected row (the one in detail) is washed gold from its leading edge with a gold bar on it and a chevron toward the detail; a fresh update carries a New tag. Finished quests are struck and quiet. Reports choose (a quest's key) and track (X or pad Y on the focused quest, its key). It fills its height and scrolls inside it. Dropped against the .svelte: the chosen quest's name scrolling in place when it does not fit (it ends in an ellipsis like the others), and the compact touch/narrow row height tweak (one row height everywhere).
 
@@ -2293,8 +2321,8 @@ Fixtures: `default`, `empty`, `overflow`.
 
 Actions: `details` (Track).
 
-<a id="guide-components-93"></a>
-### `components §93` SplitView
+<a id="guide-components-94"></a>
+### `components §94` SplitView
 
 Two panes on the HUD plate, the divider between them a faint groove with its grip lit in the accent.
 
@@ -2317,8 +2345,8 @@ Fixtures: `default`.
 
 Actions: `resize` (Resize).
 
-<a id="guide-components-94"></a>
-### `components §94` TooltipCard
+<a id="guide-components-95"></a>
+### `components §95` TooltipCard
 
 An item's tooltip card: a dense smoked plate lit along its top in its rarity's colour, its icon in a socket of that colour, the title and the one-to-six rarity pips, its stats (label, figure, a signed delta in the better green or the worse red with its triangle, an added or removed stat a chip), the body, a footer line and the action hints with their key caps; what is equipped stands beside it on a plainer plate, and under it on a narrow screen. A long name or stat wraps between words. Read only.
 
@@ -2344,8 +2372,8 @@ Pack slots: `Chip.frame`, `Panel.frame`.
 
 Fixtures: `default`, `comparison`.
 
-<a id="guide-components-95"></a>
-### `components §95` RpgTrade
+<a id="guide-components-96"></a>
+### `components §96` RpgTrade
 
 A merchant: a band with the merchant's name, the Buy / Sell switch and the purse; an alert when a deal failed; the goods as rows (the item's icon in a socket, its rarity on the row's edge and in its name, its stock or why it cannot be had, and its price, a discount struck before it); and at the foot the selected good with its total, the balance after, and Buy or Sell. The game decides every price and verdict; the panel reports choose, switchMode, buy and sell, each with the good's key.
 
@@ -2372,8 +2400,8 @@ Pack slots: `Panel.frame`, `Row.frame`, `Row.frame.selected`.
 
 Fixtures: `default`, `empty`, `loading`, `sell`, `unavailable`.
 
-<a id="guide-components-96"></a>
-### `components §96` PuzzleBoosters
+<a id="guide-components-97"></a>
+### `components §97` PuzzleBoosters
 
 The booster tray: each booster a round socket with its art, how many the player holds on a tag at its foot and its name under it. The one the game has armed is lifted, ringed and tagged Armed; one the game will not take is disabled, its art dimmed, tagged in words (Unavailable), and one the player has none of shows a gold + where its count was. Reports choose (a booster's key; tap, click, Enter or pad A); the game decides whether it applies, spends it and arms or fires it. Many boosters scroll across the tray; a narrow tray wraps them onto more rows.
 
@@ -2391,8 +2419,8 @@ Fixtures: `default`, `selected`, `disabled`, `empty`, `overflow`.
 
 Actions: `choose` (Use).
 
-<a id="guide-components-97"></a>
-### `components §97` PuzzleGoals
+<a id="guide-components-98"></a>
+### `components §98` PuzzleGoals
 
 The in-level HUD: what limits the level (moves or time left) in a cut well, amber with a tag in words when the game says it runs low; the goals as sockets with what is left of each, its name under it and a check once met; and the score over a leaning bar with the game's star marks, lit up to its progress. It draws what the game counts; it decides nothing. Where it is given less than a phone's width (its own, not the screen's) the moves and the score share the top line and the goals wrap under them.
 
@@ -2413,8 +2441,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `time`, `low`, `lowTime`, `done`, `empty`, `overflow`.
 
-<a id="guide-components-98"></a>
-### `components §98` PuzzleLevelPath
+<a id="guide-components-99"></a>
+### `components §99` PuzzleLevelPath
 
 A scrolling level path over the game's own map art, which the component leaves at full brightness: chapters in order, each a glass header with its name, its stars and a gold line of them, then its levels as discs on a road, each at the place across the path the game gives (x). The road is lit gold up to the level to play and pale past it. A disc shows its number, a lock when it is locked, its stars on a dark capsule at its foot once done, and the Play plate under the current one, the road leaving only below it after a gap; the chosen one is ringed and says Selected, an open one says Open. Reports choose (a level's key; a locked level is disabled and sends nothing) and, with X or pad Y on the focused disc, details. The game decides what is open and counts the stars. The path opens scrolled to the level to play, each chapter's header held at the top while its levels scroll under it.
 
@@ -2434,8 +2462,8 @@ Fixtures: `default`, `empty`, `selected`, `locked`, `overflow`.
 
 Actions: `details` (Play).
 
-<a id="guide-components-99"></a>
-### `components §99` PuzzleSummary
+<a id="guide-components-100"></a>
+### `components §100` PuzzleSummary
 
 The end of a level: won or failed, the level's name, the stars on the shared StarBar with the stars the game awarded in words, a new-best badge, the score breakdown the game words, and the next steps. Reports next (only when canNext), retry and menu (also Escape or pad B). The game computes the score, the stars and what comes next.
 
@@ -2464,8 +2492,8 @@ Fixtures: `default`, `full`, `lose`, `empty`, `overflow`.
 
 Actions: `back` (Map).
 
-<a id="guide-components-100"></a>
-### `components §100` RacingBanner
+<a id="guide-components-101"></a>
+### `components §101` RacingBanner
 
 The race's calls at the top centre: a plate of smoked glass with a lit top edge in the HUD's accent, the call in widely set capitals (the count, GO, the final lap, the finish with the player's place, or the game's own words) and a line under it. The game steps the call and its id (at); a new id plays the entrance again. Announced as a status.
 
@@ -2484,8 +2512,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `countdown`, `go`, `finalLap`, `finish`, `overflow`.
 
-<a id="guide-components-101"></a>
-### `components §101` RacingBonus
+<a id="guide-components-102"></a>
+### `components §102` RacingBonus
 
 Feedback above the road at the top centre: a meter (the slipstream) as a word over a bar in the HUD's accent, and the points a drift or a chain earns, large and slanted, with what earns them in gold under it. The game decides the meter and every figure; read only.
 
@@ -2503,8 +2531,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `meter`, `points`, `overflow`.
 
-<a id="guide-components-102"></a>
-### `components §102` RacingBoost
+<a id="guide-components-103"></a>
+### `components §103` RacingBoost
 
 A boost meter (nitro, ERS) beside the tachometer: its picture in a cut tile, the name with the key that fires it, and a leaning bar cut into cells, glowing while it fires. The game owns the store and when it fires; read only.
 
@@ -2524,8 +2552,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `firing`, `empty`, `overflow`.
 
-<a id="guide-components-103"></a>
-### `components §103` RacingCar
+<a id="guide-components-104"></a>
+### `components §104` RacingCar
 
 The car's condition at the bottom left: the tyres as tags two to a line, each worded and inked by its wear, the fuel as a thin bar with the game's words after it (danger and Fuel low when it runs low), and Box this lap when the team calls the car in. Read only.
 
@@ -2543,8 +2571,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `fuel`, `fuelLow`, `overflow`.
 
-<a id="guide-components-104"></a>
-### `components §104` RacingGarage
+<a id="guide-components-105"></a>
+### `components §105` RacingGarage
 
 Choosing a car: the shown car large (its picture, name and class) with arrows to step the cars, a strip of tiles to jump to one, the shown car's ratings as bars, and one action for it: Drive when owned, Buy with its price when it can be had, a disabled Locked with the reason when it cannot, Driving when it is already the player's car. The game owns prices, unlocking and every rating; the garage reports the car's key and Back.
 
@@ -2569,8 +2597,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`,
 
 Fixtures: `default`, `selected`, `buy`, `short`, `locked`, `empty`, `overflow`.
 
-<a id="guide-components-105"></a>
-### `components §105` RacingLapHud
+<a id="guide-components-106"></a>
+### `components §106` RacingLapHud
 
 The race's place and clock at the top left: the place large and slanted over the field's size, the lap on a lit plate and the places gained beside it; under them the lap time running, the last and best laps and the split delta on a green or red tag. Every figure and time comes from the game, formatted; read only.
 
@@ -2599,8 +2627,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `leading`, `last`, `grid`, `checkpoint`, `overflow`.
 
-<a id="guide-components-106"></a>
-### `components §106` RacingPedals
+<a id="guide-components-107"></a>
+### `components §107` RacingPedals
 
 The pedals at the bottom left: throttle and brake as two leaning upright wells filled from the foot, green and red, each named under it. Read only.
 
@@ -2615,8 +2643,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `braking`, `empty`, `overflow`.
 
-<a id="guide-components-107"></a>
-### `components §107` RacingResults
+<a id="guide-components-108"></a>
+### `components §108` RacingResults
 
 The classification after the flag: place, driver, time or gap, points and the fastest-lap mark per row, the player's row marked You, cars that did not finish or were disqualified named so. The game computes every time and point. Continue and Retry (also the details action, X or pad Y) report once; a Retry the game refuses is disabled.
 
@@ -2637,8 +2665,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`,
 
 Fixtures: `default`, `empty`, `disabled`, `overflow`.
 
-<a id="guide-components-108"></a>
-### `components §108` RacingStandings
+<a id="guide-components-109"></a>
+### `components §109` RacingStandings
 
 The position tower at the left edge: one leaning glass row per car in the order the game ranks them, the place in a box, the car's colour on a stripe, the name and the gap (Leader for the leader). The player's row is lit in the HUD's accent; pitting, retired and finished cars carry a word on a tag. On a phone it collapses to the leader and the rows either side of the player. Read only.
 
@@ -2655,8 +2683,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `leading`, `last`, `empty`, `single`, `finished`, `overflow`.
 
-<a id="guide-components-109"></a>
-### `components §109` RacingTelemetry
+<a id="guide-components-110"></a>
+### `components §110` RacingTelemetry
 
 The tachometer at the bottom right: the revs as a white arc round a dark glass face with the red zone at its end, the dial's figures inside the arc, and on the face the shift lights, the speed in the game's units and the gear on a lit tag with the gearbox's mode. The game decides every figure, the lights and the shift cue; read only.
 
@@ -2679,8 +2707,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `redline`, `pit`, `reverse`, `idle`, `overflow`.
 
-<a id="guide-components-110"></a>
-### `components §110` RacingTrackMap
+<a id="guide-components-111"></a>
+### `components §111` RacingTrackMap
 
 The track map at the top right: the circuit as a light line over a dark band, the lap driven so far lit in the HUD's accent, the start line, the other cars as dots in their colours and the player's car as an arrow over them; the track's name and length under it. The game gives the shape and every position in the map's box; read only.
 
@@ -2701,8 +2729,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `start`, `overflow`.
 
-<a id="guide-components-111"></a>
-### `components §111` RhythmChain
+<a id="guide-components-112"></a>
+### `components §112` RhythmChain
 
 The score chain: a lit plate with the multiplier, and beside it the steps to the next one as leaning pips. The game counts both; read only.
 
@@ -2719,8 +2747,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `empty`, `top`, `overflow`.
 
-<a id="guide-components-112"></a>
-### `components §112` RhythmDifficulty
+<a id="guide-components-113"></a>
+### `components §113` RhythmDifficulty
 
 Choosing a chart: one leaning tile per difficulty with its tier's colour along its top, the tier's name, its level as a large figure, the player's best grade on a tag beside the best score, and Locked or Selected in words. A tile reports choose with its key; a locked chart is disabled and reports nothing. The game owns the charts, unlocking, grades and scores.
 
@@ -2737,8 +2765,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `selected`, `disabled`, `empty`, `overflow`.
 
-<a id="guide-components-113"></a>
-### `components §113` RhythmGauge
+<a id="guide-components-114"></a>
+### `components §114` RhythmGauge
 
 A tall gauge at a screen edge, cut into ten cells and leaning toward the play field: the run's life (green; danger red with a pulsing rim under the game's mark, Danger and Failed in words) or its fever charge (pink; Ready and the key that spends it). Its height is the space the page gives it. The game owns the value and every verdict; read only.
 
@@ -2758,8 +2786,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `fever`, `ready`, `danger`, `failed`, `overflow`.
 
-<a id="guide-components-114"></a>
-### `components §114` RhythmJudgement
+<a id="guide-components-115"></a>
+### `components §115` RhythmJudgement
 
 The play field's centre: the running combo as the hero figure with its word (Combo broken when it breaks, Full combo or All perfect while the run holds one), and under it the last hit's judgement, each in its own lit colour, with Early or Late and the offset. A new hit id pops the word and the count again. The game owns timing windows, judging and counting; this only shows what it was told. Read only; not a live region.
 
@@ -2780,8 +2808,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `great`, `good`, `miss`, `overflow`.
 
-<a id="guide-components-115"></a>
-### `components §115` RhythmLaneKeys
+<a id="guide-components-116"></a>
+### `components §116` RhythmLaneKeys
 
 The lanes' key caps under the judgement line, spread across the field's width, one per lane, each lit while the player holds it. The game reads input and names the keys; read only.
 
@@ -2793,8 +2821,8 @@ The lanes' key caps under the judgement line, spread across the field's width, o
 
 Fixtures: `default`, `four`, `overflow`.
 
-<a id="guide-components-116"></a>
-### `components §116` RhythmResults
+<a id="guide-components-117"></a>
+### `components §117` RhythmResults
 
 After the song: the grade, Cleared or Failed, the score with the old best and New best, Full combo or All perfect, max combo and accuracy, and the judgement tally. Retry (disabled when the game refuses it) and Next (also Escape, pad B) report once. The game computes every figure, grade and verdict.
 
@@ -2820,8 +2848,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`,
 
 Fixtures: `default`, `failed`, `fullCombo`, `allPerfect`, `disabled`, `empty`, `overflow`.
 
-<a id="guide-components-117"></a>
-### `components §117` RhythmScoreHud
+<a id="guide-components-118"></a>
+### `components §118` RhythmScoreHud
 
 The run's figures over the play field, set against the screen's end: the score as the hero figure, the accuracy with the grade it is on course for, and the player's best with the gap to it. The game owns every figure; read only. Pair it with RhythmGauge for life and fever and RhythmSongProgress for the song's progress.
 
@@ -2838,8 +2866,8 @@ Pack slots: `Chip.frame`, `Count.roll`, `Plate.frame`.
 
 Fixtures: `default`, `ahead`, `first`, `start`, `overflow`.
 
-<a id="guide-components-118"></a>
-### `components §118` RhythmSongPlate
+<a id="guide-components-119"></a>
+### `components §119` RhythmSongPlate
 
 The song in play, at the screen's top corner: the jacket with a lit edge, the title, the artist and tempo, the chart's chip in its tier's colour with its level, and the modifiers in play. Read only.
 
@@ -2860,8 +2888,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `plain`, `master`, `special`, `overflow`.
 
-<a id="guide-components-119"></a>
-### `components §119` RhythmSongProgress
+<a id="guide-components-120"></a>
+### `components §120` RhythmSongProgress
 
 The song's progress as a thin lit line along the screen's top edge, and the time played over the length riding under its played end. The game keeps time; read only.
 
@@ -2875,8 +2903,8 @@ The song's progress as a thin lit line along the screen's top edge, and the time
 
 Fixtures: `default`, `start`, `end`, `bare`, `overflow`.
 
-<a id="guide-components-120"></a>
-### `components §120` RhythmSongSelect
+<a id="guide-components-121"></a>
+### `components §121` RhythmSongSelect
 
 Choosing a song: the game's list (jacket, title, artist, BPM, with New, Cleared, Locked, Selected and Previewing named in words) beside the selected song's details. Each song is a cut plate of dark glass; the selected one is washed in the HUD's accent and stepped in. A row reports choose with its key; Preview (the button, or the details action on a row) reports preview with its key. A locked song is a disabled row and reports nothing. The game owns unlocking, the selection, the preview audio and the loading; status shows its loading and error states, and the error state offers Retry (retry).
 
@@ -2897,8 +2925,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`,
 
 Fixtures: `default`, `selected`, `disabled`, `empty`, `loading`, `error`, `overflow`.
 
-<a id="guide-components-121"></a>
-### `components §121` RhythmTiming
+<a id="guide-components-122"></a>
+### `components §122` RhythmTiming
 
 How the run is being judged, at a corner of the field: the tally so far, each judgement in its colour, and under it the timing scale from Early to Late with the beat at its centre and the latest hits as ticks, the newest brightest. The game judges and counts; read only.
 
@@ -2913,8 +2941,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `early`, `empty`, `overflow`.
 
-<a id="guide-components-122"></a>
-### `components §122` RpgCharacter
+<a id="guide-components-123"></a>
+### `components §123` RpgCharacter
 
 A character sheet: a portrait with name and class, two columns of equipment slots either side of the full figure, and the attributes in two columns beneath. The game owns what fits where; the sheet reports choose (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 
@@ -2939,8 +2967,8 @@ Pack slots: `Button.plate`, `Panel.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-123"></a>
-### `components §123` RpgCombo
+<a id="guide-components-124"></a>
+### `components §124` RpgCombo
 
 The combo counter beside the fight: the hits as a large slanted figure with its word, the window still to run as a decay bar under it and the damage multiplier the chain gives. The game owns the chain; read only.
 
@@ -2955,8 +2983,8 @@ The combo counter beside the fight: the hits as a large slanted figure with its 
 
 Fixtures: `default`, `fading`, `empty`, `overflow`.
 
-<a id="guide-components-124"></a>
-### `components §124` RpgCommands
+<a id="guide-components-125"></a>
+### `components §125` RpgCommands
 
 A turn's commands as a row of plates, each an icon over its label; the selected one is the primary plate. Reports choose (a command's key).
 
@@ -2972,8 +3000,8 @@ Pack slots: `Button.plate.…`, `Panel.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-125"></a>
-### `components §125` RpgCompanions
+<a id="guide-components-126"></a>
+### `components §126` RpgCompanions
 
 The leader's companions as small portraits with health bars, a companion under the low share turning to danger. Read only.
 
@@ -2988,8 +3016,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `fallen`, `critical`, `overflow`.
 
-<a id="guide-components-126"></a>
-### `components §126` RpgEffects
+<a id="guide-components-127"></a>
+### `components §127` RpgEffects
 
 The buffs and debuffs on the leader, under the vitals: a row of HudEffect tiles. The row only spaces them; a game that wants another arrangement lays the tile out itself. The game owns every timer; read only.
 
@@ -3003,8 +3031,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `untimed`, `expiring`, `overflow`.
 
-<a id="guide-components-127"></a>
-### `components §127` RpgEnemyInfo
+<a id="guide-components-128"></a>
+### `components §128` RpgEnemyInfo
 
 The targeted enemy: name, portrait, level, a health bar with its figure and its status effects. Read only.
 
@@ -3023,8 +3051,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-128"></a>
-### `components §128` RpgExperience
+<a id="guide-components-129"></a>
+### `components §129` RpgExperience
 
 The experience line across the screen's foot: a thin violet line lit to the share of the way to the next level, with the level and that share in small capitals over its start, inset from the screen's edge as the HUD is. Read only.
 
@@ -3039,8 +3067,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `empty`, `full`.
 
-<a id="guide-components-129"></a>
-### `components §129` RpgHints
+<a id="guide-components-130"></a>
+### `components §130` RpgHints
 
 Input hints at the screen's foot: a row of key caps, each with what it does in small tracked capitals. The row only spaces them; a game lays a hint out anywhere else itself. Read only; hidden under a touch screen.
 
@@ -3054,8 +3082,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `overflow`.
 
-<a id="guide-components-130"></a>
-### `components §130` RpgHits
+<a id="guide-components-131"></a>
+### `components §131` RpgHits
 
 Damage and healing figures beside the fight: a critical hit's figure largest, gold and slanted under its call, older figures stepping down and away, a burn in an ember ink with its word, a heal in green. The game owns every figure and where the page puts them; read only.
 
@@ -3069,8 +3097,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `heal`, `miss`, `overflow`.
 
-<a id="guide-components-131"></a>
-### `components §131` RpgLeader
+<a id="guide-components-132"></a>
+### `components §132` RpgLeader
 
 The party leader's vitals at the screen's top corner, built from the RPG HUD's blocks: a portrait in a large octagon, the name and level, health as a figure over its most, and three bars: a fat health bar that leaves a warm ghost when it drops and turns to danger when low, a mana bar and a stamina bar cut into cells. Read only.
 
@@ -3093,8 +3121,8 @@ The party leader's vitals at the screen's top corner, built from the RPG HUD's b
 
 Fixtures: `default`, `full`, `low`, `critical`, `empty`, `overflow`.
 
-<a id="guide-components-132"></a>
-### `components §132` RpgLockOn
+<a id="guide-components-133"></a>
+### `components §133` RpgLockOn
 
 The lock-on reticle the page centres on the locked target: lit arcs round it with a glow in the HUD's accent. The game decides what is locked and where it stands on screen; read only.
 
@@ -3106,8 +3134,8 @@ The lock-on reticle the page centres on the locked target: lit arcs round it wit
 
 Fixtures: `default`, `empty`.
 
-<a id="guide-components-133"></a>
-### `components §133` RpgLootFeed
+<a id="guide-components-134"></a>
+### `components §134` RpgLootFeed
 
 The loot feed low on the screen's side: a column of HudLootEntry blocks, newest first, each an icon, the item's name, its rarity on a tag and the count gained on a dark glass with its edge tinted by rarity. Read only.
 
@@ -3119,8 +3147,8 @@ The loot feed low on the screen's side: a column of HudLootEntry blocks, newest 
 
 Fixtures: `default`, `rare`, `overflow`.
 
-<a id="guide-components-134"></a>
-### `components §134` RpgMenuBar
+<a id="guide-components-135"></a>
+### `components §135` RpgMenuBar
 
 The menu's top bar: its screens as tabs and a close button. Reports choose (a screen's key), tabPrev, tabNext and close (the button, or the tabPrev, tabNext and back input actions).
 
@@ -3139,8 +3167,8 @@ Pack slots: `Button.plate`, `Tab.indicator`.
 
 Fixtures: `default`.
 
-<a id="guide-components-135"></a>
-### `components §135` RpgMinimap
+<a id="guide-components-136"></a>
+### `components §136` RpgMinimap
 
 The minimap at the screen's top corner: the map in a dark round well with a lit ring, the party, the foes and the objective as blips, the player's arrow at the centre turned to the heading and N on the ring's top; the place under it with the time of day on a tag. Read only.
 
@@ -3161,8 +3189,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `empty`, `edge`, `overflow`.
 
-<a id="guide-components-136"></a>
-### `components §136` RpgParty
+<a id="guide-components-137"></a>
+### `components §137` RpgParty
 
 The party as a row of portrait cards: a level seal, the portrait, the name, and a health and a mana HudBar with their figures, filled in the page's health and mana colours. Reports choose (a member's key). The cards share the width evenly.
 
@@ -3179,8 +3207,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `empty`.
 
-<a id="guide-components-137"></a>
-### `components §137` RpgPlaceCard
+<a id="guide-components-138"></a>
+### `components §138` RpgPlaceCard
 
 A place picked on the map, on dark glass: its picture at the start fading into the glass, its name in the HUD's title type over a gold rule, a line about it, and two buttons, Mark (a lit ghost plate) and Fast travel (the gold primary plate). Reports mark (marking or unmarking) and travel (fast travel). Narrow the line about it is left out, so the name and the buttons keep their room.
 
@@ -3200,8 +3228,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Panel.frame`.
 
 Fixtures: `default`, `marked`.
 
-<a id="guide-components-138"></a>
-### `components §138` RpgPrompt
+<a id="guide-components-139"></a>
+### `components §139` RpgPrompt
 
 What the player can do now, over the ability bar: a key cap and the action in words (a finisher, an interaction). The game decides when it shows and what the input does; read only.
 
@@ -3218,8 +3246,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `disabled`, `overflow`.
 
-<a id="guide-components-139"></a>
-### `components §139` RpgQuestDetail
+<a id="guide-components-140"></a>
+### `components §140` RpgQuestDetail
 
 One quest: its kind in gold small capitals over its name on the heading band (over the scenery, shaded into the glass, when the game gives one), the story so far, its objectives as stages with their tasks on a rail under them, and its rewards as cut chips, each with its icon in an octagon socket (one with a detail, a unique reward, lit gold). A done objective is struck with its diamond filled in the success colour; the first stage not done is lit gold. The body scrolls inside the frame's height, fading out above the actions (Show on map, Track or Stop tracking), which stay at its foot; they report locate and track. Track is the primary action; once the quest is tracked it reads Stop tracking on a quiet secondary button. With neither action it is read only.
 
@@ -3243,8 +3271,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`.
 
 Fixtures: `default`, `long`.
 
-<a id="guide-components-140"></a>
-### `components §140` RpgSkills
+<a id="guide-components-141"></a>
+### `components §141` RpgSkills
 
 The ability bar at the foot of the screen, a row of HudSlot blocks: the consumables in smaller slots, set apart before the skills, then each skill, and the ultimate, larger, at the end. The slot draws itself (its cooldown, cost, charges and key cap are HudSlot's); the bar only sizes and spaces them. A game that wants another bar lays HudSlot out itself. The game owns every cooldown, cost and charge; read only.
 
@@ -3258,8 +3286,8 @@ The bar's per-kind sizes (a smaller item slot, a larger ultimate, the compact sh
 
 Fixtures: `default`, `cooling`, `unaffordable`, `overflow`.
 
-<a id="guide-components-141"></a>
-### `components §141` RpgStats
+<a id="guide-components-142"></a>
+### `components §142` RpgStats
 
 A character's figures in two columns of grouped rows, each an icon, a label and a value. Read only; fills its height and scrolls inside it.
 
@@ -3275,8 +3303,8 @@ Pack slots: `Panel.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-142"></a>
-### `components §142` RpgTurnOrder
+<a id="guide-components-143"></a>
+### `components §143` RpgTurnOrder
 
 The initiative: round portraits in acting order, the one acting first and ringed, between two end flourishes, and a round plate on a rule under them. All portraits share the width, so five fit a phone. Reports nothing.
 
@@ -3291,8 +3319,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-143"></a>
-### `components §143` RpgVitals
+<a id="guide-components-144"></a>
+### `components §144` RpgVitals
 
 A character's vitals: a round portrait with a level badge and health and mana bars beside it. large is the player's plate, with the figures on the bars; compact is a party row. Read only.
 
@@ -3314,8 +3342,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `compact`.
 
-<a id="guide-components-144"></a>
-### `components §144` RpgWorldMap
+<a id="guide-components-145"></a>
+### `components §145` RpgWorldMap
 
 A map with its markers, a one-line legend and an optional caption. The map's art is the screen: no panel lies over it, only each marker's name on a small cut plate, the legend and the caption. A marker's kind is its shape as well as its colour (a quest a gold diamond, a waypoint a cyan ring, danger a red triangle, the player a cyan disc with an arrow); its name is white at any kind. The chosen marker is ringed and larger. The map is drawn to cover the box it is given, times zoom and moved by panX and panY; markers sit at fractions of it, keep their size at any zoom and report choose (a marker's key). The player's marker is not a button target. The game owns the zoom and the pan: the map reports zoom (the wheel, with deltaY), pinch (two touches, with scale), and grab, pan and release (a press, its moves and its end, each with x and y in the map's box), and draws what the game sets.
 
@@ -3341,8 +3369,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `places`.
 
-<a id="guide-components-145"></a>
-### `components §145` ShooterAbilities
+<a id="guide-components-146"></a>
+### `components §146` ShooterAbilities
 
 The ability bar at the foot of the screen: each ability in an octagon with a lit edge, its cooldown a dark sweep over the art with the seconds left, its charges on a tag and its key cap under it; the ultimate in a larger hexagon inside a ring that fills with its charge. The game owns every cooldown and charge; read only. Every part is an Ability pack slot (listed below), so a theme sets its size, shape, ring, glow, sweep and type.
 
@@ -3373,8 +3401,8 @@ Pack slots: `Ability.box`, `Ability.box.ultimate`, `Ability.chip.charges`, `Abil
 
 Fixtures: `default`, `ready`, `cooling`, `overflow`.
 
-<a id="guide-components-146"></a>
-### `components §146` CombatHud
+<a id="guide-components-147"></a>
+### `components §147` CombatHud
 
 The shooter's whole HUD: the reticle and the hit directions centred, the killfeed at the top's end, the vitals at the bottom's start and the ammunition at the bottom's end. The edges sit inside a fixed inset, so a phone's notch and home bar are the caller's (the svelte's safe-area insets and its right-to-left mirror are dropped), and a phone's compact reflow keeps the corners.
 
@@ -3404,8 +3432,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-147"></a>
-### `components §147` ShooterDamage
+<a id="guide-components-148"></a>
+### `components §148` ShooterDamage
 
 Damage the player deals, beside the reticle: the newest hit's figure largest with its word (Headshot) over it, the older ones stepping down and away from the aim. Read only. The rows' pop-in and fade-out transitions have no TSX surface and are dropped.
 
@@ -3427,8 +3455,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `shield`, `kill`, `overflow`.
 
-<a id="guide-components-148"></a>
-### `components §148` ShooterEffects
+<a id="guide-components-149"></a>
+### `components §149` ShooterEffects
 
 The effects on the player, over the vitals: each a small tile with two corners cut, its edge green for a boon and red for a harm, the time already run as a dark sweep round its art and its time or stacks on a tag under it. The game owns every timer; read only. The tiles' cut corners have no TSX surface: they are rounded ones.
 
@@ -3454,8 +3482,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `untimed`, `overflow`.
 
-<a id="guide-components-149"></a>
-### `components §149` Loadout
+<a id="guide-components-150"></a>
+### `components §150` Loadout
 
 A loadout screen over the scene: the title in large condensed capitals, a category's name over a rule, each item a cut plate of smoked glass (the chosen one ringed in the accent and washed in it), Equipped on a green tag, the price in gold; names wrap on whole words. Approximations: the chosen wash is flat and keeps no rim, the Equipped tag's sheen is dropped, the scroll fade at the list's foot is dropped, and the safe-area padding and short-screen reflow are the caller's.
 
@@ -3495,8 +3523,8 @@ Pack slots: `Button.plate`, `Button.plate.primary`, `Chip.frame`, `Panel.frame`,
 
 Fixtures: `default`.
 
-<a id="guide-components-150"></a>
-### `components §150` ShooterObjectives
+<a id="guide-components-151"></a>
+### `components §151` ShooterObjectives
 
 The objectives at the screen's top corner: a heading in the HUD's accent, the objective in play lit with its progress on a tag, the others dimmed under it with theirs (a phone shows the one in play alone). Read only. The tags' scrolling overflow (the svelte's -og-scroll marquee) has no TSX surface: long values truncate.
 
@@ -3520,8 +3548,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `one`, `empty`, `overflow`.
 
-<a id="guide-components-151"></a>
-### `components §151` ShooterPickups
+<a id="guide-components-152"></a>
+### `components §152` ShooterPickups
 
 The pickup feed lower on the screen's side: each row an icon, the item's name and the count gained on a dark glass that fades toward the middle, its edge at the screen's side tinted by rarity. Read only. A row the For removes fades out on exit: by itself; the rows' FLIP reflow (the svelte's animate:flip) has no TSX surface and is dropped, as is the row's right-to-left mirror.
 
@@ -3546,8 +3574,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `epic`, `overflow`.
 
-<a id="guide-components-152"></a>
-### `components §152` ShooterPrompt
+<a id="guide-components-153"></a>
+### `components §153` ShooterPrompt
 
 What the player can do with what is in front of them, under the aim: the key cap and the action in words. The game decides when it shows and what the input does; read only. The key cap's scrolling overflow (the svelte's -og-scroll marquee) has no TSX surface: long values truncate.
 
@@ -3564,8 +3592,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `disabled`, `empty`, `overflow`.
 
-<a id="guide-components-153"></a>
-### `components §153` ShooterRadar
+<a id="guide-components-154"></a>
+### `components §154` ShooterRadar
 
 A round radar: the map turned so north stays up around the player's point, the player's arrow by its heading and the blips the game hands it, clipped at the edge. Read only.
 
@@ -3594,8 +3622,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `empty`, `edge`.
 
-<a id="guide-components-154"></a>
-### `components §154` ShooterRound
+<a id="guide-components-155"></a>
+### `components §155` ShooterRound
 
 The round on a plate lit along its top, its time left beside it, and the score with the player's side in its blue against the other's red. The game owns the clock and the score; read only. The plate wears the pack's cut and keeps no rim or urgent glow (a cut takes one fill).
 
@@ -3613,8 +3641,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `urgent`, `clock`, `overflow`.
 
-<a id="guide-components-155"></a>
-### `components §155` ShooterSquad
+<a id="guide-components-156"></a>
+### `components §156` ShooterSquad
 
 The squad at the screen's top corner: each squadmate's portrait in an octagon, the name and a state in words, a thin shield bar cut into cells over a thin health bar with its ghost. The game owns every value and state; read only. Approximations: the portrait's octagon cut is rounded, the out state's grey-out is opacity, the cells' mask is hairline dividers, and a phone's side-by-side reflow keeps the plate's stack.
 
@@ -3644,8 +3672,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `down`, `empty`, `overflow`.
 
-<a id="guide-components-156"></a>
-### `components §156` ShooterVitals
+<a id="guide-components-157"></a>
+### `components §157` ShooterVitals
 
 The player's vitals at the screen's bottom corner: the portrait in an octagon with a lit edge, the name and level, health as a figure over its most, a shield bar cut into cells over a fat health bar that leaves a warm ghost when it drops and turns to danger when low. The game owns every value; read only. Approximations: the portrait's octagon cut is rounded and the cells' mask is hairline dividers.
 
@@ -3668,8 +3696,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `full`, `low`, `critical`, `noshield`, `overflow`.
 
-<a id="guide-components-157"></a>
-### `components §157` StrategyAlerts
+<a id="guide-components-158"></a>
+### `components §158` StrategyAlerts
 
 Alerts and notices at the top left under the resources: one feed row each, newest first, lit from the edge it hangs on, a mark and an edge in danger, done or info, the game's words and the key that jumps to it; an older notice set back. The game owns which alerts stand and for how long; read only.
 
@@ -3681,8 +3709,8 @@ Alerts and notices at the top left under the resources: one feed row each, newes
 
 Fixtures: `default`, `info`, `overflow`.
 
-<a id="guide-components-158"></a>
-### `components §158` StrategyClock
+<a id="guide-components-159"></a>
+### `components §159` StrategyClock
 
 The match clock at the top right: what it counts (Day 3), the time large and the game's speed on a tag, or Paused. The game owns the time and the speed; read only.
 
@@ -3699,8 +3727,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `paused`, `empty`, `overflow`.
 
-<a id="guide-components-159"></a>
-### `components §159` StrategyCommands
+<a id="guide-components-160"></a>
+### `components §160` StrategyCommands
 
 The command card at the bottom right: abilities, orders and buildings as square tiles four to a row, each its picture with a lit edge, the hotkey in its corner, a cooldown as a dark sweep with the seconds left, a command that cannot be paid for greyed with its price on a red tag, a disabled one greyed, the order in hand lit; the info card of the command in focus over the grid (its name and key, what it does, its price, cooldown and when it is ready, or why it cannot be used). Reports command (the tile's key; a disabled or unaffordable tile sends nothing); the game owns every cost, cooldown and rule.
 
@@ -3716,8 +3744,8 @@ Pack slots: `Button.plate`, `Chip.frame`, `Panel.frame`.
 
 Fixtures: `default`, `unaffordable`, `cooling`, `overflow`.
 
-<a id="guide-components-160"></a>
-### `components §160` StrategyGroups
+<a id="guide-components-161"></a>
+### `components §161` StrategyGroups
 
 The control groups over the selection: one small plate each with its key cap and the units it holds, the group selected now lit; a quick pick (the idle villagers) may carry a picture, its count in gold while it wants the player. Reports pick (the group's key); the game owns the groups.
 
@@ -3732,8 +3760,8 @@ Pack slots: `Button.plate`.
 
 Fixtures: `default`, `idle`, `overflow`.
 
-<a id="guide-components-161"></a>
-### `components §161` StrategyMinimap
+<a id="guide-components-162"></a>
+### `components §162` StrategyMinimap
 
 The minimap at the bottom left: the whole map square in a lit-edged tile with two corners cut, your units and buildings, your allies' and your foes' as dots in their colours (a base larger, a resource a gold diamond), the camera's view as a white frame and each alert a red ring. The game gives every position on the map, 0 to 1; read only.
 
@@ -3753,8 +3781,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `allies`, `empty`, `overflow`.
 
-<a id="guide-components-162"></a>
-### `components §162` StrategyQueue
+<a id="guide-components-163"></a>
+### `components §163` StrategyQueue
 
 A production queue as one row: what produces in small capitals, the order in production as a larger tile with a dark sweep for what is still to run and its time left, the orders waiting as smaller tiles (a stack's count on a tag), the free places as empty tiles, the count over the limit, and Paused, Blocked with the reason, or Queue full as words. Reports cancel (a tile's key); the game owns costs, times, refunds and the limit.
 
@@ -3773,8 +3801,8 @@ Pack slots: `Button.plate`, `Chip.frame`.
 
 Fixtures: `default`, `blocked`, `empty`, `full`, `paused`, `overflow`.
 
-<a id="guide-components-163"></a>
-### `components §163` StrategyResources
+<a id="guide-components-164"></a>
+### `components §164` StrategyResources
 
 The resource bar at the top left: each stockpile's picture in a cut tile, its amount large (a ceiling after it, dim, as the population's), and its income under it, green while it grows and red while it drains, or the game's word (Near cap) in gold at a limit; the age or tier on a lit tag. The game owns every figure, rate and limit; read only.
 
@@ -3789,8 +3817,8 @@ Pack slots: `Chip.frame`, `Plate.frame`.
 
 Fixtures: `default`, `tier`, `capped`, `empty`, `overflow`.
 
-<a id="guide-components-164"></a>
-### `components §164` StrategySelection
+<a id="guide-components-165"></a>
+### `components §165` StrategySelection
 
 The selection panel at the foot: the portrait in a tile with a lit edge, its health as a bar and in figures under it; the name large with how many are selected, its class line in small capitals, what it is doing and its stats on tags; and every unit selected as a card with its health, the focused one lit. Reports choose (a card's key: show that unit or subgroup). The game owns every figure and what the panel shows.
 
@@ -3818,8 +3846,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`, `single`, `empty`, `groups`, `dense`, `overflow`.
 
-<a id="guide-components-165"></a>
-### `components §165` StrategyTower
+<a id="guide-components-166"></a>
+### `components §166` StrategyTower
 
 A tower's inspector: its picture, name and level, its current stats with the value after the next upgrade where the game gives one, the upgrade paths (tier of tiers, the next tier's cost, a state word: affordable, too costly, locked with the reason, maxed) and Sell with what it returns. Reports upgrade (the path's key; only an affordable path is enabled) and sell. The game owns prices, refunds, stats and what is unlocked.
 
@@ -3842,8 +3870,8 @@ Pack slots: `Button.plate`, `Button.plate.…`, `Chip.frame`, `Panel.frame`.
 
 Fixtures: `default`, `maxed`, `disabled`, `empty`, `overflow`.
 
-<a id="guide-components-166"></a>
-### `components §166` StrategyWave
+<a id="guide-components-167"></a>
+### `components §167` StrategyWave
 
 The wave readout at the top right: a plate whose edge is lit in danger while a wave comes or fights, its picture, Wave n (of N) and its name in red capitals, the countdown with a bar of the wait still to run, or Under attack or All waves cleared; the wave's enemies by kind under it, and Call early with what it pays. Reports callEarly; the game owns the timing, the wave's makeup and the reward.
 
@@ -3869,8 +3897,8 @@ Pack slots: `Button.plate.primary`, `Chip.frame`, `Plate.frame`, `Row.frame`, `R
 
 Fixtures: `default`, `incoming`, `active`, `final`, `done`, `empty`, `overflow`.
 
-<a id="guide-components-167"></a>
-### `components §167` Compass
+<a id="guide-components-168"></a>
+### `components §168` Compass
 
 A compass strip: the cardinal and intercardinal points and ticks sliding under the heading, the heading in degrees on a tab, and the points of interest with their distances. Read only.
 
@@ -3895,8 +3923,8 @@ Each `CompassPoi`:
 
 Fixtures: `default`.
 
-<a id="guide-components-168"></a>
-### `components §168` InteractionPrompt
+<a id="guide-components-169"></a>
+### `components §169` InteractionPrompt
 
 What the player can do with what is in front of them: a key cap beside a glass plate, the verb in condensed capitals and the object under it; a hold's ring round the cap. It rises in when in range. The game decides when it shows and what the input does; read only. The old SVG hold ring becomes a nine-ring with the hold's share as its wipe (the 200 ms drain on release is dropped); a nine-cut plate takes no rim (it paints as a rectangle around the cut), so the glass's rim is dropped. The key cap's action glyph has no TSX surface: the cap shows the game's key when it gives one and keeps the action's name as a state otherwise, and the old anchor's avoidance and max distance are dropped too. It keeps its place over the plates and labels that stack (the anchor's declutter, priority 1).
 
@@ -3920,8 +3948,8 @@ What the player can do with what is in front of them: a key cap beside a glass p
 
 Fixtures: `default`, `pressed`, `hold`, `done`, `disabled`, `gamepad`, `action`, `overflow`.
 
-<a id="guide-components-169"></a>
-### `components §169` LootLabel
+<a id="guide-components-170"></a>
+### `components §170` LootLabel
 
 An item on the ground: over it a dark chip with the tier's strip on its leading edge and the name in the tier's ink (a stack's count after it); epic and legendary raise a beam. Reports pick (the chip); the game owns what is picked up. The old ground pool (the tier's glow where the item lies, a `<ground>` plane) has no TSX surface and is dropped, as are the old anchor's avoidance and max distance; labels stack clear of each other and fade behind drawn geometry (the anchor's declutter and occlusion). The hovered chip's pick-up key (the action's bound glyph) has no TSX surface and is dropped; the chip keeps the action's name as a state. A long name wraps without breaking.
 
@@ -3952,8 +3980,8 @@ Pack slots: `Chip.frame`.
 
 Fixtures: `default`, `common`, `stack`, `uncommon`, `rare`, `legendary`, `hovered`, `more`, `overflow`.
 
-<a id="guide-components-170"></a>
-### `components §170` MinimapView
+<a id="guide-components-171"></a>
+### `components §171` MinimapView
 
 A minimap: the map texture zoomed round the player's point, player-up or north-up, round or square, with its markers and the zone's name under it. It reports onPick for a tap on the glass.
 
@@ -3986,8 +4014,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-171"></a>
-### `components §171` Minimap
+<a id="guide-components-172"></a>
+### `components §172` Minimap
 
 A square minimap: a region of the map texture (or a grid without one), markers over it and a zone name under it on a plate. Read only.
 
@@ -4018,8 +4046,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-172"></a>
-### `components §172` Nameplate
+<a id="guide-components-173"></a>
+### `components §173` Nameplate
 
 A unit's plate over its head: the level chip and the name in its reaction's ink, its title in small capitals, its health as a bar cut in quarters (a cream ghost of a hit, the shield after the fill) and the cast row (the spell and its time over a thin bar), all on a HUD plate (compact, the bar alone, has none). Read only; the game owns every figure and state. The old style's lean (skewX), the wings' and the target brackets' clip-path arrows, the interrupted cast's hatch and the anchor's max distance have no TSX surface and are dropped; it stacks over the plates it overlaps and fades behind drawn geometry (the anchor's declutter and occlusion); the quarters are drawn as three notch marks, the plate does not scale when targeted, and the plate's room cap (a viewport measure) stands as max-w-full.
 
@@ -4053,8 +4081,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `friendly`, `neutral`, `hostile`, `player`, `boss`, `targeted`, `low`, `casting`, `locked`, `interrupted`, `dead`, `compact`, `overflow`.
 
-<a id="guide-components-173"></a>
-### `components §173` OverheadBars
+<a id="guide-components-174"></a>
+### `components §174` OverheadBars
 
 A health bar over every unit in the side's colour, a thin resource line under it. Read only. The old anchors were GPU mass elements (one instanced draw for a battle's thousands, a hit leaving a cream ghost): each bar is now a text-free pair of nodes and the ghost is dropped.
 
@@ -4080,8 +4108,8 @@ Each `OverheadBar`:
 
 Fixtures: `default`, `sides`, `low`.
 
-<a id="guide-components-174"></a>
-### `components §174` SpeechBubble
+<a id="guide-components-175"></a>
+### `components §175` SpeechBubble
 
 A line spoken over a head: the HUD's glass with a cut corner, the speaker in their colour, the line wrapping at 27 characters and a thin line of the time left. It pops from its tail. Read only; the game decides when it shows and when it goes. The old tail (a clip-path triangle) has no TSX surface: it stands in as a small diamond under the box. A nine-cut box takes no rim or outer shadow (they paint as rectangles around the cut), so the glass's rim, the drop shadow and a shout's warm rim are dropped; a shout keeps its bolder line. The 27 character measure stands as a fixed 12.6rem (the ch unit and the viewport room caps have no class surface). Bubbles stack clear of each other (the anchor's declutter).
 
@@ -4100,8 +4128,8 @@ A line spoken over a head: the HUD's glass with a cut corner, the speaker in the
 
 Fixtures: `default`, `short`, `shout`, `nameless`, `overflow`.
 
-<a id="guide-components-175"></a>
-### `components §175` Waypoint
+<a id="guide-components-176"></a>
+### `components §176` Waypoint
 
 A place to go: a lit diamond with a dark core in the kind's colour, its name on a plate under it and the distance on a dark tag. Off screen, a chevron points the way. Read only; the game owns the distance and what counts as near and far. Off screen or behind the camera it pins 24 px inside the screen's edge toward its point (the anchor's clamp, which marks the side as `data-edge-*`). The old anchor's decluttering, avoidance and chevron have no TSX surface: the edge prop leans the label toward the side the game names, and the chevron it drew is dropped.
 
@@ -4123,8 +4151,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`, `near`, `far`, `ping`, `danger`, `ally`, `loot`, `offscreen`, `offscreenRight`, `overflow`.
 
-<a id="guide-components-176"></a>
-### `components §176` Art
+<a id="guide-components-177"></a>
+### `components §177` Art
 
 A slot of generated art: an image that covers its box, cropped about its centre.
 
@@ -4137,8 +4165,8 @@ A slot of generated art: an image that covers its box, cropped about its centre.
 | `class?` | `string \| undefined` |  |
 | `label?` | `string \| undefined` |  |
 
-<a id="guide-components-177"></a>
-### `components §177` Button
+<a id="guide-components-178"></a>
+### `components §178` Button
 
 A press target (NSH base's `Button`): it owns its presses, its pressed, selected, busy and disabled states and its role for screen readers, and leaves its look to the pack: `Button.plate` and `Button.plate.<variant>` dress it, every state included. Its content is a row, centred.
 
@@ -4172,8 +4200,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`, `primary`, `danger`, `warning`, `contrast`, `outline`, `ghost`, `ghost-muted`, `ghost-faint`, `large`, `pressed`, `busy`, `disabled`.
 
-<a id="guide-components-178"></a>
-### `components §178` Checkbox
+<a id="guide-components-179"></a>
+### `components §179` Checkbox
 
 A control that is checked, unchecked or indeterminate (NSH base's `Checkbox`): it owns its presses, keys and state for screen readers; the pack draws its box (`Checkbox.indicator`, whose `checked:` and `indeterminate:` follow it) and the marks inside (`Checkbox.mark`, `Checkbox.dash`).
 
@@ -4197,8 +4225,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `unchecked`, `checked`, `indeterminate`, `disabled`.
 
-<a id="guide-components-179"></a>
-### `components §179` Counter
+<a id="guide-components-180"></a>
+### `components §180` Counter
 
 A number that counts to its value as it changes. The count itself is the motion head's (a value-change transition on the text); until it lands the number shows its value at once.
 
@@ -4213,8 +4241,8 @@ A number that counts to its value as it changes. The count itself is the motion 
 | `duration?` | `number \| string \| undefined` | How long a count takes, in ms; the motion head's. |
 | `class?` | `string \| undefined` |  |
 
-<a id="guide-components-180"></a>
-### `components §180` Dialog
+<a id="guide-components-181"></a>
+### `components §181` Dialog
 
 A dialog over a scrim (NSH base's `Dialog`; an alert dialog is one with buttons and no other content): modal for screen readers and focus, it pops in by `Modal.frame` over `Modal.scrim`. The pack draws its panel (`Dialog.frame`), heading (`Dialog.title`), text (`Dialog.body`) and button row (`Dialog.actions`). It fills its parent, so a game puts it on the `modal` layer or over the screen it covers.
 
@@ -4235,8 +4263,8 @@ Pack slots: `Dialog.actions`, `Dialog.body`, `Dialog.frame`, `Dialog.title`, `Mo
 
 Fixtures: `default`.
 
-<a id="guide-components-181"></a>
-### `components §181` Meter
+<a id="guide-components-182"></a>
+### `components §182` Meter
 
 A track whose fill wears its value's region: good, middling or poor.
 
@@ -4255,8 +4283,8 @@ Pack slots: `Bar.fill`.
 
 Fixtures: `optimum`, `suboptimum`, `poor`.
 
-<a id="guide-components-182"></a>
-### `components §182` Progress
+<a id="guide-components-183"></a>
+### `components §183` Progress
 
 A linear progress bar (NSH base's `Progress`): it owns its role, its range 0 to 100 and the indicator's width by the value; the pack draws its track (`Progress.track`) and its indicator (`Bar.fill`, which eases as the value moves).
 
@@ -4275,8 +4303,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `empty`, `third`, `full`, `indeterminate`.
 
-<a id="guide-components-183"></a>
-### `components §183` Select
+<a id="guide-components-184"></a>
+### `components §184` Select
 
 One value picked from a list (NSH base's `Select`): a combobox for screen readers whose arrows step the value while closed, and whose list opens under the trigger at its width, as one focus group the arrows move in. The pack draws the trigger (`Select.trigger`, `aria-expanded:` while open), the list (`Select.list`) and each option (`Select.option`, `selected:` for the chosen one).
 
@@ -4307,8 +4335,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `closed`, `open`.
 
-<a id="guide-components-184"></a>
-### `components §184` Slider
+<a id="guide-components-185"></a>
+### `components §185` Slider
 
 A value picked along a track (NSH base's `Slider`: a volume, a sensitivity): it owns its presses, drags, keys (the arrows by a step, Page Up and Down by a tenth, Home and End to the ends) and its range for screen readers; the pack draws its track (`Slider.track`), the filled range (`Slider.range`) and the thumb (`Slider.thumb`).
 
@@ -4333,8 +4361,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`, `empty`, `full`, `disabled`.
 
-<a id="guide-components-185"></a>
-### `components §185` Switch
+<a id="guide-components-186"></a>
+### `components §186` Switch
 
 A setting that is on or off and takes effect at once (NSH base's `Switch`): it owns its presses, keys and state for screen readers; the pack draws its track (`Switch.track`) and the thumb that moves along it (`Switch.thumb`), whose `checked:` and `disabled:` follow the switch.
 
@@ -4356,8 +4384,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `off`, `on`, `disabled`.
 
-<a id="guide-components-186"></a>
-### `components §186` Tabs
+<a id="guide-components-187"></a>
+### `components §187` Tabs
 
 The tab list around `Tab`s (NSH base's `Tabs`): one stop of Tab, at the selected tab; the arrows move among its tabs and select each one they reach (WAI-ARIA's tab list, automatic activation). It holds no value and no content: the game shows the selected tab's content beside it.
 
@@ -4375,8 +4403,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-187"></a>
-### `components §187` Tooltip
+<a id="guide-components-188"></a>
+### `components §188` Tooltip
 
 A hint over its trigger (NSH base's `Tooltip`): it shows while the pointer is over the trigger or the keyboard's focus is in it (WAI-ARIA's tooltip), and its text describes the trigger for screen readers. The pack draws the bubble (`Tooltip.frame`); it stands centred over the trigger's box wherever it moves (`anchor`).
 
@@ -4396,8 +4424,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-188"></a>
-### `components §188` Banner
+<a id="guide-components-189"></a>
+### `components §189` Banner
 
 A call across the scene with no plate: the headline in large HUD type (white, one stroke under the fill and a soft shadow), a lit gold rule under it and the line beneath in quieter HUD type. It rises in with the reward sound; under reduced motion it fades in place.
 
@@ -4412,8 +4440,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-189"></a>
-### `components §189` Calendar
+<a id="guide-components-190"></a>
+### `components §190` Calendar
 
 A HUD plate: the month between cut arrow keys, the days dark recesses, today lit in the accent and a marked day carrying a gold diamond.
 
@@ -4434,8 +4462,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous month), `next` (Next month), `pick` (Choose day).
 
-<a id="guide-components-190"></a>
-### `components §190` CalibrationScreen
+<a id="guide-components-191"></a>
+### `components §191` CalibrationScreen
 
 Calibration in three steps: brightness (gamma), the audio offset measured from taps, and the controller's dead zone, each with its slider and test. The game owns the values and writes them back from the events.
 
@@ -4465,8 +4493,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Next), `back` (Back).
 
-<a id="guide-components-191"></a>
-### `components §191` Card
+<a id="guide-components-192"></a>
+### `components §192` Card
 
 A card: a picture across its top, a heading, a line or two under it, a badge at its top end and the actions the caller supplies. It reports onOpen.
 
@@ -4487,8 +4515,8 @@ Fixtures: `default`.
 
 Actions: `open` (Open).
 
-<a id="guide-components-192"></a>
-### `components §192` Confirm
+<a id="guide-components-193"></a>
+### `components §193` Confirm
 
 A confirmation dialog on its own panel over the pack's scrim, which dims the screen while the panel pops in: the question as its heading, what follows from it, and Cancel and Confirm (the danger variant when confirming destroys something). The game closes it.
 
@@ -4511,8 +4539,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `confirm` (Confirm), `cancel` (Cancel).
 
-<a id="guide-components-193"></a>
-### `components §193` CreatorToolsScreen
+<a id="guide-components-194"></a>
+### `components §194` CreatorToolsScreen
 
 The creator's tools on the HUD's smoked glass: the four tools a segmented switch lit in the accent, the panels plates with tracked capital titles. On a phone the panel tabs are one strip that scrolls sideways, each a finger's target; a focus move scrolls its tab into view.
 
@@ -4543,8 +4571,8 @@ Fixtures: `default`.
 
 Actions: `back` (Exit).
 
-<a id="guide-components-194"></a>
-### `components §194` CreditsScreen
+<a id="guide-components-195"></a>
+### `components §195` CreditsScreen
 
 The credits: the sections' titles and names rolling over the key art's veil, the logo at the head, and the end and licences the caller supplies. The game moves the roll (offset); it reports onBack and onFaster.
 
@@ -4568,8 +4596,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Faster), `back` (Back).
 
-<a id="guide-components-195"></a>
-### `components §195` DataList
+<a id="guide-components-196"></a>
+### `components §196` DataList
 
 A HUD plate of rows: a name, its detail and its figure.
 
@@ -4589,8 +4617,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open).
 
-<a id="guide-components-196"></a>
-### `components §196` FlowChaptersScreen
+<a id="guide-components-197"></a>
+### `components §197` FlowChaptersScreen
 
 A chapter select: the story's chapters in order with their thumbnails, the selected one shown, and Back. It reports onSelect with the chapter's key.
 
@@ -4610,8 +4638,8 @@ Fixtures: `default`.
 
 Actions: `select` (Play the chapter), `back` (Back).
 
-<a id="guide-components-197"></a>
-### `components §197` FlowChoices
+<a id="guide-components-198"></a>
+### `components §198` FlowChoices
 
 An interactive film's choice window over its footage (flow guide §4): a thin bar over the choices drains with the time left; the choices are cut plates docked at the foot, the pending one ringed in the accent, one that cannot be taken dim, a quick-time one with its progress under its words. Hotspots are lit frames at the fractions of the picture the flow gives, so they land on it when the game draws the picture to fill the surface. Past the lock the choices stay and take nothing.
 
@@ -4626,8 +4654,8 @@ Pack slots: `Screen.frame`.
 
 Fixtures: `default`, `locked`, `closed`.
 
-<a id="guide-components-198"></a>
-### `components §198` FlowChartScreen
+<a id="guide-components-199"></a>
+### `components §199` FlowChartScreen
 
 The story so far over the dimmed flow: a band with Back and the title, the chart of flow nodes (seen ones done, the one playing current, the rest locked), and the picked node on a plate lit in the accent, its words beside Play from here, which drops under them where the plate is narrow.
 
@@ -4657,8 +4685,8 @@ Fixtures: `default`, `unseen`, `none`.
 
 Actions: `pick` (Pick a node), `play` (Play from here), `back` (Back).
 
-<a id="guide-components-199"></a>
-### `components §199` FlowGalleryScreen
+<a id="guide-components-200"></a>
+### `components §200` FlowGalleryScreen
 
 An endings gallery: the endings reached and locked, with their thumbnails, the selected one shown, and Back. It reports onSelect with the ending's key.
 
@@ -4678,8 +4706,8 @@ Fixtures: `default`.
 
 Actions: `select` (Watch the ending again), `back` (Back).
 
-<a id="guide-components-200"></a>
-### `components §200` FlowPicture
+<a id="guide-components-201"></a>
+### `components §201` FlowPicture
 
 The footage filling the surface, cropped to cover it, over a deep shade (so a live scene under the flow shows only where the footage has none): the previous picture under it while a dissolve runs. FlowChoices' hotspot fractions land on it because it fills the same surface.
 
@@ -4696,8 +4724,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-201"></a>
-### `components §201` FlowScreen
+<a id="guide-components-202"></a>
+### `components §202` FlowScreen
 
 A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with its dissolve (a segment with no footage leaves the live scene showing), the captions its timelines say, and its choice window with hotspots and quick-time progress, each press passed to og.flow.choose. Read from og.flow.view each tick; nothing of it is world state.
 
@@ -4711,8 +4739,8 @@ Pack slots: `Button.plate`, `Screen.frame`.
 
 Fixtures: `default`, `skip`.
 
-<a id="guide-components-202"></a>
-### `components §202` GameOverScreen
+<a id="guide-components-203"></a>
+### `components §203` GameOverScreen
 
 Game over: the defeat's line, the run's score and the best, an optional revive offer with its price and the seconds it stays, and Retry, Checkpoint and Quit. The game decides the offer and what each choice costs.
 
@@ -4742,8 +4770,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Retry).
 
-<a id="guide-components-203"></a>
-### `components §203` HudEditorScreen
+<a id="guide-components-204"></a>
+### `components §204` HudEditorScreen
 
 The HUD editor's frame: a hint at the top until the player moves something, over the editor the caller supplies.
 
@@ -4761,8 +4789,8 @@ Fixtures: `default`.
 
 Actions: `back` (Done).
 
-<a id="guide-components-204"></a>
-### `components §204` KeyValues
+<a id="guide-components-205"></a>
+### `components §205` KeyValues
 
 A table of key and value rows, each with an optional change (a stat comparison). Read only.
 
@@ -4776,8 +4804,8 @@ A piece of a panel: drawn on a panel's ground.
 
 Fixtures: `default`.
 
-<a id="guide-components-205"></a>
-### `components §205` LeaderboardScreen
+<a id="guide-components-206"></a>
+### `components §206` LeaderboardScreen
 
 A leaderboard: global, friends and league tabs, the period, the top rows with the player's own marked, the player's row pinned, and the league's promotion and demotion lines. The game owns the rows.
 
@@ -4804,8 +4832,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Profile), `back` (Back), `tabNext` (Next tab), `tabPrev` (Previous tab).
 
-<a id="guide-components-206"></a>
-### `components §206` LoadingScreen
+<a id="guide-components-207"></a>
+### `components §207` LoadingScreen
 
 The key art fills the screen. At its foot, over a shade that grows with the words: where the player is going (an eyebrow and the place), the tip on a cut smoked-glass plate, and the progress as the HUD's leaning bar with a spinner and the figure; once ready, Continue (or nothing, when the game does not wait). A press anywhere asks for the next tip.
 
@@ -4831,8 +4859,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-207"></a>
-### `components §207` MainMenuScreen
+<a id="guide-components-208"></a>
+### `components §208` MainMenuScreen
 
 The main menu over the key art: the logo or the name as a wordmark, Continue with the last save's line when a save exists, New game, Modes, Settings, Credits and Quit, each drawn only when the game passes its handler, a news card (pressable with onNews) and the version. It resolves in the dark scheme in both schemes.
 
@@ -4864,8 +4892,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select).
 
-<a id="guide-components-208"></a>
-### `components §208` ModeSelectScreen
+<a id="guide-components-209"></a>
+### `components §209` ModeSelectScreen
 
 A mode select: the modes as cards with their line, tag and picture, a locked mode's reason, the selected one's detail, and Play. It reports onSelect and onPlay; the game decides what is locked.
 
@@ -4888,8 +4916,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Play), `back` (Back).
 
-<a id="guide-components-209"></a>
-### `components §209` NotificationsScreen
+<a id="guide-components-210"></a>
+### `components §210` NotificationsScreen
 
 The notification stack in the HUD's top-right corner. A notification is a glass plate with two corners cut, a rail down its leading edge and a wash from it in its tone, the tone's mark in an octagon socket, its title in small capitals of the tone and its body in white, and a quiet close. A toast is the compact form: its mark and its words on a plate that slides back out when it leaves. Each tone has its own hue (warn an amber well apart from gold). Under reduced motion they appear in place.
 
@@ -4908,8 +4936,8 @@ Fixtures: `default`.
 
 Actions: `dismiss` (Dismiss).
 
-<a id="guide-components-210"></a>
-### `components §210` ObjectiveTracker
+<a id="guide-components-211"></a>
+### `components §211` ObjectiveTracker
 
 The tracked objectives over the scene, with no plate: the quest in gold small capitals, then each objective with a gold diamond (filled once done, its words struck and dimmed) over a thin leaning bar in a dark well, cut into cells when the game counts its steps. The first not done is lit; on a phone only it is shown. Read only.
 
@@ -4924,8 +4952,8 @@ Pack slots: `Plate.frame`.
 
 Fixtures: `default`.
 
-<a id="guide-components-211"></a>
-### `components §211` Pagination
+<a id="guide-components-212"></a>
+### `components §212` Pagination
 
 A row of cut keys, the current page lit.
 
@@ -4945,8 +4973,8 @@ Fixtures: `default`.
 
 Actions: `previous` (Previous page), `next` (Next page), `page` (Go to page).
 
-<a id="guide-components-212"></a>
-### `components §212` PauseScreen
+<a id="guide-components-213"></a>
+### `components §213` PauseScreen
 
 The pause menu: Resume, Settings, Controls, Save (grey when not allowed), Load, Quit to menu and Quit game, each drawn only when the game passes its handler, and the game's own rows among them, with the current objective and the time played beside it. Each reports its event.
 
@@ -4986,8 +5014,8 @@ Fixtures: `default`, `ownRows`.
 
 Actions: `confirm` (Select), `back` (Resume).
 
-<a id="guide-components-213"></a>
-### `components §213` ResultsScreen
+<a id="guide-components-214"></a>
+### `components §214` ResultsScreen
 
 After a match: the verdict set large in a lit fill (gold for a win, red for a loss) over the dimmed scene, a rule with a lit diamond, the level in an octagon beside the XP gained and the leaning progress bar, the grade on a hexagon, then the tabs. Summary shows each stat on a cut plate (a best in gold) and each reward as octagon art with its amount on a tag and its name under it. The page scrolls over the actions.
 
@@ -5019,8 +5047,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Continue).
 
-<a id="guide-components-214"></a>
-### `components §214` SaveLoadScreen
+<a id="guide-components-215"></a>
+### `components §215` SaveLoadScreen
 
 Saving or loading: the slots with their title, place, time played, date and thumbnail (autosaves marked, empty slots offered for a new save), the selected one's preview, and Save or Load and Delete. The game writes the saves.
 
@@ -5046,8 +5074,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `details` (Delete).
 
-<a id="guide-components-215"></a>
-### `components §215` SettingsScreen
+<a id="guide-components-216"></a>
+### `components §216` SettingsScreen
 
 Settings: a tab per page and its entries (toggles, ranges, choices and key bindings), Apply and Revert while changes wait, and Defaults. The game owns every value and writes back what the events report.
 
@@ -5076,8 +5104,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Select), `back` (Back), `tabNext` (Next page), `tabPrev` (Previous page).
 
-<a id="guide-components-216"></a>
-### `components §216` SplashScreen
+<a id="guide-components-217"></a>
+### `components §217` SplashScreen
 
 The boot splash: the studio marks one after another (a texture, or the name set as type), boot progress and what is loading, and Skip. The game moves through the marks.
 
@@ -5099,8 +5127,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Skip).
 
-<a id="guide-components-217"></a>
-### `components §217` StarRating
+<a id="guide-components-218"></a>
+### `components §218` StarRating
 
 A row of rating stars, each lit once it is earned. The style draws the stars as SVG glyphs (an outlined empty star, a gold one with a lit edge and a glow); the engine draws no vector shapes, so each is the atlas star icon, one tint lit and a dim one unearned, landing with the pop entrance (the style's land, without its overshoot) delayed by the star's index.
 
@@ -5115,8 +5143,8 @@ A row of rating stars, each lit once it is earned. The style draws the stars as 
 
 Fixtures: `default`, `none`, `large`, `all`.
 
-<a id="guide-components-218"></a>
-### `components §218` Subtitles
+<a id="guide-components-219"></a>
+### `components §219` Subtitles
 
 The latest lines at the foot of the screen, centred in HUD type over a soft dark band: the speaker in gold small capitals over the words in white. An older line steps back, smaller. Nothing shows without a line.
 
@@ -5131,8 +5159,8 @@ Pack slots: `Plate.frame`, `Screen.frame`.
 
 Fixtures: `default`, `captions`.
 
-<a id="guide-components-219"></a>
-### `components §219` Table
+<a id="guide-components-220"></a>
+### `components §220` Table
 
 A HUD plate of plain rows: the first column a name, the others figures.
 
@@ -5151,8 +5179,8 @@ Fixtures: `default`.
 
 Actions: `choose` (Open row).
 
-<a id="guide-components-220"></a>
-### `components §220` TitleScreen
+<a id="guide-components-221"></a>
+### `components §221` TitleScreen
 
 The title screen over the key art: the logo or the name as a wordmark, Press any button (Tap on a touch screen) when the game passes onStart, the legal line and the version. Any press reports onStart. It resolves in the dark scheme in both schemes.
 
@@ -5175,8 +5203,8 @@ Fixtures: `default`.
 
 Actions: `confirm` (Start).
 
-<a id="guide-components-221"></a>
-### `components §221` Tree
+<a id="guide-components-222"></a>
+### `components §222` Tree
 
 A HUD plate of rows, each indented by its depth with a faint guide down from its parent; the chosen row is washed in the accent from its leading edge. A leaf has no twisty and keeps its room, so its name lines up with its siblings' that open. A name longer than its row wraps inside it, at any word.
 
@@ -5195,8 +5223,8 @@ Fixtures: `default`, `overflow`.
 
 Actions: `toggle` (Open or close), `choose` (Select).
 
-<a id="guide-components-222"></a>
-### `components §222` TutorialScreen
+<a id="guide-components-223"></a>
+### `components §223` TutorialScreen
 
 A tutorial step: a card with the step's title, what to do, its art and the step count, and Next (hidden while the step waits for the player) and Skip. Given a target that shows, the screen dims around that element, which keeps its own presses, and the card stands under it; else (no target, or one not on screen) nothing dims and the card stands where the game puts it.
 
