@@ -71,7 +71,16 @@ fn aging_is_ground_up_in_metric_uv_and_stays_dry_without_weather() {
         scene.set_standard_material(h, dirty);
         let aged = capture(&mut renderer, &scene);
         save("material-variation", &format!("grime-{clearcoat}"), &aged);
-        assert!(luma_at(&aged, 256, 480) < luma_at(&clean, 256, 480) * 0.75);
+        // At 0.49 m and 0.99 m above the base, dirt must fade upwards.
+        // Display-space luma after tone mapping is not linear coverage:
+        // a fixed brightness ratio tests the tone curve, not the gradient.
+        let darkening = |y| luma_at(&clean, 256, y) - luma_at(&aged, 256, y);
+        assert!(
+            darkening(480) > darkening(448) + 1.0 && darkening(448) > 1.0,
+            "ground-up gradient missing: lower {}, upper {}",
+            darkening(480),
+            darkening(448)
+        );
         assert!(
             (luma_at(&aged, 256, 256) - luma_at(&clean, 256, 256)).abs() < 1.0,
             "grime reached above its 2 m height"

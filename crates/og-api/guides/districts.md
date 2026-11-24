@@ -59,12 +59,56 @@ rule Window {
   }
 }
 rule Glass {
-  detail 1
   recess 0.12
   label glass
 }
 rule Ground {
+  split x {
+    part 0.4 Wall
+    fill 1 Shop
+    part 1.35 Entrance
+    part 0.4 Wall
+  }
+}
+rule Shop {
+  split y {
+    part 0.45 Plinth
+    fill 1 ShopWindow
+    part 0.45 ShopFrame
+  }
+}
+rule ShopWindow {
+  inset 0.1 ShopFrame ShopGlass
+}
+rule ShopGlass {
+  recess 0.16 ShopFrame
+  label shopglass
+}
+rule Entrance {
+  split y {
+    part 0.12 Plinth
+    part 2.6 DoorFrame
+    fill 1 ShopFrame
+  }
+}
+rule DoorFrame {
+  inset 0.1 ShopFrame Door
+}
+rule Door {
+  recess 0.2 ShopFrame
+  label door
+}
+rule ShopFrame {
   label shopfront
+}
+rule Plinth {
+  extrude 0.06 {
+    top PlinthEdge
+    sides PlinthEdge
+  }
+}
+rule PlinthEdge {
+  label plinth
 }
 rule Cornice {
   label trim
@@ -94,9 +138,18 @@ rule Slate {
   in and makes its jambs (labelled `jamb` without a rule); `roof flat`,
   `roof gable <deg>` and `roof hip <deg>` build roofs.
 - `detail <n>` leaves what the rule reaches out of the model's levels of
-  detail from level n on: glass recesses, sills and mouldings at 1 or 2,
+  detail from level n on: added sills and mouldings at 1 or 2,
   the walls and roof at 0.
 - A param named `height` takes the height the district draws for the lot.
+
+The facade keeps its openings at every LOD: marking a pane or the whole
+ground storey `detail 1` would leave a hole at a distance. Its door, glazing,
+frame and plinth have separate labels so changing the wall material does
+not turn an entrance back into a blank wall. Cover `shopglass`, `door`,
+`shopfront`, `plinth`, `trim` and `roof` in the library as well. For a
+mixed street, a `pick` in `Ground` can choose this shopfront or a second
+composition with a narrow entrance and raised residential windows; put
+that choice on the street's front face, not every party wall.
 
 A material library gives each label its materials, each a `type model`
 material (models §1) with its own fields:
@@ -337,6 +390,12 @@ in world space with no weather simulation; simulated wet streaks remain
 separate and continue to follow the weather. Neither generates a texture.
 On a manually made model, provide metric UVs (v = negative height from the
 base) before map transforms if it needs ground-up grime.
+
+Age the surfaces that actually reach the pavement. If brick starts above
+a four-metre shopfront, a 1.5 m grime band on `wall` cannot touch it. Give
+the ground-floor frames, door and plinth their own aging fields instead
+of raising the wall's dirt height to cover upper storeys. Masonry piers
+between the shop windows can use the wall material down to the plinth.
 
 For unstructured plaster, gravel or mottled stone, `stochastic 1` breaks
 up ordinary 2D texture repetition using shared, unrotated patch offsets.

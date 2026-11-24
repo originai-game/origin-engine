@@ -39,6 +39,82 @@ const LAMP: &str = "type model\nversion 1\n---\nmaterial \"iron\" {\n  color 0.0
 const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point 0 0\n  point 120 0\n  point 120 80\n  point 0 80\n}\nstreets {\n  grid 60 40\n  width 8\n  sidewalk 2\n  kerb 0.15\n}\nlots {\n  width 6 12\n  depth 10 16\n}\nbuildings {\n  density 1\n  height 6 12\n  rule \"grammars/house.ogt\"\n}\nprop \"lamp\" {\n  model \"models/lamp.ogt\"\n  every 20\n  kerb 0.4\n  collider capsule 0.1 3.8\n}\nmaterials \"materials/town.ogt\"\ncells {\n  size 64\n  load 100\n}\n";
 
 #[test]
+fn street_entrances_and_shopfronts_survive_cell_merging_and_lods() {
+    let root = project("ground-storey");
+    write(
+        &root,
+        "grammars/house.ogt",
+        include_str!("../../../tests/fixtures/district-street/assets/grammars/terrace.ogt"),
+    );
+    write(
+        &root,
+        "materials/town.ogt",
+        include_str!("../../../tests/fixtures/district-street/assets/materials/london.ogt"),
+    );
+    // The contract is geometry/material assignment, not the pinned image.
+    for (name, pixel) in [
+        ("stock.png", [170, 140, 90, 255]),
+        ("stock-n.png", [128, 128, 255, 255]),
+        ("stock-mr.png", [0, 220, 255, 255]),
+        ("stock-ao.png", [255, 255, 255, 255]),
+    ] {
+        image::save_buffer(
+            root.join("assets/textures").join(name),
+            &pixel.repeat(64),
+            8,
+            8,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+    }
+    write(&root, "models/lamp.ogt", LAMP);
+    write(&root, "districts/town.ogt", DISTRICT);
+    let report = cook(&root);
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let town = bundle.load_scene("districts/town.ogt").unwrap();
+    let mut building_cells = 0;
+    for cell in town.entities.iter().filter_map(|e| e.subscene.as_deref()) {
+        let scene = bundle.load_scene(cell).unwrap();
+        if !scene.entities.iter().any(|e| e.name.contains("/building-")) {
+            continue;
+        }
+        building_cells += 1;
+        let model = bundle
+            .load_model(&format!("{}.glb", cell.trim_end_matches(".ogt")))
+            .unwrap();
+        assert!(
+            model.primitives.iter().any(|p| p.lods.len() > 1),
+            "the merged model has cooked LODs"
+        );
+        for name in ["door", "shop-glass", "shopfront", "plinth"] {
+            let part = model
+                .primitives
+                .iter()
+                .find(|p| model.materials[p.material].name == name)
+                .unwrap_or_else(|| panic!("{cell} lost {name}"));
+            for level in 0..part.lods.len() {
+                assert!(
+                    part.triangle_count(level) > 0,
+                    "{cell} lost {name} at LOD {level}"
+                );
+            }
+            if name != "shop-glass" {
+                let material = &model.materials[part.material];
+                assert!(material.grime > 0.0, "{name} lost its aging fields");
+                assert!(
+                    part.vertices
+                        .iter()
+                        .any(|v| v.uv[1] > -material.grime_height),
+                    "{name} never reaches its grime band"
+                );
+            }
+        }
+    }
+    assert!(building_cells > 1, "the test spans multiple merged cells");
+}
+
+#[test]
 fn streets_carve_their_terrain_without_cutting_block_interiors() {
     use og_ai::nav::cooked::BundleNav;
     use og_core::glam::{Vec2, Vec3};
