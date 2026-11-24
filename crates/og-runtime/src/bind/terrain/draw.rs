@@ -25,9 +25,7 @@ pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option
         .collect();
     move |k, c, r| {
         let t = (*loaded.get(k)?)?;
-        if t.cooked.is_none() {
-            return None;
-        }
+        t.cooked.as_ref()?;
         Some(((t.tile_sampler().sample)(c, r), t.hole_at(c, r)))
     }
 }

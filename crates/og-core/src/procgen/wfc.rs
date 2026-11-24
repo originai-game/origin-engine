@@ -617,10 +617,7 @@ fn solve(
     let mut decisions: Vec<(usize, usize, usize, usize)> = Vec::new();
     let mut weights = vec![0.0f64; n];
 
-    loop {
-        let Some(c) = s.next_cell() else {
-            break;
-        };
+    while let Some(c) = s.next_cell() {
         let has_pos = s.pos_count[c] > 0;
         for (v, wt) in weights.iter_mut().enumerate() {
             *wt = if s.has(c, v) {
@@ -647,10 +644,10 @@ fn solve(
                         return Err(err_cell);
                     }
                     backtracks += 1;
-                    if let Some((bc, bv)) = cur.take() {
-                        if s.banish(bc, bv).and_then(|()| s.propagate()).is_ok() {
-                            break;
-                        }
+                    if let Some((bc, bv)) = cur.take()
+                        && s.banish(bc, bv).and_then(|()| s.propagate()).is_ok()
+                    {
+                        break;
                     }
                     let Some((prev_mark, prev_prop, prev_c, prev_v)) = decisions.pop() else {
                         return Err(err_cell);

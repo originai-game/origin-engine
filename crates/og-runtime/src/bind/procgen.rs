@@ -378,13 +378,51 @@ pub fn og_procgen_plant(desc: Option<String>) -> Result<wire::PlantMeshResult, S
         Flowers, Growth, LEVELS, LeafShape, Leaves, Level, Plant, plant,
     };
     let d: wire::PlantDesc = wire::arg(desc.as_deref(), "desc")?;
-    let mut spec = Plant::default();
-    spec.seed = d.seed;
-    spec.growth = match d.growth {
-        wire::PlantGrowth::Deciduous => Growth::Deciduous,
-        wire::PlantGrowth::Evergreen => Growth::Evergreen,
+    let mut spec = Plant {
+        seed: d.seed,
+        growth: match d.growth {
+            wire::PlantGrowth::Deciduous => Growth::Deciduous,
+            wire::PlantGrowth::Evergreen => Growth::Evergreen,
+        },
+        levels: d.levels.min((LEVELS - 1) as u32),
+        force_direction: DVec3::new(
+            f64::from(d.force_direction.x),
+            f64::from(d.force_direction.y),
+            f64::from(d.force_direction.z),
+        ),
+        force_strength: f64::from(d.force_strength),
+        leaves: d.leaves.map(|l| Leaves {
+            shape: match l.shape {
+                wire::PlantLeafShape::Blade => LeafShape::Blade,
+                wire::PlantLeafShape::Card => LeafShape::Card,
+                wire::PlantLeafShape::Cross => LeafShape::Cross,
+            },
+            count: l.count.min(256),
+            start: f64::from(l.start).clamp(0.0, 1.0),
+            end: f64::from(l.end).clamp(0.0, 1.0),
+            angle: f64::from(l.angle).clamp(0.0, 175.0),
+            facing: f64::from(l.facing).clamp(0.0, 1.0),
+            rows: l.rows.min(16),
+            size: f64::from(l.size).max(0.001),
+            width: f64::from(l.width).clamp(0.05, 4.0),
+            size_variance: f64::from(l.size_variance).clamp(0.0, 1.0),
+            color: [l.color.r, l.color.g, l.color.b],
+            color2: [l.color2.r, l.color2.g, l.color2.b],
+            color_variation: l.color_variation.clamp(0.0, 1.0),
+        }),
+        flowers: d.flowers.map(|f| Flowers {
+            share: f64::from(f.share).clamp(0.0, 1.0),
+            count: f.count.min(64),
+            petals: f.petals.clamp(3, 24),
+            size: f64::from(f.size).max(0.001),
+            width: f64::from(f.width).clamp(0.05, 4.0),
+            cup: f64::from(f.cup).clamp(0.0, 85.0),
+            color: [f.color.r, f.color.g, f.color.b],
+            color2: [f.color2.r, f.color2.g, f.color2.b],
+            center_color: [f.center_color.r, f.center_color.g, f.center_color.b],
+        }),
+        ..Plant::default()
     };
-    spec.levels = d.levels.min((LEVELS - 1) as u32);
     for (i, l) in d.levels_spec.iter().take(LEVELS).enumerate() {
         spec.level[i] = Level {
             length: f64::from(l.length).max(0.0),
@@ -399,42 +437,6 @@ pub fn og_procgen_plant(desc: Option<String>) -> Result<wire::PlantMeshResult, S
             start: f64::from(l.start).clamp(0.0, 1.0),
         };
     }
-    spec.force_direction = DVec3::new(
-        f64::from(d.force_direction.x),
-        f64::from(d.force_direction.y),
-        f64::from(d.force_direction.z),
-    );
-    spec.force_strength = f64::from(d.force_strength);
-    spec.leaves = d.leaves.map(|l| Leaves {
-        shape: match l.shape {
-            wire::PlantLeafShape::Blade => LeafShape::Blade,
-            wire::PlantLeafShape::Card => LeafShape::Card,
-            wire::PlantLeafShape::Cross => LeafShape::Cross,
-        },
-        count: l.count.min(256),
-        start: f64::from(l.start).clamp(0.0, 1.0),
-        end: f64::from(l.end).clamp(0.0, 1.0),
-        angle: f64::from(l.angle).clamp(0.0, 175.0),
-        facing: f64::from(l.facing).clamp(0.0, 1.0),
-        rows: l.rows.min(16),
-        size: f64::from(l.size).max(0.001),
-        width: f64::from(l.width).clamp(0.05, 4.0),
-        size_variance: f64::from(l.size_variance).clamp(0.0, 1.0),
-        color: [l.color.r, l.color.g, l.color.b],
-        color2: [l.color2.r, l.color2.g, l.color2.b],
-        color_variation: l.color_variation.clamp(0.0, 1.0),
-    });
-    spec.flowers = d.flowers.map(|f| Flowers {
-        share: f64::from(f.share).clamp(0.0, 1.0),
-        count: f.count.min(64),
-        petals: f.petals.clamp(3, 24),
-        size: f64::from(f.size).max(0.001),
-        width: f64::from(f.width).clamp(0.05, 4.0),
-        cup: f64::from(f.cup).clamp(0.0, 85.0),
-        color: [f.color.r, f.color.g, f.color.b],
-        color2: [f.color2.r, f.color2.g, f.color2.b],
-        center_color: [f.center_color.r, f.center_color.g, f.center_color.b],
-    });
     let out = plant(&spec, 1.0)?;
     let leaves = if out.leaves.positions.is_empty() {
         None
@@ -478,11 +480,7 @@ pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult
     } else {
         1.0
     };
-    let positions: Vec<[f32; 3]> = d
-        .positions
-        .chunks_exact(3)
-        .map(|c| [c[0], c[1], c[2]])
-        .collect();
+    let positions: Vec<[f32; 3]> = d.positions.as_chunks::<3>().0.to_vec();
     let mesh = Mesh {
         normals: vec![[0.0, 1.0, 0.0]; positions.len()],
         uvs: vec![[0.0, 0.0]; positions.len()],

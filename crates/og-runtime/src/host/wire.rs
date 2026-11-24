@@ -192,10 +192,13 @@ impl FromJson for f32 {
                 crate::host::bin::tag_name(tag)
             )));
         }
-        let mut out = Vec::with_capacity(bytes.len() / 4);
-        for chunk in bytes.chunks_exact(4) {
-            out.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
-        }
+        let out = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .copied()
+            .map(f32::from_le_bytes)
+            .collect();
         Some(Ok(out))
     }
 }
@@ -220,12 +223,13 @@ impl FromJson for f64 {
                 crate::host::bin::tag_name(tag)
             )));
         }
-        let mut out = Vec::with_capacity(bytes.len() / 8);
-        for chunk in bytes.chunks_exact(8) {
-            out.push(f64::from_le_bytes([
-                chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-            ]));
-        }
+        let out = bytes
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .copied()
+            .map(f64::from_le_bytes)
+            .collect();
         Some(Ok(out))
     }
 }
@@ -253,10 +257,13 @@ impl FromJson for u32 {
                 crate::host::bin::tag_name(tag)
             )));
         }
-        let mut out = Vec::with_capacity(bytes.len() / 4);
-        for chunk in bytes.chunks_exact(4) {
-            out.push(u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
-        }
+        let out = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .copied()
+            .map(u32::from_le_bytes)
+            .collect();
         Some(Ok(out))
     }
 }
@@ -284,10 +291,13 @@ impl FromJson for i32 {
                 crate::host::bin::tag_name(tag)
             )));
         }
-        let mut out = Vec::with_capacity(bytes.len() / 4);
-        for chunk in bytes.chunks_exact(4) {
-            out.push(i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
-        }
+        let out = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .copied()
+            .map(i32::from_le_bytes)
+            .collect();
         Some(Ok(out))
     }
 }

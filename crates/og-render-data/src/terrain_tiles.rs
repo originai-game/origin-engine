@@ -537,7 +537,7 @@ impl TerrainTile {
             let span = (hi - lo).max(1e-6);
             let s0 = (lo.floor() as usize).min(src - 1);
             let mut out = [(0usize, 0.0f32); 3];
-            for k in 0..3 {
+            for (k, slot) in out.iter_mut().enumerate() {
                 let s = s0 + k;
                 if s >= src {
                     break;
@@ -545,7 +545,7 @@ impl TerrainTile {
                 let a = (s as f32).max(lo);
                 let b = ((s + 1) as f32).min(hi);
                 if b > a {
-                    out[k] = (s, (b - a) / span);
+                    *slot = (s, (b - a) / span);
                 }
             }
             out

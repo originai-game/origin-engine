@@ -549,10 +549,7 @@ fn radial(mesh: &Mesh, s: &Settings, thin: usize) -> Vec<Vec<fracture::Plane>> {
     // Sector edges: even, jittered without allowing any sector span >= PI
     // (which would invert the chord when sectors == 3).
     let step = std::f64::consts::TAU / sectors as f64;
-    let max_jitter = ((std::f64::consts::PI - 0.15 - step) / step)
-        .max(0.0)
-        .min(0.66)
-        * 0.5;
+    let max_jitter = ((std::f64::consts::PI - 0.15 - step) / step).clamp(0.0, 0.66) * 0.5;
     let start = f() * step;
     let angles: Vec<f64> = (0..sectors)
         .map(|k| start + step * (k as f64 + (f() - 0.5) * 2.0 * max_jitter))
