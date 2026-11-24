@@ -18,8 +18,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `https://origingame.ai/downloads/engine/<version>/` (`docs/release.md` §1).
   A version is tested locally before a sandbox installs it. Development
   sandboxes are InstaBox (`tests/install/instabox.ts`); E2B is production.
-- Public contracts; changing one is a break (a breaking changelog fragment
-  with its fix, find and codemod, released in the next 0.9.x patch):
+- Public contracts with the platform; a change to one is coordinated with
+  the platform and recorded as a breaking changelog fragment (`member`,
+  `change`, `fix`), never kept compatible:
   - `packages/knowledge/scripts/mount.ts`: `installed`, `mount`, `summary`.
   - `packages/knowledge/scripts/lib.ts`: `payload`, `defaultRoots`,
     `PayloadFile`, `Roots`.
@@ -64,6 +65,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   arises, never worked around in a game, component or test. A missing feature
   starts from current papers and permissive implementations; keep their
   licences under `third_party/` or in the header.
+- **One implementation, no compatibility.** The game API, components,
+  defaults and save formats change whenever a cleaner design needs it; old
+  games and old saves are not supported. A replacement deletes what it
+  replaces in the same stack: no second path, legacy field, alias, shim,
+  save or schema migration, or version fallback. A change a game sees is a
+  breaking changelog fragment saying what to write instead.
 - **Size cuts never cost features.** Data only some games need is loaded or
   packed on demand.
 - **Frames are judged on quality, never on their difference.** Any change
@@ -183,10 +190,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 ## Streams and landing
 
 - The coordinator delegates streams with `create_thread`, each owning a
-  feature area on one branch, overlapping ones in order. Default: Amp's
-  own mode with model `anthropic/claude-opus-5-5`, project
-  `origingame/origin-engine`. A hard problem may go to
-  `anthropic/claude-fable-5-2`. A stopped thread is not resumed.
+  feature area on one branch, overlapping ones in order. Every stream
+  thread runs Amp's own mode with model `openai/gpt-6.1-sol` and the `fast`
+  feature, project `origingame/origin-engine`; no other model. A stopped
+  thread is not resumed.
 - A stream finishes its work whole and sends it as one stack of logical
   commits (a move and a logic edit never share one). Authors run only fast
   checks: fmt, `cargo check --workspace --all-targets`, Clippy on the
