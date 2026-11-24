@@ -30,6 +30,8 @@ mod sleep;
 mod bodies;
 #[path = "sim/colliders.rs"]
 mod colliders;
+#[path = "sim/dump.rs"]
+mod dump;
 #[path = "sim/persist.rs"]
 mod persist;
 #[path = "sim/queries.rs"]

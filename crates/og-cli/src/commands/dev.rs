@@ -609,23 +609,32 @@ pub fn run(args: &[&str]) -> ExitCode {
     } else {
         None
     };
+    let mut p = p;
+    let refresh_file = p.work_dir().join("refresh");
+    let _ = std::fs::write(&refresh_file, b"0\n");
     let handoff = engine.as_ref().map(|e| e.save.clone());
-    let spawn = |addon: Option<&Path>, restore: Option<&Path>| {
+    let spawn = |root: &Path,
+                 bundle: &Path,
+                 refresh: &Path,
+                 addon: Option<&Path>,
+                 restore: Option<&Path>| {
         let mut cmd = project::bun(&package, "src/node/run.ts");
         // Its own process group: a signal to og reaches everything the game started.
         #[cfg(unix)]
         std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
         cmd.arg("--entry")
-            .arg(&bundle)
+            .arg(bundle)
             .arg("--root")
-            .arg(&p.root)
+            .arg(root)
             .arg("--watch")
-            .arg(&bundle)
+            .arg(bundle)
+            .arg("--watch-refresh")
+            .arg(refresh)
             .arg("--port")
             .arg(&port)
             .arg("--realtime")
             .arg("--out")
-            .arg(p.root.join("og-out"))
+            .arg(root.join("og-out"))
             .stdout(Stdio::piped());
         if let Some(a) = addon {
             cmd.env("OG_NATIVE_ADDON", a);
@@ -638,7 +647,13 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         cmd.spawn()
     };
-    let mut child = match spawn(engine.as_ref().map(|e| e.addon.as_path()), None) {
+    let mut child = match spawn(
+        &p.root,
+        &bundle,
+        &refresh_file,
+        engine.as_ref().map(|e| e.addon.as_path()),
+        None,
+    ) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("og dev: {} ({e})", project::NO_BUN);
@@ -649,25 +664,35 @@ pub fn run(args: &[&str]) -> ExitCode {
     relay::start(group);
     let (tx, rx) = mpsc::channel::<String>();
     pipe(&mut child, tx.clone());
+    let project_file = p.root.join("project.ogt");
     let watched = [p.root.join("src"), p.root.join("assets")];
     let take = || {
         let mut m = BTreeMap::new();
         for d in &watched {
             snapshot(d, &mut m);
         }
+        if let Ok(meta) = std::fs::metadata(&project_file)
+            && let Ok(t) = meta.modified()
+        {
+            m.insert(project_file.clone(), t);
+        }
         m
     };
     let mut seen = take();
     let mut reloads = 0usize;
     let mut restarts = 0usize;
+    let mut refresh_seq = 0u64;
     // The rebuild time (save seen to bundle written) of each reload in
     // flight, and the source change its bundle holds.
     let mut pending: Vec<(Instant, f64, usize)> = Vec::new();
+    // Cook time (save seen to refresh sentinel touched) of each in-place
+    // asset-only refresh in flight.
+    let mut pending_refresh: Vec<(Instant, f64)> = Vec::new();
     // --exit-after was reached: stop once the last check has landed.
     let mut stopping: Option<Instant> = None;
     if !json {
         println!(
-            "og dev: watching src/ and assets/ of {}; reloads print below (budget {BUDGET_MS} ms)",
+            "og dev: watching src/, assets/ and project.ogt of {}; reloads print below (budget {BUDGET_MS} ms)",
             p.root.display()
         );
     }
@@ -713,6 +738,42 @@ pub fn run(args: &[&str]) -> ExitCode {
                         stopping = Some(Instant::now());
                         break;
                     }
+                }
+                continue;
+            }
+            if let Some(v) = parsed.as_ref().filter(|v| v["event"] == "refresh") {
+                reloads += 1;
+                let swap = v["latencyMs"].as_f64().unwrap_or(f64::NAN);
+                let cook_ms = if pending_refresh.is_empty() {
+                    0.0
+                } else {
+                    pending_refresh.remove(0).1
+                };
+                let total = cook_ms + swap;
+                let ok = v["ok"].as_bool().unwrap_or(false);
+                let within = total <= BUDGET_MS;
+                if json {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "event": "refresh", "n": reloads, "ok": ok,
+                            "cookMs": (cook_ms * 10.0).round() / 10.0,
+                            "swapMs": swap, "totalMs": (total * 10.0).round() / 10.0,
+                            "budgetMs": BUDGET_MS, "withinBudget": within,
+                            "report": v["report"], "tick": v["tick"],
+                            "rendered": v["rendered"], "timings": v["timings"],
+                        })
+                    );
+                } else {
+                    println!(
+                        "refresh {reloads}: {} in {total:.0} ms (cook {cook_ms:.0} ms + apply {swap:.0} ms; budget {BUDGET_MS} ms{})",
+                        if ok { "ok" } else { "failed" },
+                        if within { "" } else { ", OVER" }
+                    );
+                }
+                if exit_after.is_some_and(|n| reloads + restarts >= n) {
+                    stopping = Some(Instant::now());
+                    break;
                 }
                 continue;
             }
@@ -815,7 +876,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                             );
                         }
                         let restore = kept.then_some(e.save.as_path());
-                        match spawn(Some(&addon), restore) {
+                        match spawn(&p.root, &bundle, &refresh_file, Some(&addon), restore) {
                             Ok(mut c) => {
                                 pipe(&mut c, tx.clone());
                                 group = Target::Group(c.id());
@@ -852,7 +913,68 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         seen = now;
         let saved = Instant::now();
+        let project_changed = changes.iter().any(|c| c == &project_file);
         let assets = changes.iter().any(|c| c.starts_with(p.root.join("assets")));
+        let src_changed = changes.iter().any(|c| c.starts_with(p.root.join("src")));
+        if project_changed {
+            eprintln!("og dev: project.ogt changed; re-cooking and restarting");
+            match Project::open(&p.root) {
+                Ok(reopened) => p = reopened,
+                Err(e) => {
+                    eprintln!("og dev: {e}; the game keeps running");
+                    continue;
+                }
+            }
+            if let Err(e) = crate::cook::cook(&p.root, 0, false) {
+                eprintln!("{e}");
+                continue;
+            }
+            if let Err(e) = project::bundle_native_to(&p, &package, &bundle) {
+                eprintln!("og dev: {e}; the game keeps running");
+                continue;
+            }
+            let _ = child.kill();
+            let _ = child.wait();
+            stop_group(group);
+            match spawn(
+                &p.root,
+                &bundle,
+                &refresh_file,
+                engine.as_ref().map(|e| e.addon.as_path()),
+                None,
+            ) {
+                Ok(mut c) => {
+                    pipe(&mut c, tx.clone());
+                    group = Target::Group(c.id());
+                    relay::retarget(group);
+                    child = c;
+                    restarts += 1;
+                    if json {
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "event": "restart", "n": restarts, "reason": "project.ogt",
+                                "ms": (saved.elapsed().as_secs_f64() * 10000.0).round() / 10.0,
+                            })
+                        );
+                    } else {
+                        println!(
+                            "restart {restarts}: project.ogt reloaded in {:.0} ms",
+                            saved.elapsed().as_secs_f64() * 1000.0
+                        );
+                    }
+                    if exit_after.is_some_and(|n| reloads + restarts >= n) {
+                        stopping = Some(Instant::now());
+                    }
+                }
+                Err(err) => {
+                    relay::stop();
+                    eprintln!("og dev: {} ({err})", project::NO_BUN);
+                    return ExitCode::FAILURE;
+                }
+            }
+            continue;
+        }
         if assets {
             match crate::cook::cook(&p.root, 0, false) {
                 Ok(r) => {
@@ -866,13 +988,20 @@ pub fn run(args: &[&str]) -> ExitCode {
                     continue;
                 }
             }
+            if !src_changed {
+                refresh_seq += 1;
+                if let Err(e) = std::fs::write(&refresh_file, format!("{refresh_seq}\n")) {
+                    eprintln!(
+                        "og dev: cannot signal asset refresh ({e}); falling back to bundle reload"
+                    );
+                } else {
+                    pending_refresh.push((saved, saved.elapsed().as_secs_f64() * 1000.0));
+                    continue;
+                }
+            }
         }
         // A source change is checked beside the rebuild; other assets are not.
-        if changes
-            .iter()
-            .any(|c| !c.starts_with(p.root.join("assets")))
-            && let Some(c) = &mut checks
-        {
+        if src_changed && let Some(c) = &mut checks {
             source += 1;
             c.start(source);
         }

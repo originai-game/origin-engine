@@ -451,9 +451,19 @@ impl Host {
         }
     }
 
+    /// Whether the host installed an audio listen hook.
+    pub(crate) fn has_listen(&self) -> bool {
+        self.listen.is_some()
+    }
+
+    /// Reads the last `seconds` (clamped to 0..=2) of rendered audio from the host.
+    pub(crate) fn heard(&self, seconds: f32) -> Option<Heard> {
+        (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))
+    }
+
     /// [`Probe::listen`].
     pub(super) fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
-        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
+        let h = self.heard(seconds)?;
         Some(json!({
             "tick": world.time().tick,
             "rate": h.rate,

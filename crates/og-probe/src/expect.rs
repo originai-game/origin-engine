@@ -190,9 +190,17 @@ pub(crate) enum Expect {
         op: Op,
         value: Rhs,
     },
+    /// Audio mixer output (`listen(seconds)`): `rms`, `peak`, `frames`, `rate`,
+    /// or shorthands `audible` (`peak>0.001`) / `silent` (`peak<=0.001`).
+    Audio {
+        seconds: f32,
+        path: String,
+        op: Op,
+        value: Rhs,
+    },
 }
 
-const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:entity:<id>:<path>==<value>`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v`, `expect:state:<path>==<value>` or `expect:timings:<path>==<value>`, where a value may be `$<path>`, another path of the same source";
+const USAGE: &str = "write `expect:entity:<id>:within:x,y,w,h`, `expect:entity:<id>:<path>==<value>`, `expect:event:<Name>[:count]`, `expect:ui:text:<text>`, `expect:region:x,y,w,h:color:#rrggbb[:tolerance]`, `expect:frame:<ref.png>:rmse:<=v`, `expect:state:<path>==<value>`, `expect:timings:<path>==<value>` or `expect:audio:[<sec>:]<audible|silent|<metric><op><value>>`, where a value may be `$<path>`, another path of the same source";
 
 /// `<path><op><value>`: the dotted path, the comparison and the value (JSON,
 /// else text; `$<path>` another path of the same source). `form` names the
@@ -358,6 +366,43 @@ pub(crate) fn parse(args: &[String]) -> Result<Expect, String> {
         "timings" => {
             let (path, op, value) = comparison(&rest(1), "timings:")?;
             Ok(Expect::Timings { path, op, value })
+        }
+        "audio" => {
+            let (seconds, expr) = match args.get(1).and_then(|s| s.trim().parse::<f32>().ok()) {
+                Some(sec) if args.len() >= 3 => {
+                    if !sec.is_finite() || sec <= 0.0 || sec > 2.0 {
+                        return Err(format!(
+                            "expect:audio window must be in (0, 2] seconds, got {sec}"
+                        ));
+                    }
+                    (sec, rest(2))
+                }
+                _ => (1.0f32, rest(1)),
+            };
+            match expr.trim() {
+                "audible" => Ok(Expect::Audio {
+                    seconds,
+                    path: "peak".into(),
+                    op: Op::Gt,
+                    value: json!(0.001).into(),
+                }),
+                "silent" => Ok(Expect::Audio {
+                    seconds,
+                    path: "peak".into(),
+                    op: Op::Le,
+                    value: json!(0.001).into(),
+                }),
+                other => {
+                    let (path, op, value) = comparison(other, "audio:")
+                        .map_err(|e| format!("expect:audio: {e}; {USAGE}"))?;
+                    Ok(Expect::Audio {
+                        seconds,
+                        path,
+                        op,
+                        value,
+                    })
+                }
+            }
         }
         _ => Err(format!("'{kind}' is not an expectation; {USAGE}")),
     }
@@ -609,6 +654,12 @@ impl Probe {
                 check_path(r, &facts, "state().facts", "facts.", &path, op, &value);
             }
             Expect::Timings { path, op, value } => self.timings(world, &path, op, &value, r),
+            Expect::Audio {
+                seconds,
+                path,
+                op,
+                value,
+            } => self.audio(seconds, &path, op, &value, r),
             Expect::Field {
                 id,
                 path,
@@ -617,6 +668,32 @@ impl Probe {
             } => self.field(world, &id, &path, op, &value, r),
         }
         None
+    }
+
+    /// `audio:[<sec>:]<audible|silent|<metric><op><value>>`: checks the audio
+    /// mixer's rendered output (`listen()`). Without an audio hook in the host,
+    /// marks the expectation `unchecked`.
+    fn audio(&self, seconds: f32, path: &str, op: Op, value: &Rhs, r: &mut ExpectResult) {
+        if !self.host.has_listen() {
+            r.status = Status::Unchecked;
+            r.reason = "this host has no audio listener, audio unchecked".into();
+            return;
+        }
+        let metrics = match self.host.heard(seconds) {
+            Some(h) => json!({
+                "peak": h.peak,
+                "rms": h.rms,
+                "frames": h.frames,
+                "rate": h.rate,
+            }),
+            None => json!({
+                "peak": 0.0,
+                "rms": 0.0,
+                "frames": 0,
+                "rate": 0,
+            }),
+        };
+        check_path(r, &metrics, "listen()", "audio.", path, op, value);
     }
 
     /// `entity:<id>:within:x,y,w,h`: the entity's visible box in the frame
@@ -1210,6 +1287,72 @@ mod tests {
         assert_eq!(
             at_path(&json!({"a": {"b": [3, 4]}}), "a.b.1"),
             Some(&json!(4))
+        );
+    }
+
+    #[test]
+    fn expect_audio_parses_and_evaluates() {
+        assert_eq!(
+            parse(&args("audio:audible")).unwrap(),
+            Expect::Audio {
+                seconds: 1.0,
+                path: "peak".into(),
+                op: Op::Gt,
+                value: json!(0.001).into(),
+            }
+        );
+        assert_eq!(
+            parse(&args("audio:0.5:silent")).unwrap(),
+            Expect::Audio {
+                seconds: 0.5,
+                path: "peak".into(),
+                op: Op::Le,
+                value: json!(0.001).into(),
+            }
+        );
+        assert_eq!(
+            parse(&args("audio:0.25:rms>=0.05")).unwrap(),
+            Expect::Audio {
+                seconds: 0.25,
+                path: "rms".into(),
+                op: Op::Ge,
+                value: json!(0.05).into(),
+            }
+        );
+        assert!(parse(&args("audio:5.0:audible")).is_err());
+
+        // Without listen hook: unchecked (never fail).
+        let mut world = World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let mut probe = Probe::new(&mut world).unwrap();
+        let r = probe
+            .expect(&mut world, "audio:audible")
+            .expect("evaluates");
+        assert_eq!(r.status, Status::Unchecked);
+
+        // With listen hook: passes audible and rms check, fails silent.
+        probe.set_listen(|_sec| {
+            Some(crate::Heard {
+                wav: Vec::new(),
+                rate: 48_000,
+                frames: 4800,
+                peak: 0.5,
+                rms: 0.2,
+            })
+        });
+        assert_eq!(
+            probe.expect(&mut world, "audio:audible").unwrap().status,
+            Status::Pass
+        );
+        assert_eq!(
+            probe
+                .expect(&mut world, "audio:0.5:rms>=0.1")
+                .unwrap()
+                .status,
+            Status::Pass
+        );
+        assert_eq!(
+            probe.expect(&mut world, "audio:silent").unwrap().status,
+            Status::Fail
         );
     }
 }

@@ -102,6 +102,7 @@ pub struct AudioLink {
     bank: SoundBank,
     tick_rate: u32,
     listen: crate::listen::Listen,
+    mix_stats: Arc<Mutex<Option<crate::mixer::MixStats>>>,
 }
 
 impl std::fmt::Debug for AudioLink {
@@ -164,6 +165,15 @@ impl AudioLink {
     /// What the sink's mixer rendered last (the probe's `listen`).
     pub fn listen(&self) -> &crate::listen::Listen {
         &self.listen
+    }
+
+    /// The sink mixer's latest counters, once a mixer has rendered into this link.
+    pub fn mix_stats(&self) -> Option<crate::mixer::MixStats> {
+        *self.mix_stats.lock().expect("audio mix stats")
+    }
+
+    pub(crate) fn mix_stats_slot(&self) -> Arc<Mutex<Option<crate::mixer::MixStats>>> {
+        self.mix_stats.clone()
     }
 
     /// Starts queueing packets for a sink. The next tick sends a resync
@@ -424,6 +434,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             bank: desc.bank.clone().unwrap_or_default(),
             tick_rate,
             listen: crate::listen::Listen::default(),
+            mix_stats: Arc::new(Mutex::new(None)),
         },
     };
     crate::music::install(world)?;

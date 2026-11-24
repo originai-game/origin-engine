@@ -467,6 +467,7 @@ pub struct Mixer {
     /// Per-frame peaks of the buses that key a ducker.
     keys: [Vec<f32>; BUS_COUNT],
     listen: Option<Listen>,
+    mix_stats: Option<std::sync::Arc<std::sync::Mutex<Option<MixStats>>>>,
     /// Voices resample by the windowed sinc (`og.Audio.resampler` sinc, the
     /// default), else linearly.
     sinc: bool,
@@ -638,6 +639,7 @@ impl Mixer {
             damping: 0.4,
             keys: Default::default(),
             listen: None,
+            mix_stats: None,
             sinc: true,
         }
     }
@@ -681,6 +683,7 @@ impl Mixer {
             link.bank().clone(),
         );
         m.record_into(link.listen().clone());
+        m.mix_stats = Some(link.mix_stats_slot());
         m
     }
 
@@ -1082,6 +1085,11 @@ impl Mixer {
             done += seg;
             self.frame += seg as u64;
             self.stats.frames += seg as u64;
+        }
+        if let Some(slot) = &self.mix_stats
+            && let Ok(mut guard) = slot.try_lock()
+        {
+            *guard = Some(self.stats());
         }
     }
 

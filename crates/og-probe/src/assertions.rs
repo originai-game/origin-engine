@@ -477,9 +477,12 @@ impl crate::probe::state::Checks {
     pub(crate) fn add_invariant(&mut self, args: &[String]) -> Result<(), String> {
         let text = args.join(":");
         crate::expect::parse(args)?;
-        if matches!(args.first().map(String::as_str), Some("region" | "frame")) {
+        if matches!(
+            args.first().map(String::as_str),
+            Some("region" | "frame" | "audio")
+        ) {
             return Err(format!(
-                "invariant:{text}: a region or frame expectation reads a frame, which every tick cannot afford; check it with expect: at the tick it matters"
+                "invariant:{text}: a region, frame or audio expectation reads a frame or audio buffer, which every tick cannot afford; check it with expect: at the tick it matters"
             ));
         }
         self.assertions.borrow_mut().declare(
