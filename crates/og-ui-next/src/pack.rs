@@ -41,7 +41,7 @@ impl Scheme {
 }
 
 /// The theme sections a pack may set: NSH's `Theme::from_json` keys.
-pub const THEME_KEYS: [&str; 19] = [
+pub const THEME_KEYS: [&str; 23] = [
     "colors",
     "spacing",
     "rem",
@@ -61,6 +61,10 @@ pub const THEME_KEYS: [&str; 19] = [
     "perspective",
     "aspect",
     "ease",
+    "duration",
+    "opacity",
+    "stroke",
+    "scale",
 ];
 
 /// The seeds the design palette is derived from (`packages/design/tokens/seed.css`).

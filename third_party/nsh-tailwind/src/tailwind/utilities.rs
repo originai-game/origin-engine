@@ -2567,6 +2567,9 @@ static PREFIXES: &[(&str, Handler)] = &[
         if let Some(c) = color(t, v) {
             return one(setc(K::OutlineColor, c));
         }
+        if let Some(w) = t.strokes.get(v) {
+            return Some(outline_width(*w));
+        }
         Some(outline_width(arbitrary_points(t, v)?))
     }),
     ("inset-ring", |t, v, _| {
@@ -2576,7 +2579,10 @@ static PREFIXES: &[(&str, Handler)] = &[
         if let Some(a) = current(v) {
             return one(Decl::CurrentPart(ColorSlot::InsetRing, a));
         }
-        part(Part::InsetRingColor(color(t, v)?))
+        if let Some(c) = color(t, v) {
+            return part(Part::InsetRingColor(c));
+        }
+        part(Part::InsetRing(*t.strokes.get(v)?))
     }),
     ("ring-offset", |t, v, _| {
         if let Some(n) = int(v).or_else(|| arbitrary(v).and_then(|a| class_length(t, &a))) {
@@ -2594,7 +2600,10 @@ static PREFIXES: &[(&str, Handler)] = &[
         if let Some(a) = current(v) {
             return one(Decl::CurrentPart(ColorSlot::Ring, a));
         }
-        part(Part::RingColor(color(t, v)?))
+        if let Some(c) = color(t, v) {
+            return part(Part::RingColor(c));
+        }
+        part(Part::Ring(*t.strokes.get(v)?))
     }),
     // Effects.
     ("inset-shadow", |t, v, _| {
@@ -2619,8 +2628,9 @@ static PREFIXES: &[(&str, Handler)] = &[
         }
         part(Part::ShadowColor(color(t, v)?))
     }),
-    ("opacity", |_, v, _| {
-        one(setn(K::Opacity, opacity_factor(v)?.clamp(0.0, 1.0)))
+    ("opacity", |t, v, _| {
+        let o = t.opacities.get(v).copied().or_else(|| opacity_factor(v))?;
+        one(setn(K::Opacity, o.clamp(0.0, 1.0)))
     }),
     ("mix-blend", |_, v, _| {
         one(Decl::Set(
@@ -2723,14 +2733,14 @@ static PREFIXES: &[(&str, Handler)] = &[
     ("rotate", |_, v, n| {
         part(Part::Rotate(signed(degrees(v)?, n)))
     }),
-    ("scale-x", |_, v, n| {
-        part(Part::ScaleX(signed(scale_factor(v)?, n)))
+    ("scale-x", |t, v, n| {
+        part(Part::ScaleX(signed(t.scales.get(v).copied().or_else(|| scale_factor(v))?, n)))
     }),
-    ("scale-y", |_, v, n| {
-        part(Part::ScaleY(signed(scale_factor(v)?, n)))
+    ("scale-y", |t, v, n| {
+        part(Part::ScaleY(signed(t.scales.get(v).copied().or_else(|| scale_factor(v))?, n)))
     }),
-    ("scale", |_, v, n| {
-        let s = signed(scale_factor(v)?, n);
+    ("scale", |t, v, n| {
+        let s = signed(t.scales.get(v).copied().or_else(|| scale_factor(v))?, n);
         Some(vec![
             Decl::Part(Part::ScaleX(s)),
             Decl::Part(Part::ScaleY(s)),
@@ -2770,8 +2780,12 @@ static PREFIXES: &[(&str, Handler)] = &[
         one(sets(K::TransformOrigin, o))
     }),
     // Transitions.
-    ("duration", |_, v, _| part(Part::Duration(millis(v)?))),
-    ("delay", |_, v, _| part(Part::Delay(millis(v)?))),
+    ("duration", |t, v, _| {
+        part(Part::Duration(t.durations.get(v).copied().or_else(|| millis(v))?))
+    }),
+    ("delay", |t, v, _| {
+        part(Part::Delay(t.durations.get(v).copied().or_else(|| millis(v))?))
+    }),
     ("ease", |t, v, _| {
         let e = match t.ease.get(v) {
             Some(e) => *e,
@@ -3058,8 +3072,10 @@ fn border(theme: &Theme, v: &str, widths: &[StyleKey], colors: &[StyleKey]) -> O
     if let Some(mix) = mixes_current(v) {
         return colors.iter().map(|k| arb(*k, &mix)).collect();
     }
-    let c = color(theme, v)?;
-    Some(colors.iter().map(|k| setc(*k, c)).collect())
+    if let Some(c) = color(theme, v) {
+        return Some(colors.iter().map(|k| setc(*k, c)).collect());
+    }
+    Some(border_widths(widths, *theme.strokes.get(v)?))
 }
 
 /// Border widths, in `currentColor` unless a color utility says otherwise

@@ -4,6 +4,9 @@
   --motion-duration-fast: 180ms;
   --motion-duration-base: 240ms;
   --motion-duration-slow: 400ms;
+  /* A control's own state change (hover, press, selection, a slot's fill):
+     what `transition duration-control` takes. */
+  --motion-duration-control: 317ms;
   --motion-duration-spring: 520ms;
   --motion-duration-bounce: 640ms;
   /* Longer than a transition: what loops and long plays take, each named for

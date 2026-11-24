@@ -60,6 +60,15 @@ pub struct Theme {
     pub(crate) aspect: FxHashMap<Box<str>, f32>,
     /// `ease-out`.
     pub(crate) ease: FxHashMap<Box<str>, [f32; 4]>,
+    /// `duration-base`, `delay-fast`: named durations (ms).
+    pub(crate) durations: FxHashMap<Box<str>, f32>,
+    /// `opacity-dim`: named opacities (0 to 1).
+    pub(crate) opacities: FxHashMap<Box<str>, f32>,
+    /// `ring-regular`, `border-thick`, `outline-hairline`: named line
+    /// widths (points); a color of the same name wins.
+    pub(crate) strokes: FxHashMap<Box<str>, f32>,
+    /// `scale-press`: named scale factors.
+    pub(crate) scales: FxHashMap<Box<str>, f32>,
     /// Default transition duration (ms) and curve.
     pub(crate) transition: (f32, [f32; 4]),
     /// The design tokens classes name (`None`: none).
@@ -405,6 +414,10 @@ impl Default for Theme {
                 ("out", [0.0, 0.0, 0.2, 1.0]),
                 ("in-out", [0.4, 0.0, 0.2, 1.0]),
             ]),
+            durations: FxHashMap::default(),
+            opacities: FxHashMap::default(),
+            strokes: FxHashMap::default(),
+            scales: FxHashMap::default(),
             transition: (150.0, [0.4, 0.0, 0.2, 1.0]),
             tokens: None,
         }
@@ -584,8 +597,13 @@ impl Theme {
                     self.fonts.insert(name.into(), Some(family.into()));
                     Ok(())
                 }),
-                "tracking" | "leading" | "radius" | "blur" | "perspective" | "aspect" => {
+                "tracking" | "leading" | "radius" | "blur" | "perspective" | "aspect"
+                | "duration" | "opacity" | "stroke" | "scale" => {
                     let what = match key.as_str() {
+                        "duration" => "duration",
+                        "opacity" => "opacity",
+                        "stroke" => "stroke",
+                        "scale" => "scale",
                         "tracking" => "tracking",
                         "leading" => "leading",
                         "radius" => "radius",
@@ -601,6 +619,10 @@ impl Theme {
                             "radius" => &mut self.radius,
                             "blur" => &mut self.blur,
                             "perspective" => &mut self.perspective,
+                            "duration" => &mut self.durations,
+                            "opacity" => &mut self.opacities,
+                            "stroke" => &mut self.strokes,
+                            "scale" => &mut self.scales,
                             _ => &mut self.aspect,
                         };
                         target.insert(name.into(), n);
@@ -674,6 +696,10 @@ impl Theme {
             self.perspective.keys().collect(),
             self.aspect.keys().collect(),
             self.ease.keys().collect(),
+            self.durations.keys().collect(),
+            self.opacities.keys().collect(),
+            self.strokes.keys().collect(),
+            self.scales.keys().collect(),
         ];
         names.extend(keys.into_iter().flatten().map(|n| &**n));
         names.sort_unstable();

@@ -233,6 +233,27 @@ fn theme(t: &Tokens, names: &[String]) -> Map<String, Value> {
             if let Some(b) = bezier(v) {
                 put("ease", name, b);
             }
+        } else if let Some(name) = after("--motion-duration-") {
+            // `duration-base`, `delay-fast`: milliseconds.
+            if let Some(ms) = v
+                .strip_suffix("ms")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+            {
+                put("duration", name, json!(ms));
+            }
+        } else if let Some(name) = after("--motion-scale-") {
+            if let Ok(f) = v.parse::<f64>() {
+                put("scale", name, round(f));
+            }
+        } else if let Some(name) = after("--opacity-") {
+            if let Ok(f) = v.parse::<f64>() {
+                put("opacity", name, round(f));
+            }
+        } else if let Some(name) = after("--stroke-") {
+            // `ring-regular`, `border-thick`: a line width of the scale.
+            if let Some(w) = px(v) {
+                put("stroke", name, json!(w));
+            }
         } else if let Some(name) = after("--measure-") {
             if let Some(w) = px(v) {
                 put("container", name, json!(w));
@@ -347,12 +368,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Focus.ring",
         "the ring a control shows while a keyboard or pad focuses it, unless its own classes style focus-visible",
-        "outline-2 outline-focus -outline-offset-2",
+        "outline-regular outline-focus -outline-offset-2",
     ),
     (
         "Button.plate",
         "a button's body: rune-kit's neutral variant, and the states every variant shares (hover, pressed, a toggle's aria-pressed, selected, disabled, aria-busy)",
-        "rounded-button text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-1 inset-ring-rim transition duration-317 hover:bg-none hover:bg-raised-hover-lo hover:shadow-plate hover:inset-ring-well-rim active:bg-none active:bg-raised-pressed aria-pressed:bg-none aria-pressed:bg-border-strong aria-pressed:inset-ring-2 aria-pressed:inset-ring-accent selected:bg-none selected:bg-border-strong selected:inset-ring-2 selected:inset-ring-accent disabled:text-fg-subtle disabled:bg-none disabled:bg-fill disabled:shadow-none disabled:inset-ring-1 disabled:inset-ring-rim-soft aria-busy:opacity-80",
+        "rounded-button text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-rim transition duration-control hover:bg-none hover:bg-raised-hover-lo hover:shadow-plate hover:inset-ring-well-rim active:bg-none active:bg-raised-pressed aria-pressed:bg-none aria-pressed:bg-border-strong aria-pressed:inset-ring-regular aria-pressed:inset-ring-accent selected:bg-none selected:bg-border-strong selected:inset-ring-regular selected:inset-ring-accent disabled:text-fg-subtle disabled:bg-none disabled:bg-fill disabled:shadow-none disabled:inset-ring-hairline disabled:inset-ring-rim-soft aria-busy:opacity-80",
     ),
     (
         "Button.plate.primary",
@@ -377,7 +398,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Button.plate.outline",
         "a rim on the page, no fill",
-        "text-fg bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0 inset-ring-1 inset-ring-border-strong hover:inset-ring-border-strong",
+        "text-fg bg-none bg-transparent shadow-none inset-shadow-none inset-ring-0 hover:bg-none hover:bg-hover hover:shadow-none active:bg-none active:bg-pressed disabled:bg-none disabled:bg-transparent disabled:inset-ring-0 inset-ring-hairline inset-ring-border-strong hover:inset-ring-border-strong",
     ),
     (
         "Button.plate.ghost",
@@ -397,27 +418,27 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Button.spinner",
         "what a busy button shows before its label",
-        "size-4 shrink-0 rounded-capsule border-2 border-current border-t-transparent animate-spin",
+        "size-4 shrink-0 rounded-capsule border-regular border-current border-t-transparent animate-spin",
     ),
     (
         "Checkbox.indicator",
         "a checkbox's box; checked: and indeterminate: follow the checkbox",
-        "flex items-center justify-center size-5 shrink-0 rounded-control bg-fill-strong inset-ring-2 inset-ring-border-strong text-accent-fg transition duration-120 checked:bg-accent checked:inset-ring-0 indeterminate:bg-accent indeterminate:inset-ring-0 disabled:opacity-50",
+        "flex items-center justify-center size-5 shrink-0 rounded-control bg-fill-strong inset-ring-regular inset-ring-border-strong text-accent-fg transition duration-instant checked:bg-accent checked:inset-ring-0 indeterminate:bg-accent indeterminate:inset-ring-0 disabled:opacity-50",
     ),
     (
         "Radio.indicator",
         "a radio's circle; checked: follows the radio",
-        "flex items-center justify-center size-5 shrink-0 rounded-capsule bg-fill-strong inset-ring-2 inset-ring-border-strong transition duration-120 checked:inset-ring-accent disabled:opacity-50",
+        "flex items-center justify-center size-5 shrink-0 rounded-capsule bg-fill-strong inset-ring-regular inset-ring-border-strong transition duration-instant checked:inset-ring-accent disabled:opacity-50",
     ),
     (
         "Radio.dot",
         "the dot inside a checked radio",
-        "size-2.5 rounded-capsule bg-accent scale-0 transition-transform duration-120 group-checked/radio:scale-100",
+        "size-2.5 rounded-capsule bg-accent scale-0 transition-transform duration-instant group-checked/radio:scale-100",
     ),
     (
         "Switch.track",
         "a switch's track; checked: follows the switch",
-        "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-1 inset-ring-border-strong transition duration-200 checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
+        "relative h-6 w-11 shrink-0 rounded-capsule bg-fill-strong inset-ring-hairline inset-ring-border-strong transition duration-200 checked:bg-accent checked:inset-ring-0 disabled:opacity-50",
     ),
     (
         "Switch.thumb",
@@ -427,7 +448,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Tab.item",
         "a tab of a tab list",
-        "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-120 hover:text-fg selected:text-fg disabled:text-fg-subtle",
+        "flex-row items-center justify-center gap-2 min-h-11 px-3 text-sm font-semibold text-fg-muted transition duration-instant hover:text-fg selected:text-fg disabled:text-fg-subtle",
     ),
     (
         "Checkbox.mark",
@@ -457,7 +478,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Toggle.item",
         "a toggle button, alone or in a toggle group; aria-pressed: is on",
-        "flex-row items-center justify-center gap-2 min-h-11 min-w-11 px-3 rounded-control text-sm font-semibold text-fg-muted transition duration-120 hover:bg-hover hover:text-fg active:bg-pressed aria-pressed:bg-layer-4 aria-pressed:text-fg aria-pressed:shadow-raise disabled:text-fg-subtle",
+        "flex-row items-center justify-center gap-2 min-h-11 min-w-11 px-3 rounded-control text-sm font-semibold text-fg-muted transition duration-instant hover:bg-hover hover:text-fg active:bg-pressed aria-pressed:bg-layer-4 aria-pressed:text-fg aria-pressed:shadow-raise disabled:text-fg-subtle",
     ),
     (
         "ToggleGroup.frame",
@@ -487,12 +508,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Slider.thumb",
         "a slider's thumb",
-        "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-2 inset-ring-accent transition-transform duration-120 group-active/slider:scale-110 disabled:opacity-50",
+        "absolute top-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-capsule bg-knob shadow-raise inset-ring-regular inset-ring-accent transition-transform duration-instant group-active/slider:scale-110 disabled:opacity-50",
     ),
     (
         "NumberInput.frame",
         "a number input's box, around its field and steppers",
-        "flex-row items-center rounded-field bg-well inset-ring-1 inset-ring-border",
+        "flex-row items-center rounded-field bg-well inset-ring-hairline inset-ring-border",
     ),
     (
         "NumberInput.field",
@@ -527,7 +548,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Sheet.frame",
         "a sheet's panel at the bottom of the screen",
-        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-layer-1 text-fg shadow-overlay transition ease-out duration-240 starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-180 exit:ease-exit",
+        "flex-col gap-3 w-full max-h-[85%] mt-auto px-4 pt-2 pb-6 rounded-t-sheet bg-layer-1 text-fg shadow-overlay transition ease-out duration-base starting:translate-y-12 starting:opacity-0 exit:translate-y-12 exit:opacity-0 exit:duration-fast exit:ease-exit",
     ),
     (
         "Sheet.grabber",
@@ -542,17 +563,17 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Scrollbar.thumb",
         "the thumb of a scroll view's bar: as long as the share shown, dragged to scroll",
-        "w-1 rounded-capsule bg-fg-subtle opacity-60 transition duration-120 hover:scale-x-150 hover:opacity-90 active:scale-x-150 active:opacity-100",
+        "w-1 rounded-capsule bg-fg-subtle opacity-muted transition duration-instant hover:scale-x-150 hover:opacity-90 active:scale-x-150 active:opacity-100",
     ),
     (
         "Popover.frame",
         "a popover's panel by its trigger",
-        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
+        "flex-col gap-2 min-w-48 max-w-80 p-3 rounded-card bg-layer-2 text-fg shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0",
     ),
     (
         "Menu.frame",
         "a menu's popup by its trigger, around its items",
-        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-layer-2 text-fg shadow-float transition duration-120 ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
+        "flex-col min-w-52 max-w-80 p-1 rounded-card bg-layer-2 text-fg shadow-float transition duration-instant ease-out starting:opacity-0 starting:scale-95 exit:opacity-0 exit:duration-90",
     ),
     (
         "Menu.item",
@@ -597,27 +618,27 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Toast.frame",
         "a toast",
-        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-layer-2 text-fg shadow-float pointer-events-auto transition ease-out duration-240 starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-120",
+        "flex-row items-center gap-3 w-full max-w-96 min-h-12 px-4 py-2 rounded-card bg-layer-2 text-fg shadow-float pointer-events-auto transition ease-out duration-base starting:opacity-0 starting:-translate-y-4 exit:opacity-0 exit:duration-instant",
     ),
     (
         "Toast.frame.success",
         "a toast saying something went well",
-        "inset-ring-1 inset-ring-success",
+        "inset-ring-hairline inset-ring-success",
     ),
     (
         "Toast.frame.danger",
         "a toast saying something failed",
-        "inset-ring-1 inset-ring-danger",
+        "inset-ring-hairline inset-ring-danger",
     ),
     (
         "Select.trigger",
         "a select's button, showing its value",
-        "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-1 inset-ring-border text-fg hover:inset-ring-border-strong aria-expanded:inset-ring-accent disabled:text-fg-subtle",
+        "flex-row items-center justify-between gap-2 min-h-11 px-3 rounded-field bg-well inset-ring-hairline inset-ring-border text-fg hover:inset-ring-border-strong aria-expanded:inset-ring-accent disabled:text-fg-subtle",
     ),
     (
         "Select.list",
         "a select's open list of options",
-        "flex-col p-1 rounded-card bg-layer-2 shadow-float transition duration-120 ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
+        "flex-col p-1 rounded-card bg-layer-2 shadow-float transition duration-instant ease-out starting:opacity-0 starting:-translate-y-1 exit:opacity-0",
     ),
     (
         "Select.option",
@@ -637,7 +658,7 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Collapsible.panel",
         "what a collapsible shows while open",
-        "flex-col gap-2 px-3 pb-3 text-fg-muted transition ease-out duration-200 starting:opacity-0 starting:-translate-y-1 exit:opacity-0 exit:duration-120",
+        "flex-col gap-2 px-3 pb-3 text-fg-muted transition ease-out duration-200 starting:opacity-0 starting:-translate-y-1 exit:opacity-0 exit:duration-instant",
     ),
     (
         "Accordion.item",
@@ -669,12 +690,12 @@ pub const SLOTS: &[(&str, &str, &str)] = &[
     (
         "Field.frame",
         "a text field or input's box (an Input's own, by default): its focus, invalid value, read-only and disabled states",
-        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-1 inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-2 aria-invalid:inset-ring-danger focus:inset-ring-2 focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
+        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-hairline inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-regular aria-invalid:inset-ring-danger focus:inset-ring-regular focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
     ),
     (
         "Field.area",
         "a multi-line text field's box (an Input with multiline or rows, by default), in the same states",
-        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-1 inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-2 aria-invalid:inset-ring-danger focus:inset-ring-2 focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
+        "min-h-11 px-3 py-2 rounded-field bg-well text-base text-fg inset-ring-hairline inset-ring-border placeholder:text-fg-subtle data-readonly:bg-transparent aria-invalid:inset-ring-regular aria-invalid:inset-ring-danger focus:inset-ring-regular focus:inset-ring-accent disabled:opacity-50 disabled:inset-ring-border",
     ),
     (
         "Row.frame",
