@@ -56,6 +56,9 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
   // What the shared buffer held for an outer call is gone.
   const described = ++rt.sharedStamp;
   try {
+    // start runs inside og_engine_create, before Engine's constructor.
+    // Assertions in that first callback must know whether this is publish.
+    learnBuild(engine);
     if (kind === DISPATCH_UI) {
       const errors: string[] = [];
       const outerRegistration = rt.uiRegistrationErrors;
