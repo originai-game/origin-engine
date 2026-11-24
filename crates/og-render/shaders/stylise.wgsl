@@ -645,16 +645,27 @@ fn paint(in: VsOut) -> vec3<f32> {
     let radius = st.paint.x * (1.0 - paint_detail(px));
     if (st.strokes.x > 0.0 && radius >= 0.5) {
       let d = stroke_dir(in.pos.xy, f);
-      c = kuwahara(px + stroke_edge(in.pos.xy, radius, d), radius, st.paint.y, f);
+      let shifted = px + stroke_edge(in.pos.xy, radius, d);
+      // Keep ragged stroke edges from pulling background colours across object silhouettes.
+      let sample_px = select(px, shifted, paint_object(shifted) == paint_object(px));
+      c = kuwahara(sample_px, radius, st.paint.y, f);
       c = brush(c, in.pos.xy, radius, d, stroke_follow(f));
     } else {
       c = kuwahara(px, radius, st.paint.y, f);
     }
   }
   if (st.paint.w > 0.0) {
-    // Wet in wet: colour from a ring two radii out bleeds in.
-    let d = i32(max(st.paint.x, 1.0)) * 2;
-    let around = (load(px + vec2<i32>(d, 0)) + load(px + vec2<i32>(-d, 0)) + load(px + vec2<i32>(0, d)) + load(px + vec2<i32>(0, -d))) * 0.25;
+    // Wet in wet: 8-tap bilinear ring (4 inner + 4 outer rotated 45 deg)
+    // avoids the 4-way ghost cross echo of isolated cardinal pixel taps.
+    let r = max(st.paint.x, 1.0) * 1.5;
+    let r2 = r * 0.70710678;
+    let centre = vec2<f32>(px) + 0.5;
+    let around = (
+      wash_read(centre + vec2<f32>(r, 0.0)) + wash_read(centre + vec2<f32>(-r, 0.0))
+      + wash_read(centre + vec2<f32>(0.0, r)) + wash_read(centre + vec2<f32>(0.0, -r))
+      + wash_read(centre + vec2<f32>(r2, r2)) + wash_read(centre + vec2<f32>(-r2, r2))
+      + wash_read(centre + vec2<f32>(r2, -r2)) + wash_read(centre + vec2<f32>(-r2, -r2))
+    ) * 0.125;
     c = mix(c, around, st.paint.w * 0.5);
   }
   if (st.paint.z > 0.0) {
@@ -1273,7 +1284,10 @@ const INK_RUN_ALIGN: f32 = 0.7;
 fn ink_edge(px: vec2<i32>) -> f32 {
   let g = gradient(px);
   let m = length(g);
-  if (m <= 1e-4) { return 0.0; }
+  let sigma = print_sigma();
+  // Early-out before 6 extra Sobel evaluations whenever the local gradient
+  // cannot possibly exceed the ink threshold.
+  if (m <= 1e-4 || m * sigma * 0.25 <= st.ink.y) { return 0.0; }
   let n = g / m;
   // Canny's non-maximum suppression keeps a smoothed light edge a line,
   // not a dark band. Scale-normalised derivatives retain its contrast as
@@ -1293,7 +1307,7 @@ fn ink_edge(px: vec2<i32>) -> f32 {
     }
     run = max(run, held);
   }
-  return run * print_sigma();
+  return run * sigma;
 }
 
 fn lines(in: VsOut) -> vec3<f32> {
@@ -1411,19 +1425,20 @@ fn lines(in: VsOut) -> vec3<f32> {
     c = mix(c, printed, halftone_region(p, t));
   }
   if (st.ink.x > 0.5) {
-    // Luminance edges, widened by the max over the line's width.
-    let w = clamp(i32(round(st.ink.z * 0.5)), 0, INK_REACH);
-    var edge = 0.0;
-    for (var y = -w; y <= w; y++) {
-      for (var x = -w; x <= w; x++) {
-        edge = max(edge, ink_edge(px + vec2<i32>(x, y)));
+    var k = 0.0;
+    if (!clump) {
+      // Luminance edges, widened by the max over the line's width (strided
+      // to at most 5x5 taps so wide lines stay bounded in texture loads).
+      let w = clamp(i32(round(st.ink.z * 0.5)), 0, INK_REACH);
+      let stride = max(1, (w + 1) / 2);
+      let m = min((w + stride - 1) / stride, 2);
+      var edge = 0.0;
+      for (var y = -m; y <= m; y++) {
+        for (var x = -m; x <= m; x++) {
+          edge = max(edge, ink_edge(px + vec2<i32>(x * stride, y * stride)));
+        }
       }
-    }
-    var k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
-    if (clump) {
-      // Every leaf and blade is a luminance edge; the mass keeps its
-      // silhouette (the depth edges below and the outline pass).
-      k = 0.0;
+      k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
     }
     if (st.ink.w > 0.0) {
       k = max(k, depth_edge(px) * st.ink.w);
@@ -1601,21 +1616,15 @@ fn conformed(c: vec3<f32>) -> bool {
 // the 8-bit rounding of a conformed texel through the frame's targets.
 const PALETTE_KEEP: f32 = 0.02;
 
-// The nearest palette colour to `c` and its squared Oklab distance.
+// The nearest palette colour to `c` and its squared Oklab distance,
+// resolved in O(1) from the precomputed 32x32x32 OKLab LUT (1024x32 sRGB).
 fn nearest_palette(c: vec3<f32>, count: i32) -> vec4<f32> {
-  let want = oklab_encode(c);
-  var best = c;
-  var best_d = 1e9;
-  for (var i = 0; i < count; i++) {
-    let p = textureLoad(palette, vec2<i32>(i, 0), 0).rgb;
-    let delta = oklab_encode(p) - want;
-    let dist = dot(delta, delta);
-    if (dist < best_d) {
-      best_d = dist;
-      best = p;
-    }
-  }
-  return vec4<f32>(best, best_d);
+  if (count <= 0) { return vec4<f32>(c, 0.0); }
+  let e = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
+  let idx = clamp(vec3<i32>(round(e * 31.0)), vec3<i32>(0), vec3<i32>(31));
+  let best = textureLoad(palette, vec2<i32>(idx.x + idx.z * 32, idx.y), 0).rgb;
+  let delta = oklab_encode(best) - oklab_encode(c);
+  return vec4<f32>(best, dot(delta, delta));
 }
 
 // The pixel's colour in the lit scene before exposure and the tone curve

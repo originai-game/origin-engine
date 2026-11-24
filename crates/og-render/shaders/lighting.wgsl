@@ -772,11 +772,14 @@ fn style_sun_of(sunlit: vec3<f32>, s: Surface, n: vec3<f32>, l: vec3<f32>, shado
   var o: StyleSun;
   o.keep = 1.0 - frame.outline_style.y * (1.0 - lit);
   direct *= o.keep;
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+  if (frame.shadow_tint.w > 0.0) {
     var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
     // Never more than the diffuse light the ramp took: a white tint fills the shadow, never outshines the lit side.
     if (toon) { tint = min(tint, vec3<f32>(1.0 / PI)); }
-    direct += tinted * tint * s.albedo;
+    // Tint both cast shadows (`tinted`) and unlit form shadows (`1 - lit`)
+    // so shadowed hemispheres on toon/illustrated forms take the look's hue.
+    let shade = max(tinted, (1.0 - lit) * select(0.35, 0.5, toon));
+    direct += shade * tint * s.albedo;
   }
   o.direct = direct * frame.light_color.rgb;
   return o;

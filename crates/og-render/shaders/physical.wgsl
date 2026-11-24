@@ -737,22 +737,27 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
   let sun = physical_brdf(s, k, n, v, l);
+  let band_aa = style_edge(n_dot_l * shadow);
+  let styled = (mode & 8u) == 0u;
   var diffuse = sun.diffuse * frame.light_color.rgb * shadow;
+  var specular = sun.specular * frame.light_color.rgb * shadow;
+  var keep = shadow_keep(n_dot_l * shadow, mode);
+  if (styled && (style_toon() || frame.outline_style.y > 0.0 || frame.shadow_tint.w > 0.0)) {
+    let st_sun = style_sun_of(sun.diffuse * shadow, s, n, l, shadow, band_aa);
+    diffuse = st_sun.direct;
+    keep = st_sun.keep;
+    specular *= keep * select(1.0, smoothstep(0.0, 0.25, n_dot_l * shadow), style_toon());
+  } else {
+    diffuse *= keep;
+    specular *= keep;
+  }
   if (any(sun.through > vec3<f32>(0.0))) {
     // The sun through it from behind: shadowed where it enters.
     var open = 1.0;
     if (shadowed) { open = cascade_shadow(in.world_pos + l * sun.enters, l, 1.0); }
     diffuse += sun.through * frame.light_color.rgb * open;
   }
-  var specular = sun.specular * frame.light_color.rgb * shadow;
-  diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
-  // The material style's shadow darkness (pbr.wgsl shadow_keep).
-  let keep = shadow_keep(n_dot_l * shadow, mode);
-  diffuse *= keep;
-  specular *= keep;
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0 && (mode & 8u) == 0u) {
-    diffuse += (1.0 - shadow) * frame.shadow_tint.rgb * frame.shadow_tint.w * s.albedo * frame.light_color.rgb * n_dot_l;
-  }
+  diffuse += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos) * keep;
 
   // The cluster's lights, or every light in a reflection probe's capture
   // (probes.rs), which has no clusters (pbr_fs.wgsl).
@@ -771,7 +776,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     let w = 1.0 - k.anisotropy * (1.0 - s.roughness);
     bent = normalize(mix(across, n, w * w * w * w));
   }
-  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
+  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, styled);
   let around = surface_gather(at, bent, n, s.roughness);
   let irradiance = around.irradiance;
   let prefiltered = around.prefiltered;

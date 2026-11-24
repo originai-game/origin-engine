@@ -357,7 +357,8 @@ pub(crate) struct GpuEnvironmentMap {
 }
 
 /// What a palette's 256 x 1 RGBA8 texture allocates.
-pub(crate) const PALETTE_BYTES: u64 = MAX_PALETTE_COLORS as u64 * 4;
+pub(crate) const PALETTE_BYTES: u64 =
+    (crate::stylise::PALETTE_LUT_WIDTH * crate::stylise::PALETTE_LUT_HEIGHT * 4) as u64;
 
 /// What the image-based light was last generated from: the sky, or an
 /// environment map of a scene (its id and index), turned and with its

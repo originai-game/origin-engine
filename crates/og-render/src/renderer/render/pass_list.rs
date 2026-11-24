@@ -129,8 +129,14 @@ impl Renderer {
                 lines: st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some(),
                 lens: lens.is_some(),
                 quantize: st.quantize.is_some(),
-                fxaa: self.info.antialias == Antialias::Fxaa,
-                smaa: self.info.antialias == Antialias::Smaa,
+                fxaa: self.info.antialias == Antialias::Fxaa
+                    && st.pixel.is_none()
+                    && st.quantize.is_none()
+                    && st.retro.is_none(),
+                smaa: self.info.antialias == Antialias::Smaa
+                    && st.pixel.is_none()
+                    && st.quantize.is_none()
+                    && st.retro.is_none(),
                 // Under TAAU the frame after TAA is already the output's size.
                 upscale: self.history_size() != (self.out_width, self.out_height),
                 after,

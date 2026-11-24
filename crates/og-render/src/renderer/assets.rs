@@ -105,17 +105,13 @@ impl Renderer {
             }
             let view = scene.palette_live(i).then(|| {
                 let palette = &scene.palettes()[i];
-                let mut rgba = vec![0u8; MAX_PALETTE_COLORS * 4];
-                for (k, c) in palette.colors.iter().enumerate() {
-                    rgba[k * 4..k * 4 + 3].copy_from_slice(c);
-                    rgba[k * 4 + 3] = 255;
-                }
+                let rgba = crate::stylise::palette_lut(&palette.colors);
                 post::texture_from_rgba8(
                     &self.device,
                     &self.queue,
-                    "palette",
-                    MAX_PALETTE_COLORS as u32,
-                    1,
+                    "palette lut",
+                    crate::stylise::PALETTE_LUT_WIDTH,
+                    crate::stylise::PALETTE_LUT_HEIGHT,
                     wgpu::TextureFormat::Rgba8UnormSrgb,
                     &rgba,
                 )

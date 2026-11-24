@@ -393,7 +393,7 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
   // The instance's, not the skinned vertex's (its joints move it); bit 8
   // marks a skinned instance, a character, whose face and hands the
   // painterly filter keeps (Stylise.paintCharacterDetail, pbr_prepass.wgsl).
-  p.object = object_id(i.m0, i.m1, i.m2, i.m3) | 256u | (look_hidden_steps(i.look) << 16u);
+  p.object = outline_object(i.m0, i.m1, i.m2, i.m3, i.look) | 256u;
   return p;
 }
 

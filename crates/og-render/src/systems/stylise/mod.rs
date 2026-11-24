@@ -75,6 +75,96 @@ pub struct Palette {
 /// The most colours a [`Palette`] holds.
 pub const MAX_PALETTE_COLORS: usize = 256;
 
+/// Side length of the 3D sRGB->OKLab nearest-palette LUT (packed as 1024x32 2D).
+pub const PALETTE_LUT_SIZE: u32 = 32;
+pub const PALETTE_LUT_WIDTH: u32 = PALETTE_LUT_SIZE * PALETTE_LUT_SIZE;
+pub const PALETTE_LUT_HEIGHT: u32 = PALETTE_LUT_SIZE;
+
+fn srgb_u8_to_linear(v: u8) -> f32 {
+    let s = f32::from(v) / 255.0;
+    if s <= 0.04045 {
+        s / 12.92
+    } else {
+        ((s + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+/// Linear sRGB to OKLab (matches `oklab_encode` in `common.wgsl`).
+fn linear_to_oklab(c: [f32; 3]) -> [f32; 3] {
+    let l = (0.41222146 * c[0] + 0.53633255 * c[1] + 0.051445995 * c[2])
+        .max(0.0)
+        .cbrt();
+    let m = (0.2119035 * c[0] + 0.6806995 * c[1] + 0.10739696 * c[2])
+        .max(0.0)
+        .cbrt();
+    let s = (0.08830246 * c[0] + 0.28171885 * c[1] + 0.6299787 * c[2])
+        .max(0.0)
+        .cbrt();
+    [
+        0.21045426 * l + 0.7936178 * m - 0.004072047 * s,
+        1.9779985 * l - 2.4285922 * m + 0.4505937 * s,
+        0.025904037 * l + 0.78277177 * m - 0.80867577 * s,
+    ]
+}
+
+/// Builds a 32x32x32 OKLab nearest-palette LUT packed as a `1024 x 32` RGBA8
+/// sRGB texture (`x = r + b * 32, y = g`). Each texel stores the nearest
+/// palette colour's sRGB bytes so `stylise.wgsl` resolves any palette in O(1).
+pub(crate) fn palette_lut(colors: &[[u8; 3]]) -> Vec<u8> {
+    let n = PALETTE_LUT_SIZE as usize;
+    let mut out = vec![0u8; n * n * n * 4];
+    if colors.is_empty() {
+        return out;
+    }
+    let pal_lab: Vec<[f32; 3]> = colors
+        .iter()
+        .take(MAX_PALETTE_COLORS)
+        .map(|c| {
+            linear_to_oklab([
+                srgb_u8_to_linear(c[0]),
+                srgb_u8_to_linear(c[1]),
+                srgb_u8_to_linear(c[2]),
+            ])
+        })
+        .collect();
+    let mut lin_axis = [0.0f32; PALETTE_LUT_SIZE as usize];
+    for (i, slot) in lin_axis.iter_mut().enumerate() {
+        let s = i as f32 / (n - 1) as f32;
+        *slot = if s <= 0.04045 {
+            s / 12.92
+        } else {
+            ((s + 0.055) / 1.055).powf(2.4)
+        };
+    }
+    let stride = PALETTE_LUT_WIDTH as usize;
+    for b in 0..n {
+        let lb = lin_axis[b];
+        for g in 0..n {
+            let lg = lin_axis[g];
+            let row = g * stride + b * n;
+            for r in 0..n {
+                let want = linear_to_oklab([lin_axis[r], lg, lb]);
+                let mut best_i = 0usize;
+                let mut best_d = f32::MAX;
+                for (k, pl) in pal_lab.iter().enumerate() {
+                    let dl = pl[0] - want[0];
+                    let da = pl[1] - want[1];
+                    let db = pl[2] - want[2];
+                    let d = dl * dl + da * da + db * db;
+                    if d < best_d {
+                        best_d = d;
+                        best_i = k;
+                    }
+                }
+                let at = (row + r) * 4;
+                out[at..at + 3].copy_from_slice(&colors[best_i]);
+                out[at + 3] = 255;
+            }
+        }
+    }
+    out
+}
+
 /// A colour's bucket in the conformed table: its sRGB bytes by sixteens,
 /// so a pixel within stylise.wgsl's `CONFORMED_REACH` (6 levels a
 /// channel: block compression and filtering move a flat conformed field
