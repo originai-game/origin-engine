@@ -50,7 +50,11 @@ pub(super) fn render_view(view: &str) -> og_render::DebugView {
 pub(crate) fn debug_coverage(view: &str) -> serde_json::Value {
     let supported: &[&str] = match view {
         "none" => return serde_json::Value::Null,
-        "physics" => &["colliders"],
+        "physics" => &[
+            "colliders",
+            "destruction stress/anchors/supports",
+            "pixel terrain outlines/dirty chunks",
+        ],
         "nav" => &["navigation"],
         "bounds" => &["mesh instances"],
         "lod" => &["og.Model"],
@@ -111,10 +115,29 @@ pub(super) fn view_of(v: &Value) -> usize {
     wire::DebugView::from_json(v).map_or(0, |d| d as usize)
 }
 
-pub(super) fn physics_view(rs: &mut RenderState) {
-    let Some(lines) = rs.draw.physics.as_ref().and_then(|p| p.debug_lines()) else {
-        return;
-    };
+pub(super) fn physics_view(rs: &mut RenderState, h: &mut Hierarchy) {
+    let mut lines = rs
+        .draw
+        .physics
+        .as_ref()
+        .and_then(|p| p.debug_lines())
+        .unwrap_or_default();
+    if let Ok(e) = engine(rs.draw.engine) {
+        if e.modules
+            .destruction
+            .enabled
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            lines.extend(crate::bind::destruction::debug_lines(rs.draw.engine, h));
+        }
+        if e.modules
+            .destruction2d
+            .1
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            lines.extend(crate::bind::destruction2d::debug_lines(rs.draw.engine));
+        }
+    }
     if lines.is_empty() {
         return;
     }

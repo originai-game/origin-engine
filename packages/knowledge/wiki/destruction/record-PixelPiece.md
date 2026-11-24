@@ -6,7 +6,7 @@ Module [`destruction`](../destruction.md) · [index](../index.md)
 
 ### `og.PixelPiece` (component)
 
-A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
+A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
 
 Token `og.PixelPiece`, registered under the schema name `og.PixelPiece`; its value type is `PixelPiece`.
 
@@ -20,7 +20,7 @@ Token `og.PixelPiece`, registered under the schema name `og.PixelPiece`; its val
 
 ```ogt
 component PixelPiece {
-  doc "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away."
+  doc "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away."
   field terrain Entity "The og.PixelTerrain it was part of." {
     readonly true
   }
@@ -39,4 +39,4 @@ component PixelPiece {
 }
 ```
 
-<sub>Module `destruction` line 393</sub>
+<sub>Module `destruction` line 394</sub>

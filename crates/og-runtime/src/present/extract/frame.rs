@@ -375,7 +375,14 @@ fn effects(
     };
     super::feel::camera_frame(world, rs, aspect);
     super::feel::extract(world, rs, h);
-    crate::bind::destruction2d::extract(world, rs, h);
+    if crate::engine::engine(rs.engine).is_ok_and(|e| {
+        e.modules
+            .destruction2d
+            .1
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }) {
+        crate::bind::destruction2d::extract(world, rs, h);
+    }
     super::skeleton2d::extract(world, rs, h);
 
     (vp, tick)

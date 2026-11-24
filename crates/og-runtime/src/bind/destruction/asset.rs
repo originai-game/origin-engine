@@ -5,6 +5,7 @@ use super::*;
 /// Reads model `id`'s fracture asset (`<id>#fracture`), when the cook wrote
 /// one, for the model loaded as asset `index`, and gives physics its
 /// chunks' hulls. A model without one forgets any it had (a hot reload).
+#[inline(never)]
 pub(crate) fn load_asset(eng: &Engine, id: &str, index: usize) -> Result<(), String> {
     let handle = crate::world::assets::handle(index);
     let blob = format!("{id}#fracture");

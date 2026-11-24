@@ -267,7 +267,7 @@ column VehicleDrive {
 }
 ```
 
-<sub>Module `physics` line 926</sub>
+<sub>Module `physics` line 927</sub>
 
 ```ogt
 column VehicleModel {
@@ -278,7 +278,7 @@ column VehicleModel {
 }
 ```
 
-<sub>Module `physics` line 939</sub>
+<sub>Module `physics` line 940</sub>
 
 ```ogt
 column VehicleWheelCast {
@@ -289,7 +289,7 @@ column VehicleWheelCast {
 }
 ```
 
-<sub>Module `physics` line 1262</sub>
+<sub>Module `physics` line 1263</sub>
 
 ```ogt
 column VehicleDifferential {
@@ -300,7 +300,7 @@ column VehicleDifferential {
 }
 ```
 
-<sub>Module `physics` line 1274</sub>
+<sub>Module `physics` line 1275</sub>
 
 ```ogt
 column Simulation {
@@ -311,7 +311,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1370</sub>
+<sub>Module `physics` line 1371</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -322,7 +322,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1602</sub>
+<sub>Module `physics` line 1603</sub>
 
 ## Constants
 
@@ -410,82 +410,82 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 889</sub>
+<sub>Module `physics` line 890</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 890</sub>
+<sub>Module `physics` line 891</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 891</sub>
+<sub>Module `physics` line 892</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 892</sub>
+<sub>Module `physics` line 893</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 893</sub>
+<sub>Module `physics` line 894</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 894</sub>
+<sub>Module `physics` line 895</sub>
 
 ```ogt
 const CHARACTER_CRUSHED u32 7 "`CharacterEvent.kind`: opposing solid surfaces crushed the character."
 ```
 
-<sub>Module `physics` line 895</sub>
+<sub>Module `physics` line 896</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1377</sub>
+<sub>Module `physics` line 1378</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1378</sub>
+<sub>Module `physics` line 1379</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1379</sub>
+<sub>Module `physics` line 1380</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1380</sub>
+<sub>Module `physics` line 1381</sub>
 
 ```ogt
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2185</sub>
+<sub>Module `physics` line 2186</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2186</sub>
+<sub>Module `physics` line 2187</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2187</sub>
+<sub>Module `physics` line 2188</sub>

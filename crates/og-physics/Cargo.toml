@@ -12,8 +12,6 @@ og-core = { path = "../og-core" }
 og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
-# The pixel terrain's collision meshes: its outline's loops, triangulated.
-og-shape = { path = "../og-shape" }
 # The meshes colliders are built from, the triangle mesh bake and the save codec.
 og-physics-data = { path = "../og-physics-data" }
 glam = { workspace = true, features = ["serde"] }

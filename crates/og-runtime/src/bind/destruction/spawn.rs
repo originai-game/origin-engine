@@ -25,6 +25,12 @@ pub(super) fn mass_of(
     bits_: u64,
 ) -> Mass {
     let e = Entity::from_bits(bits_);
+    if let Ok(bytes) = ctx.get_bytes(e, l.rigid.0)
+        && let Ok(rb) = row::<record::RigidBody>(&l.rigid.1, &bytes)
+        && rb.kind != wire::RigidBodyType::Dynamic
+    {
+        return Mass::Infinite;
+    }
     let scale_of = |p: &Prop| uniform(pose_of_frame(&p.frame).2);
     for (k, p) in props {
         let Some(a) = assets.get(&p.asset) else {
@@ -60,9 +66,6 @@ pub(super) fn mass_of(
     let Ok(rb) = row::<record::RigidBody>(&l.rigid.1, &rb) else {
         return Mass::Unknown;
     };
-    // og.RigidBody.kind is an enum, which the hand read this replaced
-    // always took as 0 (dynamic): a fixed or kinematic body is weighed as
-    // a dynamic one (kept as it was).
     let m = rb.mass;
     if m > 0.0 {
         return Mass::Finite(m);
@@ -140,6 +143,7 @@ pub(super) fn spawn_chunk(
     c: u32,
     level: u32,
     pose: &Pose,
+    density: f32,
     role: Role,
     body: u64,
     tick: u64,
@@ -154,6 +158,7 @@ pub(super) fn spawn_chunk(
     }
     collider["shape"] = json!(og_physics::SHAPE_CONVEX);
     collider["mesh"] = json!(hull_handle(p.asset, c) as f64);
+    collider["density"] = json!(density);
     let mut parts = vec![
         (
             l.transform.0,
@@ -204,6 +209,7 @@ pub(super) fn place(
     k: u64,
     p: &mut Prop,
     a: &FractureAsset,
+    density: f32,
 ) -> og_core::Result<()> {
     let e = Entity::from_bits(k);
     p.collider = ctx.get_bytes(e, l.collider.0).ok();
@@ -222,7 +228,7 @@ pub(super) fn place(
             frame.1,
             frame.2,
         );
-        spawn_chunk(ctx, l, k, p, c, 1, &at, Role::Static, 0, 0)?;
+        spawn_chunk(ctx, l, k, p, c, 1, &at, density, Role::Static, 0, 0)?;
     }
     p.placed = true;
     Ok(())

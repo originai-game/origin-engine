@@ -23707,11 +23707,13 @@
       "properties": {
         "x": {
           "type": "number",
-          "description": "Horizontal position in CSS pixels."
+          "description": "Horizontal position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "y": {
           "type": "number",
-          "description": "Vertical position in CSS pixels."
+          "description": "Vertical position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "button": {
           "$ref": "#/$defs/PointerButton",
@@ -23747,11 +23749,13 @@
       "properties": {
         "x": {
           "type": "number",
-          "description": "Horizontal position in CSS pixels."
+          "description": "Horizontal position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "y": {
           "type": "number",
-          "description": "Vertical position in CSS pixels."
+          "description": "Vertical position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "button": {
           "$ref": "#/$defs/PointerButton",
@@ -23787,11 +23791,13 @@
       "properties": {
         "x": {
           "type": "number",
-          "description": "Horizontal position in CSS pixels."
+          "description": "Horizontal position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "y": {
           "type": "number",
-          "description": "Vertical position in CSS pixels."
+          "description": "Vertical position in CSS pixels.",
+          "x-og-unit": "cssPx"
         },
         "id": {
           "type": "integer",
@@ -23801,11 +23807,13 @@
         },
         "movementX": {
           "type": "number",
-          "description": "The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves."
+          "description": "The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves.",
+          "x-og-unit": "cssPx"
         },
         "movementY": {
           "type": "number",
-          "description": "The relative vertical movement (movementY, down positive), CSS pixels."
+          "description": "The relative vertical movement (movementY, down positive), CSS pixels.",
+          "x-og-unit": "cssPx"
         }
       },
       "required": [
@@ -35484,6 +35492,7 @@
             "y": 0,
             "z": 0
           },
+          "x-og-unit": "mps",
           "readOnly": true
         },
         "groundBody": {
@@ -59944,6 +59953,11 @@
       "description": "An explosion for og.destruction.explode.",
       "type": "object",
       "properties": {
+        "occlusion": {
+          "type": "boolean",
+          "description": "Ray-test each chunk against live physics; intervening colliders shield it from damage and push. Off by default.",
+          "default": false
+        },
         "point": {
           "$ref": "#/$defs/Vector3",
           "description": "Its centre, in world space.",
@@ -60141,7 +60155,7 @@
     "PixelTerrain": {
       "x-og-kind": "component",
       "x-og-module": "destruction",
-      "description": "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).\nEach `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.\nSee `physics §9`.",
+      "description": "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).\nEach `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.\nSee `physics §9`.",
       "type": "object",
       "properties": {
         "width": {
@@ -60296,7 +60310,7 @@
     "PixelPiece": {
       "x-og-kind": "component",
       "x-og-module": "destruction",
-      "description": "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.",
+      "description": "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.",
       "type": "object",
       "properties": {
         "terrain": {

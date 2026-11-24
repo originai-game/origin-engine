@@ -272,7 +272,23 @@ pub(super) fn add_gltf(
         }
     }
     // A prefractured model's chunks (`fracture { }`): og.destruction's.
-    crate::bind::destruction::load_asset(eng, &id, index)?;
+    let fractured = {
+        let assets = eng.assets.borrow();
+        let owner = assets.entries[index].bundle;
+        assets
+            .bundle_from(&id, owner)
+            .is_ok_and(|(b, _)| b.output(&format!("{id}#fracture")).is_ok())
+    };
+    if fractured {
+        crate::bind::destruction::load_asset(eng, &id, index)?;
+    } else {
+        eng.modules
+            .destruction
+            .assets
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&handle(index));
+    }
     forget_prepared(eng, &prepared);
     crate::author::trace::preparation(&format!("model {id}"), start);
     Ok(index)
@@ -693,7 +709,7 @@ pub(crate) fn insert_model(
     // Decoded now, between ticks: the step that first needs one builds
     // nothing.
     for (h, bytes) in baked {
-        crate::bind::modules::set_baked_trimesh(eng, h, bytes)
+        crate::bind::modules::set_baked_collider(eng, h, bytes)
             .map_err(|e| format!("{id}: geometry {h}: {e}"))?;
     }
     // Physics keeps the proxy's meshes; the renderer's take the full model

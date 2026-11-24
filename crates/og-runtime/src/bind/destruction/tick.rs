@@ -34,12 +34,21 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_co
         bursts,
         strikes,
         explosions,
-    } = gather_hits(ctx, l, st, &assets, &settings)?;
+    } = gather_hits(ctx, m, l, st, &assets, &settings, &poses)?;
 
     let mut out = Broken {
         bursts,
         ..Broken::default()
     };
+    if let Some(ph) = physics(m) {
+        for (&k, p) in &st.props {
+            for b in std::iter::once(k).chain(p.body.iter().copied().filter(|&b| b != 0)) {
+                if let Some(mp) = ph.mass_properties(Entity::from_bits(b)) {
+                    out.body_com.insert(b, mp.center_of_mass);
+                }
+            }
+        }
+    }
     let mut stress_budget = match t.res.stress_budget {
         0 => u64::MAX,
         n => u64::from(n),
@@ -147,10 +156,11 @@ pub(super) fn survey(
         };
         let asset = row::<record::Model>(&l.model.1, &mb)?.asset;
         // A prop that moves (a dynamic or kinematic body) breaks free whole.
-        // og.RigidBody.kind is an enum, which the hand read this replaced
-        // always took as 0 (dynamic): any body counts as moving, a fixed
-        // one too (kept as it was).
-        let moving = ctx.get_bytes(e, l.rigid.0).is_ok();
+        let moving = ctx
+            .get_bytes(e, l.rigid.0)
+            .ok()
+            .and_then(|b| row::<record::RigidBody>(&l.rigid.1, &b).ok())
+            .is_some_and(|rb| rb.kind != wire::RigidBodyType::Fixed);
         settings.insert(e.to_bits(), settings_of(&d));
         current.insert(e.to_bits(), (asset, world_pose(ctx, l, e), moving));
     }
@@ -165,9 +175,31 @@ pub(super) fn survey(
         .map(|(k, _)| *k)
         .collect();
     for k in gone {
-        let p = st.props.remove(&k).expect("listed");
-        for (i, &e) in p.entities.iter().enumerate() {
-            if p.body[i] == 0 && alive(ctx, e) {
+        let mut p = st.props.remove(&k).expect("listed");
+        for (i, e) in p.entities.iter_mut().enumerate() {
+            if p.body[i] == 0 || !assets.contains_key(&p.asset) {
+                if alive(ctx, *e) {
+                    ctx.despawn(Entity::from_bits(*e))?;
+                }
+                *e = 0;
+            }
+        }
+        if p.entities.iter().any(|&e| e != 0) {
+            let proxy = ctx.spawn_bytes(vec![(l.model.0, p.model.clone())])?;
+            p.fractured = true;
+            st.orphan_chunks.insert(proxy.to_bits(), p);
+        }
+    }
+    let missing: Vec<_> = st
+        .orphan_chunks
+        .iter()
+        .filter(|(_, p)| !assets.contains_key(&p.asset))
+        .map(|(&k, _)| k)
+        .collect();
+    for k in missing {
+        let p = st.orphan_chunks.remove(&k).expect("listed orphan");
+        for e in p.entities.into_iter().chain(std::iter::once(k)) {
+            if alive(ctx, e) {
                 ctx.despawn(Entity::from_bits(e))?;
             }
         }
@@ -182,6 +214,9 @@ pub(super) fn survey(
         let s = &settings[&k];
         let p = st.props.entry(k).or_insert_with(|| Prop {
             asset,
+            model: ctx
+                .get_bytes(Entity::from_bits(k), l.model.0)
+                .expect("surveyed model"),
             inst: Instance::new(a),
             frame: frame_of_pose(pose),
             entities: vec![0; a.chunks.len()],
@@ -191,13 +226,14 @@ pub(super) fn survey(
             placed: false,
             anchors: false,
             fractured: false,
+            island_cache: (0, Vec::new()),
         });
         if !p.placed {
             p.frame = frame_of_pose(pose);
             p.anchors = !moving && s.anchored;
             // A standing prop's chunks are its colliders from the start.
             if !moving {
-                place(ctx, l, k, p, a)?;
+                place(ctx, l, k, p, a, s.mat.density)?;
             }
         }
     }
@@ -207,7 +243,7 @@ pub(super) fn survey(
 /// Chunks despawned by the game or a budget: gone from the graph; a body
 /// takes its compound children with it.
 pub(super) fn drop_lost_chunks(ctx: &mut SystemContext<'_>, st: &mut State) -> og_core::Result<()> {
-    for p in st.props.values_mut() {
+    for p in st.props.values_mut().chain(st.orphan_chunks.values_mut()) {
         let dead: Vec<u64> = p
             .entities
             .iter()

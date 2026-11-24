@@ -8,7 +8,10 @@ struct TileQuad {
   padding: f32,
 };
 struct TileFrame { uv: vec4<f32>, duration: vec4<f32> };
-struct TileParams { origin_time: vec4<f32>, color: vec4<f32>, light: vec4<f32> };
+struct TileParams {
+  origin_time: vec4<f32>, color: vec4<f32>, light: vec4<f32>,
+  axis_x: vec4<f32>, axis_y: vec4<f32>,
+};
 // Data textures (data_texture.rs) of the quads (three texels each) and the
 // frames (two each): a vertex stage reads no storage under WebGPU's
 // compatibility mode.
@@ -44,7 +47,8 @@ fn vs_tile(@builtin(vertex_index) vi: u32, @builtin(instance_index) qi: u32) -> 
     }
   }
   let c = quad_corner(vi);
-  let world = vec3f(tile_params.origin_time.xy + q.min_size.xy + c * q.min_size.zw, tile_params.origin_time.z);
+  let local = q.min_size.xy + c * q.min_size.zw;
+  let world = tile_params.origin_time.xyz + tile_params.axis_x.xyz * local.x + tile_params.axis_y.xyz * local.y;
   var o: SpriteOut;
   o.clip = frame.view_proj * vec4f(world, 1.0);
   o.uv = vec2f(mix(uv.x, uv.z, c.x), mix(uv.w, uv.y, c.y));

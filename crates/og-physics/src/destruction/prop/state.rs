@@ -40,6 +40,8 @@ pub fn hull_handle(asset: u64, chunk: u32) -> u64 {
 pub struct State {
     /// By the og.Destructible's entity bits.
     pub props: BTreeMap<u64, Prop>,
+    /// Loose chunks whose destructible was removed, keyed by their drawing proxy.
+    pub orphan_chunks: BTreeMap<u64, Prop>,
     /// Calls queued for the next run, in the order made.
     pub ops: Vec<Op>,
     /// breakFx and hitFx bursts: (entity bits, the tick it is despawned at).
@@ -58,6 +60,7 @@ pub struct State {
 pub struct Prop {
     /// Its og.Model's asset handle.
     pub asset: u64,
+    pub model: Vec<u8>,
     pub inst: Instance,
     /// The model's world pose when its chunks were placed: position,
     /// rotation (x y z w) and scale.
@@ -77,6 +80,32 @@ pub struct Prop {
     pub anchors: bool,
     /// Its first bond broke: the model is hidden, the chunks drawn.
     pub fractured: bool,
+    #[serde(skip)]
+    pub island_cache: (u64, Vec<u32>),
+}
+
+impl Prop {
+    /// Cached outline groups; health changes that do not break a bond do
+    /// not rebuild the graph, and restores rebuild this derived cache once.
+    pub fn cache_islands(&mut self, a: &FractureAsset) {
+        let key = og_core::hash::hash_words(
+            self.inst
+                .bonds
+                .iter()
+                .map(|&h| u64::from(h > 0.0))
+                .chain(self.inst.shattered.iter().map(|&s| u64::from(s))),
+        );
+        if self.island_cache.0 == key && self.island_cache.1.len() == a.chunks.len() {
+            return;
+        }
+        let mut groups: Vec<u32> = (0..a.chunks.len() as u32).collect();
+        for island in self.inst.islands(a) {
+            for &c in &island.chunks {
+                groups[c as usize] = island.chunks[0];
+            }
+        }
+        self.island_cache = (key, groups);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -87,8 +116,7 @@ pub enum Op {
         radius: f32,
         inner: f32,
         amount: f32,
-        /// The blow's momentum (N·s); absent in worlds saved before it.
-        #[serde(default)]
+        /// The blow's momentum (N·s).
         impulse: [f32; 3],
     },
     Explode {
@@ -97,6 +125,7 @@ pub enum Op {
         inner: f32,
         damage: f32,
         impulse: f32,
+        occlusion: bool,
     },
     Fracture {
         entity: u64,
@@ -106,7 +135,7 @@ pub enum Op {
 /// The fracture assets of an engine's loaded models, by asset handle.
 pub type Assets = BTreeMap<u64, Arc<FractureAsset>>;
 
-pub const MAGIC: &[u8; 8] = b"DESTRUC2";
+pub const MAGIC: &[u8; 8] = b"DESTRUC3";
 
 impl State {
     /// Fine pieces and grit: gone `life` ticks after they broke off (when
@@ -147,7 +176,11 @@ impl State {
             let v = (Vec3::new(p[0], p[1], p[2]).as_dvec3() + d).as_vec3();
             p[..3].copy_from_slice(&v.to_array());
         };
-        for p in self.props.values_mut() {
+        for p in self
+            .props
+            .values_mut()
+            .chain(self.orphan_chunks.values_mut())
+        {
             m(&mut p.frame);
         }
         for d in &mut self.debris {

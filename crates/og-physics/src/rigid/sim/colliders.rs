@@ -7,6 +7,7 @@ pub(crate) fn mesh(shared: &mut Shared, handle: u64) -> Option<Arc<crate::MeshDe
         return Some(m.clone());
     }
     let m = Arc::new(shared.mesh_source.clone().and_then(|f| f(handle))?);
+    shared.mesh_hashes.insert(handle, m.content_hash());
     shared.meshes.insert(handle, m.clone());
     Some(m)
 }
@@ -59,6 +60,17 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
     if let Some(shape) = cache(shared).get(&key) {
         return Ok(shape.clone());
     }
+    if c.shape == SHAPE_POLYLINE
+        && let Some(line) = shared.polylines.get(&c.mesh)
+    {
+        let built = from_polyline(line, mesh_s);
+        let cached = cache(shared);
+        if cached.len() >= SHAPE_CACHE_LIMIT {
+            cached.clear();
+        }
+        cached.insert(key, built.clone());
+        return Ok(built);
+    }
     if c.shape == SHAPE_HEIGHTFIELD {
         if abs_s.x <= 0.0 || (super::DIM == 3 && abs_s.z <= 0.0) {
             return Err(Error::new(
@@ -94,7 +106,7 @@ pub(super) fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp
             ),
         )
     })?;
-    let built = match baked(shared, c, mesh_s, &mesh) {
+    let built = match baked(shared, c, mesh_s) {
         Some(b) => b,
         None => from_mesh(c.shape, &mesh, mesh_s, c.round_radius)
             .map_err(|e| e.context(format!("mesh {}", c.mesh)))?,

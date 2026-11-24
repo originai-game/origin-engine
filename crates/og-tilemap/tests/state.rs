@@ -39,3 +39,41 @@ fn equal_edits_give_equal_states_and_bytes_and_decode_restores_them() {
     let e = MapState::decode(&map(19, 15), &[tileset("filled")], &b1).unwrap_err();
     assert!(e.to_string().contains("another size"), "{e}");
 }
+
+#[test]
+fn collision_unions_keep_slopes_and_remove_chunk_seams() {
+    let mut a = map(36, 2);
+    a.layers[0].collision = true;
+    let mut s = state(&a, "filled");
+    // Two adjacent full tiles spanning a chunk boundary.
+    s.set(0, 31, 0, 60).unwrap();
+    s.set(0, 32, 0, 60).unwrap();
+    let lines: Vec<_> = (0..3)
+        .flat_map(|cx| {
+            let o = og_tilemap::chunk_outline(&s, 0, cx, 0, 1);
+            o.segments
+                .iter()
+                .map(|&[a, b]| (o.positions[a as usize], o.positions[b as usize]))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    assert!(
+        !lines.iter().any(|(a, b)| a.x == 32.0 && b.x == 32.0),
+        "no internal chunk wall: {lines:?}"
+    );
+    let perimeter: f32 = lines.iter().map(|(a, b)| a.distance(*b)).sum();
+    assert!((perimeter - 6.0).abs() < 1e-5);
+    // An authored triangle remains a slope, not the tile's AABB.
+    let mut ts = (*tileset("filled")).clone();
+    ts.tiles.get_mut(&62).unwrap().collision = None;
+    ts.tiles.get_mut(&62).unwrap().polygons = vec![vec![[0.0, 16.0], [16.0, 16.0], [16.0, 0.0]]];
+    let text = ts.to_text();
+    let ts = std::sync::Arc::new(og_tilemap::Tileset::parse(&text).unwrap());
+    let mut slope = MapState::new(&a, &[ts]).unwrap();
+    slope.set(0, 2, 0, 62).unwrap();
+    let o = og_tilemap::chunk_outline(&slope, 0, 0, 0, 1);
+    assert!(o.segments.iter().any(|&[a, b]| {
+        let d = o.positions[a as usize] - o.positions[b as usize];
+        d.x != 0.0 && d.y != 0.0
+    }));
+}

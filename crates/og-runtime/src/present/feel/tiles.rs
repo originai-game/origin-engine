@@ -259,7 +259,7 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> Result<(), Strin
             let layer = layer_index(live, &d.layer)?;
             live.state.set(layer, d.x, d.y, d.tile).map_err(err)?;
             if live.state.asset().layers[layer].collision {
-                live.dirty = true;
+                dirty_cells(live, layer, d.x, d.y, 1, 1);
             }
             Ok(())
         })
@@ -282,11 +282,43 @@ pub fn og_tilemap_fill(world: u32, desc: Option<Vec<u8>>) -> Result<(), String> 
                 .fill(layer, d.x, d.y, d.width, tiles)
                 .map_err(err)?;
             if live.state.asset().layers[layer].collision {
-                live.dirty = true;
+                dirty_cells(
+                    live,
+                    layer,
+                    d.x,
+                    d.y,
+                    d.width,
+                    (tiles.len() as u32).div_ceil(d.width.max(1)),
+                );
             }
             Ok(())
         })
     })()
+}
+
+/// Terrain auto-tiling reaches one neighbouring cell; polygon unions also
+/// depend on the chunk across each border. Other chunks keep their entities.
+fn dirty_cells(live: &mut LiveMap, layer: usize, x: u32, y: u32, width: u32, height: u32) {
+    let (nx, ny) = live.state.chunks();
+    if nx == 0 || ny == 0 || width == 0 || height == 0 {
+        return;
+    }
+    let halo = live.state.tileset(layer).map_or(1, |t| t.collision_halo())
+        * if live.state.asset().orientation == og_tilemap::Orientation::Orthogonal {
+            1
+        } else {
+            2
+        };
+    for cy in y.saturating_sub(halo) / og_tilemap::CHUNK
+        ..=(y.saturating_add(height).saturating_add(halo) / og_tilemap::CHUNK).min(ny - 1)
+    {
+        for cx in x.saturating_sub(halo) / og_tilemap::CHUNK
+            ..=(x.saturating_add(width).saturating_add(halo) / og_tilemap::CHUNK).min(nx - 1)
+        {
+            live.dirty_chunks
+                .insert(layer as u32 * nx * ny + cy * nx + cx);
+        }
+    }
 }
 
 /// Run-time map handles: their own range, numbered by the world's counter.
@@ -476,44 +508,45 @@ fn encode_value(l: &Layout, v: &Value) -> og_core::Result<Vec<u8>> {
 /// A collider entity's packed components.
 type Spawn = Vec<(SchemaId, Vec<u8>)>;
 
-/// The physics mesh of a merged solid region (og_tilemap::map_regions): in
-/// 2D its triangles (a 2D triangle mesh collides as its outline), in 3D the
-/// closed prism over them, 1 deep about the map's z (caps, and walls along
-/// the outline). Its handle is generated ([`og_physics::GENERATED_MESH`])
-/// from the geometry, so equal regions share one mesh and a replay or a
-/// restore names the same handle.
-fn region_mesh(region: og_tilemap::MapRegion, profile: u32) -> (u64, og_physics::MeshDesc) {
-    let flat = og_physics::MeshDesc {
-        positions: region
-            .positions
+/// The 3D host needs closed one-metre-deep prisms, including authored
+/// concavities. This triangulation is never used by the 2D host.
+fn chunk_prisms(polygons: Vec<(bool, Vec<Vec2>)>) -> og_physics::MeshDesc {
+    let mut mesh = og_physics::MeshDesc::default();
+    for (_, mut polygon) in polygons.into_iter().filter(|(owned, _)| *owned) {
+        let area: f32 = polygon
             .iter()
-            .map(|p| Vec3::new(p.x, p.y, 0.0))
-            .collect(),
-        indices: region.triangles,
-    };
-    let mesh = if profile == og_physics::PROFILE_3D {
-        let mut positions = Vec::with_capacity(region.positions.len() * 2);
-        for p in &region.positions {
-            positions.push(Vec3::new(p.x, p.y, -0.5));
-            positions.push(Vec3::new(p.x, p.y, 0.5));
+            .zip(polygon.iter().cycle().skip(1))
+            .map(|(a, b)| a.perp_dot(*b))
+            .sum();
+        if area < 0.0 {
+            polygon.reverse();
         }
-        let mut indices = Vec::new();
-        for &[a, b, c] in &flat.indices {
-            indices.push([2 * a + 1, 2 * b + 1, 2 * c + 1]);
-            indices.push([2 * a, 2 * c, 2 * b]);
+        let base = mesh.positions.len() as u32;
+        for p in &polygon {
+            mesh.positions.extend([p.extend(-0.5), p.extend(0.5)]);
         }
-        for ids in og_physics::outline(&flat) {
-            for k in 0..ids.len() {
-                let (a, b) = (ids[k], ids[(k + 1) % ids.len()]);
-                indices.push([2 * a, 2 * b, 2 * b + 1]);
-                indices.push([2 * a, 2 * b + 1, 2 * a + 1]);
-            }
+        let flat: Vec<_> = polygon
+            .iter()
+            .flat_map(|p| [f64::from(p.x), f64::from(p.y)])
+            .collect();
+        for t in og_shape::generators::earcut::earcut(&flat, &[])
+            .as_chunks::<3>()
+            .0
+        {
+            let (a, b, c) = (
+                base + t[0] as u32 * 2,
+                base + t[1] as u32 * 2,
+                base + t[2] as u32 * 2,
+            );
+            mesh.indices.extend([[a + 1, b + 1, c + 1], [a, c, b]]);
         }
-        og_physics::MeshDesc { positions, indices }
-    } else {
-        flat
-    };
-    (og_physics::generated_mesh_handle(&mesh), mesh)
+        for i in 0..polygon.len() as u32 {
+            let a = base + 2 * i;
+            let b = base + 2 * ((i + 1) % polygon.len() as u32);
+            mesh.indices.extend([[a, b, b + 1], [a, b + 1, a + 1]]);
+        }
+    }
+    mesh
 }
 
 pub(super) fn tilemap_system(
@@ -554,7 +587,7 @@ pub(super) fn tilemap_system(
         let fresh = t.live.get(&key).is_none_or(|l| l.map != map);
         if fresh {
             let old = t.live.remove(&key).map(|l| l.colliders).unwrap_or_default();
-            gone.extend(old);
+            gone.extend(old.into_iter().map(|c| c.0));
             let state = MapState::new(&asset.asset, &asset.tilesets)?;
             t.live.insert(
                 key,
@@ -562,6 +595,7 @@ pub(super) fn tilemap_system(
                     map,
                     state,
                     colliders: Vec::new(),
+                    dirty_chunks: BTreeSet::new(),
                     origin,
                     collision,
                     layers,
@@ -571,12 +605,10 @@ pub(super) fn tilemap_system(
             );
         }
         let live = t.live.get_mut(&key).expect("inserted above");
-        if live.origin != origin
-            || live.collision != collision
-            || live.layers != layers
-            || live.friction != friction
-        {
-            live.origin = origin;
+        // Colliders live under the map's Parent link. Translation, rotation,
+        // scale and ancestors move them without replacing any entities.
+        live.origin = origin;
+        if live.collision != collision || live.layers != layers || live.friction != friction {
             live.collision = collision;
             live.layers = layers;
             live.friction = friction;
@@ -590,67 +622,103 @@ pub(super) fn tilemap_system(
         .copied()
         .collect();
     for k in dropped {
-        gone.extend(t.live.remove(&k).map(|l| l.colliders).unwrap_or_default());
+        gone.extend(
+            t.live
+                .remove(&k)
+                .map(|l| l.colliders.into_iter().map(|c| c.0).collect::<Vec<_>>())
+                .unwrap_or_default(),
+        );
     }
-    let mut spawns: Vec<(u64, Spawn)> = Vec::new();
+    let mut spawns: Vec<(u64, u32, Spawn)> = Vec::new();
     // The generated meshes the colliders built now name.
     let mut meshes: BTreeSet<u64> = BTreeSet::new();
-    let rebuilt = t.live.values().any(|l| l.dirty) || !gone.is_empty();
-    for (&key, live) in t.live.iter_mut().filter(|(_, l)| l.dirty) {
+    let rebuilt = t
+        .live
+        .values()
+        .any(|l| l.dirty || !l.dirty_chunks.is_empty())
+        || !gone.is_empty();
+    for (&key, live) in t
+        .live
+        .iter_mut()
+        .filter(|(_, l)| l.dirty || !l.dirty_chunks.is_empty())
+    {
+        let mut dirty = std::mem::take(&mut live.dirty_chunks);
+        let (nx, ny) = live.state.chunks();
+        if live.dirty {
+            dirty.extend(0..live.state.asset().layers.len() as u32 * nx * ny);
+        }
+        live.colliders.retain(|&(e, chunk)| {
+            if live.dirty || dirty.contains(&chunk) {
+                gone.push(e);
+                false
+            } else {
+                true
+            }
+        });
         live.dirty = false;
-        gone.append(&mut live.colliders);
         if !live.collision {
             continue;
         }
-        for region in og_tilemap::map_regions(&live.state, live.layers) {
-            let (p, layers, mask) = (region.origin, region.layers, region.mask);
-            let (handle, mesh) = region_mesh(region, profile);
-            physics.set_mesh(handle, mesh)?;
-            meshes.insert(handle);
-            let tj = json!({ "position": { "x": live.origin.x + p.x, "y": live.origin.y + p.y, "z": live.origin.z } });
-            let cj = json!({
-                "shape": og_physics::SHAPE_TRIMESH, "mesh": handle,
-                "friction": live.friction, "layers": layers, "mask": mask,
-            });
-            spawns.push((
-                key,
-                vec![
-                    (r.transform.0, encode_value(&r.transform.1, &tj)?),
-                    (r.collider.0, encode_value(&r.collider.1, &cj)?),
-                ],
-            ));
-        }
-        for mc in og_tilemap::map_colliders(&live.state, live.layers) {
-            let rect = mc.rect;
-            let c = (rect.min + rect.max) * 0.5;
-            let mut size = rect.max - rect.min;
-            let position =
-                json!({ "x": live.origin.x + c.x, "y": live.origin.y + c.y, "z": live.origin.z });
-            // A flat-top hexagon is the pointy-top one turned a quarter.
-            let (shape, tj) = match mc.shape {
-                og_tilemap::MapShape::Box => (0, json!({ "position": position })),
-                og_tilemap::MapShape::Diamond => (7, json!({ "position": position })),
-                og_tilemap::MapShape::Hexagon { flat: false } => {
-                    (8, json!({ "position": position }))
-                }
-                og_tilemap::MapShape::Hexagon { flat: true } => {
-                    size = Vec2::new(size.y, size.x);
-                    let q = std::f32::consts::FRAC_1_SQRT_2;
-                    (
-                        8,
-                        json!({ "position": position, "quaternion": { "x": 0.0, "y": 0.0, "z": q, "w": q } }),
-                    )
-                }
+        for chunk in dirty {
+            let layer = (chunk / (nx * ny)) as usize;
+            let cell = chunk % (nx * ny);
+            let desc = &live.state.asset().layers[layer];
+            let layers = if desc.collider_layers == 0 {
+                live.layers
+            } else {
+                desc.collider_layers
             };
-            let cj = json!({
-                "shape": shape, "size": { "x": size.x, "y": size.y, "z": 1.0 },
-                "friction": live.friction, "layers": mc.layers, "mask": mc.mask,
-            });
+            let mask = if desc.collider_mask == 0 {
+                u32::MAX
+            } else {
+                desc.collider_mask
+            };
+            let (handle, shape) = if profile == og_physics::PROFILE_2D {
+                let outline = og_tilemap::chunk_outline(
+                    &live.state,
+                    layer,
+                    cell % nx,
+                    cell / nx,
+                    live.layers,
+                );
+                if outline.segments.is_empty() {
+                    continue;
+                }
+                let mesh = og_physics::PolylineDesc {
+                    positions: outline.positions.iter().map(|p| p.extend(0.0)).collect(),
+                    segments: outline.segments,
+                };
+                let handle = og_physics::GENERATED_MESH
+                    | (mesh.content_hash() & (og_physics::GENERATED_MESH - 1));
+                physics.set_polyline(handle, mesh)?;
+                (handle, og_physics::SHAPE_POLYLINE)
+            } else {
+                let mesh = chunk_prisms(og_tilemap::chunk_polygons(
+                    &live.state,
+                    layer,
+                    cell % nx,
+                    cell / nx,
+                ));
+                if mesh.indices.is_empty() {
+                    continue;
+                }
+                let handle = og_physics::generated_mesh_handle(&mesh);
+                physics.set_mesh(handle, mesh)?;
+                (handle, og_physics::SHAPE_TRIMESH)
+            };
+            meshes.insert(handle);
+            let cj = json!({ "shape": shape, "mesh": handle,
+                    "friction": live.friction, "layers": layers, "mask": mask });
             spawns.push((
                 key,
+                chunk,
                 vec![
-                    (r.transform.0, encode_value(&r.transform.1, &tj)?),
+                    (r.transform.0, encode_value(&r.transform.1, &json!({}))?),
                     (r.collider.0, encode_value(&r.collider.1, &cj)?),
+                    (
+                        r.parent.0,
+                        encode_value(&r.parent.1, &json!({ "entity": key }))?,
+                    ),
                 ],
             ));
         }
@@ -661,7 +729,7 @@ pub(super) fn tilemap_system(
         // read from their og.Collider, the rest were just built.
         let gone_set: BTreeSet<u64> = gone.iter().copied().collect();
         for live in t.live.values() {
-            for &c in &live.colliders {
+            for &(c, _) in &live.colliders {
                 let e = Entity::from_bits(c);
                 if gone_set.contains(&c) || !ctx.is_alive(e) {
                     continue;
@@ -689,11 +757,11 @@ pub(super) fn tilemap_system(
             queued_structural();
         }
     }
-    for (key, comps) in spawns {
+    for (key, chunk, comps) in spawns {
         let e = ctx.spawn_bytes(comps)?;
         queued_structural();
         if let Some(live) = t.live.get_mut(&key) {
-            live.colliders.push(e.to_bits());
+            live.colliders.push((e.to_bits(), chunk));
         }
     }
     Ok(())
@@ -722,8 +790,13 @@ impl StateBlock for TileBlock {
             out.extend_from_slice(&l.layers.to_le_bytes());
             out.extend_from_slice(&l.friction.to_le_bytes());
             out.extend_from_slice(&(l.colliders.len() as u32).to_le_bytes());
-            for c in &l.colliders {
+            for (c, chunk) in &l.colliders {
                 out.extend_from_slice(&c.to_le_bytes());
+                out.extend_from_slice(&chunk.to_le_bytes());
+            }
+            out.extend_from_slice(&(l.dirty_chunks.len() as u32).to_le_bytes());
+            for chunk in &l.dirty_chunks {
+                out.extend_from_slice(&chunk.to_le_bytes());
             }
             let mut s = Vec::new();
             l.state.encode(&mut s);
@@ -772,7 +845,7 @@ impl StateBlock for TileBlock {
             runtime.push((h, map));
         }
         let mut live = IdMap::new();
-        for (key, map, origin, flags, layers, friction, colliders, s) in saved {
+        for (key, map, origin, flags, layers, friction, colliders, dirty_chunks, s) in saved {
             // The map as the save saw it: its own copy of a run-time map, a
             // resized map as loaded, or this session's.
             let asset = runtime
@@ -794,6 +867,7 @@ impl StateBlock for TileBlock {
                     map,
                     state,
                     colliders,
+                    dirty_chunks,
                     origin,
                     collision: flags & 1 != 0,
                     layers,
@@ -855,7 +929,7 @@ impl StateBlock for TileBlock {
             v
         };
         let mut out = Records::default();
-        for (key, map, origin, flags, layers, friction, colliders, cells) in &saved {
+        for (key, map, origin, flags, layers, friction, colliders, dirty_chunks, cells) in &saved {
             let mut rec = Record::new(*key, "map");
             rec = match made.iter().find(|(h, _)| h == map) {
                 Some((_, a)) => rec.field("runtimeMap", Field::of(&asset_bytes(a))),
@@ -867,7 +941,15 @@ impl StateBlock for TileBlock {
                     .field("dirty", Field::of(&(flags & 2 != 0)))
                     .field("layers", Field::of(layers))
                     .field("friction", Field::of(friction))
-                    .field("colliders", Field::Entities(colliders.clone()))
+                    .field(
+                        "colliders",
+                        Field::Entities(colliders.iter().map(|c| c.0).collect()),
+                    )
+                    .field(
+                        "colliderChunks",
+                        Field::of(&colliders.iter().map(|c| c.1).collect::<Vec<_>>()),
+                    )
+                    .field("dirtyChunks", Field::of(dirty_chunks))
                     .field("state", Field::of(cells)),
             );
         }
@@ -895,7 +977,17 @@ struct LiveMaps(IdMap<u64, LiveMap>, Vec<(u64, Arc<MapAsset>)>, u64);
 
 /// One adopted map as saved: its entity, map handle, origin, flags,
 /// layers, friction, collider entities and its MapState's bytes.
-type Saved<'a> = (u64, u64, Vec3, u32, u32, f32, Vec<u64>, &'a [u8]);
+type Saved<'a> = (
+    u64,
+    u64,
+    Vec3,
+    u32,
+    u32,
+    f32,
+    Vec<(u64, u32)>,
+    BTreeSet<u32>,
+    &'a [u8],
+);
 
 /// The adopted maps, the maps made at run time (handle, asset) and the
 /// create counter.
@@ -915,8 +1007,11 @@ fn read_saved(bytes: &[u8]) -> og_core::Result<SavedBlock<'_>> {
         let layers = r.u32()?;
         let friction = r.f32()?;
         let colliders = (0..r.u32()?)
-            .map(|_| r.u64())
+            .map(|_| Ok((r.u64()?, r.u32()?)))
             .collect::<og_core::Result<Vec<_>>>()?;
+        let dirty_chunks = (0..r.u32()?)
+            .map(|_| r.u32())
+            .collect::<og_core::Result<BTreeSet<_>>>()?;
         saved.push((
             key,
             map,
@@ -925,6 +1020,7 @@ fn read_saved(bytes: &[u8]) -> og_core::Result<SavedBlock<'_>> {
             layers,
             friction,
             colliders,
+            dirty_chunks,
             r.sized()?,
         ));
     }

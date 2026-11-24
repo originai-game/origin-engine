@@ -5916,9 +5916,17 @@ export interface KeyUp {
  * The payload of the `PointerDown` event (token `og.PointerDown`).
  */
 export interface PointerDown {
-  /** Horizontal position in CSS pixels. */
+  /**
+   * Horizontal position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly x: number;
-  /** Vertical position in CSS pixels. */
+  /**
+   * Vertical position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly y: number;
   /** The button. */
   readonly button: PointerButton;
@@ -5939,9 +5947,17 @@ export interface PointerDown {
  * The payload of the `PointerUp` event (token `og.PointerUp`).
  */
 export interface PointerUp {
-  /** Horizontal position in CSS pixels. */
+  /**
+   * Horizontal position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly x: number;
-  /** Vertical position in CSS pixels. */
+  /**
+   * Vertical position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly y: number;
   /** The button. */
   readonly button: PointerButton;
@@ -5962,17 +5978,31 @@ export interface PointerUp {
  * The payload of the `PointerMove` event (token `og.PointerMove`).
  */
 export interface PointerMove {
-  /** Horizontal position in CSS pixels. */
+  /**
+   * Horizontal position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly x: number;
-  /** Vertical position in CSS pixels. */
+  /**
+   * Vertical position in CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly y: number;
   /** Which pointer: 0 the primary one, 1 to 4 further touches. */
   readonly id: number;
   /**
    * The relative movement this event carried (movementX), CSS pixels; 0 when the host gave none. While the pointer is locked x and y stand still and only this moves.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
    */
   readonly movementX: number;
-  /** The relative vertical movement (movementY, down positive), CSS pixels. */
+  /**
+   * The relative vertical movement (movementY, down positive), CSS pixels.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
   readonly movementY: number;
 }
 
@@ -16226,6 +16256,7 @@ export interface CharacterController {
   /**
    * Written: retained inertia from airborne vertical motion, knockback and platforms.
    *
+   * @unit mps (metres per second)
    * @readonly written by the engine
    */
   readonly inheritedVelocity: Vector3;
@@ -34755,6 +34786,12 @@ export interface DamageDesc {
  */
 export interface ExplosionDesc {
   /**
+   * Ray-test each chunk against live physics; intervening colliders shield it from damage and push. Off by default.
+   *
+   * @default false
+   */
+  readonly occlusion?: boolean;
+  /**
    * Its centre, in world space.
    *
    * @default { x: 0, y: 0, z: 0 }
@@ -34890,7 +34927,7 @@ export interface DestructionCapabilities {
 
 /**
  * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
- * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
+ * Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
  * See `physics §9`.
  *
  * The value of the `PixelTerrain` component (token `og.PixelTerrain`).
@@ -35018,7 +35055,7 @@ export interface PixelTerrain {
 }
 
 /**
- * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
+ * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
  *
  * The value of the `PixelPiece` component (token `og.PixelPiece`).
  */
@@ -42130,12 +42167,12 @@ export declare namespace og {
   const Destruction: ResourceType<{ readonly maxChunks: FieldSpec<"u32">; readonly debrisVolume: FieldSpec<"f32">; readonly debrisLifetime: FieldSpec<"f32">; readonly fxLifetime: FieldSpec<"f32">; readonly stressIterations: FieldSpec<"u32">; readonly stressBudget: FieldSpec<"u32"> }, Destruction>;
   /**
    * Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics).
-   * Each `chunk` × `chunk` block with a solid cell is an entity with a static og.Collider (shape trimesh) of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
+   * Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities.
    * See `physics §9`.
    */
   const PixelTerrain: ComponentType<{ readonly width: FieldSpec<"u32">; readonly height: FieldSpec<"u32">; readonly cellSize: FieldSpec<"f32">; readonly chunk: FieldSpec<"u32">; readonly ground: FieldSpec<"f32">; readonly bedrock: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly bedrockColor: FieldSpec<"Color">; readonly grain: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly friction: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32">; readonly tolerance: FieldSpec<"f32">; readonly minPiece: FieldSpec<"u32">; readonly maxPieces: FieldSpec<"u32">; readonly solid: FieldSpec<"u32"> }, PixelTerrain>;
   /**
-   * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the convex hull of its cells (shape convex, a polygon in 2D), drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
+   * A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away.
    */
   const PixelPiece: ComponentType<{ readonly terrain: FieldSpec<"Entity">; readonly width: FieldSpec<"u32">; readonly height: FieldSpec<"u32">; readonly cells: FieldSpec<"u32">; readonly tick: FieldSpec<"u32"> }, PixelPiece>;
   /**

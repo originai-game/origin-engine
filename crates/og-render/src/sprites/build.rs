@@ -19,7 +19,30 @@ pub(super) fn tile_instances(
     out: &mut Vec<SpriteInstance>,
     mut gpu: Option<(usize, &mut Vec<crate::tiles_gpu::TileDraw>)>,
 ) -> (u32, u32) {
-    let origin = layer.origin.truncate();
+    // Transform the view's corners into tile space. The bounding box is
+    // conservative for rotated/sheared maps and keeps repeats local too.
+    let basis = glam::Mat2::from_cols(layer.axes[0].truncate(), layer.axes[1].truncate());
+    let view = view.and_then(|v| {
+        if basis.determinant().abs() <= 1e-12 {
+            return None;
+        }
+        let inv = basis.inverse();
+        let mut bounds = ViewRect {
+            min: Vec2::splat(f32::MAX),
+            max: Vec2::splat(f32::MIN),
+        };
+        for p in [
+            v.min,
+            Vec2::new(v.min.x, v.max.y),
+            v.max,
+            Vec2::new(v.max.x, v.min.y),
+        ] {
+            let p = inv * (p - layer.origin.truncate());
+            bounds.min = bounds.min.min(p);
+            bounds.max = bounds.max.max(p);
+        }
+        Some(bounds)
+    });
     let mut offsets: Vec<Vec2> = vec![Vec2::ZERO];
     if let Some(v) = view {
         // Repeats: every copy of the layer that can touch the view.
@@ -32,8 +55,8 @@ pub(super) fn tile_instances(
             let Some(period) = layer.repeat[axis].filter(|p| *p > 0.0) else {
                 continue;
             };
-            let lo = (v.min[axis] - origin[axis] - bounds.1[axis]) / period;
-            let hi = (v.max[axis] - origin[axis] - bounds.0[axis]) / period;
+            let lo = (v.min[axis] - bounds.1[axis]) / period;
+            let hi = (v.max[axis] - bounds.0[axis]) / period;
             let (lo, hi) = (lo.floor() as i64, hi.ceil() as i64);
             let mut next = Vec::new();
             for o in &offsets {
@@ -48,7 +71,7 @@ pub(super) fn tile_instances(
     }
     let (mut quads, mut chunks) = (0u32, 0u32);
     for off in offsets {
-        let at = origin + off;
+        let at = off;
         for (chunk, c) in layer.chunks.iter().enumerate() {
             if let Some(v) = view
                 && (at.x + c.max.x < v.min.x
@@ -71,17 +94,20 @@ pub(super) fn tile_instances(
             }
             let first = out.len();
             for q in &c.quads {
+                let p = layer.origin
+                    + layer.axes[0] * (at.x + q.min.x)
+                    + layer.axes[1] * (at.y + q.min.y);
                 out.push(SpriteInstance {
-                    position_rotation: [at.x + q.min.x, at.y + q.min.y, layer.origin.z, 0.0],
+                    position_rotation: [p.x, p.y, p.z, 0.0],
                     size_anchor: [q.size.x, q.size.y, 0.0, 0.0],
                     uv_rect: q.uv,
                     color: layer.color,
                     flash: NO_FLASH,
                     fx: [0.0, lit, 0.0],
-                    ground: NO_GROUND,
+                    ground: layer.axes[0].extend(0.0).to_array(),
                     layer: 0,
-                    facing: FACING_NONE,
-                    outline: NO_OUTLINE,
+                    facing: FACING_AFFINE,
+                    outline: layer.axes[1].extend(0.0).to_array(),
                     outline_color: [0; 4],
                 });
             }

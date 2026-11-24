@@ -17,7 +17,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] and `impostor_materials` (optional) [`ImpostorMaterialRow`]; `skin_binds` (optional) [`NodeBindRow`]; `shape` (optional: a model with triangles) [`ShapeRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true|convex|vhacd`: the primitive count, each one's u32 offset and length after the header, then og-physics' hash-validated `bake_collider` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] and `impostor_materials` (optional) [`ImpostorMaterialRow`]; `skin_binds` (optional) [`NodeBindRow`]; `shape` (optional: a model with triangles) [`ShapeRow`]; `foliage_rows` (optional) [`FoliageRow`] and `foliage` (their meshopt streams) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file); `mips` (a streamed tail's whole chain), `orientation` (its source's EXIF orientation, a u32 2 to 8, the texels as stored; absent: upright) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
@@ -60,7 +60,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r34");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r35");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;

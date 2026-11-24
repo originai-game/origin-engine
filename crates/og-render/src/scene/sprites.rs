@@ -419,6 +419,9 @@ pub struct TileLayer {
     pub chunks: std::sync::Arc<Vec<TileChunk>>,
     /// Where the layer's local origin is drawn (parallax already applied).
     pub origin: Vec3,
+    /// World vectors for one local x and y unit, including parent scale,
+    /// rotation and shear. Geometry stays local when the map moves.
+    pub axes: [Vec3; 2],
     pub layer: i32,
     /// Linear RGBA multiplied with every tile.
     pub color: [f32; 4],

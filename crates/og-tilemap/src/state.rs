@@ -10,6 +10,9 @@ use og_core::{Error, ErrorKind, Result};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+mod outlines;
+pub use outlines::{MapOutline, chunk_outline, chunk_polygons};
+
 /// Chunks are this many cells square.
 pub const CHUNK: u32 = 16;
 

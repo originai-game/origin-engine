@@ -11,22 +11,58 @@ pub(crate) struct PixelRender {
 
 pub(super) use og_core::color::linear_to_srgb8 as srgb;
 
+/// The last edit's dirty rectangles and the current seamless outlines.
+#[inline(never)]
+pub(crate) fn debug_lines(id: u32) -> Vec<(Vec3, Vec3, [f32; 4])> {
+    let Ok(e) = engine(id) else {
+        return Vec::new();
+    };
+    let g = lock(&e.modules.destruction2d.0);
+    let mut lines = Vec::new();
+    for t in g.state.terrains.values() {
+        let at = |x: f32, y: f32| Vec3::from(t.origin) + Vec3::new(x, y, 0.0) * t.look.cell;
+        if let Some(&(_, [x, y, w, h])) = t.updates.last() {
+            let p = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+            for i in 0..4 {
+                lines.push((
+                    at(p[i][0] as f32, p[i][1] as f32),
+                    at(p[(i + 1) % 4][0] as f32, p[(i + 1) % 4][1] as f32),
+                    [1.0, 0.5, 0.0, 1.0],
+                ));
+            }
+        }
+        for &k in t.colliders.keys() {
+            for chain in t.grid.chunk_chains(k, 0.0) {
+                for p in chain.windows(2) {
+                    lines.push((
+                        at(p[0][0], p[0][1]),
+                        at(p[1][0], p[1][1]),
+                        [0.2, 1.0, 0.3, 1.0],
+                    ));
+                }
+            }
+        }
+    }
+    lines
+}
+
 /// A grid's pixels, top row first: ground in its colour with a fixed grain
 /// per cell (by its place in the terrain), bedrock, empty clear.
 pub(super) fn paint(
     width: u32,
-    height: u32,
     cells: &[Cell],
     grain: [i32; 2],
     look: &Look,
+    rect: [u32; 4],
 ) -> Vec<u8> {
-    let mut rgba = vec![0u8; (width * height * 4) as usize];
+    let [rx, ry, rw, rh] = rect;
+    let mut rgba = vec![0u8; (rw * rh * 4) as usize];
     let rock = look.bedrock.map(srgb);
-    for y in 0..height {
-        let row = (height - 1 - y) * width;
-        for x in 0..width {
+    for y in ry..ry + rh {
+        let row = (ry + rh - 1 - y) * rw;
+        for x in rx..rx + rw {
             let c = cells[(y * width + x) as usize];
-            let px = &mut rgba[((row + x) * 4) as usize..((row + x) * 4 + 4) as usize];
+            let px = &mut rgba[((row + x - rx) * 4) as usize..((row + x - rx) * 4 + 4) as usize];
             match c {
                 0 => {}
                 BEDROCK => px.copy_from_slice(&[rock[0], rock[1], rock[2], 255]),
@@ -56,11 +92,13 @@ pub(super) struct Drawable<'a> {
     pub(super) look: &'a Look,
     /// Its cells' revision (a piece's never change).
     pub(super) revision: u64,
+    pub(super) updates: &'a [(u64, [u32; 4])],
     /// Whether it turns with its og.Transform (a piece does).
     pub(super) turns: bool,
 }
 
 /// Draws every terrain and piece as a sprite of its cells.
+#[inline(never)]
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let Ok(sh) = engine(rs.engine).map(|e| e.modules.destruction2d.0.clone()) else {
         return;
@@ -76,6 +114,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             grain: [0, 0],
             look: &t.look,
             revision: t.revision,
+            updates: &t.updates,
             turns: false,
         });
     }
@@ -87,6 +126,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             grain: p.grain,
             look: &p.look,
             revision: 0,
+            updates: &[],
             turns: true,
         });
     }
@@ -99,6 +139,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             grain,
             look,
             revision,
+            updates,
             turns,
         } = d;
         if !world.is_alive(Entity::from_bits(k)) {
@@ -108,11 +149,38 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let painted = rs.pixel.textures.get(&k).copied();
         let texture = match painted {
             Some((t, e, r)) if e == epoch && r == revision => t,
+            Some((t, e, r))
+                if e == epoch && updates.first().is_some_and(|(first, _)| r >= first - 1) =>
+            {
+                let rect = updates
+                    .iter()
+                    .filter(|(v, _)| *v > r)
+                    .map(|(_, r)| *r)
+                    .reduce(|a, b| {
+                        let (x, y) = (a[0].min(b[0]), a[1].min(b[1]));
+                        [
+                            x,
+                            y,
+                            (a[0] + a[2]).max(b[0] + b[2]) - x,
+                            (a[1] + a[3]).max(b[1] + b[3]) - y,
+                        ]
+                    });
+                if let Some(rect) = rect {
+                    let rgba = paint(w, cells, grain, look, rect);
+                    rs.scene.set_texture_region(
+                        t,
+                        [rect[0], ht - rect[1] - rect[3], rect[2], rect[3]],
+                        &rgba,
+                    );
+                }
+                rs.pixel.textures.insert(k, (t, epoch, revision));
+                t
+            }
             _ => {
                 let data = og_render::TextureData {
                     width: w,
                     height: ht,
-                    rgba: paint(w, ht, cells, grain, look),
+                    rgba: paint(w, cells, grain, look, [0, 0, w, ht]),
                     color_space: og_render::ColorSpace::Srgb,
                     mips: og_render::Mips::None,
                 };

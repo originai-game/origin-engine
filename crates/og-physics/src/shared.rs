@@ -76,6 +76,8 @@ pub(crate) struct Shared {
     /// built from them are rebuilt.
     pub stale_meshes: BTreeSet<u64>,
     pub meshes: IdMap<u64, Arc<MeshDesc>>,
+    pub polylines: IdMap<u64, Arc<PolylineDesc>>,
+    pub mesh_hashes: IdMap<u64, u64>,
     /// Where a collider's mesh nobody registered comes from
     /// ([`PhysicsSystem::set_mesh_source`]).
     pub mesh_source: Option<MeshSource>,
@@ -99,9 +101,9 @@ pub(crate) struct Shared {
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     pub shapes2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
     /// Triangle-mesh shapes the cook baked over a mesh at scale 1, by mesh
-    /// handle ([`PhysicsSystem::set_baked_trimesh`]): taken instead of a
+    /// handle ([`PhysicsSystem::set_baked_collider`]): taken instead of a
     /// build when the mesh is exactly the one baked.
-    pub baked3: IdMap<u64, rapier3d::prelude::SharedShape>,
+    pub baked3: IdMap<u64, og_physics_data::trimesh::BakedCollider>,
     /// Ragdoll rigs by entity (assets, like meshes) and the animation's
     /// bone poses the host gave for this tick.
     pub rigs: IdMap<u64, Arc<RagdollRig>>,

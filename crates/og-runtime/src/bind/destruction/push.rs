@@ -16,7 +16,8 @@ pub(super) fn push_blasted_bodies(
     out: &mut Broken,
 ) -> og_core::Result<()> {
     let made = &mut out.made;
-    for &(point, inner, radius, impulse) in explosions {
+    for e in explosions {
+        let (point, inner, radius, impulse) = (e.point, e.inner, e.radius, e.impulse);
         if impulse <= 0.0 {
             continue;
         }
@@ -30,7 +31,7 @@ pub(super) fn push_blasted_bodies(
             let a = &assets[&p.asset];
             let scale = uniform(pose_of_frame(&p.frame).2);
             let density = settings.get(&k).map_or(1000.0, |s| s.mat.density);
-            let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], made, point);
+            let bodies = loose_bodies(ctx, l, p, a, scale, density, &poses[&k], &out.made_poses);
             for (b, (m, at)) in bodies {
                 if m <= 0.0 {
                     continue;
@@ -38,10 +39,25 @@ pub(super) fn push_blasted_bodies(
                 let first = (0..p.entities.len())
                     .find(|&c| p.entities[c] == b || (c < a.support as usize && p.body[c] == b))
                     .unwrap_or(0);
+                let mut total = 0.0;
+                let mut visible = 0.0;
+                for (c, ch) in a.chunks.iter().enumerate() {
+                    if p.entities[c] == b || p.body[c] == b {
+                        total += ch.volume;
+                        if !e.hidden.contains(&(k, c as u32)) {
+                            visible += ch.volume;
+                        }
+                    }
+                }
+                if visible <= 0.0 {
+                    continue;
+                }
+                let exposed = visible / total;
                 let Some((dv, dw)) = blast_push(&falloff, impulse, at, m, density, first as u64)
                 else {
                     continue;
                 };
+                let (dv, dw) = (dv * exposed, dw * exposed);
                 match made.get_mut(&b) {
                     Some(v) => {
                         v.0 += dv;
@@ -93,13 +109,21 @@ pub(super) fn push_struck(
             amount: 1.0,
         };
         let made = &out.made;
-        let freed: Vec<(u64, f32, f32)> =
-            loose_bodies(ctx, l, p, a, scale, s.mat.density, &poses[&k], made, point)
-                .into_iter()
-                .filter(|(b, _)| made.contains_key(b))
-                .map(|(b, (m, at))| (b, m, falloff.at(at)))
-                .filter(|&(_, m, w)| m > 0.0 && w > 0.0)
-                .collect();
+        let freed: Vec<(u64, f32, f32)> = loose_bodies(
+            ctx,
+            l,
+            p,
+            a,
+            scale,
+            s.mat.density,
+            &poses[&k],
+            &out.made_poses,
+        )
+        .into_iter()
+        .filter(|(b, _)| made.contains_key(b))
+        .map(|(b, (m, at))| (b, m, falloff.at(at)))
+        .filter(|&(_, m, w)| m > 0.0 && w > 0.0)
+        .collect();
         // One velocity for the whole freed mass, scaled by falloff: the
         // momentum is conserved and the lightest piece is not flung.
         let weighed: f32 = freed.iter().map(|&(_, m, w)| m * w).sum();

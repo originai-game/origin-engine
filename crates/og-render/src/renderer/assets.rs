@@ -391,6 +391,47 @@ impl Renderer {
         let mut replaced: Vec<usize> = (0..self.cache.textures.len())
             .filter(|&i| self.cache.texture_revisions[i] != scene.texture_revisions()[i])
             .collect();
+        replaced.retain(|&i| {
+            let Some([x, y, w, h]) =
+                scene.texture_updated_region(i, self.cache.texture_revisions[i])
+            else {
+                return true;
+            };
+            let Ok(TextureSource::Rgba(data)) = scene.texture_source(i) else {
+                return true;
+            };
+            let bytes = u64::from(w) * u64::from(h) * 4;
+            if upload_budget > 0 && uploaded > 0 && uploaded + bytes > upload_budget {
+                return false;
+            }
+            let gpu = &mut self.cache.textures[i];
+            crate::traffic::write_texture(
+                &self.queue,
+                wgpu::TexelCopyTextureInfo {
+                    texture: gpu.view.texture(),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d { x, y, z: 0 },
+                    aspect: wgpu::TextureAspect::All,
+                },
+                &data.rgba[((y * data.width + x) * 4) as usize..],
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(data.width * 4),
+                    rows_per_image: Some(h),
+                },
+                wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+            );
+            uploaded += bytes;
+            // Conservative bounds remain correct after either clearing or
+            // filling texels, without a full-image CPU alpha scan.
+            gpu.alpha_bounds = [0.0, 0.0, 1.0, 1.0];
+            self.cache.texture_revisions[i] = scene.texture_revisions()[i];
+            false
+        });
         // Fork s63: the deferred textures (and replaced ones) within what is
         // left of the budget.
         if upload_budget > 0 {

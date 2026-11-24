@@ -51,31 +51,33 @@ pub(crate) struct DrawnDebris {
 }
 
 /// Engine `engine`'s fractured props.
+#[inline(never)]
 pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
     let Ok(m) = module(engine) else {
         return Vec::new();
     };
     let assets = lock(&m.assets);
-    let st = lock(&m.state);
+    let mut st = lock(&m.state);
+    let State {
+        props,
+        orphan_chunks,
+        ..
+    } = &mut *st;
+    for p in props.values_mut().chain(orphan_chunks.values_mut()) {
+        if let Some(a) = assets.get(&p.asset) {
+            p.cache_islands(a);
+        }
+    }
     st.props
         .iter()
+        .chain(&st.orphan_chunks)
         .filter(|(_, p)| p.fractured)
         .filter_map(|(&k, p)| {
             let a = assets.get(&p.asset)?;
             // Each support chunk's island (by its first chunk); a child
             // chunk, loose on its own, its own group.
-            let mut island = vec![u32::MAX; a.chunks.len()];
-            for isl in p.inst.islands(a) {
-                isl.chunks
-                    .iter()
-                    .for_each(|&c| island[c as usize] = isl.chunks[0]);
-            }
             let group = |c: usize| {
-                let of = if island[c] == u32::MAX {
-                    c as u32
-                } else {
-                    island[c]
-                };
+                let of = p.island_cache.1[c];
                 // Never 0 (no group): mixed with the prop, so two props'
                 // islands are two objects.
                 let h = (k ^ (k >> 32)) as u32 ^ of.wrapping_mul(0x9e37_79b9);
@@ -95,7 +97,7 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
                         pose: pose_of_frame(&d.pose),
                         velocity: Vec3::from(d.velocity),
                         angular: Vec3::from(d.angular),
-                        points: spread(&c.hull, og_render::DEBRIS_POINTS),
+                        points: c.debris_points.clone(),
                     })
                 })
                 .collect();
@@ -130,4 +132,72 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
             })
         })
         .collect()
+}
+
+/// Stress and support diagnostics use the same chunk frames as extraction.
+#[inline(never)]
+pub(crate) fn debug_lines(
+    engine: u32,
+    h: &mut crate::present::extract::Hierarchy,
+) -> Vec<(Vec3, Vec3, [f32; 4])> {
+    let Ok(m) = module(engine) else {
+        return Vec::new();
+    };
+    let assets = lock(&m.assets);
+    let st = lock(&m.state);
+    let mut lines = Vec::new();
+    for (&k, p) in st.props.iter().chain(&st.orphan_chunks) {
+        let Some(a) = assets.get(&p.asset) else {
+            continue;
+        };
+        let mut point = |c: u32, x: Vec3| {
+            let i = c as usize;
+            if p.entities[i] != 0 {
+                h.world_of(p.entities[i])
+                    .transform_point3(x - a.chunks[i].centroid)
+            } else {
+                h.world_of(k).transform_point3(x)
+            }
+        };
+        let peak = p
+            .inst
+            .impulses
+            .iter()
+            .filter(|(kind, _, _)| *kind == 0)
+            .map(|(_, _, j)| j.lin.length())
+            .fold(1e-6f32, f32::max);
+        for (i, b) in a.bonds.iter().enumerate() {
+            if p.inst.bonds[i] <= 0.0 {
+                continue;
+            }
+            let stress = p
+                .inst
+                .impulses
+                .iter()
+                .find(|(kind, ix, _)| *kind == 0 && *ix as usize == i)
+                .map_or(0.0, |(_, _, j)| j.lin.length() / peak);
+            lines.push((
+                point(b.a, a.chunks[b.a as usize].centroid),
+                point(b.b, a.chunks[b.b as usize].centroid),
+                [stress, 1.0 - stress, 0.1, 1.0],
+            ));
+        }
+        for (i, c) in a.chunks.iter().take(a.support as usize).enumerate() {
+            if p.inst.anchors[i] > 0.0 && p.anchors {
+                lines.push((
+                    point(i as u32, c.anchor_centroid),
+                    point(i as u32, c.anchor_centroid + c.anchor_normal * 0.25),
+                    [0.0, 1.0, 1.0, 1.0],
+                ));
+            }
+        }
+        for s in &p.inst.supports {
+            lines.push((
+                point(s.chunk, a.chunks[s.chunk as usize].centroid),
+                point(s.chunk, s.point),
+                [1.0, 0.0, 1.0, 1.0],
+            ));
+        }
+    }
+    lines
 }

@@ -24,6 +24,7 @@ pub(crate) fn install_front(world: &mut World, components: &[String]) -> Result<
 pub(crate) struct Records {
     pub transform: (SchemaId, Layout),
     pub collider: (SchemaId, Layout),
+    pub parent: (SchemaId, Layout),
     pub tilemap: (SchemaId, Layout),
     pub camera: (SchemaId, Layout),
     pub rail: (SchemaId, Layout),
@@ -73,6 +74,7 @@ impl Records {
         Ok(Records {
             transform: get("og.Transform")?,
             collider: get("og.Collider")?,
+            parent: get("og.Parent")?,
             tilemap,
             camera: get("og.Camera")?,
             rail: get("og.CameraRail")?,
@@ -106,7 +108,7 @@ pub(crate) fn install_middle(
             SystemDesc {
                 name: TILEMAP_SYSTEM.into(),
                 reads: names(&[&r.tilemap]),
-                writes: names(&[&r.transform, &r.collider]),
+                writes: names(&[&r.transform, &r.collider, &r.parent]),
                 queries: vec![QueryDesc {
                     read: names(&[&r.tilemap, &r.transform]),
                     ..QueryDesc::default()

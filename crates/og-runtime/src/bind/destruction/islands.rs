@@ -5,7 +5,7 @@ use super::*;
 
 /// Each loose body of prop `p` (a support chunk's body with the chunks it
 /// carries, or a shattered piece on its own): its mass and place. A body
-/// made this run has no transform yet: a piece's place is then `fallback`.
+/// made this run uses its queued world pose before its transform is committed.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn loose_bodies(
     ctx: &SystemContext<'_>,
@@ -15,8 +15,7 @@ pub(super) fn loose_bodies(
     scale: f32,
     density: f32,
     poses: &[Option<Pose>],
-    made: &BTreeMap<u64, (Vec3, Vec3)>,
-    fallback: Vec3,
+    made: &BTreeMap<u64, Pose>,
 ) -> BTreeMap<u64, (f32, Vec3)> {
     // An island's place is its centre of mass (its chunks' centres by
     // their masses), not its root chunk's: a long island whose root lies
@@ -30,7 +29,7 @@ pub(super) fn loose_bodies(
         let m = a.chunks[c].volume * scale * scale * scale * density;
         let e = bodies.entry(b).or_insert((0.0, Vec3::ZERO));
         e.0 += m;
-        if let Some(ps) = poses[c] {
+        if let Some(ps) = made.get(&p.entities[c]).copied().or(poses[c]) {
             e.1 += ps.0 * m;
             *placed.entry(b).or_default() += m;
         }
@@ -44,11 +43,13 @@ pub(super) fn loose_bodies(
         let e = p.entities[c];
         if e != 0 && !bodies.contains_key(&e) {
             let m = a.chunks[c].volume * scale * scale * scale * density;
-            let at = match made.contains_key(&e) {
-                true => None,
-                false => world_pose(ctx, l, Entity::from_bits(e)).map(|x| x.0),
-            };
-            bodies.insert(e, (m, at.unwrap_or(fallback)));
+            let at = made
+                .get(&e)
+                .copied()
+                .or_else(|| world_pose(ctx, l, Entity::from_bits(e)));
+            if let Some(at) = at {
+                bodies.insert(e, (m, at.0));
+            }
         }
     }
     bodies
@@ -113,29 +114,44 @@ pub(super) fn free_islands(
             .unwrap_or(isl.chunks[0]);
         let root_pose = pose[root as usize].expect("a placed chunk has a pose");
         let root_entity = p.entities[root as usize];
+        let total_volume: f32 = isl
+            .chunks
+            .iter()
+            .map(|&c| a.chunks[c as usize].volume)
+            .sum();
+        let com: Vec3 = isl
+            .chunks
+            .iter()
+            .map(|&c| {
+                pose[c as usize].expect("a placed chunk has a pose").0 * a.chunks[c as usize].volume
+            })
+            .sum::<Vec3>()
+            / total_volume;
         // The velocity it starts with: its old body's at its place.
         let (lin, ang) = match roles[root as usize] {
-            Role::Root => (Vec3::ZERO, Vec3::ZERO),
-            Role::Child(r) => {
+            Role::Root | Role::Child(_) => {
+                let r = match roles[root as usize] {
+                    Role::Child(r) => r,
+                    _ => root,
+                };
                 let b = Entity::from_bits(p.entities[r as usize]);
                 match ctx.get_bytes(b, l.velocity.0) {
                     Ok(vb) => {
                         let v: record::Velocity = row(&l.velocity.1, &vb)?;
                         let (lin, ang) = (v.linear, v.angular);
-                        let at = pose[r as usize].map_or(root_pose.0, |x| x.0);
-                        (lin + ang.cross(root_pose.0 - at), ang)
+                        let at = out.body_com.get(&b.to_bits()).copied().unwrap_or(com);
+                        (lin + ang.cross(com - at), ang)
                     }
                     Err(_) => (Vec3::ZERO, Vec3::ZERO),
                 }
             }
-            Role::Static => (
-                inherit.0 + inherit.1.cross(root_pose.0 - inherit.2),
-                inherit.1,
-            ),
+            Role::Static => (inherit.0 + inherit.1.cross(com - inherit.2), inherit.1),
         };
         let mut mass = 0.0;
         let mut volume = 0.0;
         let mut centre = Vec3::ZERO;
+        out.made.insert(root_entity, (lin, ang));
+        out.fresh_bodies.push(root_entity);
         for &c in &isl.chunks {
             let target = if c == root {
                 Role::Root
@@ -165,8 +181,6 @@ pub(super) fn free_islands(
                     }
                     let rb = l.rigid.1.enc(None, Some(&json!({ "kind": "dynamic" })))?;
                     ctx.insert_bytes(e, l.rigid.0, &rb)?;
-                    out.made.insert(root_entity, (lin, ang));
-                    out.fresh_bodies.push(root_entity);
                 }
                 Role::Child(_) => {
                     if was == Role::Root {
@@ -226,6 +240,7 @@ pub(super) fn shatter_chunks(
     at: Breaking<'_>,
     p: &mut Prop,
     scale: f32,
+    inherit: (Vec3, Vec3, Vec3),
     shatter: &[u32],
     out: &mut Broken,
 ) -> og_core::Result<()> {
@@ -235,14 +250,22 @@ pub(super) fn shatter_chunks(
         let Some(cp) = pose[c as usize] else {
             continue;
         };
-        let (lin, ang) = match p.body[c as usize] {
-            0 => (Vec3::ZERO, Vec3::ZERO),
+        let old_body = p.body[c as usize];
+        let (lin, ang, com) = match old_body {
+            0 => inherit,
             b => match ctx.get_bytes(Entity::from_bits(b), l.velocity.0) {
                 Ok(vb) => {
                     let v: record::Velocity = row(&l.velocity.1, &vb)?;
-                    (v.linear, v.angular)
+                    (
+                        v.linear,
+                        v.angular,
+                        out.body_com.get(&b).copied().unwrap_or(cp.0),
+                    )
                 }
-                Err(_) => (Vec3::ZERO, Vec3::ZERO),
+                Err(_) => {
+                    let (lin, ang) = out.made.get(&b).copied().unwrap_or((inherit.0, inherit.1));
+                    (lin, ang, out.body_com.get(&b).copied().unwrap_or(inherit.2))
+                }
             },
         };
         let e = p.entities[c as usize];
@@ -272,16 +295,17 @@ pub(super) fn shatter_chunks(
                         chunk: i,
                         tick,
                         pose: frame_of_pose(kp),
-                        velocity: (lin + ang.cross(at - cp.0)).to_array(),
+                        velocity: (lin + ang.cross(at - com)).to_array(),
                         angular: ang.to_array(),
                     },
                     v * s.mat.density,
                 ));
                 continue;
             }
-            let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, Role::Root, 0, tick)?;
+            let ke = spawn_chunk(ctx, l, k, p, i, 2, &kp, s.mat.density, Role::Root, 0, tick)?;
             body = if body == 0 { ke } else { body };
-            out.made.insert(ke, (lin + ang.cross(kp.0 - cp.0), ang));
+            out.made.insert(ke, (lin + ang.cross(kp.0 - com), ang));
+            out.made_poses.insert(ke, kp);
             out.fresh_bodies.push(ke);
         }
         out.events.push(l.fractured.1.enc(
@@ -343,14 +367,25 @@ pub(super) fn enforce_budgets(
     let order = loose_islands(st, assets);
     let mut total: usize = order.iter().map(|x| x.chunks.len()).sum();
     let life = t.ticks_of(lifetime);
-    for isl in &order {
-        let old =
-            lifetime > 0.0 && isl.volume < t.debris_volume && tick >= isl.tick.saturating_add(life);
-        if !old && total <= max {
+    let expired = |isl: &og_physics::destruction::prop::budget::Loose| {
+        lifetime > 0.0 && isl.volume < t.debris_volume && tick >= isl.tick.saturating_add(life)
+    };
+    // Expiry must finish before counting the cap: otherwise an old live
+    // island is evicted to make room for younger debris about to expire.
+    for isl in order
+        .iter()
+        .filter(|i| expired(i))
+        .chain(order.iter().filter(|i| !expired(i)))
+    {
+        if !expired(isl) && total <= max {
             continue;
         }
         total -= isl.chunks.len();
-        let p = st.props.get_mut(&isl.prop).expect("listed");
+        let p = st
+            .props
+            .get_mut(&isl.prop)
+            .or_else(|| st.orphan_chunks.get_mut(&isl.prop))
+            .expect("listed");
         for &c in &isl.chunks {
             let e = p.entities[c];
             if alive(ctx, e) {
@@ -363,6 +398,18 @@ pub(super) fn enforce_budgets(
             if let Some(sh) = p.inst.shattered.get_mut(c) {
                 *sh = true;
             }
+        }
+    }
+    let empty: Vec<_> = st
+        .orphan_chunks
+        .iter()
+        .filter(|(_, p)| p.entities.iter().all(|&e| e == 0))
+        .map(|(&k, _)| k)
+        .collect();
+    for k in empty {
+        st.orphan_chunks.remove(&k);
+        if alive(ctx, k) {
+            ctx.despawn(Entity::from_bits(k))?;
         }
     }
     st.trim_pieces(

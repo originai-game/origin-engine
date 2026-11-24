@@ -316,6 +316,7 @@ fn cave_layer(
             animated: Vec::new(),
         }]),
         origin: Vec3::new(-16.0, -9.0, 0.0),
+        axes: [Vec3::X, Vec3::Y],
         layer,
         color: [1.0; 4],
         repeat: [None, None],

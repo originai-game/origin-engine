@@ -17,7 +17,9 @@
 //! than the geometric mean of the masses (a preconditioning factor; the
 //! geometric mean needs `ln` and `exp`, which are not the same bits on
 //! every host, while `+ - * /` and `sqrt` are), and inertia is a scalar
-//! per node (Blast's `SolverNodeS`). Nothing else changes the arithmetic.
+//! per node (Blast's `SolverNodeS`). Bilateral bonds use CGNR's normal
+//! residual; unilateral contacts use canonical scalar projected
+//! Gauss–Seidel sweeps, with warm starts in physical force units.
 
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -169,6 +171,135 @@ impl StressProcessor {
         self.couplings.len()
     }
 
+    /// Projected block Gauss–Seidel for graphs with unilateral contacts.
+    /// `contacts` holds a normal, friction and pressure radius in metres;
+    /// None is a bilateral material bond. Canonical bond order, scalar
+    /// arithmetic, and persisted physical forces make capped solves replayable.
+    pub fn solve_contacts(
+        &self,
+        impulses: &mut [AngLin6],
+        velocities: &[AngLin6],
+        contacts: &[Option<(Vec3, f32, f32)>],
+        max_iter: u32,
+        tolerance: f32,
+    ) -> i32 {
+        let lin_scale = self.length_scale * self.mass_scale;
+        let ang_scale = self.length_scale * lin_scale;
+        let project = |j: &mut AngLin6, contact: Option<(Vec3, f32, f32)>| {
+            if let Some((normal, friction, radius)) = contact {
+                let pressure = (-j.lin.dot(normal)).max(0.0);
+                let tangent = j.lin - normal * j.lin.dot(normal);
+                let limit = pressure * friction;
+                let len = tangent.length();
+                j.lin = -normal * pressure + tangent * if len > limit { limit / len } else { 1.0 };
+                let moment = j.ang.length();
+                let limit = pressure * radius / self.length_scale;
+                if moment > limit {
+                    j.ang *= limit / moment;
+                }
+            }
+        };
+        for (j, &contact) in impulses.iter_mut().zip(contacts) {
+            j.lin /= lin_scale;
+            j.ang /= ang_scale;
+            project(j, contact);
+        }
+        let mut r: Vec<_> = velocities
+            .iter()
+            .zip(&self.recip_sqrt_i)
+            .map(|(v, s)| AngLin6 {
+                ang: -v.ang / if s.i > 0.0 { s.i } else { 1.0 },
+                lin: -v.lin / (self.length_scale * if s.m > 0.0 { s.m } else { 1.0 }),
+            })
+            .collect();
+        let mut gradient = vec![AngLin6::default(); impulses.len()];
+        let mut scratch = vec![AngLin6::default(); self.nodes];
+        self.lmul(&mut gradient, &r, &mut scratch);
+        let rhs_sq: f32 = gradient.iter().map(|g| g.dot(*g)).sum();
+        let mut ax = vec![AngLin6::default(); self.nodes];
+        self.rmul(&mut ax, impulses);
+        for (r, a) in r.iter_mut().zip(&ax) {
+            r.ang -= a.ang;
+            r.lin -= a.lin;
+        }
+        let cap = if max_iter > 0 {
+            max_iter
+        } else {
+            6 * self.nodes.max(impulses.len()) as u32
+        };
+        let mut taken = -(cap as i32);
+        for it in 0..cap {
+            for (k, c) in self.couplings.iter().enumerate() {
+                let (a, b) = (c.node0 as usize, c.node1 as usize);
+                let (sa, sb) = (self.recip_sqrt_i[a], self.recip_sqrt_i[b]);
+                // Scalar Gauss–Seidel uses each normal-equation diagonal,
+                // not the block trace: uncoupled pressure is solved exactly
+                // even when the angular axes have very different inertia.
+                for axis in 0..6 {
+                    let (ra, rb) = (r[a], r[b]);
+                    let ga = ra.ang * sa.i - rb.ang * sb.i;
+                    let gl = ra.lin * sa.m - rb.lin * sb.m + c.offset0.cross(ra.ang * sa.i)
+                        - c.offset1.cross(rb.ang * sb.i);
+                    let diagonal = if axis < 3 {
+                        sa.i * sa.i + sb.i * sb.i
+                    } else {
+                        let n = axis - 3;
+                        sa.m * sa.m
+                            + sb.m * sb.m
+                            + sa.i
+                                * sa.i
+                                * (c.offset0.length_squared() - c.offset0[n] * c.offset0[n])
+                            + sb.i
+                                * sb.i
+                                * (c.offset1.length_squared() - c.offset1[n] * c.offset1[n])
+                    };
+                    if diagonal <= 0.0 {
+                        continue;
+                    }
+                    let old = impulses[k];
+                    let mut next = old;
+                    if axis < 3 {
+                        next.ang[axis] += ga[axis] / diagonal;
+                    } else {
+                        next.lin[axis - 3] += gl[axis - 3] / diagonal;
+                    }
+                    project(&mut next, contacts[k]);
+                    let delta = AngLin6 {
+                        ang: next.ang - old.ang,
+                        lin: next.lin - old.lin,
+                    };
+                    impulses[k] = next;
+                    r[a].ang -= (delta.ang - c.offset0.cross(delta.lin)) * sa.i;
+                    r[a].lin -= delta.lin * sa.m;
+                    r[b].ang += (delta.ang - c.offset1.cross(delta.lin)) * sb.i;
+                    r[b].lin += delta.lin * sb.m;
+                }
+            }
+            // Test the projected normal residual, not the update size:
+            // a small preconditioned step need not mean a small force error.
+            self.lmul(&mut gradient, &r, &mut scratch);
+            let mut residual = 0.0;
+            for ((j, g), &contact) in impulses.iter().zip(&gradient).zip(contacts) {
+                let mut trial = j.madd(1.0, *g);
+                project(&mut trial, contact);
+                let delta = AngLin6 {
+                    ang: trial.ang - j.ang,
+                    lin: trial.lin - j.lin,
+                };
+                residual += delta.dot(delta);
+            }
+            if residual <= tolerance * tolerance * rhs_sq {
+                taken = (it + 1) as i32;
+                break;
+            }
+        }
+        for j in impulses {
+            j.lin *= lin_scale;
+            j.ang *= ang_scale;
+        }
+        taken
+    }
+
     /// y = C x (`CouplingMatrixOps::rmul`), then (I^-1/2) y.
     fn rmul(&self, y: &mut [AngLin6], x: &[AngLin6]) {
         y.fill(AngLin6::default());
@@ -258,7 +389,8 @@ impl StressProcessor {
         let mut r = b.to_vec();
         let mut s = vec![AngLin6::default(); m];
         let mut scratch = vec![AngLin6::default(); m];
-        let b_sq: f32 = b.iter().map(|v| v.dot(*v)).sum();
+        self.lmul(&mut z, b, &mut scratch);
+        let b_sq: f32 = z.iter().map(|v| v.dot(*v)).sum();
         let delta_sq = tol * tol * b_sq;
         if warm {
             self.rmul(&mut s, x);
@@ -272,11 +404,14 @@ impl StressProcessor {
         let mut z_last_sq = 0.0f32;
         let mut started = false;
         let mut it = 0u32;
-        loop {
+        let converged = loop {
             self.lmul(&mut z, &r, &mut scratch);
             let z_sq: f32 = z.iter().map(|v| v.dot(*v)).sum();
             if z_sq <= delta_sq {
-                break;
+                break true;
+            }
+            if it >= max_it {
+                break false;
             }
             if started {
                 let beta = z_sq / z_last_sq;
@@ -291,7 +426,7 @@ impl StressProcessor {
             self.rmul(&mut s, &p);
             let s_sq: f32 = s.iter().map(|v| v.dot(*v)).sum();
             if s_sq <= 0.0 {
-                break;
+                break false;
             }
             let mu = z_sq / s_sq;
             for (xi, pi) in x.iter_mut().zip(&p) {
@@ -301,11 +436,12 @@ impl StressProcessor {
                 *ri = ri.madd(-mu, *si);
             }
             it += 1;
-            if it >= max_it {
-                break;
-            }
+        };
+        if converged {
+            it as i32
+        } else {
+            -(it.max(1) as i32)
         }
-        if it < max_it { it as i32 } else { -(it as i32) }
     }
 }
 
@@ -321,24 +457,30 @@ pub struct BondStress {
 }
 
 /// A bond's stress from its force (`calcSolverBondStresses`): `normal`
-/// along the bond normal, aligned with the displacement from node 0 to
-/// node 1, and `shear`, over `area`, with the angular part read as linear
-/// stress across `node_dist` (twist as shear, bending as `bend`).
-pub fn bond_stress(force: AngLin6, normal: Vec3, area: f32, node_dist: f32) -> BondStress {
+/// along the bond normal and `shear` over `area`. The cooked section's
+/// second moments convert torque into edge bending and torsional stress.
+pub fn bond_stress(
+    force: AngLin6,
+    normal: Vec3,
+    area: f32,
+    inertia: f32,
+    polar: f32,
+    radius: f32,
+) -> BondStress {
     if area <= 0.0 {
         return BondStress::default();
     }
     let n_lin = force.lin.dot(normal);
     let mut shear = (force.lin.length_squared() - n_lin * n_lin).max(0.0).sqrt() / area;
     let n_ang = force.ang.dot(normal).abs();
-    let twist = n_ang / area;
-    let mut bend = (force.ang.length_squared() - n_ang * n_ang).max(0.0).sqrt() / area;
-    if node_dist > 0.0 {
-        shear += twist * 2.0 / node_dist;
-        bend *= 2.0 / node_dist;
-    } else {
-        bend = 0.0;
+    if polar > 0.0 {
+        shear += n_ang * radius / polar;
     }
+    let bend = if inertia > 0.0 {
+        (force.ang.length_squared() - n_ang * n_ang).max(0.0).sqrt() * radius / inertia
+    } else {
+        0.0
+    };
     BondStress {
         normal: n_lin / area,
         bend,

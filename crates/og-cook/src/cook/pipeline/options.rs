@@ -35,10 +35,11 @@ pub struct MeshOptions {
     /// Bake each primitive's triangle-mesh collider shape (rapier's mesh
     /// with its BVH, over LOD 0 as the runtime decodes it, or the proxy's
     /// level for a streamed model) into the blob, so a SHAPE_TRIMESH
-    /// collider at scale 1 naming one of its geometries builds nothing in
+    /// collider at any scale naming one of its geometries builds nothing in
     /// the tick that first needs it: `model { collider true }`. Off by
     /// default: it takes about 90 bytes a triangle.
     pub collider: bool,
+    pub collider_kind: og_physics_data::trimesh::BakeKind,
     /// The project's art contract as models are held to it (docs/art.md
     /// §2.3, `conform::mesh`): set by the cook from project.ogt's `look`
     /// for every asset that does not opt out; `None` conforms nothing.
@@ -62,6 +63,7 @@ impl Default for MeshOptions {
             raycast: true,
             clusters: true,
             collider: false,
+            collider_kind: og_physics_data::trimesh::BakeKind::Trimesh,
             conform: None,
             impostor: None,
         }
@@ -199,12 +201,27 @@ impl MeshOptions {
             ));
         }
         if let Some(e) = b.get("collider") {
-            o.collider = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
-                format!(
-                    "line {}: collider takes true (bake each primitive's triangle-mesh collider into the blob) or false (built by the first step that needs it, the default)",
-                    e.line
-                )
-            })?;
+            use og_physics_data::trimesh::BakeKind;
+            match e.values.first() {
+                Some(v) if v.as_bool().is_some() => {
+                    o.collider = v.as_bool().expect("matched boolean");
+                    o.collider_kind = BakeKind::Trimesh;
+                }
+                Some(v) if v.as_word() == Some("convex") => {
+                    o.collider = true;
+                    o.collider_kind = BakeKind::Convex;
+                }
+                Some(v) if v.as_word() == Some("vhacd") => {
+                    o.collider = true;
+                    o.collider_kind = BakeKind::Vhacd;
+                }
+                _ => {
+                    return Err(format!(
+                        "line {}: collider takes true, false, convex or vhacd",
+                        e.line
+                    ));
+                }
+            }
         }
         Ok(o)
     }

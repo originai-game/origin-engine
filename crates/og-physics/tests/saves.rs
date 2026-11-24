@@ -19,6 +19,64 @@ use std::sync::Arc;
 use support::*;
 
 #[test]
+fn cooked_colliders_keep_scale_and_refuse_stale_geometry() {
+    for kind in [BakeKind::Trimesh, BakeKind::Convex, BakeKind::Vhacd] {
+        let (mut w, p) = world(
+            Physics {
+                gravity: Vec3::ZERO,
+                ..Default::default()
+            },
+            13,
+        );
+        let mesh = support::pile::octahedron(1.0);
+        let baked = bake_collider(&mesh, kind).unwrap();
+        p.set_mesh(42, mesh).unwrap();
+        p.set_baked_collider(42, &baked).unwrap();
+        let mut tr = at(0.0, 0.0, 0.0);
+        tr.scale = Vec3::new(-2.0, 3.0, 4.0);
+        spawn_static(
+            &mut w,
+            tr,
+            Collider {
+                shape: if kind == BakeKind::Trimesh {
+                    SHAPE_TRIMESH
+                } else {
+                    SHAPE_CONVEX
+                },
+                mesh: 42,
+                ..Default::default()
+            },
+        );
+        w.step().unwrap();
+        let ray = RaycastDesc {
+            origin: Vec3::new(0.5, 8.0, 0.0),
+            direction: -Vec3::Y,
+            max_distance: 20.0,
+            ..Default::default()
+        };
+        let top = p.query(&w).unwrap().raycast(&ray).unwrap().unwrap().point.y;
+        assert!(
+            (top - 2.25).abs() < 0.1,
+            "{kind:?} scales the hull, including a reflected axis: {top}"
+        );
+        let saved = w.snapshot();
+        run(&mut w, 3);
+        let end = w.snapshot();
+        w.restore(&saved).unwrap();
+        run(&mut w, 3);
+        assert_eq!(w.snapshot(), end);
+        // The handle stays the same, but the bake's content hash is stale.
+        p.set_mesh(42, support::pile::octahedron(2.0)).unwrap();
+        w.step().unwrap();
+        let top = p.query(&w).unwrap().raycast(&ray).unwrap().unwrap().point.y;
+        assert!(
+            (top - 5.25).abs() < 0.001,
+            "{kind:?} must not reuse a bake for other content: {top}"
+        );
+    }
+}
+
+#[test]
 fn queries_share_the_simulation_across_restore() {
     for profile in [PROFILE_2D, PROFILE_3D] {
         let mut w = World::new(&og_ecs::WorldDesc {

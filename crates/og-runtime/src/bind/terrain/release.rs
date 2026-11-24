@@ -78,6 +78,12 @@ fn open(payload: &Payload) -> bool {
 /// Frees terrain `i`: everything it holds goes, and its handle answers
 /// that it was freed.
 fn free(eng: &Engine, i: usize) {
+    let id = terrain_id(&eng.render.borrow().terrain, i);
+    log_of(eng)
+        .lock()
+        .expect("the edit log")
+        .edits
+        .retain(|(asset, _)| *asset != id);
     let Some(t) = eng.render.borrow_mut().terrain.loaded.take(i) else {
         return;
     };

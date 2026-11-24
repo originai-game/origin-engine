@@ -69,6 +69,8 @@ const FACING_CAMERA_Y: u32 = 2;
 /// Upright, turned about y to face the sun: a faced sprite's drop shadow
 /// ([`sun_card_right`]).
 const FACING_SUN: u32 = 3;
+/// Tile CPU path: ground.xyz and outline.xyz carry the local x/y axes.
+const FACING_AFFINE: u32 = 4;
 
 fn facing_code(f: SpriteFacing) -> u32 {
     match f {

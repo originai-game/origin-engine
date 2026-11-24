@@ -1,7 +1,6 @@
 //! The fine pieces and the grit a breaking prop sheds: visuals only, moved
 //! and drawn by the renderer's debris layer from what is recorded here.
 
-use glam::Vec3;
 use serde::{Deserialize, Serialize};
 
 /// A broken joint's grit as it fell out: the renderer throws its chips
@@ -38,25 +37,4 @@ pub struct Debris {
     pub pose: [f32; 10],
     pub velocity: [f32; 3],
     pub angular: [f32; 3],
-}
-
-/// Up to `n` of `hull`'s points spread over it (farthest-point sampling
-/// from the first): what a fine piece collides at.
-pub fn spread(hull: &[Vec3], n: usize) -> Vec<Vec3> {
-    if hull.len() <= n {
-        return hull.to_vec();
-    }
-    let mut out = vec![hull[0]];
-    let mut near: Vec<f32> = hull.iter().map(|p| p.distance_squared(hull[0])).collect();
-    while out.len() < n {
-        let (far, _) = near
-            .iter()
-            .enumerate()
-            .fold((0, -1.0f32), |b, (i, &d)| if d > b.1 { (i, d) } else { b });
-        out.push(hull[far]);
-        for (d, p) in near.iter_mut().zip(hull) {
-            *d = d.min(p.distance_squared(hull[far]));
-        }
-    }
-    out
 }

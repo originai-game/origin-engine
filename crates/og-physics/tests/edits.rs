@@ -231,6 +231,159 @@ fn a_restore_into_a_world_that_ran_on_continues_from_the_snapshot() {
     );
 }
 
+#[test]
+fn pixel_edits_keep_holes_and_replay_across_chunk_boundaries() {
+    use og_physics::destruction::terrain2d::{BEDROCK, PixelTerrain, collider::chunk_polyline};
+    let mut grid = PixelTerrain::new(13, 9, 4);
+    for x in 0..13 {
+        grid.set(x, 0, BEDROCK);
+    }
+    for y in 1..8 {
+        for x in 1..12 {
+            grid.set(x, y, 1);
+        }
+    }
+    assert!(grid.detach().is_empty());
+    grid.take_dirty();
+    grid.circle(6.0, 4.0, 1.4, 0);
+    let replay = grid.clone();
+    assert!(
+        grid.detach().is_empty(),
+        "a hole does not sever the surrounding ground"
+    );
+    // The collider has the exact hole at tolerance zero, without filling
+    // it through a convex hull or introducing a wall at x=4 or x=8.
+    let (mut w, ph) = world(
+        Physics {
+            profile: PROFILE_2D,
+            gravity: Vec3::ZERO,
+            ..Default::default()
+        },
+        91,
+    );
+    for k in 0..12 {
+        if let Some(mesh) = chunk_polyline(&grid, k, 0.0, 1.0) {
+            ph.set_polyline(100 + k as u64, mesh).unwrap();
+            spawn_static(
+                &mut w,
+                at((k % 4 * 4) as f32, (k / 4 * 4) as f32, 0.0),
+                Collider {
+                    shape: SHAPE_POLYLINE,
+                    mesh: 100 + k as u64,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+    run(&mut w, 1);
+    let hit = ph
+        .query(&w)
+        .unwrap()
+        .raycast(&RaycastDesc {
+            origin: Vec3::new(6.0, 4.0, 0.0),
+            direction: Vec3::X,
+            max_distance: 10.0,
+            ..Default::default()
+        })
+        .unwrap()
+        .unwrap();
+    assert!(
+        (hit.point.x - 7.0).abs() < 1e-4,
+        "the hole has an inner boundary: {hit:?}"
+    );
+    grid.circle(6.0, 1.5, 20.0, 0);
+    let islands = grid.detach();
+    let mut back = replay;
+    back.circle(6.0, 1.5, 20.0, 0);
+    assert_eq!(islands, back.detach());
+    assert_eq!(grid.solid(), 13);
+    assert_eq!(grid.cells(), back.cells());
+}
+
+#[test]
+fn destruction_warm_starts_restore_and_foundations_cannot_pull() {
+    use og_physics::destruction::{
+        Chunk, FractureAsset, Instance, Material, NONE, stress::StressLimits,
+    };
+    let a = FractureAsset {
+        support: 1,
+        chunks: vec![Chunk {
+            centroid: Vec3::Y,
+            volume: 2.0,
+            parent: NONE,
+            anchor_area: 1.0,
+            anchor_centroid: Vec3::ZERO,
+            anchor_normal: Vec3::Y,
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    let material = Material {
+        density: 700.0,
+        toughness: 1000.0,
+        limits: StressLimits::from_strength(1e6, 0.6, 0.0),
+    };
+    let mut inst = Instance::new(&a);
+    inst.dirty = true;
+    let mut budget = u64::MAX;
+    for _ in 0..100 {
+        inst.stress(
+            &a,
+            &inst.islands(&a),
+            &[],
+            -Vec3::Y * 10.0,
+            1.0,
+            &material,
+            1,
+            &mut budget,
+        );
+        if !inst.dirty {
+            break;
+        }
+    }
+    let reaction = inst.impulses[0].2.lin;
+    assert!(
+        (reaction.y + 14000.0).abs() < 100.0,
+        "foundation carries actual mass: {reaction:?}"
+    );
+    let mut state = destruction::prop::state::State::default();
+    // Instance is saved through the actual destruction state block.
+    let prop = destruction::prop::state::Prop {
+        asset: 1,
+        model: Vec::new(),
+        inst: inst.clone(),
+        frame: [0.0; 10],
+        entities: vec![1],
+        body: vec![0],
+        loose: vec![u64::MAX],
+        collider: None,
+        placed: true,
+        anchors: true,
+        fractured: false,
+        island_cache: (0, Vec::new()),
+    };
+    state.props.insert(1, prop);
+    let mut bytes = Vec::new();
+    state.save(&mut bytes);
+    let restored = destruction::prop::state::State::decode(&bytes).unwrap();
+    assert_eq!(restored.props[&1].inst, inst);
+    inst.stress(
+        &a,
+        &inst.islands(&a),
+        &[],
+        Vec3::Y * 10.0,
+        1.0,
+        &material,
+        100,
+        &mut budget,
+    );
+    assert_eq!(
+        inst.anchors[0], 0.0,
+        "a separating foundation opens instead of pulling"
+    );
+    assert_eq!(inst.impulses[0].2.lin, Vec3::ZERO);
+}
+
 /// One public controller path in both profiles: land, crouch under a roof,
 /// restore, stand, jump at large world coordinates, then push a body with
 /// finite mass. This also guards sequential controller/sensor publication.

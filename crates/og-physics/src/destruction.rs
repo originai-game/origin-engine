@@ -47,6 +47,17 @@ pub struct Damage {
 
 impl Damage {
     pub fn at(&self, p: Vec3) -> f32 {
+        if !self.point.is_finite()
+            || !self.min_radius.is_finite()
+            || !self.max_radius.is_finite()
+            || !self.amount.is_finite()
+            || self.min_radius < 0.0
+            || self.min_radius > self.max_radius
+            || self.max_radius <= 0.0
+            || self.amount <= 0.0
+        {
+            return 0.0;
+        }
         let d = (p - self.point).length();
         if d <= self.min_radius {
             self.amount
@@ -61,7 +72,7 @@ impl Damage {
 /// Where something holds up a chunk of an island no anchor holds: a loose
 /// island resting on a pier, a pile or the ground, for
 /// [`Instance::stress`]. In the model's space, as the chunk's own points.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Support {
     pub chunk: u32,
     /// Where it bears on the chunk.
@@ -96,6 +107,10 @@ pub struct Instance {
     /// Damage or a break since the stress solver last found the graph at
     /// rest: it runs again.
     pub dirty: bool,
+    /// Physical bond forces from the last solve, keyed by (kind, asset index).
+    /// Saved with the instance so a capped solve resumes identically after restore.
+    pub impulses: Vec<(u8, u32, AngLin6)>,
+    pub supports: Vec<Support>,
 }
 
 impl Instance {
@@ -109,6 +124,8 @@ impl Instance {
             chunk_damage: vec![0.0; a.chunks.len()],
             shattered: vec![false; a.support as usize],
             dirty: false,
+            impulses: Vec::new(),
+            supports: Vec::new(),
         }
     }
 
@@ -139,12 +156,15 @@ impl Instance {
         scale: f32,
         m: &Material,
         place: &dyn Fn(u32, Vec3) -> Vec3,
+        exposed: &[bool],
     ) -> bool {
         let mut any = false;
         let tough = m.toughness.max(1e-6);
         for (k, b) in a.bonds.iter().enumerate() {
             let h = &mut self.bonds[k];
-            if *h <= 0.0 {
+            if *h <= 0.0
+                || (!exposed.is_empty() && !exposed[b.a as usize] && !exposed[b.b as usize])
+            {
                 continue;
             }
             let amount = d.at(place(b.a, b.centroid));
@@ -155,7 +175,7 @@ impl Instance {
         }
         for (i, c) in a.chunks[..a.support as usize].iter().enumerate() {
             let h = &mut self.anchors[i];
-            if *h <= 0.0 {
+            if *h <= 0.0 || (!exposed.is_empty() && !exposed[i]) {
                 continue;
             }
             let amount = d.at(place(i as u32, c.anchor_centroid));
@@ -165,6 +185,9 @@ impl Instance {
             }
         }
         for (i, c) in a.chunks.iter().enumerate() {
+            if !exposed.is_empty() && !exposed[i] {
+                continue;
+            }
             let amount = d.at(place(i as u32, c.centroid));
             if amount > 0.0 {
                 self.chunk_damage[i] += amount;
@@ -228,7 +251,7 @@ impl Instance {
             let own = span(c);
             // The bearing: the overlap of this block and each block under
             // it, across both horizontal axes.
-            let mut bear = [f32::MAX, f32::MIN, f32::MAX, f32::MIN];
+            let mut bearings: Vec<[f32; 4]> = Vec::new();
             for b in &a.bonds {
                 if b.a as usize != c && b.b as usize != c {
                     continue;
@@ -242,10 +265,35 @@ impl Instance {
                     continue;
                 }
                 let s = span(o);
-                bear[0] = bear[0].min(s[0].max(own[0]));
-                bear[1] = bear[1].max(s[1].min(own[1]));
-                bear[2] = bear[2].min(s[2].max(own[2]));
-                bear[3] = bear[3].max(s[3].min(own[3]));
+                let mut patch = [
+                    s[0].max(own[0]),
+                    s[1].min(own[1]),
+                    s[2].max(own[2]),
+                    s[3].min(own[3]),
+                ];
+                if patch[0] > patch[1] || patch[2] > patch[3] {
+                    continue;
+                }
+                // Separate piers are separate bearing patches, never a
+                // fictitious continuous foundation across the air between.
+                let mut i = 0;
+                while i < bearings.len() {
+                    let b = bearings[i];
+                    if patch[0] <= b[1] && b[0] <= patch[1] && patch[2] <= b[3] && b[2] <= patch[3]
+                    {
+                        patch = [
+                            patch[0].min(b[0]),
+                            patch[1].max(b[1]),
+                            patch[2].min(b[2]),
+                            patch[3].max(b[3]),
+                        ];
+                        bearings.remove(i);
+                        i = 0;
+                    } else {
+                        i += 1;
+                    }
+                }
+                bearings.push(patch);
             }
             // The middle-third rule: its weight within the middle third of
             // its bearing on both axes (a joint pressed off-centre further
@@ -262,7 +310,10 @@ impl Instance {
             let third = |c: f32, lo: f32, hi: f32| {
                 hi >= lo && (c - 0.5 * (lo + hi)).abs() <= give * (hi - lo) / 6.0 + 1e-3
             };
-            if !(third(cu, bear[0], bear[1]) && third(cv, bear[2], bear[3])) {
+            if !bearings
+                .iter()
+                .any(|bear| third(cu, bear[0], bear[1]) && third(cv, bear[2], bear[3]))
+            {
                 out.push(c as u32);
             }
         }
@@ -349,6 +400,7 @@ impl Instance {
         iterations: u32,
         budget: &mut u64,
     ) -> u32 {
+        self.supports = supports.to_vec();
         if *budget == 0 {
             return 0;
         }
@@ -409,7 +461,7 @@ impl Instance {
                 centroid: c.anchor_centroid * scale,
             });
             // From the world towards the chunk.
-            let normal = (c.centroid - c.anchor_centroid).normalize_or_zero();
+            let normal = c.anchor_normal;
             which.push((1, i as u32, normal, c.anchor_area * self.anchors[i] * s2));
         }
         // What a loose island rests on: the world as an anchor that never
@@ -441,23 +493,65 @@ impl Instance {
                 lin: if n.mass > 0.0 { gravity } else { Vec3::ZERO },
             })
             .collect();
-        let mut j = vec![AngLin6::default(); bonds.len()];
-        let taken = sp.solve(&mut j, &v, iterations, 1e-3, false);
+        let mut j: Vec<_> = which
+            .iter()
+            .map(|&(kind, idx, _, _)| {
+                self.impulses
+                    .iter()
+                    .find(|&&(k, i, _)| k == kind && i == idx)
+                    .map_or(AngLin6::default(), |&(_, _, j)| j)
+            })
+            .collect();
+        let contacts: Vec<_> = which
+            .iter()
+            .map(|&(kind, idx, normal, area)| {
+                if kind != 0 || m.limits.tension_elastic == 0.0 {
+                    let radius = if kind == 0 {
+                        a.bonds[idx as usize].section_radius * scale
+                    } else {
+                        (area / std::f32::consts::PI).sqrt()
+                    };
+                    Some((normal, m.limits.friction, radius))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let taken = if contacts.iter().any(Option::is_some) {
+            sp.solve_contacts(&mut j, &v, &contacts, iterations, 1e-3)
+        } else {
+            sp.solve(&mut j, &v, iterations, 1e-3, true)
+        };
+        self.impulses.clear();
+        for (&(kind, idx, _, _), &impulse) in which.iter().zip(&j) {
+            self.impulses.push((kind, idx, impulse));
+        }
         *budget = budget.saturating_sub(u64::from(taken.unsigned_abs()) * bonds.len() as u64);
         let mut broke = 0;
         let mut damaged = false;
         for (k, (kind, idx, normal, area)) in which.iter().enumerate() {
-            let bond = bonds[k];
-            let (n0, n1) = (nodes[bond.nodes[0] as usize], nodes[bond.nodes[1] as usize]);
-            let disp = n1.com - n0.com;
-            let normal = if normal.dot(disp) < 0.0 {
-                -*normal
+            // A foundation is a contact, not glue. A separating load with
+            // no compressive reaction opens it instead of suspending a chunk.
+            if *kind == 1 && j[k].lin.dot(*normal) >= 0.0 && gravity.dot(*normal) > 0.0 {
+                self.anchors[*idx as usize] = 0.0;
+                damaged = true;
+                broke += 1;
+                continue;
+            }
+            let (inertia, polar, radius) = if *kind == 0 {
+                let b = a.bonds[*idx as usize];
+                let s4 = s2 * s2 * self.bonds[*idx as usize];
+                (
+                    b.section_inertia * s4,
+                    b.polar_inertia * s4,
+                    b.section_radius * scale,
+                )
             } else {
-                *normal
+                (0.0, 0.0, 0.0)
             };
-            let mult = m
-                .limits
-                .damage(stress::bond_stress(j[k], normal, *area, disp.length()));
+            let mult = m.limits.damage(stress::bond_stress(
+                j[k], *normal, *area, inertia, polar, radius,
+            ));
             if mult <= 0.0 {
                 continue;
             }
@@ -482,7 +576,7 @@ impl Instance {
                 broke += 1;
             }
         }
-        self.dirty = damaged;
+        self.dirty = damaged || taken < 0;
         broke
     }
 }

@@ -199,7 +199,11 @@ fn vs(@builtin(vertex_index) vi: u32, s: SpriteIn) -> SpriteOut {
 fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   // Two triangles: (0,0) (1,0) (1,1) / (0,0) (1,1) (0,1), counter-clockwise.
   let key = oit_key4(s.position_rotation, vec3<f32>(f32(vi / 3u), s.ground.x, s.flash.x));
-  if (s.ground.x > 1.5) {
+  // The CPU tile path reuses the otherwise unused shadow/outline channels
+  // for its affine axes. It is neither a shadow nor an outlined sprite.
+  let affine = s.facing == 4u;
+  let shadow = !affine && s.ground.x > 0.5;
+  if (!affine && s.ground.x > 1.5) {
     var b = bent_vertex(quad_corner(vi), s);
     b.oit_key = key;
     return b;
@@ -209,7 +213,7 @@ fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   // as a fraction of the quad), so the line fits outside the art; without
   // one the corner is c exactly.
   let span = max(abs(s.uv_rect.zw - s.uv_rect.xy), vec2<f32>(1e-6));
-  let grow = select(vec2<f32>(0.0), s.outline.z * s.outline.xy / span, s.outline.z > 0.0);
+  let grow = select(vec2<f32>(0.0), s.outline.z * s.outline.xy / span, !affine && s.outline.z > 0.0);
   let q = c * (1.0 + 2.0 * grow) - grow;
   let local = (q - s.size_anchor.zw) * s.size_anchor.xy;
   let cs = cos(s.position_rotation.w);
@@ -217,7 +221,9 @@ fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   let rotated = vec2<f32>(local.x * cs - local.y * sn, local.x * sn + local.y * cs);
   let standing = stand(s.position_rotation.xyz, rotated, s.facing);
   var world = ground_shadow(standing, s.ground);
-  if (s.ground.x > 0.5 && (s.fx.y != 0.0 || s.fx.z != 0.0)) {
+  if (affine) {
+    world = s.position_rotation.xyz + s.ground.xyz * local.x + s.outline.xyz * local.y;
+  } else if (shadow && (s.fx.y != 0.0 || s.fx.z != 0.0)) {
     world = sloped_shadow(standing, s.ground, s.position_rotation.xyz, s.fx.yz);
   }
   var o: SpriteOut;
@@ -226,12 +232,12 @@ fn sprite_vertex(vi: u32, s: SpriteIn) -> SpriteOut {
   o.uv = vec2<f32>(mix(s.uv_rect.x, s.uv_rect.z, q.x), mix(s.uv_rect.w, s.uv_rect.y, q.y));
   o.color = s.color;
   o.flash = s.flash;
-  o.fx = select(s.fx, vec3<f32>(0.0), s.ground.x > 0.5);
+  o.fx = select(s.fx, vec3<f32>(0.0), shadow);
   o.corner = c;
   o.world = world;
-  o.shadow = select(0.0, 1.0, s.ground.x > 0.5);
+  o.shadow = select(0.0, 1.0, shadow);
   o.region = region_of(s.uv_rect);
-  o.outline = s.outline;
+  o.outline = select(s.outline, vec4<f32>(0.0), affine);
   o.outline_color = s.outline_color;
   o.oit_key = key;
   return o;

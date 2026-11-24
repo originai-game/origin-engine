@@ -129,7 +129,7 @@ use tick::*;
 /// The name of the scheduled system.
 pub const SYSTEM_NAME: &str = "og.physics";
 
-pub use og_physics_data::MeshDesc;
+pub use og_physics_data::{MeshDesc, PolylineDesc};
 
 /// The bit of a mesh handle that marks a mesh generated from world state
 /// (a tilemap's merged solid regions, G2-6) rather than loaded as an asset:
@@ -187,7 +187,7 @@ fn lock<T>(shared: &Mutex<T>) -> MutexGuard<'_, T> {
 /// (none, 2 or 3) and the bincode of the profile's [`dim3::Sim`].
 struct PhysicsState(Arc<Mutex<Shared>>);
 
-pub use og_physics_data::bake_trimesh;
+pub use og_physics_data::{BakeKind, bake_collider};
 
 /// Registers the physics types, inserts `settings` as the `og.Physics`
 /// resource (replacing one already there) and schedules the `og.physics`
@@ -381,6 +381,7 @@ impl PhysicsSystem {
         if shared.meshes.get(&handle).is_some_and(|m| **m == mesh) {
             return Ok(());
         }
+        shared.mesh_hashes.insert(handle, mesh.content_hash());
         shared.meshes.insert(handle, Arc::new(mesh));
         shared.stale_meshes.insert(handle);
         shared.field_edits.remove(&handle);
@@ -389,13 +390,39 @@ impl PhysicsSystem {
         Ok(())
     }
 
-    /// A triangle-mesh shape [`bake_trimesh`] baked for mesh `handle`,
+    /// Registers native segments for SHAPE_POLYLINE without a mesh round trip.
+    /// Like meshes, these are assets and must be registered after a fresh load.
+    pub fn set_polyline(&self, handle: u64, line: PolylineDesc) -> Result<()> {
+        if line.positions.len() < 2
+            || line.positions.iter().any(|p| !p.is_finite())
+            || line.segments.is_empty()
+            || line
+                .segments
+                .iter()
+                .any(|s| s[0] == s[1] || s.iter().any(|&i| i as usize >= line.positions.len()))
+        {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                "a polyline needs finite vertices and valid, non-degenerate segments",
+            ));
+        }
+        let mut shared = lock(&self.shared);
+        if shared.polylines.get(&handle).is_some_and(|p| **p == line) {
+            return Ok(());
+        }
+        shared.polylines.insert(handle, Arc::new(line));
+        shared.stale_meshes.insert(handle);
+        shared.shapes2.retain(|k, _| k.mesh != handle);
+        shared.shapes3.retain(|k, _| k.mesh != handle);
+        Ok(())
+    }
+
+    /// A collider shape [`bake_collider`] baked for mesh `handle`,
     /// decoded now (between ticks, not in the step that first needs it): a
-    /// SHAPE_TRIMESH collider at scale 1 naming the mesh takes it instead of
-    /// building one, while the mesh's positions and triangles are exactly
-    /// the ones baked (a build over them is the same shape, bit for bit).
+    /// SHAPE_TRIMESH collider naming the same content hash takes its BVH,
+    /// transformed at any scale, instead of rebuilding one.
     /// Refused for bytes another bake format wrote. 3D only.
-    pub fn set_baked_trimesh(&self, handle: u64, bytes: &[u8]) -> Result<()> {
+    pub fn set_baked_collider(&self, handle: u64, bytes: &[u8]) -> Result<()> {
         let shape = dim3::unbake(bytes)?;
         lock(&self.shared).baked3.insert(handle, shape);
         Ok(())
@@ -469,8 +496,7 @@ impl PhysicsSystem {
         let same_shape = {
             let shared = lock(&self.shared);
             shared.heightfields.get(&handle).is_some_and(|f| {
-                (f.columns, f.rows, f.size, f.holes.is_some())
-                    == (field.columns, field.rows, field.size, field.holes.is_some())
+                (f.columns, f.rows, f.size) == (field.columns, field.rows, field.size)
             })
         };
         let (cx, cz) = field_chunks(field.columns, field.rows);
@@ -613,6 +639,8 @@ impl PhysicsSystem {
     pub fn remove_mesh(&self, handle: u64) {
         let mut shared = lock(&self.shared);
         shared.meshes.remove(&handle);
+        shared.polylines.remove(&handle);
+        shared.mesh_hashes.remove(&handle);
         shared.baked3.remove(&handle);
         shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);

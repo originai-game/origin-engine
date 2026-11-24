@@ -93,6 +93,8 @@ enum Style {
 struct Anchor {
     bottom: bool,
     ends: bool,
+    /// Foundation plane n·x=d, with n pointing into the model.
+    plane: Option<(DVec3, f64)>,
 }
 
 #[derive(Clone, Debug)]
@@ -222,6 +224,23 @@ impl Settings {
         let mut anchor = Anchor::default();
         match b.get("anchor") {
             None => anchor.bottom = true,
+            Some(e) if e.values.first().and_then(|v| v.as_word()) == Some("plane") => {
+                let values: Vec<f64> = (1..5)
+                    .map(|i| {
+                        e.f32(i).map(f64::from).map_err(|_| {
+                            format!("line {}: anchor plane needs nx ny nz distance", e.line)
+                        })
+                    })
+                    .collect::<Result<_, _>>()?;
+                let n = DVec3::new(values[0], values[1], values[2]);
+                if n.length_squared() == 0.0
+                    || e.values.len() != 5
+                    || values.iter().any(|v| !v.is_finite())
+                {
+                    return Err("anchor plane needs a nonzero normal and distance".into());
+                }
+                anchor.plane = Some((n.normalize(), values[3] / n.length()));
+            }
             Some(e) => {
                 for v in &e.values {
                     match v.as_word() {
@@ -784,9 +803,10 @@ fn brick(
 /// The anchor faces of a piece: its outer faces on the planes `anchor`
 /// names (facing down on the model's lowest, facing out at either end of
 /// its longest level axis), their area and centroid.
-fn anchor_of(p: &Piece, lo: DVec3, hi: DVec3, anchor: Anchor, tol: f64) -> (f64, DVec3) {
+fn anchor_of(p: &Piece, lo: DVec3, hi: DVec3, anchor: Anchor, tol: f64) -> (f64, DVec3, DVec3) {
     let along = if hi.x - lo.x >= hi.z - lo.z { 0 } else { 2 };
     let (mut area, mut sum) = (0.0, DVec3::ZERO);
+    let mut normal = DVec3::ZERO;
     for (t, tri) in p.mesh.indices.as_chunks::<3>().0.iter().enumerate() {
         if p.material[t].is_none() {
             continue;
@@ -803,13 +823,21 @@ fn anchor_of(p: &Piece, lo: DVec3, hi: DVec3, anchor: Anchor, tol: f64) -> (f64,
         let ends = anchor.ends
             && ((n[along] < -0.9 && on(along, lo[along]))
                 || (n[along] > 0.9 && on(along, hi[along])));
-        if !(bottom || ends) {
+        let plane = anchor.plane.is_some_and(|(normal, d)| {
+            n.dot(normal) < -0.9 && q.iter().all(|v| (v.dot(normal) - d).abs() <= tol)
+        });
+        if !(bottom || ends || plane) {
             continue;
         }
         area += a;
         sum += (q[0] + q[1] + q[2]) / 3.0 * a;
+        normal -= n * a;
     }
-    (area, if area > 0.0 { sum / area } else { DVec3::ZERO })
+    (
+        area,
+        if area > 0.0 { sum / area } else { DVec3::ZERO },
+        normal.normalize_or_zero(),
+    )
 }
 
 /// The material lines of the cut faces: the settings' `interior` block,
@@ -919,16 +947,54 @@ fn write_chunk(
     serde_json::json!({ "name": name, "primitives": primitives })
 }
 
-/// Its vertices relative to its centroid, each once (in first-use order).
-fn hull_of(p: &Piece) -> Vec<glam::Vec3> {
-    let mut seen = std::collections::BTreeSet::new();
-    let mut out = Vec::new();
-    for q in &p.mesh.positions {
-        if seen.insert(q.map(|x| (x + 0.0).to_bits())) {
-            out.push((DVec3::from(q.map(f64::from)) - p.centroid).as_vec3());
+/// The collider's real volume and COM, and its vertices relative to that
+/// COM. A non-convex cut's mesh centroid need not be its convex collider's.
+fn hull_of(p: &Piece) -> (glam::Vec3, f32, Vec<glam::Vec3>) {
+    let points: Vec<_> = p
+        .mesh
+        .positions
+        .iter()
+        .map(|q| DVec3::from(q.map(f64::from)))
+        .collect();
+    let hull = og_shape::generators::hull::convex_hull(&points)
+        .expect("a fracture chunk has positive volume");
+    let (mut volume6, mut moment) = (0.0, DVec3::ZERO);
+    for tri in &hull.triangles {
+        let [a, b, c] = tri.map(|i| hull.positions[i as usize] - p.centroid);
+        let v = a.dot(b.cross(c));
+        volume6 += v;
+        moment += (a + b + c) * v;
+    }
+    let centre = p.centroid + moment / (4.0 * volume6);
+    let points = hull
+        .positions
+        .iter()
+        .map(|q| (*q - centre).as_vec3())
+        .collect();
+    (centre.as_vec3(), (volume6.abs() / 6.0) as f32, points)
+}
+
+/// Integrate the actual cut triangles about the bond centroid; unlike a
+/// centroid-to-centroid lever arm this preserves thin-wall bending strength.
+fn section(triangles: &[[DVec3; 3]], centre: DVec3, normal: DVec3) -> (f32, f32, f32) {
+    let (u, v) = normal.any_orthonormal_pair();
+    let (mut xx, mut yy, mut xy, mut radius) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
+    for tri in triangles {
+        let q = tri.map(|p| p - centre);
+        let area = (q[1] - q[0]).cross(q[2] - q[0]).length() * 0.5;
+        let x = q.map(|q| q.dot(u));
+        let y = q.map(|q| q.dot(v));
+        let sx: f64 = x.iter().sum();
+        let sy: f64 = y.iter().sum();
+        xx += area / 12.0 * (x.iter().map(|x| x * x).sum::<f64>() + sx * sx);
+        yy += area / 12.0 * (y.iter().map(|y| y * y).sum::<f64>() + sy * sy);
+        xy += area / 12.0 * (x.iter().zip(y).map(|(x, y)| x * y).sum::<f64>() + sx * sy);
+        for q in q {
+            radius = radius.max(q.length());
         }
     }
-    out
+    let principal = 0.5 * (xx + yy - ((xx - yy) * (xx - yy) + 4.0 * xy * xy).sqrt());
+    (principal.max(0.0) as f32, (xx + yy) as f32, radius as f32)
 }
 
 fn mime(bytes: &[u8]) -> &'static str {
@@ -1113,16 +1179,19 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
             &mut meshes,
             &mut bin,
         );
-        let (anchor_area, anchor_centroid) = anchor_of(p, lo, hi, s.anchor, tol);
+        let (anchor_area, anchor_centroid, anchor_normal) = anchor_of(p, lo, hi, s.anchor, tol);
+        let (centroid, volume, hull) = hull_of(p);
         chunks.push(Chunk {
-            centroid: p.centroid.as_vec3(),
-            volume: p.volume as f32,
-            hull: hull_of(p),
+            centroid,
+            volume,
+            debris_points: og_physics_data::fracture::sample_hull(&hull, 16),
+            hull,
             node,
             parent: NONE,
             children: (0, 0),
             anchor_area: anchor_area as f32,
             anchor_centroid: anchor_centroid.as_vec3(),
+            anchor_normal: anchor_normal.as_vec3(),
         });
     }
     for (i, cs) in children.iter().enumerate() {
@@ -1139,15 +1208,18 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
                 &mut meshes,
                 &mut bin,
             );
+            let (centroid, volume, hull) = hull_of(c);
             chunks.push(Chunk {
-                centroid: c.centroid.as_vec3(),
-                volume: c.volume as f32,
-                hull: hull_of(c),
+                centroid,
+                volume,
+                debris_points: og_physics_data::fracture::sample_hull(&hull, 16),
+                hull,
                 node,
                 parent: i as u32,
                 children: (0, 0),
                 anchor_area: 0.0,
                 anchor_centroid: glam::Vec3::ZERO,
+                anchor_normal: glam::Vec3::ZERO,
             });
         }
     }
@@ -1168,12 +1240,19 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
     let bonds: Vec<Bond> = level1
         .bonds
         .iter()
-        .map(|b| Bond {
-            a: b.a,
-            b: b.b,
-            centroid: b.centroid.as_vec3(),
-            normal: b.normal.as_vec3(),
-            area: b.area as f32,
+        .map(|b| {
+            let (section_inertia, polar_inertia, section_radius) =
+                section(&b.section, b.centroid, b.normal);
+            Bond {
+                a: b.a,
+                b: b.b,
+                centroid: b.centroid.as_vec3(),
+                normal: b.normal.as_vec3(),
+                area: b.area as f32,
+                section_inertia,
+                polar_inertia,
+                section_radius,
+            }
         })
         .collect();
     let asset = FractureAsset {

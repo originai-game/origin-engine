@@ -53,10 +53,13 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> R
         let eng = engine(world)?;
         let target = destructible_of(world, Entity::from_bits(entity as u64), true)?;
         let d: DamageDesc = wire::arg(desc.as_deref(), "desc")?;
+        if d.inner_radius > d.radius {
+            return Err("desc.innerRadius must not exceed desc.radius".into());
+        }
         let op = Op::Damage {
             entity: target.to_bits(),
             point: point(d.point, "desc.point")?,
-            radius: radius(d.radius, "radius")?.max(1e-3),
+            radius: radius(d.radius, "radius")?,
             inner: radius(d.inner_radius, "innerRadius")?,
             amount: radius(d.amount, "amount")?,
             impulse: point(d.impulse, "desc.impulse")?,
@@ -70,12 +73,16 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> Result<(), St
     (|| {
         let eng = engine(world)?;
         let d: ExplosionDesc = wire::arg(desc.as_deref(), "desc")?;
+        if d.inner_radius > d.radius {
+            return Err("desc.innerRadius must not exceed desc.radius".into());
+        }
         let op = Op::Explode {
             point: point(d.point, "desc.point")?,
-            radius: radius(d.radius, "radius")?.max(1e-3),
+            radius: radius(d.radius, "radius")?,
             inner: radius(d.inner_radius, "innerRadius")?,
             damage: radius(d.damage, "damage")?,
             impulse: radius(d.impulse, "impulse")?,
+            occlusion: d.occlusion,
         };
         // A world with no destructible has nothing to break.
         if eng.modules.destruction.enabled.load(Ordering::Relaxed) {

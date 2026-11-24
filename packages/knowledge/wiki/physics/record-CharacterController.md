@@ -22,7 +22,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `jumpBuffer` | `number` | `0` | ≥ 0 | `s` | — | Seconds a jump press remains buffered. Zero disables buffering, not rising-edge jumps. |
 | `platformInherit` | `number` | `0` | 0 … 1 | — | — | Share of supporting platform velocity retained on leaving it; zero inherits none. |
 | `buffer` | `number` | `0` | — | — | read only | Written: unconsumed jump buffer time. |
-| `inheritedVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only | Written: retained inertia from airborne vertical motion, knockback and platforms. |
+| `inheritedVelocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Written: retained inertia from airborne vertical motion, knockback and platforms. |
 | `groundBody` | `Entity` | `0` | — | — | read only | Written: supporting collider parent body, including compound platforms. |
 | `groundPoint` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting contact point in world space. |
 | `groundPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | read only, worldspace `world` | Written: supporting frame position at the last controller move. |
@@ -74,6 +74,7 @@ component CharacterController {
   }
   field inheritedVelocity Vector3 "Written: retained inertia from airborne vertical motion, knockback and platforms." {
     readonly true
+    unit mps
   }
   field groundBody Entity "Written: supporting collider parent body, including compound platforms." {
     readonly true

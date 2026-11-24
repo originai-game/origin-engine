@@ -200,7 +200,7 @@ pub(crate) struct State {
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
     /// The triangle-mesh colliders the cook baked, by Geometry handle
-    /// (`modules::set_baked_trimesh`), given again to a rebuilt physics.
+    /// (`modules::set_baked_collider`), given again to a rebuilt physics.
     pub physics_baked: IdMap<u64, Vec<u8>>,
     /// Every terrain's height field registered with physics, likewise.
     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
