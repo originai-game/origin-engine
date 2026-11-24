@@ -3068,6 +3068,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/arcade/notify.ogg",
+      "sha256": "9a8a76ee11c84d45145f0b4438580d281e1c780f333f61f70b34ade98c0c6c17",
+      "size": 8970,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/arcade/open.ogg",
       "sha256": "5992c949bf821a8bcbda039297e2b21dcfdc3925781836d51d52143ed6e70e81",
       "size": 8466,
@@ -3086,6 +3092,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/arcade/step.ogg",
+      "sha256": "441eb31e0860bf0aef0dbbc86a19c715cd7d14f2889eb44e1c54ddb54efbf4e2",
+      "size": 5919,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/swipe.ogg",
+      "sha256": "fb6be23b4a8b5e1f9b07197b3de07d43cb243db14e9056334b057dea244d486a",
+      "size": 7172,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/arcade/tab.ogg",
       "sha256": "faa4da488b806506c3d16ec8aa53fb4788467b87d6a28fcbf1f66371f0fbcf86",
       "size": 6281,
@@ -3098,9 +3116,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/arcade/tick.ogg",
+      "sha256": "0fefd5b3a904ac4da441cd7a743b75a0718c4bed6ae3d8d9d6312f992fcb0f11",
+      "size": 4634,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/arcade/toggle.ogg",
       "sha256": "fea434be7788960841f418f8fef699530672585773ab3b3159ec16452f31ca6e",
       "size": 5227,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/arcade/unlock.ogg",
+      "sha256": "42fce336b6f2ebe437f2f934ad75b7749726a3509afb34604d178ae2f913ea88",
+      "size": 9307,
       "visibility": "public"
     },
     {
@@ -3140,6 +3170,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/chiptune/notify.ogg",
+      "sha256": "67c1dfeae17b71fc33043892766f9c9fbde7777ddf8b2887e3e01436ff4ee116",
+      "size": 7669,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/chiptune/open.ogg",
       "sha256": "b8a74ff097072187e32bf7d72e697869511ba0c372911ac52badb03d9be5866e",
       "size": 7661,
@@ -3158,6 +3194,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/chiptune/step.ogg",
+      "sha256": "c9d6e28a3541c294c0d07b3feb33018c4d5856420da7a6c73a169c96cd1de28d",
+      "size": 4593,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/swipe.ogg",
+      "sha256": "fe591015dea0a86c5f3ffb337436733a15fc35dbd08f55edef016c6b1a173374",
+      "size": 6990,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/chiptune/tab.ogg",
       "sha256": "1ced8e5b38430856e19e172355a48e62adb98bc8086a22c427633a5f8d8a5123",
       "size": 6598,
@@ -3170,9 +3218,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/chiptune/tick.ogg",
+      "sha256": "7b70bcc0284bcdb44276200ad46ef3fc87183cadb609003392e9c251b10768c7",
+      "size": 4749,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/chiptune/toggle.ogg",
       "sha256": "5b4525ee09d1011403c8e85402bee638c5935b28b1f9b6e96ae595f0548a9151",
       "size": 6147,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/chiptune/unlock.ogg",
+      "sha256": "60c535d986e714e6ba387e89de0dcc321947de81e2f3379c614902c46257f59e",
+      "size": 9381,
       "visibility": "public"
     },
     {
@@ -3212,6 +3272,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/cute/notify.ogg",
+      "sha256": "9725d2ef7512127a023e71c2285962ca5938251625607ee0afb865a89a5ca14e",
+      "size": 8868,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/cute/open.ogg",
       "sha256": "393dbd57a22517d529dd8f8ea7d14261c958396c0b128e3374ed9865b10ec665",
       "size": 8241,
@@ -3230,6 +3296,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/cute/step.ogg",
+      "sha256": "5cb2cc1ee3608503a88f20530addff1fcc35135a7f551468d5383615cd554e9a",
+      "size": 5546,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/swipe.ogg",
+      "sha256": "bbc05e2ecb3a1ec72b7ee65ea854411360e8bc56af9ff6cdec9bdbea7a405d65",
+      "size": 6610,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/cute/tab.ogg",
       "sha256": "c5f7601ff80719f91ca08124b2cc16d174b5716faa48b1a1c8f91ca30b086267",
       "size": 6226,
@@ -3242,9 +3320,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/cute/tick.ogg",
+      "sha256": "40905bac155e8061e0d3277ed753bfcbd160db0a57748a551ed07939937aa665",
+      "size": 5250,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/cute/toggle.ogg",
       "sha256": "e0c79c2bcbcb5db2b357bb5f3f8e01ad562782cf4db360f7854791ccecc154d4",
       "size": 5670,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/cute/unlock.ogg",
+      "sha256": "47695309145bd04e88a0cc8a417a01438c0640f5c437165c6c198fc2a17e194b",
+      "size": 8796,
       "visibility": "public"
     },
     {
@@ -3284,6 +3374,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/default/notify.ogg",
+      "sha256": "bc06b1914b5b5cf53503f84e6fdeb6af19c3faee8954f5da52d997ec6a3a3a67",
+      "size": 8160,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/default/open.ogg",
       "sha256": "47f3530c7921eca8b0a3f365efd9f96a5c75e3f1b8e03786230bb586c6408d67",
       "size": 7054,
@@ -3302,6 +3398,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/default/step.ogg",
+      "sha256": "9307cc93d0c6c174af8999bb1eec41f9e62e9f19078d11718c93d9eb277e109a",
+      "size": 5868,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/swipe.ogg",
+      "sha256": "9df94ab684439d1ca679fc8f216c0455bc5d544d6e720fa45f1e443b4c054459",
+      "size": 5169,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/default/tab.ogg",
       "sha256": "6fd7c3af9f5a85f2aa06a2f679855cd81b3d6a6b68df3be48842da3aaee8d03a",
       "size": 6746,
@@ -3314,9 +3422,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/default/tick.ogg",
+      "sha256": "a97c0a97cffd0d7875c792d15d624039cfaceb64cf9b1521bda812fe608b2ef7",
+      "size": 5173,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/default/toggle.ogg",
       "sha256": "a39bb398714fc18931c649680344c7c6527c21e1ed333d1e60ecad0c11e3635c",
       "size": 6074,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/default/unlock.ogg",
+      "sha256": "085d6846d6b5bb6886e4c0c0b66ab6e42d24f22fae7c179a81243c05c66c8a41",
+      "size": 9887,
       "visibility": "public"
     },
     {
@@ -3356,6 +3476,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/glass/notify.ogg",
+      "sha256": "7e6d4e0fd4aa627e0d1eda583fc6f62436f82b0bb743603a3ec50117b498a8d2",
+      "size": 9042,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/glass/open.ogg",
       "sha256": "f4bad2b2adb3d74f3ec091a9b9ae4a320164e21b3ec6bb06fdddd68916001778",
       "size": 8481,
@@ -3374,6 +3500,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/glass/step.ogg",
+      "sha256": "68a2e254e2f921b031b08ce2652686920297ce504f0cdb0082e94961e85bcd07",
+      "size": 4744,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/swipe.ogg",
+      "sha256": "70bf231cfa0763f29fe1e4ab059bfb0c7ee4c212cefa8f194e01c15f76772f12",
+      "size": 7187,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/glass/tab.ogg",
       "sha256": "9a48a3408d4e61fab378653bd0e34f42373cfb404d2631bd00dc76cd1cdf14e7",
       "size": 6618,
@@ -3386,9 +3524,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/glass/tick.ogg",
+      "sha256": "c8288153f0a67fdf51c89de561ce9668e935151bdc1ed15089785603af757d89",
+      "size": 5111,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/glass/toggle.ogg",
       "sha256": "f1cbb54a8c427fb0baa81695d78a21578a81e87b2c43d35f668d116ba8967fcd",
       "size": 6405,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/glass/unlock.ogg",
+      "sha256": "788def5e16c2472bf5a4d1f17df001170773cb4ea516f8f753462392515977a6",
+      "size": 9687,
       "visibility": "public"
     },
     {
@@ -3428,6 +3578,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/mechanical/notify.ogg",
+      "sha256": "acf8589fd71a6a4ad4fa11f4020c876e8e80ad36bc9ac3da8a5d0cd1101b9e9a",
+      "size": 9127,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/mechanical/open.ogg",
       "sha256": "bcbdb36aefa3b611b931fb7a5ffe897c4d0a01b367df56aece50bee299177a02",
       "size": 9113,
@@ -3446,6 +3602,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/mechanical/step.ogg",
+      "sha256": "8680fbca3f902d376c8dbfe2f51cf0b78cd551328562580da811e48e815649d2",
+      "size": 5817,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/swipe.ogg",
+      "sha256": "be7ecae58ab6da0edfb6e70787b7092bb71f57fc183ad1bc6305c5366df80a37",
+      "size": 7041,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/mechanical/tab.ogg",
       "sha256": "65f5451e77875fec1aeda2baef8dfe99d2f3d8fdec90a3dac9983a23390a17e7",
       "size": 5326,
@@ -3458,9 +3626,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/mechanical/tick.ogg",
+      "sha256": "6230bf61435ea8745acb8d50f38d2769d35481663f947e40f8f6055ba9099d49",
+      "size": 5039,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/mechanical/toggle.ogg",
       "sha256": "a4ca107b8ad3d5746b0919b4d477635c1540e66fa6168bf437cfba766c99897c",
       "size": 5880,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/mechanical/unlock.ogg",
+      "sha256": "4745bbc9de4e28993d3bc25b1d885479de6bf7dc175e028fd6c1e22590ca596e",
+      "size": 9727,
       "visibility": "public"
     },
     {
@@ -3500,6 +3680,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/soft/notify.ogg",
+      "sha256": "20bf9833370630fe2942454886cc5f5cd699ac26c593373f9ddd1f8391f29d9a",
+      "size": 8484,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/soft/open.ogg",
       "sha256": "85e70d36482470087ba1ac552993527a2b03614e1f1fdff6966cf752e4b67626",
       "size": 9052,
@@ -3518,6 +3704,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/soft/step.ogg",
+      "sha256": "25d841e4e09aafab3c1f9b59918115406e72aabd51a6b2f432f10c5e8dd80f60",
+      "size": 5446,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/swipe.ogg",
+      "sha256": "9932f99c68b8dd09f1a776b4694509a39912e9d596c05f89c954cd85f370d7c8",
+      "size": 7015,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/soft/tab.ogg",
       "sha256": "94b0e66651a11563171e3af97badfac83741c799699825ee4facb5875a0834ea",
       "size": 5991,
@@ -3530,9 +3728,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/soft/tick.ogg",
+      "sha256": "4cd0fe04a2a00cc4abe86270d99ecdeb75fa7340bfef0c20e908375d1b655bea",
+      "size": 4598,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/soft/toggle.ogg",
       "sha256": "28a4b0cc466ea1cfd04751c28e9907f0c26c1219d350568d46c77be3fcd677b0",
       "size": 5548,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/soft/unlock.ogg",
+      "sha256": "5b47005d60808acaf38fb178d4c49f2e9e548f4fc2ff618380448eb90baaa119",
+      "size": 10641,
       "visibility": "public"
     },
     {
@@ -3572,6 +3782,12 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/wood/notify.ogg",
+      "sha256": "25d2fd8017fbe02cfe7155e8962d9ad0c9d315269c9e7c943e6d9231c7912508",
+      "size": 8705,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/wood/open.ogg",
       "sha256": "e16ccaaf57301157e0a2054d9e2d89e549977eb24062eb2ab93d985cda31e44e",
       "size": 7351,
@@ -3590,6 +3806,18 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/wood/step.ogg",
+      "sha256": "21a0d9164a49350fc4ce5453fa733153b9951b6df502e690a11aa0f1b4db4d24",
+      "size": 5657,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/swipe.ogg",
+      "sha256": "5e1faa0eb771e41ab48c8d16423ffcb195f2808db9b23d3cd3154207f6fc92d1",
+      "size": 6419,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/wood/tab.ogg",
       "sha256": "64da7df9f225ded6b3f9154fcb6f59c66aabbd821877dd2198edde325b7a37c7",
       "size": 5679,
@@ -3602,9 +3830,21 @@
       "visibility": "public"
     },
     {
+      "path": "styles/shared/sfx/wood/tick.ogg",
+      "sha256": "47209c2af2ec247b3d03b9bdf91120269bd8065f72787f740fbc009eadf05a9f",
+      "size": 5038,
+      "visibility": "public"
+    },
+    {
       "path": "styles/shared/sfx/wood/toggle.ogg",
       "sha256": "5b39952335b19d313c41e2791feaa22dc9df5c4c9fb7f6b0b8176006d9efcbbe",
       "size": 5506,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/sfx/wood/unlock.ogg",
+      "sha256": "32f52daadcf1db26e809607b49ed532d1e282da7d21fb99e5dfaab2de0b10879",
+      "size": 9640,
       "visibility": "public"
     },
     {

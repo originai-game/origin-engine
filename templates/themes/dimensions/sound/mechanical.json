@@ -113,6 +113,48 @@
         "@styles/shared/sfx/mechanical/levelup.ogg"
       ],
       "volume": 0.55
+    },
+    "tick": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/tick.ogg"
+      ],
+      "volume": 0.35,
+      "pitch": [
+        0.97,
+        1.03
+      ]
+    },
+    "step": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/step.ogg"
+      ],
+      "volume": 0.4,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "swipe": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/swipe.ogg"
+      ],
+      "volume": 0.45,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "notify": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/notify.ogg"
+      ],
+      "volume": 0.5
+    },
+    "unlock": {
+      "clips": [
+        "@styles/shared/sfx/mechanical/unlock.ogg"
+      ],
+      "volume": 0.55
     }
   }
 }

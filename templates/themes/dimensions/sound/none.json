@@ -45,6 +45,21 @@
     },
     "levelup": {
       "volume": 0
+    },
+    "tick": {
+      "volume": 0
+    },
+    "step": {
+      "volume": 0
+    },
+    "swipe": {
+      "volume": 0
+    },
+    "notify": {
+      "volume": 0
+    },
+    "unlock": {
+      "volume": 0
     }
   }
 }

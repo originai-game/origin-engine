@@ -1110,6 +1110,11 @@ fn sounds() -> Value {
         ("levelup", "levelup", json!(0.5), None),
         ("purchase", "purchase", json!(0.5), None),
         ("countdown", "countdown", json!(0.5), None),
+        ("tick", "tick", json!(0.35), Some([0.97, 1.03])),
+        ("step", "step", json!(0.4), jitter),
+        ("swipe", "swipe", json!(0.45), jitter),
+        ("notify", "notify", json!(0.5), None),
+        ("unlock", "unlock", json!(0.55), None),
     ] {
         out.insert(event.into(), sound(clip, volume, pitch));
     }

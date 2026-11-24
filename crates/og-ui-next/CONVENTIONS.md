@@ -319,7 +319,7 @@ machines do (ported as logic).
 |---|---|---|
 | `actions` | names, space separated | the input actions it answers (`onAction={{ confirm, details }}`) |
 | `glyph` | an action's name | a `Text` node showing that action's binding on the current device (`<Glyph action>`) |
-| `sound` | a pack event: `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown` (or an input one) | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
+| `sound` | a pack event: `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`, `purchase`, `countdown`, `tick`, `step`, `swipe`, `notify`, `unlock` (or an input one) | the pack event the node sounds when it first paints, once (§Theme and packs, `sounds`) |
 | `autofocus` | bool | it takes the focus once it shows |
 | `hold` | seconds | a press or `confirm` must be held this long to press it |
 | `value` | text | an `Input`'s text, set from outside |
@@ -726,7 +726,8 @@ is an error naming where it is, never ignored):
   set replaces a few hero icons by name.
 - **`sounds`**: by event (`press`, `hover`, `select`, `confirm`, `cancel`,
   `back`, `open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`,
-  `purchase`, `countdown`) for the whole pack, or under a
+  `purchase`, `countdown`, `tick`, `step`, `swipe`, `notify`, `unlock`) for
+  the whole pack, or under a
   `Component.slot[.variant]` key for one slot: `{ clips, volume?, pitch? }`,
   a number or a `[low, high]` range. A node's slot is the `@Component.slot[.variant]`
   token `packClass` puts in its class: a control plays `hover` as a mouse
@@ -735,9 +736,12 @@ is an error naming where it is, never ignored):
   slot's with its variant, then the bare slot's, then the pack-wide one;
   an event none of them has falls back to the nearest one: `confirm`,
   `back` and `countdown` to `press`, `toggle` and `tab` to `select`,
-  `purchase` to `confirm`, `levelup` to `reward`. The events no input
+  `purchase` to `confirm`, `levelup` and `unlock` to `reward`, `tick`
+  (a count rolling up), `step` (a slider's notch) and `swipe` (a page or
+  card turned) to `select`, `notify` to `open`. The events no input
   fires (`open`, `close`, `error`, `reward`, `toggle`, `tab`, `levelup`,
-  `purchase`, `countdown`) sound from a node's `sound` prop,
+  `purchase`, `countdown`, `tick`, `step`, `swipe`, `notify`, `unlock`)
+  sound from a node's `sound` prop,
   when the node first paints: a keyed row sounds once per key. One clip
   at random, at a volume and pitch from their ranges, from a seeded
   stream (a replay plays the same).
@@ -745,7 +749,8 @@ is an error naming where it is, never ignored):
   (`@styles/shared/sfx/default/<clip>.ogg`); a pack may carry its own
   clips of the same names in `sfx/`. The clips are
   `tap`, `toggle`, `tab`, `countdown`, `back`, `close`, `open`, `confirm`,
-  `error`, `purchase`, `reward` and `levelup`, mastered so the events are
+  `error`, `purchase`, `reward`, `levelup`, `tick`, `step`, `swipe`,
+  `notify` and `unlock`, mastered so the events are
   balanced against each other (templates/tools/master-ui-sounds.py): a
   pack's `volume` sets its taste, not the mix. A pack lies over the
   default one, so an event it leaves out sounds the default clip; it

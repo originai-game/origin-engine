@@ -427,6 +427,12 @@
       ],
       "volume": 0.5
     },
+    "notify": {
+      "clips": [
+        "@styles/shared/sfx/default/notify.ogg"
+      ],
+      "volume": 0.5
+    },
     "open": {
       "clips": [
         "@styles/shared/sfx/default/open.ogg"
@@ -468,6 +474,26 @@
       ],
       "volume": 0.5
     },
+    "step": {
+      "clips": [
+        "@styles/shared/sfx/default/step.ogg"
+      ],
+      "pitch": [
+        0.9800000190734863,
+        1.0199999809265137
+      ],
+      "volume": 0.4
+    },
+    "swipe": {
+      "clips": [
+        "@styles/shared/sfx/default/swipe.ogg"
+      ],
+      "pitch": [
+        0.9800000190734863,
+        1.0199999809265137
+      ],
+      "volume": 0.45
+    },
     "tab": {
       "clips": [
         "@styles/shared/sfx/default/tab.ogg"
@@ -478,6 +504,16 @@
       ],
       "volume": 0.5
     },
+    "tick": {
+      "clips": [
+        "@styles/shared/sfx/default/tick.ogg"
+      ],
+      "pitch": [
+        0.9700000286102295,
+        1.0299999713897705
+      ],
+      "volume": 0.35
+    },
     "toggle": {
       "clips": [
         "@styles/shared/sfx/default/toggle.ogg"
@@ -487,6 +523,12 @@
         1.0199999809265137
       ],
       "volume": 0.5
+    },
+    "unlock": {
+      "clips": [
+        "@styles/shared/sfx/default/unlock.ogg"
+      ],
+      "volume": 0.55
     }
   },
   "theme": {

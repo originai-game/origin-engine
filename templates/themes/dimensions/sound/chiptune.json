@@ -113,6 +113,48 @@
         "@styles/shared/sfx/chiptune/levelup.ogg"
       ],
       "volume": 0.55
+    },
+    "tick": {
+      "clips": [
+        "@styles/shared/sfx/chiptune/tick.ogg"
+      ],
+      "volume": 0.35,
+      "pitch": [
+        0.97,
+        1.03
+      ]
+    },
+    "step": {
+      "clips": [
+        "@styles/shared/sfx/chiptune/step.ogg"
+      ],
+      "volume": 0.4,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "swipe": {
+      "clips": [
+        "@styles/shared/sfx/chiptune/swipe.ogg"
+      ],
+      "volume": 0.45,
+      "pitch": [
+        0.98,
+        1.02
+      ]
+    },
+    "notify": {
+      "clips": [
+        "@styles/shared/sfx/chiptune/notify.ogg"
+      ],
+      "volume": 0.5
+    },
+    "unlock": {
+      "clips": [
+        "@styles/shared/sfx/chiptune/unlock.ogg"
+      ],
+      "volume": 0.55
     }
   }
 }

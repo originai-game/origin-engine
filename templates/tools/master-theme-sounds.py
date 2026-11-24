@@ -6,7 +6,7 @@ trimmed, faded and levelled to the event's loudness, written as Ogg Vorbis:
 
     templates/styles/shared/sfx/<set>/<event>.ogg
 
-    python3 templates/tools/master-theme-sounds.py <raw dir> [repo]
+    python3 templates/tools/master-theme-sounds.py <raw dir> [repo] [--only=tick,step]
 
 `<raw dir>/<set>/<event>.mp3` are the generated originals (MEDIA names each
 one's media id on the platform). Needs numpy and ffmpeg (libvorbis).
@@ -28,6 +28,8 @@ MIX = {
     "tap": (-22, 0.15), "toggle": (-22, 0.2), "tab": (-22, 0.25), "countdown": (-20, 0.25),
     "back": (-21, 0.4), "close": (-21, 0.45), "open": (-21, 0.5), "confirm": (-19, 0.6),
     "error": (-19, 0.6), "purchase": (-18, 1.0), "reward": (-18, 1.3), "levelup": (-17, 2.0),
+    "tick": (-24, 0.12), "step": (-24, 0.12), "swipe": (-22, 0.3), "notify": (-20, 0.6),
+    "unlock": (-19, 0.9),
 }
 
 SETS = {
@@ -52,6 +54,11 @@ EVENTS = {
     "levelup": "a triumphant level up fanfare stinger, rising arpeggio landing on a bright major chord with sparkle, about 1.6 seconds",
     "purchase": "a satisfying purchase sound, coins clinking with a short ka-ching chime, about 0.8 seconds",
     "countdown": "a single short countdown tick beep for a 3-2-1 timer, one clean beep only, under 0.2 seconds",
+    "tick": "a tiny single soft tick for a number counting up, one tiny click, extremely short, nothing after it",
+    "step": "a tiny dry detent click for a slider moving one notch, extremely short, nothing after it",
+    "swipe": "a quick light swipe whoosh for turning a page or swiping a card sideways, ends within 0.25 seconds",
+    "notify": "a short friendly notification ping, two light ascending notes, ends within 0.5 seconds",
+    "unlock": "a satisfying unlock sound, a latch clicks open followed by a short bright shimmer, about 0.6 seconds",
 }
 PROMPT = "{event}. Style: {style}. Single isolated sound effect, dry, no music bed, no voice, no background noise."
 
@@ -141,6 +148,41 @@ MEDIA = {
     "wood/tab": "2f5e0fa00a17eaae90a3e178a9777f00",
     "wood/tap": "03b3d79d9ee91a4cab53af3ec3c80229",
     "wood/toggle": "d7ef59b152cb8f10b28d3df0b97b07d3",
+    "arcade/notify": "5f52ac1ad038ce3321bcff20ea53269c",
+    "arcade/step": "930801e43722c16904fa35243a72a559",
+    "arcade/swipe": "c425666c6384c08290ac15294b0f4060",
+    "arcade/tick": "19b64cfb4f6529956dc5876abb73d2ce",
+    "arcade/unlock": "9bf4bc8285768ff50e87b42ac5cc97f2",
+    "chiptune/notify": "1218d26cae02a2c8379a8700e162e242",
+    "chiptune/step": "4f811ae90c7da43070b8596cb73929b6",
+    "chiptune/swipe": "4226de4bba56df10b965dcb874291c11",
+    "chiptune/tick": "705810badd10c4e12faa3087a215e324",
+    "chiptune/unlock": "ed95ce904388bcdb94c53400d54a5c0a",
+    "cute/notify": "3b63f76a32cdb0edfbbf848534fc06e1",
+    "cute/step": "5df494be0433278821f87e0d7ac28faa",
+    "cute/swipe": "4dcd284bcf674b9c45a394e67804a461",
+    "cute/tick": "8e82d1dd8252374fa09d4076653735e2",
+    "cute/unlock": "ea84a020bd39e7096eb08f1f1755669d",
+    "glass/notify": "241550690c6741361e720896d548abd5",
+    "glass/step": "5e9f4b1d9b0e1d9280dd1fffbeef8bbc",
+    "glass/swipe": "4a0d3c0a44e0ef8a78b4518a224ea6af",
+    "glass/tick": "70979028b16e8c57b9c367388f285287",
+    "glass/unlock": "8fa2db4dc77d3b3229ffdc0eb10074cd",
+    "mechanical/notify": "d9bf5af242dafb9d059b8fd96cb21a09",
+    "mechanical/step": "f37c057e6121d668508b7eaee62eda30",
+    "mechanical/swipe": "9b406f49de9d3adfe522cb66c913390c",
+    "mechanical/tick": "6c3f36aa19e68a50b66973dbd88fdc56",
+    "mechanical/unlock": "4cb4732f850bfd808c46e88d17d5b431",
+    "soft/notify": "6b6505b66b7f1a0c20676ddbf062ff54",
+    "soft/step": "2d82f33eb103e964971d8d985d5e0dc3",
+    "soft/swipe": "328872f7cb52ac8d4ccb287a4180ec09",
+    "soft/tick": "41469aed48989bbb833aa72ba3015d00",
+    "soft/unlock": "1ee76ef482eafbd85a34f234e80e0fb9",
+    "wood/notify": "f0a3064c964720ce50149fcb800783b0",
+    "wood/step": "43c057568b224dac37906e124ecb1db9",
+    "wood/swipe": "39059391e0222e2153116d8f32f042f1",
+    "wood/tick": "666c735829fb7d524c5f794c9d94173d",
+    "wood/unlock": "d7a0500abfc295ad7d4be9c860f74e07",
 }
 
 
@@ -179,11 +221,15 @@ def write(path, x):
 
 
 def main():
-    raw = sys.argv[1]
-    repo = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(__file__), "..", "..")
+    args = [a for a in sys.argv[1:] if not a.startswith("--only=")]
+    only = [a.split("=", 1)[1].split(",") for a in sys.argv[1:] if a.startswith("--only=")]
+    raw = args[0]
+    repo = args[1] if len(args) > 1 else os.path.join(os.path.dirname(__file__), "..", "..")
     for name in SETS:
         out = os.path.join(repo, "templates", "styles", "shared", "sfx", name)
         for event, (rms_db, longest) in MIX.items():
+            if only and event not in only[0]:
+                continue
             x = master(load(os.path.join(raw, name, f"{event}.mp3")), rms_db, longest)
             write(os.path.join(out, f"{event}.ogg"), x)
             print(f"{name}/{event}: {len(x) / RATE:.2f} s")

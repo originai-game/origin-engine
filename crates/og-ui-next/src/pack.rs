@@ -73,7 +73,7 @@ pub const SEEDS: [&str; 9] = [
 ];
 
 /// The interaction events a pack gives sounds for.
-pub const SOUND_EVENTS: [&str; 15] = [
+pub const SOUND_EVENTS: [&str; 20] = [
     "press",
     "hover",
     "select",
@@ -89,6 +89,11 @@ pub const SOUND_EVENTS: [&str; 15] = [
     "levelup",
     "purchase",
     "countdown",
+    "tick",
+    "step",
+    "swipe",
+    "notify",
+    "unlock",
 ];
 
 /// The event an event's sound falls back to when no scope has a clip for
@@ -98,7 +103,9 @@ pub fn sound_fallback(event: &str) -> Option<&'static str> {
         "confirm" | "back" | "countdown" => "press",
         "toggle" | "tab" => "select",
         "purchase" => "confirm",
-        "levelup" => "reward",
+        "levelup" | "unlock" => "reward",
+        "tick" | "step" | "swipe" => "select",
+        "notify" => "open",
         _ => return None,
     })
 }
