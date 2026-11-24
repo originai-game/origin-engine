@@ -80,7 +80,7 @@ export function NodeGraph(props: NodeGraphProps) {
                 data-hex={n().shape === "hex"}
               >
                 <View
-                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-2 border-rim text-fg group-data-square/node:rounded-md group-data-diamond/node:rounded-sm group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-enemy/node:bg-danger group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-3"
+                  class="absolute -ml-6 -mt-6 size-12 compact:-ml-4.5 compact:-mt-4.5 compact:size-9 items-center justify-center rounded-full bg-well border-regular border-rim text-fg group-data-square/node:rounded-md group-data-diamond/node:rounded-sm group-data-diamond/node:rotate-45 group-data-hex/node:rounded-none group-data-hex/node:bg-transparent group-data-hex/node:border-transparent group-data-ally/node:bg-info group-data-enemy/node:bg-danger group-data-done/node:border-success group-data-active/node:border-hud-accent group-data-current/node:border-hud-accent group-data-locked/node:text-fg-subtle group-data-ringed/node:border-focus group-data-ringed/node:border-thick"
                   role="button"
                   label={n().label}
                   valueText={n().state}
@@ -92,7 +92,7 @@ export function NodeGraph(props: NodeGraphProps) {
                     <View class="absolute inset-0 nine-disc bg-well group-data-ally/node:bg-info group-data-enemy/node:bg-danger" />
                     <Line class="absolute inset-0 size-full stroke-2 stroke-rim group-data-done/node:stroke-success group-data-active/node:stroke-hud-accent group-data-current/node:stroke-hud-accent group-data-selected/node:stroke-focus group-data-selected/node:stroke-3" points={[50, 2, 92, 26, 92, 74, 50, 98, 8, 74, 8, 26]} closed viewBox={[100, 100]} />
                   </Show>
-                  <Icon class="size-6 compact:size-4.5 group-data-diamond/node:-rotate-45 group-data-locked/node:opacity-45" name={n().icon} />
+                  <Icon class="size-6 compact:size-4.5 group-data-diamond/node:-rotate-45 group-data-locked/node:opacity-dim" name={n().icon} />
                 </View>
                 <Text class="absolute -left-24 w-48 top-7 compact:top-5.5 text-center whitespace-nowrap text-xs font-semibold text-fg group-data-locked/node:text-fg-subtle">
                   {n().label}

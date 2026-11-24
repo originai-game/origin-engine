@@ -78,7 +78,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
           }
         >
           <View class="relative w-full max-w-full h-1.5 bg-track">
-            <View class="absolute left-0 top-0 h-full bg-fg transition-layout duration-180 ease-out" style={{ width: `${Math.min(Math.max(props.magazine / props.capacity, 0), 1) * 100}%` }} />
+            <View class="absolute left-0 top-0 h-full bg-fg transition-layout duration-fast ease-out" style={{ width: `${Math.min(Math.max(props.magazine / props.capacity, 0), 1) * 100}%` }} />
           </View>
         </Show>
       </Show>
@@ -103,7 +103,7 @@ export function AmmoCounter(props: AmmoCounterProps) {
         <View class={`flex-row items-center gap-1 w-full py-0.5 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}>
           <Text class="text-xs font-semibold tracking-label uppercase text-fg whitespace-nowrap">{t("shooter.ammo.reloading")}</Text>
           <View class="flex-1 h-1 overflow-hidden bg-track inset-shadow-lit ring ring-rim">
-            <View class="h-full bg-hud transition-layout duration-180 ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
+            <View class="h-full bg-hud transition-layout duration-fast ease-out" style={{ width: `${Math.min(props.reloading ?? 0, 1) * 100}%` }} />
           </View>
         </View>
       </Show>

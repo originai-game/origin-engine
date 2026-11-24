@@ -41,7 +41,7 @@ export function Pips(props: PipsProps) {
                 {(item) => (
                 <View class={`size-6 shrink`} role="meter" label={item().label || props.label || t("base.pips.resource")} valueMin={0} valueMax={1} valueNow={item().value < 0 ? 0 : item().value > 1 ? 1 : item().value} valueText={`${formatNumber((item().value < 0 ? 0 : item().value > 1 ? 1 : item().value) * 100, { decimals: 0 })}%`}>
                   <Icon class={`absolute text-fg-subtle inset-0 size-full`} name={(props.icon ?? "heart")} />
-                  <View class="absolute inset-y-0 left-0 overflow-hidden transition-layout duration-240" style={{ width: `${Math.min(Math.max(item().value, 0), 1) * 100}%` }}>
+                  <View class="absolute inset-y-0 left-0 overflow-hidden transition-layout duration-base" style={{ width: `${Math.min(Math.max(item().value, 0), 1) * 100}%` }}>
                     <Icon class={`text-danger size-6 group-data-off/pips:text-fg-muted`} name={(props.icon ?? "heart")} />
                   </View>
                 </View>
@@ -50,7 +50,7 @@ export function Pips(props: PipsProps) {
             </View>
           </Show>
           <Show when={(props.disabled ?? false)}>
-            <View class={`text-caption bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 py-0 px-2 rounded-capsule shrink`}>
+            <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control py-0 px-2 rounded-capsule shrink`}>
               <Text class="tabular-nums">{t("base.pips.disabled")}</Text>
             </View>
           </Show>

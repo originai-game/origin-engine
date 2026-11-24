@@ -47,10 +47,10 @@ export interface ArenaRoundHudProps {
  * are dropped, and a phone keeps the row, the names above the scores
  * (team b's name keeps its place after the score: no order surface).
  */
-const PLATE_RIM = "inset-shadow-lit inset-ring-1 inset-ring-rim";
+const PLATE_RIM = "inset-shadow-lit inset-ring-hairline inset-ring-rim";
 const TEAM_PLATE = `bg-glass ${PLATE_RIM}`;
-const TEAM_A_PLATE = "inset-shadow-underline inset-shadow-team1 inset-ring-1 inset-ring-rim";
-const TEAM_B_PLATE = "inset-shadow-underline inset-shadow-team2 inset-ring-1 inset-ring-rim";
+const TEAM_A_PLATE = "inset-shadow-underline inset-shadow-team1 inset-ring-hairline inset-ring-rim";
+const TEAM_B_PLATE = "inset-shadow-underline inset-shadow-team2 inset-ring-hairline inset-ring-rim";
 const NAME = "min-w-0 text-base leading-tight font-bold uppercase tracking-sm text-fg";
 const SCORE_A = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team1 shadow-glow-lg shadow-team1 compact:text-3xl";
 const SCORE_B = "shrink-0 min-w-8 text-center text-display-lg leading-none font-bold tabular-nums whitespace-nowrap text-team2 shadow-glow-lg shadow-team2 compact:text-3xl";

@@ -41,7 +41,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
         <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focus-group="wrap">
           <For each={props.chapters}>
             {(c) => (
-            <View class={`group/card transition duration-317 gap-y-2 p-0 data-selected:border-accent data-down:opacity-45`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
+            <View class={`group/card transition duration-control gap-y-2 p-0 data-selected:border-accent data-down:opacity-dim`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
               <View class={`aspect-16/9 nine-plate-cut bg-layer-2 overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="saveThumb" src={c().thumb} />
@@ -50,7 +50,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
                     <Icon class="text-warn size-6 shrink" name="lock" />
                   </View>
                 </Show>
-                <View class="absolute inset-shadow-lit inset-ring-1 inset-ring-rim inset-0 group-data-locked/card:inset-ring-1 group-data-locked/card:inset-ring-rim group-data-selected/card:inset-shadow-lit group-data-selected/card:inset-ring-2 group-data-selected/card:inset-ring-hud-accent" />
+                <View class="absolute inset-shadow-lit inset-ring-hairline inset-ring-rim inset-0 group-data-locked/card:inset-ring-hairline group-data-locked/card:inset-ring-rim group-data-selected/card:inset-shadow-lit group-data-selected/card:inset-ring-regular group-data-selected/card:inset-ring-hud-accent" />
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
                 <Text class={`text-fg-muted grow shrink basis-0 text-base leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>

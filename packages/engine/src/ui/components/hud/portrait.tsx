@@ -19,7 +19,7 @@ export interface HudPortraitProps {
  */
 export function HudPortrait(props: HudPortraitProps) {
   return (
-    <View class={`relative size-9.5 rounded-panel bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft data-dimmed:opacity-45 ${props.class ?? ""}`} data-dimmed={props.dimmed}>
+    <View class={`relative size-9.5 rounded-panel bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft data-dimmed:opacity-dim ${props.class ?? ""}`} data-dimmed={props.dimmed}>
       <Show when={props.portrait} fallback={
         <View class="absolute inset-1 rounded-card bg-linear-to-b from-raised-lo to-surface flex-row items-center justify-center overflow-hidden">
           <Icon class="size-1/2 text-fg-muted" name="person" />

@@ -70,7 +70,7 @@ export function ShopConfirm(props: ShopConfirmProps) {
             </Text>
           </Show>
         </View>
-        <View class={`w-full bg-well inset-ring-1 inset-ring-rim-soft py-1 px-2 m-0`} label={t("general.confirm.cost")}>
+        <View class={`w-full bg-well inset-ring-hairline inset-ring-rim-soft py-1 px-2 m-0`} label={t("general.confirm.cost")}>
           <For each={props.prices}>
             {(p, i) => (
             <View class="group/entry w-full py-1 gap-1 data-later:border-t data-later:border-material-control-hover" data-later={i() >= 1} data-short={p().short}>

@@ -44,7 +44,7 @@ export function ShooterObjectives(props: ShooterObjectivesProps) {
           {(g) => (
             <View class={`group/goal flex-row items-center gap-1 min-w-0 compact:hidden data-current:compact:flex`} data-current={g().current === true}>
               <View
-                class={`shrink-0 size-2 mx-0.5 rotate-45 bg-fg ring-2 ring-entry-hi group-data-current/goal:size-2.5 group-data-current/goal:mx-0.25 group-data-current/goal:bg-gold`}
+                class={`shrink-0 size-2 mx-0.5 rotate-45 bg-fg ring-regular ring-entry-hi group-data-current/goal:size-2.5 group-data-current/goal:mx-0.25 group-data-current/goal:bg-gold`}
               />
               <Text class={`shrink basis-auto min-w-0 text-reading font-semibold whitespace-nowrap truncate text-fg-muted group-data-current/goal:text-fg group-data-current/goal:text-base py-0.25 px-1.5 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`}
               >

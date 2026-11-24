@@ -41,7 +41,7 @@ export interface ArenaReadyProps {
  * list's foot is dropped.
  */
 const CARD = `w-full max-h-full p-4 nine-panel-cut bg-layer-1 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-44 flex-row items-center justify-center gap-x-1 min-h-11 px-4 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-dim ${packClass("Button", "plate")}`;
 
 /**
  * A ready check: the players asked and their answers, the time left as the
@@ -71,7 +71,7 @@ export function ArenaReady(props: ArenaReadyProps) {
               <For each={props.players ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`group/readyrow flex-row flex-wrap items-center justify-between gap-x-2 min-h-8 py-1 px-3 ${packClass("Row", "frame")} data-ready:border-l-3 data-ready:border-success data-declined:border-l-3 data-declined:border-danger`}
+                    class={`group/readyrow flex-row flex-wrap items-center justify-between gap-x-2 min-h-8 py-1 px-3 ${packClass("Row", "frame")} data-ready:border-l-thick data-ready:border-success data-declined:border-l-thick data-declined:border-danger`}
                     role="listitem"
                     data-ready={p().state == "ready"}
                     data-declined={p().state == "declined"}

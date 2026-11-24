@@ -81,7 +81,7 @@ export function RacingLapHud(props: RacingLapHudProps) {
           <Show when={props.gained !== 0}>
             <View class={`group/gained flex-row items-center gap-x-1.25 max-w-full min-w-0 py-0.5 px-2 nine-chip-cut bg-glass ${packClass("Plate", "frame")}`} data-trend-down={props.gained < 0}>
               <View
-                class={`shrink-0 size-2 -rotate-45 border-l-2 border-b-2 border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-2 group-data-trend-down/gained:border-r-2 group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
+                class={`shrink-0 size-2 -rotate-45 border-l-regular border-b-regular border-hud-accent group-data-trend-down/gained:rotate-45 group-data-trend-down/gained:border-t-regular group-data-trend-down/gained:border-r-regular group-data-trend-down/gained:border-l-0 group-data-trend-down/gained:border-b-0 group-data-trend-down/gained:border-foe`}
               />
               <Text class={`min-w-0 text-xs font-semibold tracking-label uppercase whitespace-nowrap overflow-hidden text-hud-accent-ink group-data-trend-down/gained:text-foe-ink compact:tracking-normal`}>
                 {props.gained > 0 ? t("racing.lap.up", { n: props.gained }) : t("racing.lap.down", { n: -props.gained })}

@@ -14,7 +14,7 @@ export function KeyValues(props: KeyValuesProps) {
     <View class={`text-fg w-full p-0 m-0 disabled:text-fg-subtle`}>
       <For each={props.rows}>
         {(r) => (
-        <View class={`flex-row text-fg transition duration-317 items-center min-h-9 border-b border-rim py-1 px-0 gap-2 rounded-control hover:bg-surface-hover active:bg-surface-hover data-selected:bg-rim-soft data-selected:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`}>
+        <View class={`flex-row text-fg transition duration-control items-center min-h-9 border-b border-rim py-1 px-0 gap-2 rounded-control hover:bg-surface-hover active:bg-surface-hover data-selected:bg-rim-soft data-selected:bg-none data-selected:text-fg data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`}>
           <Text class={`tracking-xs text-fg-muted grow shrink basis-0 m-0`}>
             {r().key}
           </Text>

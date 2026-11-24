@@ -13,7 +13,7 @@ const socket =
 /** One good's row: its rarity on the leading edge, lit by the hover ground and the pack's selected row when chosen. */
 const goodRow =
   (selected: boolean) =>
-  `group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-layer-2 inset-shadow-bar inset-shadow-transparent transition duration-317 hover:bg-surface-hover focus-visible:inset-shadow-hud-accent ${selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} group-data-tier-uncommon/row:inset-shadow-uncommon group-data-tier-rare/row:inset-shadow-rare group-data-tier-epic/row:inset-shadow-epic group-data-tier-legendary/row:inset-shadow-legendary group-data-tier-mythic/row:inset-shadow-mythic disabled:shadow-none disabled:text-fg-subtle data-down:opacity-45`;
+  `group/row w-full min-h-11 pr-2 pl-3 py-1 nine-plate-cut bg-layer-2 inset-shadow-bar inset-shadow-transparent transition duration-control hover:bg-surface-hover focus-visible:inset-shadow-hud-accent ${selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} group-data-tier-uncommon/row:inset-shadow-uncommon group-data-tier-rare/row:inset-shadow-rare group-data-tier-epic/row:inset-shadow-epic group-data-tier-legendary/row:inset-shadow-legendary group-data-tier-mythic/row:inset-shadow-mythic disabled:shadow-none disabled:text-fg-subtle data-down:opacity-dim`;
 
 export interface RpgTradeProps {
   /** The merchant or trade title; empty uses Trade. */
@@ -79,7 +79,7 @@ export function RpgTrade(props: RpgTradeProps) {
           </Text>
         </View>
         <View
-          class="shrink flex-row items-center min-h-11 bg-tile-pressed inset-ring-1 inset-ring-rim p-0.5 gap-0.5 rounded-control"
+          class="shrink flex-row items-center min-h-11 bg-tile-pressed inset-ring-hairline inset-ring-rim p-0.5 gap-0.5 rounded-control"
           role="switch"
           checked={selling()}
           label={selling() ? t("rpg.trade.toBuy") : t("rpg.trade.toSell")}
@@ -94,7 +94,7 @@ export function RpgTrade(props: RpgTradeProps) {
           </Text>
         </View>
         <Show when={props.wallet}>
-          <View class="shrink flex-row items-center text-fg pr-2 pl-0.5 bg-tile-pressed inset-ring-1 inset-ring-rim font-bold py-0.5 gap-1 rounded-capsule">
+          <View class="shrink flex-row items-center text-fg pr-2 pl-0.5 bg-tile-pressed inset-ring-hairline inset-ring-rim font-bold py-0.5 gap-1 rounded-capsule">
             <View class="shrink-0 bg-gold rounded-capsule size-5.5" />
             <Text class="whitespace-nowrap tabular-nums">{props.wallet}</Text>
           </View>
@@ -138,7 +138,7 @@ export function RpgTrade(props: RpgTradeProps) {
                 data-tier-mythic={(good().rarity || "common") === "mythic"}
               >
                 <View class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 w-full">
-                  <View class={`${socket} gap-2 size-11 group-data-not-available/row:opacity-45 compact:row-span-2`}>
+                  <View class={`${socket} gap-2 size-11 group-data-not-available/row:opacity-dim compact:row-span-2`}>
                     <Show when={(good().rarity || "common") !== "common"}>
                       <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
                     </Show>

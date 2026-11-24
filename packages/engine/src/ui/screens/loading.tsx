@@ -51,15 +51,15 @@ export function LoadingScreen(props: LoadingScreenProps) {
         <View class="absolute -top-30 bottom-0 inset-x-0 bg-linear-to-b from-transparent via-shade-deep via-30% to-shade-deep" />
         <View class="gap-5 short:flex-row short:items-end short:gap-4 compact:gap-4">
           <View class="max-w-3/5 gap-0.5 compact:max-w-full short:max-w-9/20 short:grow short:shrink short:basis-0 short:min-w-0">
-            <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent-ink gap-2.5 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <View class={`flex-row items-center text-xs font-semibold tracking-label uppercase text-hud-accent-ink gap-2.5 transition duration-base ease-out starting:opacity-0 starting:translate-y-2`}>
               <View class="w-8 h-0.5 bg-hud-accent shadow-glow-sm" />
               <Text class="shrink">{t("screen.loading.entering")}</Text>
             </View>
-            <Text class={`font-display text-7xl compact:text-display-md short:text-3xl font-bold leading-flat tracking-tight text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`}>
+            <Text class={`font-display text-7xl compact:text-display-md short:text-3xl font-bold leading-flat tracking-tight text-fg text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 transition duration-base ease-out starting:opacity-0 starting:translate-y-2`}>
               {props.place}
             </Text>
           </View>
-          <View class={`pt-4 pb-4.5 nine-panel-cut bg-layer-1 text-fg max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
+          <View class={`pt-4 pb-4.5 nine-panel-cut bg-layer-1 text-fg max-w-190 px-5.5 gap-1 compact:py-3 compact:px-4 grow short:shrink short:basis-0 short:min-w-0 short:py-2.5 short:px-4 disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2 ${packClass("Panel", "frame")}`}>
             <View class="flex-row items-center gap-2">
               <Text class={`tracking-label uppercase text-hud-accent-ink text-xs font-bold bg-tile nine-plate-cut py-0.5 px-2 m-0 ${packClass("Chip", "frame")}`}>
                 {t("screen.loading.tip")}
@@ -77,7 +77,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
         </View>
         <View class="items-center gap-4.5 compact:items-stretch compact:flex-col-reverse compact:gap-3">
           <View class={`group/bar grow shrink h-3 bg-track shadow-sunk gap-2 overflow-hidden compact:grow-0 compact:shrink-0 compact:basis-auto compact:w-full`} role="progressbar" label={props.place} valueMin={0} valueMax={1} valueNow={props.progress} data-ready={props.ready === true}>
-            <View class={`absolute top-0 left-0 bg-linear-to-r from-hud-accent to-hud-accent h-full shadow-glow-lg inset-shadow-bar inset-shadow-knob duration-400 group-data-ready/bar:shadow-glow-lg`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
+            <View class={`absolute top-0 left-0 bg-linear-to-r from-hud-accent to-hud-accent h-full shadow-glow-lg inset-shadow-bar inset-shadow-knob duration-slow group-data-ready/bar:shadow-glow-lg`} style={{ width: `${(100 * (props.progress <= 0 ? 0 : props.progress >= 1 ? 1 : props.progress))}%` }} />
           </View>
           <View class="flex-row items-center gap-y-2 gap-x-3 compact:flex-wrap">
             <Show when={!props.ready}>

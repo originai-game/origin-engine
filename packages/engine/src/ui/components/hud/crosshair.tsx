@@ -35,7 +35,7 @@ export function Crosshair(props: CrosshairProps) {
       <View class={`${armClass} w-2.5 h-0.5`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ top: "calc(50% - 0.0715rem)", right: `calc(50% + ${gap()}rem)` }} />
       <View class={`${armClass} w-2.5 h-0.5`} data-aimed={props.aimed} data-dot={(props.shape ?? "cross") == "dot"} data-circle={(props.shape ?? "cross") == "circle"} style={{ top: "calc(50% - 0.0715rem)", left: `calc(50% + ${gap()}rem)` }} />
       <View
-        class="absolute rounded-full border-2 border-rim-strong ring ring-shade-deep hidden data-circle:block data-aimed:border-foe"
+        class="absolute rounded-full border-regular border-rim-strong ring ring-shade-deep hidden data-circle:block data-aimed:border-foe"
         data-circle={(props.shape ?? "cross") == "circle"}
         data-aimed={props.aimed}
         style={{ left: `calc(50% - ${gap()}rem - 0.357rem)`, top: `calc(50% - ${gap()}rem - 0.357rem)`, width: `calc(${gap() * 2}rem + 0.714rem)`, height: `calc(${gap() * 2}rem + 0.714rem)` }}

@@ -75,12 +75,12 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
                   <For each={props.objectives ?? []} key={(o) => o.id}>
                     {(o, i) => (
                       <View class={`group/obj flex-row items-start gap-3 py-0.5 min-w-0 data-step1:ml-1 data-step1:pl-4 data-step1:border-l data-step1:border-rim`} role="listitem" data-optional={o().optional} data-step1={o().step === 1} data-current={o().step === 0 && !o().done && (i() === 0 || (props.objectives ?? [])[i() - 1].done)} data-done={o().done}>
-                        <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-2 inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-2 group-data-current/obj:inset-ring-gold data-done:bg-success data-done:shadow-glow-sm data-done:shadow-health data-done:inset-ring-2 data-done:inset-ring-health`} />
+                        <View class={`shrink-0 rotate-45 size-2 mx-0.5 mt-1 group-data-step1/obj:size-1 inset-ring-regular inset-ring-gold group-data-current/obj:bg-gold group-data-current/obj:shadow-glow group-data-current/obj:inset-ring-regular group-data-current/obj:inset-ring-gold data-done:bg-success data-done:shadow-glow-sm data-done:shadow-health data-done:inset-ring-regular data-done:inset-ring-health`} />
                         <Text class={`grow min-w-0 group-data-step1/obj:text-fg-muted group-data-step1/obj:font-semibold group-data-done/obj:text-fg-subtle group-data-done/obj:line-through`}>
                           {o().text}
                         </Text>
                         <Show when={o().optional}>
-                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-label uppercase bg-tile inset-ring-1 inset-ring-rim rounded-capsule ${packClass("Chip", "frame")}`}>
+                          <Text class={`shrink py-0 px-1 whitespace-nowrap text-caption tracking-label uppercase bg-tile inset-ring-hairline inset-ring-rim rounded-capsule ${packClass("Chip", "frame")}`}>
                             {t("rpg.quest.optional")}
                           </Text>
                         </Show>
@@ -127,7 +127,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
       <Show when={props.canTrack || props.canLocate}>
         <View class={`shrink flex-row flex-wrap justify-end gap-2 pt-2 px-4 pb-3 compact:px-3`}>
           <Show when={props.canLocate}>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.locate")} onPress={(e) => props.onLocate?.(e)}>
               <Icon class="shrink size-4" name="map" />
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.locate")}</Text>
             </View>
@@ -139,7 +139,7 @@ export function RpgQuestDetail(props: RpgQuestDetailProps) {
               </View>
             </Show>
           }>
-            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-45 ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
+            <View class={`min-h-11 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-surface-hover disabled:opacity-dim ${packClass("Button", "plate")}`} role="button" label={t("rpg.quest.untrack")} onPress={(e) => props.onTrack?.(e)}>
               <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rpg.quest.untrack")}</Text>
             </View>
           </Show>

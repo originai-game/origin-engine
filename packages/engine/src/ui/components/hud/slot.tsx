@@ -91,7 +91,7 @@ export function HudSlot(props: HudSlotProps) {
       >
         <Show when={ultimate()}>
           <View
-            class="absolute inset-0 rounded-full border-3 border-rim overflow-hidden"
+            class="absolute inset-0 rounded-full border-thick border-rim overflow-hidden"
             role="meter"
             label={t("hud.slot.charge")}
             valueMin={0}
@@ -108,11 +108,11 @@ export function HudSlot(props: HudSlotProps) {
           <Show when={(props.icon ?? 0) > 0} fallback={
             <View class="absolute inset-0 flex-col items-center justify-center bg-linear-to-b from-raised-lo to-surface">
               <Show when={(props.glyph ?? "") !== ""}>
-                <Icon class={`size-1/2 text-fg text-shadow-tag ${cooling() || unaffordable() ? "opacity-45" : ""}`} name={props.glyph} />
+                <Icon class={`size-1/2 text-fg text-shadow-tag ${cooling() || unaffordable() ? "opacity-dim" : ""}`} name={props.glyph} />
               </Show>
             </View>
           }>
-            <Image class={`absolute inset-0 size-full ${cooling() || unaffordable() ? "opacity-45" : ""}`} src={props.icon ?? 0} />
+            <Image class={`absolute inset-0 size-full ${cooling() || unaffordable() ? "opacity-dim" : ""}`} src={props.icon ?? 0} />
           </Show>
           <Show when={unaffordable()}>
             <View class="absolute inset-0 bg-surface" />

@@ -60,7 +60,7 @@ export function ProgressBar(props: ProgressBarProps) {
       <View class="relative w-full h-2 overflow-hidden bg-track shadow-plate ring ring-rim">
         <Show when={!props.indeterminate}>
           <View
-            class={`absolute left-0 top-0 h-full opacity-25 bg-accent group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-info`}
+            class={`absolute left-0 top-0 h-full opacity-faint bg-accent group-data-tone-success/progress:bg-success group-data-tone-warn/progress:bg-warn group-data-tone-danger/progress:bg-danger group-data-tone-info/progress:bg-info`}
             style={{ width: `${Math.min(Math.max(props.buffer ?? 0, 0), 1) * 100}%` }}
           />
         </Show>

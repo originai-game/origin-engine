@@ -86,7 +86,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
           <View>{props.board?.()}</View>
           <For each={props.rows}>
             {(r) => (
-            <View class={`group/row nine-plate-cut bg-layer-2 text-fg transition duration-317 grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-45 compact:gap-x-2 active:scale-99 ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
+            <View class={`group/row nine-plate-cut bg-layer-2 text-fg transition duration-control grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 pr-3 pl-1 py-1 hover:bg-surface-hover data-mine-you:text-fg data-down:opacity-dim compact:gap-x-2 active:scale-99 ${r().you ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} ${packClass("List", "item")}`} onPress={(e) => props.onRow?.(e, r().id)} tabIndex={0} data-mine-other={!r().you} data-mine-you={r().you} data-promote={props.tab === "league" && r().rank <= props.league.promote} data-place-1={(r().rank <= 3 ? r().rank : 0) === 1} data-place-2={(r().rank <= 3 ? r().rank : 0) === 2} data-place-3={(r().rank <= 3 ? r().rank : 0) === 3}>
               <Text class={`text-center min-w-13 leading-9.5 whitespace-nowrap text-base font-bold tabular-nums nine-chip-cut bg-layer-2 py-0 px-1 m-0 compact:min-w-9.5 compact:leading-8 group-data-place-1/row:bg-none group-data-place-1/row:bg-gold group-data-place-1/row:nine-chip-cut group-data-place-1/row:text-gold-fg group-data-place-2/row:bg-none group-data-place-2/row:bg-fg group-data-place-2/row:nine-chip-cut group-data-place-2/row:text-gold-fg group-data-place-3/row:bg-none group-data-place-3/row:bg-legendary group-data-place-3/row:nine-chip-cut group-data-place-3/row:text-legendary-fg ${r().rank <= 3 ? "" : packClass("Chip", "frame")}`}>
                 {t("screen.leaderboard.RowRank", { value: ordinal(r().rank) })}
               </Text>
@@ -96,7 +96,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
                   {r().name}
                 </Text>
                 <Show when={r().you}>
-                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap py-0 px-1">
+                  <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-hairline inset-ring-hud-accent whitespace-nowrap py-0 px-1">
                     {t("screen.leaderboard.you")}
                   </Text>
                 </Show>
@@ -116,7 +116,7 @@ export function LeaderboardScreen(props: LeaderboardScreenProps) {
         <Text class="text-base font-semibold whitespace-nowrap shrink m-0 overflow-hidden">
           {props.me.name}
         </Text>
-        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-1 inset-ring-hud-accent whitespace-nowrap mr-auto py-0 px-1">
+        <Text class="text-xs font-bold tracking-label uppercase text-hud-accent-ink bg-tile inset-shadow-overline inset-shadow-hud-accent inset-ring-hairline inset-ring-hud-accent whitespace-nowrap mr-auto py-0 px-1">
           {t("screen.leaderboard.you")}
         </Text>
         <Text class={`tabular-nums text-fg text-display-md font-bold whitespace-nowrap text-end m-0 compact:text-title shrink`}>

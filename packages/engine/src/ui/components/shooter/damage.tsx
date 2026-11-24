@@ -31,7 +31,7 @@ export function ShooterDamage(props: ShooterDamageProps) {
       <For each={props.hits ?? []} key={(h) => h.id}>
         {(h, i) => (
           <View
-            class={`flex-col items-start ml-0 animate-pop transition duration-200 exit:opacity-0 data-later:ml-9 data-later:opacity-80 data-third:ml-16 data-third:opacity-60 compact:data-later:hidden`}
+            class={`flex-col items-start ml-0 animate-pop transition duration-200 exit:opacity-0 data-later:ml-9 data-later:opacity-80 data-third:ml-16 data-third:opacity-muted compact:data-later:hidden`}
             data-later={i() >= 1}
             data-third={i() >= 2}
           >

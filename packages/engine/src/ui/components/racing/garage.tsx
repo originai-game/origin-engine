@@ -30,9 +30,9 @@ export interface RacingGarageProps {
   onBuy?: (e: UiEvent, id: string) => void;
 }
 
-const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 nine-plate-cut ${packClass("Button", "plate")}`;
+const buttonBase = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-dim nine-plate-cut ${packClass("Button", "plate")}`;
 const stepButton = `size-11 items-center justify-center p-0 text-fg bg-plate-hi hover:bg-glass-hi nine-plate-cut ${packClass("Button", "plate")}`;
-const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-45 flex-1 min-w-30 nine-plate-cut ${packClass("Button", "plate", "primary")}`;
+const goButton = `min-h-11 flex-row flex-wrap items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi hover:bg-glass-hi disabled:opacity-dim flex-1 min-w-30 nine-plate-cut ${packClass("Button", "plate", "primary")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 /**

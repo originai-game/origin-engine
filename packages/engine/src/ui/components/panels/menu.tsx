@@ -3,7 +3,7 @@ import "./menu.en.ogt";
 
 /** One entry row: dim type on the pack's row, lit by the hover ground and its leading edge under the pointer, the keys or the focus; a disabled row faint and shadowless. */
 const row =
-  `group/row transition duration-317 w-full h-auto min-h-9.5 p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-surface-hover hover:text-fg hover:inset-shadow-bar hover:inset-shadow-hud-accent focus-visible:bg-surface-hover focus-visible:text-fg focus-visible:inset-shadow-bar focus-visible:inset-shadow-hud-accent active:bg-surface-hover active:text-fg active:inset-shadow-bar active:inset-shadow-hud-accent disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`;
+  `group/row transition duration-control w-full h-auto min-h-9.5 p-0 pointer-coarse:min-h-11 text-fg-muted hover:bg-surface-hover hover:text-fg hover:inset-shadow-bar hover:inset-shadow-hud-accent focus-visible:bg-surface-hover focus-visible:text-fg focus-visible:inset-shadow-bar focus-visible:inset-shadow-hud-accent active:bg-surface-hover active:text-fg active:inset-shadow-bar active:inset-shadow-hud-accent disabled:bg-transparent disabled:bg-none disabled:shadow-none disabled:text-fg-subtle data-danger:text-danger data-danger:hover:text-danger data-danger:focus-visible:text-danger disabled:data-danger:text-fg-subtle data-down:opacity-dim ${packClass("Row", "frame")}`;
 
 export interface MenuProps {
   /** Its entries, submenus' too, a keyed collection of { id, label, kind, icon, shortcut, checked, danger, disabled, parent, more }: kind item, check, radio, separator or header; icon an icon name before the label (empty: none); shortcut shown at the end (Ctrl+S); checked a check or radio entry is on; danger a destructive command in the danger ink; disabled shown but inert; parent the id of the entry whose submenu it is in (empty: the top level); more it opens a submenu (a chevron at its end). */
@@ -32,7 +32,7 @@ export interface MenuProps {
  */
 export function Menu(props: MenuProps) {
   return (
-    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-overlay inset-shadow-lit inset-ring-1 inset-ring-rim text-fg min-w-60 max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
+    <View class={`pt-1 pb-2 bg-linear-to-b from-raised-pressed to-glass-lo shadow-overlay inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg min-w-60 max-w-full px-0 m-0 gap-0 ${packClass("Panel", "frame")}`} role="menu" label={props.label || t("component.menu.name")}>
       <Show when={props.submenu !== ""}>
         <View class={row} role="menuitem" label={t("component.menu.back")} onPress={(e) => props.onBack?.(e)}>
           <View class="flex-row items-center w-full gap-2">
@@ -74,7 +74,7 @@ export function Menu(props: MenuProps) {
                       {e().label}
                     </Text>
                     <Show when={e().shortcut}>
-                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap bg-well inset-ring-1 inset-ring-rim py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-xs leading-snug text-fg-muted tracking-sm whitespace-nowrap bg-well inset-ring-hairline inset-ring-rim py-0.5 px-1 group-disabled/row:text-fg-subtle ${packClass("Chip", "frame")}`}>
                         {e().shortcut}
                       </Text>
                     </Show>

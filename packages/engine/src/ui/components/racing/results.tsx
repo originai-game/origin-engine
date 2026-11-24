@@ -28,7 +28,7 @@ function ordinal(n: number): string {
 }
 
 const hudLabel = `text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted`;
-const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
+const actionButton = `min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-hairline inset-ring-rim hover:bg-glass-hi disabled:opacity-dim compact:flex-1 compact:min-w-0 ${packClass("Button", "plate")}`;
 const keyCap = `shrink-0 pointer-coarse:hidden text-lg leading-none`;
 
 /**
@@ -136,7 +136,7 @@ export function RacingResults(props: RacingResultsProps) {
           <Text glyph="details" class={keyCap} />
           <Text>{t("racing.results.retry")}</Text>
         </View>
-        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-1 inset-ring-rim hover:bg-glass-hi disabled:opacity-45 compact:flex-1 compact:min-w-0 bg-hud-accent text-hud-accent-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
+        <View class={`min-h-11 min-w-30 flex-row items-center justify-center gap-1 py-0.5 px-4 text-caption font-bold tracking-label uppercase text-fg bg-plate-hi inset-ring-hairline inset-ring-rim hover:bg-glass-hi disabled:opacity-dim compact:flex-1 compact:min-w-0 bg-hud-accent text-hud-accent-fg shadow-none ${packClass("Button", "plate", "primary")}`} role="button" label={t("racing.results.continue")} onPress={(e) => props.onContinue?.(e)}>
           <Text>{t("racing.results.continue")}</Text>
         </View>
       </View>

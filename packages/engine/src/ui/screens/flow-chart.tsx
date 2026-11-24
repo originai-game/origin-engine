@@ -70,7 +70,7 @@ export function FlowChartScreen(props: FlowChartScreenProps) {
         onPan={(e, dx, dy) => props.onPan?.(e, dx, dy)}
       />
       <Show when={props.detail !== ""}>
-        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 bg-plate-lo ring-1 ring-accent shrink-0">
+        <View class="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-3 px-4 bg-plate-lo ring-hairline ring-accent shrink-0">
           <View class="grow shrink basis-50 min-w-0 gap-y-0.5">
             <Text class="text-sm font-bold uppercase tracking-wide text-accent">{t("screen.flow-chart.selected")}</Text>
             <Text class="text-xl font-semibold leading-snug text-fg">{props.detail}</Text>

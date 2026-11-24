@@ -45,7 +45,7 @@ function StepCard(props: TutorialScreenProps) {
     <View
       anchor={target() || undefined}
       lift={target() ? [0, 1, 0] : undefined}
-      class={`data-target:translate-y-3 bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-1 inset-ring-hud-accent text-fg w-full max-w-100 transition duration-240 ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`}
+      class={`data-target:translate-y-3 bg-linear-to-b from-glass-hi to-glass-lo shadow-overlay inset-shadow-overline inset-ring-hairline inset-ring-hud-accent text-fg w-full max-w-100 transition duration-base ease-out absolute py-4 px-6 gap-2 narrow:w-auto narrow:max-w-none narrow:inset-x-3 starting:opacity-0 starting:scale-60 ${packClass("Panel", "frame")}`}
       data-target={target() !== ""}
       style={target() ? undefined : { left: `${props.x}px`, top: `${props.y}px` }}
     >

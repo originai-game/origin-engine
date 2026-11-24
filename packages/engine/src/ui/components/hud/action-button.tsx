@@ -25,7 +25,7 @@ export interface ActionButtonProps {
 export function ActionButton(props: ActionButtonProps) {
   return (
     <View
-      class={`flex-row items-center justify-center gap-1 relative group/disc rounded-capsule border-2 border-rim-strong bg-raised-hi text-fg shadow-float disabled:opacity-45 duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent data-primary:text-accent-fg size-16`}
+      class={`flex-row items-center justify-center gap-1 relative group/disc rounded-capsule border-regular border-rim-strong bg-raised-hi text-fg shadow-float disabled:opacity-dim duration-160 data-primary:size-20 data-primary:border-transparent data-primary:bg-accent data-primary:text-accent-fg size-16`}
       touchButton={props.action}
       data-primary={props.primary}
       disabled={props.disabled}

@@ -106,7 +106,7 @@ export function RacingTrackMap(props: RacingTrackMapProps) {
               when={c().player}
               fallback={
                 <View
-                  class="absolute size-3 rounded-full border-2 border-well bg-sheen"
+                  class="absolute size-3 rounded-full border-regular border-well bg-sheen"
                   style={{ left: `${c().x / 260 * 100}%`, top: `${c().y / 220 * 100}%`, transform: "translate(-50%,-50%)", backgroundColor: c().color || undefined }}
                   role="image"
                   label={c().name}

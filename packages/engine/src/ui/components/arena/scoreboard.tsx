@@ -65,7 +65,7 @@ function TeamTable(props: { team: "a" | "b"; name: string; score: string; column
   const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "inset-shadow-underline inset-shadow-team1" : "inset-shadow-underline inset-shadow-team2";
   const glow = blue ? "shadow-glow-lg shadow-team1" : "shadow-glow-lg shadow-team2";
-    const edge = blue ? "border-l-3 border-team1" : "border-l-3 border-team2";
+    const edge = blue ? "border-l-thick border-team1" : "border-l-thick border-team2";
   const kda = () => props.columns == "kda";
   return (
     <View class="min-w-0 flex-col" role="table" label={props.name}>

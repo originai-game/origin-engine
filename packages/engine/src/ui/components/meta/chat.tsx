@@ -44,13 +44,13 @@ export function Chat(props: ChatProps) {
             <View class="flex-row items-center gap-0.5">
               <For each={props.channels}>
                 {(c) => (
-                <View class={`flex-row items-center justify-center gap-1 text-fg-muted transition duration-317 min-h-11 nine-plate-cut bg-layer-2 py-0 px-3 data-selected:text-fg data-selected:bg-surface-hover data-selected:border-l-3 data-selected:border-hud-accent hover:bg-none hover:bg-surface-hover`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
+                <View class={`flex-row items-center justify-center gap-1 text-fg-muted transition duration-control min-h-11 nine-plate-cut bg-layer-2 py-0 px-3 data-selected:text-fg data-selected:bg-surface-hover data-selected:border-l-thick data-selected:border-hud-accent hover:bg-none hover:bg-surface-hover`} role="tab" selected={c().id === props.channel} label={c().unread > 0 ? t("general.chat.unread", { channel: c().label, count: c().unread }) : c().label} onPress={(e) => props.onChooseTab?.(e, c().id)} data-selected={c().id === props.channel}>
                   <View class="flex-row items-center gap-1">
                     <Text class="whitespace-nowrap max-w-60 text-ellipsis font-bold overflow-hidden shrink">
                       {c().label}
                     </Text>
                     <Show when={c().unread > 0}>
-                      <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold text-gold-fg transition duration-317 min-w-4 text-center py-0 px-0.5 m-0 shrink ${packClass("Chip", "frame")}`}>
+                      <Text class={`font-bold text-caption tabular-nums nine-chip-cut bg-gold text-gold-fg transition duration-control min-w-4 text-center py-0 px-0.5 m-0 shrink ${packClass("Chip", "frame")}`}>
                         {formatNumber(c().unread)}
                       </Text>
                     </Show>

@@ -93,7 +93,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 const num = typeof value === "number" ? value : undefined;
                 return (
                 <Show when={entry().page === props.page}>
-                  <View class={`group/row text-fg transition duration-317 hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 ${packClass("Row", "frame")}`} label={entry().description}>
+                  <View class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("Row", "frame")}`} label={entry().description}>
                     <Show when={entry().kind === "toggle"}>
                       <Switch class="min-h-16 text-lg text-fg-muted py-1 px-4 compact:text-base compact:py-2 compact:px-3 group-hover/row:text-fg" checked={entry().value === true} onChange={(e, on) => props.onChange?.(e, entry().id, on)}>
                         <Text class="grow shrink">{entry().name}</Text>

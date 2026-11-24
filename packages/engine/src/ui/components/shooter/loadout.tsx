@@ -56,7 +56,7 @@ export function Loadout(props: LoadoutProps) {
   const selected = () => (props.slots ?? []).find((s) => s.id == props.selected);
   const categoryLabel = (c: LoadoutCategory) => (c.label ?? "") != "" ? c.label : t(`shooter.loadout.category.${c.id}`);
   const KEY = "shrink-0 pointer-coarse:hidden text-xl leading-none";
-  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+  const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-raised-lo hover:bg-raised-hover-lo disabled:opacity-dim compact:flex-1 ${packClass("Button", "plate")}`;
   return (
     <View class={`flex-col w-full h-full max-w-full gap-y-4 p-4 text-fg bg-glass nine-panel-cut ${packClass("Panel", "frame")}`} role="group" label={heading()}>
       <Text class="max-w-full text-display-xl leading-none font-bold uppercase tracking-sm compact:text-display-sm">{heading()}</Text>
@@ -71,7 +71,7 @@ export function Loadout(props: LoadoutProps) {
                   <For each={(props.slots ?? []).filter((s) => s.category == c().id)} key={(s) => s.id}>
                     {(s) => (
                       <View
-                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut hover:bg-surface-hover ${s().id == props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-selected:inset-ring-2 data-selected:inset-ring-hud-accent disabled:opacity-100 disabled:text-fg-muted transition duration-317`}
+                        class={`group/item flex-row items-center gap-x-3 w-full min-h-11 py-2 px-3 nine-plate-cut hover:bg-surface-hover ${s().id == props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-selected:inset-ring-regular data-selected:inset-ring-hud-accent disabled:opacity-100 disabled:text-fg-muted transition duration-control`}
                         role="button"
                         label={s().name}
                         pressed={s().id == props.selected}
@@ -121,7 +121,7 @@ export function Loadout(props: LoadoutProps) {
           </View>
           <Show when={selected()}>
             <View
-              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-accent-fg nine-plate-cut bg-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+              class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-26.25 text-caption font-bold tracking-label uppercase text-accent-fg nine-plate-cut bg-accent disabled:opacity-dim compact:flex-1 ${packClass("Button", "plate", "primary")}`}
               role="button"
               label={t("shooter.loadout.equip")}
               disabled={selected()?.locked || selected()?.equipped}

@@ -24,7 +24,7 @@ export function HeroButton(props: HeroButtonProps) {
   const tone = props.tone ?? "";
   return (
     <View
-      class={`group/hero flex-row items-center justify-center min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-panel border-2 border-rim bg-accent shadow-key transition duration-150 hover:-translate-y-px active:translate-y-0.5 active:shadow-key data-premium:bg-none data-premium:bg-gold data-secondary:bg-none data-secondary:bg-fg-subtle data-danger:bg-none data-danger:bg-danger disabled:translate-y-0 disabled:opacity-50`}
+      class={`group/hero flex-row items-center justify-center min-h-12 w-full max-w-50 py-3 px-4 gap-x-3 rounded-panel border-regular border-rim bg-accent shadow-key transition duration-150 hover:-translate-y-px active:translate-y-0.5 active:shadow-key data-premium:bg-none data-premium:bg-gold data-secondary:bg-none data-secondary:bg-fg-subtle data-danger:bg-none data-danger:bg-danger disabled:translate-y-0 disabled:opacity-50`}
       role="button"
       label={props.label}
       disabled={props.disabled}

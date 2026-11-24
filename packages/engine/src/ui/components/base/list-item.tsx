@@ -37,7 +37,7 @@ export interface ListItemProps {
 export function ListItem(props: ListItemProps) {
   return (
     <View class="grow shrink basis-0 h-auto gap-2">
-      <View class={`flex-row items-center justify-center gap-1 text-fg transition duration-317 w-full min-h-11 text-start py-2 px-3 rounded-control ${props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover hover:bg-none active:bg-raised-pressed active:bg-none disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
+      <View class={`flex-row items-center justify-center gap-1 text-fg transition duration-control w-full min-h-11 text-start py-2 px-3 rounded-control ${props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} hover:bg-surface-hover hover:bg-none active:bg-raised-pressed active:bg-none disabled:bg-transparent disabled:bg-none disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim`} role="button" label={props.title} description={props.subtitle} pressed={(props.selected ?? false)} busy={(props.loading ?? false)} disabled={(props.disabled ?? false) || (props.loading ?? false)} onPress={(e) => props.onChoose?.(e)}>
         <View class="flex-row flex-wrap items-center w-full gap-3">
           <Show when={(props.image ?? 0) || props.icon}>
             <View class={`bg-tile shadow-sunk justify-center items-center self-start gap-2 size-11 rounded-control`}>
@@ -68,7 +68,7 @@ export function ListItem(props: ListItemProps) {
                     </Text>
                   </Show>
                   <Show when={props.badge}>
-                    <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 py-0 px-2 rounded-capsule`}>
+                    <Text class={`text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control py-0 px-2 rounded-capsule`}>
                       {props.badge}
                     </Text>
                   </Show>

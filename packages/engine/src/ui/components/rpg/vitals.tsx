@@ -38,7 +38,7 @@ export function RpgVitals(props: RpgVitalsProps) {
         </Show>
       </View>
       <Show when={props.level !== 0}>
-        <View class={`absolute left-0 top-12 size-6 group-data-plate-large/plate:top-30.5 group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-17.25 bg-surface-raised inset-ring-1 inset-ring-rim text-fg rounded-capsule flex-row items-center justify-center ${packClass("Chip", "frame")}`}>
+        <View class={`absolute left-0 top-12 size-6 group-data-plate-large/plate:top-30.5 group-data-plate-large/plate:size-8 compact:group-data-plate-large/plate:top-17.25 bg-surface-raised inset-ring-hairline inset-ring-rim text-fg rounded-capsule flex-row items-center justify-center ${packClass("Chip", "frame")}`}>
           <Text class={`text-caption font-bold tabular-nums`}>{formatNumber(props.level)}</Text>
         </View>
       </Show>

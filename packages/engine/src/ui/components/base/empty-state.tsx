@@ -24,7 +24,7 @@ export interface EmptyStateProps {
  */
 export function EmptyState(props: EmptyStateProps) {
   return (
-    <View class={`bg-tile shadow-sunk text-fg items-center text-center p-6 gap-4 rounded-block disabled:text-fg-subtle transition duration-240 ease-out starting:opacity-0 starting:translate-y-2`} role="status" label={props.title || t("base.empty.title")}>
+    <View class={`bg-tile shadow-sunk text-fg items-center text-center p-6 gap-4 rounded-block disabled:text-fg-subtle transition duration-base ease-out starting:opacity-0 starting:translate-y-2`} role="status" label={props.title || t("base.empty.title")}>
       <Show when={(props.icon ?? "bag")}>
         <View class={`bg-card border-rim-soft text-fg justify-center items-center gap-4 size-16 rounded-capsule border`}>
           <Icon class={`text-fg-muted size-8`} name={(props.icon ?? "bag")} />

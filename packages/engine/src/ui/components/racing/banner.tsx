@@ -58,7 +58,7 @@ export function RacingBanner(props: RacingBannerProps) {
               when={kind() === "countdown"}
               fallback={
                 <View
-                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-0.5 py-1.5 px-4.5 bg-plate-hi nine-plate-cut transition duration-240 ease-out starting:opacity-0 starting:translate-y-2 compact:py-1 compact:px-3.5 ${packClass("Plate", "frame")}`}
+                  class={`group/plate flex-col items-center max-w-full min-w-0 gap-y-0.5 py-1.5 px-4.5 bg-plate-hi nine-plate-cut transition duration-base ease-out starting:opacity-0 starting:translate-y-2 compact:py-1 compact:px-3.5 ${packClass("Plate", "frame")}`}
                   data-kind-countdown={false}
                 >
                   {plateInner()}

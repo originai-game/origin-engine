@@ -88,7 +88,7 @@ export function RpgLoot(props: RpgLootProps) {
           <For each={items()}>
             {(item) => (
               <View
-                class={`group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut hover:bg-surface-hover transition duration-317 ${packClass("Row", "frame")} ${packClass("List", "item")}`}
+                class={`group/row relative grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pr-2 pl-3 py-1 nine-plate-cut hover:bg-surface-hover transition duration-control ${packClass("Row", "frame")} ${packClass("List", "item")}`}
                 data-not-available={!item().available}
                 data-tier-common={(item().rarity || "common") === "common"}
                 data-tier-uncommon={(item().rarity || "common") === "uncommon"}
@@ -99,7 +99,7 @@ export function RpgLoot(props: RpgLootProps) {
               >
                 {/* The rarity's leading edge, inside the frame, which is the row's edge. */}
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-focus-within/row:block group-focus-within/row:bg-hud-accent group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
-                <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-45 compact:row-span-2`}>
+                <View class={`${socket} self-start gap-2 size-12 group-data-not-available/row:opacity-dim compact:row-span-2`}>
                   <Show when={(item().rarity || "common") !== "common"}>
                     <View class="absolute inset-0 nine-plate-cut bg-current opacity-30" />
                   </Show>
@@ -107,10 +107,10 @@ export function RpgLoot(props: RpgLootProps) {
                 </View>
                 <View class="grow shrink basis-0 min-w-0 gap-0.5">
                   <View class="flex-row items-baseline gap-2 min-w-0">
-                    <Text class={`grow shrink basis-0 min-w-0 text-fg group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic line-clamp-2 m-0 overflow-hidden group-data-not-available/row:opacity-45`} label={item().name}>
+                    <Text class={`grow shrink basis-0 min-w-0 text-fg group-data-tier-uncommon/row:text-uncommon group-data-tier-rare/row:text-rare group-data-tier-epic/row:text-epic group-data-tier-legendary/row:text-legendary group-data-tier-mythic/row:text-mythic line-clamp-2 m-0 overflow-hidden group-data-not-available/row:opacity-dim`} label={item().name}>
                       {item().name}
                     </Text>
-                    <Text class="tabular-nums text-fg whitespace-nowrap font-bold group-data-not-available/row:opacity-45">
+                    <Text class="tabular-nums text-fg whitespace-nowrap font-bold group-data-not-available/row:opacity-dim">
                       {t("rpg.loot.count", { count: formatNumber(item().count) })}
                     </Text>
                   </View>

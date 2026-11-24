@@ -46,7 +46,7 @@ function LegendMark(props: { kind: string }) {
         <Line class={`shrink size-4 stroke-danger`} points={[7, 1, 13, 12, 1, 12]} closed />
       </Match>
       <Match when={props.kind === "waypoint"}>
-        <View class={`shrink size-4 rounded-full border-3 border-hud-accent`} />
+        <View class={`shrink size-4 rounded-full border-thick border-hud-accent`} />
       </Match>
     </Switch>
   );
@@ -93,7 +93,7 @@ export function RpgWorldMap(props: RpgWorldMapProps) {
                   onPress={(e) => props.onChoose?.(e, m().id)}
                 >
                   <Show when={m().id === props.selected}>
-                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-16 rounded-full shadow-glow-lg shadow-gold ring-2 ring-rim-strong" />
+                    <View class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 size-16 rounded-full shadow-glow-lg shadow-gold ring-regular ring-rim-strong" />
                   </Show>
                   <View class="relative flex-row items-center justify-center size-7.5 group-data-selected/marker:size-10">
                     <Switch fallback={

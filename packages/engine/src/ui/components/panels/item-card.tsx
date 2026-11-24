@@ -150,7 +150,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
             </View>
             <For each={props.stats}>
               {(s) => (
-                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-317 flex-wrap min-h-10 border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
+                <View class="flex-row items-center gap-y-0.5 gap-x-1 text-fg transition duration-control flex-wrap min-h-10 border-t border-rim-soft py-0.5 hover:bg-surface-hover" role="row">
                   <View class="flex-row items-center grow shrink basis-20 text-fg-muted gap-1">
                     <Icon class="size-6" name={s().icon} />
                     <Text class="shrink" role="rowheader">{s().label}</Text>
@@ -177,7 +177,7 @@ export function RpgItemCard(props: RpgItemCardProps) {
           </View>
         </Show>
         <Show when={props.lore}>
-          <View class="pl-2 border-l-2 border-border-strong gap-2 compact:hidden group-data-tier-uncommon/card:border-uncommon group-data-tier-rare/card:border-rare group-data-tier-epic/card:border-epic group-data-tier-legendary/card:border-legendary group-data-tier-mythic/card:border-mythic">
+          <View class="pl-2 border-l-regular border-border-strong gap-2 compact:hidden group-data-tier-uncommon/card:border-uncommon group-data-tier-rare/card:border-rare group-data-tier-epic/card:border-epic group-data-tier-legendary/card:border-legendary group-data-tier-mythic/card:border-mythic">
             <Text class="text-caption text-fg-muted italic m-0">
               {props.lore}
             </Text>

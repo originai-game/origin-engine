@@ -115,7 +115,7 @@ export function BossBar(props: BossBarProps) {
             <For each={(props.phases ?? []).slice(1)} key={(p) => p.id}>
               {(p, i) => (
                 <View
-                  class={`absolute size-2.25 rotate-45 bg-sheen ring-2 ring-entry-hi compact:size-1.75 data-passed:opacity-50`}
+                  class={`absolute size-2.25 rotate-45 bg-sheen ring-regular ring-entry-hi compact:size-1.75 data-passed:opacity-50`}
                   data-passed={max() > 0 && (props.value ?? 0) / max() <= ((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length}
                   style={{ left: `calc(${(((props.phases ?? []).length - (i() + 1)) / (props.phases ?? []).length) * 100}% - 0.321rem)`, top: "calc(50% - 0.321rem)" }}
                 />

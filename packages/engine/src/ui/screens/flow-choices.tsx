@@ -57,7 +57,7 @@ export function FlowChoices(props: FlowChoicesProps) {
           <For each={now().spots} key={(s) => s.index}>
             {(s) => (
               <View
-                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-2 ring-gold bg-material-thin hover:bg-material-regular disabled:opacity-45 disabled:ring-rim"
+                class="flex-row items-center justify-center gap-1 absolute min-w-11 min-h-11 rounded-control ring-regular ring-gold bg-material-thin hover:bg-material-regular disabled:opacity-dim disabled:ring-rim"
                 role="button"
                 label={s().label}
                 disabled={now().locked}
@@ -74,7 +74,7 @@ export function FlowChoices(props: FlowChoicesProps) {
               <For each={now().choices} key={(c) => c.index}>
                 {(c) => (
                   <View
-                    class="grow shrink basis-42 min-h-14 items-center justify-center gap-1 py-2 px-3 rounded-tl-block rounded-br-block bg-plate-lo shadow-plate text-fg hover:bg-plate-hi data-chosen:ring-2 data-chosen:ring-accent data-chosen:bg-accent data-chosen:text-accent-fg disabled:opacity-45 compact:basis-auto"
+                    class="grow shrink basis-42 min-h-14 items-center justify-center gap-1 py-2 px-3 rounded-tl-block rounded-br-block bg-plate-lo shadow-plate text-fg hover:bg-plate-hi data-chosen:ring-regular data-chosen:ring-accent data-chosen:bg-accent data-chosen:text-accent-fg disabled:opacity-dim compact:basis-auto"
                     role="button"
                     current={c().chosen}
                     data-chosen={c().chosen}

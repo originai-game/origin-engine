@@ -66,7 +66,7 @@ const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-l
 const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase text-fg whitespace-nowrap nine-chip-cut bg-layer-2`;
 const TAG = `${ACCENT_TAG} ${packClass("Chip", "frame")}`;
 const KEYCAP = "shrink-0 pointer-coarse:hidden text-xl leading-none";
-const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`;
+const CONFIRM = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-dim compact:flex-1 ${packClass("Button", "plate", "primary")}`;
 
 function Portrait(props: { slot: () => DraftSlot; small?: boolean }) {
   const s = props.slot;
@@ -96,7 +96,7 @@ function DraftTeam(props: { team: "a" | "b"; name: string; active: boolean; slot
   const blue = props.team == "a";
   const ink = blue ? "text-team1" : "text-team2";
   const rule = blue ? "inset-shadow-underline inset-shadow-team1" : "inset-shadow-underline inset-shadow-team2";
-  const wash = blue ? "border-l-3 border-team1" : "border-l-3 border-team2";
+  const wash = blue ? "border-l-thick border-team1" : "border-l-thick border-team2";
   const bans = () => (props.slots ?? []).filter((s) => s.kind == "ban");
   const picks = () => (props.slots ?? []).filter((s) => s.kind == "pick");
   return (

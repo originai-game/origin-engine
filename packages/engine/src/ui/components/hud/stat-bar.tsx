@@ -77,7 +77,7 @@ export function StatBar(props: StatBarProps) {
           <Icon class="size-4 shrink-0" name={props.icon} />
         </Show>
         <Show when={props.label}>
-          <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded-control py-0 px-1 shrink-0">
             <Text class="text-xs font-semibold tracking-label uppercase whitespace-nowrap text-fg-muted text-shadow-tag">{props.label}</Text>
           </View>
         </Show>
@@ -103,7 +103,7 @@ export function StatBar(props: StatBarProps) {
           </Show>
         </View>
         <Show when={props.showValue && !props.valueInside}>
-          <View class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded-control py-0 px-1 shrink-0">
+          <View class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded-control py-0 px-1 shrink-0">
             <Text class="text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-tag group-data-critical/stat:text-danger">{text()}</Text>
           </View>
         </Show>

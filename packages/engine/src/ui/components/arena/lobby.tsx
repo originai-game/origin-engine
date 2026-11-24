@@ -60,7 +60,7 @@ export interface ArenaLobbyProps {
  * dropped, and a long word wraps without breaking.
  */
 const CARD = `w-full max-h-full p-4 flex-col gap-y-3 text-fg nine-panel-cut bg-layer-1 compact:p-2 ${packClass("Panel", "frame")}`;
-const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-dim compact:flex-1 ${packClass("Button", "plate")}`;
 const KEYCAP = "shrink-0 pointer-coarse:hidden text-xl leading-none";
 /** A tag in a state's own colour (an accent or gold fill and its ink): the pack's neutral chip does not dress it. */
 const ACCENT_TAG = `shrink-0 py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase whitespace-nowrap nine-chip-cut`;
@@ -131,7 +131,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
                   </Show>
                   <Show when={s().open && props.canInvite}>
                     <View
-                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-label uppercase text-fg bg-linear-to-b from-glass-hi to-raised-pressed inset-shadow-lit inset-ring-1 inset-ring-rim rounded-tl-field hover:bg-none hover:bg-linear-to-b hover:from-raised-hi hover:to-raised-lo compact:ml-auto"
+                      class="flex-none flex-row items-center gap-x-0.5 min-h-8 px-4 text-caption font-bold tracking-label uppercase text-fg bg-linear-to-b from-glass-hi to-raised-pressed inset-shadow-lit inset-ring-hairline inset-ring-rim rounded-tl-field hover:bg-none hover:bg-linear-to-b hover:from-raised-hi hover:to-raised-lo compact:ml-auto"
                       role="button"
                       label={t("arena.lobby.invite")}
                       onPress={(e) => props.onInvite?.(e, s().id)}
@@ -160,7 +160,7 @@ export function ArenaLobby(props: ArenaLobbyProps) {
         </Show>
         <Show when={props.isHost}>
           <View
-            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-45 compact:flex-1 ${packClass("Button", "plate", "primary")}`}
+            class={`flex-row items-center justify-center gap-x-1 min-h-11 px-4 min-w-30 text-caption font-bold tracking-label uppercase text-hud-accent-fg nine-plate-cut bg-hud-accent hover:bg-hud-accent disabled:opacity-dim compact:flex-1 ${packClass("Button", "plate", "primary")}`}
             role="button"
             label={t("arena.lobby.start")}
             disabled={!(props.canStart ?? false)}

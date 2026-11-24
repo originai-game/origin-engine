@@ -52,7 +52,7 @@ export interface ArenaSpectatorProps {
  * is flat, the scroll fade at the list's foot is dropped, and the ghost
  * Leave wears the standard button look.
  */
-const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`;
+const BUTTON = `flex-1 basis-40 flex-row items-center justify-center gap-x-1 min-h-11 px-3 text-caption font-bold tracking-label uppercase text-fg nine-plate-cut bg-glass-hi hover:bg-raised-hi disabled:opacity-dim ${packClass("Button", "plate")}`;
 
 /**
  * A spectator's controls: the subjects the game offers to follow, the one
@@ -82,7 +82,7 @@ export function ArenaSpectator(props: ArenaSpectatorProps) {
               <For each={props.targets ?? []} key={(p) => p.id}>
                 {(p) => (
                   <View
-                    class={`flex-col gap-y-0.25 w-full min-h-11 py-1 px-3 text-start hover:bg-surface-hover ${followed(p().id) ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-muted transition duration-317`}
+                    class={`flex-col gap-y-0.25 w-full min-h-11 py-1 px-3 text-start hover:bg-surface-hover ${followed(p().id) ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-muted transition duration-control`}
                     role="button"
                     label={p().name}
                     pressed={followed(p().id)}

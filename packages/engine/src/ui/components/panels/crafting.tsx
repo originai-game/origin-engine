@@ -66,7 +66,7 @@ export function RpgCrafting(props: RpgCraftingProps) {
         </Text>
       </View>
       <Show when={props.error}>
-        <Text class={`text-danger border-l-2 border-danger py-1 px-2 m-0`} role="alert">
+        <Text class={`text-danger border-l-regular border-danger py-1 px-2 m-0`} role="alert">
           {props.error}
         </Text>
       </Show>
@@ -87,12 +87,12 @@ export function RpgCrafting(props: RpgCraftingProps) {
           <View class={`gap-1 overflow-auto compact:grow-0 compact:shrink compact:basis-auto compact:max-h-2/5`} role="listbox" label={t("rpg.craft.title")}>
             <For each={(props.recipes ?? [])} key={(recipe) => recipe.id}>
               {(recipe) => (
-              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut text-fg transition duration-317 w-full min-h-11 pr-2 pl-3 py-1 hover:bg-surface-hover ${recipe().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-subtle data-down:opacity-45 data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
+              <View class={`flex-row items-center justify-start gap-1 group/row relative nine-plate-cut text-fg transition duration-control w-full min-h-11 pr-2 pl-3 py-1 hover:bg-surface-hover ${recipe().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} disabled:text-fg-subtle data-down:opacity-dim data-tier-uncommon:text-uncommon data-tier-rare:text-rare data-tier-epic:text-epic data-tier-legendary:text-legendary data-tier-mythic:text-mythic`} role="option" selected={recipe().id === props.selected} disabled={(props.loading ?? false) || (props.busy ?? false)} onPress={(e) => props.onChoose?.(e, recipe().id)} data-not-can={!(recipe().canCraft)} data-selected={recipe().id === props.selected} data-tier-uncommon={(recipe().rarity || 'common') === "uncommon"} data-tier-rare={(recipe().rarity || 'common') === "rare"} data-tier-epic={(recipe().rarity || 'common') === "epic"} data-tier-legendary={(recipe().rarity || 'common') === "legendary"} data-tier-mythic={(recipe().rarity || 'common') === "mythic"}>
                 {/* The rarity's leading edge, inside the frame, which is the row's edge. */}
                 <View class="absolute start-0 inset-y-1.5 w-0.75 hidden group-data-tier-uncommon/row:block group-data-tier-uncommon/row:bg-uncommon group-data-tier-rare/row:block group-data-tier-rare/row:bg-rare group-data-tier-epic/row:block group-data-tier-epic/row:bg-epic group-data-tier-legendary/row:block group-data-tier-legendary/row:bg-legendary group-data-tier-mythic/row:block group-data-tier-mythic/row:bg-mythic" />
                 <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                 <View class={`items-center w-full gap-2`}>
-                  <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-11 shrink-0 group-data-not-can/row:opacity-45 group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("Slot", "frame")}`}>
+                  <View class={`justify-center items-center bg-tile nine-plate-cut gap-2 size-11 shrink-0 group-data-not-can/row:opacity-dim group-data-tier-uncommon/row:border-uncommon group-data-tier-rare/row:border-rare group-data-tier-epic/row:border-epic group-data-tier-legendary/row:border-legendary group-data-tier-mythic/row:border-mythic ${packClass("Slot", "frame")}`}>
                     <Icon class={`size-37/50`} name={recipe().icon} />
                   </View>
                   <View class="items-start text-start gap-0.5 shrink min-w-0">

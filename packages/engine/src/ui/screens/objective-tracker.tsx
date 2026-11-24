@@ -23,9 +23,9 @@ export function ObjectiveTracker(props: ObjectiveTrackerProps) {
       <View class="p-0 m-0 gap-1.5">
         <For each={props.objectives}>
           {(o, i) => (
-          <View class={`group/row transition duration-317 opacity-72 gap-1 rounded-control hover:bg-surface-hover active:bg-surface-hover data-selected:bg-rim-soft data-selected:bg-none data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:bg-transparent disabled:bg-none disabled:opacity-65 data-done:opacity-55 data-current:opacity-100 compact:hidden compact:data-current:flex compact:data-closing:flex`} data-closing={i() === props.objectives.length - 1 && o().done} data-current={!o().done && (i() === 0 || props.objectives[i() - 1]['done'])} data-done={o().done}>
+          <View class={`group/row transition duration-control opacity-72 gap-1 rounded-control hover:bg-surface-hover active:bg-surface-hover data-selected:bg-rim-soft data-selected:bg-none data-selected:inset-shadow-bar data-selected:inset-shadow-accent disabled:bg-transparent disabled:bg-none disabled:opacity-65 data-done:opacity-55 data-current:opacity-100 compact:hidden compact:data-current:flex compact:data-closing:flex`} data-closing={i() === props.objectives.length - 1 && o().done} data-current={!o().done && (i() === 0 || props.objectives[i() - 1]['done'])} data-done={o().done}>
             <View class="flex-row items-baseline gap-2">
-              <View class="rotate-45 inset-ring-2 inset-ring-gold mx-0.5 size-2 group-data-current/row:shadow-glow group-data-current/row:shadow-gold group-data-current/row:bg-none group-data-current/row:bg-gold group-data-done/row:bg-none group-data-done/row:bg-gold" />
+              <View class="rotate-45 inset-ring-regular inset-ring-gold mx-0.5 size-2 group-data-current/row:shadow-glow group-data-current/row:shadow-gold group-data-current/row:bg-none group-data-current/row:bg-gold group-data-done/row:bg-none group-data-done/row:bg-gold" />
               <Text class="text-reading font-semibold text-stroke-3 text-stroke-bg text-shadow-xs text-shadow-bg m-0 group-data-done/row:line-through shrink">
                 {o().label}
               </Text>

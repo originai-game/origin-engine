@@ -24,13 +24,13 @@ export function Calendar(props: CalendarProps) {
   return (
     <View class={`nine-panel-cut bg-layer-1 text-fg w-full max-w-90 p-3 gap-2 ${packClass("Panel", "frame")}`} label={props.month}>
       <View class={`flex-row min-h-12 border-b border-rim-soft items-center py-1 px-4 gap-1`}>
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onPrevious?.(e)} label={props.month}>
           <Icon class="size-4" name="chevronLeft" />
         </Button>
         <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg grow shrink basis-0 text-center m-0`}>
           {props.month}
         </Text>
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onNext?.(e)} label={props.month}>
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft min-w-11 min-h-11 p-0 rounded-control`} onPress={(e) => props.onNext?.(e)} label={props.month}>
           <Icon class="size-4" name="chevronRight" />
         </Button>
       </View>
@@ -44,7 +44,7 @@ export function Calendar(props: CalendarProps) {
         </For>
         <For each={props.days}>
           {(d) => (
-          <View class={`flex-row items-center justify-center gap-1 border-rim-soft bg-tile inset-ring-1 inset-ring-rim-soft text-fg transition duration-317 w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg-muted data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:shadow-none data-today:text-hud-accent-fg active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-45`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
+          <View class={`flex-row items-center justify-center gap-1 border-rim-soft bg-tile inset-ring-hairline inset-ring-rim-soft text-fg transition duration-control w-full min-h-11 font-bold border data-selected:border-accent data-done:border-success active:border-accent data-outside:bg-none data-outside:bg-transparent data-outside:shadow-none data-outside:text-fg-muted data-today:bg-linear-to-b data-today:from-hud-accent-hi data-today:to-hud-accent data-today:bg-transparent data-today:shadow-none data-today:text-hud-accent-fg active:scale-96 data-locked:scale-100 disabled:scale-100 data-down:opacity-dim`} role="button" current={d().today} onPress={(e) => props.onPick?.(e, d().id)} data-outside={d().outside} data-marked={d().marked} data-today={d().today} data-variant-primary={(d().today ? "primary" : "quiet") === "primary"} data-variant-quiet={(d().today ? "primary" : "quiet") === "quiet"}>
             <Text class="tabular-nums">{d().label}</Text>
             <Show when={d().marked}>
               <Text class="absolute bottom-0.5 rotate-45 bg-gold shadow-glow-sm shadow-gold tabular-nums size-1" />

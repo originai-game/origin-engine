@@ -68,7 +68,7 @@ export function CardDeckList(props: CardDeckListProps) {
           <View class="w-full gap-0.5" role="list" label={props.title}>
             <For each={props.entries}>
               {(e) => (
-              <View class={`flex-row items-center text-rim-strong transition duration-317 w-full pr-0.5 gap-0.5 rounded-control data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-subtle data-down:opacity-45 ${e().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
+              <View class={`flex-row items-center text-rim-strong transition duration-control w-full pr-0.5 gap-0.5 rounded-control data-type-attack:text-danger data-type-skill:text-info data-type-power:text-epic data-type-curse:text-fg-subtle data-down:opacity-dim ${e().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")}`} role="listitem" current={e().id === props.selected} data-type-attack={(e().type) === 'attack'} data-type-curse={(e().type) === 'curse'} data-type-power={(e().type) === 'power'} data-type-skill={(e().type) === 'skill'} data-type-status={(e().type) === 'status'} data-selected={e().id === props.selected}>
                 <Button class={`grow shrink basis-0 min-h-11 px-2 text-fg`} label={e().name} onPress={(ev) => props.onChoose?.(ev, e().id)}>
                   <View class="flex-row items-center w-full gap-2">
                     <View class={`flex-row items-center w-6.25 h-7.25 justify-center bg-linear-to-b from-hud-accent-hi to-hud-accent text-hud-accent-fg font-bold gap-0`} label={t("card.face.cost", { cost: e().cost })}>
@@ -82,10 +82,10 @@ export function CardDeckList(props: CardDeckListProps) {
                     </Text>
                   </View>
                 </Button>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-1 inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canRemove} label={t("card.deck.remove", { name: e().name })} onPress={(ev) => props.onRemove?.(ev, e().id)} onAction={{ details: (ev) => props.onRemove?.(ev, e().id) }}>
                   <Text class="text-center">{t("card.deck.less")}</Text>
                 </View>
-                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-1 inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
+                <View class={`flex-row gap-1 w-11 min-h-11 items-center justify-center bg-raised-lo inset-ring-hairline inset-ring-rim text-fg p-0 disabled:text-fg-muted`} role="button" disabled={!e().canAdd} label={t("card.deck.add", { name: e().name })} onPress={(ev) => props.onAdd?.(ev, e().id)}>
                   <Text class="text-center">{t("card.deck.more")}</Text>
                 </View>
               </View>

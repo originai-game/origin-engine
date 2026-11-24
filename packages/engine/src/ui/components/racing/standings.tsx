@@ -48,7 +48,7 @@ export function RacingStandings(props: RacingStandingsProps) {
             <For each={rows()} key={(r) => r.id}>
               {(r, i) => (
                 <View
-                  class={`group/srow flex-row items-center gap-x-2 w-full min-w-0 pr-3 bg-glass nine-plate-cut data-off:hidden data-retired:opacity-60 data-player:bg-hud-accent compact:gap-x-1.5 compact:pr-2 compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
+                  class={`group/srow flex-row items-center gap-x-2 w-full min-w-0 pr-3 bg-glass nine-plate-cut data-off:hidden data-retired:opacity-muted data-player:bg-hud-accent compact:gap-x-1.5 compact:pr-2 compact:hidden compact:data-on:flex compact:group-data-fallback/standings:data-top:flex`}
                   role="listitem"
                   label={r().name}
                   current={r().player}

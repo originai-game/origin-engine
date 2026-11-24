@@ -77,12 +77,12 @@ function EffectTile(props: { effect: StatusGridEffect; debuff: boolean }) {
       <Show when={stacks() > 1 || remaining() > 0}>
         <View class="flex-row items-center gap-x-1">
           <Show when={stacks() > 1}>
-            <Text class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {t("component.status-grid.stacks", { count: stacks() })}
             </Text>
           </Show>
           <Show when={remaining() > 0}>
-            <Text class="bg-raised-pressed inset-ring-1 inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
+            <Text class="bg-raised-pressed inset-ring-hairline inset-ring-rim rounded px-0.5 text-reading font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">
               {effectTime(remaining())}
             </Text>
           </Show>

@@ -37,7 +37,7 @@ export function RpgCompanions(props: RpgCompanionsProps) {
       <For each={props.members ?? []} key={(m) => m.id}>
         {(m) => (
         <View
-          class={`group/member grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2.5 gap-y-1 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-0.75 data-fallen:opacity-60`}
+          class={`group/member grid grid-cols-[auto_minmax(0,1fr)_auto] gap-x-2.5 gap-y-1 items-center min-w-0 compact:flex-col compact:items-stretch compact:gap-y-0.75 data-fallen:opacity-muted`}
           role="group"
           label={m().fallen ? t("rpg.companions.member", { name: m().name, state: t("rpg.companions.fallen") }) : m().name}
           data-fallen={m().fallen}

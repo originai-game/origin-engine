@@ -59,8 +59,8 @@ function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<
   const ink = () => props.team == "a" ? "text-team1" : "text-team2";
   const glow = () => props.team == "a" ? "shadow-glow-lg shadow-team1 inset-shadow-underline inset-shadow-team1" : "shadow-glow-lg shadow-team2 inset-shadow-underline inset-shadow-team2";
   const row = () => props.team == "a"
-    ? "border-l-3 border-team1"
-    : "flex-row-reverse border-r-3 border-team2";
+    ? "border-l-thick border-team1"
+    : "flex-row-reverse border-r-thick border-team2";
   return (
     <View class="flex-1 min-w-0 flex-col gap-y-1 compact:flex-none compact:gap-y-1" role="group" label={heading()}>
       <Text class={`pb-1 max-w-full ${props.team == "b" ? "text-end " : "text-start "}${ink()} ${glow()} text-display-xl leading-none font-bold uppercase tracking-sm group-data-compact/versus:text-display-sm whitespace-normal`}>{heading()}</Text>
@@ -117,7 +117,7 @@ export function ArenaVersus(props: ArenaVersusProps) {
         <Side {...(props.nameA ? { name: props.nameA } : {})} team="a" fighters={props.sideA ?? []} />
         <View class="flex-none self-center w-22 p-0.75 rounded-panel bg-gold shadow-glow-lg shadow-gold compact:w-13 compact:self-center" aria-hidden="true">
           <View class="relative w-full h-25 rounded-card bg-gold-fg overflow-hidden flex-row items-center justify-center compact:h-15">
-            <View class="absolute -inset-x-4 -top-6 bottom-0 nine-glow bg-gold opacity-45" />
+            <View class="absolute -inset-x-4 -top-6 bottom-0 nine-glow bg-gold opacity-dim" />
             <Text class="text-6xl leading-none font-bold italic text-gold compact:text-3xl">{t("arena.versus.vs")}</Text>
           </View>
         </View>

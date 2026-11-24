@@ -46,17 +46,17 @@ export interface CreatorToolsScreenProps {
 export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
   return (
     <View class={`absolute inset-0 text-fg ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
-      <View class={`flex-row border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} role="toolbar">
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-1 data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "select"} data-selection-on={props.tool === "select"} onPress={(e) => props.onTool?.(e, "select")}>
+      <View class={`flex-row border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg flex-wrap items-center p-2 gap-2 border disabled:text-fg-subtle ${packClass("Panel", "frame")}`} role="toolbar">
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-hairline data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "select"} data-selection-on={props.tool === "select"} onPress={(e) => props.onTool?.(e, "select")}>
           <Text>{t("screen.creator-tools.select")}</Text>
         </Button>
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-1 data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "move"} data-selection-on={props.tool === "move"} onPress={(e) => props.onTool?.(e, "move")}>
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-hairline data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "move"} data-selection-on={props.tool === "move"} onPress={(e) => props.onTool?.(e, "move")}>
           <Text>{t("screen.creator-tools.move")}</Text>
         </Button>
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-1 data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "rotate"} data-selection-on={props.tool === "rotate"} onPress={(e) => props.onTool?.(e, "rotate")}>
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-hairline data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "rotate"} data-selection-on={props.tool === "rotate"} onPress={(e) => props.onTool?.(e, "rotate")}>
           <Text>{t("screen.creator-tools.rotate")}</Text>
         </Button>
-        <Button class={`bg-tile inset-ring-1 inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-1 data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "scale"} data-selection-on={props.tool === "scale"} onPress={(e) => props.onTool?.(e, "scale")}>
+        <Button class={`bg-tile inset-ring-hairline inset-ring-rim-soft h-7 font-semibold tracking-label uppercase px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 data-selection-on:bg-none data-selection-on:bg-hud-accent data-selection-on:nine-none data-selection-on:text-hud-accent-fg data-selection-on:border-transparent data-selection-on:inset-shadow-underline data-selection-on:inset-shadow-hud-accent data-selection-on:inset-ring-hairline data-selection-on:inset-ring-rim-soft data-selection-off:border-transparent shrink`} data-selection-off={props.tool !== "scale"} data-selection-on={props.tool === "scale"} onPress={(e) => props.onTool?.(e, "scale")}>
           <Text>{t("screen.creator-tools.scale")}</Text>
         </Button>
         <Button class={`h-7 ml-auto px-2.75 narrow:h-8 narrow:py-0 narrow:px-3.75 shrink`} onPress={(e) => props.onUndo?.(e)}>
@@ -73,14 +73,14 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
         </Button>
       </View>
       <View class="grow shrink basis-0 grid grid-cols-[auto_1fr_auto] grid-rows-[1fr_auto] narrow:grid-cols-1 narrow:grid-rows-[minmax(0,2fr)_auto_minmax(0,3fr)]">
-        <View class={`w-70 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'hierarchy'}>
+        <View class={`w-70 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-hairline inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'hierarchy'}>
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
             {t("screen.creator-tools.hierarchy")}
           </Text>
           <View class="grow shrink basis-0">{props.treePanelHierarchy?.()}</View>
         </View>
         <View>{props.view?.()}</View>
-        <Scroll class="hidden p-2 gap-1 narrow:flex narrow:flex-nowrap narrow:min-w-0 narrow:bg-linear-to-b narrow:from-plate-hi narrow:to-plate-lo narrow:bg-transparent narrow:inset-shadow-lit narrow:inset-ring-1 narrow:inset-ring-rim">
+        <Scroll class="hidden p-2 gap-1 narrow:flex narrow:flex-nowrap narrow:min-w-0 narrow:bg-linear-to-b narrow:from-plate-hi narrow:to-plate-lo narrow:bg-transparent narrow:inset-shadow-lit narrow:inset-ring-hairline narrow:inset-ring-rim">
           <Button class={`h-7 px-2.75 narrow:border-transparent narrow:h-11 narrow:grow-0 narrow:shrink-0 narrow:basis-auto narrow:font-semibold narrow:tracking-label narrow:uppercase narrow:py-0 narrow:px-3.75 narrow:rounded-none narrow:data-on:bg-none narrow:data-on:bg-hud-accent narrow:data-on:nine-none narrow:data-on:text-hud-accent-fg narrow:data-on:inset-shadow-underline narrow:data-on:inset-shadow-hud-accent`} data-current={props.panel === "hierarchy"} data-on={props.panel === "hierarchy"} onPress={(e) => props.onPanel?.(e, "hierarchy")}>
             <Text class="narrow:whitespace-nowrap">{t("screen.creator-tools.hierarchy")}</Text>
           </Button>
@@ -91,7 +91,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
             <Text class="narrow:whitespace-nowrap">{t("screen.creator-tools.catalogue")}</Text>
           </Button>
         </Scroll>
-        <View class={`w-90 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'inspector'}>
+        <View class={`w-90 narrow:w-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-bar inset-shadow-entry-grain inset-ring-hairline inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'inspector'}>
           <Text class={`font-display text-base font-bold leading-tight tracking-tight text-fg line-clamp-1 text-ellipsis m-0`}>
             {props.selected}
           </Text>
@@ -99,7 +99,7 @@ export function CreatorToolsScreen(props: CreatorToolsScreenProps) {
             <View class="pb-4">{props.scrollInspector?.()}</View>
           </Scroll>
         </View>
-        <View class={`h-50 narrow:h-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'catalogue'}>
+        <View class={`h-50 narrow:h-auto narrow:min-h-70 border-rim bg-linear-to-b from-plate-hi to-plate-lo inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg p-2 gap-2 border disabled:text-fg-subtle narrow:hidden narrow:data-chosen:flex ${packClass("Panel", "frame")}`} data-chosen={props.panel === 'catalogue'}>
           <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0`}>
             {t("screen.creator-tools.catalogue")}
           </Text>

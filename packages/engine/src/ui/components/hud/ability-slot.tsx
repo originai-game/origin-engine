@@ -53,7 +53,7 @@ export interface AbilitySlotProps {
 export function AbilitySlot(props: AbilitySlotProps) {
   return (
     <View class={`group/abilityslot w-12 max-w-full items-center p-0 gap-0.5 data-fit:w-full`} data-ultimate={(props.ultimate ?? -1) >= 0} data-fit={props.fit}>
-      <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep transition duration-317 w-full aspect-square p-0 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success data-active:border-accent data-active:shadow-glow data-active:shadow-accent data-full:border-gold data-shape-round:rounded-capsule data-shape-square:rounded-button active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-1 hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk data-down:opacity-45 data-play-pulse:animate-pulse ${packClass("Slot", "frame")}`} role="button" onPress={(e) => props.onUse?.(e)} label={props.name} valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : props.cooldown > 0 ? formatNumber(props.cooldown) : t("component.ability-slot.ready")} disabled={props.locked || props.disabled} data-play-pulse={(props.active || (props.ultimate ?? -1) >= 1 ? 'pulse' : null) === "pulse"} data-cooling={props.cooldown > 0} data-tinted={props.unaffordable || props.outOfRange} data-full={(props.ultimate ?? -1) >= 1} data-active={props.active || (props.ultimate ?? -1) >= 1} data-locked={props.locked} data-shape-round={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "round"} data-shape-square={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "square"}>
+      <View class={`flex-row items-center justify-center gap-1 group/slot border-rim-strong bg-linear-to-b from-plate-hi to-plate-lo shadow-float ring ring-shade-deep transition duration-control w-full aspect-square p-0 rounded-button border overflow-hidden data-selected:border-accent data-done:border-success data-active:border-accent data-active:shadow-glow data-active:shadow-accent data-full:border-gold data-shape-round:rounded-capsule data-shape-square:rounded-button active:bg-none active:bg-tile-pressed hover:shadow-plate hover:inset-ring-hairline hover:inset-ring-well-rim data-empty:shadow-sunk data-locked:shadow-sunk data-locked:scale-100 disabled:shadow-sunk data-down:opacity-dim data-play-pulse:animate-pulse ${packClass("Slot", "frame")}`} role="button" onPress={(e) => props.onUse?.(e)} label={props.name} valueText={props.locked ? t("component.ability-slot.locked") : props.disabled ? t("component.ability-slot.unavailable") : props.cooldown > 0 ? formatNumber(props.cooldown) : t("component.ability-slot.ready")} disabled={props.locked || props.disabled} data-play-pulse={(props.active || (props.ultimate ?? -1) >= 1 ? 'pulse' : null) === "pulse"} data-cooling={props.cooldown > 0} data-tinted={props.unaffordable || props.outOfRange} data-full={(props.ultimate ?? -1) >= 1} data-active={props.active || (props.ultimate ?? -1) >= 1} data-locked={props.locked} data-shape-round={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "round"} data-shape-square={((props.ultimate ?? -1) >= 0 ? 'round' : 'square') === "square"}>
         <View class="gap-2 size-full">
           <View class={`absolute bg-tile shadow-sunk justify-center items-center inset-0.5 gap-2 rounded-field group-data-ultimate/abilityslot:rounded-capsule group-data-tinted/slot:bg-linear-to-t group-data-tinted/slot:from-danger group-data-tinted/slot:to-transparent group-data-tinted/slot:to-75% group-data-tinted/slot:bg-tile`}>
             <Icon class="text-fg text-shadow-tag size-33/50 group-data-ultimate/abilityslot:size-1/2 group-disabled/slot:text-fg-subtle" name={props.icon} />
@@ -71,7 +71,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
           </Show>
           <Show when={(props.ultimate ?? -1) >= 0 && (props.ultimate ?? -1) < 1}>
             <View class="flex-row items-center absolute bottom-0 justify-center inset-x-0 gap-2">
-              <Text class={`text-caption tabular-nums bg-raised-pressed inset-ring-1 inset-ring-rim text-gold transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule shrink`}>
+              <Text class={`text-caption tabular-nums bg-raised-pressed inset-ring-hairline inset-ring-rim text-gold transition duration-control text-shadow-tag py-0 px-2 rounded-capsule shrink`}>
                 {`${formatNumber((props.ultimate ?? 0) * 100, { decimals: 0 })}%`}
               </Text>
             </View>
@@ -89,13 +89,13 @@ export function AbilitySlot(props: AbilitySlotProps) {
           <Show when={props.cost && props.cooldown <= 0 && !props.locked}>
             <Show when={(props.ultimate ?? -1) >= 0} fallback={
                 <View class="flex-row items-center absolute bottom-0.5 left-0.5 gap-2">
-                  <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
+                  <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana transition duration-control text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
                     {props.cost}
                   </Text>
                 </View>
             }>
               <View class="flex-row items-center absolute top-0 justify-center inset-x-0 gap-2">
-                <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-mana transition duration-317 text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
+                <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-mana transition duration-control text-shadow-tag py-0 px-2 rounded-capsule data-short:text-danger shrink`} data-short={props.unaffordable}>
                   {props.cost}
                 </Text>
               </View>
@@ -107,7 +107,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
             </Text>
           </Show>
           <Show when={props.maxCharges > 1 && props.cooldown <= 0 && !props.locked}>
-            <Text class={`absolute top-0.5 right-0.5 text-caption tabular-nums bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 min-w-4 text-shadow-tag py-0 px-2 rounded-capsule`}>
+            <Text class={`absolute top-0.5 right-0.5 text-caption tabular-nums bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control min-w-4 text-shadow-tag py-0 px-2 rounded-capsule`}>
               {formatNumber(props.charges)}
             </Text>
           </Show>
@@ -119,7 +119,7 @@ export function AbilitySlot(props: AbilitySlotProps) {
         </View>
       </Show>
       <Show when={props.hotkey || props.action}>
-        <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-1 inset-ring-rim text-fg transition duration-317 max-w-full whitespace-nowrap text-shadow-tag py-0 px-2 rounded-capsule overflow-hidden`} glyph={props.hotkey ? undefined : props.action}>
+        <Text class={`text-caption tabular-nums bg-surface-raised inset-ring-hairline inset-ring-rim text-fg transition duration-control max-w-full whitespace-nowrap text-shadow-tag py-0 px-2 rounded-capsule overflow-hidden`} glyph={props.hotkey ? undefined : props.action}>
           {props.hotkey}
         </Text>
       </Show>

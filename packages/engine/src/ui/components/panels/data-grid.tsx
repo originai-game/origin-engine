@@ -57,7 +57,7 @@ export function DataGrid(props: DataGridProps) {
                   <View class="w-full h-60 overflow-y-auto">
                     <For each={props.rows} key={(r) => r.id}>
                       {(r) => (
-                      <View class={`group/row relative nine-plate-cut w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-surface-hover ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-down:opacity-45`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
+                      <View class={`group/row relative nine-plate-cut w-full min-w-0 items-baseline grid gap-x-3 py-1 px-3 compact:flex compact:flex-wrap compact:gap-x-3 compact:gap-y-0.5 compact:py-2 hover:bg-surface-hover ${r().id === props.selected ? packClass("Row", "frame", "selected") : packClass("Row", "frame")} data-down:opacity-dim`} role="row" selected={r().id === props.selected} onPress={(e) => props.onChoose?.(e, r().id)} data-selected={r().id === props.selected} style={{ gridTemplateColumns: String(props.tracks || "1fr 1fr 1fr 1fr") }}>
                         <View class="absolute left-0 inset-y-0 w-0.75 bg-hud-accent hidden group-data-selected/row:block" />
                         <For each={r().cells} key={(c) => c.id}>
                           {(c, i) => (
@@ -77,7 +77,7 @@ export function DataGrid(props: DataGridProps) {
                   </View>
               }>
                 <View class={`w-full items-center p-6 gap-3`} role="status">
-                  <View class={`grow shrink basis-0 bg-well inset-ring-1 inset-ring-rim-soft justify-center items-center gap-3 size-16 rounded-capsule`}>
+                  <View class={`grow shrink basis-0 bg-well inset-ring-hairline inset-ring-rim-soft justify-center items-center gap-3 size-16 rounded-capsule`}>
                     <Icon class="size-4" name="bag" />
                   </View>
                   <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>
@@ -92,7 +92,7 @@ export function DataGrid(props: DataGridProps) {
               </Show>
           }>
             <View class={`w-full items-center p-6 gap-3`} role="alert" label={props.error}>
-              <View class={`grow shrink basis-0 bg-danger inset-ring-2 inset-ring-danger justify-center items-center gap-3 size-16 rounded-capsule`}>
+              <View class={`grow shrink basis-0 bg-danger inset-ring-regular inset-ring-danger justify-center items-center gap-3 size-16 rounded-capsule`}>
                 <Icon class="text-danger" name="close" />
               </View>
               <Text class={`font-semibold text-lg text-fg text-center w-full m-0`}>

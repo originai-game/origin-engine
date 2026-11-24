@@ -174,7 +174,7 @@ export function Flourish(props: FlourishProps) {
 }
 
 const ICON = (name: string) => () => (
-  <View class="size-24 items-center justify-center rounded-field bg-tile border-2 border-border-strong"><Icon class="size-16" name={name} /></View>
+  <View class="size-24 items-center justify-center rounded-field bg-tile border-regular border-border-strong"><Icon class="size-16" name={name} /></View>
 );
 
 export const fixtures: Record<string, Partial<FlourishProps>> = {

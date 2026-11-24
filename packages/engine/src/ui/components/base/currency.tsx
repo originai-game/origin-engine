@@ -59,7 +59,7 @@ export function Currency(props: CurrencyProps) {
                     </View>
                   </Show>
                   <Show when={props.rate}>
-                    <View class={`text-caption bg-raised-lo inset-ring-1 inset-ring-rim text-fg transition duration-317 py-0 px-2 rounded-control shrink`}>
+                    <View class={`text-caption bg-raised-lo inset-ring-hairline inset-ring-rim text-fg transition duration-control py-0 px-2 rounded-control shrink`}>
                       <Text class="tabular-nums">{props.rate}</Text>
                     </View>
                   </Show>

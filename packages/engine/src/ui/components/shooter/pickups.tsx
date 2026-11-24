@@ -39,7 +39,7 @@ export function ShooterPickups(props: ShooterPickupsProps) {
       <For each={props.items ?? []} key={(p) => p.id}>
         {(p, i) => (
           <View
-            class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-glass compact:data-later:hidden transition duration-240 ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0 ${packClass("Plate", "frame")}`}
+            class={`group/pickup relative flex-row items-center min-w-0 max-w-full pl-2 bg-glass compact:data-later:hidden transition duration-base ease-out starting:opacity-0 starting:translate-x-4 exit:opacity-0 ${packClass("Plate", "frame")}`}
             label={t("shooter.pickups.row", { name: p().name, quantity: p().quantity ?? 0 })}
             data-rarity-rare={p().rarity === "rare"}
             data-rarity-epic={p().rarity === "epic"}

@@ -27,7 +27,7 @@ export function HudTimer(props: HudTimerProps) {
   const critical = () => (props.countdown ?? false) && props.seconds <= (props.warnAt ?? 0) / 3;
   return (
     <View
-      class={`flex-col items-center gap-y-0.5 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-60 text-fg ${packClass("Plate", "frame")}`}
+      class={`flex-col items-center gap-y-0.5 border-rim bg-linear-to-b from-plate-hi to-plate-lo shadow-plate py-2 px-4 data-paused:opacity-muted text-fg ${packClass("Plate", "frame")}`}
       role="timer"
       label={props.label || t("component.hud-timer.name")}
       valueText={formatDuration(props.seconds)}
@@ -42,7 +42,7 @@ export function HudTimer(props: HudTimerProps) {
         <Show when={(props.countdown ?? false) && (props.total ?? 0) > 0}>
           <View class="group/hudtimer relative size-6" data-warn={warn()} data-critical={critical()}>
             <View
-              class="absolute inset-0 nine-ring bg-gold group-data-warn/hudtimer:bg-warn group-data-critical/hudtimer:bg-danger transition-layout duration-180 ease-out"
+              class="absolute inset-0 nine-ring bg-gold group-data-warn/hudtimer:bg-warn group-data-critical/hudtimer:bg-danger transition-layout duration-fast ease-out"
               wipe={Math.min(Math.max(props.seconds / (props.total ?? 1), 0), 1)}
             />
           </View>

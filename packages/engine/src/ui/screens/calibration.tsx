@@ -87,7 +87,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
       <View class={`nine-panel-cut bg-layer-1 text-fg gap-y-4 w-full max-w-190 py-6 px-8 compact:gap-y-3 compact:p-4 disabled:text-fg-subtle ${packClass("Panel", "frame")}`}>
         <View class="flex-row items-center gap-x-2 p-0 m-0 compact:gap-x-1">
           <View class={`group/brightness flex-row items-center gap-x-2 text-caption font-semibold tracking-label uppercase text-fg-muted compact:gap-x-1 compact:tracking-md data-done:text-fg-muted data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "brightness"} data-done={props.step !== "brightness"}>
-            <View class="grid items-center justify-items-center inset-ring-1 inset-ring-rim text-caption size-6.5 rounded-full group-data-on/brightness:shadow-glow group-data-on/brightness:bg-none group-data-on/brightness:bg-hud-accent group-data-on/brightness:text-hud-accent-fg group-data-done/brightness:bg-none group-data-done/brightness:bg-raised-hi shrink">
+            <View class="grid items-center justify-items-center inset-ring-hairline inset-ring-rim text-caption size-6.5 rounded-full group-data-on/brightness:shadow-glow group-data-on/brightness:bg-none group-data-on/brightness:bg-hud-accent group-data-on/brightness:text-hud-accent-fg group-data-done/brightness:bg-none group-data-done/brightness:bg-raised-hi shrink">
               <Text class="tabular-nums whitespace-nowrap">{1}</Text>
             </View>
             <Text class="whitespace-nowrap m-0 compact:hidden compact:group-data-on/brightness:flex compact:group-data-on/brightness:min-w-0 compact:group-data-on/brightness:text-ellipsis compact:group-data-on/brightness:overflow-hidden shrink">
@@ -96,7 +96,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
           </View>
           <View class="grow shrink basis-0 min-w-2 h-px bg-rim compact:min-w-1" role="separator" />
           <View class={`group/offset flex-row items-center gap-x-2 text-caption font-semibold tracking-label uppercase text-fg-muted compact:gap-x-1 compact:tracking-md data-done:text-fg-muted data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "offset"} data-done={props.step === "controller"}>
-            <View class="grid items-center justify-items-center inset-ring-1 inset-ring-rim text-caption size-6.5 rounded-full group-data-on/offset:shadow-glow group-data-on/offset:bg-none group-data-on/offset:bg-hud-accent group-data-on/offset:text-hud-accent-fg group-data-done/offset:bg-none group-data-done/offset:bg-raised-hi shrink">
+            <View class="grid items-center justify-items-center inset-ring-hairline inset-ring-rim text-caption size-6.5 rounded-full group-data-on/offset:shadow-glow group-data-on/offset:bg-none group-data-on/offset:bg-hud-accent group-data-on/offset:text-hud-accent-fg group-data-done/offset:bg-none group-data-done/offset:bg-raised-hi shrink">
               <Text class="tabular-nums whitespace-nowrap">{2}</Text>
             </View>
             <Text class="whitespace-nowrap m-0 compact:hidden compact:group-data-on/offset:flex compact:group-data-on/offset:min-w-0 compact:group-data-on/offset:text-ellipsis compact:group-data-on/offset:overflow-hidden shrink">
@@ -105,7 +105,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
           </View>
           <View class="grow shrink basis-0 min-w-2 h-px bg-rim compact:min-w-1" role="separator" />
           <View class={`group/controller flex-row items-center gap-x-2 text-caption font-semibold tracking-label uppercase text-fg-muted compact:gap-x-1 compact:tracking-md data-on:text-fg compact:data-on:grow-0 compact:data-on:shrink compact:data-on:basis-auto compact:data-on:min-w-0`} data-on={props.step === "controller"}>
-            <View class="grid items-center justify-items-center inset-ring-1 inset-ring-rim text-caption size-6.5 rounded-full group-data-on/controller:shadow-glow group-data-on/controller:bg-none group-data-on/controller:bg-hud-accent group-data-on/controller:text-hud-accent-fg shrink">
+            <View class="grid items-center justify-items-center inset-ring-hairline inset-ring-rim text-caption size-6.5 rounded-full group-data-on/controller:shadow-glow group-data-on/controller:bg-none group-data-on/controller:bg-hud-accent group-data-on/controller:text-hud-accent-fg shrink">
               <Text class="tabular-nums whitespace-nowrap">{3}</Text>
             </View>
             <Text class="whitespace-nowrap m-0 compact:hidden compact:group-data-on/controller:flex compact:group-data-on/controller:min-w-0 compact:group-data-on/controller:text-ellipsis compact:group-data-on/controller:overflow-hidden shrink">
@@ -113,7 +113,7 @@ export function CalibrationScreen(props: CalibrationScreenProps) {
             </Text>
           </View>
         </View>
-        <View class={`min-h-40 inset-ring-1 inset-ring-rim compact:min-h-32`}>
+        <View class={`min-h-40 inset-ring-hairline inset-ring-rim compact:min-h-32`}>
           {props.test?.()}
         </View>
         <Show when={props.step === "brightness"} fallback={

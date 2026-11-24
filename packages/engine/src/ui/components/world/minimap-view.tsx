@@ -76,7 +76,7 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
     if (m().kind === "loot") return "bg-epic";
     return "";
   };
-  const ring = () => (m().kind === "ping" ? "ring-4 ring-fill inset-ring-2 inset-ring-warn" : "ring-2 ring-raised-lo");
+  const ring = () => (m().kind === "ping" ? "ring-4 ring-fill inset-ring-regular inset-ring-warn" : "ring-regular ring-raised-lo");
   return (
     <View
       class={`absolute ${shape()} ${fill()} ${ring()}`}
@@ -84,7 +84,7 @@ function Marker(props: { marker: () => MinimapViewMarker; cx: () => number; cy: 
       style={{ width: `${pip()}rem`, height: `${pip()}rem`, left: left(), top: top() }}
     >
       <Show when={m().kind === "ping"}>
-        <View class="absolute inset-0 rounded-full ring-4 ring-fill inset-ring-2 inset-ring-warn animate-ping" />
+        <View class="absolute inset-0 rounded-full ring-4 ring-fill inset-ring-regular inset-ring-warn animate-ping" />
       </Show>
     </View>
   );
@@ -172,9 +172,9 @@ export function MinimapView(props: MinimapViewProps) {
               class="stroke-fg stroke-2"
             />
           </View>
-          <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-1 inset-ring-rim data-square:rounded-card" data-square={props.square === true} />
+          <View class="absolute inset-0 rounded-full pointer-events-none inset-shadow-sunk inset-ring-hairline inset-ring-rim data-square:rounded-card" data-square={props.square === true} />
         </View>
-        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-glow shadow-foe ring-2 ring-key-fg text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
+        <Text class="absolute top-1.75 left-1/2 -translate-x-1/2 min-w-6 h-6 flex-row items-center justify-center rounded-full bg-foe shadow-glow shadow-foe ring-regular ring-key-fg text-caption font-bold leading-none text-foe-fg whitespace-nowrap">
           {t("component.minimap-view.north")}
         </Text>
       </View>

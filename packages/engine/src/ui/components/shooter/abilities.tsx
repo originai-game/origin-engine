@@ -58,7 +58,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
             <View class="relative size-13 compact:size-9 group-data-ultimate/ability:size-21 compact:group-data-ultimate/ability:size-11">
               <Show when={s().ultimate}>
                 <View
-                  class="absolute inset-0 rounded-full overflow-hidden border-3 border-rim bg-tile"
+                  class="absolute inset-0 rounded-full overflow-hidden border-thick border-rim bg-tile"
                   role="meter"
                   label={t("shooter.abilities.charge")}
                   valueMin={0}
@@ -75,7 +75,7 @@ export function ShooterAbilities(props: ShooterAbilitiesProps) {
                 class={`absolute inset-0 flex-row items-center justify-center group-data-ultimate/ability:inset-11/100`}
               >
                 <View
-                  class={`relative size-full rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft group-data-ready/ability:from-hud-accent-hi group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-glow group-data-disabled/ability:opacity-45 group-data-ultimate/ability:rounded-tl-control group-data-ultimate/ability:rounded-tr-control`}
+                  class={`relative size-full rounded-card bg-linear-to-b from-rim-strong via-rim to-rim-soft group-data-ready/ability:from-hud-accent-hi group-data-ready/ability:to-hud-accent group-data-ready/ability:shadow-glow group-data-disabled/ability:opacity-dim group-data-ultimate/ability:rounded-tl-control group-data-ultimate/ability:rounded-tr-control`}
                 >
                   <View class="absolute inset-0.5 rounded-block overflow-hidden bg-plate-hi">
                     <Show when={s().icon} fallback={

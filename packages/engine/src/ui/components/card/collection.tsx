@@ -82,7 +82,7 @@ export function CardCollection(props: CardCollectionProps) {
               {(c) => (
               <View class="items-center gap-0.5">
                 <Show when={c().canAdd} fallback={
-                    <View class={`text-fg transition duration-317 w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                    <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().reason || (c().locked ? t("card.collection.locked") : t("card.collection.refused"))} onPress={(e) => props.onInspect?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                       <View class="size-full">
                         <View class="size-full">
                           <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={c().locked} />
@@ -101,7 +101,7 @@ export function CardCollection(props: CardCollectionProps) {
                       </View>
                     </View>
                 }>
-                  <View class={`text-fg transition duration-317 w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-45`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
+                  <View class={`text-fg transition duration-control w-full aspect-7/10 justify-stretch p-0 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle data-locked:scale-100 data-down:opacity-dim`} role="gridcell" data-can-add={c().canAdd} data-locked={c().locked} selected={c().id === props.selected} label={c().name} description={c().text} onPress={(e) => props.onAdd?.(e, c().id)} onAction={{ details: (e) => props.onInspect?.(e, c().id) }} data-in-deck={c().inDeck > 0} data-selected={c().id === props.selected}>
                     <View class="size-full">
                       <View class="size-full">
                         <CardFace name={c().name} cost={c().cost} icon={c().icon} art={c().art} type={c().type} typeLabel={c().typeLabel} rarity={c().rarity} text={c().text} dim={false} />

@@ -85,7 +85,7 @@ export function Minimap(props: MinimapProps) {
         <For each={props.markers ?? []} key={(m) => m.id}>
           {(m) => (
             <View
-              class={`absolute rounded-full ${markerTone(m())} ${m().player ? "size-3 border-2 border-accent" : "size-2"}`}
+              class={`absolute rounded-full ${markerTone(m())} ${m().player ? "size-3 border-regular border-accent" : "size-2"}`}
               style={{
                 left: `${m().x * 100}%`,
                 top: `${m().y * 100}%`,

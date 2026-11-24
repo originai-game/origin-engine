@@ -7,7 +7,7 @@ const keyCap = `shrink-0 pointer-coarse:hidden text-xl leading-none`;
 
 /** One stat row of either card: its words left, its figure right, a hairline rule under all but the last. */
 const statRow =
-  "group/row flex-row flex-wrap items-baseline gap-y-0.5 gap-x-2 text-fg transition duration-317 w-full justify-end border-b border-material-edge py-1 px-0 data-last:border-b-0 data-change-removed:text-fg-subtle data-down:opacity-45";
+  "group/row flex-row flex-wrap items-baseline gap-y-0.5 gap-x-2 text-fg transition duration-control w-full justify-end border-b border-material-edge py-1 px-0 data-last:border-b-0 data-change-removed:text-fg-subtle data-down:opacity-dim";
 
 export interface TooltipCardProps {
   /** The title, in its rarity's colour. */
@@ -55,7 +55,7 @@ export function TooltipCard(props: TooltipCardProps) {
   return (
     <View class="flex-row flex-wrap items-start max-w-full text-fg gap-2 compact:flex-col-reverse compact:flex-nowrap compact:items-stretch" role="tooltip" label={props.title} description={props.body}>
       <Show when={props.compareTitle !== ""}>
-        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo inset-shadow-lit inset-ring-1 inset-ring-rim text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
+        <View class={`bg-linear-to-b from-raised-pressed to-plate-lo inset-shadow-lit inset-ring-hairline inset-ring-rim text-fg w-75 max-w-full py-3 px-4 gap-2 compact:w-auto shrink ${packClass("Panel", "frame")}`}>
           <Text class="font-semibold text-xs leading-snug text-fg-subtle tracking-label uppercase">
             {props.compareTitle}
           </Text>
@@ -178,7 +178,7 @@ export function TooltipCard(props: TooltipCardProps) {
           <View class="flex-row flex-wrap items-center gap-y-1 gap-x-3 w-full pt-2 pb-0 border-t border-sheen px-0 m-0">
             <For each={props.hints}>
               {(h) => (
-                <View class="flex-row items-center font-semibold text-caption text-fg transition duration-317 p-0 gap-1 shrink">
+                <View class="flex-row items-center font-semibold text-caption text-fg transition duration-control p-0 gap-1 shrink">
                   <Show when={h().action}>
                     <Text glyph={h().action} class={keyCap} />
                   </Show>

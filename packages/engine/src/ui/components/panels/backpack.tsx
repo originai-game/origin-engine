@@ -117,7 +117,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
           <View class="grid grid-cols-fill-18 w-full p-1 gap-0.5 compact:grid-cols-5" role="grid" label={props.title}>
             <For each={props.items} key={(i) => i.id}>
               {(i) => (
-              <View class={`group/cell text-fg transition duration-317 w-full aspect-square min-w-11 p-0.5 data-down:opacity-45`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} draggable={i().locked ? undefined : i().id} dropTarget={i().id} onDrop={(e) => { if (e.key !== i().id) props.onMove?.(e, { dragged: e.key, target: i().id }); }} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
+              <View class={`group/cell text-fg transition duration-control w-full aspect-square min-w-11 p-0.5 data-down:opacity-dim`} role="gridcell" selected={i().id === props.selected} label={i().name} onPress={(e) => props.onChoose?.(e, i().id)} draggable={i().locked ? undefined : i().id} dropTarget={i().id} onDrop={(e) => { if (e.key !== i().id) props.onMove?.(e, { dragged: e.key, target: i().id }); }} data-selected={i().id === props.selected} data-tier-uncommon={(i().rarity || 'common') === "uncommon"} data-tier-rare={(i().rarity || 'common') === "rare"} data-tier-epic={(i().rarity || 'common') === "epic"} data-tier-legendary={(i().rarity || 'common') === "legendary"} data-tier-mythic={(i().rarity || 'common') === "mythic"}>
                 <View class={`grow shrink basis-0 justify-center items-center w-full bg-tile nine-plate-cut gap-0 hover:border-rim-strong group-data-selected/cell:border-hud-accent group-data-tier-uncommon/cell:border-uncommon group-data-tier-rare/cell:border-rare group-data-tier-epic/cell:border-epic group-data-tier-legendary/cell:border-legendary group-data-tier-mythic/cell:border-mythic ${packClass("Slot", "frame")}`}>
                   <Icon class="size-17/25" name={i().icon} />
                   <View class="absolute bottom-0 h-0.75 bg-current inset-x-2 text-common group-data-tier-uncommon/cell:text-uncommon group-data-tier-rare/cell:text-rare group-data-tier-epic/cell:text-epic group-data-tier-legendary/cell:text-legendary group-data-tier-mythic/cell:text-mythic" />
@@ -128,7 +128,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   </Show>
                 </View>
                 <Show when={i().count > 1}>
-                  <Text class={`font-bold text-xs leading-snug tabular-nums bg-well text-fg transition duration-317 absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 nine-chip-cut group-data-broken/cell:bottom-7.5 ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
+                  <Text class={`font-bold text-xs leading-snug tabular-nums bg-well text-fg transition duration-control absolute whitespace-nowrap right-1 bottom-2 py-0 px-0.5 nine-chip-cut group-data-broken/cell:bottom-7.5 ${packClass("Chip", "frame")}`} label={formatNumber(i().count)}>
                     {formatCompact(i().count)}
                   </Text>
                 </Show>
@@ -143,7 +143,7 @@ export function RpgBackpack(props: RpgBackpackProps) {
                   </View>
                 </Show>
                 <Show when={i().fresh}>
-                  <View class={`bg-hud-accent absolute right-2 top-2 shadow-glow-sm ring-2 ring-shade-deep size-1 rounded-capsule data-locked:right-8.5`} label={t("rpg.backpack.new")} data-locked={i().locked} />
+                  <View class={`bg-hud-accent absolute right-2 top-2 shadow-glow-sm ring-regular ring-shade-deep size-1 rounded-capsule data-locked:right-8.5`} label={t("rpg.backpack.new")} data-locked={i().locked} />
                 </Show>
                 <Show when={i().id === props.selected}>
                   <View class="absolute pointer-events-none inset-0">

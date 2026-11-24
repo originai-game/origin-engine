@@ -50,7 +50,7 @@ export function OrbMeter(props: OrbMeterProps) {
           <View class="absolute left-13/100 size-73/100 rounded-full bg-sheen" style={{ top: `${Math.max(0, Math.min(1, 1.049 - share())) * 100}%` }} />
           <View class="absolute inset-0 bg-linear-to-b from-transparent from-35% to-shade-deep" />
         </View>
-        <View class="absolute inset-2.25 rounded-full inset-ring-1 inset-ring-rim pointer-events-none" />
+        <View class="absolute inset-2.25 rounded-full inset-ring-hairline inset-ring-rim pointer-events-none" />
         <Show when={props.showValue}>
           <View class="absolute inset-0 flex-row items-center justify-center">
             <Text class="text-display-sm font-bold tabular-nums whitespace-nowrap text-fg text-shadow-xs">{formatNumber(props.value)}</Text>

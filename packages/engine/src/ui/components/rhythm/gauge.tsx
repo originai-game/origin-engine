@@ -36,7 +36,7 @@ export function RhythmGauge(props: RhythmGaugeProps) {
       data-ready={props.ready}
     >
       <View
-        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well shadow-plate ring ring-rim data-danger:shadow-glow data-danger:shadow-foe data-danger:ring data-danger:ring-foe data-danger:animate-pulse data-ready:shadow-glow-lg data-ready:inset-ring-1 data-ready:inset-ring-rim`}
+        class={`relative flex-1 min-h-0 w-6.5 compact:w-4 overflow-hidden -skew-y-12 group-data-side-end/gauge:skew-y-12 bg-well shadow-plate ring ring-rim data-danger:shadow-glow data-danger:shadow-foe data-danger:ring data-danger:ring-foe data-danger:animate-pulse data-ready:shadow-glow-lg data-ready:inset-ring-hairline data-ready:inset-ring-rim`}
         role="meter"
         label={(props.kind ?? "life") === "fever" ? t("rhythm.gauge.fever") : t("rhythm.gauge.life")}
         valueMin={0}

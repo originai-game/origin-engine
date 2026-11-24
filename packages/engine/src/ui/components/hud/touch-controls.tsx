@@ -51,7 +51,7 @@ const ENGINE_DEAD_ZONE = 0.15;
 function Stick(props: { action: string; deadZone: number; disabled: boolean; label: string }) {
   return (
     <View
-      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:bg-tile-pressed disabled:opacity-45"
+      class="relative size-40 compact:size-28 rounded-full border-rim bg-tile shadow-plate active:bg-tile-pressed disabled:opacity-dim"
       role="slider"
       label={props.label}
       valueMin={-1}
@@ -77,7 +77,7 @@ function Stick(props: { action: string; deadZone: number; disabled: boolean; lab
 function Pad(props: { action: string; disabled: boolean; label: string }) {
   const arm = "absolute inset-0 nine-cross-arm bg-transparent";
   return (
-    <View class="group/pad relative size-40 compact:size-28 nine-cross bg-tile active:scale-97 disabled:opacity-45" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
+    <View class="group/pad relative size-40 compact:size-28 nine-cross bg-tile active:scale-97 disabled:opacity-dim" role="group" label={props.label} disabled={props.disabled} touchPad={props.action}>
       <View class={`${arm} group-data-dir-up/pad:bg-accent`} />
       <View class={`${arm} rotate-90 group-data-dir-right/pad:bg-accent`} />
       <View class={`${arm} rotate-180 group-data-dir-down/pad:bg-accent`} />

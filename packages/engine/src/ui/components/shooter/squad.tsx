@@ -51,7 +51,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
           const cells = () => ((props.segment ?? 25) > 0 ? Math.floor((m().shieldMax ?? 0) / (props.segment ?? 25)) : 1);
           return (
             <View
-              class={`flex-1 flex-col gap-y-1 min-w-0 opacity-100 data-down:opacity-60`}
+              class={`flex-1 flex-col gap-y-1 min-w-0 opacity-100 data-down:opacity-muted`}
               role="group"
               label={m().status ? t("shooter.squad.mate", { name: m().name, status: m().status }) : m().name}
               data-down={down()}
@@ -64,7 +64,7 @@ export function ShooterSquad(props: ShooterSquadProps) {
                         <Icon class="size-1/2 text-fg-muted" name="person" />
                       </View>
                     }>
-                      <Image class="size-full data-out:opacity-45" src={m().portrait ?? 0} data-out={m().state == "out"} />
+                      <Image class="size-full data-out:opacity-dim" src={m().portrait ?? 0} data-out={m().state == "out"} />
                     </Show>
                   </View>
                 </View>

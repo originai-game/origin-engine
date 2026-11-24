@@ -56,7 +56,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
       role="image"
       label={t("shooter.radar.name")}
     >
-      <View class="absolute inset-0 overflow-hidden rounded-full bg-tile ring-2 ring-plate-lo shadow-float">
+      <View class="absolute inset-0 overflow-hidden rounded-full bg-tile ring-regular ring-plate-lo shadow-float">
         <Show when={(props.map ?? 0) > 0}>
           <Image
             class="absolute"
@@ -70,7 +70,7 @@ export function ShooterRadar(props: ShooterRadarProps) {
         <For each={props.blips ?? []} key={(b) => b.id}>
           {(b) => (
             <View
-              class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:ring-2 data-ally:ring-material-thick data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-glow-sm data-foe:shadow-foe data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
+              class={`absolute size-2.25 compact:size-1.75 -translate-x-1/2 -translate-y-1/2 data-ally:rounded-full data-ally:bg-ally data-ally:ring-regular data-ally:ring-material-thick data-foe:rotate-45 data-foe:bg-danger data-foe:shadow-glow-sm data-foe:shadow-foe data-objective:size-3.25 data-objective:rotate-45 data-objective:bg-gold`}
               label={b().label}
               style={{
                 left: at(b().x, cx()),

@@ -121,7 +121,7 @@ export function Nameplate(props: NameplateProps) {
       <Show when={health() >= 0 && !props.dead}>
         <View class="relative flex-row items-center gap-x-1.25">
           <View
-            class={`relative h-2 w-29 bg-track group-data-boss:h-2.5 group-data-boss:w-50 group-data-compact:h-1.5 group-data-compact:w-14.5 ${props.targeted ? (elite() ? "ring-2 ring-knob" : "shadow-glow shadow-sheen ring-2 ring-knob") : elite() ? "shadow-plate ring ring-gold" : "shadow-plate ring ring-rim"}`}
+            class={`relative h-2 w-29 bg-track group-data-boss:h-2.5 group-data-boss:w-50 group-data-compact:h-1.5 group-data-compact:w-14.5 ${props.targeted ? (elite() ? "ring-regular ring-knob" : "shadow-glow shadow-sheen ring-regular ring-knob") : elite() ? "shadow-plate ring ring-gold" : "shadow-plate ring ring-rim"}`}
             role="meter"
             label={t("world.nameplate.health")}
             valueMin={0}
@@ -130,7 +130,7 @@ export function Nameplate(props: NameplateProps) {
             valueText={`${formatNumber(hp() * 100, { decimals: 0 })}%`}
           >
             <View class="absolute inset-0 overflow-hidden">
-              <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-300 delay-400 ease-out" style={{ width: `${hp() * 100}%` }} />
+              <View class="absolute left-0 top-0 bottom-0 bg-gold-hi transition-layout duration-300 delay-slow ease-out" style={{ width: `${hp() * 100}%` }} />
               <View class="absolute left-0 top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-50% bg-gold group-data-reaction-hostile:bg-danger group-data-reaction-friendly:bg-success group-data-reaction-player:bg-hud-accent" style={{ width: `${hp() * 100}%` }} />
               <Show when={(props.shield ?? 0) > 0}>
                 <View class="absolute top-0 bottom-0 bg-linear-to-b from-sheen to-transparent to-42% bg-info" style={{ left: `${hp() * 100}%`, width: `${Math.min(props.shield ?? 0, 1) * 100}%` }} />

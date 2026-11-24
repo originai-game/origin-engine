@@ -120,7 +120,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
               <View class={`grid grid-cols-fit-48.5 gap-3 compact:grid-cols-1 compact:gap-1 short:grid-cols-1 short:gap-1 ${packClass("List", "cascade")}`}>
                 <For each={props.stats}>
                   {(s) => (
-                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-45 compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
+                  <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-control justify-between py-3 px-4 gap-2 data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim compact:flex-row compact:min-h-0 compact:items-center compact:py-2 compact:px-3 short:flex-row short:min-h-0 short:items-center short:py-1 short:px-3 ${packClass("List", "item")}`} data-best={s().best}>
                     <View class="flex-row flex-wrap items-center justify-between gap-1 compact:justify-start compact:grow compact:shrink compact:basis-0 short:justify-start short:grow short:shrink short:basis-0">
                       <Text class={`tracking-label uppercase text-fg-muted text-xs font-semibold m-0 shrink`}>
                         {s().name}
@@ -150,7 +150,7 @@ export function ResultsScreen(props: ResultsScreenProps) {
                   <View class={`flex-row flex-wrap gap-3 ${packClass("List", "cascade")}`}>
                     <For each={props.rewards}>
                       {(r) => (
-                      <View class={`text-fg transition duration-317 items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-45 compact:w-24 shrink ${packClass("Reward", "pop")}`}>
+                      <View class={`text-fg transition duration-control items-center w-29 rounded-button data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 data-locked:scale-100 data-down:opacity-dim compact:w-24 shrink ${packClass("Reward", "pop")}`}>
                         <View class="bg-linear-to-b from-rim-strong via-rim via-45% to-rim-soft p-0.75 gap-2 size-26 compact:size-17">
                           <Art class="absolute bg-linear-to-b from-plate-hi to-plate-lo object-cover inset-0" kind="itemIcon" src={r().texture} />
                           <Show when={!r().texture && r().icon}>

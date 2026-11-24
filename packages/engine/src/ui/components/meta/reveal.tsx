@@ -92,7 +92,7 @@ export function Reveal(props: RevealProps) {
                                   </Text>
                                 </Show>
                                 <Show when={reward().fresh}>
-                                  <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-glow-sm ring-2 ring-shade-deep size-1 rounded-capsule`} label={t("meta.new")} />
+                                  <View class={`bg-hud-accent text-fg absolute right-2 top-2 shadow-glow-sm ring-regular ring-shade-deep size-1 rounded-capsule`} label={t("meta.new")} />
                                 </Show>
                               </View>
                             </Flourish>

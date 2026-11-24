@@ -83,14 +83,14 @@ export function StrategyCommands(props: StrategyCommandsProps) {
           <Show when={c().name} fallback={
               <View class={`h-12.75 nine-plate-cut bg-sheen`} />
           }>
-            <View class={`h-12.75 flex-row items-center justify-center gap-1 group/cmd flex p-0.5 nine-plate-cut bg-layer-3 data-active:bg-hud-accent disabled:opacity-45 text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
+            <View class={`h-12.75 flex-row items-center justify-center gap-1 group/cmd flex p-0.5 nine-plate-cut bg-layer-3 data-active:bg-hud-accent disabled:opacity-dim text-fg ${packClass("Button", "plate")}`} role="button" label={c().name} description={c().reason ? c().reason : c().readyText ? c().readyText : c().detail} pressed={c().active} disabled={!c().enabled || !c().affordable} data-cooling={c().cooldown > 0} data-active={c().active} onPress={(e) => props.onCommand?.(e, c().id)}>
               <View class="relative size-full overflow-hidden">
                 <Show when={c().icon} fallback={
                     <View class="absolute inset-0 flex-row items-center justify-center bg-linear-to-b from-plate-hi to-plate-lo">
                       <Icon class={`size-11/20`} name={c().glyph} />
                     </View>
                 }>
-                  <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-45`} src={c().icon} />
+                  <Image class={`absolute inset-0 size-full group-disabled/cmd:opacity-dim`} src={c().icon} />
                 </Show>
                 <Show when={c().cooldown > 0}>
                   <View

@@ -86,7 +86,7 @@ export function Profile(props: ProfileProps) {
                             <View class={`grid grid-cols-fill-50 compact:grid-cols-1`} role="list" label={t("profile.stats")}>
                               <For each={props.stats}>
                                 {(s) => (
-                                <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-317 py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent data-locked:scale-100 data-down:opacity-45 compact:py-1 compact:px-3`} role="listitem">
+                                <View class={`nine-plate-cut bg-plate-hi text-fg transition duration-control py-2 px-3 gap-1 data-selected:border-accent data-done:border-success active:border-accent data-locked:scale-100 data-down:opacity-dim compact:py-1 compact:px-3`} role="listitem">
                                   <View class={`font-semibold text-xs leading-snug text-fg-muted tracking-label uppercase`}>
                                     <Text>{s().label}</Text>
                                   </View>
@@ -116,7 +116,7 @@ export function Profile(props: ProfileProps) {
                       <For each={props.actions}>
                         {(a) => (
                         <View class="grow shrink basis-0 gap-1">
-                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-label uppercase text-fg bg-raised-lo nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent disabled:opacity-45`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
+                          <View class={`flex-row items-center justify-center min-h-11 text-caption font-bold tracking-label uppercase text-fg bg-raised-lo nine-plate-cut text-center py-1 px-4 gap-1 hover:bg-raised-hi hover:bg-transparent disabled:opacity-dim`} role="button" disabled={a().disabled || a().pending} busy={a().pending} onPress={(e) => props.onAction?.(e, a().id)}>
                             <Text class="whitespace-normal">{a().pending ? t("profile.sending") : a().label}</Text>
                           </View>
                           <Show when={a().reason}>

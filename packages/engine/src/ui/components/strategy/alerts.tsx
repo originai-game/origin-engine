@@ -20,7 +20,7 @@ export function StrategyAlerts(props: StrategyAlertsProps) {
         {(a) => (
         <View class={`group/alert flex-row items-center gap-x-2 max-w-full min-w-0 pt-1 pr-3 pb-1 pl-0 compact:gap-x-1.5 compact:pt-0.75 compact:pr-2 compact:pb-0.75 bg-well`} label={a().kind === "danger" ? t("strategy.alerts.danger", { text: a().text }) : a().kind === "done" ? t("strategy.alerts.done", { text: a().text }) : a().text} data-danger={a().kind === "danger"} data-done={a().kind === "done"} data-info={a().kind === "info"} data-faded={a().faded}>
           <View class={`shrink self-stretch w-0.75 mr-1 bg-sheen group-data-danger/alert:bg-danger group-data-done/alert:bg-success group-data-info/alert:bg-hud-accent`} />
-          <View class={`shrink rotate-45 size-2 bg-sheen ring-2 ring-shade-deep group-data-danger/alert:bg-danger group-data-done/alert:bg-success group-data-info/alert:bg-hud-accent`} />
+          <View class={`shrink rotate-45 size-2 bg-sheen ring-regular ring-shade-deep group-data-danger/alert:bg-danger group-data-done/alert:bg-success group-data-info/alert:bg-hud-accent`} />
           <Text class={`min-w-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-stroke-3 text-stroke-bg group-data-faded/alert:text-fg-muted compact:text-caption`}>
             {a().text}
           </Text>

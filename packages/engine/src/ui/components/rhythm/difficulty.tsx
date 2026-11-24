@@ -38,7 +38,7 @@ export function RhythmDifficulty(props: RhythmDifficultyProps) {
             <For each={props.levels ?? []} key={(l) => l.id}>
               {(l) => (
                 <View
-                  class={`group/difficulty relative grow shrink basis-37.5 min-w-0 min-h-22 compact:min-h-11 flex-col items-stretch justify-start pt-3.25 compact:pt-1.75 px-4.5 compact:px-2.5 pb-2 compact:pb-1 transition duration-317 bg-tile hover:bg-glass shadow-none rounded-none data-selected:bg-surface-hover data-selected:inset-shadow-bar data-selected:inset-shadow-hud-accent data-selected:-translate-y-1.5 compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile disabled:shadow-none`}
+                  class={`group/difficulty relative grow shrink basis-37.5 min-w-0 min-h-22 compact:min-h-11 flex-col items-stretch justify-start pt-3.25 compact:pt-1.75 px-4.5 compact:px-2.5 pb-2 compact:pb-1 transition duration-control bg-tile hover:bg-glass shadow-none rounded-none data-selected:bg-surface-hover data-selected:inset-shadow-bar data-selected:inset-shadow-hud-accent data-selected:-translate-y-1.5 compact:data-selected:translate-y-0 disabled:opacity-55 disabled:bg-tile disabled:shadow-none`}
                   role="option"
                   label={t("rhythm.difficulty.ratingName", { label: l().label, rating: l().rating })}
                   selected={l().id === props.selected}

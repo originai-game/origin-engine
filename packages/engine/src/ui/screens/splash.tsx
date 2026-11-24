@@ -32,7 +32,7 @@ export function SplashScreen(props: SplashScreenProps) {
       <View class="items-center gap-y-6 w-full mt-auto">
         <For each={props.marks}>
           {(m) => (
-          <View class={`items-center gap-y-3 w-full transition-opacity duration-240 ease-out data-away:hidden data-away:transition-opacity data-away:duration-180 data-away:ease-in data-away:opacity-0 starting:opacity-0 data-hidden:hidden`} data-hidden={m().id !== props.mark} label={m().name} data-away={m().id !== props.mark}>
+          <View class={`items-center gap-y-3 w-full transition-opacity duration-base ease-out data-away:hidden data-away:transition-opacity data-away:duration-fast data-away:ease-in data-away:opacity-0 starting:opacity-0 data-hidden:hidden`} data-hidden={m().id !== props.mark} label={m().name} data-away={m().id !== props.mark}>
             <Show when={m().texture !== 0} fallback={
                 <Text class="max-w-full leading-tight font-bold tracking-kicker uppercase text-center text-shadow-xs text-shadow-bg m-0">
                   {m().name}
@@ -47,7 +47,7 @@ export function SplashScreen(props: SplashScreenProps) {
           <View class={`flex-row gap-x-1`}>
             <For each={props.marks}>
               {(m) => (
-              <View class={`bg-sheen w-4.5 h-0.5 transition-colors duration-317 rounded-capsule data-on:bg-none data-on:bg-sheen shrink`} data-on={m().id === props.mark} />
+              <View class={`bg-sheen w-4.5 h-0.5 transition-colors duration-control rounded-capsule data-on:bg-none data-on:bg-sheen shrink`} data-on={m().id === props.mark} />
               )}
             </For>
           </View>
@@ -63,7 +63,7 @@ export function SplashScreen(props: SplashScreenProps) {
             <Counter class="text-caption font-bold text-fg-muted" value={props.progress > 1 ? 1 : props.progress} format="percent" decimals={0} />
           </View>
           <View class={`bg-track shadow-sunk h-1 rounded-capsule overflow-hidden`}>
-            <View class={`bg-linear-to-r from-hud-accent to-sheen h-full shadow-glow-lg duration-317`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
+            <View class={`bg-linear-to-r from-hud-accent to-sheen h-full shadow-glow-lg duration-control`} style={{ width: `${(100 * (props.progress > 1 ? 1 : props.progress))}%` }} />
           </View>
         </View>
       </Show>

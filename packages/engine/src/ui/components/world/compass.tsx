@@ -71,7 +71,7 @@ function PoiCopy(props: { poi: CompassPoi; wrap: number; units: string }) {
       style={{ left: `calc(${((props.poi.bearing * K + props.wrap) / 9) * 100}% - 2.857rem)` }}
     >
       <Show when={(props.poi.icon ?? "") !== ""} fallback={
-        <View class={`size-2.5 m-0.25 rotate-45 ring-2 ring-entry-hi ${ink()[0]}`} />
+        <View class={`size-2.5 m-0.25 rotate-45 ring-regular ring-entry-hi ${ink()[0]}`} />
       }>
         <Icon class={`size-3 ${ink()[1]}`} name={props.poi.icon} />
       </Show>

@@ -151,7 +151,7 @@ export function RhythmResults(props: RhythmResultsProps) {
           label={t("rhythm.results.retry")}
           disabled={!props.canRetry}
           onPress={(e) => props.onRetry?.(e)}
-          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-raised-hi disabled:opacity-45 ${packClass("Button", "plate")}`}
+          class={`min-h-11 min-w-30 compact:flex-1 compact:min-w-0 flex-row items-center justify-center gap-1 px-2 rounded-control border border-rim text-fg hover:bg-raised-hi disabled:opacity-dim ${packClass("Button", "plate")}`}
         >
           <Text class={`text-caption font-bold tracking-label uppercase`}>{t("rhythm.results.retry")}</Text>
         </View>

@@ -53,7 +53,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <View class="grid grid-cols-3 auto-rows-[1fr] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-auto narrow:h-auto narrow:gap-3" focus-group="wrap">
           <For each={props.modes}>
             {(mode) => (
-            <View class={`group/mode min-h-80 narrow:min-h-42.5 text-fg transition duration-317 data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-45 hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
+            <View class={`group/mode min-h-80 narrow:min-h-42.5 text-fg transition duration-control data-selected:border-accent data-done:border-success active:border-accent disabled:text-fg-subtle disabled:scale-100 active:scale-96 active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-dim hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
               <View class={`grow shrink justify-end nine-panel-cut overflow-hidden`}>
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
                 <View class={`absolute bg-linear-to-b from-transparent from-35% via-scrim via-60% to-shade-deep inset-0`} />
@@ -76,7 +76,7 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
                     </View>
                   </Show>
                 </View>
-                <View class="absolute inset-shadow-lit inset-ring-1 inset-ring-rim inset-0 group-data-selection-on/mode:inset-shadow-lit group-data-selection-on/mode:inset-ring-2 group-data-selection-on/mode:inset-ring-hud-accent" />
+                <View class="absolute inset-shadow-lit inset-ring-hairline inset-ring-rim inset-0 group-data-selection-on/mode:inset-shadow-lit group-data-selection-on/mode:inset-ring-regular group-data-selection-on/mode:inset-ring-hud-accent" />
               </View>
             </View>
             )}

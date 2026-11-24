@@ -83,7 +83,7 @@ export function Shop(props: ShopProps) {
           <View class={`flex-row flex-wrap items-center justify-end max-w-full p-0 m-0 gap-1 compact:justify-start shrink`} label={t("general.shop.wallet")}>
             <For each={props.wallet}>
               {(w) => (
-              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-1 inset-ring-rim py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
+              <View class={`flex-row items-center max-w-full pr-2 pl-1 bg-glass inset-ring-hairline inset-ring-rim py-0.5 gap-1 rounded-capsule`} label={t("general.shop.amount", { amount: w().amount, currency: w().label })}>
                 <Icon class="size-5" name={w().icon} />
                 <Text class={`tabular-nums text-fg whitespace-nowrap font-bold text-ellipsis overflow-hidden shrink ${packClass("Count", "roll")}`}>
                   {w().amount}
@@ -143,7 +143,7 @@ export function Shop(props: ShopProps) {
                                 </Text>
                               </Show>
                               <Show when={o().badge}>
-                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                                <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                   {o().badge}
                                 </Text>
                               </Show>
@@ -214,7 +214,7 @@ export function Shop(props: ShopProps) {
                               </Text>
                             </Show>
                             <Show when={o().badge}>
-                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-317 absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
+                              <Text class={`font-bold text-xs leading-tight tabular-nums bg-gold text-gold-fg transition duration-control absolute top-2 tracking-label uppercase whitespace-nowrap text-ellipsis right-2 py-0.5 px-1 overflow-hidden data-tone-success:bg-none data-tone-success:bg-success data-tone-success:text-success-fg`} data-tone-success={(o().badgeTone) === 'success'}>
                                 {o().badge}
                               </Text>
                             </Show>
