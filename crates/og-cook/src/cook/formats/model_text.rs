@@ -1048,6 +1048,8 @@ pub(crate) fn material(
             "map",
             "normalMap",
             "normalScale",
+            "metalnessMap",
+            "aoMap",
             "transmission",
             "ior",
             "thickness",
@@ -1117,6 +1119,14 @@ pub(crate) fn material(
     }
     if let Some(t) = texture("normalMap")? {
         m["normalTexture"] = serde_json::json!({ "index": t, "scale": f.num("normalScale", 1.0)? });
+    }
+    // As in glTF and the model-program material: roughness in green,
+    // metalness in blue, and occlusion in its own map's red channel.
+    if let Some(t) = texture("metalnessMap")? {
+        m["pbrMetallicRoughness"]["metallicRoughnessTexture"] = serde_json::json!({ "index": t });
+    }
+    if let Some(t) = texture("aoMap")? {
+        m["occlusionTexture"] = serde_json::json!({ "index": t });
     }
     let mut ext = serde_json::Map::new();
     let transmission = unit("transmission", f.num("transmission", 0.0)?)?;

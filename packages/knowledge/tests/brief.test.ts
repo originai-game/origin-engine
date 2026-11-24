@@ -239,8 +239,27 @@ test("a look with no contract still asks for a whole asset", () => {
 
 test("the kinds of before stay first and in order: the UI kinds are added after them", () => {
   expect(ART_KINDS.slice(0, 8)).toEqual(["sprite", "tileset", "portrait", "backdrop", "prop", "character", "texture", "icon"]);
-  expect(ART_KINDS.slice(8, -1)).toEqual(Object.keys(UI_KINDS));
-  expect(ART_KINDS.at(-1)).toBe("keyframe");
+  expect(ART_KINDS.slice(8, -3)).toEqual(Object.keys(UI_KINDS));
+  expect(ART_KINDS.slice(-3)).toEqual(["keyframe", "material", "facade"]);
+});
+
+test("material and facade briefs keep the look but request unlit rectangular surface maps", () => {
+  const look = synthetic({ ArtCamera: { fixedAngle: true, pitch: 45 }, ArtTexels: { density: 48 } }, "3d", {
+    palette: { id: "p.hex", from: "ArtPalette.colors", colours: [{ name: "Brick", hex: "#a54c36" }] },
+  });
+  for (const kind of ["material", "facade"] as const) {
+    const b = artBrief(look, kind, "stock brick", { metres: 2, aspect: "2:1" });
+    expect(b.medium).toBe("image");
+    expect(b.image).toEqual({ width: 1024, height: 512, grid: null, tiling: true, transparent: false });
+    expect(b.prompt).toContain("#a54c36");
+    expect(b.prompt).toContain("covering 2 m across and 1 m up");
+    expect(b.prompt).not.toContain("45 degrees above");
+    expect(b.prompt).toContain("no perspective");
+  }
+  expect(artBrief(look, "material", "brick").prompt).toContain("both pairs of edges");
+  expect(artBrief(look, "facade", "a bay").prompt).toContain("top and bottom keep their architectural meaning and do not wrap");
+  expect(artBrief(look, "facade", "a tall bay", { aspect: "1:2" }).image).toMatchObject({ width: 512, height: 1024 });
+  expect(() => artBrief(look, "facade", "a bay", { aspect: "wide" })).toThrow(/not an aspect/);
 });
 
 test("a UI kind asks for its slot: the aspect, the focal point, the safe area and the size", () => {

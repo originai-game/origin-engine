@@ -73,7 +73,7 @@ break, with a `changelog.json` breaking entry):
 - `artBrief(look: BriefLook, kind: ArtKind, subject: string, options?:
   BriefOptions): ArtBrief`, pure. `kind` is one of `ART_KINDS`: `sprite`,
   `tileset`, `portrait`, `backdrop`, `prop`, `character`, `texture`,
-  `icon`, and last `keyframe` (an image-to-video model's first frame, at
+  `icon`, then the UI kinds below, `keyframe` (an image-to-video model's first frame, at
   `options.aspect`, 16:9 by default). `options.medium` sets a prop's or
   character's medium (`image` or `model`) over the profile's. `options.references` are the game's accepted assets (paths or
   URLs), passed on after the style's preview; `options.metres` is the
@@ -86,7 +86,12 @@ break, with a `changelog.json` breaking entry):
   `saveThumb`, `menuBackground`, `menuPattern`, `banner`, `playerBanner`,
   `emblem`, `achievement`, `emote`, `currency`, `mapGlyph`, `talentIcon`,
   `tutorial`, `cosmeticPreview`, `styleFrame`, `styleButton`, `ornament`,
-  `iconSet`. For them `options.aspect` (`w:h`, one the kind allows,
+  `iconSet`. After `keyframe` come `material` (unlit tileable base colour)
+  and `facade` (an orthographic module repeating across only), both using
+  `options.metres` across and `options.aspect` to describe the covered
+  rectangle, with an opaque image and no sprite grid. Their requests feed
+  `og materials make` (districts guide §4), not runtime generation.
+  For the UI kinds `options.aspect` (`w:h`, one the kind allows,
   `uiAllows(kind, aspect)`), `options.cells` (an item's inventory cells)
   and `options.insets` (a nine-slice's, fractions) apply, and the brief
   carries `ui: UiParams { aspect, aspects, focal, safe, fit, legiblePx,

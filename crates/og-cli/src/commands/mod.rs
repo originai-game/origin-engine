@@ -22,6 +22,7 @@ pub(super) mod flow;
 pub(super) mod fmt;
 pub(super) mod frame;
 pub(super) mod i18n;
+pub(super) mod materials;
 pub(super) mod mcp;
 pub(super) mod migrate;
 pub(super) mod model;

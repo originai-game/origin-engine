@@ -106,7 +106,9 @@ impl<'a> Library<'a> {
         Ok(Look {
             material: m.name.clone(),
             tile: DVec2::new(m.tile[0], m.tile[1]),
-            phase: DVec2::new(d.unit(), d.unit()),
+            // Grammar v is negative height: a facade's bottom row is
+            // at ground level (v=1), never slid to a random storey.
+            phase: DVec2::new(d.unit(), if m.facade { 1.0 } else { d.unit() }),
             color: [color[0], color[1], color[2], 1.0],
         })
     }

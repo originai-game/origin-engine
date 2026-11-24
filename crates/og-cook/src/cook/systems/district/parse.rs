@@ -448,13 +448,37 @@ pub(crate) struct Material {
     /// Each building's own brightness and warmth, up to these either way.
     pub value: f64,
     pub warmth: f64,
+    /// What its maps show, for an image model to draw (`brief`), and
+    /// whether that is a facade module (`facade true`) rather than a
+    /// tileable surface. `og materials` reads them; the cook also keeps
+    /// a facade's bottom image row at the building's base.
+    pub brief: Option<String>,
+    pub facade: bool,
+    /// How many metres of height the source image's darkest to lightest
+    /// span, for the normal map `og materials make` derives (0: none;
+    /// below 0, the lighter is lower, as pale mortar between bricks).
+    pub relief: f64,
+    /// Linear roughness at black and white; optional derived packed map.
+    pub roughness_range: Option<[f64; 2]>,
+    /// Cavity darkening strength and sampling radius in texels.
+    pub occlusion: Option<[f64; 2]>,
     /// Its glTF fields, as `type model`'s `material` block takes them;
     /// `map` and `normalMap` name asset ids.
     pub fields: Block,
 }
 
 /// The keys of a library's material that are not the drawn material's.
-const OWN: [&str; 4] = ["label", "weight", "tile", "vary"];
+const OWN: [&str; 9] = [
+    "label",
+    "weight",
+    "tile",
+    "vary",
+    "brief",
+    "facade",
+    "relief",
+    "roughnessRange",
+    "occlusion",
+];
 
 /// Reads a material library's text.
 pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
@@ -504,6 +528,36 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
                 return Err(at(v, "value and warmth are 0 to 0.5"));
             }
         }
+        let brief = b.get("brief").map(text).transpose()?;
+        let facade = b.get("facade").map(flag).transpose()?.unwrap_or(false);
+        let relief = b.get("relief").map(one).transpose()?.unwrap_or(0.0);
+        let roughness_range = b.get("roughnessRange").map(range).transpose()?;
+        if roughness_range.is_some_and(|v| v.iter().any(|v| !(0.0..=1.0).contains(v))) {
+            return Err(at(
+                e,
+                "roughnessRange gives roughness at black and white, both 0 to 1",
+            ));
+        }
+        let occlusion = b.get("occlusion").map(range).transpose()?;
+        if occlusion.is_some_and(|v| {
+            !(0.0..=1.0).contains(&v[0]) || !(1.0..=64.0).contains(&v[1]) || v[1].fract() != 0.0
+        }) {
+            return Err(at(
+                e,
+                "occlusion takes strength (0 to 1) and a whole radius (1 to 64 texels)",
+            ));
+        }
+        if !(-1.0..=1.0).contains(&relief) {
+            return Err(at(e, "relief is -1 to 1 m"));
+        }
+        if (facade || relief != 0.0 || roughness_range.is_some() || occlusion.is_some())
+            && brief.is_none()
+        {
+            return Err(at(
+                e,
+                "facade and relief are for the maps `og materials make` makes: the material states its `brief`",
+            ));
+        }
         let fields = Block {
             entries: b
                 .entries
@@ -519,6 +573,11 @@ pub(crate) fn materials(source: &str) -> Result<Vec<Material>, String> {
             tile,
             value,
             warmth,
+            brief,
+            facade,
+            relief,
+            roughness_range,
+            occlusion,
             fields,
         });
     }

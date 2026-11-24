@@ -74,8 +74,10 @@ pub(super) fn write(
         let mut fields = Block::new();
         for e in &m.fields.entries {
             let mut e = e.clone();
-            if matches!(e.key.as_str(), "map" | "normalMap")
-                && let Some(Value::String(id)) = e.values.first()
+            if matches!(
+                e.key.as_str(),
+                "map" | "normalMap" | "metalnessMap" | "aoMap"
+            ) && let Some(Value::String(id)) = e.values.first()
             {
                 e.values[0] = Value::String(uri(crate::runtime::asset_id(id)));
             }

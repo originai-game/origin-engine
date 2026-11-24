@@ -42,7 +42,8 @@ const DISTRICT: &str = "type district\nversion 1\n---\nseed 3\nregion {\n  point
 fn a_district_cooks_into_streaming_cells_of_its_own_models() {
     let root = project("cells");
     write(&root, "grammars/house.ogt", GRAMMAR);
-    write(&root, "materials/town.ogt", LIBRARY);
+    let library = LIBRARY.replace("  tile 1 1", "  tile 1 12\n  brief \"red brick facade\"\n  facade true\n  relief 0.03\n  normalMap \"textures/brick-n.png\"\n  roughnessRange 0.3 0.9\n  metalnessMap \"textures/brick-mr.png\"\n  occlusion 0.7 2\n  aoMap \"textures/brick-ao.png\"");
+    write(&root, "materials/town.ogt", &library);
     write(&root, "models/lamp.ogt", LAMP);
     write(&root, "districts/town.ogt", DISTRICT);
     let px: Vec<u8> = (0..16 * 16)
@@ -56,6 +57,16 @@ fn a_district_cooks_into_streaming_cells_of_its_own_models() {
         image::ColorType::Rgba8,
     )
     .unwrap();
+    let source = std::fs::read(root.join("assets/textures/brick.png")).unwrap();
+    let request = og_cook::cook::materials::requests(&library)
+        .unwrap()
+        .remove(0);
+    for (id, bytes) in og_cook::cook::materials::make(&request, &source)
+        .unwrap()
+        .files
+    {
+        std::fs::write(root.join("assets").join(id), bytes).unwrap();
+    }
     let report = cook(&root);
     assert!(report.ok(), "{:?}", report.errors());
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
@@ -90,7 +101,36 @@ fn a_district_cooks_into_streaming_cells_of_its_own_models() {
         let names: Vec<&str> = m.materials.iter().map(|x| x.name.as_str()).collect();
         assert!(names.contains(&"asphalt"), "{names:?}");
         if names.contains(&"brick") {
-            assert!(!m.textures.is_empty(), "the brick reads its map");
+            for p in m
+                .primitives
+                .iter()
+                .filter(|p| m.materials[p.material].name == "brick")
+            {
+                let bottom = p
+                    .vertices
+                    .iter()
+                    .map(|v| v.uv[1])
+                    .fold(f32::NEG_INFINITY, f32::max);
+                assert!(
+                    (bottom - 1.0).abs() < 1e-6,
+                    "a facade's bottom image row starts at ground level, not a random vertical phase: {bottom}"
+                );
+            }
+            let brick = m.materials.iter().find(|m| m.name == "brick").unwrap();
+            // Each slot must survive the district's asset-id rewriting
+            // and packing, not just the ordinary model parser.
+            let mut slots = std::collections::BTreeSet::new();
+            for slot in [
+                brick.base_color_texture,
+                brick.normal_texture,
+                brick.metallic_roughness_texture,
+                brick.occlusion_texture,
+            ] {
+                assert!(
+                    slots.insert(slot.expect("a derived map")),
+                    "each slot has its own map"
+                );
+            }
         }
     }
     assert!(buildings > 10, "{buildings} buildings");

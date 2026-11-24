@@ -10,8 +10,8 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, mcp, migrate, model,
-    prefab, probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui,
+    cost, create, dev, doctor, explore, export, flow, fmt, frame, i18n, materials, mcp, migrate,
+    model, prefab, probe, render, replay, run, serve_relay, session, sfx, sprite, style, test, ui,
     upgrade, vfx_import, vfx_preview, video, world_server,
 };
 mod api_lookup;
@@ -199,6 +199,13 @@ commands:
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
                       write one as an asset `og cook` synthesises (or render it to a WAV),
                       or write the whole library
+  materials brief <library.ogt> [--json]
+  materials make <library.ogt> [--json]
+                      a material library's maps from images an image model draws: list the
+                      images its briefed materials ask for (art brief kind, metres, where each
+                      goes), or make each map periodic (a facade module across only) and its
+                      authored normal, packed roughness and cavity maps, reporting seams (the
+                      districts guide)
   sprite inspect <file.gif|.webp|.png|sheet.ogt> [--key auto|off|#rrggbb] [--tolerance T]
       [--holes] [--out <frames.png>] [--json]
                       measure an animated sprite source or a flipbook sheet built from them:
@@ -485,6 +492,7 @@ fn main() -> ExitCode {
         ["api", rest @ ..] => api::run(rest),
         ["prefab", rest @ ..] => prefab::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
+        ["materials", rest @ ..] => materials::run(rest),
         ["sprite", rest @ ..] => sprite::run(rest),
         ["video", rest @ ..] => video::run(rest),
         ["flow", rest @ ..] => flow::run(rest),

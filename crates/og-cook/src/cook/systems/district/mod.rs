@@ -30,7 +30,7 @@
 
 mod build;
 mod glb;
-mod parse;
+pub(crate) mod parse;
 mod texts;
 
 use super::*;

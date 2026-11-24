@@ -72,6 +72,7 @@ mod cli {
     mod export;
     mod i18n;
     mod maintenance;
+    mod materials;
     mod mcp;
     mod model;
     mod model_fbx;

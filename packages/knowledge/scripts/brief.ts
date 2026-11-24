@@ -42,7 +42,7 @@ export const ART_KINDS = [
   "abilityIcon", "cardArt", "cardFrame", "unitPortrait", "levelThumb", "songJacket", "saveThumb", "menuBackground",
   "menuPattern", "banner", "playerBanner", "emblem", "achievement", "emote", "currency", "mapGlyph", "talentIcon",
   "tutorial", "cosmeticPreview", "styleFrame", "styleButton", "ornament", "iconSet",
-  "keyframe",
+  "keyframe", "material", "facade",
 ] as const;
 export type ArtKind = (typeof ART_KINDS)[number];
 
@@ -532,6 +532,10 @@ function opening(kind: ArtKind, subject: string, medium: "image" | "model", metr
       return medium === "model" ? `A 3D game character of ${subject}, full body in a neutral standing pose, about ${metres} m tall, facing the front.` : `A game character sprite of ${subject}, full body, standing.`;
     case "texture":
       return `A seamless tiling surface texture of ${subject}, seen straight on and evenly lit.`;
+    case "material":
+      return `The base colour of ${subject} for a PBR surface material, seamless across both pairs of edges, seen straight on with no perspective. Show the surface's own colours only: no illumination, shadows, highlights, ambient occlusion or specular reflections painted in. Fill the image edge to edge, no border or labels.`;
+    case "facade":
+      return `The base colour of one facade module showing ${subject}, seen straight on in an orthographic elevation with no perspective. Its left and right edges meet copies of the module along a street; its top and bottom keep their architectural meaning and do not wrap. No illumination, shadows, highlights or reflections painted in. Fill the image edge to edge, no border or labels.`;
     case "icon":
       return `A UI icon of ${subject}: one bold shape that reads at a glance.`;
     case "keyframe":
@@ -562,6 +566,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   if (options.medium !== undefined && !either) throw new Error(`a ${kind} is an image; only a prop or a character takes medium (image or model)`);
   const medium: "image" | "model" = either ? (options.medium ?? (profile === "3d" ? "model" : "image")) : "image";
   const metres = options.metres !== undefined && options.metres > 0 ? options.metres : (DEFAULT_METRES[kind] ?? 1);
+  const surface = kind === "material" || kind === "facade";
   const uiSpec: UiKindSpec | null = isUi(kind) ? UI_KINDS[kind] : null;
   const lines: string[] = [opening(kind, what, medium, metres)];
   const avoid: string[] = [...(style?.artBible.avoid ?? [])];
@@ -612,7 +617,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   let uiParams: UiParams | undefined;
   if (medium === "image") {
     const transparent = uiSpec ? uiSpec.transparent : kind === "sprite" || kind === "icon" || kind === "portrait" || kind === "prop" || kind === "character";
-    const tiling = uiSpec ? uiSpec.tiling : kind === "tileset" || kind === "texture";
+    const tiling = uiSpec ? uiSpec.tiling : kind === "tileset" || kind === "texture" || surface;
     let grid: { width: number; height: number } | null = null;
     const pixelArt = unit > 0 || sizes.length > 0;
     if (uiSpec) {
@@ -688,6 +693,8 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
         conform,
         generated: uiSpec.generated,
       };
+    } else if (surface) {
+      grid = null; // maps use the texel contract, not a sprite's grid
     } else if (kind === "texture" && density > 0) {
       grid = null; // a 3D surface: texels, below
     } else if (kind === "keyframe") {
@@ -744,6 +751,14 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
       );
       if (sizes.length > 0 && (kind === "sprite" || kind === "prop" || kind === "character")) lines.push(`Cells: each side of a sprite cell is one of ${sizes.join(", ")} logical pixels.`);
       avoid.push("anti-aliased or blurred edges", "soft gradients", "pixels of more than one size");
+    } else if (surface) {
+      const aspect = options.aspect ?? "1:1";
+      const [aw, ah] = aspectOf(aspect) ?? (() => { throw new Error(`'${aspect}' is not an aspect: write w:h, such as 2:1`); })();
+      const side = Math.max(textureSide(metres), GENERATED);
+      const width = Math.max(8, Math.round(side * Math.min(1, aw / ah) / 8) * 8);
+      const height = Math.max(8, Math.round(side * Math.min(1, ah / aw) / 8) * 8);
+      image = { transparent: false, width, height, grid: null, tiling };
+      lines.push(`Size: ${width} x ${height} pixels covering ${metres} m across and ${metres * ah / aw} m up; the maps are resampled by the authoring tool, then sampled with the look's ${filter} filter.`);
     } else if (kind === "texture") {
       const side = textureSide(metres);
       // Nearest-sampled texels are pixel art: drawn at a whole multiple, as a sprite's grid. Others are drawn at the generator's size and resampled by the cook.
@@ -837,7 +852,7 @@ export function artBrief(look: BriefLook, kind: ArtKind, subject: string, option
   if ((kind === "sprite" || kind === "character") && (stepFps > 0 || maxFrames > 0)) {
     lines.push(`Motion: if animated, ${[stepFps > 0 && `each pose held at ${stepFps} frames a second`, maxFrames > 0 && `at most ${maxFrames} frames a clip`].filter(Boolean).join(", ")}.`);
   }
-  if (kind !== "texture" && kind !== "icon" && kind !== "portrait" && !uiSpec) {
+  if (kind !== "texture" && !surface && kind !== "icon" && kind !== "portrait" && !uiSpec) {
     const seen: string[] = [];
     if (bool(camera.fixedAngle)) {
       const pitch = num(camera.pitch);
@@ -1201,7 +1216,7 @@ prompt, then the references and the generator's parameters.
   --mood       with --look, the mood a game would ask of it (${MOODS.join(", ")})
   --reference  an accepted asset of the game to pass as a reference (repeat)
   --metres     the asset's size in metres (a prop 1, a character 2)
-  --aspect     a UI kind's aspect, w:h (one its slot allows)
+  --aspect     image aspect, w:h (a UI kind allows only its slot's aspects)
   --json       the whole brief as JSON
 
 audio [--project <dir>] [--music --mood --genre] [--premise "<line>"] [--json]

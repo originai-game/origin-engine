@@ -254,7 +254,77 @@ cells {
    the game ships in the district, not in code.
 
 <a id="guide-districts-4"></a>
-### `districts §4` Pitfalls
+### `districts §4` A library from generated images
+
+Keep image generation at authoring time. A library may describe what each
+surface looks like; the engine turns those descriptions into requests and
+processes the returned images, but calls no image service:
+
+```text
+material "stock-brick" {
+  label wall
+  label jamb
+  tile 2 1
+  brief "yellow London stock brick, irregular fired faces, pale lime mortar"
+  map "textures/stock.png"
+  relief -0.015
+  normalMap "textures/stock-n.png"
+  roughness 1
+  roughnessRange 0.75 0.95
+  metalnessMap "textures/stock-mr.png"
+  occlusion 0.5 3
+  aoMap "textures/stock-ao.png"
+}
+```
+
+1. Run `og materials brief assets/materials/london.ogt --json`. Each
+   request has the project's look, palette and accepted style, an image
+   size and tile metres, its `requestHash` and a `source` asset id. Pass
+   the returned `brief` to the authoring platform's image tool, not a
+   second hand-written prompt. It asks for base colour without baked
+   light or perspective. A facade module adds `facade true`: its left and
+   right edges repeat, but its ground and roof must not meet. The cook
+   anchors its bottom row at the building base instead of varying its
+   vertical phase. Set its tile height to the facade height: a module is
+   not automatically stretched to fit buildings of different heights.
+2. Save each returned image at `assets/<source>`, for example
+   `assets/textures/stock.source.png`. Requests are stable until the look,
+   style or subject changes; record the hash with the generated asset.
+3. Run `og materials make assets/materials/london.ogt --json`. It
+   resamples each side down to a power of two (at least 8 texels), removes
+   the smooth boundary discontinuity with periodic-plus-smooth
+   decomposition, then writes the named PNG maps. A facade is processed
+   across only. This reduces edge steps; it cannot align brick courses or
+   repair an incorrectly drawn window. Inspect several repeats before
+   accepting the asset.
+4. Inspect `seamBefore`, `seamAfter` and `interior` (mean neighbouring
+   texel step), dimensions and texels per metre. These are facts, not a
+   quality score. Missing sources are listed with exit 1, invalid input
+   exits 2. The cache in `.og/materials/` keys source bytes and processing
+   options, and verifies output hashes before reusing a result. Editing a
+   source or option, or damaging an output, causes it to be remade.
+5. Keep the accepted sources and maps in the platform's asset store. For
+   an engine fixture use `bun scripts/assets.ts pin <fixture-dir> <paths...>`
+   and `push <fixture-dir>`, recording the request hash in the manifest's
+   `source`. Commit the manifest and ignore rules, not the image binaries.
+   The ordinary cook packs the maps; nothing generates images at runtime.
+
+Derived maps are optional, authored approximations, not physical
+measurements inferred by AI. `relief` gives metres from black to white in
+linear luminance: negative relief sinks pale mortar. It needs a
+`normalMap` destination. `roughnessRange` gives linear roughness at black
+and white (either order, both 0 to 1), written to `metalnessMap`'s green
+channel; blue is 1, multiplied by the material's `metalness` as in glTF.
+`occlusion` gives cavity darkening strength (0 to 1) and a whole sampling
+radius (1 to 64 texels), written to `aoMap`, and needs nonzero relief.
+Omit these derivations to keep independently authored PBR maps. Only
+materials with a `brief` are processed; every generated destination is a
+distinct PNG under `assets/`, and the tool does not follow asset symlinks.
+`og model bake` still transfers a model's own geometry and materials; it
+does not call an image model or replace this surface-image workflow.
+
+<a id="guide-districts-5"></a>
+### `districts §5` Pitfalls
 
 - A label no material covers fails the cook, naming the label and the
   grammar; a typo in a grammar's `label` is the usual cause.

@@ -17,7 +17,8 @@ An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `t
 - `material "<name>" { ... }`: glTF metallic-roughness, by three.js
   names: `color` (linear, as `baseColorFactor`), `opacity`, `metalness`,
   `roughness`, `emissive`, `emissiveIntensity`, `doubleSided`,
-  `alphaTest`, `map` and `normalMap` (image files beside the model),
+  `alphaTest`, `map`, `normalMap`, `metalnessMap` (roughness in green,
+  metalness in blue) and `aoMap` (occlusion in red), image files beside the model,
   `normalScale`, `transmission`, `ior`, `thickness`, `clearcoat`,
   `clearcoatRoughness`, and a leaf's `translucency`, `domeNormals`,
   `season`, `autumnColor`, `autumnColor2` and `seasonShift`.

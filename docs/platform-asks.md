@@ -343,3 +343,23 @@ for the current shape and again whenever it changes (docs/design.md §2.6).
 most 128×128. Desktop shows the image with its hotspot over the Preview
 (scaled by the window's scale factor), else the keyword's OS cursor. Until
 then the Preview keeps Desktop's arrow.
+
+## Material-library image requests
+
+**Ask 32, open.** Consume `og materials brief <library.ogt> --json` from
+the released engine for authoring-time material generation. Each request
+carries `material`, `tile`, `source`, `requestHash` and the complete
+`artBrief` result, including style references and palette. New kinds
+`material` and `facade` are opaque base-colour images without painted
+lighting: the former wraps both axes, the latter only horizontally. Keep
+the facade's ground and roof distinct even though `image.tiling` is true.
+
+Generate through the platform's existing paid image tool, store the bytes
+at `assets/<source>`, and record `requestHash` as provenance. Run
+`og materials make <library.ogt> --json` to prepare periodic colour and
+the optional authored normal, packed roughness and cavity maps. Pin the
+accepted sources and maps in the platform's asset store as ordinary game
+assets. A changed brief is a new request, not permission to overwrite art
+the maker accepted. The engine calls no paid service and performs no
+runtime inference. The districts guide §4 describes the processing and
+its limitations.

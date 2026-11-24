@@ -39,6 +39,7 @@ pub use formats::{
 use formats::{font, font_pack, model, motion, psd, scene, texture, timeline};
 pub mod conform;
 pub mod flow;
+pub mod materials;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
 mod schemas;
