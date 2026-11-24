@@ -479,7 +479,9 @@ are assets: give them again after a reload.
 **Buoyancy.** It floats a body on an og.WaterSurface, an og.Water (a flat
 lake, or a sea with a wind) or both. Put `{}` beside the body's og.RigidBody
 and og.Collider; it floats a body of the default density half under, as
-wood floats (`waterDensity` 1 hangs it just under the surface). Each
+wood floats (`waterDensity` 1 hangs it just under the surface). Set the
+water's finite `depth` first: zero on Water or WaterSurface disables its
+volume. The component works on 2D hulls over WaterLine too. Each
 cell of its hull under the surface pushes up by `waterDensity` × its share
 of the colliders' volume × (gravity plus the water's own acceleration), so a
 hull sinks with a crest that falls away rather than being flung clear. It
@@ -492,8 +494,9 @@ The same component floats what is not a rigid body. On an og.Ragdoll's
 entity its bones float while it is limp, so a body knocked into a river
 drifts off face down instead of sinking through the bed. On an
 og.CharacterController's entity the character is lifted and slowed as far
-as it is under and carried by the water's flow. Both count as density 1:
-`waterDensity` 2 floats them half under, under 1 they sink. With no
+as it is under and carried by the water's flow. A ragdoll displaces its
+actual bone collider volumes: choose density against its bone masses,
+not a fictitious mass-sized volume. With no
 og.Buoyancy a character walks the bed and a ragdoll sinks, as before.
 
 **Wading and swimming.** A character with og.Buoyancy needs no mode
@@ -530,22 +533,29 @@ draws or simulates it: an og.Water (a lake at its level, a sea with a
 - `og.physics.waterHeight` is the surface as it is drawn, waves and
   ripples included; outside the water it is the rest level.
 - `og.physics.water` asks by place instead of by entity: the highest
-  water over a point, the point's `depth` under it (negative over it), and
+  volume enclosing a point between its surface and floor, its `depth` under it, and
   the water's `velocity`, `acceleration` and `normal` there. It is null
-  over no water. Use it for anything the engine does not float for you: a
+  outside all volumes (including above the surface). Use it for anything the engine does not float for you: a
   swimmer (`depth` at the chest), a float that tilts with `normal`, debris
   carried by `velocity`, a camera that goes under (`depth` at the eye).
 - og.Buoyancy floats a hull, a limp ragdoll or a character on any of them.
 
 What differs is the lift. An og.Water alone lifts only bodies with
 og.Buoyancy; everything else sinks through it. og.WaterSurface and
-og.WaterLine also lift every body's box by their own `buoyancy`, so a pool
+og.WaterLine also lift bodies by their own `buoyancy`, so a pool
 of crates floats without a component on each. An og.Water drawn over a
 mesh (`geometry`, a lake that follows its shore) is still water standing
 only over the mesh's triangles, at their height as drawn (its entity's
 pose and scale included): og.physics.water and waterHeight answer it,
 og.Buoyancy floats on it and bodies crossing it splash, but it has no
 waves and no current.
+
+WaterLine solves conservative 1D shallow-water depth and momentum fluxes
+with CFL substeps; depth and gravity set the wave speed, rather than spring
+tension or neighbour-pass strength. WaterSurface likewise substeps without
+lowering waveSpeed. Enable its absorbing border by setting both
+spongeWidth (metres) and spongeDamping (per second); either zero disables
+absorption. Splashes are dt-scaled and horizontal hull motion raises wakes.
 
 Force fields. An og.ForceField accelerates what is inside the og.Volume
 beside it, a heavy body as a light one, so it is the tool for gravity that

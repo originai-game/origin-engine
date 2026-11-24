@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.physics.water`
 
-The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform.
+The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform.
 
 See `physics §8`.
 
@@ -27,7 +27,7 @@ Binding symbol `og_physics_water` · publish builds: kept
 
 ```ogt
 fn water {
-  doc "The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform."
+  doc "The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform."
   guide "physics §8"
   aliases "is underwater, water depth, in water, swimming, water current, flow velocity, wave normal, water at point"
   param world World "The world."
@@ -36,4 +36,4 @@ fn water {
 }
 ```
 
-<sub>Module `physics` line 2070</sub>
+<sub>Module `physics` line 2074</sub>

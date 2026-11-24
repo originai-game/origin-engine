@@ -8247,7 +8247,7 @@
         },
         {
           "name": "water",
-          "doc": "The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform.\nSee `physics §8`.",
+          "doc": "The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform.\nSee `physics §8`.",
           "params": [
             {
               "name": "world",
@@ -37727,7 +37727,7 @@
     "WaterSurface": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.",
+      "description": "3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights.",
       "type": "object",
       "properties": {
         "resolution": {
@@ -37747,6 +37747,14 @@
           "x-og-unit": "m",
           "x-og-tunable": true
         },
+        "depth": {
+          "type": "number",
+          "description": "Vertical depth below the surface; zero disables the water volume.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
         "waveSpeed": {
           "type": "number",
           "description": "How fast waves travel.",
@@ -37757,10 +37765,26 @@
         },
         "damping": {
           "type": "number",
-          "description": "How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping.",
+          "description": "Exponential wave velocity damping per second; zero preserves motion.",
           "default": 0.9,
           "minimum": 0,
           "maximum": 100,
+          "x-og-unit": "perSecond",
+          "x-og-tunable": true
+        },
+        "spongeWidth": {
+          "type": "number",
+          "description": "Width of the absorbing border; zero disables it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "spongeDamping": {
+          "type": "number",
+          "description": "Extra exponential damping at the outer edge; zero disables it.",
+          "default": 0,
+          "minimum": 0,
           "x-og-unit": "perSecond",
           "x-og-tunable": true
         },
@@ -37773,7 +37797,7 @@
         },
         "buoyancy": {
           "type": "number",
-          "description": "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink).",
+          "description": "Upward force per displaced cubic metre. Planar convex hulls and oriented boxes use clipped volume; other shapes approximate the immersed fraction. Zero disables lift.",
           "default": 9.81,
           "minimum": 0,
           "x-og-tunable": true
@@ -37792,7 +37816,7 @@
     "WaterLine": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.",
+      "description": "2D shallow water: a width × depth pool at the entity's y, centred on its x. Waves travel at sqrt(gravity × depth), with CFL substeps and reflecting walls. Bodies crossing splash it and float by buoyancy; og.Water2D draws it.",
       "type": "object",
       "properties": {
         "width": {
@@ -37815,32 +37839,17 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Springs along the surface.",
+          "description": "Grid points along the surface.",
           "default": 96,
           "minimum": 4,
           "maximum": 512
         },
-        "tension": {
-          "type": "number",
-          "description": "How hard each spring pulls back to rest.",
-          "default": 60,
-          "minimum": 0,
-          "x-og-tunable": true
-        },
         "damping": {
           "type": "number",
-          "description": "How fast a spring's motion dies (0: never).",
+          "description": "Exponential horizontal momentum damping per second; zero preserves motion.",
           "default": 2.5,
           "minimum": 0,
           "x-og-unit": "perSecond",
-          "x-og-tunable": true
-        },
-        "spread": {
-          "type": "number",
-          "description": "How much of a spring's height its neighbours feel each pass (waves travel).",
-          "default": 0.25,
-          "minimum": 0,
-          "maximum": 0.5,
           "x-og-tunable": true
         },
         "splash": {
@@ -37871,7 +37880,7 @@
     "Buoyancy": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.\nSee `physics §8`.",
+      "description": "Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.\nSee `physics §8`.",
       "type": "object",
       "properties": {
         "waterDensity": {
@@ -37971,7 +37980,7 @@
         },
         "depth": {
           "type": "number",
-          "description": "How far the point is under the surface; negative over it.",
+          "description": "How far the enclosed point is below the surface.",
           "x-og-unit": "m"
         },
         "velocity": {
@@ -40160,6 +40169,14 @@
             "x": 16,
             "y": 16
           },
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "depth": {
+          "type": "number",
+          "description": "Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume.",
+          "default": 0,
+          "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true
         },

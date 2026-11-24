@@ -2,6 +2,21 @@
   "simulation": "changed",
   "breaking": [
     {
+      "member": "Water.depth, WaterSurface.depth, physics.water",
+      "change": "Water volumes have an explicit vertical depth (zero disables the volume). Queries select the highest enclosing volume at the point's height, not a waterway above it. Rectangular Water volumes respect the entity's rotation.",
+      "fix": "Set depth on Water and WaterSurface. Query a point inside the volume; use waterHeight for a named surface from above. Supply rotation and depth when constructing a Rust WaterBody."
+    },
+    {
+      "member": "Buoyancy, WaterSurface.buoyancy, WaterLine.buoyancy",
+      "change": "Hull samples are cached by collider geometry. Lift and drag are summed from one substep snapshot and applied once; rotation damps exponentially. Overlapping pools lift once at the highest level. Ragdoll lift uses each bone's actual collider volume. Buoyancy also works in 2D.",
+      "fix": "Retune waterDensity for ragdolls using their actual mass and volume. Use Buoyancy on 2D rigid bodies for sampled hull lift instead of the pool's automatic lift. Retune floating bodies for the corrected per-substep forces."
+    },
+    {
+      "member": "WaterLine.tension, WaterLine.spread, WaterSurface.spongeWidth, WaterSurface.spongeDamping",
+      "change": "WaterLine replaces springs with conservative 1D shallow-water depth and momentum fluxes; tension and spread are removed. WaterSurface preserves waveSpeed with CFL substeps, supports sponge borders, scales splash forcing by dt and raises wakes from horizontal hull motion with clipped planar hull displacement.",
+      "fix": "Delete tension and spread; depth and gravity set the shallow-water wave speed. Set both spongeWidth and spongeDamping to enable absorbing borders (zero is off), and retune splash."
+    },
+    {
       "member": "Water.wind, Water.river",
       "change": "Ocean surface inversion uses three Newton steps. River queries use a canonical segment AABB grid and f32 geometry; translated rivers translate their index with the course.",
       "fix": "Expect corrected water queries and floating motion; no alternate solver or legacy save format is retained."

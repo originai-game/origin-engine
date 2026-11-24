@@ -1,18 +1,23 @@
-//! og.WaterLine: its line of springs, splashed by and pushing the bodies in it.
+//! 1D Saint-Venant shallow water, finite-volume Rusanov fluxes. See
+//! https://www.clawpack.org/riemann_book/html/Shallow_water.html for the
+//! conserved depth/momentum and characteristic speeds u ± sqrt(g h).
 
-use super::{Crossing, Floater, WaterForce};
+use super::{Crossing, Floater};
 use crate::schema::WaterLine;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};
 
-/// A 2D water line's spring heights and velocities, left to right.
+/// A 2D water line's surface displacements and vertical velocities, left to right.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct LineState {
     pub columns: u32,
     pub width: f32,
+    pub depth: f32,
     pub heights: Vec<f32>,
     pub velocities: Vec<f32>,
+    /// Depth-integrated horizontal momentum h*u (m²/s).
+    pub momentum: Vec<f32>,
     pub under: IdMap<u64, bool>,
 }
 
@@ -22,8 +27,10 @@ impl LineState {
         LineState {
             columns: w.columns,
             width: w.width,
+            depth: w.depth,
             heights: vec![0.0; n],
             velocities: vec![0.0; n],
+            momentum: vec![0.0; n],
             under: IdMap::new(),
         }
     }
@@ -41,6 +48,15 @@ impl LineState {
     /// [`Self::height_at`] reads its height.
     pub fn velocity_at(&self, centre: Vec2, x: f32) -> f32 {
         self.sample(&self.velocities, centre, x)
+    }
+
+    pub fn flow_at(&self, centre: Vec2, x: f32) -> f32 {
+        let depth = self.depth + self.height_at(centre, x);
+        if depth > 1e-6 {
+            self.sample(&self.momentum, centre, x) / depth
+        } else {
+            0.0
+        }
     }
 
     /// The springs' heights or speeds at world `x`, between two springs;
@@ -64,13 +80,21 @@ impl LineState {
         gravity: f32,
         centre: Vec2,
         floaters: &[Floater],
-    ) -> (Vec<WaterForce>, Vec<Crossing>) {
+    ) -> Vec<Crossing> {
         let n = self.n();
         let step = self.width / (n - 1) as f32;
         let left_edge = centre.x - self.width * 0.5;
-        let mut forces = Vec::new();
+        self.depth = w.depth;
         let mut crossings = Vec::new();
         let mut seen = IdMap::new();
+        if w.depth <= 0.0 || dt <= 0.0 {
+            self.heights.fill(0.0);
+            self.velocities.fill(0.0);
+            self.momentum.fill(0.0);
+            self.under.clear();
+            return crossings;
+        }
+        let before = self.heights.clone();
         for f in floaters {
             if f.max.x < left_edge || f.min.x > left_edge + self.width {
                 continue;
@@ -88,56 +112,73 @@ impl LineState {
                     point: Vec3::new(f.centre.x, level, f.centre.z),
                     speed: f.velocity.y,
                 });
-                // A crossing kicks the springs under the body.
+                // Vertical body motion displaces the local water column.
                 let i0 = ((f.min.x - left_edge) / step).floor().max(0.0) as usize;
                 let i1 = (((f.max.x - left_edge) / step).ceil() as usize).min(n - 1);
                 let width = (f.max.x - f.min.x).max(step);
-                let kick = f.velocity.y * w.splash * width.sqrt() * 8.0;
-                for velocity in self.velocities.iter_mut().take(i1 + 1).skip(i0) {
-                    *velocity += kick;
+                let kick = f.velocity.y * w.splash * width.sqrt() * dt;
+                for height in self.heights.iter_mut().take(i1 + 1).skip(i0) {
+                    *height = (*height + kick).max(-w.depth);
                 }
-            }
-            let depth = (level - f.min.y).clamp(0.0, (f.max.y - f.min.y).max(0.0));
-            if depth > 0.0 && f.dynamic {
-                let area = (f.max.x - f.min.x) * depth;
-                let fraction = depth / (f.max.y - f.min.y).max(1e-6);
-                forces.push(WaterForce {
-                    entity: f.entity,
-                    impulse: Vec3::Y * (w.buoyancy * area * dt * (gravity / 9.81)),
-                    keep: (1.0 - w.drag * fraction * dt).clamp(0.0, 1.0),
-                });
             }
         }
         self.under = seen;
-        // Springs, then the waves passed to the neighbours (eight passes).
-        for (h, v) in self.heights.iter_mut().zip(self.velocities.iter_mut()) {
-            let a = -w.tension * *h - w.damping * *v;
-            *v += a * dt;
-            *h = (*h + *v * dt).clamp(-w.depth.max(0.1), w.depth.max(0.1) * 2.0);
-        }
-        let spread = w.spread.clamp(0.0, 0.5);
-        let mut left = vec![0.0f32; n];
-        let mut right = vec![0.0f32; n];
-        for _ in 0..8 {
+        let g = gravity.max(0.0);
+        let state = |h: f32, m: f32| {
+            let h = h.max(0.0);
+            let u = if h > 1e-6 { m / h } else { 0.0 };
+            (h, u, u.abs() + (g * h).sqrt())
+        };
+        let mut remaining = dt;
+        let mut flux = vec![(0.0, 0.0); n + 1];
+        while remaining > 0.0 {
+            let speed = self
+                .heights
+                .iter()
+                .zip(&self.momentum)
+                .map(|(&h, &m)| state(w.depth + h, m).2)
+                .fold(0.0, f32::max);
+            let sub_dt = if speed > 0.0 {
+                remaining.min(0.45 * step / speed)
+            } else {
+                remaining
+            };
+            for (i, flux) in flux.iter_mut().enumerate() {
+                let l = i.saturating_sub(1);
+                let r = i.min(n - 1);
+                let ml = if i == 0 {
+                    -self.momentum[0]
+                } else {
+                    self.momentum[l]
+                };
+                let mr = if i == n {
+                    -self.momentum[n - 1]
+                } else {
+                    self.momentum[r]
+                };
+                let (hl, ul, sl) = state(w.depth + self.heights[l], ml);
+                let (hr, ur, sr) = state(w.depth + self.heights[r], mr);
+                let speed = sl.max(sr);
+                *flux = (
+                    (ml + mr - speed * (hr - hl)) * 0.5,
+                    (ml * ul + mr * ur + 0.5 * g * (hl * hl + hr * hr) - speed * (mr - ml)) * 0.5,
+                );
+            }
+            let keep = og_core::math::exp(-w.damping.max(0.0) * sub_dt);
             for i in 0..n {
-                if i > 0 {
-                    left[i] = spread * (self.heights[i] - self.heights[i - 1]);
-                    self.velocities[i - 1] += left[i];
-                }
-                if i + 1 < n {
-                    right[i] = spread * (self.heights[i] - self.heights[i + 1]);
-                    self.velocities[i + 1] += right[i];
+                self.heights[i] =
+                    (self.heights[i] - (flux[i + 1].0 - flux[i].0) * sub_dt / step).max(-w.depth);
+                self.momentum[i] =
+                    (self.momentum[i] - (flux[i + 1].1 - flux[i].1) * sub_dt / step) * keep;
+                if w.depth + self.heights[i] <= 1e-6 {
+                    self.momentum[i] = 0.0;
                 }
             }
-            for i in 0..n {
-                if i > 0 {
-                    self.heights[i - 1] += left[i] * dt;
-                }
-                if i + 1 < n {
-                    self.heights[i + 1] += right[i] * dt;
-                }
-            }
+            remaining -= sub_dt;
         }
-        (forces, crossings)
+        for i in 0..n {
+            self.velocities[i] = (self.heights[i] - before[i]) / dt;
+        }
+        crossings
     }
 }

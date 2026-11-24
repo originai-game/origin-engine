@@ -5276,6 +5276,12 @@
           "tunable": true
         },
         {
+          "name": "depth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "waveSpeed",
           "column": "f32",
           "default": 3,
@@ -5285,6 +5291,18 @@
           "name": "damping",
           "column": "f32",
           "default": 0.9,
+          "tunable": true
+        },
+        {
+          "name": "spongeWidth",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "spongeDamping",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {
@@ -5334,21 +5352,9 @@
           "default": 96
         },
         {
-          "name": "tension",
-          "column": "f32",
-          "default": 60,
-          "tunable": true
-        },
-        {
           "name": "damping",
           "column": "f32",
           "default": 2.5,
-          "tunable": true
-        },
-        {
-          "name": "spread",
-          "column": "f32",
-          "default": 0.25,
           "tunable": true
         },
         {
@@ -5478,6 +5484,12 @@
             "x": 16,
             "y": 16
           },
+          "tunable": true
+        },
+        {
+          "name": "depth",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {

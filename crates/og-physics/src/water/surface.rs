@@ -1,6 +1,6 @@
 //! og.WaterSurface: its height field, splashed by and pushing the bodies in it.
 
-use super::{Crossing, Floater, WaterForce};
+use super::{Crossing, Floater};
 use crate::schema::WaterSurface;
 use og_core::IdMap;
 use og_core::glam::Vec3;
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct SurfaceState {
     pub resolution: u32,
     pub size: f32,
+    pub depth: f32,
     pub heights: Vec<f32>,
     pub velocities: Vec<f32>,
     pub under: IdMap<u64, bool>,
@@ -24,6 +25,7 @@ impl SurfaceState {
         SurfaceState {
             resolution: w.resolution,
             size: w.size,
+            depth: w.depth,
             heights: vec![0.0; n * n],
             velocities: vec![0.0; n * n],
             under: IdMap::new(),
@@ -73,14 +75,13 @@ impl SurfaceState {
         &mut self,
         w: &WaterSurface,
         dt: f32,
-        gravity: f32,
         centre: Vec3,
         floaters: &[Floater],
-    ) -> (Vec<WaterForce>, Vec<Crossing>) {
+    ) -> Vec<Crossing> {
         let n = self.n();
         let cell = self.size / (n - 1) as f32;
         let half = self.size * 0.5;
-        let mut forces = Vec::new();
+        self.depth = w.depth;
         let mut crossings = Vec::new();
         let mut seen = IdMap::new();
         for f in floaters {
@@ -108,7 +109,7 @@ impl SurfaceState {
                     speed: f.velocity.y,
                 });
             }
-            let depth = (level - f.min.y).clamp(0.0, (f.max.y - f.min.y).max(0.0));
+            let depth = (level.min(f.max.y) - f.min.y.max(level - w.depth)).max(0.0);
             if depth <= 0.0 {
                 continue;
             }
@@ -123,46 +124,59 @@ impl SurfaceState {
                     ((f.min.z - (centre.z - half)) / cell).floor().max(0.0) as usize,
                     (((f.max.z - (centre.z - half)) / cell).ceil() as usize).min(n - 1),
                 );
-                let push = f.velocity.y * w.splash * 0.06;
                 for j in j0..=j1 {
                     for i in i0..=i1 {
+                        let x = centre.x - half + i as f32 * cell;
+                        let z = centre.z - half + j as f32 * cell;
+                        let thickness = |x, z| f.column_depth(x, z, level, w.depth);
+                        let submerged = thickness(x, z);
+                        let dx =
+                            (thickness(x + cell * 0.5, z) - thickness(x - cell * 0.5, z)) / cell;
+                        let dz =
+                            (thickness(x, z + cell * 0.5) - thickness(x, z - cell * 0.5)) / cell;
+                        let push = (if submerged > 0.0 { f.velocity.y } else { 0.0 }
+                            - f.velocity.x * dx
+                            - f.velocity.z * dz)
+                            * w.splash
+                            * dt;
                         self.velocities[j * n + i] += push;
                     }
                 }
             }
-            if f.dynamic {
-                let area = (f.max.x - f.min.x) * (f.max.z - f.min.z);
-                let volume = area * depth;
-                let fraction = depth / (f.max.y - f.min.y).max(1e-6);
-                forces.push(WaterForce {
-                    entity: f.entity,
-                    impulse: Vec3::Y * (w.buoyancy * volume * dt * (gravity / 9.81)),
-                    keep: (1.0 - w.drag * fraction * dt).clamp(0.0, 1.0),
-                });
-            }
         }
         self.under = seen;
-        // The wave equation, with the speed held under the grid's limit.
-        let c = w.wave_speed.min(0.5 * cell / dt);
-        let k = c * c / (cell * cell) * dt;
-        let keep = og_core::math::damping_keep(w.damping, dt);
-        let h = &self.heights;
-        let mut next_v = self.velocities.clone();
-        for j in 0..n {
-            for i in 0..n {
-                let at = j * n + i;
-                let left = if i > 0 { h[at - 1] } else { h[at] };
-                let right = if i + 1 < n { h[at + 1] } else { h[at] };
-                let up = if j > 0 { h[at - n] } else { h[at] };
-                let down = if j + 1 < n { h[at + n] } else { h[at] };
-                let lap = left + right + up + down - 4.0 * h[at];
-                next_v[at] = (next_v[at] + lap * k) * keep;
+        // CFL substeps preserve the requested speed, including fine grids.
+        let c = w.wave_speed.max(0.0);
+        let steps = (2.0 * c * dt / cell).ceil().max(1.0) as u32;
+        let sub_dt = dt / steps as f32;
+        let k = c * c / (cell * cell) * sub_dt;
+        for _ in 0..steps {
+            let h = &self.heights;
+            for j in 0..n {
+                for i in 0..n {
+                    let at = j * n + i;
+                    let left = h[j * n + i.saturating_sub(1)];
+                    let right = h[j * n + (i + 1).min(n - 1)];
+                    let up = h[j.saturating_sub(1) * n + i];
+                    let down = h[(j + 1).min(n - 1) * n + i];
+                    let lap = left + right + up + down - 4.0 * h[at];
+                    let edge = i.min(j).min(n - 1 - i).min(n - 1 - j) as f32 * cell;
+                    let sponge = if w.sponge_width > 0.0 {
+                        (1.0 - edge / w.sponge_width).max(0.0)
+                    } else {
+                        0.0
+                    };
+                    let keep = og_core::math::exp(
+                        -(w.damping.max(0.0) + w.sponge_damping.max(0.0) * sponge * sponge)
+                            * sub_dt,
+                    );
+                    self.velocities[at] = (self.velocities[at] + lap * k) * keep;
+                }
+            }
+            for (h, v) in self.heights.iter_mut().zip(&self.velocities) {
+                *h += v * sub_dt;
             }
         }
-        self.velocities = next_v;
-        for (h, v) in self.heights.iter_mut().zip(&self.velocities) {
-            *h = (*h + v * dt).clamp(-2.0, 2.0);
-        }
-        (forces, crossings)
+        crossings
     }
 }

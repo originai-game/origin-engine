@@ -12,7 +12,7 @@ The water at a point (og.physics.water): whose it is, where its surface stands o
 |---|---|---|---|---|---|---|
 | `water` | `Entity` | `0` | — | — | — | The water's entity (its og.Water, og.WaterSurface or og.WaterLine). |
 | `height` | `number` | `0` | — | `m` | — | The surface over the point (world y), as it is drawn: og.physics.waterHeight's. |
-| `depth` | `number` | `0` | — | `m` | — | How far the point is under the surface; negative over it. |
+| `depth` | `number` | `0` | — | `m` | — | How far the enclosed point is below the surface. |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | How the water moves at the surface there: a sea's waves carrying it round, a river's current, a splash's rise; zero on still water. |
 | `acceleration` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | — | How the water's velocity changes there (a sea's waves; zero elsewhere): what a floating thing feels beside gravity. |
 | `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The surface's unit normal there: up on still water, leaning with a wave's slope (z is 0 on an og.WaterLine). |
@@ -24,7 +24,7 @@ struct WaterPoint {
   field height f32 "The surface over the point (world y), as it is drawn: og.physics.waterHeight's." {
     unit m
   }
-  field depth f32 "How far the point is under the surface; negative over it." {
+  field depth f32 "How far the enclosed point is below the surface." {
     unit m
   }
   field velocity Vector3 "How the water moves at the surface there: a sea's waves carrying it round, a river's current, a splash's rise; zero on still water." {
@@ -37,4 +37,4 @@ struct WaterPoint {
 }
 ```
 
-<sub>Module `physics` line 2052</sub>
+<sub>Module `physics` line 2056</sub>

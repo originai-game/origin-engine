@@ -34217,8 +34217,11 @@ pub mod record {
     pub struct WaterSurface {
         pub resolution: u32,
         pub size: f32,
+        pub depth: f32,
         pub wave_speed: f32,
         pub damping: f32,
+        pub sponge_width: f32,
+        pub sponge_damping: f32,
         pub splash: f32,
         pub buoyancy: f32,
         pub drag: f32,
@@ -34229,8 +34232,11 @@ pub mod record {
             Self {
                 resolution: 64,
                 size: 16.0_f32,
+                depth: Default::default(),
                 wave_speed: 3.0_f32,
                 damping: 0.9_f32,
+                sponge_width: Default::default(),
+                sponge_damping: Default::default(),
                 splash: 1.0_f32,
                 buoyancy: 9.81_f32,
                 drag: 1.5_f32,
@@ -34247,8 +34253,11 @@ pub mod record {
             Ok(Self {
                 resolution: field(o, "resolution", d.resolution)?,
                 size: field(o, "size", d.size)?,
+                depth: field(o, "depth", d.depth)?,
                 wave_speed: field(o, "waveSpeed", d.wave_speed)?,
                 damping: field(o, "damping", d.damping)?,
+                sponge_width: field(o, "spongeWidth", d.sponge_width)?,
+                sponge_damping: field(o, "spongeDamping", d.sponge_damping)?,
                 splash: field(o, "splash", d.splash)?,
                 buoyancy: field(o, "buoyancy", d.buoyancy)?,
                 drag: field(o, "drag", d.drag)?,
@@ -34262,9 +34271,7 @@ pub mod record {
         pub width: f32,
         pub depth: f32,
         pub columns: u32,
-        pub tension: f32,
         pub damping: f32,
-        pub spread: f32,
         pub splash: f32,
         pub buoyancy: f32,
         pub drag: f32,
@@ -34276,9 +34283,7 @@ pub mod record {
                 width: 12.0_f32,
                 depth: 3.0_f32,
                 columns: 96,
-                tension: 60.0_f32,
                 damping: 2.5_f32,
-                spread: 0.25_f32,
                 splash: 0.04_f32,
                 buoyancy: 12.0_f32,
                 drag: 2.0_f32,
@@ -34296,9 +34301,7 @@ pub mod record {
                 width: field(o, "width", d.width)?,
                 depth: field(o, "depth", d.depth)?,
                 columns: field(o, "columns", d.columns)?,
-                tension: field(o, "tension", d.tension)?,
                 damping: field(o, "damping", d.damping)?,
-                spread: field(o, "spread", d.spread)?,
                 splash: field(o, "splash", d.splash)?,
                 buoyancy: field(o, "buoyancy", d.buoyancy)?,
                 drag: field(o, "drag", d.drag)?,
@@ -35093,6 +35096,7 @@ pub mod record {
     #[derive(Clone, Debug, PartialEq)]
     pub struct Water {
         pub size: Vec2,
+        pub depth: f32,
         pub geometry: u64,
         pub river: u64,
         pub river_width: f32,
@@ -35142,6 +35146,7 @@ pub mod record {
         fn default() -> Self {
             Self {
                 size: Vec2::new(16.0_f32, 16.0_f32),
+                depth: Default::default(),
                 geometry: Default::default(),
                 river: Default::default(),
                 river_width: 6.0_f32,
@@ -35197,6 +35202,7 @@ pub mod record {
             let o = object(v)?;
             Ok(Self {
                 size: field(o, "size", d.size)?,
+                depth: field(o, "depth", d.depth)?,
                 geometry: field(o, "geometry", d.geometry)?,
                 river: field(o, "river", d.river)?,
                 river_width: field(o, "riverWidth", d.river_width)?,

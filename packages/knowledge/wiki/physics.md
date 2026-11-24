@@ -99,12 +99,12 @@ module physics {
 | [`og.Fluid2D`](physics/record-Fluid2D.md) | component |  | Deterministic 2D Position Based Fluids in the xy plane: predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorti… |
 | [`og.Fluid3D`](physics/record-Fluid3D.md) | component |  | Deterministic 3D Position Based Fluids with predicted-position neighbour hashing, symmetric mass-weighted density projection, artificial pressure, stable XSPH viscosity and optional vorticity confine… |
 | [`og.Ragdoll`](physics/record-Ragdoll.md) | component |  | A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy pl… |
-| [`og.WaterSurface`](physics/record-WaterSurface.md) | component |  | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. |
-| [`og.WaterLine`](physics/record-WaterLine.md) | component |  | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and p… |
-| [`og.Buoyancy`](physics/record-Buoyancy.md) | component |  | Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterCon… |
+| [`og.WaterSurface`](physics/record-WaterSurface.md) | component |  | 3D height-field water centred on the entity at its rest level. |
+| [`og.WaterLine`](physics/record-WaterLine.md) | component |  | 2D shallow water: a width × depth pool at the entity's y, centred on its x. |
+| [`og.Buoyancy`](physics/record-Buoyancy.md) | component |  | Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. |
 | [`og.Splash`](physics/record-Splash.md) | event |  | Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. |
 | [`WaterPoint`](physics/type-WaterPoint.md) | struct |  | The water at a point (og.physics.water): whose it is, where its surface stands over the point and how it moves there. |
-| [`og.physics.water`](physics/fn-water.md) | function | `(world: World, point: Vector3): Result<WaterPoint \| null>` | The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motio… |
+| [`og.physics.water`](physics/fn-water.md) | function | `(world: World, point: Vector3): Result<WaterPoint \| null>` | The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. |
 | [`og.physics.waterHeight`](physics/fn-waterHeight.md) | function | `(world: World, entity: Entity, x: number, z: number): Result<number>` | The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurf… |
 | [`QUERY_DYNAMIC`](#const-QUERY_DYNAMIC) | constant |  | QueryFilter.kindFlags bit: include dynamic bodies. |
 | [`QUERY_FIXED`](#const-QUERY_FIXED) | constant |  | QueryFilter.kindFlags bit: include fixed bodies and static colliders. |
@@ -448,16 +448,16 @@ const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2088</sub>
+<sub>Module `physics` line 2091</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2089</sub>
+<sub>Module `physics` line 2092</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2090</sub>
+<sub>Module `physics` line 2093</sub>

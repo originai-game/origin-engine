@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.WaterSurface` (component)
 
-Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
+3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights.
 
 Token `og.WaterSurface`, registered under the schema name `og.WaterSurface`; its value type is `WaterSurface`.
 
@@ -14,15 +14,18 @@ Token `og.WaterSurface`, registered under the schema name `og.WaterSurface`; its
 |---|---|---|---|---|---|---|
 | `resolution` | `number` | `64` | 8 … 256 | — | — | Grid points along each side. |
 | `size` | `number` | `16` | ≥ 0.1 | `m` | tunable | The side of the square of water. |
+| `depth` | `number` | `0` | ≥ 0 | `m` | tunable | Vertical depth below the surface; zero disables the water volume. |
 | `waveSpeed` | `number` | `3` | ≥ 0 | `mps` | tunable | How fast waves travel. |
-| `damping` | `number` | `0.9` | 0 … 100 | `perSecond` | tunable | How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping. |
+| `damping` | `number` | `0.9` | 0 … 100 | `perSecond` | tunable | Exponential wave velocity damping per second; zero preserves motion. |
+| `spongeWidth` | `number` | `0` | ≥ 0 | `m` | tunable | Width of the absorbing border; zero disables it. |
+| `spongeDamping` | `number` | `0` | ≥ 0 | `perSecond` | tunable | Extra exponential damping at the outer edge; zero disables it. |
 | `splash` | `number` | `1` | ≥ 0 | — | tunable | How strongly bodies push waves. |
-| `buoyancy` | `number` | `9.81` | ≥ 0 | — | tunable | The upward force on a submerged body per cubic metre of its box under water (0: bodies sink). |
+| `buoyancy` | `number` | `9.81` | ≥ 0 | — | tunable | Upward force per displaced cubic metre. Planar convex hulls and oriented boxes use clipped volume; other shapes approximate the immersed fraction. Zero disables lift. |
 | `drag` | `number` | `1.5` | ≥ 0 | `perSecond` | tunable | How much a submerged body's velocity is slowed. |
 
 ```ogt
 component WaterSurface {
-  doc "Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them."
+  doc "3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights."
   field resolution u32 "Grid points along each side." {
     default 64
     min 8
@@ -34,16 +37,31 @@ component WaterSurface {
     unit m
     tunable true
   }
+  field depth f32 "Vertical depth below the surface; zero disables the water volume." {
+    min 0
+    unit m
+    tunable true
+  }
   field waveSpeed f32 "How fast waves travel." {
     default 3
     min 0
     unit mps
     tunable true
   }
-  field damping f32 "How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping." {
+  field damping f32 "Exponential wave velocity damping per second; zero preserves motion." {
     default 0.9
     min 0
     max 100
+    unit perSecond
+    tunable true
+  }
+  field spongeWidth f32 "Width of the absorbing border; zero disables it." {
+    min 0
+    unit m
+    tunable true
+  }
+  field spongeDamping f32 "Extra exponential damping at the outer edge; zero disables it." {
+    min 0
     unit perSecond
     tunable true
   }
@@ -52,7 +70,7 @@ component WaterSurface {
     min 0
     tunable true
   }
-  field buoyancy f32 "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink)." {
+  field buoyancy f32 "Upward force per displaced cubic metre. Planar convex hulls and oriented boxes use clipped volume; other shapes approximate the immersed fraction. Zero disables lift." {
     default 9.81
     min 0
     tunable true

@@ -7,12 +7,69 @@ use super::*;
 /// that lie in a solid collider, with their cell indices, each standing
 /// for an equal share (`each`) of the colliders' volume; `cell` is a
 /// cell's size.
-struct Hull {
-    points: Vec<(Vec3, [u32; 3])>,
+pub(crate) struct Hull {
+    parts: Vec<(rp::SharedShape, rp::Pose)>,
+    samples: u32,
+    points: Vec<Vec3>,
     lo: Vec3,
     hi: Vec3,
     cell: Vec3,
     each: f32,
+    triangles: Vec<[Vec3; 3]>,
+}
+
+pub(crate) type HullCache = BTreeMap<(u32, u32), Hull>;
+
+/// Geometry identity includes local collider poses, not the body's motion
+/// or material. Holding the Arc also prevents allocation-address reuse.
+pub(super) fn cached_hull<'a>(
+    cache: &'a mut HullCache,
+    colliders: &rp::ColliderSet,
+    rb: &rp::RigidBody,
+    handle: rp::RigidBodyHandle,
+    samples: u32,
+) -> Option<&'a Hull> {
+    let handle = handle.into_raw_parts();
+    let same = cache.get(&handle).is_some_and(|h| {
+        h.samples == samples
+            && h.parts
+                .iter()
+                .zip(
+                    rb.colliders()
+                        .iter()
+                        .map(|&c| &colliders[c])
+                        .filter(|c| !c.is_sensor()),
+                )
+                .all(|((shape, at), c)| {
+                    std::sync::Arc::ptr_eq(&shape.0, &c.shared_shape().0)
+                        && *at == *c.position_wrt_parent().unwrap_or(&rp::Pose::IDENTITY)
+                })
+            && h.parts.len()
+                == rb
+                    .colliders()
+                    .iter()
+                    .filter(|&&c| !colliders[c].is_sensor())
+                    .count()
+    });
+    if !same {
+        cache.remove(&handle);
+        cache.insert(handle, hull(colliders, rb, samples)?);
+    }
+    cache.get(&handle)
+}
+
+impl Hull {
+    pub(super) fn world_triangles(&self, at: &rp::Pose, centre: Vec3) -> Vec<[Vec3; 3]> {
+        let offset = unv(at.translation) - centre;
+        self.triangles
+            .iter()
+            .map(|t| t.map(|p| unv(at.rotation * v(p)) + offset))
+            .collect()
+    }
+
+    pub(super) fn volume(&self) -> f32 {
+        self.each * self.points.len() as f32
+    }
 }
 
 fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option<Hull> {
@@ -42,7 +99,7 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
             for i in 0..n {
                 let p = lo + cell * Vec3::new(i as f32 + 0.5, j as f32 + 0.5, k as f32 + 0.5);
                 if parts.iter().any(|c| c.shape().contains_point(&at(c), v(p))) {
-                    points.push((p, [i, j, k]));
+                    points.push(p);
                 }
             }
         }
@@ -50,7 +107,7 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
     if points.is_empty() {
         let mid = n / 2;
         let p = lo + cell * Vec3::new(mid as f32 + 0.5, mid as f32 + 0.5, (nz / 2) as f32 + 0.5);
-        points.push((p, [mid, mid, nz / 2]));
+        points.push(p);
     }
     let volume: f32 = parts
         .iter()
@@ -61,34 +118,35 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
     } else {
         cell.x * cell.y * cell.z.max(if DIM == 3 { 0.0 } else { 1.0 }) * points.len() as f32
     };
+    // A partially triangulated compound would undercount its volume.
+    let triangles = parts
+        .iter()
+        .map(|c| {
+            Some(
+                super::super::water_geometry::triangles(c.shared_shape())?
+                    .into_iter()
+                    .map(|t| t.map(|p| unv(at(c).transform_point(v(p)))))
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Option<Vec<_>>>()
+        .unwrap_or_default()
+        .into_iter()
+        .flatten()
+        .collect();
     Some(Hull {
+        triangles,
+        parts: parts
+            .iter()
+            .map(|c| (c.shared_shape().clone(), at(c)))
+            .collect(),
+        samples,
         each: volume / points.len() as f32,
         points,
         lo,
         hi,
         cell,
     })
-}
-
-/// Where a box centred at `centre`, reaching `extent` along x and z, lies
-/// in the og.Water `w` (its centre in the water's frame); `None` off it.
-fn over(
-    w: &crate::WaterBody,
-    centre: Vec3,
-    extent: og_core::glam::Vec2,
-) -> Option<og_core::glam::Vec2> {
-    let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
-    let over = match &w.river {
-        Some(river) => river
-            .at(og_core::glam::Vec2::new(centre.x, centre.z))
-            .is_some(),
-        None if w.mesh.is_some() => w.surface(centre.x.into(), centre.z.into(), 0.0).is_some(),
-        None if w.endless => true,
-        None => {
-            local.x.abs() <= w.size.x * 0.5 + extent.x && local.y.abs() <= w.size.y * 0.5 + extent.y
-        }
-    };
-    over.then_some(local)
 }
 
 /// The world box of a body's solid colliders; `None` with none.
@@ -107,26 +165,10 @@ pub(super) fn solid_box(world: &rp::PhysicsWorld, rb: &rp::RigidBody) -> Option<
     (min.x <= max.x).then_some((min, max))
 }
 
-/// How much of a box from `min` to `max` (world y) lies under `level`, 0..1.
-pub(super) fn box_under(min: f32, max: f32, level: f32) -> f32 {
-    if max - min > 1e-6 {
-        ((level - min) / (max - min)).clamp(0.0, 1.0)
-    } else if min < level {
-        1.0
-    } else {
-        0.0
-    }
-}
-
 /// A limp og.Ragdoll's bones in the water for a tick (og.Buoyancy on its
-/// entity): each bone is lifted at its centre of mass by the water it
-/// displaces, as much of it as its box is under the level there, and
-/// slowed against the moving water; how much of the ragdoll's mass is
-/// under. A bone displaces its mass, as a body of the colliders' default
-/// density 1 does (its capsule is a stand-in, far thinner than the limb):
-/// `waterDensity` 2 floats a ragdoll half under, as it does a crate. Its
-/// box cuts the og.Water it straddles. `None` for no ragdoll, or one that
-/// follows its animation.
+/// entity): each bone uses its own cached collider-volume samples and
+/// local water level, including its own shoreline cut. Returns the wet
+/// mass fraction, not a fictitious volume derived from the bone's mass.
 #[allow(clippy::too_many_arguments)]
 fn bones(
     scene: &Scene,
@@ -146,72 +188,28 @@ fn bones(
         .filter(|s| s.dynamic)?
         .bones
         .clone();
-    let mut lo = Vec3::splat(f32::MAX);
-    let mut hi = Vec3::splat(f32::MIN);
-    let (mut total, mut under, mut fall) = (0.0, 0.0, 0.0);
-    let inv_dt = if sub_dt > 0.0 { 1.0 / sub_dt } else { 0.0 };
+    let (mut total, mut under) = (0.0, 0.0);
     for h in bones {
-        let rb = &sim.world.bodies[h];
-        let Some((min, max)) = solid_box(&sim.world, rb) else {
-            continue;
-        };
-        lo = lo.min(min);
-        hi = hi.max(max);
-        let mass = rb.mass();
+        let mass = sim.world.bodies[h].mass();
         total += mass;
-        let linvel = unv(rb.linvel());
-        fall += linvel.y * mass;
-        let centre = unv(rb.center_of_mass());
-        let Some(water) =
-            crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
-        else {
-            continue;
-        };
-        let fraction = box_under(min.y, max.y, water.height);
-        if fraction <= 0.0 {
-            continue;
-        }
-        under += fraction * mass;
-        let held = Vec3::Y * g + water.acceleration;
-        let held = Vec3::new(held.x, held.y.max(0.0), held.z);
-        let lift_force = held * (b.water_density * mass * fraction);
-        let speed = linvel - water.velocity;
-        let drag_factor = 1.0 - og_core::math::exp(-(b.drag.max(0.0) * sub_dt));
-        let drag_force = speed * (drag_factor * inv_dt * mass * fraction);
-        let rb = &mut sim.world.bodies[h];
-        rb.add_force(v(flat(lift_force - drag_force)), true);
-        forced_bodies.push(h);
-        if b.angular_drag > 0.0 {
-            let keep = og_core::math::exp(-(b.angular_drag * fraction * sub_dt));
-            let spin = unangvel(rb.angvel());
-            rb.set_angvel(angvel(spin * keep), true);
-        }
+        under += mass
+            * float(
+                scene,
+                g,
+                sub_dt,
+                waters,
+                sim,
+                h,
+                entity,
+                b,
+                cuts,
+                record_out,
+                forced_bodies,
+            )
+            .unwrap_or(0.0);
     }
     if total <= 0.0 {
         return Some(0.0);
-    }
-    if record_out {
-        let centre = (lo + hi) * 0.5;
-        let level = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
-            .map_or(lo.y, |l| l.height);
-        if lo.y < level && hi.y > level {
-            let extent = og_core::glam::Vec2::new(hi.x - lo.x, hi.z - lo.z) * 0.5;
-            for w in waters {
-                let Some(list) = cuts.get_mut(&w.entity) else {
-                    continue;
-                };
-                let Some(local) = over(w, centre, extent) else {
-                    continue;
-                };
-                list.push(crate::water::WaterCut::boxed(
-                    entity,
-                    local - extent,
-                    local + extent,
-                    level - lo.y,
-                    fall / total,
-                ));
-            }
-        }
     }
     Some(under / total)
 }
@@ -247,19 +245,19 @@ fn hull_cuts(
     let extent =
         og_core::glam::Vec2::new(reach(og_core::glam::Vec2::X), reach(og_core::glam::Vec2::Y));
     let low = centre.y - (ax.y.abs() * half.x + ay.y.abs() * half.y + az.y.abs() * half.z);
-    let level = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
-        .map_or(low, |l| l.height);
-    let depth = level - low;
-    if depth <= 0.0 {
-        return;
-    }
     for w in waters {
         let Some(list) = cuts.get_mut(&w.entity) else {
             continue;
         };
-        let Some(local) = over(w, centre, extent) else {
+        let Some(surface) = w.surface(centre.x.into(), centre.z.into(), scene.seconds) else {
             continue;
         };
+        let level = w.position.y + surface.height;
+        let depth = level - low;
+        if w.depth <= 0.0 || depth <= 0.0 || level >= 2.0 * centre.y - low {
+            continue;
+        }
+        let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
         list.push(crate::water::WaterCut {
             entity,
             min: local - extent,
@@ -290,7 +288,13 @@ pub(crate) fn buoyancy_substep(
     record_out: bool,
     forced_bodies: &mut Vec<rp::RigidBodyHandle>,
 ) {
-    if DIM != 3 || scene.floats.is_empty() {
+    sim.ext.water_hulls.retain(|&(i, g), _| {
+        sim.world
+            .bodies
+            .contains(rp::RigidBodyHandle::from_raw_parts(i, g))
+    });
+    super::surfaces::surface_buoyancy_substep(scene, settings, sub_dt, sim, handles, forced_bodies);
+    if scene.floats.is_empty() {
         return;
     }
     let g = -settings.gravity.y;
@@ -366,7 +370,13 @@ fn float(
     if !rb.is_dynamic() {
         return None;
     }
-    let hull = hull(&sim.world.colliders, rb, b.samples)?;
+    let hull = cached_hull(
+        &mut sim.ext.water_hulls,
+        &sim.world.colliders,
+        rb,
+        h,
+        b.samples,
+    )?;
     let at = *rb.position();
     let com = unv(rb.center_of_mass());
     let linvel = unv(rb.linvel());
@@ -375,40 +385,28 @@ fn float(
     // A cell's half height in the world, its box turned with the body.
     let up = [Vec3::X, Vec3::Y, Vec3::Z].map(|a| unv(at.rotation * v(a)).y.abs());
     let half = 0.5 * (up[0] * hull.cell.x + up[1] * hull.cell.y + up[2] * hull.cell.z);
-    let column = if up[1] >= up[0] && up[1] >= up[2] {
-        1
-    } else if up[0] >= up[2] {
-        0
-    } else {
-        2
-    };
-    let middle = (hull.lo + hull.cell * Vec3::splat(b.samples.clamp(1, 12) as f32) * 0.5)[column];
-    let mut levels: BTreeMap<[u32; 2], Option<og_env::ocean::SurfacePoint>> = BTreeMap::new();
     let share = 1.0 / hull.points.len() as f32;
     let inv_dt = if sub_dt > 0.0 { 1.0 / sub_dt } else { 0.0 };
     let drag_rate = (1.0 - og_core::math::exp(-(b.drag.max(0.0) * sub_dt))) * inv_dt;
     let mut under = 0.0;
     let mut net_force = Vec3::ZERO;
     let mut net_torque = Vec3::ZERO;
-    for (p, index) in &hull.points {
+    for p in &hull.points {
         let w = unv(at.transform_point(v(*p)));
-        let key = match column {
-            0 => [index[1], index[2]],
-            1 => [index[0], index[2]],
-            _ => [index[0], index[1]],
-        };
-        let level = *levels.entry(key).or_insert_with(|| {
-            let mut q = *p;
-            q[column] = middle;
-            let c = unv(at.transform_point(v(q)));
-            crate::water::level(&scene.surfaces, waters, c.x, c.z, scene.seconds)
-        });
-        let Some(water) = level else {
+        let Some(volume) = crate::water::level(
+            &scene.surfaces,
+            &scene.lines,
+            waters,
+            w,
+            half,
+            scene.seconds,
+        ) else {
             continue;
         };
+        let water = volume.surface;
         let level = water.height;
         let fraction = if half > 1e-6 {
-            ((level - (w.y - half)) / (2.0 * half)).clamp(0.0, 1.0)
+            ((level.min(w.y + half) - volume.bottom.max(w.y - half)) / (2.0 * half)).clamp(0.0, 1.0)
         } else if w.y < level {
             1.0
         } else {
@@ -421,8 +419,10 @@ fn float(
         let held = Vec3::Y * g + water.acceleration;
         let held = Vec3::new(held.x, held.y.max(0.0), held.z);
         let lift_force = held * (b.water_density * hull.each * fraction);
-        let point_vel = linvel + angvel_snap.cross(w - com);
-        let rel_vel = point_vel - water.velocity;
+        // Distributed drag acts on translation only. Applying explicit
+        // point-velocity drag can amplify spin when m*r²/I is large;
+        // rotational drag is integrated exponentially once below.
+        let rel_vel = linvel - water.velocity;
         let drag_force = rel_vel * (drag_rate * mass * share * fraction);
         let cell_force = flat(lift_force - drag_force);
         net_force += cell_force;
@@ -438,14 +438,14 @@ fn float(
             rb.add_torque(angvel(net_torque), true);
             forced_bodies.push(h);
         }
-        if b.angular_drag > 0.0 {
-            let keep = og_core::math::exp(-(b.angular_drag * under * sub_dt));
-            let spin = unangvel(rb.angvel());
-            rb.set_angvel(angvel(spin * keep), true);
+        if b.angular_drag > 0.0 || b.drag > 0.0 {
+            let keep =
+                og_core::math::exp(-((b.angular_drag.max(0.0) + b.drag.max(0.0)) * under * sub_dt));
+            rb.set_angvel(angvel(angvel_snap * keep), true);
         }
     }
     if record_out {
-        hull_cuts(entity, &hull, &at, linvel.y, scene, waters, cuts);
+        hull_cuts(entity, hull, &at, linvel.y, scene, waters, cuts);
     }
     Some(under)
 }
@@ -471,7 +471,17 @@ pub(super) fn swims(
     let b = scene.floats[i].1;
     let (min, max) = solid_box(&sim.world, &sim.world.bodies[h])?;
     let centre = (min + max) * 0.5;
-    let water = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds);
-    let under = water.map_or(0.0, |w| box_under(min.y, max.y, w.height));
-    Some((b, under, water.unwrap_or_default()))
+    let water = crate::water::level(
+        &scene.surfaces,
+        &scene.lines,
+        waters,
+        centre,
+        (max.y - min.y) * 0.5,
+        scene.seconds,
+    );
+    let under = water.as_ref().map_or(0.0, |w| {
+        ((w.surface.height.min(max.y) - w.bottom.max(min.y)) / (max.y - min.y).max(1e-6))
+            .clamp(0.0, 1.0)
+    });
+    Some((b, under, water.map(|w| w.surface).unwrap_or_default()))
 }

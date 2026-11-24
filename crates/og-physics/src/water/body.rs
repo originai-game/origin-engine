@@ -22,6 +22,9 @@ use std::sync::Arc;
 pub struct WaterBody {
     pub entity: u64,
     pub position: Vec3,
+    pub rotation: og_core::glam::Quat,
+    /// Vertical depth below the surface. Zero disables the water volume.
+    pub depth: f32,
     pub size: og_core::glam::Vec2,
     pub endless: bool,
     pub sea: Option<og_env::ocean::Ocean>,
@@ -75,16 +78,29 @@ impl WaterBody {
         }
         if !self.endless {
             let half = self.size * 0.5;
-            let local = og_core::glam::Vec2::new(
-                (x - f64::from(self.position.x)) as f32,
-                (z - f64::from(self.position.z)) as f32,
-            );
-            if !(local.x.abs() <= half.x && local.y.abs() <= half.y) {
+            let normal = self.rotation * Vec3::Y;
+            if normal.y.abs() < 1e-6 {
+                return None;
+            }
+            let dx = (x - f64::from(self.position.x)) as f32;
+            let dz = (z - f64::from(self.position.z)) as f32;
+            let dy = -(normal.x * dx + normal.z * dz) / normal.y;
+            let local = self.rotation.conjugate() * Vec3::new(dx, dy, dz);
+            if !(local.x.abs() <= half.x && local.z.abs() <= half.y) {
                 return None;
             }
         }
         let Some(sea) = &self.sea else {
-            return Some(og_env::ocean::SurfacePoint::default());
+            let normal = self.rotation * Vec3::Y;
+            if normal.y.abs() < 1e-6 {
+                return None;
+            }
+            return Some(og_env::ocean::SurfacePoint {
+                height: -(normal.x * (x as f32 - self.position.x)
+                    + normal.z * (z as f32 - self.position.z))
+                    / normal.y,
+                ..Default::default()
+            });
         };
         let coast = self
             .shore

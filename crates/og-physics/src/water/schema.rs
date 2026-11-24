@@ -20,12 +20,21 @@ pub struct WaterSurface {
     /// The side of the square of water.
     #[reflect(min = 0.1, unit = "m", default = 16, tunable)]
     pub size: f32,
+    /// Vertical water depth; zero disables the volume.
+    #[reflect(min = 0, unit = "m", tunable)]
+    pub depth: f32,
     /// How fast waves travel.
     #[reflect(name = "waveSpeed", min = 0, unit = "m/s", default = 3, tunable)]
     pub wave_speed: f32,
     /// How fast waves die (0: no loss).
     #[reflect(min = 0, max = 100, unit = "1/s", default = 0.9, tunable)]
     pub damping: f32,
+    /// Width of the absorbing border (zero disables it).
+    #[reflect(name = "spongeWidth", min = 0, unit = "m", tunable)]
+    pub sponge_width: f32,
+    /// Extra damping at the outer edge (zero disables it).
+    #[reflect(name = "spongeDamping", min = 0, unit = "1/s", tunable)]
+    pub sponge_damping: f32,
     /// How strongly bodies push waves.
     #[reflect(min = 0, default = 1, tunable)]
     pub splash: f32,
@@ -42,8 +51,11 @@ impl Default for WaterSurface {
         WaterSurface {
             resolution: 64,
             size: 16.0,
+            depth: 0.0,
             wave_speed: 3.0,
             damping: 0.9,
+            sponge_width: 0.0,
+            sponge_damping: 0.0,
             splash: 1.0,
             buoyancy: 9.81,
             drag: 1.5,
@@ -51,12 +63,8 @@ impl Default for WaterSurface {
     }
 }
 
-/// 2D water for side-scrollers: a `width` × `depth` pool whose top edge
-/// (at the entity's y, centred on its x) is `columns` springs, each pulled
-/// to its rest height by `tension`, damped by `damping` and passing waves to
-/// its neighbours by `spread`. Bodies (and characters) crossing the surface
-/// splash it (og.Splash events) and float by `buoyancy`. The springs are
-/// world state; an og.Water2D on the same entity draws it.
+/// 2D finite-depth shallow water: conservative depth and momentum fluxes,
+/// CFL substeps and reflecting walls. og.Water2D draws its heights.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.WaterLine")]
 pub struct WaterLine {
@@ -66,18 +74,12 @@ pub struct WaterLine {
     /// The pool's depth below the surface.
     #[reflect(min = 0, unit = "m", default = 3, tunable)]
     pub depth: f32,
-    /// Springs along the surface.
+    /// Grid points along the surface.
     #[reflect(min = 4, max = 512, default = 96)]
     pub columns: u32,
-    /// How hard each spring pulls back to rest.
-    #[reflect(min = 0, default = 60, tunable)]
-    pub tension: f32,
-    /// How fast a spring's motion dies.
+    /// Exponential horizontal momentum damping rate.
     #[reflect(min = 0, default = 2.5, tunable)]
     pub damping: f32,
-    /// How much of a spring's height its neighbours feel each pass (waves travel).
-    #[reflect(min = 0, max = 0.5, default = 0.25, tunable)]
-    pub spread: f32,
     /// How strongly crossing bodies splash.
     #[reflect(min = 0, default = 0.04, tunable)]
     pub splash: f32,
@@ -95,9 +97,7 @@ impl Default for WaterLine {
             width: 12.0,
             depth: 3.0,
             columns: 96,
-            tension: 60.0,
             damping: 2.5,
-            spread: 0.25,
             splash: 0.04,
             buoyancy: 12.0,
             drag: 2.0,
@@ -122,7 +122,7 @@ pub struct Splash {
     pub speed: f32,
 }
 
-/// Floats a dynamic rigid body (3D profile) on the water under it: an
+/// Floats a dynamic rigid body (2D or 3D) on the water enclosing it: an
 /// og.WaterSurface, an og.Water (a flat lake, or a sea with a wind: its
 /// waves as drawn) or both on one entity. Its hull is its colliders' box
 /// cut into `samples` cells a side, kept where a cell's centre lies in a

@@ -18343,7 +18343,7 @@ export interface Ragdoll {
 }
 
 /**
- * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
+ * 3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights.
  *
  * The value of the `WaterSurface` component (token `og.WaterSurface`).
  */
@@ -18365,6 +18365,14 @@ export interface WaterSurface {
    */
   size: number;
   /**
+   * Vertical depth below the surface; zero disables the water volume.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  depth: number;
+  /**
    * How fast waves travel.
    *
    * @default 3
@@ -18374,7 +18382,7 @@ export interface WaterSurface {
    */
   waveSpeed: number;
   /**
-   * How fast waves die (0: no loss): each tick a wave keeps 1 / (1 + damping * dt) of its motion, as RigidBody.linearDamping.
+   * Exponential wave velocity damping per second; zero preserves motion.
    *
    * @default 0.9
    * @range 0..100
@@ -18382,6 +18390,22 @@ export interface WaterSurface {
    * @tunable
    */
   damping: number;
+  /**
+   * Width of the absorbing border; zero disables it.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  spongeWidth: number;
+  /**
+   * Extra exponential damping at the outer edge; zero disables it.
+   *
+   * @range 0..
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  spongeDamping: number;
   /**
    * How strongly bodies push waves.
    *
@@ -18391,7 +18415,7 @@ export interface WaterSurface {
    */
   splash: number;
   /**
-   * The upward force on a submerged body per cubic metre of its box under water (0: bodies sink).
+   * Upward force per displaced cubic metre. Planar convex hulls and oriented boxes use clipped volume; other shapes approximate the immersed fraction. Zero disables lift.
    *
    * @default 9.81
    * @range 0..
@@ -18410,7 +18434,7 @@ export interface WaterSurface {
 }
 
 /**
- * 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.
+ * 2D shallow water: a width × depth pool at the entity's y, centred on its x. Waves travel at sqrt(gravity × depth), with CFL substeps and reflecting walls. Bodies crossing splash it and float by buoyancy; og.Water2D draws it.
  *
  * The value of the `WaterLine` component (token `og.WaterLine`).
  */
@@ -18434,22 +18458,14 @@ export interface WaterLine {
    */
   depth: number;
   /**
-   * Springs along the surface.
+   * Grid points along the surface.
    *
    * @default 96
    * @range 4..512
    */
   columns: number;
   /**
-   * How hard each spring pulls back to rest.
-   *
-   * @default 60
-   * @range 0..
-   * @tunable
-   */
-  tension: number;
-  /**
-   * How fast a spring's motion dies (0: never).
+   * Exponential horizontal momentum damping per second; zero preserves motion.
    *
    * @default 2.5
    * @range 0..
@@ -18457,14 +18473,6 @@ export interface WaterLine {
    * @tunable
    */
   damping: number;
-  /**
-   * How much of a spring's height its neighbours feel each pass (waves travel).
-   *
-   * @default 0.25
-   * @range 0..0.5
-   * @tunable
-   */
-  spread: number;
   /**
    * How strongly crossing bodies splash.
    *
@@ -18493,7 +18501,7 @@ export interface WaterLine {
 }
 
 /**
- * Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.
+ * Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.
  * See `physics §8`.
  *
  * The value of the `Buoyancy` component (token `og.Buoyancy`).
@@ -18580,7 +18588,7 @@ export interface WaterPoint {
    */
   readonly height: number;
   /**
-   * How far the point is under the surface; negative over it.
+   * How far the enclosed point is below the surface.
    *
    * @unit m (metres)
    */
@@ -20530,6 +20538,14 @@ export interface Water {
    * @tunable
    */
   size: Vector2;
+  /**
+   * Vertical depth below the water surface for physics queries and buoyancy. Zero disables the volume.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  depth: number;
   /**
    * Draw the water over this mesh (its vertices in the entity's frame) instead of the size × size grid: a stream, channel or pool of any outline. Still water, with no wave heights. 0: the grid.
    * See `render §8`.
@@ -39058,15 +39074,15 @@ export declare namespace og {
    */
   const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
   /**
-   * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
+   * 3D height-field water centred on the entity at its rest level. Waves travel at waveSpeed with CFL substeps; moving hulls raise wakes. Finite-depth volumes merge by the highest enclosing level. og.Water on the same entity draws its heights.
    */
-  const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
+  const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly spongeWidth: FieldSpec<"f32">; readonly spongeDamping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
   /**
-   * 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it.
+   * 2D shallow water: a width × depth pool at the entity's y, centred on its x. Waves travel at sqrt(gravity × depth), with CFL substeps and reflecting walls. Bodies crossing splash it and float by buoyancy; og.Water2D draws it.
    */
-  const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly tension: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
+  const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
   /**
-   * Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.
+   * Floats a rigid body in 2D or 3D, or a limp ragdoll's actual bone volumes; a 3D character swims. Cached collider-volume samples accumulate lift, drag and torque from one substep snapshot. Overlaps lift once at the highest enclosing level. Replaces the pool's automatic lift.
    * See `physics §8`.
    */
   const Buoyancy: ComponentType<{ readonly waterDensity: FieldSpec<"f32">; readonly samples: FieldSpec<"u32">; readonly drag: FieldSpec<"f32">; readonly angularDrag: FieldSpec<"f32">; readonly submerged: FieldSpec<"f32"> }, Buoyancy>;
@@ -39093,7 +39109,7 @@ export declare namespace og {
      */
     function resizeCharacter(world: World, entity: Entity, height: number, radius: number): Result<boolean>;
     /**
-     * The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform.
+     * The highest water volume enclosing the world point, between its surface and depth below it: its entity, surface height, submerged depth, motion and slope. Null above, below or outside all volumes. Inside a system reads og.Water and og.Transform.
      * See `physics §8`.
      *
      * @param world The world.
@@ -39393,7 +39409,7 @@ export declare namespace og {
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
    * See `render §8`.
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly river: FieldSpec<"Path">; readonly riverWidth: FieldSpec<"f32">; readonly riverSpeed: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly absorption: FieldSpec<"Color">; readonly scattering: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32">; readonly foamStreaks: FieldSpec<"f32">; readonly meniscus: FieldSpec<"f32">; readonly dynamicWaves: FieldSpec<"f32">; readonly spray: FieldSpec<"f32"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly depth: FieldSpec<"f32">; readonly geometry: FieldSpec<"Geometry">; readonly river: FieldSpec<"Path">; readonly riverWidth: FieldSpec<"f32">; readonly riverSpeed: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly absorption: FieldSpec<"Color">; readonly scattering: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32">; readonly foamStreaks: FieldSpec<"f32">; readonly meniscus: FieldSpec<"f32">; readonly dynamicWaves: FieldSpec<"f32">; readonly spray: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */
