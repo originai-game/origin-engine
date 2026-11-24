@@ -5,13 +5,13 @@ export interface CrosshairProps {
   /** The weapon's current spread, 0 (settled) to 1 (widest): the arms move out from the centre. */
   spread: number;
   /** The last hit to confirm: none, hit, headshot, kill or shieldBreak. The game clears it to none when its mark should go. Default none. */
-  hit?: string;
+  hit?: string | undefined;
   /** The id of that hit (its tick): a new id plays the mark again. */
-  hitAt?: number;
+  hitAt?: number | undefined;
   /** The aim rests on an enemy: the reticle takes the target ink. */
-  aimed?: boolean;
+  aimed?: boolean | undefined;
   /** cross (four arms and a dot), dot, or circle (a ring and a dot). Default cross. */
-  shape?: string;
+  shape?: string | undefined;
 }
 
 /**

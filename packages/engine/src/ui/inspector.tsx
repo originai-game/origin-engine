@@ -251,21 +251,34 @@ export function Inspector(props: InspectorProps) {
                           {f().name}
                         </Text>
                         <Show when={f().editor === "slider"}>
-                          <View
-                            role="slider"
-                            label={f().name}
-                            valueMin={f().min}
-                            valueMax={f().max}
-                            valueNow={f().value}
-                            class="grow min-w-0 h-6 flex-row items-center"
-                            onPointerDown={(e) => slide(e, f(), (x) => changed("value", x, f().id))}
-                            onPointerMove={(e) => slide(e, f(), (x) => changed("value", x, f().id))}
-                          >
-                            <View class="relative grow h-1 rounded-capsule bg-track">
-                              <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${share(f()) * 100}%` }} />
-                              <View class="absolute top-0 size-2.5 -translate-x-1/2 -translate-y-0.75 rounded-capsule bg-accent" style={{ left: `${share(f()) * 100}%` }} />
-                            </View>
-                          </View>
+                          {(() => {
+                            let dragging = false;
+                            return (
+                              <View
+                                role="slider"
+                                label={f().name}
+                                valueMin={f().min}
+                                valueMax={f().max}
+                                valueNow={f().value}
+                                class="grow min-w-0 h-6 flex-row items-center"
+                                onPointerDown={(e) => {
+                                  dragging = true;
+                                  slide(e, f(), (x) => changed("value", x, f().id));
+                                }}
+                                onPointerMove={(e) => {
+                                  if (dragging) slide(e, f(), (x) => changed("value", x, f().id));
+                                }}
+                                onPointerUp={() => {
+                                  dragging = false;
+                                }}
+                              >
+                                <View class="relative grow h-1 rounded-capsule bg-track">
+                                  <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${share(f()) * 100}%` }} />
+                                  <View class="absolute top-0 size-2.5 -translate-x-1/2 -translate-y-0.75 rounded-capsule bg-accent" style={{ left: `${share(f()) * 100}%` }} />
+                                </View>
+                              </View>
+                            );
+                          })()}
                         </Show>
                         <Show when={f().editor === "check"}>
                           <Check class="grow" label={f().name} on={f().on} onPress={() => changed("checked", !f().on, f().id)} />

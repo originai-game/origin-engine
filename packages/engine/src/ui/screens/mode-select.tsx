@@ -50,15 +50,15 @@ export function ModeSelectScreen(props: ModeSelectScreenProps) {
         <View class="grow shrink basis-0 h-px bg-linear-to-r from-sheen to-transparent to-80% m-0 compact:hidden" />
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4 narrow:pb-6">
-        <View class="grid grid-cols-3 auto-rows-[1fr] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-auto narrow:h-auto narrow:gap-3" focusGroup="wrap">
+        <View class="grid grid-cols-3 auto-rows-[1fr] h-full gap-6 narrow:grid-cols-1 narrow:auto-rows-auto narrow:h-auto narrow:gap-3" focusGroup="stop">
           <For each={props.modes}>
             {(mode) => (
-            <View class={`group/mode min-h-80 narrow:min-h-42.5 text-fg transition duration-control data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press active:translate-x-0 active:translate-y-0 data-locked:scale-100 data-down:opacity-dim hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
+            <View class={`group/mode min-h-80 narrow:min-h-42.5 text-fg transition duration-control data-selected:inset-ring-regular data-selected:inset-ring-accent data-done:inset-ring-regular data-done:inset-ring-success active:inset-ring-regular active:inset-ring-accent disabled:text-fg-subtle disabled:scale-100 active:scale-press active:translate-x-0 active:translate-y-0 data-locked:scale-100 hover:translate-x-0 hover:-translate-y-0.25`} onPress={(e) => props.onSelect?.(e, mode().id)} tabIndex={0} data-selection-off={mode().id !== props.selected} data-selection-on={mode().id === props.selected} data-lock-open={!mode().locked} data-lock-locked={mode().locked}>
               <View class={`grow shrink justify-end rounded-panel overflow-hidden`}>
                 <Art class="absolute object-cover inset-0 size-full" kind="levelThumb" src={mode().texture} />
                 <View class={`absolute bg-linear-to-b from-transparent from-35% via-scrim via-60% to-shade-deep inset-0`} />
                 <Show when={mode().tag}>
-                  <Text class={`text-shadow-tag absolute top-4 right-4 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:nine-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={mode().locked}>
+                  <Text class={`text-shadow-tag absolute top-4 right-4 text-xs font-bold tracking-label uppercase whitespace-nowrap text-ellipsis py-0.5 px-2 overflow-hidden data-fresh:bg-hud-accent data-fresh:bg-none data-fresh:nine-none data-fresh:text-hud-accent-fg compact:top-2 compact:right-2 ${packClass("Chip", "frame")}`} data-fresh={!mode().locked}>
                     {mode().tag}
                   </Text>
                 </Show>

@@ -53,7 +53,7 @@ const NAME = "min-w-0 text-start text-lg leading-tight font-bold text-fg";
 const CAPTION = "min-w-0 text-start text-caption leading-snug font-semibold text-fg-muted";
 const YOU = `flex-none self-start py-0 px-1 text-xs leading-normal font-bold tracking-label uppercase whitespace-nowrap ${packClass("Chip", "frame")}`;
 
-function Side(props: { name?: string; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
+function Side(props: { name?: string | undefined; team: "a" | "b"; fighters?: ReadonlyArray<VersusFighter> }) {
   const heading = () => (props.name ?? "") != "" ? props.name : props.team == "a" ? t("arena.team.a") : t("arena.team.b");
   const fighters = () => props.fighters ?? [];
   const ink = () => props.team == "a" ? "text-team1" : "text-team2";
@@ -114,14 +114,14 @@ export function ArenaVersus(props: ArenaVersusProps) {
   return (
     <View class={`group/versus w-full max-h-full flex-row items-stretch p-4 compact:flex-col compact:p-2 ${packClass("Panel", "frame")}`} label={t("arena.versus.name")} data-compact={props.compact === true}>
       <View class="w-full min-w-0 flex-row items-stretch gap-x-4 compact:flex-col compact:items-stretch compact:gap-x-0 compact:gap-y-1">
-        <Side {...(props.nameA ? { name: props.nameA } : {})} team="a" fighters={props.sideA ?? []} />
+        <Side name={props.nameA || undefined} team="a" fighters={props.sideA ?? []} />
         <View class="flex-none self-center w-22 p-0.75 rounded-panel bg-gold shadow-glow-lg shadow-gold compact:w-13 compact:self-center" aria-hidden="true">
           <View class="relative w-full h-25 rounded-card bg-gold-fg overflow-hidden flex-row items-center justify-center compact:h-15">
             <View class="absolute -inset-x-4 -top-6 bottom-0 nine-glow bg-gold opacity-dim" />
             <Text class="text-6xl leading-none font-bold italic text-gold compact:text-3xl">{t("arena.versus.vs")}</Text>
           </View>
         </View>
-        <Side {...(props.nameB ? { name: props.nameB } : {})} team="b" fighters={props.sideB ?? []} />
+        <Side name={props.nameB || undefined} team="b" fighters={props.sideB ?? []} />
       </View>
     </View>
   );

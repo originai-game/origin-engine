@@ -1,4 +1,4 @@
-import { For, Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
 
 export interface ToastItem {
   /** Its key: a toast keeps its node while it stays in the list. */
@@ -12,7 +12,7 @@ export interface ToastItem {
 }
 
 export interface ToastStackProps {
-  /** The toasts shown, newest last. The game owns the list and its timing: it drops a toast after its time, or when `onDismiss` reports a swipe. */
+  /** The toasts shown, newest last. The game owns the list and its timing: it drops a toast after its time, or when `onDismiss` reports a swipe or dismiss click. */
   toasts: readonly ToastItem[];
   /** Classes of the document that uses it, on the stack. */
   class?: string | undefined;
@@ -23,8 +23,8 @@ export interface ToastStackProps {
  * Short messages that come and go at the top of the screen (NSH base's
  * `ToastStack` and `Toast`): each is announced to screen readers as it
  * arrives (a `status`, a danger one an `alert`), enters and leaves by the
- * pack's `Toast.frame`, and a swipe sideways or up dismisses it. The
- * stack (`Toast.stack`) clears the top safe area and passes presses
+ * pack's `Toast.frame`, and a swipe sideways/up or the dismiss button closes
+ * it. The stack (`Toast.stack`) clears the top safe area and passes presses
  * through between toasts. A game puts it on the `toast` layer.
  */
 export function ToastStack(props: ToastStackProps) {
@@ -34,6 +34,7 @@ export function ToastStack(props: ToastStackProps) {
         {(t) => (
           <View
             role={t().tone === "danger" ? "alert" : "status"}
+            sound="notify"
             class={packClass("Toast", "frame", t().tone)}
             onSwipe={(e) => (e.key === "down" ? undefined : props.onDismiss?.(e, t().id))}
           >
@@ -43,6 +44,16 @@ export function ToastStack(props: ToastStackProps) {
                 <Text class="text-sm text-fg-muted">{t().description}</Text>
               </Show>
             </View>
+            <Show when={props.onDismiss}>
+              <View
+                role="button"
+                label="Dismiss"
+                class="flex items-center justify-center size-8 shrink-0 rounded-control text-fg-muted hover:bg-hover hover:text-fg active:bg-pressed"
+                onPress={(e) => props.onDismiss?.(e, t().id)}
+              >
+                <Icon name="close" class="size-4" />
+              </View>
+            </Show>
           </View>
         )}
       </For>

@@ -7,8 +7,8 @@
 import type { ParticleEmitter, Texture, World } from "@origingame/engine";
 import { abi } from "../runtime/host.ts";
 import { json } from "../runtime/result.ts";
-import { type Renderer, Renderer as UiRenderer, RendererContext, component, element, insert, spread } from "./rt.ts";
-import { type Accessor, createContext, createMemo, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
+import { type Renderer, Renderer as UiRenderer, RendererContext, type UiNode as RtUiNode, component, element, insert, spread } from "./rt.ts";
+import { type Accessor, batch, createContext, createMemo, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 
 export { batch, createContext, createEffect, createMemo, createRenderEffect, createRoot, createSignal, onCleanup, provide, untrack, useContext } from "./signals.ts";
 export type { Accessor, Context, Signal } from "./signals.ts";
@@ -100,7 +100,6 @@ export function Match<T>(props: MatchProps<T>): UiChild {
  */
 export function Switch(props: { fallback?: UiChild; children: UiChild }): UiChild {
   const cases = createMemo(() => {
-    const children = props.children;
     const out: MatchProps<unknown>[] = [];
     const walk = (c: unknown): void => {
       if (Array.isArray(c)) c.forEach(walk);
@@ -114,8 +113,35 @@ export function Switch(props: { fallback?: UiChild; children: UiChild }): UiChil
     const i = index();
     if (i < 0) return props.fallback;
     const c = cases()[i]!;
-    const content = c.children;
-    return untrack(() => (typeof content === "function" && content.length > 0 ? content(() => c.when as never) : content));
+    return untrack(() => {
+      const content = c.children;
+      return typeof content === "function" && content.length > 0 ? content(() => c.when as never) : content;
+    });
+  }) as unknown as UiChild;
+}
+
+/**
+ * Catches synchronous errors thrown while rendering its subtree and renders
+ * `fallback` instead, passing the thrown error and a `reset` callback that
+ * retries rendering `children`.
+ */
+export function ErrorBoundary(props: { fallback: UiChild | ((error: unknown, reset: () => void) => UiChild); children: UiChild }): UiChild {
+  const err = createSignal<{ caught: unknown } | null>(null, { equals: false });
+  const reset = () => err.set(null);
+  return createMemo(() => {
+    const caught = err();
+    if (caught !== null) {
+      const fb = props.fallback;
+      return untrack(() => (typeof fb === "function" ? (fb as (e: unknown, r: () => void) => UiChild)(caught.caught, reset) : fb));
+    }
+    try {
+      const content = props.children;
+      return typeof content === "function" ? (content as () => UiChild)() : content;
+    } catch (e) {
+      err.set({ caught: e });
+      const fb = props.fallback;
+      return untrack(() => (typeof fb === "function" ? (fb as (err: unknown, r: () => void) => UiChild)(e, reset) : fb));
+    }
   }) as unknown as UiChild;
 }
 
@@ -152,6 +178,11 @@ export function useClock(): Accessor<{ tick: number; dt: number }> {
 /** Each world's renderer: its op buffer and handlers. */
 /** @internal */
 export const renderers = new Map<number, Renderer>();
+/** Active unmount callbacks per world so Engine.destroy() tears down every mount cleanly. */
+const activeMounts = new Map<number, Set<() => void>>();
+/** Mounts created during GameDesc.ui / FlowScreen registration, unmounted on hot reload. */
+const presentationMounts = new Map<number, Set<() => void>>();
+let capturingPresentation: Set<() => void> | null = null;
 
 /** @internal */
 export function rendererFor(world: World): Renderer {
@@ -161,6 +192,41 @@ export function rendererFor(world: World): Renderer {
     renderers.set(idOf(world), ui);
   }
   return ui;
+}
+
+/** @internal Unmounts any prior registration mounts for `worldId`, then captures new mounts made by `run`. */
+export function runPresentationMounts(worldId: number, run: () => void): void {
+  const previous = presentationMounts.get(worldId);
+  if (previous) {
+    presentationMounts.delete(worldId);
+    for (const unmount of [...previous]) unmount();
+  }
+  const next = new Set<() => void>();
+  presentationMounts.set(worldId, next);
+  const outer = capturingPresentation;
+  capturingPresentation = next;
+  try {
+    run();
+  } finally {
+    capturingPresentation = outer;
+  }
+}
+
+/** @internal Tears down all mounts and renderer tables for an engine being destroyed. */
+export function disposeRenderer(worldId: number): void {
+  presentationMounts.delete(worldId);
+  const mounts = activeMounts.get(worldId);
+  if (mounts) {
+    activeMounts.delete(worldId);
+    for (const unmount of [...mounts]) {
+      try { unmount(); } catch { /* engine is being torn down */ }
+    }
+  }
+  const ui = renderers.get(worldId);
+  if (ui) {
+    ui.disposeAll();
+    renderers.delete(worldId);
+  }
 }
 
 /** @internal Sets `ui.locale` to the world's locale and its loaded locales; read at each tick boundary. */
@@ -177,32 +243,53 @@ export type UiLayer = "hud" | "menu" | "modal" | "popover" | "toast" | "tooltip"
  * sends it at once, so it builds while the game loads. Returns the unmount.
  */
 export function mount<P>(world: World, Component: (props: P) => UiChild, props: P, options?: { layer?: UiLayer }): () => void {
+  const wid = idOf(world);
   const ui = rendererFor(world);
   ui.sendTables();
   let dispose!: () => void;
-  const root = createRoot((d) => {
-    dispose = d;
-    return provide(RendererContext, ui, () => provide(WorldContext, world, () => {
-      const node = element("view");
-      // The mount is the UI's surface, one grid cell: a component's root is
-      // stretched to the surface's size (definite, so its `flex-1` and `h-full`
-      // children fill it) unless it sizes or places itself. The cell is
-      // `minmax(0, 1fr)` both ways: a grid item's automatic minimum is its
-      // content, so a long row would widen an implicit track past the
-      // surface and carry the screen off it.
-      ui.setClass(node, "absolute inset-0 grid grid-cols-1 grid-rows-1");
-      ui.setProp(node, "layer", options?.layer ?? "hud");
-      insert(node, component(Component, props));
-      return node;
-    }));
-  });
+  let root!: RtUiNode;
+  try {
+    root = createRoot((d) => {
+      dispose = d;
+      return batch(() =>
+        provide(RendererContext, ui, () => provide(WorldContext, world, () => {
+          const node = element("view");
+          // The mount is the UI's surface, one grid cell: a component's root is
+          // stretched to the surface's size (definite, so its `flex-1` and `h-full`
+          // children fill it) unless it sizes or places itself. The cell is
+          // `minmax(0, 1fr)` both ways: a grid item's automatic minimum is its
+          // content, so a long row would widen an implicit track past the
+          // surface and carry the screen off it.
+          ui.setClass(node, "absolute inset-0 grid grid-cols-1 grid-rows-1");
+          ui.setProp(node, "layer", options?.layer ?? "hud");
+          insert(node, component(Component, props));
+          return node;
+        })),
+      );
+    });
+  } catch (e) {
+    dispose?.();
+    throw e;
+  }
   ui.insert(0, root, null);
   ui.flush();
-  return () => {
+  let done = false;
+  const unmount = () => {
+    if (done) return;
+    done = true;
+    activeMounts.get(wid)?.delete(unmount);
+    presentationMounts.get(wid)?.delete(unmount);
     dispose();
-    ui.remove(0, root);
-    ui.flush();
+    if (renderers.get(wid) === ui) {
+      ui.remove(0, root);
+      ui.flush();
+    }
   };
+  let set = activeMounts.get(wid);
+  if (!set) activeMounts.set(wid, (set = new Set()));
+  set.add(unmount);
+  capturingPresentation?.add(unmount);
+  return unmount;
 }
 
 /** A store as a signal accessor, subscribed while the component lives. */

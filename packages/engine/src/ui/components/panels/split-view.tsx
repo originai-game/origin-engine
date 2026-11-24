@@ -23,14 +23,31 @@ export interface SplitViewProps {
  * Dropped against the .svelte: nothing.
  */
 export function SplitView(props: SplitViewProps) {
-  const ratio = () => props.ratio ?? 0.5;
-  const share = { [props.column ? "height" : "width"]: `${100 * ratio()}%` };
+  const ratio = () => Math.min(1, Math.max(0, props.ratio ?? 0.5));
+  let dragging = false;
   return (
     <View class={`group/splitview relative flex-row w-140 max-w-full h-90 p-0 gap-0 overflow-hidden data-column:flex-col disabled:text-fg-subtle ${packClass("Panel", "frame")}`} data-column={props.column}>
-      <View class={`bg-tile shadow-sunk rounded-control overflow-auto group-data-column/splitview:w-full shrink`} style={share}>
+      <View class={`bg-tile shadow-sunk rounded-control overflow-auto group-data-column/splitview:w-full shrink`} style={{ [props.column ? "height" : "width"]: `${100 * ratio()}%` }}>
         {props.start?.()}
       </View>
-      <View class={`bg-rim-soft hover:bg-rim justify-center items-center w-2 gap-0 group-data-column/splitview:w-full group-data-column/splitview:h-2`} role="separator" label={props.label || t("component.split-view.name")} valueNow={ratio() * 100} valueMin={0} valueMax={100} onPointerDown={(e) => props.onResize?.(e)} onPointerMove={(e) => props.onResize?.(e)}>
+      <View
+        class={`bg-rim-soft hover:bg-rim justify-center items-center w-2 gap-0 group-data-column/splitview:w-full group-data-column/splitview:h-2`}
+        role="separator"
+        label={props.label || t("component.split-view.name")}
+        valueNow={ratio() * 100}
+        valueMin={0}
+        valueMax={100}
+        onPointerDown={(e) => {
+          dragging = true;
+          props.onResize?.(e);
+        }}
+        onPointerMove={(e) => {
+          if (dragging) props.onResize?.(e);
+        }}
+        onPointerUp={() => {
+          dragging = false;
+        }}
+      >
         <View class={`bg-hud-accent w-0.5 h-3 shadow-glow-sm rounded-capsule group-data-column/splitview:w-3 group-data-column/splitview:h-0.5`} />
       </View>
       <View class={`grow shrink basis-0 overflow-auto`}>{props.end?.()}</View>

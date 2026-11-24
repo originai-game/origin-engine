@@ -6,13 +6,13 @@ export interface ActionButtonProps {
   /** Its words, its accessible name; shown when it has no icon. */
   label: string;
   /** An icon of the atlas on its face; empty shows the label. */
-  icon?: string;
+  icon?: string | undefined;
   /** The main action: the primary fill and a larger disc. */
-  primary?: boolean;
+  primary?: boolean | undefined;
   /** A charge round its rim, 0 to 1 (an ultimate); negative is none. Default -1. */
-  charge?: number;
+  charge?: number | undefined;
   /** It feeds nothing and shows faded. */
-  disabled?: boolean;
+  disabled?: boolean | undefined;
 }
 
 /**

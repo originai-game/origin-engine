@@ -24,16 +24,18 @@ export interface NumberInputProps {
  * figure (`NumberInput.field`) and its buttons (`NumberInput.step`).
  */
 export function NumberInput(props: NumberInputProps) {
-  const step = () => props.step ?? 1;
+  const step = () => {
+    const s = props.step ?? 1;
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  };
+  const current = () => (Number.isFinite(props.value) ? props.value : (props.min ?? 0));
   const hold = (v: number) => Math.min(props.max ?? Infinity, Math.max(props.min ?? -Infinity, v));
   const ask = (e: UiEvent, v: number) => {
     const next = hold(v);
-    if (next !== props.value) props.onChange?.(e, next);
+    if (next !== current()) props.onChange?.(e, next);
   };
   const KEYS: Record<string, (v: number) => number> = {
-    ArrowUp: (v) => v + step(),
     ArrowRight: (v) => v + step(),
-    ArrowDown: (v) => v - step(),
     ArrowLeft: (v) => v - step(),
     PageUp: (v) => v + step() * 10,
     PageDown: (v) => v - step() * 10,
@@ -44,11 +46,11 @@ export function NumberInput(props: NumberInputProps) {
     <View class={`${packClass("NumberInput", "frame")} ${props.class ?? ""}`} disabled={props.disabled}>
       <View
         role="button"
-        tabIndex={-1}
+        tabIndex={0}
         class={packClass("NumberInput", "step")}
         label="−"
-        disabled={props.disabled || props.value <= (props.min ?? -Infinity)}
-        onPress={(e) => ask(e, props.value - step())}
+        disabled={props.disabled || current() <= (props.min ?? -Infinity)}
+        onPress={(e) => ask(e, current() - step())}
       >
         <Text>−</Text>
       </View>
@@ -60,21 +62,21 @@ export function NumberInput(props: NumberInputProps) {
         label={props.label}
         valueMin={props.min}
         valueMax={props.max}
-        valueNow={props.value}
+        valueNow={current()}
         onKey={(e) => {
           const move = KEYS[e.key];
-          if (move && !props.disabled) ask(e, move(props.value));
+          if (move && !props.disabled) ask(e, move(current()));
         }}
       >
-        <Text>{String(props.value)}</Text>
+        <Text>{String(current())}</Text>
       </View>
       <View
         role="button"
-        tabIndex={-1}
+        tabIndex={0}
         class={packClass("NumberInput", "step")}
         label="+"
-        disabled={props.disabled || props.value >= (props.max ?? Infinity)}
-        onPress={(e) => ask(e, props.value + step())}
+        disabled={props.disabled || current() >= (props.max ?? Infinity)}
+        onPress={(e) => ask(e, current() + step())}
       >
         <Text>+</Text>
       </View>

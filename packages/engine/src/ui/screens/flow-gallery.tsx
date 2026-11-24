@@ -38,10 +38,10 @@ export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
         </Text>
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
-        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focusGroup="wrap">
+        <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focusGroup="stop">
           <For each={props.endings}>
             {(c) => (
-            <View class={`group/card transition duration-control gap-y-2 p-0 data-selected:inset-ring-regular data-selected:inset-ring-accent data-down:opacity-dim`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
+            <View class={`group/card transition duration-control gap-y-2 p-0 data-selected:inset-ring-regular data-selected:inset-ring-accent`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
               <View class={`aspect-16/9 rounded-card bg-layer-2 overflow-hidden`}>
                 <Show when={c().locked} fallback={
                     <Art class={`absolute object-cover inset-0 size-full`} kind="keyArt" src={c().thumb} />
@@ -54,7 +54,7 @@ export function FlowGalleryScreen(props: FlowGalleryScreenProps) {
               </View>
               <View class="flex-row items-baseline gap-x-2 px-0.5">
                 <Show when={!c().locked}>
-                  <Text class={`self-center rotate-45 bg-gold shadow-glow-sm shadow-gold size-2`} />
+                  <View class={`self-center rotate-45 bg-gold shadow-glow-sm shadow-gold size-2 shrink-0`} />
                 </Show>
                 <Text class={`text-fg-muted grow shrink basis-0 text-base leading-snug font-semibold m-0 group-data-selected/card:text-fg group-data-locked/card:text-fg-muted compact:text-reading`}>
                   {c().locked ? t("screen.flow-gallery.locked") : c().title}

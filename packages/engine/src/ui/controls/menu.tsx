@@ -1,4 +1,4 @@
-import { Icon, Show, Text, View, createContext, packClass, provide, useContext, type UiEvent } from "@origingame/engine/ui";
+import { Icon, Show, Text, View, createContext, createSignal, packClass, provide, useContext, type UiEvent } from "@origingame/engine/ui";
 import { Button } from "./button";
 
 let made = 0;
@@ -62,42 +62,62 @@ export interface ContextMenuProps {
 /**
  * The same menu opened by the secondary button (a right click), a finger
  * held on its trigger, or Shift+F10 and the Menu key while the focus is
- * in it (NSH base's `ContextMenu`), under the trigger at its start, the
- * focus on its first item; the trigger's own presses keep working. A
- * game that opens it otherwise sets `open` itself.
+ * in it (NSH base's `ContextMenu`), at the pointer for mouse/touch or
+ * under the trigger for keyboard, with focus on its first item; the
+ * trigger's own presses keep working. A game that opens it otherwise sets
+ * `open` itself.
  */
 export function ContextMenu(props: ContextMenuProps) {
   const name = `og-menu-${++made}`;
-  const close = (e: UiEvent) => props.onOpenChange?.(e, false);
+  const at = createSignal<[number, number] | null>(null);
+  const close = (e: UiEvent) => {
+    at.set(null);
+    props.onOpenChange?.(e, false);
+  };
+  const openAt = (e: UiEvent) => {
+    at.set(e.value === "key" ? null : [e.x, e.y]);
+    props.onOpenChange?.(e, true);
+  };
   return (
     <View class="relative self-start">
-      <View name={`${name}-trigger`} expanded={props.open} onLongPress={(e) => props.onOpenChange?.(e, true)} onContextMenu={(e) => props.onOpenChange?.(e, true)}>
+      <View name={`${name}-trigger`} expanded={props.open} onLongPress={openAt} onContextMenu={openAt}>
         {props.trigger}
       </View>
-      <MenuPopup name={name} open={props.open} top={false} label={props.label} class={props.class} onClose={close}>
+      <MenuPopup name={name} open={props.open} top={false} point={at()} label={props.label} class={props.class} onClose={close}>
         {props.children}
       </MenuPopup>
     </View>
   );
 }
 
-/** The popup both menus share: a press shade outside it, the popup on its trigger. */
-function MenuPopup(props: { name: string; open: boolean; top: boolean; label?: string | undefined; class?: string | undefined; onClose: (e: UiEvent) => void; children?: any }) {
+/** The popup both menus share: a press shade outside it, the popup on its trigger or pointer. */
+function MenuPopup(props: { name: string; open: boolean; top: boolean; point?: [number, number] | null | undefined; label?: string | undefined; class?: string | undefined; onClose: (e: UiEvent) => void; children?: any }) {
   return (
     <Show when={props.open}>
       {/* Takes every press outside the popup, and draws nothing. */}
       <View class="absolute" spotlight={props.name} onPress={props.onClose} />
+      <Show when={props.point}>
+        {(pt) => (
+          <View
+            name={`${props.name}-point`}
+            class="fixed size-0 pointer-events-none"
+            style={{ left: `${pt()[0]}px`, top: `${pt()[1]}px` }}
+          />
+        )}
+      </Show>
       <View
         role="menu"
         name={props.name}
         label={props.label}
         modal={true}
+        sound="open"
+        exitSound="close"
         focusGroup="wrap"
-        anchor={`${props.name}-trigger`}
-        lift={[0, props.top ? 0 : 1, 0]}
+        anchor={props.point ? `${props.name}-point` : `${props.name}-trigger`}
+        lift={[0, props.point ? 0 : props.top ? 0 : 1, 0]}
         clamp="edge"
         clampMargin={8}
-        class={`z-40 ${props.top ? "-translate-y-full -mt-1" : "mt-1"} ${packClass("Menu", "frame")} ${props.class ?? ""}`}
+        class={`z-40 ${props.point ? "" : props.top ? "-translate-y-full -mt-1" : "mt-1"} ${packClass("Menu", "frame")} ${props.class ?? ""}`}
         onAction={{ back: props.onClose }}
       >
         {provide(MenuContext, props.onClose, () => props.children)}

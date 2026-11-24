@@ -17,7 +17,7 @@ export interface ToggleGroupProps {
  */
 export function ToggleGroup(props: ToggleGroupProps) {
   return (
-    <View role="toolbar" label={props.label} focusGroup="wrap" focusRoving class={`${packClass("ToggleGroup", "frame")} ${props.class ?? ""}`}>
+    <View role="toolbar" label={props.label} focusGroup="stop" focusMemory focusRoving class={`${packClass("ToggleGroup", "frame")} ${props.class ?? ""}`}>
       {props.children}
     </View>
   );

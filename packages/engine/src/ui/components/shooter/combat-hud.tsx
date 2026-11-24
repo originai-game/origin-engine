@@ -61,10 +61,10 @@ export function CombatHud(props: CombatHudProps) {
         <View class="absolute inset-0 flex-row items-center justify-center">
           <Crosshair
             spread={props.spread ?? 0}
-            {...(props.hit ? { hit: props.hit } : {})}
-            {...(props.hitAt ? { hitAt: props.hitAt } : {})}
-            {...(props.aimed ? { aimed: props.aimed } : {})}
-            {...(props.shape ? { shape: props.shape } : {})}
+            hit={props.hit}
+            hitAt={props.hitAt}
+            aimed={props.aimed}
+            shape={props.shape}
           />
         </View>
       </View>

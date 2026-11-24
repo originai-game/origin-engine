@@ -16,7 +16,7 @@ export interface TabsProps {
  */
 export function Tabs(props: TabsProps) {
   return (
-    <View role="tablist" label={props.label} focusGroup="wrap" focusRoving class={`${packClass("Tab", "list")} ${props.class ?? ""}`}>
+    <View role="tablist" label={props.label} focusGroup="stop" focusMemory focusRoving class={`${packClass("Tab", "list")} ${props.class ?? ""}`}>
       {props.children}
     </View>
   );

@@ -118,9 +118,9 @@ export function TouchControls(props: TouchControlsProps) {
                 <ActionButton
                   action={a().action}
                   label={a().label}
-                  {...((a().icon ?? "") !== "" ? { icon: a().icon } : {})}
-                  {...(a().primary ? { primary: true } : {})}
-                  {...(((a().charge ?? -1) >= 0) ? { charge: a().charge } : {})}
+                  icon={(a().icon ?? "") !== "" ? a().icon : undefined}
+                  primary={a().primary === true}
+                  charge={(a().charge ?? -1) >= 0 ? a().charge : undefined}
                   disabled={props.disabled === true || a().disabled === true}
                 />
               )}

@@ -11,10 +11,10 @@ import { type CursorImage, type Result, json, parse, refused } from "./result.ts
 import { rt } from "./state.ts";
 import { QueryImpl, learnBuild } from "./views.ts";
 import { rateOf, uiReactor, uiReactors, worldFor, worlds } from "./world.ts";
-import { mount, readLocale, renderers } from "../ui/index.ts";
+import { disposeRenderer, mount, readLocale, renderers, runPresentationMounts } from "../ui/index.ts";
 import { flowScreen } from "../ui/rt.ts";
 import type { UiChild } from "../ui/types.ts";
-import { pumpInspector } from "../ui/inspector-host.ts";
+import { disposeInspector, pumpInspector } from "../ui/inspector-host.ts";
 
 // ── the dispatcher ────────────────────────────────────────────────────────
 
@@ -64,12 +64,14 @@ export const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed,
         // "flow": project.ogt's `flow`, drawn by the built-in FlowScreen under the game's own UI
         // (a bundle of a project with the line holds it: node/build.ts).
         const result = uiReactor(world).registerPresentation(() => {
-          if (payload === "flow") {
-            const Screen = flowScreen.component;
-            if (!Screen) throw new Error("project.ogt's `flow`: this bundle holds no FlowScreen; bundle the game with og (og run, og build), which adds it for a project with a flow line");
-            mount(world as unknown as Api.World, Screen as (props: Record<string, never>) => UiChild, {});
-          }
-          fn?.(world);
+          runPresentationMounts(engine, () => {
+            if (payload === "flow") {
+              const Screen = flowScreen.component;
+              if (!Screen) throw new Error("project.ogt's `flow`: this bundle holds no FlowScreen; bundle the game with og (og run, og build), which adds it for a project with a flow line");
+              mount(world as unknown as Api.World, Screen as (props: Record<string, never>) => UiChild, {});
+            }
+            fn?.(world);
+          });
         });
         if (!result.ok) errors.push(result.reason);
         return errors.join("\n");
@@ -418,6 +420,8 @@ export class Engine {
 
   destroy(): boolean {
     rt.epoch++;
+    disposeInspector(this.id);
+    disposeRenderer(this.id);
     for (const scope of uiReactors.get(this.id)?.scopes.values() ?? []) scope.dispose();
     uiReactors.delete(this.id);
     engines.delete(this.id);

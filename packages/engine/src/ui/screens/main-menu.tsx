@@ -80,7 +80,7 @@ export function MainMenuScreen(props: MainMenuScreenProps) {
             </Show>
           </View>
         </Show>
-        <View class="gap-y-0.5 w-110 max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" focusGroup="wrap" data-after-news={props.news !== ""}>
+        <View class="gap-y-0.5 w-110 max-w-full mt-auto -ml-4 short:gap-y-0 compact:w-auto compact:max-w-none compact:-mx-4 compact:data-after-news:mt-0" focusGroup="stop" data-after-news={props.news !== ""}>
           <Show when={props.canContinue && props.onContinue}>
             <View class={`flex-row items-center justify-center gap-1 group/continue w-full min-h-11 text-fg-muted py-2 px-4 hover:bg-hud-accent hover:text-hud-accent-fg focus-visible:bg-hud-accent focus-visible:text-hud-accent-fg active:bg-hud-accent active:text-hud-accent-fg compact:pr-4 compact:pl-6`} role="button" onPress={(e) => props.onContinue?.(e)} autofocus>
               <View class="flex-row items-center gap-x-3 w-full">

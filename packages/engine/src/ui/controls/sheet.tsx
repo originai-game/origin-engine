@@ -8,6 +8,8 @@ export interface SheetProps {
   label?: string | undefined;
   /** The handle at its top (default true). */
   grabber?: boolean | undefined;
+  /** A press on the scrim, `back`, or a swipe down closes it (default true). */
+  dismissible?: boolean | undefined;
   /** Classes of the document that uses it, on its panel. */
   class?: string | undefined;
   onClose?: ((e: UiEvent) => void) | undefined;
@@ -24,18 +26,18 @@ export interface SheetProps {
  * parent, so a game puts it on the `modal` layer.
  */
 export function Sheet(props: SheetProps) {
-  const close = (e: UiEvent) => props.onClose?.(e);
+  const dismiss = (e: UiEvent) => (props.dismissible === false ? undefined : props.onClose?.(e));
   return (
     <Show when={props.open}>
-      <View class="absolute inset-0 flex-col">
-        <View class={packClass("Modal", "scrim")} onPress={close} />
+      <View class="absolute inset-0 flex-col" modal={true} onAction={{ back: dismiss }}>
+        <View class={packClass("Modal", "scrim")} tabIndex={-1} onPress={dismiss} />
         <View
           role="dialog"
-          modal={true}
           label={props.label}
+          sound="open"
+          exitSound="close"
           class={`${packClass("Sheet", "frame")} ${props.class ?? ""}`}
-          onAction={{ back: close }}
-          onSwipe={(e) => (e.key === "down" ? close(e) : undefined)}
+          onSwipe={(e) => (e.key === "down" ? dismiss(e) : undefined)}
         >
           <Show when={props.grabber !== false}>
             <View class={packClass("Sheet", "grabber")} />

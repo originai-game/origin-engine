@@ -14,11 +14,13 @@ function Slider(props: {
   const clamped = () => Math.min(props.max, Math.max(props.min, props.value));
   const percent = () => ((clamped() - props.min) / (props.max - props.min || 1)) * 100;
   const stepped = (e: UiEvent, up: boolean) => props.onChange?.(e, Math.min(props.max, Math.max(props.min, clamped() + (up ? props.step : -props.step))));
+  let dragging = false;
   /** The pointer's drag: the track's box rides in e.value ("x y width height"), pointerdown captures the moves. */
   const dragged = (e: UiEvent) => {
     const [bx, , bw] = e.value.split(" ").map(Number);
     const raw = props.min + Math.min(1, Math.max(0, (e.x - bx) / (bw || 1))) * (props.max - props.min);
-    props.onChange?.(e, Math.min(props.max, Math.max(props.min, props.min + Math.round((raw - props.min) / props.step) * props.step)));
+    const s = props.step > 0 ? props.step : 1;
+    props.onChange?.(e, Math.min(props.max, Math.max(props.min, props.min + Math.round((raw - props.min) / s) * s)));
   };
   return (
     <View
@@ -30,11 +32,23 @@ function Slider(props: {
       valueMax={props.max}
       valueNow={clamped()}
       onKey={(e) => {
-        if (e.key === "ArrowRight" || e.key === "ArrowUp") stepped(e, true);
-        else if (e.key === "ArrowLeft" || e.key === "ArrowDown") stepped(e, false);
+        if (e.key === "ArrowRight") stepped(e, true);
+        else if (e.key === "ArrowLeft") stepped(e, false);
       }}
     >
-      <View class="relative grow shrink basis-0 h-1 rounded-capsule bg-track inset-shadow-lit ring ring-rim" onPointerDown={dragged} onPointerMove={dragged}>
+      <View
+        class="relative grow shrink basis-0 h-1 rounded-capsule bg-track inset-shadow-lit ring ring-rim"
+        onPointerDown={(e) => {
+          dragging = true;
+          dragged(e);
+        }}
+        onPointerMove={(e) => {
+          if (dragging) dragged(e);
+        }}
+        onPointerUp={() => {
+          dragging = false;
+        }}
+      >
         <View class="absolute left-0 top-0 h-full rounded-capsule bg-accent" style={{ width: `${percent()}%` }} />
         <View class="absolute top-0 size-2.5 -translate-x-1/2 -translate-y-1 rounded-capsule bg-accent shadow-panel" style={{ left: `${percent()}%` }} />
       </View>

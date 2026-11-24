@@ -77,7 +77,9 @@ export class Renderer {
   private nextId = 1;
   private readonly free: number[] = [];
   private readonly handlers = new Map<number, Map<string, (e: UiEvent) => void>>();
-  private readonly owners = new Map<number, unknown>();
+  private readonly owners = new Map<number, Map<string, unknown>>();
+  private readonly baseClass = new Map<number, string>();
+  private readonly listClass = new Map<number, string>();
   /** Each node's children as the renderer put them, to free their ids with it. */
   private readonly kids = new Map<number, Set<number>>();
   /** Each `Scroll`'s built-in bar track. */
@@ -184,7 +186,22 @@ export class Renderer {
     return node;
   }
   setText(node: UiNode, value: string): void { this.op(3); this.u32(node.id); this.str(value); }
-  setClass(node: UiNode, value: string): void { this.op(4); this.u32(node.id); this.str(value); }
+  private emitClass(node: UiNode): void {
+    const base = this.baseClass.get(node.id) ?? "";
+    const extra = this.listClass.get(node.id) ?? "";
+    const combined = base && extra ? `${base} ${extra}` : base || extra;
+    this.op(4); this.u32(node.id); this.str(combined);
+  }
+  setClass(node: UiNode, value: string): void {
+    if (value) this.baseClass.set(node.id, value);
+    else this.baseClass.delete(node.id);
+    this.emitClass(node);
+  }
+  setClassList(node: UiNode, value: string): void {
+    if (value) this.listClass.set(node.id, value);
+    else this.listClass.delete(node.id);
+    this.emitClass(node);
+  }
   setStyle(node: UiNode, value: string): void { this.op(5); this.u32(node.id); this.str(value); }
   setProp(node: UiNode, name: string, value: string): void {
     const bar = name === "scrollbar" ? this.bars.get(node.id) : undefined;
@@ -198,8 +215,11 @@ export class Renderer {
     const code = EVENT_CODE.get(name)!;
     let map = this.handlers.get(node.id);
     if (!map) this.handlers.set(node.id, (map = new Map()));
+    let omap = this.owners.get(node.id);
+    if (!omap) this.owners.set(node.id, (omap = new Map()));
     const had = map.has(name);
-    if (handler) { map.set(name, handler); this.owners.set(node.id, getOwner()); } else map.delete(name);
+    if (handler) { map.set(name, handler); omap.set(name, getOwner()); }
+    else { map.delete(name); omap.delete(name); }
     if (had !== Boolean(handler)) { this.op(7); this.u32(node.id); this.u8(code); this.u8(handler ? 1 : 0); }
   }
   insert(parent: number, child: UiNode, before: UiNode | null): void {
@@ -223,6 +243,22 @@ export class Renderer {
     this.parents.delete(child.id);
     this.orphans.add(child.id);
   }
+  /** Tears down all JS-side tables when the owning engine is destroyed. */
+  disposeAll(): void {
+    this.handlers.clear();
+    this.owners.clear();
+    this.baseClass.clear();
+    this.listClass.clear();
+    this.kids.clear();
+    this.bars.clear();
+    this.parents.clear();
+    this.tags.clear();
+    this.orphans.clear();
+    this.free.length = 0;
+    this.errors.length = 0;
+    this.at = 8;
+    this.count = 0;
+  }
   private forget(id: number): void {
     for (const kid of this.kids.get(id) ?? []) this.forget(kid);
     this.kids.delete(id);
@@ -231,6 +267,8 @@ export class Renderer {
     this.tags.delete(id);
     this.handlers.delete(id);
     this.owners.delete(id);
+    this.baseClass.delete(id);
+    this.listClass.delete(id);
     this.free.push(id);
   }
 
@@ -254,6 +292,9 @@ export class Renderer {
         this.count = 0;
         const dispatched = this.events(reply);
         if (!dispatched || this.count === 0) return;
+      }
+      if (this.count > 0) {
+        this.errors.push("og.ui: UI event dispatch exceeded 16 flush rounds with pending ops");
       }
     } finally {
       this.flushing = false;
@@ -283,7 +324,7 @@ export class Renderer {
       const key = str(), value = str();
       const name = EVENTS[code];
       const handler = name && this.handlers.get(id)?.get(name);
-      if (handler) due.push([handler, this.owners.get(id), { world: this.world, type: name.slice(2).toLowerCase(), x, y, key, value }]);
+      if (handler) due.push([handler, this.owners.get(id)?.get(name), { world: this.world, type: name.slice(2).toLowerCase(), x, y, key, value }]);
     }
     for (const [handler, owner, event] of due) {
       try { batch(() => runWithOwner(owner, () => untrack(() => handler(event)))); }
@@ -329,7 +370,7 @@ export function prop(node: UiNode, name: string, value: unknown): void {
   if (name === "class") { ui.setClass(node, typeof value === "string" ? value : ""); return; }
   if (name === "classList") {
     const list = Object.entries((value ?? {}) as Record<string, unknown>).filter(([, on]) => on).map(([c]) => c);
-    ui.setClass(node, list.join(" "));
+    ui.setClassList(node, list.join(" "));
     return;
   }
   if (name === "style") { ui.setStyle(node, styleText(value)); return; }

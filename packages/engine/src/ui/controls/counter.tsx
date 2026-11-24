@@ -22,10 +22,15 @@ export interface CounterProps {
 export function Counter(props: CounterProps) {
   const clock = useClock();
   const startTick = untrack(clock).tick;
+  let rolled = false;
   const shown = () => {
-    if (props.from !== undefined && props.from !== "" && clock().tick === startTick) {
-      const f = Number(props.from);
-      if (Number.isFinite(f)) return f;
+    if (!rolled && props.from !== undefined && props.from !== "") {
+      if (clock().tick === startTick) {
+        const f = Number(props.from);
+        if (Number.isFinite(f)) return f;
+      } else {
+        rolled = true;
+      }
     }
     return props.value;
   };

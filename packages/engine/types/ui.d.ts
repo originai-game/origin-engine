@@ -101,6 +101,15 @@ export declare function Switch(props: {
     children: UiChild;
 }): UiChild;
 /**
+ * Catches synchronous errors thrown while rendering its subtree and renders
+ * `fallback` instead, passing the thrown error and a `reset` callback that
+ * retries rendering `children`.
+ */
+export declare function ErrorBoundary(props: {
+    fallback: UiChild | ((error: unknown, reset: () => void) => UiChild);
+    children: UiChild;
+}): UiChild;
+/**
  * The pack's classes for a component's slot (and its variant): put it last
  * in the slot's `class`. It answers a `@Component.slot[.variant]` token that
  * the UI's class resolver replaces with the pack's strings; the cook folds a

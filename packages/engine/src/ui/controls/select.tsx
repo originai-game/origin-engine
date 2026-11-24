@@ -1,4 +1,6 @@
-import { For, Icon, Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
+import { For, Icon, Scroll, Show, Text, View, packClass, type UiEvent } from "@origingame/engine/ui";
+
+let made = 0;
 
 export interface SelectOption {
   value: string;
@@ -23,14 +25,16 @@ export interface SelectProps {
 
 /**
  * One value picked from a list (NSH base's `Select`): a combobox for
- * screen readers whose arrows step the value while closed, and whose list
- * opens under the trigger at its width, as one focus
- * group the arrows move in. The pack draws the trigger (`Select.trigger`,
+ * screen readers whose left/right arrows step the value while closed, and
+ * whose list opens anchored under the trigger, clamped inside the viewport
+ * and scrollable when long. The pack draws the trigger (`Select.trigger`,
  * `aria-expanded:` while open), the list (`Select.list`) and each option
  * (`Select.option`, `selected:` for the chosen one).
  */
 export function Select(props: SelectProps) {
+  const name = `og-select-${++made}`;
   const chosen = () => props.options.find((o) => o.value === props.value);
+  const close = (e: UiEvent) => props.onOpenChange?.(e, false);
   const step = (e: UiEvent, by: number) => {
     const live = props.options.filter((o) => !o.disabled);
     if (!live.length) return;
@@ -40,6 +44,7 @@ export function Select(props: SelectProps) {
   return (
     <View class="relative h-fit">
       <View
+        name={`${name}-trigger`}
         role="combobox"
         tabIndex={0}
         class={`${packClass("Select", "trigger")} ${props.class ?? ""}`}
@@ -50,43 +55,54 @@ export function Select(props: SelectProps) {
         onPress={(e) => props.onOpenChange?.(e, props.open !== true)}
         onKey={(e) => {
           if (props.open || props.disabled) return;
-          if (e.key === "ArrowDown" || e.key === "ArrowRight") step(e, 1);
-          else if (e.key === "ArrowUp" || e.key === "ArrowLeft") step(e, -1);
+          if (e.key === "ArrowRight") step(e, 1);
+          else if (e.key === "ArrowLeft") step(e, -1);
         }}
       >
         <Text class="min-w-0 truncate">{chosen()?.label ?? ""}</Text>
         <Icon name="chevronDown" class="size-4 shrink-0" />
       </View>
       <Show when={props.open}>
+        <View class="absolute" spotlight={name} onPress={close} />
         <View
+          name={name}
           role="listbox"
           label={props.label}
+          modal={true}
+          sound="open"
+          exitSound="close"
           focusGroup="wrap"
-          class={`absolute top-full inset-x-0 z-40 mt-1 ${packClass("Select", "list")}`}
-          onAction={{ back: (e) => props.onOpenChange?.(e, false) }}
+          anchor={`${name}-trigger`}
+          lift={[0, 1, 0]}
+          clamp="edge"
+          clampMargin={8}
+          class={`z-40 mt-1 min-w-44 max-w-80 ${packClass("Select", "list")}`}
+          onAction={{ back: close }}
         >
-          <For each={props.options} key={(o) => o.value}>
-            {(o) => (
-              <View
-                role="option"
-                tabIndex={0}
-                class={packClass("Select", "option")}
-                selected={o().value === props.value}
-                disabled={o().disabled}
-                autofocus={o().value === props.value}
-                label={o().label}
-                onPress={(e) => {
-                  props.onChange?.(e, o().value);
-                  props.onOpenChange?.(e, false);
-                }}
-              >
-                <Text class="grow">{o().label}</Text>
-                <Show when={o().value === props.value}>
-                  <Icon name="check" class="size-4 shrink-0" />
-                </Show>
-              </View>
-            )}
-          </For>
+          <Scroll class="max-h-64 flex-col">
+            <For each={props.options} key={(o) => o.value}>
+              {(o) => (
+                <View
+                  role="option"
+                  tabIndex={0}
+                  class={packClass("Select", "option")}
+                  selected={o().value === props.value}
+                  disabled={o().disabled}
+                  autofocus={o().value === props.value}
+                  label={o().label}
+                  onPress={(e) => {
+                    props.onChange?.(e, o().value);
+                    props.onOpenChange?.(e, false);
+                  }}
+                >
+                  <Text class="grow min-w-0 truncate">{o().label}</Text>
+                  <Show when={o().value === props.value}>
+                    <Icon name="check" class="size-4 shrink-0" />
+                  </Show>
+                </View>
+              )}
+            </For>
+          </Scroll>
         </View>
       </Show>
     </View>

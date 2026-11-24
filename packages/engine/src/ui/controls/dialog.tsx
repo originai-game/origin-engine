@@ -29,17 +29,18 @@ export interface DialogProps {
  */
 export function Dialog(props: DialogProps) {
   const close = (e: UiEvent) => props.onClose?.(e);
+  const dismiss = (e: UiEvent) => (props.dismissible === false ? undefined : close(e));
   return (
     <Show when={props.open}>
-      <View class="absolute inset-0 flex p-4">
-        <View class={packClass("Modal", "scrim")} onPress={(e) => (props.dismissible === false ? undefined : close(e))} />
+      <View class="absolute inset-0 flex p-4" modal={true} onAction={{ back: dismiss }}>
+        <View class={packClass("Modal", "scrim")} tabIndex={-1} onPress={dismiss} />
         <View
           role={props.actions && !props.children ? "alertdialog" : "dialog"}
-          modal={true}
           label={props.title}
           description={props.description}
+          sound="open"
+          exitSound="close"
           class={`${packClass("Dialog", "frame")} ${packClass("Modal", "frame")} ${props.class ?? ""}`}
-          onAction={{ back: close }}
         >
           <Show when={props.title}>
             <Text class={packClass("Dialog", "title")} role="heading" level={2}>{props.title}</Text>

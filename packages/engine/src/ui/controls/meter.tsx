@@ -13,15 +13,17 @@ export interface MeterProps {
 
 /** A track whose fill wears its value's region: good, middling or poor. */
 export function Meter(props: MeterProps) {
-  const fraction = () => {
-    const min = props.min ?? 0;
-    const max = props.max ?? 1;
-    return max > min ? Math.min(Math.max((props.value - min) / (max - min), 0), 1) : 0;
-  };
+  const min = () => (Number.isFinite(props.min) ? props.min! : 0);
+  const max = () => (Number.isFinite(props.max) ? props.max! : 1);
+  const value = () => (Number.isFinite(props.value) ? props.value : min());
+  const fraction = () => (max() > min() ? Math.min(Math.max((value() - min()) / (max() - min()), 0), 1) : 0);
   return (
     <View
       role="meter"
       label={props.label}
+      valueMin={min()}
+      valueMax={max()}
+      valueNow={value()}
       class={`group/meter w-40 h-3 overflow-hidden rounded-capsule bg-fill-strong shadow-sunk ${props.class ?? ""}`}
       data-suboptimum={props.region === "suboptimum"}
       data-poor={props.region === "poor"}

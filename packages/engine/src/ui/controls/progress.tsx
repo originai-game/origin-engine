@@ -18,7 +18,7 @@ export interface ProgressProps {
  * value moves).
  */
 export function Progress(props: ProgressProps) {
-  const percent = () => Math.min(Math.max(props.value, 0), 100);
+  const percent = () => (Number.isFinite(props.value) ? Math.min(Math.max(props.value, 0), 100) : 0);
   return (
     <View
       role="progressbar"

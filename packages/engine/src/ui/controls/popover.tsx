@@ -27,21 +27,27 @@ export interface PopoverProps {
 export function Popover(props: PopoverProps) {
   const name = `og-popover-${++made}`;
   const top = () => props.placement === "top";
+  const close = (e: UiEvent) => props.onOpenChange?.(e, false);
   return (
     <View class="relative self-start">
       <View name={name} expanded={props.open} onPress={(e) => props.onOpenChange?.(e, !props.open)}>
         {props.trigger}
       </View>
       <Show when={props.open}>
+        <View class="absolute" spotlight={`${name}-panel`} onPress={close} />
         <View
+          name={`${name}-panel`}
           role="dialog"
+          modal={true}
+          sound="open"
+          exitSound="close"
           label={props.label}
           anchor={name}
           lift={[0, top() ? 0 : 1, 0]}
           clamp="edge"
           clampMargin={8}
           class={`z-40 ${top() ? "-translate-y-full -mt-2" : "mt-2"} ${packClass("Popover", "frame")} ${props.class ?? ""}`}
-          onAction={{ back: (e) => props.onOpenChange?.(e, false) }}
+          onAction={{ back: close }}
         >
           {props.children}
         </View>

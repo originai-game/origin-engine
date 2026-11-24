@@ -19,6 +19,7 @@ interface Owner {
   owned: Computation[] | null;
   cleanups: (() => void)[] | null;
   context: Map<symbol, unknown> | null;
+  depth: number;
 }
 
 interface Source {
@@ -127,29 +128,48 @@ function run(c: Computation): void {
   }
 }
 
+/** Picks the shallowest owner-depth computation so parent branches (<Show>/<For>) dispose stale children before they run. */
+function nextQueued(): Computation {
+  let best: Computation | null = null;
+  for (const c of queue) {
+    if (!best || c.depth < best.depth) {
+      best = c;
+      if (best.depth === 0) break;
+    }
+  }
+  queue.delete(best!);
+  return best!;
+}
+
 function flush(): void {
   if (batching > 0) return;
   batching++;
+  let ok = false;
   try {
     while (queue.size > 0 || effects.length > 0) {
       while (queue.size > 0) {
         if (++runs > 1_000_000) throw new Error("og.ui: a computation keeps writing what it reads");
-        const [c] = queue;
-        queue.delete(c!);
-        if (c!.kind === "effect") effects.push(c!);
-        else run(c!);
+        const c = nextQueued();
+        if (c.kind === "effect") effects.push(c);
+        else run(c);
       }
       const due = effects.splice(0);
       for (const c of due) run(c);
     }
+    ok = true;
   } finally {
+    if (!ok) {
+      queue.clear();
+      effects.length = 0;
+    }
     batching--;
     runs = 0;
   }
 }
 
 function computation(fn: (prev: unknown) => unknown, value: unknown, kind: Computation["kind"], equals: Computation["equals"] = Object.is): Computation {
-  const c: Computation = { fn, value, kind, equals, sources: new Set(), observers: new Set(), state: STALE, owner, owned: null, cleanups: null, context: null };
+  const depth = owner ? owner.depth + 1 : 0;
+  const c: Computation = { fn, value, kind, equals, sources: new Set(), observers: new Set(), state: STALE, owner, owned: null, cleanups: null, context: null, depth };
   if (owner) (owner.owned ??= []).push(c);
   return c;
 }
@@ -207,7 +227,7 @@ export function batch<T>(fn: () => T): T {
 
 /** An owner nothing disposes but the `dispose` it is handed. */
 export function createRoot<T>(fn: (dispose: () => void) => T): T {
-  const root: Owner = { owner, owned: null, cleanups: null, context: null };
+  const root: Owner = { owner, owned: null, cleanups: null, context: null, depth: owner ? owner.depth + 1 : 0 };
   const [prevOwner, prevListener] = [owner, listener];
   owner = root;
   listener = null;
@@ -245,7 +265,7 @@ export function useContext<T>(context: Context<T>): T {
 
 /** Runs `fn` with `context` set to `value` for everything made under it. */
 export function provide<T, R>(context: Context<T>, value: T, fn: () => R): R {
-  const o: Owner = { owner, owned: null, cleanups: null, context: new Map([[context.id, value]]) };
+  const o: Owner = { owner, owned: null, cleanups: null, context: new Map([[context.id, value]]), depth: owner ? owner.depth + 1 : 0 };
   if (owner) (owner.cleanups ??= []).push(() => clean(o));
   const prev = owner;
   owner = o;

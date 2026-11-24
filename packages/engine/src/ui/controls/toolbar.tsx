@@ -19,7 +19,7 @@ export interface ToolbarProps {
  */
 export function Toolbar(props: ToolbarProps) {
   return (
-    <View role="toolbar" label={props.label} focusGroup="wrap" focusRoving class={`${packClass("Toolbar", "frame")} ${props.class ?? ""}`}>
+    <View role="toolbar" label={props.label} focusGroup="stop" focusMemory focusRoving class={`${packClass("Toolbar", "frame")} ${props.class ?? ""}`}>
       {props.children}
     </View>
   );

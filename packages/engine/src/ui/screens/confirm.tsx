@@ -28,33 +28,36 @@ export interface ConfirmProps {
  * confirming destroys something). The game closes it.
  */
 export function Confirm(props: ConfirmProps) {
+  const cancel = (e: UiEvent) => props.onCancel?.(e);
   return (
     <Show when={props.open}>
-      <View class={packClass("Modal", "scrim")} />
-      <View class={`group/confirm shrink min-h-0 m-auto w-115 max-w-full h-auto pt-6 pb-4 px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4 ${packClass("Panel", "frame")} ${packClass("Modal", "frame")}`} modal={true} label={props.title} data-danger={props.danger === true} onAction={{ back: (e) => props.onCancel?.(e) }}>
-      <Show when={props.danger}>
-        <View class={`items-center gap-x-2 text-xs font-bold tracking-label uppercase text-danger`}>
-          <Text class="rotate-45 bg-danger size-2" />
-          <Text class="shrink">{t("screen.confirm.undone")}</Text>
+      <View class="absolute inset-0 flex p-4" modal={true} onAction={{ back: cancel }}>
+        <View class={packClass("Modal", "scrim")} tabIndex={-1} onPress={cancel} />
+        <View class={`group/confirm shrink min-h-0 m-auto w-115 max-w-full h-auto pt-6 pb-4 px-6 gap-2 short:min-w-105 short:w-fit short:max-w-180 compact:p-4 ${packClass("Panel", "frame")} ${packClass("Modal", "frame")}`} role="alertdialog" label={props.title} sound="open" exitSound="close" data-danger={props.danger === true}>
+          <Show when={props.danger}>
+            <View class={`flex-row items-center gap-x-2 text-xs font-bold tracking-label uppercase text-danger`}>
+              <View class="rotate-45 bg-danger size-2 shrink-0" />
+              <Text class="shrink">{t("screen.confirm.undone")}</Text>
+            </View>
+          </Show>
+          <Text class={`font-display text-3xl font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-2xl`} role="heading" level={2}>
+            {props.title}
+          </Text>
+          <Scroll class="min-h-5.75 shrink gap-2 data-hidden:hidden" data-hidden={props.body === ""}>
+            <Text class={`text-base leading-normal text-fg-muted m-0`}>
+              {props.body}
+            </Text>
+          </Scroll>
+          <View class={`flex-row flex-wrap-reverse items-center mt-3 gap-2`}>
+            <Button class="grow shrink max-w-full min-h-11 py-2" onPress={cancel} autofocus>
+              <Text class="whitespace-normal">{props.cancel}</Text>
+            </Button>
+            <Button variant={props.danger ? "danger" : "primary"} class="grow shrink max-w-full min-h-11 py-2" onPress={(e) => props.onConfirm?.(e)}>
+              <Text class="whitespace-normal">{props.confirm}</Text>
+            </Button>
+          </View>
         </View>
-      </Show>
-      <Text class={`font-display text-3xl font-bold leading-tight tracking-xs text-fg text-shadow-xs text-shadow-bg m-0 compact:text-2xl`}>
-        {props.title}
-      </Text>
-      <Scroll class="min-h-5.75 shrink gap-2 data-hidden:hidden" data-hidden={props.body === ""}>
-        <Text class={`text-base leading-normal text-fg-muted m-0`}>
-          {props.body}
-        </Text>
-      </Scroll>
-      <View class={`flex-row flex-wrap-reverse items-center mt-3 gap-2`}>
-        <Button class="grow shrink max-w-full min-h-11 py-2" onPress={(e) => props.onCancel?.(e)} autofocus>
-          <Text class="whitespace-normal">{props.cancel}</Text>
-        </Button>
-        <Button variant={props.danger ? "danger" : "primary"} class="grow shrink max-w-full min-h-11 py-2" onPress={(e) => props.onConfirm?.(e)}>
-          <Text class="whitespace-normal">{props.confirm}</Text>
-        </Button>
       </View>
-    </View>
     </Show>
   );
 }

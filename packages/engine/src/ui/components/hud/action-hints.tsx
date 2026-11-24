@@ -24,11 +24,11 @@ export function ActionHints(props: ActionHintsProps) {
         {(h) => (
           <View class="flex-col max-w-full">
             <HintRow
-              {...(h().hold ? { hold: true } : {})}
+              hold={h().hold === true}
               hint={h().hint}
               action={h().action}
-              {...(props.onPress ? { onPress: props.onPress } : {})}
-              {...(props.onHold ? { onHold: props.onHold } : {})}
+              onPress={props.onPress}
+              onHold={props.onHold}
             />
           </View>
         )}
@@ -38,17 +38,16 @@ export function ActionHints(props: ActionHintsProps) {
 }
 
 /** One hint row: a press hint or a hold one, each its own button. */
-function HintRow(props: { hold?: boolean; hint: string; action: string; onPress?: (e: UiEvent, action: string) => void; onHold?: (e: UiEvent, action: string) => void }) {
+function HintRow(props: { hold?: boolean | undefined; hint: string; action: string; onPress?: ((e: UiEvent, action: string) => void) | undefined; onHold?: ((e: UiEvent, action: string) => void) | undefined }) {
   const progress = createSignal(0);
   const held = () => progress() > 0;
   return (
     <View
-      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2 overflow-hidden transition duration-control text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-border active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
+      class={`relative flex-row items-center gap-2 min-h-10 max-w-full py-0.5 px-2.5 overflow-hidden rounded-control transition duration-control text-fg bg-raised-lo shadow-raise inset-shadow-sunk inset-ring-hairline inset-ring-border active:bg-none active:bg-raised-pressed pointer-coarse:min-h-11 pointer-coarse:px-3`}
       role="button"
       label={props.hint}
-      {...(props.hold
-        ? { hold: 0.8, onHold: (e: UiEvent) => progress.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) }
-        : {})}
+      hold={props.hold ? 0.8 : undefined}
+      onHold={props.hold ? (e: UiEvent) => progress.set(e.value === "0" ? 0 : Math.min(Number(e.value), 1)) : undefined}
       onPress={(e) => {
         progress.set(0);
         (props.hold ? props.onHold : props.onPress)?.(e, props.action);

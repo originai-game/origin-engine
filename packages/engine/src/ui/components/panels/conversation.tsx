@@ -57,14 +57,30 @@ export function RpgConversation(props: RpgConversationProps) {
   const clock = useClock();
   const world = useWorld();
   // The tick the line started on: a new line starts its reveal again.
-  const start = createMemo(() => (props.line, untrack(clock).tick));
+  let revealedStart = -1;
+  let revealedLine = "";
+  const start = createMemo(() => {
+    const line = props.line;
+    const tick = untrack(clock).tick;
+    if (line !== revealedLine) {
+      revealedLine = "";
+      revealedStart = -1;
+    }
+    return { line, tick };
+  });
   const shown = createMemo(() => {
     const rate = props.rate ?? 0;
-    if (rate <= 0) return props.line;
-    const chars = Array.from(props.line);
+    const { line, tick } = start();
+    if (rate <= 0 || (revealedLine === line && revealedStart === tick)) return line;
+    const chars = Array.from(line);
     const c = clock();
-    const n = Math.floor((c.tick - start()) * c.dt * rate);
-    return n >= chars.length ? props.line : chars.slice(0, Math.max(n, 0)).join("");
+    const n = Math.floor((c.tick - tick) * c.dt * rate);
+    if (n >= chars.length) {
+      revealedLine = line;
+      revealedStart = tick;
+      return line;
+    }
+    return chars.slice(0, Math.max(n, 0)).join("");
   });
   // Revealed once a line shown at a rate is whole.
   let told = "";

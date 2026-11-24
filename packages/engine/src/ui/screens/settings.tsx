@@ -45,8 +45,38 @@ export interface SettingsScreenProps {
 export function SettingsScreen(props: SettingsScreenProps) {
   const listening = createSignal("");
   const openChoice = createSignal("");
+  const activeEntryId = createSignal("");
+  const stepPage = (e: UiEvent, delta: number) => {
+    const pages = props.pages;
+    if (!pages.length) return;
+    const i = pages.findIndex((p) => p.id === props.page);
+    const next = pages[((i < 0 ? 0 : i) + delta + pages.length) % pages.length];
+    if (next) props.onPage?.(e, next.id);
+  };
+  const pageEntries = () => props.entries.filter((e) => e.page === props.page);
+  const inspected = () => {
+    const list = pageEntries();
+    return list.find((e) => e.id === activeEntryId()) ?? list.find((e) => e.description) ?? list[0];
+  };
   return (
-    <View class={`absolute inset-0 pt-8 pb-6 text-fg gap-y-4 px-12 overflow-hidden compact:pt-4 compact:pb-3 compact:gap-y-3 compact:px-4 ${packClass("Screen", "frame")} ${props.class ?? ""}`}>
+    <View
+      class={`absolute inset-0 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+1.5rem)] pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] text-fg gap-y-4 overflow-hidden compact:pt-[calc(env(hud-inset-top)+1rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] compact:gap-y-3 ${packClass("Screen", "frame")} ${props.class ?? ""}`}
+      onAction={{
+        back: (e) => {
+          if (listening()) {
+            listening.set("");
+            return;
+          }
+          if (openChoice()) {
+            openChoice.set("");
+            return;
+          }
+          props.onBack?.(e);
+        },
+        tabPrev: (e) => stepPage(e, -1),
+        tabNext: (e) => stepPage(e, 1),
+      }}
+    >
       <View class={`absolute bg-glass inset-0`} />
       <View class={`flex-row min-h-12 border-b border-border-muted items-baseline gap-x-4 py-1 px-4 compact:flex-wrap compact:gap-y-1`}>
         <Show when={props.onBack}>
@@ -68,7 +98,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </Show>
         </View>
       </View>
-      <View class="grow shrink basis-0 gap-y-4">
+      <View class="grow shrink basis-0 gap-y-4 min-h-0">
         <Show when={props.page}>
           <View class={`flex-row items-center gap-x-3 border-b border-border`}>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabPrev" />
@@ -85,70 +115,88 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </Scroll>
             <Text class="flex-none pointer-coarse:hidden" glyph="tabNext" />
           </View>
-          <View class="grow shrink basis-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 compact:grid-cols-1">
+          <View class="grow shrink basis-0 min-h-0 grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] grid-rows-1 gap-x-12 compact:grid-cols-1">
             <Scroll class="grow shrink basis-0 gap-y-0.5 p-0 m-0">
-              <For each={props.entries}>
-                {(entry) => {
-                const value = entry().value;
-                const num = typeof value === "number" ? value : undefined;
-                return (
-                <Show when={entry().page === props.page}>
-                  <View class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle data-done:text-fg-subtle data-down:opacity-dim ${packClass("Row", "frame")}`} label={entry().description}>
-                    <Show when={entry().kind === "toggle"}>
-                      <Switch class="min-h-16 text-lg text-fg-muted py-1 px-4 compact:text-base compact:py-2 compact:px-3 group-hover/row:text-fg" checked={entry().value === true} onChange={(e, on) => props.onChange?.(e, entry().id, on)}>
-                        <Text class="grow shrink">{entry().name}</Text>
-                      </Switch>
-                    </Show>
-                    <Show when={entry().kind === "range"}>
-                      <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
-                        <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
-                          {entry().name}
-                        </Text>
-                        <Slider value={num ?? (entry().min ?? 0)} min={entry().min} max={entry().max} step={entry().step} label={entry().name} onChange={(e, v) => props.onChange?.(e, entry().id, v)} />
-                      </View>
-                    </Show>
-                    <Show when={entry().kind === "select"}>
-                      <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
-                        <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
-                          {entry().name}
-                        </Text>
-                        <Select
-                          value={String(entry().value)}
-                          options={(entry().options ?? []).map((o) => ({ value: o, label: o }))}
-                          open={openChoice() === entry().id}
-                          label={entry().name}
-                          onChange={(e, v) => props.onChange?.(e, entry().id, v)}
-                          onOpenChange={(_, open) => openChoice.set(open ? entry().id : "")}
-                        />
-                      </View>
-                    </Show>
-                    <Show when={entry().kind === "binding"}>
-                      <View class={`grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => listening.set(listening() === entry().id ? "" : entry().id)} onKey={(e) => {
-                        if (listening() !== entry().id) return;
-                        if (e.key === "Escape") {
+              <For each={props.entries} key={(entry) => entry.id}>
+                {(entry) => (
+                  <Show when={entry().page === props.page}>
+                    <View
+                      class={`group/row text-fg transition duration-control hover:bg-surface-hover data-selected:text-fg disabled:text-fg-subtle ${packClass("Row", "frame")}`}
+                      label={entry().description}
+                      data-selected={inspected()?.id === entry().id}
+                      onFocus={() => activeEntryId.set(entry().id)}
+                      onPointerDown={() => activeEntryId.set(entry().id)}
+                    >
+                      <Show when={entry().kind === "toggle"}>
+                        <Switch class="min-h-16 text-lg text-fg-muted py-1 px-4 compact:text-base compact:py-2 compact:px-3 group-hover/row:text-fg" checked={entry().value === true} onChange={(e, on) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, on); }}>
+                          <Text class="grow shrink">{entry().name}</Text>
+                        </Switch>
+                      </Show>
+                      <Show when={entry().kind === "range"}>
+                        <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
+                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
+                            {entry().name}
+                          </Text>
+                          <Slider
+                            value={typeof entry().value === "number" ? (entry().value as number) : (entry().min ?? 0)}
+                            min={entry().min}
+                            max={entry().max}
+                            step={entry().step}
+                            label={entry().name}
+                            onChange={(e, v) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, v); }}
+                          />
+                        </View>
+                      </Show>
+                      <Show when={entry().kind === "select"}>
+                        <View class="grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-1 compact:items-stretch compact:text-base compact:gap-y-1 compact:py-2 compact:px-3">
+                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
+                            {entry().name}
+                          </Text>
+                          <Select
+                            value={String(entry().value)}
+                            options={(entry().options ?? []).map((o) => ({ value: o, label: o }))}
+                            open={openChoice() === entry().id}
+                            label={entry().name}
+                            onChange={(e, v) => { activeEntryId.set(entry().id); props.onChange?.(e, entry().id, v); }}
+                            onOpenChange={(_, open) => { activeEntryId.set(entry().id); openChoice.set(open ? entry().id : ""); }}
+                          />
+                        </View>
+                      </Show>
+                      <Show when={entry().kind === "binding"}>
+                        <View class={`grid grid-cols-2 items-center gap-x-6 min-h-16 text-lg py-1 px-4 compact:grid-cols-[minmax(0,1fr)_auto] compact:items-center compact:text-base compact:gap-y-1 compact:py-2 compact:px-3 group-hover/row:text-fg data-listening:bg-hud-accent data-listening:text-hud-accent-fg`} role="button" tabIndex={0} label={entry().name} data-listening={listening() === entry().id} onPress={() => { activeEntryId.set(entry().id); listening.set(listening() === entry().id ? "" : entry().id); }} onKey={(e) => {
+                          if (listening() !== entry().id) return;
+                          if (e.key === "Escape") {
+                            listening.set("");
+                            return;
+                          }
+                          props.onRebind?.(e, entry().id, e.key);
                           listening.set("");
-                          return;
-                        }
-                        props.onRebind?.(e, entry().id, e.key);
-                        listening.set("");
-                      }}>
-                        <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg">
-                          {entry().name}
-                        </Text>
-                        <Show when={listening() === entry().id} fallback={<Text class="justify-self-end" glyph={entry().action} />}>
-                          <Text class="justify-self-end text-accent whitespace-nowrap">{t("screen.settings.pressAKey")}</Text>
-                        </Show>
-                      </View>
-                    </Show>
-                    <Show when={entry().description}>
-                      <Text class={`hidden m-0`}>{entry().description}</Text>
-                    </Show>
-                  </View>
-                </Show>
-                );
-                }}
+                        }}>
+                          <Text class="grow shrink text-fg-muted m-0 group-hover/row:text-fg group-data-listening/row:text-hud-accent-fg">
+                            {entry().name}
+                          </Text>
+                          <Show when={listening() === entry().id} fallback={<Text class="justify-self-end" glyph={entry().action} />}>
+                            <Text class="justify-self-end font-semibold text-hud-accent-fg whitespace-nowrap">{t("screen.settings.pressAKey")}</Text>
+                          </Show>
+                        </View>
+                      </Show>
+                    </View>
+                  </Show>
+                )}
               </For>
             </Scroll>
+            <View class="flex-col justify-start gap-y-2 compact:hidden">
+              <Show when={inspected()}>
+                {(item) => (
+                  <Show when={item().description}>
+                    <View class={`flex-col gap-y-2 p-5 ${packClass("Plate", "frame")}`}>
+                      <Text class="font-display text-xl font-bold leading-snug text-fg m-0">{item().name}</Text>
+                      <Text class="text-base leading-normal text-fg-muted m-0">{item().description}</Text>
+                    </View>
+                  </Show>
+                )}
+              </Show>
+            </View>
           </View>
           <View class="flex-row flex-wrap items-center justify-end gap-y-2 gap-x-3 compact:grid compact:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Show when={props.onDefaults}>
@@ -157,12 +205,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
               </Button>
             </Show>
             <Show when={props.onRevert}>
-              <Button class="min-w-40 h-9 compact:min-w-0 shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
+              <Button class="min-w-40 compact:min-w-0 shrink" onPress={(e) => props.onRevert?.(e)} disabled={!props.pending}>
                 <Text>{t("screen.settings.revert")}</Text>
               </Button>
             </Show>
             <Show when={props.onApply}>
-              <Button variant="primary" class="min-w-40 h-9 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
+              <Button variant="primary" class="min-w-40 compact:min-w-0 shrink" disabled={!props.pending} onPress={(e) => props.onApply?.(e)}>
                 <Text>{t("screen.settings.apply")}</Text>
               </Button>
             </Show>

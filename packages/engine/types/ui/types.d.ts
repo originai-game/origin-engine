@@ -41,7 +41,9 @@ export interface HostProps {
     class?: string | undefined;
     classList?: Record<string, boolean | undefined> | undefined;
     style?: string | Record<string, string | number | undefined> | undefined;
-    ref?: ((node: UiNode) => void) | undefined;
+    ref?: ((node: UiNode) => void) | {
+        set(node: UiNode): void;
+    } | undefined;
     children?: UiChild;
     onPress?: Handler;
     onTap?: Handler;
@@ -126,6 +128,8 @@ export interface HostProps {
      * confirm, cancel and back sound by themselves.
      */
     sound?: "open" | "close" | "error" | "reward" | "toggle" | "tab" | "levelup" | "purchase" | "countdown" | "tick" | "step" | "swipe" | "notify" | "unlock" | undefined;
+    /** The pack sound event played once when this node is removed from the tree (for example `"close"` on a dialog, sheet, popover or menu). */
+    exitSound?: "open" | "close" | "error" | "reward" | "toggle" | "tab" | "levelup" | "purchase" | "countdown" | "tick" | "step" | "swipe" | "notify" | "unlock" | undefined;
     /** Haptic preset played when this node fires a non-hover interaction or sound cue (`"none"` silences the pack/default haptic). */
     haptic?: "tick" | "tap" | "thud" | "double" | "buzz" | "success" | "warning" | "error" | "none" | undefined;
     /** crates/og-ui-next/CONVENTIONS.md §Accessibility. */

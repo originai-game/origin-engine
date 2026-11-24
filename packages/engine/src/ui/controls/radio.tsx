@@ -32,7 +32,6 @@ export function Radio(props: RadioProps) {
       disabled={props.disabled}
       label={props.label}
       onPress={ask}
-      onFocus={ask}
     >
       <View class={packClass("Radio", "indicator")} checked={props.checked === true} disabled={props.disabled} hidden>
         <View class={packClass("Radio", "dot")} />
@@ -52,13 +51,13 @@ export interface RadioGroupProps {
 
 /**
  * The set around `Radio`s (NSH base's `RadioGroup`): one stop of Tab, at
- * the checked radio; the arrows move among its radios and check each one
- * they reach (WAI-ARIA's radio group). It holds no value: the game keeps
- * which radio is checked.
+ * the checked radio; the arrows move among its radios and confirm/press
+ * selects the focused radio without trapping gamepad navigation at the
+ * boundary. It holds no value: the game keeps which radio is checked.
  */
 export function RadioGroup(props: RadioGroupProps) {
   return (
-    <View role="radiogroup" label={props.label} focusGroup="wrap" focusRoving class={`flex-col gap-1 ${props.class ?? ""}`}>
+    <View role="radiogroup" label={props.label} focusGroup="stop" focusMemory focusRoving class={`flex-col gap-1 ${props.class ?? ""}`}>
       {props.children}
     </View>
   );

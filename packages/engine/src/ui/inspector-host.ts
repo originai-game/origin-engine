@@ -34,3 +34,10 @@ export function pumpInspector(engine: number): void {
   const unmount = mount(worldFor(engine) as unknown as World, Panel as (props: never) => UiChild, props, { layer: "system" });
   panels.set(engine, { set: (v) => signal.set(v), unmount });
 }
+
+export function disposeInspector(engine: number): void {
+  const open = panels.get(engine);
+  if (!open) return;
+  panels.delete(engine);
+  try { open.unmount(); } catch { /* engine is being torn down */ }
+}

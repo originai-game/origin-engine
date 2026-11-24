@@ -748,10 +748,10 @@ A touch disc: an action a finger holds, the primary one larger, an optional char
 |---|---|---|
 | `action` | `string` | The og-input action it feeds while a touch holds it (jump). |
 | `label` | `string` | Its words, its accessible name; shown when it has no icon. |
-| `icon?` | `string` | An icon of the atlas on its face; empty shows the label. |
-| `primary?` | `boolean` | The main action: the primary fill and a larger disc. |
-| `charge?` | `number` | A charge round its rim, 0 to 1 (an ultimate); negative is none. Default -1. |
-| `disabled?` | `boolean` | It feeds nothing and shows faded. |
+| `icon?` | `string \| undefined` | An icon of the atlas on its face; empty shows the label. |
+| `primary?` | `boolean \| undefined` | The main action: the primary fill and a larger disc. |
+| `charge?` | `number \| undefined` | A charge round its rim, 0 to 1 (an ultimate); negative is none. Default -1. |
+| `disabled?` | `boolean \| undefined` | It feeds nothing and shows faded. |
 
 Pack slots: `Touch.button`, `Touch.button.primary`, `Touch.charge`, `Touch.charge.ready`, `Touch.icon`.
 
@@ -944,10 +944,10 @@ The reticle: four arms and a dot (or a ring and a dot), opening with the weapon'
 | Prop | Type | What |
 |---|---|---|
 | `spread` | `number` | The weapon's current spread, 0 (settled) to 1 (widest): the arms move out from the centre. |
-| `hit?` | `string` | The last hit to confirm: none, hit, headshot, kill or shieldBreak. The game clears it to none when its mark should go. Default none. |
-| `hitAt?` | `number` | The id of that hit (its tick): a new id plays the mark again. |
-| `aimed?` | `boolean` | The aim rests on an enemy: the reticle takes the target ink. |
-| `shape?` | `string` | cross (four arms and a dot), dot, or circle (a ring and a dot). Default cross. |
+| `hit?` | `string \| undefined` | The last hit to confirm: none, hit, headshot, kill or shieldBreak. The game clears it to none when its mark should go. Default none. |
+| `hitAt?` | `number \| undefined` | The id of that hit (its tick): a new id plays the mark again. |
+| `aimed?` | `boolean \| undefined` | The aim rests on an enemy: the reticle takes the target ink. |
+| `shape?` | `string \| undefined` | cross (four arms and a dot), dot, or circle (a ring and a dot). Default cross. |
 
 Fixtures: `default`, `headshot`, `kill`, `circle`.
 
@@ -4158,7 +4158,7 @@ Fixtures: `thousands`.
 
 ## 185. ContextMenu
 
-The same menu opened by the secondary button (a right click), a finger held on its trigger, or Shift+F10 and the Menu key while the focus is in it (NSH base's `ContextMenu`), under the trigger at its start, the focus on its first item; the trigger's own presses keep working. A game that opens it otherwise sets `open` itself.
+The same menu opened by the secondary button (a right click), a finger held on its trigger, or Shift+F10 and the Menu key while the focus is in it (NSH base's `ContextMenu`), at the pointer for mouse/touch or under the trigger for keyboard, with focus on its first item; the trigger's own presses keep working. A game that opens it otherwise sets `open` itself.
 
 `import { ContextMenu } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/menu.tsx`).
 
@@ -4345,7 +4345,7 @@ Fixtures: `unchecked`, `checked`, `disabled`.
 
 ## 195. RadioGroup
 
-The set around `Radio`s (NSH base's `RadioGroup`): one stop of Tab, at the checked radio; the arrows move among its radios and check each one they reach (WAI-ARIA's radio group). It holds no value: the game keeps which radio is checked.
+The set around `Radio`s (NSH base's `RadioGroup`): one stop of Tab, at the checked radio; the arrows move among its radios and confirm/press selects the focused radio without trapping gamepad navigation at the boundary. It holds no value: the game keeps which radio is checked.
 
 `import { RadioGroup } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/radio.tsx`).
 
@@ -4363,7 +4363,7 @@ Fixtures: `unchecked`, `checked`, `disabled`.
 
 ## 196. Select
 
-One value picked from a list (NSH base's `Select`): a combobox for screen readers whose arrows step the value while closed, and whose list opens under the trigger at its width, as one focus group the arrows move in. The pack draws the trigger (`Select.trigger`, `aria-expanded:` while open), the list (`Select.list`) and each option (`Select.option`, `selected:` for the chosen one).
+One value picked from a list (NSH base's `Select`): a combobox for screen readers whose left/right arrows step the value while closed, and whose list opens anchored under the trigger, clamped inside the viewport and scrollable when long. The pack draws the trigger (`Select.trigger`, `aria-expanded:` while open), the list (`Select.list`) and each option (`Select.option`, `selected:` for the chosen one).
 
 `import { Select } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/select.tsx`).
 
@@ -4403,6 +4403,7 @@ A panel that rises from the bottom of the screen over a scrim (NSH base's `Sheet
 | `open` | `boolean` | Shown or not. The game owns it: Escape, `back`, a press on the scrim or a swipe down reports `onClose`. |
 | `label?` | `string \| undefined` | What screen readers call it. |
 | `grabber?` | `boolean \| undefined` | The handle at its top (default true). |
+| `dismissible?` | `boolean \| undefined` | A press on the scrim, `back`, or a swipe down closes it (default true). |
 | `class?` | `string \| undefined` | Classes of the document that uses it, on its panel. |
 | `onClose?` | `((e: UiEvent) => void) \| undefined` |  |
 | `footer?` | `any` | What sits at its foot, under its content (the main action). |
@@ -4501,13 +4502,13 @@ Fixtures: `default`.
 
 ## 202. ToastStack
 
-Short messages that come and go at the top of the screen (NSH base's `ToastStack` and `Toast`): each is announced to screen readers as it arrives (a `status`, a danger one an `alert`), enters and leaves by the pack's `Toast.frame`, and a swipe sideways or up dismisses it. The stack (`Toast.stack`) clears the top safe area and passes presses through between toasts. A game puts it on the `toast` layer.
+Short messages that come and go at the top of the screen (NSH base's `ToastStack` and `Toast`): each is announced to screen readers as it arrives (a `status`, a danger one an `alert`), enters and leaves by the pack's `Toast.frame`, and a swipe sideways/up or the dismiss button closes it. The stack (`Toast.stack`) clears the top safe area and passes presses through between toasts. A game puts it on the `toast` layer.
 
 `import { ToastStack } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/toast.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
-| `toasts` | `readonly ToastItem[]` | The toasts shown, newest last. The game owns the list and its timing: it drops a toast after its time, or when `onDismiss` reports a swipe. |
+| `toasts` | `readonly ToastItem[]` | The toasts shown, newest last. The game owns the list and its timing: it drops a toast after its time, or when `onDismiss` reports a swipe or dismiss click. |
 | `class?` | `string \| undefined` | Classes of the document that uses it, on the stack. |
 | `onDismiss?` | `((e: UiEvent, id: string) => void) \| undefined` |  |
 
@@ -4595,7 +4596,7 @@ Fixtures: `default`.
 
 ## 207. Tooltip
 
-A hint over its trigger (NSH base's `Tooltip`): it shows while the pointer is over the trigger or the keyboard's focus is in it (WAI-ARIA's tooltip), and its text describes the trigger for screen readers. The pack draws the bubble (`Tooltip.frame`); it stands centred over the trigger's box wherever it moves (`anchor`).
+A hint over its trigger (NSH base's `Tooltip`): it shows while the pointer is over the trigger or the keyboard's focus is in it (WAI-ARIA's tooltip), dismisses on Escape, and its text describes the trigger for screen readers. The pack draws the bubble (`Tooltip.frame`); it stands centred over the trigger's box wherever it moves (`anchor`).
 
 `import { Tooltip } from "@origingame/engine/ui/components"` (kit `controls`, `packages/engine/src/ui/controls/tooltip.tsx`).
 
@@ -5281,7 +5282,7 @@ Settings: a tab per page and its entries (toggles, ranges, choices and key bindi
 | `onDefaults?` | `((e: UiEvent, key?: string) => void) \| undefined` | The defaults event, with the row's key where it comes from a row. |
 | `onRevert?` | `((e: UiEvent, key?: string) => void) \| undefined` | The revert event, with the row's key where it comes from a row. |
 
-Pack slots: `Row.frame`, `Screen.frame`.
+Pack slots: `Plate.frame`, `Row.frame`, `Screen.frame`.
 
 Fixtures: `default`.
 

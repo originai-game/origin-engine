@@ -68,14 +68,24 @@ function LegendMark(props: { kind: string }) {
  * the map's box), and draws what the game sets.
  */
 export function RpgWorldMap(props: RpgWorldMapProps) {
+  let grabbing = false;
   return (
     <View class={`relative flex-col size-full text-fg`} label={t("rpg.map.name")}>
       <View
         class={`relative grow min-h-0 w-full overflow-hidden`}
         onWheel={(e) => props.onZoom?.(e)}
-        onPointerDown={(e) => props.onGrab?.(e)}
-        onPointerMove={(e) => props.onPan?.(e)}
-        onPointerUp={(e) => props.onRelease?.(e)}
+        onPointerDown={(e) => {
+          grabbing = true;
+          props.onGrab?.(e);
+        }}
+        onPointerMove={(e) => {
+          if (grabbing) props.onPan?.(e);
+        }}
+        onPointerUp={(e) => {
+          if (!grabbing) return;
+          grabbing = false;
+          props.onRelease?.(e);
+        }}
       >
         <View class="absolute left-0 top-0" style={{ width: `${((props.zoom ?? 1) || 1) * 100}%`, height: `${((props.zoom ?? 1) || 1) * 100}%`, translate: `${props.panX ?? 0}px ${props.panY ?? 0}px` }}>
           <Image class={`absolute inset-0 size-full`} src={props.map} />

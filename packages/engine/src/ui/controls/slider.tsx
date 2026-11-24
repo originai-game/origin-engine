@@ -29,25 +29,35 @@ export interface SliderProps {
  * range (`Slider.range`) and the thumb (`Slider.thumb`).
  */
 export function Slider(props: SliderProps) {
-  const min = () => props.min ?? 0;
-  const max = () => props.max ?? 100;
-  const step = () => props.step ?? 1;
-  const clamp = (v: number) => Math.min(max(), Math.max(min(), min() + Math.round((v - min()) / step()) * step()));
-  const share = () => (max() > min() ? (Math.min(max(), Math.max(min(), props.value)) - min()) / (max() - min()) : 0);
-  let last = props.value;
+  const min = () => (Number.isFinite(props.min) ? props.min! : 0);
+  const max = () => (Number.isFinite(props.max) ? props.max! : 100);
+  const step = () => {
+    const s = props.step ?? 1;
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  };
+  const current = () => (Number.isFinite(props.value) ? props.value : min());
+  const clamp = (v: number) => {
+    const lo = min();
+    const hi = max();
+    const s = step();
+    const raw = Number.isFinite(v) ? v : lo;
+    return Math.min(hi, Math.max(lo, lo + Math.round((raw - lo) / s) * s));
+  };
+  const share = () => (max() > min() ? (Math.min(max(), Math.max(min(), current())) - min()) / (max() - min()) : 0);
+  let dragging = false;
+  let last = current();
   const ask = (e: UiEvent, v: number) => {
     last = clamp(v);
-    if (last !== props.value) props.onChange?.(e, last);
+    if (last !== current()) props.onChange?.(e, last);
   };
   const drag = (e: UiEvent) => {
+    if (props.disabled) return;
     const [bx = 0, , bw = 0] = e.value.split(" ").map(Number);
     ask(e, min() + Math.min(1, Math.max(0, (e.x - bx) / (bw || 1))) * (max() - min()));
   };
   const KEYS: Record<string, (v: number) => number> = {
     ArrowRight: (v) => v + step(),
-    ArrowUp: (v) => v + step(),
     ArrowLeft: (v) => v - step(),
-    ArrowDown: (v) => v - step(),
     PageUp: (v) => v + Math.max(step(), (max() - min()) / 10),
     PageDown: (v) => v - Math.max(step(), (max() - min()) / 10),
     Home: () => min(),
@@ -62,15 +72,27 @@ export function Slider(props: SliderProps) {
       label={props.label}
       valueMin={min()}
       valueMax={max()}
-      valueNow={props.value}
+      valueNow={current()}
       valueText={props.valueText}
-      onPointerDown={drag}
-      onPointerMove={drag}
-      onPointerUp={(e) => props.onChangeEnd?.(e, last)}
+      onPointerDown={(e) => {
+        if (props.disabled) return;
+        dragging = true;
+        last = current();
+        drag(e);
+      }}
+      onPointerMove={(e) => {
+        if (dragging) drag(e);
+      }}
+      onPointerUp={(e) => {
+        if (!dragging) return;
+        dragging = false;
+        props.onChangeEnd?.(e, last);
+      }}
       onKey={(e) => {
         const move = KEYS[e.key];
         if (!move || props.disabled) return;
-        ask(e, move(props.value));
+        last = current();
+        ask(e, move(current()));
         props.onChangeEnd?.(e, last);
       }}
     >

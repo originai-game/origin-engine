@@ -3,12 +3,20 @@
 // values line up in the mono face.
 
 import type * as Api from "@origingame/engine";
-import type { DateStyle } from "@origingame/engine";
 import { calls, currentCall } from "../../runtime.ts";
+import { RendererContext } from "../rt.ts";
+import { useContext } from "../signals.ts";
 
 const { i18n } = calls;
 
-const world = () => ({ id: currentCall()?.engine ?? 0 });
+const world = () => {
+  const ui = useContext(RendererContext);
+  if (ui) {
+    ui.locale();
+    return ui.world as unknown as { id: number };
+  }
+  return { id: currentCall()?.engine ?? 0 };
+};
 
 export function decimalNumber(v: number, decimals?: number, grouping = true): string {
   return Number.isFinite(v) ? i18n.formatNumber(world(), v, { decimals, grouping }) : "—";
