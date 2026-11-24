@@ -34,5 +34,6 @@ in `crates/og-ui-next`.
 | `collapsible.rs`, `accordion.rs` | `controls/collapsible.tsx` `Collapsible`, `Accordion` | the header's expanded state, one or `multiple` open | The panel enters by the pack's `Collapsible.panel`, not a springing clipped height |
 
 | `scrollbar.rs` `Scrollbar` (built-in bars) | every `Scroll`'s own bar (`Scrollbar.track`, `Scrollbar.thumb`), the tree's `thumb` and `pinned` props | the thumb's length and place follow the content, viewport and offset; a drag on the thumb scrolls, a press on the track brings the thumb's middle there; `scrollbar={false}` hides it | Always shown while something runs over (no hover or scroll-only mode, no fade timing); no placed `Scrollbar` component yet: a game sets `thumb="<name>"` on its own node |
+| `List` (nsh, `virtual_list`) | `controls/list.tsx` `List` | only the rows near the view exist, kept by key as they scroll, `overscan` beyond each end | Fixed `itemSize` (no measured rows, sticky headers, columns or inverted lists) |
 
 Not ported yet: `Combobox`.
