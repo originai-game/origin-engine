@@ -1,7 +1,7 @@
 //! Skinned XPBD garments, in world space. A host supplies targets, normals
 //! and tapered body capsules from its skeleton before the physics tick.
 use crate::schema::Garment;
-use crate::verlet::{self, Bend, Solids};
+use crate::xpbd::{self, Bend, Solids};
 use og_core::glam::Vec3;
 use og_core::{Error, ErrorKind, Result};
 use serde::{Deserialize, Serialize};
@@ -135,14 +135,14 @@ impl GarmentState {
             key: (key, garment.pin_top.to_bits()),
             points: pose.targets.clone(),
             velocities: vec![Vec3::ZERO; rig.rest.len()],
-            inv_mass: verlet::masses(&rig.rest, &rig.triangles),
+            inv_mass: xpbd::masses(&rig.rest, &rig.triangles),
             targets: pose.targets.clone(),
             reach,
             edges: edges
                 .into_iter()
                 .map(|(a, b)| (a, b, (rig.rest[b as usize] - rig.rest[a as usize]).length()))
                 .collect(),
-            bends: verlet::bends(&rig.rest, &rig.triangles),
+            bends: xpbd::bends(&rig.rest, &rig.triangles),
         }
     }
     pub fn hold(&mut self, pose: &GarmentPose) {
@@ -202,17 +202,17 @@ impl GarmentState {
                     continue;
                 }
                 let p = self.points[i];
-                let air = (g.wind + solids.air(p)) * (1.0 + g.gust * verlet::gust(p, tick));
+                let air = (g.wind + solids.air(p)) * (1.0 + g.gust * xpbd::gust(p, tick));
                 let acceleration = gravity * g.gravity_scale
                     + solids.acceleration(p)
-                    + verlet::aero(
+                    + xpbd::aero(
                         air - self.velocities[i],
                         pose.normals[i].normalize_or_zero(),
                         g.drag,
                         g.lift,
                     ) / g.density;
                 self.velocities[i] = self.velocities[i]
-                    * verlet::keep_per_substep(g.damping, dt, steps)
+                    * xpbd::keep_per_substep(g.damping, dt, steps)
                     + acceleration * h;
                 self.points[i] += self.velocities[i] * h;
             }
@@ -221,7 +221,7 @@ impl GarmentState {
             for _ in 0..g.iterations.min(64) {
                 for (k, &(a, b, rest)) in self.edges.iter().enumerate() {
                     let (a, b) = (a as usize, b as usize);
-                    verlet::link(
+                    xpbd::link(
                         &mut self.points,
                         a,
                         b,
@@ -233,7 +233,7 @@ impl GarmentState {
                     );
                 }
                 for (k, b) in self.bends.iter().enumerate() {
-                    verlet::bend(&mut self.points, &w, b, g.bending, h, &mut bending[k]);
+                    xpbd::bend(&mut self.points, &w, b, g.bending, h, &mut bending[k]);
                 }
                 for i in 0..n {
                     if w[i] == 0.0 {

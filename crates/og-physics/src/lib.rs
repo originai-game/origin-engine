@@ -81,9 +81,9 @@ mod schema;
 #[path = "soft/softbody.rs"]
 mod softbody;
 mod stats;
-#[path = "soft/verlet.rs"]
-mod verlet;
 mod water;
+#[path = "soft/xpbd.rs"]
+mod xpbd;
 pub use water::{Wakes, WaterAt, WaterBody, WaterCut, WaterMesh};
 
 mod dim2;

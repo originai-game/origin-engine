@@ -18,8 +18,8 @@ use super::{
 use crate::fluid::FluidState;
 use crate::gather::Scene;
 use crate::schema::*;
-use crate::verlet::{ClothState, RopeState, Solids};
 use crate::water::{Floater, LineState, SurfaceState, WaterForce};
+use crate::xpbd::{ClothState, RopeState, Solids};
 use crate::{ControlOut, StepOut};
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind, IdMap, Result};

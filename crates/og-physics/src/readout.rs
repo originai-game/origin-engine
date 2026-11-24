@@ -248,7 +248,7 @@ impl PhysicsSystem {
                 points: c.points.clone(),
                 pinned: (0..rows)
                     .flat_map(|y| (0..columns).map(move |x| (x, y)))
-                    .filter(|&(x, y)| verlet::pinned(c.pins, x, y, columns))
+                    .filter(|&(x, y)| xpbd::pinned(c.pins, x, y, columns))
                     .map(|(x, y)| y * columns + x)
                     .collect(),
                 flat: s.flat(),

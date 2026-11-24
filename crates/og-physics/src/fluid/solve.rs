@@ -3,7 +3,7 @@
 //! Lane partitioning changes scheduling, never a floating-point reduction.
 
 use super::pairs::Pairs;
-use crate::verlet::Solids;
+use crate::xpbd::Solids;
 use og_core::glam::{Vec2, Vec3};
 use std::ops::{Add, AddAssign, Div, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 

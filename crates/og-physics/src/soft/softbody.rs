@@ -8,7 +8,7 @@
 
 use crate::MeshDesc;
 use crate::schema::{SOFT_BOX, SOFT_MESH, SoftBody};
-use crate::verlet::{Solids, link};
+use crate::xpbd::{Solids, link};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 use serde::{Deserialize, Serialize};
@@ -367,7 +367,7 @@ impl SoftState {
         Ok(SoftState {
             key: SoftKey::of(soft, mesh),
             velocities: vec![Vec3::ZERO; points.len()],
-            inv_mass: crate::verlet::masses(&rest, &triangles),
+            inv_mass: crate::xpbd::masses(&rest, &triangles),
             points,
             rest,
             pinned,
@@ -433,7 +433,7 @@ impl SoftState {
         let planar = |p: Vec3| if flat { Vec3::new(p.x, p.y, z) } else { p };
         let substeps = soft.substeps.clamp(1, 16);
         let ds = dt / substeps as f32;
-        let keep = crate::verlet::keep_per_substep(soft.damping, dt, substeps);
+        let keep = crate::xpbd::keep_per_substep(soft.damping, dt, substeps);
         let g = gravity * soft.gravity_scale;
         let stiffness = soft.stiffness.max(0.0);
         let target = self.rest_volume * soft.pressure.clamp(0.0, 4.0);
