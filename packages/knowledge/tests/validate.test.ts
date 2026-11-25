@@ -60,3 +60,37 @@ test("every og.* name and Type.field a guide writes exists in the generated API"
   );
 });
 
+test("brief and creation vocabularies stay in lockstep with Rust cook/synth constants and catalogue.json", async () => {
+  const repo = join(real.pkg, "..", "..");
+  const { MOODS, SFX_PRESETS } = await import("../scripts/brief.ts");
+  const { CREATION_CHOICES } = await import("../scripts/creation.ts");
+  const { resolveCreationChoices } = await import("../../create/bin/create.ts");
+
+  // SFX_PRESETS === crates/og-audio/src/synth.rs PRESETS
+  const synth = readFileSync(join(repo, "crates/og-audio/src/synth.rs"), "utf8");
+  const synthBlock = synth.slice(synth.indexOf("pub const PRESETS"), synth.indexOf("];", synth.indexOf("pub const PRESETS")));
+  const rustPresets = [...synthBlock.matchAll(/\("([a-z0-9_-]+)",\s*"/g)].map((m) => m[1]!);
+  expect([...SFX_PRESETS]).toEqual(rustPresets);
+
+  // MOODS === crates/og-bundle/src/look.rs MOODS
+  const lookRs = readFileSync(join(repo, "crates/og-bundle/src/look.rs"), "utf8");
+  const moodsMatch = /pub const MOODS:\s*\[&str;\s*\d+\]\s*=\s*\[([^\]]+)\]/m.exec(lookRs);
+  const rustMoods = [...(moodsMatch?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+  expect([...MOODS]).toEqual(rustMoods);
+
+  // CREATION_CHOICES.ui === catalogue.json ui (including tactical-arctic)
+  const cat = JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { ui: string[]; styles: unknown[] };
+  expect([...CREATION_CHOICES.ui]).toEqual(cat.ui);
+  expect(CREATION_CHOICES.ui).toContain("tactical-arctic");
+
+  // resolveCreationChoices honors explicit custom catalogue path (3-arg signature)
+  const dir = mkdtempSync(join(tmpdir(), "og-cat-"));
+  temps.push(dir);
+  const customCat = join(dir, "catalogue.json");
+  const pixel = (cat.styles as Array<{ slug: string }>).find((s) => s.slug === "pixel")!;
+  writeFileSync(customCat, JSON.stringify({ ...cat, styles: [pixel] }));
+  expect(resolveCreationChoices("", { form: "2d", ui: "tactical-arctic" }, customCat)).toMatchObject({ look: "pixel", ui: "tactical-arctic" });
+  expect(() => resolveCreationChoices("", { form: "3d", look: "toy-3d" }, customCat)).toThrow(/no look preset 'toy-3d'/);
+});
+
+

@@ -86,14 +86,20 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
     if style_slugs().contains(&name) {
         return Ok(builtin);
     }
-    if styles_dir().is_none() {
+    if crate::cook::ui_themes::themes_dir().is_none() && styles_dir().is_none() {
         return Err(format!(
-            "ui \"{name}\": neither assets/{mine} nor a built-in style: the engine's built-in styles were not found (no styles/ in the @origingame/engine package; OG_STYLES_DIR names another directory)"
+            "ui \"{name}\": neither assets/{mine} nor a built-in theme or style: the engine's built-in themes and styles were not found (no themes/ or styles/ in the @origingame/engine package; OG_THEMES_DIR / OG_STYLES_DIR names another directory)"
         ));
     }
+    let mut available: Vec<String> = crate::cook::ui_themes::builtin_slugs();
+    for slug in style_slugs() {
+        available.push(slug.to_string());
+    }
+    available.sort();
+    available.dedup();
     Err(format!(
-        "ui \"{name}\": neither assets/{mine} nor a built-in style ({})",
-        style_slugs().join(", ")
+        "ui \"{name}\": neither assets/{mine} nor a built-in theme or style ({})",
+        available.join(", ")
     ))
 }
 

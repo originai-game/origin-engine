@@ -134,7 +134,7 @@ export function creationDocument(previews?: Readonly<Record<string, PreviewFile>
      */
     defaults: {
       form: resolveCreationChoices("", {}, catalogue).form,
-      byForm: Object.fromEntries(CREATION_CHOICES.form.map(f => [f, resolveCreationChoices("", { form: f }, undefined, catalogue)])),
+      byForm: Object.fromEntries(CREATION_CHOICES.form.map(f => [f, resolveCreationChoices("", { form: f }, catalogue)])),
     },
   };
 }

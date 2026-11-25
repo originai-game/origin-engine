@@ -225,7 +225,7 @@ export function deduplicateAssets(root: string): number {
       }
     }
   };
-  for (const directory of ["engine/fonts", "engine/styles", "create/fonts", "create/styles"]) walk(join(root, directory));
+  for (const directory of ["engine/fonts", "engine/styles"]) walk(join(root, directory));
   return saved;
 }
 
@@ -499,7 +499,7 @@ const LOOK_FILE = /^(?:looks\/catalogue\.json|previews\/.+\.webp|creation\.json)
  */
 export async function creationOf(create: string, engine: string): Promise<{ slots: Slot[]; document: ((previews: Record<string, LookFile & { engine: string }>, catalogue: string) => unknown) | null }> {
   const mod = (await import(join(create, "bin/create.ts"))) as { previewSlots?: (catalogue: string) => Slot[]; creationDocument?: (p: object, catalogue: string) => unknown };
-  if (mod.previewSlots && mod.creationDocument) return { slots: mod.previewSlots(join(create, "looks/catalogue.json")), document: mod.creationDocument };
+  if (mod.previewSlots && mod.creationDocument) return { slots: mod.previewSlots(join(engine, "knowledge/looks/catalogue.json")), document: mod.creationDocument };
   const styles = (JSON.parse(readFileSync(join(engine, "knowledge/looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] }).styles;
   return { slots: styles.map((s) => ({ path: `previews/${s.slug}.webp`, kind: "look", look: s.slug })), document: null };
 }
@@ -751,7 +751,7 @@ async function main() {
       try {
         const { looks: manifest, filled } = writeLooks(dir, version, revision, join(common, "engine"), linux, slots);
         rmSync(join(dir, "creation.json"), { force: true });
-        const creation = document ? writeCreation(dir, version, document(filled, join(common, "create/looks/catalogue.json"))) : null;
+        const creation = document ? writeCreation(dir, version, document(filled, join(common, "engine/knowledge/looks/catalogue.json"))) : null;
         looks = { looks: manifest, creation, files: ["looks/catalogue.json", ...slots.map((s) => s.path).sort(), ...(creation ? ["creation.json"] : [])] };
       } catch (e) {
         die((e as Error).message);

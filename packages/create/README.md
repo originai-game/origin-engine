@@ -104,18 +104,18 @@ adds `url`, `sha256`, `size` and `engine` (the version that rendered it).
 `previewSlots(catalogue?)` lists every slot as `{ path, kind, look?,
 variant?, pack? }`: `previews/<look>.webp`,
 `previews/<look>.<variant>.webp` and `previews/ui/<pack>.webp`. Given previews, `creationDocument` throws on an
-unfilled slot or a path that is no slot. Both read the packed
-`looks/catalogue.json` by default, so a release imports the version's own
-copy from `create/bin/create.ts`.
+unfilled slot or a path that is no slot. Both read `@origingame/engine`'s
+`knowledge/looks/catalogue.json` (or `packages/knowledge/looks/catalogue.json`
+in a checkout) by default without duplicating it under `create/`.
 
 ## Art and audio contracts
 
-The package re-exports the knowledge package's art and audio briefs without
-changing their signatures. `bin/knowledge.ts` imports
-`packages/knowledge/scripts/brief.ts` itself in a checkout, and the engine
-package's `knowledge/scripts/brief.ts` beside the packed package (the
-release archive's `engine/`, or `@origingame/engine` in `node_modules`), so
-nothing is copied or generated first.
+The package re-exports the knowledge package's art/audio briefs and creation
+vocabulary without copying them or changing their signatures. `bin/knowledge.ts`
+imports `packages/knowledge/scripts/{brief,creation}.ts` itself in a checkout,
+and the engine package's `knowledge/scripts/{brief,creation}.ts` beside the
+packed package (the release archive's `engine/`, or `@origingame/engine` in
+`node_modules`), so nothing is copied or generated first.
 
 - `presetLook(slug)` reads a preset before a game has art.
 - `readLook(dir)` reads the project's configured look file.
@@ -124,11 +124,12 @@ nothing is copied or generated first.
 - `readAudioChoices(dir)` reads the `create` block, and the look's mood.
 - `rigParts(template)` describes the auto-rig's layered-art contract.
 
-UI packs, look presets, locale resources, and design tokens remain available
-separately. The cook resolves the look's preset and UI pack; locale fonts
-still need installation and loading as the `screens` guide describes (`og api show screens`).
+UI packs, look presets, font packs, and design tokens ship once inside
+`@origingame/engine` (`engine/styles`, `engine/themes`, `engine/fonts`,
+`engine/knowledge`). The cook resolves the look's preset and UI pack; locale
+fonts still need installation and loading as the `screens` guide describes
+(`og api show screens`).
 
 The release archive carries this package in `create/`. It ships one tracked
-`template/` and the catalogue and previews creation reads, but no
-`template-2d/` or `archetypes/`. `bun run test` checks source and packed
-creation against the same skeleton contract.
+`template/` and `film/` without duplicating `engine/`'s styles, fonts, or look
+catalogue, and no `template-2d/` or `archetypes/`. `bun run test` packs `film/`.

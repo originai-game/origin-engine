@@ -166,27 +166,6 @@ export function packs(files: readonly PayloadFile[]): Record<string, string> {
   );
 }
 
-/** A SKILL.md's front matter as `key: value` pairs, or null without the `---` fences. */
-export function frontMatter(text: string): Record<string, string> | null {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
-  if (lines[0]?.trim() !== "---") return null;
-  const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
-  if (end < 0) return null;
-  const out: Record<string, string> = {};
-  let key = "";
-  for (const line of lines.slice(1, end)) {
-    const m = /^([A-Za-z][\w-]*):(.*)$/.exec(line);
-    if (m) {
-      key = m[1]!;
-      const rest = m[2]!.trim();
-      out[key] = ["", ">", "|", ">-", "|-"].includes(rest) ? "" : rest.replace(/^["']|["']$/g, "");
-    } else if (key && /^[ \t]/.test(line)) {
-      out[key] = out[key] ? `${out[key]} ${line.trim()}` : line.trim();
-    }
-  }
-  return out;
-}
-
 /** The top-level `key value` entries of an `.ogt` document (values as written, quotes removed). */
 export function ogtTopLevel(text: string): { type: string; entries: Map<string, string> } {
   const lines = text.split(/\r?\n/);
