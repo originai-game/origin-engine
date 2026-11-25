@@ -215,6 +215,7 @@ impl Renderer {
             visual_simulation: caps.contains(Caps::COMPUTE),
             indirect_per_draw: desc.indirect_per_draw || webkit(),
             caps,
+            adapter_features: adapter.features(),
             tier,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);

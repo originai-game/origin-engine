@@ -539,6 +539,9 @@ pub struct RenderInfo {
     /// What the device can do under [`RenderDesc::tier`] (`caps.rs`):
     /// every decision about the device reads it.
     pub caps: Caps,
+    /// Features supported by the underlying hardware adapter (before device
+    /// feature filtering), reported for capability telemetry.
+    pub adapter_features: wgpu::Features,
     /// The tier the renderer was made for ([`RenderDesc::tier`]).
     pub tier: Tier,
 }

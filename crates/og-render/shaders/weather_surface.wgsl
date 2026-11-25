@@ -99,8 +99,8 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   o.n = n_in;
   o.lying = 0.0;
   if (!OG_WEATHER) { return o; }
-  var w = frame.weather * amount;
-  var dust = frame.weather_dust.w * amount;
+  let w = frame.weather * amount;
+  let dust = frame.weather_dust.w * amount;
   // A sea's surf (W1, shore_wetness) wets its shore whatever the sky does.
   let surf = frame.shore_wet.z > 0.0;
   if (max(max(max(w.x, w.y), w.z), dust) <= 0.0 && !surf) { return o; }
@@ -110,6 +110,19 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // (Taken here, in uniform control flow, before the masks branch.)
   let footprint = length(fwidthFine(p_frame));
   let bend = select(length(fwidthFine(geo)) / max(footprint, 1e-5), 0.0, standing > 1.5);
+  return weather_surface_grad(s_in, n_in, geo, p_frame, cavity, amount, standing, footprint, bend);
+}
+
+fn weather_surface_grad(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32, footprint: f32, bend: f32) -> Weathered {
+  var o: Weathered;
+  o.s = s_in;
+  o.n = n_in;
+  o.lying = 0.0;
+  if (!OG_WEATHER) { return o; }
+  var w = frame.weather * amount;
+  var dust = frame.weather_dust.w * amount;
+  let surf = frame.shore_wet.z > 0.0;
+  if (max(max(max(w.x, w.y), w.z), dust) <= 0.0 && !surf) { return o; }
   let surf_wet = shore_wetness(p_frame) * amount;
   if (max(max(max(w.x, w.y), w.z), max(dust, surf_wet)) <= 0.0) { return o; }
   // Under a roof: dry, no puddles, no snow (the drip line softened). Dust
@@ -310,6 +323,15 @@ fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p
   s.roughness = roughness;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
   return weather_surface_at(s, n, geo, p_frame, cavity, amount, standing);
+}
+
+fn weather_gloss_grad(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32, footprint: f32, bend: f32) -> Weathered {
+  var s: Surface;
+  s.albedo = vec3<f32>(1.0);
+  s.metallic = metalness;
+  s.roughness = roughness;
+  s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
+  return weather_surface_grad(s, n, geo, p_frame, cavity, amount, standing, footprint, bend);
 }
 
 // The weather on a grass blade (grass.wgsl): wet blades darken and gloss,

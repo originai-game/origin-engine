@@ -76,6 +76,7 @@ impl Renderer {
         // Under built-in TAAU dynamic resolution, keep `taa_history` and the
         // frame-graph LRU pool warm (only rebuild the plan).
         let using_fsr = self.will_use_fsr(scene, taa);
+        let mut taa_depth_valid = true;
         if taa
             && !using_fsr
             && self
@@ -83,6 +84,10 @@ impl Renderer {
                 .ensure_taa_depth(&self.device, self.width, self.height)
         {
             if self.taau {
+                // Keep TAAU history warm across dynamic-res rung switches, but
+                // flag `taa_depth` invalid for this frame so `taa.wgsl` does
+                // not compare against the freshly allocated zeroed depth buffer.
+                taa_depth_valid = false;
                 self.graph.invalidate_plan();
             } else {
                 // Colour and depth must describe the same frame. The new
@@ -309,16 +314,18 @@ impl Renderer {
             self.prepare_ssr(s, cam, camera, gi_history);
         }
         let taa_blend = taa && self.history.taa_history.is_some();
-        self.write_frame_taa_uniform(temporal, prepass, cam);
+        self.write_frame_taa_uniform(temporal, prepass, taa_depth_valid, cam);
         FramePostHistory { gi_copy, taa_blend }
     }
 
     /// `velocity`: the prepass's velocity is bound (object and skinned
-    /// motion).
+    /// motion). `depth_valid`: false for one frame when `taa_depth` was just
+    /// reallocated under dynamic-resolution TAAU.
     pub(super) fn write_frame_taa_uniform(
         &self,
         taa: bool,
         velocity: bool,
+        depth_valid: bool,
         cam: &frame::CameraFrame,
     ) {
         if taa {
@@ -357,7 +364,12 @@ impl Renderer {
                         0.0
                     },
                 ],
-                previous_jitter: [previous_jitter.x, previous_jitter.y, 0.0, 0.0],
+                previous_jitter: [
+                    previous_jitter.x,
+                    previous_jitter.y,
+                    depth_valid as u32 as f32,
+                    0.0,
+                ],
             };
             crate::traffic::write_buffer(
                 &self.queue,

@@ -107,9 +107,13 @@ fn decal_shading_normal(n: vec3<f32>, bend: vec4<f32>, coverage: f32) -> vec3<f3
 // The prepass must see a wet decal's mirror too. Ordinary mix decals
 // keep their existing prepass behavior so existing scenes do not move.
 // xyz: shading normal, w: roughness.
-fn wet_decal_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, facing: vec3<f32>, roughness: f32) -> vec4<f32> {
-  let d = apply_decals(frag, p, facing, vec3<f32>(1.0), roughness, 0.0, dpdxFine(p), dpdyFine(p), true);
+fn wet_decal_gloss_grad(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, facing: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
+  let d = apply_decals(frag, p, facing, vec3<f32>(1.0), roughness, 0.0, dpx, dpy, true);
   return vec4<f32>(decal_shading_normal(n, d.normal, d.coverage), d.roughness);
+}
+
+fn wet_decal_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, facing: vec3<f32>, roughness: f32) -> vec4<f32> {
+  return wet_decal_gloss_grad(frag, p, n, facing, roughness, dpdxFine(p), dpdyFine(p));
 }
 
 fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, metallic: f32, dpx: vec3<f32>, dpy: vec3<f32>, wet_only: bool) -> DecalResult {
@@ -124,40 +128,53 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
   if (!OG_DECALS || abs(fx.decal_info.x) < 0.5) { return r; }
   let range = frame_decals(frag, p);
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
+  let base_off = decal_data[0].x;
   for (var k = 0u; k < range.y; k++) {
     var i = k;
     if (range.x != NO_CLUSTER) { i = decal_cell(cells + range.x + k); }
-    let d = decal_at(i);
-    let wet = d.normal.y > 0.5;
+    let b = base_off + i * DECAL_VEC4S;
+    let normal_row = bitcast<vec4<f32>>(decal_data[b + 9u]);
+    let wet = normal_row.y > 0.5;
     if (wet_only && !wet) { continue; }
-    let local = (d.inv * vec4<f32>(p, 1.0)).xyz;
+    let inv = mat4x4<f32>(
+      bitcast<vec4<f32>>(decal_data[b]),
+      bitcast<vec4<f32>>(decal_data[b + 1u]),
+      bitcast<vec4<f32>>(decal_data[b + 2u]),
+      bitcast<vec4<f32>>(decal_data[b + 3u]),
+    );
+    let local = (inv * vec4<f32>(p, 1.0)).xyz;
     if (any(abs(local) > vec3<f32>(0.5))) { continue; }
-    let facing = dot(n, d.axis.xyz);
-    let fade = smoothstep(d.axis.w, d.axis.w + fx.decal_info.z, facing) * (1.0 - smoothstep(0.35, 0.5, abs(local.z)));
+    let axis = bitcast<vec4<f32>>(decal_data[b + 4u]);
+    let facing = dot(n, axis.xyz);
+    let fade = smoothstep(axis.w, axis.w + fx.decal_info.z, facing) * (1.0 - smoothstep(0.35, 0.5, abs(local.z)));
     if (fade <= 0.0) { continue; }
+    let uv_rect = bitcast<vec4<f32>>(decal_data[b + 5u]);
+    let color = bitcast<vec4<f32>>(decal_data[b + 6u]);
+    let emissive = bitcast<vec4<f32>>(decal_data[b + 7u]);
+    let normal_rect = bitcast<vec4<f32>>(decal_data[b + 8u]);
     let t = vec2<f32>(local.x + 0.5, 0.5 - local.y);
     var texel = vec4<f32>(1.0);
-    let gx = (d.inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0);
-    let gy = (d.inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0);
+    let gx = (inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0);
+    let gy = (inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0);
     if (fx.decal_info.y > 0.5) {
-      texel = decal_sample(d.uv_rect, t, gx, gy);
+      texel = decal_sample(uv_rect, t, gx, gy);
     }
-    let c = d.color * texel;
+    let c = color * texel;
     let a = clamp(c.a * fade, 0.0, 1.0);
     if (wet) {
       r.albedo *= mix(vec3<f32>(1.0), c.rgb, a);
     } else {
       r.albedo = mix(r.albedo, c.rgb, a);
     }
-    if (d.emissive.w >= 0.0) { r.roughness = mix(r.roughness, d.emissive.w, a); }
-    if (d.normal.z >= 0.0) { r.metallic = mix(r.metallic, d.normal.z, a); }
-    r.emissive += d.emissive.rgb * texel.rgb * a;
+    if (emissive.w >= 0.0) { r.roughness = mix(r.roughness, emissive.w, a); }
+    if (normal_row.z >= 0.0) { r.metallic = mix(r.metallic, normal_row.z, a); }
+    r.emissive += emissive.rgb * texel.rgb * a;
     var target_normal = n;
-    if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {
-      var m = decal_sample(d.normal_rect, t, gx, gy).xyz;
+    if (normal_row.x != 0.0 && fx.decal_info.y > 0.5) {
+      var m = decal_sample(normal_rect, t, gx, gy).xyz;
       if (fx.decal_info.y > 1.5) { m = srgb_encode(m); }
-      let ts = vec3<f32>((m.xy * 2.0 - 1.0) * d.normal.x, max(m.z * 2.0 - 1.0, 1e-3));
-      let ux = vec3<f32>(d.inv[0].x, d.inv[1].x, d.inv[2].x);
+      let ts = vec3<f32>((m.xy * 2.0 - 1.0) * normal_row.x, max(m.z * 2.0 - 1.0, 1e-3));
+      let ux = vec3<f32>(inv[0].x, inv[1].x, inv[2].x);
       var tu = ux - n * dot(n, ux);
       if (dot(tu, tu) > 1e-12) {
         tu = normalize(tu);

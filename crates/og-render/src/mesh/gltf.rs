@@ -318,6 +318,14 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
                     .map(|i| i.into_u32().collect())
                     .unwrap_or_else(|| (0..positions.len() as u32).collect());
                 // Bake the node transform so an instance is a single matrix.
+                let m3 = glam::Mat3::from_mat4(world);
+                let det = m3.determinant();
+                let normal_mat = if det.abs() > 1e-12 {
+                    m3.inverse().transpose()
+                } else {
+                    m3
+                };
+                let handedness_sign = if det < 0.0 { -1.0 } else { 1.0 };
                 let vertices: Vec<Vertex> = positions
                     .iter()
                     .enumerate()
@@ -325,15 +333,17 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
                         let position = world.transform_point3(Vec3::from(*p));
                         min = min.min(position);
                         max = max.max(position);
-                        let normal = world
-                            .transform_vector3(Vec3::from(
+                        let normal = normal_mat
+                            .mul_vec3(Vec3::from(
                                 normals.get(i).copied().unwrap_or([0.0, 1.0, 0.0]),
                             ))
                             .normalize_or_zero();
                         // The file's tangent, or none (generated at upload).
                         let tangent = tangents.get(i).map_or([0.0; 4], |t| {
                             let v = world.transform_vector3(Vec3::new(t[0], t[1], t[2]));
-                            v.normalize_or_zero().extend(t[3]).to_array()
+                            v.normalize_or_zero()
+                                .extend(t[3] * handedness_sign)
+                                .to_array()
                         });
                         Vertex {
                             tangent,

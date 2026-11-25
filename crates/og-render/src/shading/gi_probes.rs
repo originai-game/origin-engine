@@ -395,6 +395,8 @@ pub(crate) struct GiProbes {
     frame: u64,
     /// This frame's slices, to record.
     slices: Vec<Slice>,
+    /// Staged per-slice GiParams bytes awaiting the frame's kept light count.
+    pending_params: Vec<u8>,
     /// The header rows to write after the light volumes' and those written.
     header: Vec<[f32; 4]>,
     written: Vec<[f32; 4]>,
@@ -527,6 +529,7 @@ impl GiProbes {
             desc: None,
             frame: 0,
             slices: Vec::new(),
+            pending_params: Vec::new(),
             header: vec![[0.0; 4]; HEADER_ROWS],
             written: Vec::new(),
         }
@@ -543,6 +546,7 @@ impl GiProbes {
     pub fn disable(&mut self) {
         self.desc = None;
         self.slices.clear();
+        self.pending_params.clear();
         self.header = vec![[0.0; 4]; HEADER_ROWS];
     }
 
@@ -649,16 +653,33 @@ impl GiProbes {
                     (self.frame % (1 << 24)) as u32,
                     s.first_ray,
                     (s.cascade * probes_per_cascade() * RADIANCE_TEXELS * ESTIMATOR_WORDS) as u32,
-                    scene.lighting.lights.len().min(crate::MAX_LIGHTS) as u32,
+                    0,
                 ],
             };
             let o = k * PARAMS_STRIDE as usize;
             bytes[o..o + std::mem::size_of::<GiParams>()].copy_from_slice(bytemuck::bytes_of(&p));
         }
-        crate::traffic::write_buffer(queue, &self.params, 0, &bytes);
+        self.pending_params = bytes;
         self.slices = slices;
         self.header = header(&desc, &cascades);
         self.frame += 1;
+    }
+
+    /// Patches the frame's actual kept light count (written into
+    /// `light_tables` by `prepare_lights`) into each slice's `GiParams.misc[3]`
+    /// and uploads the params buffer once.
+    pub fn write_params(&mut self, queue: &wgpu::Queue, kept_lights: usize) {
+        if self.pending_params.is_empty() {
+            return;
+        }
+        let count = (kept_lights.min(crate::MAX_LIGHTS) as u32).to_le_bytes();
+        let misc3_offset = std::mem::offset_of!(GiParams, misc) + 12;
+        for k in 0..self.slices.len() {
+            let at = k * PARAMS_STRIDE as usize + misc3_offset;
+            self.pending_params[at..at + 4].copy_from_slice(&count);
+        }
+        crate::traffic::write_buffer(queue, &self.params, 0, &self.pending_params);
+        self.pending_params.clear();
     }
 
     /// Writes the header rows into the light volumes' buffer when they

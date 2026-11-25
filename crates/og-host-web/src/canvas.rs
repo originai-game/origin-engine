@@ -444,7 +444,7 @@ pub async fn og_web_attach_canvas(
     let device = renderer.device();
     let gpu = super::gpu_report(
         &device.limits(),
-        device.features(),
+        renderer.info().adapter_features,
         renderer.info().device_type == og_render::wgpu::DeviceType::Cpu,
     );
     super::GPUS.with(|g| g.borrow_mut().insert(engine, gpu.to_string()));

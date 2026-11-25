@@ -374,9 +374,52 @@ fn mip_count(width: u32, height: u32) -> usize {
     32 - width.max(height).leading_zeros() as usize
 }
 
-fn box_down(rgba: &[u8], w: u32, h: u32) -> (Vec<u8>, u32, u32) {
+fn srgb_u8_to_linear(v: u8) -> f32 {
+    let x = v as f32 / 255.0;
+    if x <= 0.04045 {
+        x / 12.92
+    } else {
+        ((x + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb_u8(v: f32) -> u8 {
+    let x = v.clamp(0.0, 1.0);
+    let s = if x <= 0.0031308 {
+        x * 12.92
+    } else {
+        1.055 * x.powf(1.0 / 2.4) - 0.055
+    };
+    (s * 255.0 + 0.5).clamp(0.0, 255.0) as u8
+}
+
+fn box_down(rgba: &[u8], w: u32, h: u32, srgb: bool) -> (Vec<u8>, u32, u32) {
     let (nw, nh) = ((w / 2).max(1), (h / 2).max(1));
     let mut out = vec![0u8; (nw * nh * 4) as usize];
+    if srgb {
+        let lut: [f32; 256] = std::array::from_fn(|i| srgb_u8_to_linear(i as u8));
+        for y in 0..nh {
+            for x in 0..nw {
+                let dst = ((y * nw + x) * 4) as usize;
+                for c in 0..3usize {
+                    let mut sum = 0.0f32;
+                    for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                        let (sx, sy) = ((x * 2 + dx).min(w - 1), (y * 2 + dy).min(h - 1));
+                        sum += lut[rgba[((sy * w + sx) * 4) as usize + c] as usize];
+                    }
+                    out[dst + c] = linear_to_srgb_u8(sum * 0.25);
+                }
+                // Alpha is always linear even in sRGB textures.
+                let mut a_sum = 0u32;
+                for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                    let (sx, sy) = ((x * 2 + dx).min(w - 1), (y * 2 + dy).min(h - 1));
+                    a_sum += rgba[((sy * w + sx) * 4 + 3) as usize] as u32;
+                }
+                out[dst + 3] = ((a_sum + 2) / 4) as u8;
+            }
+        }
+        return (out, nw, nh);
+    }
     for y in 0..nh {
         for x in 0..nw {
             for c in 0..4 {
@@ -437,7 +480,7 @@ pub fn write_rgba8_zlib(
             level.len(),
         ));
         if i + 1 < count {
-            (level, w, h) = box_down(&level, w, h);
+            (level, w, h) = box_down(&level, w, h, srgb);
         }
     }
     assemble(Parts {

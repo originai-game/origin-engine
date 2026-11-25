@@ -268,7 +268,8 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   // Test the colour sample before borrowing a neighbour's motion: a
   // moving foreground in the footprint must not disable visibility
   // rejection for the camera-reprojected background it just uncovered.
-  if (!smaa && !own_motion && was_occluded(here - motion, reprojected.z)) {
+  let depth_valid = taa.previous_jitter.z > 0.5;
+  if (!smaa && !own_motion && depth_valid && was_occluded(here - motion, reprojected.z)) {
     // Seed with the surface whose visibility was tested. The first-frame
     // bilinear upscale would mix neighbouring surfaces into this sample's
     // new history, which later frames retain as if it belonged here.
@@ -298,7 +299,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
       // Disoccluded off the frame: no history.
       return fresh(in);
     }
-    if (upscale && !smaa) {
+    if (upscale && !smaa && depth_valid) {
       let sample_uv = (vec2<f32>(motion_at) + 0.5 - jitter) / vec2<f32>(size);
       hist4 = history_on_surface(prev_uv, sample_uv - motion, history_depth, catmull_rom, cur4);
     } else if (catmull_rom) {

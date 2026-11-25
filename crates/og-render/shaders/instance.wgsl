@@ -27,6 +27,25 @@ fn look_hidden(look: vec4<f32>) -> f32 {
   return hidden_share(look_hidden_steps(look));
 }
 
+// The instance's flash, 0 to 1: look.y less its outline group's even part
+// (instances.rs `fx_bits`).
+fn look_flash_amount(look: vec4<f32>) -> f32 {
+  return look.y - 2.0 * floor(look.y * 0.5);
+}
+
+// Whether the instance is darkened by the shadow maps (look.x >= 0;
+// instances.rs `layer_bits`): one that is not is lit as if nothing stood
+// between it and any light.
+fn look_receives(look: vec4<f32>) -> bool {
+  return look.x >= 0.0;
+}
+
+// An array-map instance's layer plus one, 0 for the material's own
+// (look.x without the receive flag).
+fn look_layer(look: vec4<f32>) -> f32 {
+  return select(-look.x - 1.0, look.x, look_receives(look));
+}
+
 // A normal's world direction: through the inverse transpose of the model's
 // upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
 // non-uniform scale bends normals the right way. Every vertex stage takes

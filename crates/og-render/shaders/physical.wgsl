@@ -590,12 +590,16 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
   let tbn = mat3x3<f32>(t, bt, n_vertex);
   // An eye: the base colour inside the iris lies under the cornea (eye.wgsl).
+  // Take screen derivatives before iris_uv's non-uniform rim branch.
+  let base_uv_ref = material_uv(UV_MAP, uv);
+  let base_dx = dpdxFine(base_uv_ref);
+  let base_dy = dpdyFine(base_uv_ref);
   var base_at = uv;
   if (physical.layers2.y > 0.0) {
     base_at = iris_uv(uv, t, bt, n_vertex * face, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
   }
   let base_uv = material_uv(UV_MAP, base_at);
-  let base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
+  let base_sample = base_texel(base_uv, base_dx, base_dy);
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
@@ -737,7 +741,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let shadowed = frame.light_dir.w > 0.5 && receives;
   var shadow = 1.0;
   if (shadowed && (n_dot_l > 0.0 || s.translucency > 0.0 || k.subsurface > 0.0 || k.hair > 0.0)) {
-    shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
+    shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(n_vertex * face), l), abs(dot(n, l)));
   }
   let sun = physical_brdf(s, k, n, v, l);
   let band_aa = style_edge(n_dot_l * shadow);

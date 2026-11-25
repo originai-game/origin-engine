@@ -130,12 +130,6 @@ fn look_flash(c: vec3<f32>, look: vec4<f32>) -> vec3<f32> {
   return mix(c, look_rgb(look.z), flash);
 }
 
-// The instance's flash, 0 to 1: look.y less its outline group's even part
-// (instances.rs `fx_bits`).
-fn look_flash_amount(look: vec4<f32>) -> f32 {
-  return look.y - 2.0 * floor(look.y * 0.5);
-}
-
 // The instance's outline group, 1 to 255, or 0 for none (its id then comes
 // from its transform: `object_id`).
 fn look_outline(look: vec4<f32>) -> u32 {
@@ -151,19 +145,6 @@ fn outline_object(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>, lo
   let group = look_outline(look);
   if (group > 0u) { return group | hidden; }
   return object_id(m0, m1, m2, m3) | hidden;
-}
-
-// Whether the instance is darkened by the shadow maps (look.x >= 0;
-// instances.rs `layer_bits`): one that is not is lit as if nothing stood
-// between it and any light.
-fn look_receives(look: vec4<f32>) -> bool {
-  return look.x >= 0.0;
-}
-
-// An array-map instance's layer plus one, 0 for the material's own
-// (look.x without the receive flag).
-fn look_layer(look: vec4<f32>) -> f32 {
-  return select(-look.x - 1.0, look.x, look_receives(look));
 }
 
 // The uv a fragment samples with: the interpolated one, or (retro 3D) the

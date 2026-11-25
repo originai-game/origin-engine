@@ -699,6 +699,9 @@ impl Renderer {
             contact: effects.contact,
             reflections: &reflections,
         });
+        if let Some(g) = &mut self.gi_probes {
+            g.write_params(&self.queue, self.lights.clusters.kept.len());
+        }
         // The volumetric fog's plan step (pass_volumetric.rs).
         frames.volumetric = VolumetricPass::plan(self, (volumetric_fog.as_ref(), scene));
         plans.volumetric = VolumetricPass::bind(self, &mut frames.volumetric, ());

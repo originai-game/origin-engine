@@ -79,11 +79,19 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
     var surface: Surface;
     surface.metallic = metalness;
     surface.roughness = roughness;
-    let aged = material_wear(surface, in.uv, n, in.world_pos, length(world_dx(in.world_pos)) + length(world_dy(in.world_pos)));
+    let dpx = world_dx(in.world_pos);
+    let dpy = world_dy(in.world_pos);
+    let footprint = length(dpx) + length(dpy);
+    let aged = material_wear(surface, in.uv, n, in.world_pos, footprint);
     metalness = aged.metallic;
     roughness = aged.roughness;
-    let wet = wet_decal_gloss(in.clip.xy, in.world_pos, n, n, clamp(roughness, 0.04, 1.0));
-    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
+    let wet = wet_decal_gloss_grad(in.clip.xy, in.world_pos, n, n, clamp(roughness, 0.04, 1.0), dpx, dpy);
+    var g: Weathered;
+    if (ANALYTIC) {
+      g = weather_gloss_grad(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u), footprint, 0.0);
+    } else {
+      g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
+    }
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);

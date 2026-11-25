@@ -336,11 +336,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
     }
   }
-  s = material_wear(s, in.uv, normalize(n_vertex * face), in.world_pos, length(world_dx(in.world_pos)) + length(world_dy(in.world_pos)));
+  let geo_n = normalize(n_vertex * face);
+  s = material_wear(s, in.uv, geo_n, in.world_pos, length(dpx) + length(dpy));
   // Rain, streaks, puddles, snow and dust (weather_surface.wgsl): the
   // frame's uniforms, the material's weathering (uv[3].w) and its relief
   // from the AO map, whose crevices hold water and dust first.
-  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
+  var weathered: Weathered;
+  if (ANALYTIC) {
+    weathered = weather_surface_grad(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u), length(dpx) + length(dpy), 0.0);
+  } else {
+    weathered = weather_surface_at(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
+  }
   s = weathered.s;
   n = weathered.n;
   if (!ANALYTIC) {
@@ -357,7 +363,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let receives = look_receives(in.look);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
-    shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
+    shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, geo_n, l), abs(dot(n, l)));
   }
   // Inside a tree's crown, what its leaves let through (crown_sun).
   let map_shadow = shadow;

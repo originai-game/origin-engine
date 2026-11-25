@@ -9,7 +9,7 @@ var<private> normal_layer: u32;
 fn vs(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {
   var o = shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
   o.hidden = look_hidden(look);
-  o.layer = u32(max(look.z, 0.0));
+  o.layer = u32(max(look_layer(look), 0.0));
   return o;
 }
 

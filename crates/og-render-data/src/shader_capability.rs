@@ -79,10 +79,21 @@ struct Weathered {
 fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
   return Weathered(s_in, n_in, 0.0);
 }
+fn weather_surface_grad(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32, footprint: f32, bend: f32) -> Weathered {
+  return Weathered(s_in, n_in, 0.0);
+}
 fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>) -> Weathered {
   return Weathered(s_in, n_in, 0.0);
 }
 fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
+  var s: Surface;
+  s.albedo = vec3<f32>(1.0);
+  s.metallic = metalness;
+  s.roughness = roughness;
+  s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
+  return Weathered(s, n, 0.0);
+}
+fn weather_gloss_grad(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32, footprint: f32, bend: f32) -> Weathered {
   var s: Surface;
   s.albedo = vec3<f32>(1.0);
   s.metallic = metalness;
