@@ -83,8 +83,8 @@ pub const COUNTS: [u32; 3] = [16, 8, 16];
 pub(crate) const HEADER_ROWS: usize = 1 + 2 * CASCADES;
 /// Where those rows start (`GI_HEADER_AT`).
 const HEADER_AT: usize = crate::lightmap::VOLUME_HEADER;
-/// A probe's vec4 (`GI_STRIDE`): its state, harmonics and distance map.
-pub(crate) const STRIDE: usize = 76;
+/// A probe's vec4 (`GI_STRIDE`): its state, harmonics and 4-per-vec4 packed distance map.
+pub(crate) const STRIDE: usize = 40;
 /// The distance map's texels a side (`GI_DEPTH`).
 pub(crate) const DEPTH: usize = 12;
 /// The radiance map's texels (`GI_RADIANCE`²) and the estimator's vec4 a
@@ -105,7 +105,7 @@ const PARAMS_STRIDE: u64 = 256;
 /// The slices a frame can hold (every cascade at once on a reset).
 const MAX_SLICES: usize = CASCADES;
 
-const _: () = assert!(STRIDE == 1 + 3 + DEPTH * DEPTH / 2);
+const _: () = assert!(STRIDE == 1 + 3 + DEPTH * DEPTH / 4);
 const _: () = assert!(HEADER_AT == 24, "GI_HEADER_AT in gi_common.wgsl");
 
 /// The probes of one cascade.
@@ -400,6 +400,11 @@ pub(crate) struct GiProbes {
     /// The header rows to write after the light volumes' and those written.
     header: Vec<[f32; 4]>,
     written: Vec<[f32; 4]>,
+    trace_bind:
+        std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<(wgpu::Buffer, wgpu::Buffer)>>,
+    blend_bind: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(wgpu::Buffer, wgpu::Buffer, wgpu::Buffer)>,
+    >,
 }
 
 impl GiProbes {
@@ -532,6 +537,8 @@ impl GiProbes {
             pending_params: Vec::new(),
             header: vec![[0.0; 4]; HEADER_ROWS],
             written: Vec::new(),
+            trace_bind: Default::default(),
+            blend_bind: Default::default(),
         }
     }
 
@@ -719,26 +726,38 @@ impl GiProbes {
             offset: 0,
             size: wgpu::BufferSize::new(std::mem::size_of::<GiParams>() as u64),
         });
-        let trace = crate::volumetric::bind_at(
-            device,
-            "gi probes trace",
-            &self.trace_layout,
-            &[
-                (0, self.bvh.get().as_entire_binding()),
-                (1, self.rays.get().as_entire_binding()),
-                (2, params.clone()),
-            ],
-        );
-        let blend = crate::volumetric::bind_at(
-            device,
-            "gi probes blend",
-            &self.blend_layout,
-            &[
-                (0, self.rays.get().as_entire_binding()),
-                (1, probes.as_entire_binding()),
-                (2, self.estimator.get().as_entire_binding()),
-                (3, params),
-            ],
+        let bvh_buf = self.bvh.get();
+        let rays_buf = self.rays.get();
+        let est_buf = self.estimator.get();
+        let mut trace_cache = self.trace_bind.borrow_mut();
+        let trace = trace_cache.get_or_insert_with((bvh_buf.clone(), rays_buf.clone()), || {
+            crate::volumetric::bind_at(
+                device,
+                "gi probes trace",
+                &self.trace_layout,
+                &[
+                    (0, bvh_buf.as_entire_binding()),
+                    (1, rays_buf.as_entire_binding()),
+                    (2, params.clone()),
+                ],
+            )
+        });
+        let mut blend_cache = self.blend_bind.borrow_mut();
+        let blend = blend_cache.get_or_insert_with(
+            (rays_buf.clone(), probes.clone(), est_buf.clone()),
+            || {
+                crate::volumetric::bind_at(
+                    device,
+                    "gi probes blend",
+                    &self.blend_layout,
+                    &[
+                        (0, rays_buf.as_entire_binding()),
+                        (1, probes.as_entire_binding()),
+                        (2, est_buf.as_entire_binding()),
+                        (3, params),
+                    ],
+                )
+            },
         );
         let rays = self.desc.map_or(64, |d| rays(&d));
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -748,12 +767,12 @@ impl GiProbes {
         pass.set_pipeline(&self.trace);
         pass.set_bind_group(0, frame, &[]);
         for (k, s) in self.slices.iter().enumerate() {
-            pass.set_bind_group(1, &trace, &[(k as u64 * PARAMS_STRIDE) as u32]);
+            pass.set_bind_group(1, trace, &[(k as u64 * PARAMS_STRIDE) as u32]);
             pass.dispatch_workgroups((s.probes * rays).div_ceil(64), 1, 1);
         }
         pass.set_pipeline(&self.blend);
         for (k, s) in self.slices.iter().enumerate() {
-            pass.set_bind_group(0, &blend, &[(k as u64 * PARAMS_STRIDE) as u32]);
+            pass.set_bind_group(0, blend, &[(k as u64 * PARAMS_STRIDE) as u32]);
             pass.dispatch_workgroups(s.probes, 1, 1);
         }
     }

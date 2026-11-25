@@ -35,11 +35,39 @@ pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
         crate::scatter_lit_source(&crate::hooks::default_hooks(), true),
     );
     add("scatter shadow", crate::scatter_shadow_source());
-    add("grass", crate::grass::lit_source());
-    add("grass shadow", crate::grass::shadow_source());
-    add("grass generate", crate::grass::generate_source(false));
+    add("grass", crate::grass::lit_source(false));
+    add("grass shadow", crate::grass::shadow_source(false));
+    add(
+        "grass generate",
+        crate::grass::generate_source(false, false),
+    );
     add(
         "grass generate (layer arrays)",
-        crate::grass::generate_source(true),
+        crate::grass::generate_source(true, false),
     );
+}
+
+/// Grass modules compiled only when [`crate::Caps::VERTEX_STORAGE`] is present.
+pub(crate) fn vertex_storage_shader_sources(out: &mut Vec<crate::ShaderSource>) {
+    let caps = crate::Caps::VERTEX_STORAGE;
+    out.push(crate::ShaderSource::with_caps(
+        "grass (vertex storage)",
+        crate::grass::lit_source(true),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "grass shadow (vertex storage)",
+        crate::grass::shadow_source(true),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "grass generate (vertex storage)",
+        crate::grass::generate_source(false, true),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "grass generate (layer arrays, vertex storage)",
+        crate::grass::generate_source(true, true),
+        caps,
+    ));
 }

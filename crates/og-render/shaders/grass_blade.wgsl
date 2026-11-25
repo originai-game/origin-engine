@@ -40,6 +40,7 @@ struct GrassUniform {
 // [0]: xyz each level's first blade; then the blades (grass_generate.wgsl),
 // a data texture (data_texture.rs).
 @group(1) @binding(1) var grass_blades: texture_2d<u32>;
+fn grass_blade_word(i: u32) -> vec4<u32> { return textureLoad(grass_blades, data_at(i), 0); }
 
 struct GrassRef {
   blade: GrassBlade,
@@ -51,8 +52,8 @@ fn grass_ref(vertex_index: u32, instance_index: u32) -> GrassRef {
   var r: GrassRef;
   r.lod = min(vertex_index / GRASS_LOD_STRIDE, 2u);
   r.local = vertex_index % GRASS_LOD_STRIDE;
-  let first = textureLoad(grass_blades, data_at(0u), 0);
-  r.blade = grass_unpack(textureLoad(grass_blades, data_at(first[r.lod] + instance_index), 0), grass.origin, grass.limits.x);
+  let first = grass_blade_word(0u);
+  r.blade = grass_unpack(grass_blade_word(first[r.lod] + instance_index), grass.origin, grass.limits.x);
   return r;
 }
 

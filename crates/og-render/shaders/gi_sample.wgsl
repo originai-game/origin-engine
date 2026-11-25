@@ -21,11 +21,12 @@ struct GiSample {
   w: f32,
 };
 
-// The distance moments (mean, mean²) of a probe's map at texel `t`.
+// The normalized distance moments (mean/range, (mean/range)²) of a probe's
+// map at texel `t` (4 packed texels per vec4).
 fn gi_moments(at: u32, t: vec2<i32>) -> vec2<f32> {
   let i = u32(t.y) * GI_DEPTH + u32(t.x);
-  let w = probe_data.v[at + GI_DEPTH_AT + (i >> 1u)];
-  return select(w.xy, w.zw, (i & 1u) == 1u);
+  let w = probe_data.v[at + GI_DEPTH_AT + (i >> 2u)];
+  return gi_unpack_moments(w[i & 3u]);
 }
 
 // The moments seen from the probe along `dir`, bilinear over its map with
@@ -80,6 +81,7 @@ fn gi_cascade(c: u32, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, visibility: bool
   // (integer division is slow, and eight corners did it eight times).
   let base_slot = gi_slot(base, counts);
   let base_wrap = (base - base_slot) / counts;
+  let inv_range = 1.0 / (GI_DEPTH_RANGE * spacing);
   var total = 0.0;
   for (var i = 0u; i < 8u; i++) {
     let o = vec3<i32>(vec3<u32>(i, i >> 1u, i >> 2u) & vec3<u32>(1u));
@@ -106,12 +108,13 @@ fn gi_cascade(c: u32, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, visibility: bool
       // shadow maps, Donnelly and Lauritzen 2006, eq. 5), sharpened.
       let from_probe = biased - probe;
       let dist = length(from_probe);
+      let dist_n = dist * inv_range;
       let m = gi_moments_along(at, from_probe / max(dist, 1e-5));
       let variance = abs(m.y - m.x * m.x);
-      let over = max(dist - m.x, 0.0);
+      let over = max(dist_n - m.x, 0.0);
       var chebyshev = variance / max(variance + over * over, 1e-8);
       chebyshev = max(chebyshev * chebyshev * chebyshev, 0.0);
-      weight *= select(chebyshev, 1.0, dist <= m.x);
+      weight *= select(chebyshev, 1.0, dist_n <= m.x);
     }
     weight = max(weight, 0.01);
     // A little light is very visible: crush tiny weights, keeping the

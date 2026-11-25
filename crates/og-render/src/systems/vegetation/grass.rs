@@ -333,6 +333,10 @@ pub(crate) struct GrassPipelines<'a> {
     pub trample: wgpu::TextureView,
     /// The lit features the renderer is made without (pipeline_features.rs).
     pub off: crate::pipeline_features::Features,
+    /// True when the device supports vertex-stage storage buffers and >= 5
+    /// storage buffers per compute stage: stores compacted blades in a linear
+    /// storage buffer instead of a 2D rgba32uint DataTexture.
+    pub vertex_storage: bool,
 }
 
 /// What a frame's grass is prepared for: the main camera.
@@ -365,6 +369,9 @@ pub(crate) struct GrassRenderer {
     samples: u32,
     /// The lit features its lit module is made without (pipeline_features.rs).
     off: crate::pipeline_features::Features,
+    /// Linear storage buffer for blades on `Tier::Full` (`Caps::VERTEX_STORAGE`),
+    /// falling back to `DataTexture` on `Tier::Compat`.
+    vertex_storage: bool,
     /// The lit, prepass and shadow pipelines, asked for the first frame a
     /// field is in the scene (gpu/deferred.rs).
     pipelines: Option<crate::deferred::Deferred<[wgpu::RenderPipeline; 3]>>,

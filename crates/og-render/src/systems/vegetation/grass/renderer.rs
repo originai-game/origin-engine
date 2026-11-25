@@ -6,15 +6,35 @@ use super::*;
 /// group at group 2 with the screen AO, and the decals.
 const SHADING: crate::Shading = crate::Shading::lit().weather().effects(2).decals();
 
+const BLADE_TEX_DECL: &str = "@group(1) @binding(1) var grass_blades: texture_2d<u32>;\nfn grass_blade_word(i: u32) -> vec4<u32> { return textureLoad(grass_blades, data_at(i), 0); }";
+const BLADE_BUF_DECL: &str = "@group(1) @binding(1) var<storage, read> grass_blades: array<vec4<u32>>;\nfn grass_blade_word(i: u32) -> vec4<u32> { return grass_blades[i]; }";
+
+const GEN_TEX_DECL: &str = "@group(0) @binding(5) var instances: texture_storage_2d<rgba32uint, write>;\nfn grass_store_blade(i: u32, words: vec4<u32>) { textureStore(instances, data_at(i), words); }";
+const GEN_BUF_DECL: &str = "@group(0) @binding(5) var<storage, read_write> instances: array<vec4<u32>>;\nfn grass_store_blade(i: u32, words: vec4<u32>) { instances[i] = words; }";
+
+fn grass_blade_wgsl(vertex_storage: bool) -> String {
+    let base = wgsl!("grass_blade.wgsl");
+    if vertex_storage {
+        assert!(
+            base.contains(BLADE_TEX_DECL),
+            "grass_blade.wgsl missing expected texture blade binding"
+        );
+        base.replacen(BLADE_TEX_DECL, BLADE_BUF_DECL, 1)
+    } else {
+        base.to_string()
+    }
+}
+
 /// The grass lit module: the frame, the shared shading, then the blades.
-pub(crate) fn lit_source() -> String {
+pub(crate) fn lit_source(vertex_storage: bool) -> String {
+    let blade = grass_blade_wgsl(vertex_storage);
     crate::assemble(
         &[
             crate::FRAME_WGSL,
             &SHADING.text(),
             crate::wind::WIND_COMMON_WGSL,
             crate::ground::GRASS_COMMON_WGSL,
-            wgsl!("grass_blade.wgsl"),
+            &blade,
             wgsl!("grass.wgsl"),
         ],
         &crate::Capability::OPAQUE_SURFACE,
@@ -22,21 +42,33 @@ pub(crate) fn lit_source() -> String {
 }
 
 /// The grass shadow module.
-pub(crate) fn shadow_source() -> String {
+pub(crate) fn shadow_source(vertex_storage: bool) -> String {
+    let blade = grass_blade_wgsl(vertex_storage);
     format!(
         "{}{}{}{}{}{}",
         crate::LIBRARY_WGSL,
         crate::SHADOW_PASS_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
-        wgsl!("grass_blade.wgsl"),
+        blade,
         wgsl!("grass_shadow.wgsl"),
     )
 }
 
 /// The generation module over a terrain's group (`arrayed`: the
-/// layer-array variant's).
-pub(crate) fn generate_source(arrayed: bool) -> String {
+/// layer-array variant's; `vertex_storage`: write to a linear storage
+/// buffer instead of a 2D `rgba32uint` DataTexture).
+pub(crate) fn generate_source(arrayed: bool, vertex_storage: bool) -> String {
+    let gen_src = if vertex_storage {
+        let base = wgsl!("grass_generate.wgsl");
+        assert!(
+            base.contains(GEN_TEX_DECL),
+            "grass_generate.wgsl missing expected storage texture binding"
+        );
+        base.replacen(GEN_TEX_DECL, GEN_BUF_DECL, 1)
+    } else {
+        wgsl!("grass_generate.wgsl").to_string()
+    };
     let s = format!(
         "{}{}{}{}{}{}{}",
         crate::LIBRARY_WGSL,
@@ -45,7 +77,7 @@ pub(crate) fn generate_source(arrayed: bool) -> String {
         crate::trample::READ_WGSL,
         crate::ground::GRASS_COMMON_WGSL,
         crate::ground::TERRAIN_WGSL,
-        wgsl!("grass_generate.wgsl"),
+        gen_src,
     );
     if arrayed {
         crate::ground::terrain_array_declarations(&s)
@@ -91,6 +123,15 @@ impl GrassRenderer {
         };
         let cs = wgpu::ShaderStages::COMPUTE;
         let rw = wgpu::BufferBindingType::Storage { read_only: false };
+        let gen_instances = if p.vertex_storage {
+            buffer(rw)
+        } else {
+            wgpu::BindingType::StorageTexture {
+                access: wgpu::StorageTextureAccess::WriteOnly,
+                format: wgpu::TextureFormat::Rgba32Uint,
+                view_dimension: wgpu::TextureViewDimension::D2,
+            }
+        };
         let gen_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("grass generate"),
             entries: &[
@@ -103,15 +144,7 @@ impl GrassRenderer {
                 ),
                 entry(3, cs, buffer(rw)),
                 entry(4, cs, buffer(rw)),
-                entry(
-                    5,
-                    cs,
-                    wgpu::BindingType::StorageTexture {
-                        access: wgpu::StorageTextureAccess::WriteOnly,
-                        format: wgpu::TextureFormat::Rgba32Uint,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                    },
-                ),
+                entry(5, cs, gen_instances),
                 entry(6, cs, buffer(rw)),
                 entry(
                     7,
@@ -180,6 +213,15 @@ impl GrassRenderer {
             mipmap_filter: wgpu::MipmapFilterMode::Linear,
             ..Default::default()
         });
+        let draw_instances = if p.vertex_storage {
+            entry(
+                1,
+                wgpu::ShaderStages::VERTEX,
+                buffer(wgpu::BufferBindingType::Storage { read_only: true }),
+            )
+        } else {
+            crate::gpu::data_texture::data_entry(1, wgpu::ShaderStages::VERTEX, true)
+        };
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("grass"),
             entries: &[
@@ -188,7 +230,7 @@ impl GrassRenderer {
                     wgpu::ShaderStages::VERTEX_FRAGMENT,
                     buffer(wgpu::BufferBindingType::Uniform),
                 ),
-                crate::gpu::data_texture::data_entry(1, wgpu::ShaderStages::VERTEX, true),
+                draw_instances,
             ],
         });
         let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
@@ -216,6 +258,7 @@ impl GrassRenderer {
             trample: p.trample,
             samples: p.samples,
             off: p.off,
+            vertex_storage: p.vertex_storage,
             pipelines: None,
             generate: [None, None],
             tile: crate::buffer_init(
@@ -256,7 +299,7 @@ impl GrassRenderer {
         device: &wgpu::Device,
     ) -> crate::deferred::Deferred<[wgpu::RenderPipeline; 3]> {
         let device = device.clone();
-        let (off, samples) = (self.off, self.samples);
+        let (off, samples, vertex_storage) = (self.off, self.samples, self.vertex_storage);
         let (lit_layout, prepass_layout, shadow_layout) = (
             self.lit_layout.clone(),
             self.prepass_layout.clone(),
@@ -273,8 +316,8 @@ impl GrassRenderer {
                     },
                 )
             };
-            let lit_module = module("grass", off.leave_out(lit_source()));
-            let shadow_module = module("grass shadow", shadow_source());
+            let lit_module = module("grass", off.leave_out(lit_source(vertex_storage)));
+            let shadow_module = module("grass shadow", shadow_source(vertex_storage));
             let lit = crate::hdr_pipeline(
                 device,
                 crate::HdrPipeline {
@@ -374,7 +417,9 @@ impl GrassRenderer {
             device,
             wgpu::ShaderModuleDescriptor {
                 label: Some("grass generate"),
-                source: wgpu::ShaderSource::Wgsl(generate_source(arrayed).into()),
+                source: wgpu::ShaderSource::Wgsl(
+                    generate_source(arrayed, self.vertex_storage).into(),
+                ),
             },
         );
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

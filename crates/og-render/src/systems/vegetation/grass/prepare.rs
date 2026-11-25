@@ -41,13 +41,32 @@ impl GrassRenderer {
             slice_cap as u64 * 12,
             wgpu::BufferUsages::STORAGE,
         );
-        let instances = crate::gpu::data_texture::DataTexture::new(
-            device,
-            "grass blades",
-            wgpu::TextureFormat::Rgba32Uint,
-            blade_cap + 1,
-            wgpu::TextureUsages::STORAGE_BINDING,
-        );
+        let (gen_instances, draw_instances);
+        let _instances_tex;
+        let _instances_buf;
+        if self.vertex_storage {
+            _instances_buf = Some(make(
+                "grass blades",
+                (blade_cap as u64 + 1) * 16,
+                wgpu::BufferUsages::STORAGE,
+            ));
+            _instances_tex = None;
+            let buf = _instances_buf.as_ref().expect("created above");
+            gen_instances = buf.as_entire_binding();
+            draw_instances = buf.as_entire_binding();
+        } else {
+            _instances_tex = Some(crate::gpu::data_texture::DataTexture::new(
+                device,
+                "grass blades",
+                wgpu::TextureFormat::Rgba32Uint,
+                blade_cap + 1,
+                wgpu::TextureUsages::STORAGE_BINDING,
+            ));
+            _instances_buf = None;
+            let tex = _instances_tex.as_ref().expect("created above");
+            gen_instances = wgpu::BindingResource::TextureView(&tex.view);
+            draw_instances = wgpu::BindingResource::TextureView(&tex.view);
+        }
         let draws = make(
             "grass draws",
             60,
@@ -63,7 +82,7 @@ impl GrassRenderer {
             .collect();
         gen_entries.push(wgpu::BindGroupEntry {
             binding: 5,
-            resource: wgpu::BindingResource::TextureView(&instances.view),
+            resource: gen_instances,
         });
         gen_entries.push(wgpu::BindGroupEntry {
             binding: 6,
@@ -92,7 +111,7 @@ impl GrassRenderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&instances.view),
+                    resource: draw_instances,
                 },
             ],
         });

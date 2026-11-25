@@ -138,15 +138,15 @@ fn macro_tint(li: u32, p: vec3<f32>) -> vec3<f32> {
 
 // ── A layer at a point ──────────────────────────────────────────────────
 
-// Its albedo and height alone (the prepass: no normal map is read).
+// Its albedo and height alone (the prepass: no normal map or distant coarse
+// tap is needed for height-blending and cavity).
 fn sample_layer_albedo(i: u32, p: vec3<f32>, lay: Lay, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
   if ((u32(terrain.layers[i].mapping.w) & 1u) == 0u) { return vec4<f32>(1.0); }
   let proj = layer_projection(i, lay);
-  let coarse = layer_coarse(i, p);
   var a = vec4<f32>(0.0);
   for (var k = 0u; k < proj.count; k++) {
     let t = plane_taps(i, proj.planes[k], p, dpx, dpy);
-    a += taps_albedo(i, t, coarse).albedo * proj.w[k];
+    a += taps_albedo(i, t, 0.0).albedo * proj.w[k];
   }
   return a;
 }

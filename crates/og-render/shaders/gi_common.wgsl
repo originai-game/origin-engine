@@ -22,17 +22,36 @@
 //   0: its state: xyz its offset (spacings), w its key (+ active, - inside
 //      geometry, 0 never traced): which world cell the slot holds now
 //   1..4: its irradiance over π, `[c1.x, c1.y, c1.z, c0]` per channel
-//   4..: its distance moments (mean, mean²) on a GI_DEPTH² octahedral map,
-//      two texels a vec4
+//   4..40: its normalized distance moments (mean/range, (mean/range)²) on a
+//      GI_DEPTH² octahedral map, 4 texels per vec4 packed in 15+15-bit
+//      normal-float bit patterns (`gi_pack_moments`).
 
 const GI_HEADER_AT: u32 = 24u;
 const GI_CASCADES: u32 = 4u;
 const GI_DEPTH: u32 = 12u;
-const GI_STRIDE: u32 = 76u;
+const GI_STRIDE: u32 = 40u;
 const GI_SH_AT: u32 = 1u;
 const GI_DEPTH_AT: u32 = 4u;
+// Distance map range in probe spacings (matches gi_probes.rs `blend[0]`).
+const GI_DEPTH_RANGE: f32 = 1.5;
 // The radiance's octahedral texels the blend filters in time (6 × 6).
 const GI_RADIANCE: u32 = 6u;
+
+// Pack normalized depth moments (d, d²) in [0, 1] into 15+15 bits inside a
+// guaranteed-normal IEEE-754 f32 (exponent 64..127: never NaN, Inf, or
+// subnormal, so float loads/stores preserve every bit on every GPU backend).
+fn gi_pack_moments(m: vec2<f32>) -> f32 {
+  let q = vec2<u32>(round(clamp(m, vec2<f32>(0.0), vec2<f32>(1.0)) * 32767.0));
+  let packed = q.x | (q.y << 15u);
+  let bits = (packed & 0x1fffffffu) | 0x20000000u | ((packed & 0x20000000u) << 2u);
+  return bitcast<f32>(bits);
+}
+
+fn gi_unpack_moments(word: f32) -> vec2<f32> {
+  let bits = bitcast<u32>(word);
+  let packed = (bits & 0x1fffffffu) | ((bits >> 2u) & 0x20000000u);
+  return vec2<f32>(f32(packed & 0x7fffu), f32((packed >> 15u) & 0x7fffu)) * (1.0 / 32767.0);
+}
 
 // The texel of an n × n octahedral map that texel (x, y), up to one past
 // an edge, stands for: across an edge the map folds over itself, so a

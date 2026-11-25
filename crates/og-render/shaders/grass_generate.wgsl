@@ -66,6 +66,7 @@ struct GrassGen {
 // A data texture (data_texture.rs), which the vertex stage reads: [0] xyz
 // each level's first instance, w the blades; then the blades.
 @group(0) @binding(5) var instances: texture_storage_2d<rgba32uint, write>;
+fn grass_store_blade(i: u32, words: vec4<u32>) { textureStore(instances, data_at(i), words); }
 // Three indexed indirect draws, one per level (index count, instances, first index, base vertex, first instance).
 @group(0) @binding(6) var<storage, read_write> draws: array<u32, 15>;
 // The simulated wind field's lean (wind_field.rs; wind_common.wgsl wind_lean).
@@ -356,7 +357,7 @@ fn scan(@builtin(local_invocation_index) lane: u32) {
     let c0 = min(totals.x, cap);
     let c1 = min(totals.y, cap - c0);
     let c2 = min(totals.z, cap - c0 - c1);
-    textureStore(instances, data_at(0u), vec4<u32>(1u, 1u + c0, 1u + c0 + c1, c0 + c1 + c2));
+    grass_store_blade(0u, vec4<u32>(1u, 1u + c0, 1u + c0 + c1, c0 + c1 + c2));
     let kept = array<u32, 3>(c0, c1, c2);
     let rows = array<u32, 3>(gen.counts.z, gen.counts.w & 0xffu, (gen.counts.w >> 8u) & 0xffu);
     var first_index = 0u;
@@ -397,7 +398,7 @@ fn compact(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_in
     if (lod < GRASS_NO_BLADE) {
       let rank = compact_scan[lane][lod] - 1u;
       let at = placed[lod] + rank;
-      if (at < draws[lod * 5u + 1u]) { textureStore(instances, data_at(header[lod] + at), words); }
+      if (at < draws[lod * 5u + 1u]) { grass_store_blade(header[lod] + at, words); }
     }
     workgroupBarrier();
     if (lane < 3u) {

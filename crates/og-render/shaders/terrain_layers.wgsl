@@ -102,7 +102,8 @@ fn layer_projection(li: u32, lay: Lay) -> Projection {
     let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
     biplanar = smoothstep(past - 5.0, past + 5.0, angle);
   } else if (triplanar) {
-    var w = pow(abs(n), vec3<f32>(4.0));
+    let n2 = n * n;
+    var w = n2 * n2;
     w = w / max(w.x + w.y + w.z, 1e-5);
     o.planes = vec4<u32>(1u, 0u, 2u, 0u);
     o.w = vec4<f32>(w, 0.0);
@@ -229,6 +230,13 @@ fn hex_tap(v: vec2<f32>, base: vec2<i32>, u: vec2<f32>, mf: vec2<f32>, c: vec2<f
   return o;
 }
 
+const HEX_PRUNE: f32 = 0.002;
+
+fn hex_pow7(w: vec3<f32>) -> vec3<f32> {
+  let w2 = w * w;
+  return w2 * w2 * w2 * w;
+}
+
 fn plane_taps(li: u32, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> PlaneTaps {
   let k = terrain.layers[li].mapping.x;
   let u = plane_of(p, plane) * k;
@@ -260,14 +268,27 @@ fn plane_taps(li: u32, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>)
   let z = 1.0 - f.x - f.y;
   let s = step(0.0, -z);
   let s2 = 2.0 * s - 1.0;
-  t.w = max(vec3<f32>(-z * s2, s - f.y * s2, s - f.x * s2), vec3<f32>(0.0));
+  let bary = max(vec3<f32>(-z * s2, s - f.y * s2, s - f.x * s2), vec3<f32>(0.0));
+  let w7 = hex_pow7(bary);
+  var w = w7 / max(w7.x + w7.y + w7.z, 1e-12);
   t.n = 3u;
   let mf = hex_centre(hf.xy);
   let strength = clamp(terrain.layers[li].look.x, 0.0, 1.0);
   // The three hexagons in one loop: one copy of the tap's code (DXC
-  // inlines every call, so three calls compiled three copies).
+  // inlines every call, so three calls compiled three copies). Taps with
+  // normalized w^7 weight below HEX_PRUNE contribute < 0.5% even after
+  // luminance modulation and skip hex ALU and texture fetches altogether.
   let cells = array<vec2<f32>, 3>(vec2<f32>(s, s), vec2<f32>(s, 1.0 - s), vec2<f32>(1.0 - s, s));
   for (var j = 0u; j < 3u; j++) {
+    if (w[j] < HEX_PRUNE) {
+      w[j] = 0.0;
+      t.uv[j] = vec2<f32>(0.0);
+      t.dx[j] = vec2<f32>(0.0);
+      t.dy[j] = vec2<f32>(0.0);
+      t.turn[j] = vec2<f32>(1.0, 0.0);
+      t.seed[j] = 0.0;
+      continue;
+    }
     let h = hex_tap(id + cells[j], base, u, mf, hf.zw, strength, gx, gy);
     t.uv[j] = h.uv;
     t.dx[j] = h.dx;
@@ -275,15 +296,14 @@ fn plane_taps(li: u32, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>)
     t.turn[j] = h.turn;
     t.seed[j] = h.seed;
   }
+  t.w = w / max(w.x + w.y + w.z, 1e-12);
   return t;
 }
 
 // The hexagons' weights from their barycentric ones alone (no albedo to
-// weigh by).
+// weigh by): already sharpened to w^7 and pruned in `plane_taps`.
 fn hex_weights(t: PlaneTaps) -> vec3<f32> {
-  if (t.n == 1u) { return vec3<f32>(1.0, 0.0, 0.0); }
-  let w = pow(t.w, vec3<f32>(7.0));
-  return w / max(w.x + w.y + w.z, 1e-12);
+  return t.w;
 }
 
 struct TapsAlbedo {
@@ -294,14 +314,18 @@ struct TapsAlbedo {
 // A plane's albedo (and height in alpha): its taps blended, then the
 // quarter-frequency tap mixed in by `coarse`.
 fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
-  // The taps' reads (3, or 1), then the quarter-frequency one (3, where
-  // `coarse` asks), in one loop (one copy of the read: DXC inlines every
-  // call).
+  // The taps' reads (up to 3, skipping pruned weights), then the
+  // quarter-frequency one (3, where `coarse` asks), in one loop (one copy
+  // of the read: DXC inlines every call).
   var c: array<vec4<f32>, 4>;
   let taps = select(3u, 1u, t.n == 1u);
   for (var j = 0u; j < 4u; j++) {
     if (j == 3u && coarse <= 0.0) { break; }
     if (j >= taps && j < 3u) { continue; }
+    if (j < 3u && t.w[j] <= 0.0) {
+      c[j] = vec4<f32>(0.0);
+      continue;
+    }
     let k = min(j, 2u);
     let far = j == 3u;
     c[j] = layer_albedo(i, select(t.uv[k], t.coarse_uv, far), select(t.dx[k], t.coarse_dx, far), select(t.dy[k], t.coarse_dy, far));
@@ -315,7 +339,7 @@ fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
     let c1 = c[1];
     let c2 = c[2];
     let lum = vec3<f32>(luma(c0.rgb), luma(c1.rgb), luma(c2.rgb));
-    var w = mix(vec3<f32>(1.0), lum, 0.6) * pow(t.w, vec3<f32>(7.0));
+    var w = mix(vec3<f32>(1.0), lum, 0.6) * t.w;
     w = w / max(w.x + w.y + w.z, 1e-12);
     o.albedo = c0 * w.x + c1 * w.y + c2 * w.z;
     o.w = w;
@@ -368,9 +392,14 @@ struct TapsNormal {
 // moved by its own number (so the copies of one cell differ).
 fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
   let s = clamp(terrain.layers[i].coarse.w, 0.0, 1.0);
-  // The taps' reads (3, or 1) in one loop (one copy of the read).
+  // The taps' reads (up to 3, skipping pruned weights) in one loop.
   var m: array<vec4<f32>, 3>;
-  for (var j = 0u; j < select(3u, 1u, t.n == 1u); j++) {
+  let taps = select(3u, 1u, t.n == 1u);
+  for (var j = 0u; j < taps; j++) {
+    if (j < 3u && w[j] <= 0.0) {
+      m[j] = vec4<f32>(0.0, 0.0, 1.0, 1.0);
+      continue;
+    }
     m[j] = layer_normal_map(i, t.uv[j], t.dx[j], t.dy[j]);
   }
   var o: TapsNormal;
@@ -379,16 +408,17 @@ fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
     o.tone = cell_tone(m[0].w, select(s, 0.0, m[0].w == 1.0));
     return o;
   }
-  let m0 = m[0];
-  let m1 = m[1];
-  let m2 = m[2];
-  let d = turn2(m0.xy, t.turn[0]) / max(m0.z, 0.05) * w.x
-    + turn2(m1.xy, t.turn[1]) / max(m1.z, 0.05) * w.y
-    + turn2(m2.xy, t.turn[2]) / max(m2.z, 0.05) * w.z;
+  var d = vec2<f32>(0.0);
+  var tone = vec3<f32>(0.0);
+  for (var j = 0u; j < 3u; j++) {
+    let wj = w[j];
+    if (wj <= 0.0) { continue; }
+    let mj = m[j];
+    d += turn2(mj.xy, t.turn[j]) / max(mj.z, 0.05) * wj;
+    tone += cell_tone(mj.w + t.seed[j], select(s, 0.0, mj.w == 1.0)) * wj;
+  }
   o.normal = normalize(vec3<f32>(d, 1.0));
-  o.tone = cell_tone(m0.w + t.seed.x, select(s, 0.0, m0.w == 1.0)) * w.x
-    + cell_tone(m1.w + t.seed.y, select(s, 0.0, m1.w == 1.0)) * w.y
-    + cell_tone(m2.w + t.seed.z, select(s, 0.0, m2.w == 1.0)) * w.z;
+  o.tone = tone;
   return o;
 }
 

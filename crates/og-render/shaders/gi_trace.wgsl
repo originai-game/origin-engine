@@ -92,25 +92,49 @@ fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
   if (gp.trace.y < 0.5) { return best; }
   let inv = gi_safe_inverse(d);
   var stack: array<u32, GI_STACK>;
-  var sp = 1u;
-  stack[0] = u32(gp.trace.x);
+  var stack_t: array<f32, GI_STACK>;
+  let root = u32(gp.trace.x);
+  let t_root = gi_box(root, o, inv, best.t);
+  var sp = 0u;
+  if (t_root <= best.t) {
+    stack[0] = root;
+    stack_t[0] = t_root;
+    sp = 1u;
+  }
   loop {
     if (sp == 0u) { break; }
     sp -= 1u;
+    if (stack_t[sp] > best.t) { continue; }
     let n = stack[sp];
-    if (gi_box(n, o, inv, best.t) > best.t) { continue; }
     let link = u32(gi_bvh[n].w);
     let count = u32(gi_bvh[n + 1u].w);
     if (count == 0u) {
-      // The nearer child last, so it is walked first.
+      // Push only intersecting children, nearer last so it is popped first.
       let tl = gi_box(link, o, inv, best.t);
       let tr = gi_box(link + 2u, o, inv, best.t);
-      let near = select(link + 2u, link, tl <= tr);
-      let far = select(link, link + 2u, tl <= tr);
-      if (sp + 2u <= GI_STACK) {
-        stack[sp] = far;
-        stack[sp + 1u] = near;
-        sp += 2u;
+      let hit_l = tl <= best.t;
+      let hit_r = tr <= best.t;
+      if (hit_l && hit_r) {
+        if (sp + 2u <= GI_STACK) {
+          let l_near = tl <= tr;
+          stack[sp] = select(link, link + 2u, l_near);
+          stack_t[sp] = select(tl, tr, l_near);
+          stack[sp + 1u] = select(link + 2u, link, l_near);
+          stack_t[sp + 1u] = select(tr, tl, l_near);
+          sp += 2u;
+        }
+      } else if (hit_l) {
+        if (sp < GI_STACK) {
+          stack[sp] = link;
+          stack_t[sp] = tl;
+          sp += 1u;
+        }
+      } else if (hit_r) {
+        if (sp < GI_STACK) {
+          stack[sp] = link + 2u;
+          stack_t[sp] = tr;
+          sp += 1u;
+        }
       }
       continue;
     }
@@ -125,22 +149,48 @@ fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
       let ld = vec3<f32>(dot(r0.xyz, d), dot(r1.xyz, d), dot(r2.xyz, d));
       let linv = gi_safe_inverse(ld);
       var inner: array<u32, GI_STACK>;
-      var ip = 1u;
-      inner[0] = u32(gi_bvh[rec + 3u].x);
+      var inner_t: array<f32, GI_STACK>;
+      let blas_root = u32(gi_bvh[rec + 3u].x);
+      let t_blas = gi_box(blas_root, lo, linv, best.t);
+      var ip = 0u;
+      if (t_blas <= best.t) {
+        inner[0] = blas_root;
+        inner_t[0] = t_blas;
+        ip = 1u;
+      }
       loop {
         if (ip == 0u) { break; }
         ip -= 1u;
+        if (inner_t[ip] > best.t) { continue; }
         let m = inner[ip];
-        if (gi_box(m, lo, linv, best.t) > best.t) { continue; }
         let l2 = u32(gi_bvh[m].w);
         let c2 = u32(gi_bvh[m + 1u].w);
         if (c2 == 0u) {
           let tl = gi_box(l2, lo, linv, best.t);
           let tr = gi_box(l2 + 2u, lo, linv, best.t);
-          if (ip + 2u <= GI_STACK) {
-            inner[ip] = select(l2, l2 + 2u, tl <= tr);
-            inner[ip + 1u] = select(l2 + 2u, l2, tl <= tr);
-            ip += 2u;
+          let hit_l = tl <= best.t;
+          let hit_r = tr <= best.t;
+          if (hit_l && hit_r) {
+            if (ip + 2u <= GI_STACK) {
+              let l_near = tl <= tr;
+              inner[ip] = select(l2, l2 + 2u, l_near);
+              inner_t[ip] = select(tl, tr, l_near);
+              inner[ip + 1u] = select(l2 + 2u, l2, l_near);
+              inner_t[ip + 1u] = select(tr, tl, l_near);
+              ip += 2u;
+            }
+          } else if (hit_l) {
+            if (ip < GI_STACK) {
+              inner[ip] = l2;
+              inner_t[ip] = tl;
+              ip += 1u;
+            }
+          } else if (hit_r) {
+            if (ip < GI_STACK) {
+              inner[ip] = l2 + 2u;
+              inner_t[ip] = tr;
+              ip += 1u;
+            }
           }
           continue;
         }

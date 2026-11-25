@@ -106,6 +106,8 @@ impl Renderer {
                 )
             }))
         };
+        let grass_vertex_storage = info.caps.contains(Caps::VERTEX_STORAGE)
+            && device.limits().max_storage_buffers_per_shader_stage >= 5;
         let grass = {
             let fx_layout = fx_layout.clone();
             OnDemand::new(Box::new(move || {
@@ -120,6 +122,7 @@ impl Renderer {
                         wind_field: wind,
                         trample,
                         off,
+                        vertex_storage: grass_vertex_storage,
                     },
                 )
             }))

@@ -33,6 +33,8 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     crate::sprites::shader_sources(&mut add);
     crate::media::shader_sources(&mut add);
     crate::systems::shader_sources(&mut add);
+    drop(add);
+    crate::systems::vegetation::vertex_storage_shader_sources(&mut out);
     shaders::with_variants(out)
 }
 
