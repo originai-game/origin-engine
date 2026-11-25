@@ -39,13 +39,15 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   (MIT, © 2026 Dennis Smolek, https://github.com/pmndrs/upscaler, head
   `2020ea2`), whose code is not copied.
 - **Storage formats** are the core WebGPU ones: AMD's `R16`/`RG16`/`R11G11B10`
-  intermediates are `r32float`, `rg32float`, `rgba16float` and `rgba8unorm`.
+  intermediates are `r32float`, `r32uint` (packed f16x2 dilated motion),
+  `rgba16float` and `rgba8unorm` (including filterable `luma_instability`).
 - **Inputs are the engine's.** Motion is the engine's (camera motion through
   the depth, or the prepass's motion vectors), negated to FSR's convention;
   the reactive mask is `min(1 − OIT revealage, 0.9)`; there is no
   transparency-and-composition mask. The colour is HDR scene-linear. The
-  output's alpha (the engine's tone-mapped fraction) is blended along the
-  motion and clamped to the current samples' range, as `taa.wgsl` does.
+  output's alpha (the engine's tone-mapped fraction) is carried in the
+  accumulation's LDS tile and history sample, blended along the motion and
+  clamped to the current samples' range, as `taa.wgsl` does.
 - **Frame time** comes from the tick count, never the wall clock, so the
   upscaler stays deterministic.
 - **Loops written out, shared taps in workgroup memory.** naga emits
@@ -55,17 +57,19 @@ Halton sequence are `ffxFsr3UpscalerGetJitterPhaseCount` and
   calls with constant offsets, with the same arithmetic in the same order
   except where noted here. The history's Lanczos-2 is separable, with one
   set of four weights per axis made from three sines, where AMD
-  evaluates the kernel per tap. The accumulation prepares the current
-  colour under a workgroup's 8x8 output pixels once, into an 11x11 tile
-  that the nine taps of each pixel read. The shading change pyramid runs
-  one thread per level-0 texel (16x16 a group). The output matches the
-  looped form to within float reordering: at most 0.006 levels of 255
-  on average per channel, with a few pixels up to 29.
-- **Luma instability in the reactivity pass.** AMD's luma instability
-  is a pass of its own that reads the dilated reactive masks back
-  bilinearly at the jittered place; here the reactivity pass keeps the
-  luma history and its instability from the pixel's own masks as it
-  writes them, a sub-pixel apart, saving the pass and its reads.
+  evaluates the kernel per tap (and stationary pixels at matching upscale
+  size take a single direct load). The accumulation prepares the current
+  colour and alpha under a workgroup's 8x8 output pixels once, into an
+  11x11 tile that the nine taps and alpha clamp of each pixel read. The
+  shading change pyramid runs one thread per level-0 texel (16x8 a group).
+  The output matches the looped form to within float reordering: at most
+  0.006 levels of 255 on average per channel, with a few pixels up to 29.
+- **Shading change and luma instability in the reactivity pass.** AMD's
+  shading change pass (three mip reads into an 8-bit half-res target) and
+  luma instability pass are fused into `fsr_prepare_reactivity.wgsl`,
+  reading the shading-change pyramid directly at each render pixel's
+  unjittered UV (avoiding a dispatch and double bilinear blur) and updating
+  luma history and instability from the pixel's own masks.
 - **The history's colour is the engine's previous output.** AMD keeps
   an internal history (colour, lock in alpha) beside the output it
   writes; the engine's output already persists as its TAA history (the

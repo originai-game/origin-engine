@@ -25,6 +25,7 @@ fn main() {
         .filter(|p| p.extension().is_some_and(|e| e == "wgsl"))
         .collect();
     entries.sort();
+    let mut names = std::collections::HashSet::with_capacity(entries.len());
     for path in entries {
         let src = std::fs::read_to_string(&path).expect("a WGSL file");
         let stripped = strip(&src).unwrap_or_else(|line| {
@@ -33,8 +34,17 @@ fn main() {
                 path.display()
             )
         });
-        let name = path.file_name().expect("a file name");
-        std::fs::write(out.join(name), stripped).expect("a stripped WGSL file");
+        let name = path.file_name().expect("a file name").to_os_string();
+        std::fs::write(out.join(&name), stripped).expect("a stripped WGSL file");
+        names.insert(name);
+    }
+    for entry in std::fs::read_dir(&out).expect("OUT_DIR/shaders") {
+        let path = entry.expect("an OUT_DIR/shaders entry").path();
+        if path.extension().is_some_and(|e| e == "wgsl")
+            && !names.contains(path.file_name().expect("a file name"))
+        {
+            let _ = std::fs::remove_file(&path);
+        }
     }
 }
 

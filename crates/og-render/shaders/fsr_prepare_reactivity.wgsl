@@ -14,11 +14,11 @@
 // place; here it takes the pixel's own, a sub-pixel apart, and saves the
 // pass and its reads. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
-@group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
+@group(0) @binding(1) var dilated_motion_tex: texture_2d<u32>;
 @group(0) @binding(2) var dilated_depth_tex: texture_2d<f32>;
 @group(0) @binding(3) var<storage, read> reconstructed_depth: array<u32>;
 @group(0) @binding(4) var reveal_tex: texture_2d<f32>;
-@group(0) @binding(5) var shading_change_tex: texture_2d<f32>;
+@group(0) @binding(5) var spd_mips: texture_2d<f32>;
 @group(0) @binding(6) var accumulation_tex: texture_2d<f32>;
 @group(0) @binding(7) var current_luma_tex: texture_2d<f32>;
 @group(0) @binding(8) var<storage, read> frame_info: vec4<f32>;
@@ -28,7 +28,7 @@
 @group(0) @binding(12) var<storage, read_write> new_locks: array<f32>;
 @group(0) @binding(13) var luma_history_tex: texture_2d<f32>;
 @group(0) @binding(14) var luma_history_out: texture_storage_2d<rgba16float, write>;
-@group(0) @binding(15) var luma_instability_out: texture_storage_2d<r32float, write>;
+@group(0) @binding(15) var luma_instability_out: texture_storage_2d<rgba8unorm, write>;
 
 fn exposure() -> f32 { return exposure_of(frame_info); }
 
@@ -45,7 +45,7 @@ fn load_dilated_depth(p: vec2<i32>) -> f32 {
 
 fn load_dilated_motion(p: vec2<i32>) -> vec2<f32> {
   if (!is_on_screen(p, max_render_size())) { return vec2<f32>(0.0); }
-  return textureLoad(dilated_motion_tex, p, 0).xy;
+  return unpack_motion(textureLoad(dilated_motion_tex, p, 0).r);
 }
 
 fn load_reactive_mask(p: vec2<i32>) -> f32 {
@@ -124,8 +124,23 @@ fn reactive_at(p: vec2<i32>, x: i32, y: i32) -> f32 {
 }
 
 fn dilate_reactive_masks(p: vec2<i32>) -> f32 {
+  if (fsr.misc.z < 0.5) { return 0.0; }
   return max(max(max(reactive_at(p, -1, -1), reactive_at(p, 0, -1)), max(reactive_at(p, 1, -1), reactive_at(p, -1, 0))),
     max(max(reactive_at(p, 0, 0), reactive_at(p, 1, 0)), max(max(reactive_at(p, -1, 1), reactive_at(p, 0, 1)), reactive_at(p, 1, 1))));
+}
+
+// Largest |difference * sign| over the shading-change pyramid's three levels,
+// sampled directly at this render pixel's unjittered UV (fused from the
+// standalone shading-change pass to remove an extra dispatch and double blur).
+fn sample_shading_change(uv: vec2<f32>) -> f32 {
+  let sc_size = shading_change_render_size();
+  let uv_u = uv - jitter() / vec2<f32>(render_size());
+  let mip_uv = clamp_uv(uv_u, sc_size, vec2<i32>(textureDimensions(spd_mips, 0)));
+  let s0 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 0.0).xy;
+  let s1 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 1.0).xy;
+  let s2 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 2.0).xy;
+  let change = max(max(abs(s0.x * s0.y), abs(s1.x * s1.y)), abs(s2.x * s2.y));
+  return saturate(saturate(change) * shading_change_scale());
 }
 
 struct Ridge {
@@ -247,7 +262,7 @@ fn update_luma_instability(p: vec2<i32>, uv: vec2<f32>, mv: vec2<f32>, masks: ve
       * (1.0 - saturate(masks[SHADING_CHANGE]));
   }
   textureStore(luma_history_out, p, history);
-  textureStore(luma_instability_out, p, vec4<f32>(instability, 0.0, 0.0, 0.0));
+  textureStore(luma_instability_out, p, vec4<f32>(saturate(instability), 0.0, 0.0, 0.0));
 }
 
 @compute @workgroup_size(8, 8, 1)
@@ -255,14 +270,11 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let p = vec2<i32>(id.xy);
   if (!is_on_screen(p, render_size())) { return; }
   let uv = (vec2<f32>(p) + 0.5) / vec2<f32>(render_size());
-  let mv = textureLoad(dilated_motion_tex, p, 0).xy;
+  let mv = unpack_motion(textureLoad(dilated_motion_tex, p, 0).r);
   let dilated_depth = textureLoad(dilated_depth_tex, p, 0).r;
 
   let disocclusion = compute_disocclusions(uv, mv, view_depth(dilated_depth));
-  // The shading change is sampled at the unjittered place (the
-  // accumulation pass jitters it back).
-  let sc_uv = clamp_uv(uv - jitter() / vec2<f32>(render_size()), shading_change_render_size(), shading_change_max_render_size());
-  let sampled_change = saturate(textureSampleLevel(shading_change_tex, linear_clamp, sc_uv, 0.0).r * shading_change_scale());
+  let sampled_change = sample_shading_change(uv);
   let reactive = dilate_reactive_masks(p);
   let shading_change = max(reactive, sampled_change);
   let motion_divergence = compute_motion_divergence(uv, mv, dilated_depth);

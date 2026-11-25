@@ -16,9 +16,9 @@
 @group(0) @binding(3) var velocity_tex: texture_2d<f32>;
 @group(0) @binding(4) var view_depth_tex: texture_2d<f32>;
 @group(0) @binding(5) var dilated_depth_out: texture_storage_2d<r32float, write>;
-// rgba32float, the motion in rg: compatibility mode stores no
-// two-channel format.
-@group(0) @binding(6) var dilated_motion_out: texture_storage_2d<rgba32float, write>;
+// r32uint holding packed f16x2 motion (4 B/px vs 16 B/px rgba32float, valid
+// storage format on core and compatibility WebGPU).
+@group(0) @binding(6) var dilated_motion_out: texture_storage_2d<r32uint, write>;
 @group(0) @binding(7) var farthest_depth_out: texture_storage_2d<r32float, write>;
 @group(0) @binding(8) var current_luma_out: texture_storage_2d<r32float, write>;
 @group(0) @binding(9) var<storage, read_write> reconstructed_depth: array<atomic<u32>>;
@@ -124,7 +124,7 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>) {
   let mv = load_input_motion_vector(nearest_coord);
   reconstruct_prev_depth(p, nearest, mv);
 
-  textureStore(dilated_motion_out, p, vec4<f32>(mv, 0.0, 0.0));
+  textureStore(dilated_motion_out, p, vec4<u32>(pack_motion(mv), 0u, 0u, 0u));
   textureStore(dilated_depth_out, p, vec4<f32>(nearest, 0.0, 0.0, 0.0));
   let farthest_m = min(view_depth(farthest), FP16_MAX);
   textureStore(farthest_depth_out, p, vec4<f32>(farthest_m, 0.0, 0.0, 0.0));

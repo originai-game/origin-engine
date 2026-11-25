@@ -72,6 +72,7 @@ impl Renderer {
                     depth,
                     prepass: prepass_views,
                     reveal,
+                    has_reactive: reveal != &no_reactive,
                     output,
                     previous_output,
                     sharpened,

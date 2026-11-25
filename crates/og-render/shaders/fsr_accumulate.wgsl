@@ -14,7 +14,7 @@
 // Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
 @group(0) @binding(1) var dilated_reactive_tex: texture_2d<f32>;
-@group(0) @binding(2) var dilated_motion_tex: texture_2d<f32>;
+@group(0) @binding(2) var dilated_motion_tex: texture_2d<u32>;
 @group(0) @binding(3) var lock_tex: texture_2d<f32>;
 @group(0) @binding(4) var farthest_depth_mip1_tex: texture_2d<f32>;
 @group(0) @binding(5) var color_tex: texture_2d<f32>;
@@ -59,6 +59,7 @@ struct Data {
   upsampled_color: vec3<f32>,
   upsampled_weight: f32,
   history_color: vec3<f32>,
+  history_alpha: f32,
   history_weight: f32,
   lock: f32,
   lock_contribution: f32,
@@ -93,16 +94,16 @@ fn box_variance(d: ptr<function, Data>) {
   (*d).clipping_box = b;
 }
 
-fn load_history(p: vec2<i32>) -> vec3<f32> {
-  return textureLoad(previous_output_tex, p, 0).rgb;
+fn load_history(p: vec2<i32>) -> vec4<f32> {
+  return textureLoad(previous_output_tex, p, 0);
 }
 
 // The history at `p` (previous_output_tex) with its texel coordinates in
 // `x` and `y`, `t` of the way from x.x to x.y (and y.x to y.y): one
 // filtered fetch for two (or four) texels at their weights' ratio.
-fn history_between(x: vec2<i32>, tx: f32, y: vec2<i32>, ty: f32) -> vec3<f32> {
+fn history_between(x: vec2<i32>, tx: f32, y: vec2<i32>, ty: f32) -> vec4<f32> {
   let at = vec2<f32>(mix(f32(x.x), f32(x.y), tx), mix(f32(y.x), f32(y.y), ty)) + 0.5;
-  return textureSampleLevel(previous_output_tex, linear_clamp, at / vec2<f32>(previous_upscale_size()), 0.0).rgb;
+  return textureSampleLevel(previous_output_tex, linear_clamp, at / vec2<f32>(previous_upscale_size()), 0.0);
 }
 
 // ClampCoord of ffx_fsr3upscaler_sample.h.
@@ -126,14 +127,14 @@ fn lanczos2_weights(t: f32) -> vec4<f32> {
 
 // HistorySample: DeclareCustomTextureSample with the reference Lanczos2
 // over FetchHistorySamples' 4x4, deringed to the middle 2x2, read from the
-// engine's previous output (which holds FSR's history colour, written
-// once a frame). The kernel is separable, so its weights are made once
-// per axis; the middle 2x2 is loaded (for the deringing box too), each
-// edge's middle pair (two positive weights) is one filtered fetch at their
-// ratio, and the corners (together at most 1/64 of the weight, at a half-texel offset
-// on both axes) are left
-// out and the sum renormalised: 8 fetches, not 16.
-fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
+// engine's previous output (which holds FSR's history colour and alpha,
+// written once a frame). The kernel is separable, so its weights are made
+// once per axis; the middle 2x2 is loaded (for the deringing box too),
+// each edge's middle pair (two positive weights) is one filtered fetch at
+// their ratio, and the corners (together at most 1/64 of the weight, at a
+// half-texel offset on both axes) are left out and the sum renormalised:
+// 8 fetches, not 16.
+fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec4<f32> {
   var px = uv * vec2<f32>(size) - 0.5;
   let f = fract(px);
   px = clamp(px, vec2<f32>(0.0), vec2<f32>(size - 1));
@@ -163,9 +164,10 @@ fn history_sample(uv: vec2<f32>, size: vec2<i32>) -> vec3<f32> {
   return clamp(c / total, min(min(c11, c21), min(c12, c22)), max(max(c11, c21), max(c12, c22)));
 }
 
-fn prepared_color(p: vec2<i32>) -> vec3<f32> {
-  let rgb = max(vec3<f32>(0.0), textureLoad(color_tex, p, 0).rgb) * exposure();
-  return rgb_to_ycocg(rgb);
+fn prepared_color(p: vec2<i32>) -> vec4<f32> {
+  let rgba = textureLoad(color_tex, p, 0);
+  let rgb = max(vec3<f32>(0.0), rgba.rgb) * exposure();
+  return vec4<f32>(rgb_to_ycocg(rgb), rgba.a);
 }
 
 fn init_params(hr: vec2<i32>) -> Params {
@@ -174,12 +176,14 @@ fn init_params(hr: vec2<i32>) -> Params {
   p.hr_uv = (vec2<f32>(hr) + 0.5) / vec2<f32>(upscale_size());
   p.lr_uv_jittered = p.hr_uv + jitter() / vec2<f32>(render_size());
   p.lr_uv_hw = clamp_uv(p.lr_uv_jittered, render_size(), max_render_size());
-  // GetMotionVector with low-resolution motion vectors.
-  p.motion = textureLoad(dilated_motion_tex, vec2<i32>(p.hr_uv * vec2<f32>(render_size())), 0).xy;
+  // GetMotionVector with low-resolution motion vectors (jittered space,
+  // matching dilated_motion_out in fsr_prepare_inputs).
+  let mv_px = clamp(vec2<i32>(floor(p.lr_uv_jittered * vec2<f32>(render_size()))), vec2<i32>(0), render_size() - 1);
+  p.motion = unpack_motion(textureLoad(dilated_motion_tex, mv_px, 0).r);
   p.velocity_4k = get_4k_velocity(p.motion);
   p.reprojected_hr_uv = p.hr_uv + p.motion;
   p.is_existing_sample = is_uv_inside(p.reprojected_hr_uv);
-  p.luma_instability = bilinear_r(luma_instability_tex, clamp_uv(p.hr_uv, render_size(), max_render_size()));
+  p.luma_instability = textureSampleLevel(luma_instability_tex, linear_clamp, p.lr_uv_hw, 0.0).r;
   let farthest_uv = clamp_uv(p.lr_uv_jittered, render_size() / 2, vec2<i32>(textureDimensions(farthest_depth_mip1_tex)));
   p.farthest_depth_m = textureSampleLevel(farthest_depth_mip1_tex, linear_clamp, farthest_uv, 0.0).r;
   p.is_new_sample = !p.is_existing_sample | (frame_index() == 0.0);
@@ -193,12 +197,21 @@ fn init_params(hr: vec2<i32>) -> Params {
 }
 
 fn reproject_history_color(p: Params, d: ptr<function, Data>) {
-  let h = history_sample(p.reprojected_hr_uv, previous_upscale_size());
-  (*d).history_color = rgb_to_ycocg(h * delta_pre_exposure() * exposure());
-  // The lock beside it, bilinear (AMD's rides in the history's alpha
-  // through the same Lanczos and deringing, whose result lies in the
-  // middle 2x2's range as a bilinear one does).
-  (*d).lock = bilinear_r(lock_tex, p.reprojected_hr_uv);
+  var h: vec4<f32>;
+  var lock: f32;
+  if (all(p.motion == vec2<f32>(0.0)) & all(previous_upscale_size() == upscale_size())) {
+    h = load_history(p.hr_pos);
+    lock = textureLoad(lock_tex, p.hr_pos, 0).r;
+  } else {
+    h = history_sample(p.reprojected_hr_uv, previous_upscale_size());
+    // The lock beside it, bilinear (AMD's rides in the history's alpha
+    // through the same Lanczos and deringing, whose result lies in the
+    // middle 2x2's range as a bilinear one does).
+    lock = bilinear_r(lock_tex, p.reprojected_hr_uv);
+  }
+  (*d).history_color = rgb_to_ycocg(h.rgb * delta_pre_exposure() * exposure());
+  (*d).history_alpha = h.a;
+  (*d).lock = lock;
 }
 
 fn update_lock_status(p: Params, d: ptr<function, Data>) {
@@ -221,14 +234,14 @@ fn compute_base_accumulation_weight(p: Params, d: ptr<function, Data>) {
   (*d).history_weight = base;
 }
 
-// The prepared current colour (exposed, YCoCg) under a workgroup's 8x8
-// output pixels: their 3x3 footprints, src_input - 1 to src_input + 1, span
-// at most 10 render texels a side when the render is no larger than the
-// output (the pass's condition), one more for rounding. Neighbouring
-// output pixels share most of their nine taps, so each texel is loaded and
-// prepared once per group rather than nine times per pixel.
+// The prepared current colour (exposed, YCoCg in xyz, tone-mapped alpha in w)
+// under a workgroup's 8x8 output pixels: their 3x3 footprints, src_input - 1
+// to src_input + 1, span at most 10 render texels a side when the render is no
+// larger than the output (the pass's condition), one more for rounding.
+// Neighbouring output pixels share most of their nine taps, so each texel is
+// loaded and prepared once per group rather than nine times per pixel.
 const TILE: i32 = 11;
-var<workgroup> tile: array<vec3<f32>, 121>;
+var<workgroup> tile: array<vec4<f32>, 121>;
 var<private> tile_origin: vec2<i32>;
 
 // What every one of the 3x3 taps of the upsample shares.
@@ -251,7 +264,7 @@ fn upsample_tap(t: Taps, d: ptr<function, Data>, col: i32, row: i32) {
   let cr = vec2<i32>(select(col, 3 - col, t.flip_col), select(row, 3 - row, t.flip_row));
   let src = t.src_input + t.offset_tl + cr;
   let k = src - tile_origin;
-  var s = tile[k.y * TILE + k.x];
+  var s = tile[k.y * TILE + k.x].xyz;
   if (t.initial) {
     s = rgb_to_ycocg(tonemap(ycocg_to_rgb(s)));
   }
@@ -374,18 +387,21 @@ fn cs(@builtin(global_invocation_id) id: vec3<u32>, @builtin(workgroup_id) wg: v
   textureStore(lock_out, hr, vec4<f32>(d.lock, 0.0, 0.0, 0.0));
 
   // The engine's alpha: the current frame's (bilinear at the jittered
-  // place), with the previous output's along the motion.
-  let size = vec2<f32>(render_size());
-  let a_cur = textureSampleLevel(color_tex, linear_clamp, p.lr_uv_jittered, 0.0).a;
-  let c = clamp(vec2<i32>(floor(p.lr_uv_jittered * size - 0.5)), vec2<i32>(0), render_size() - 1);
-  let c2 = min(c + 1, render_size() - 1);
-  let a0 = textureLoad(color_tex, c, 0).a;
-  let a1 = textureLoad(color_tex, vec2<i32>(c2.x, c.y), 0).a;
-  let a2 = textureLoad(color_tex, vec2<i32>(c.x, c2.y), 0).a;
-  let a3 = textureLoad(color_tex, c2, 0).a;
+  // place, from the LDS tile already holding color_tex.a), blended with
+  // the history's alpha carried through history_sample.
+  let a_px = p.lr_uv_jittered * vec2<f32>(render_size()) - 0.5;
+  let a_c = vec2<i32>(floor(a_px));
+  let a_f = fract(a_px);
+  let k0 = clamp(a_c - tile_origin, vec2<i32>(0), vec2<i32>(TILE - 1));
+  let k1 = clamp(a_c + 1 - tile_origin, vec2<i32>(0), vec2<i32>(TILE - 1));
+  let a0 = tile[k0.y * TILE + k0.x].w;
+  let a1 = tile[k0.y * TILE + k1.x].w;
+  let a2 = tile[k1.y * TILE + k0.x].w;
+  let a3 = tile[k1.y * TILE + k1.x].w;
+  let a_cur = mix(mix(a0, a1, a_f.x), mix(a2, a3, a_f.x), a_f.y);
   var a = a_cur;
   if (p.is_existing_sample & !p.is_new_sample) {
-    let a_hist = clamp(sample_exact(previous_output_tex, linear_clamp, p.reprojected_hr_uv).a,
+    let a_hist = clamp(d.history_alpha,
       min(min(a0, a1), min(a2, a3)), max(max(a0, a1), max(a2, a3)));
     a = mix(a_hist, a_cur, alpha);
   }

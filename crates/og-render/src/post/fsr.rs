@@ -15,14 +15,13 @@ use crate::gpu::copy::GpuCopy;
 use glam::{Mat4, Vec2};
 
 /// The passes in dispatch order, with their entry points and modules.
-const SHADERS: [(&str, &str); 6] = [
+const SHADERS: [(&str, &str); 5] = [
     ("fsr prepare inputs", wgsl!("fsr_prepare_inputs.wgsl")),
     ("fsr luma pyramid", wgsl!("fsr_luma_pyramid.wgsl")),
     (
         "fsr shading change pyramid",
         wgsl!("fsr_shading_change_pyramid.wgsl"),
     ),
-    ("fsr shading change", wgsl!("fsr_shading_change.wgsl")),
     (
         "fsr prepare reactivity",
         wgsl!("fsr_prepare_reactivity.wgsl"),
@@ -76,6 +75,7 @@ const REACTIVE_CAP: f32 = 0.9;
 pub(super) enum B {
     Uniform,
     Tex(bool),
+    UTex,
     Storage(wgpu::TextureFormat),
     Rw,
     Ro,
@@ -86,6 +86,11 @@ pub(super) fn binding_type(b: B) -> wgpu::BindingType {
     match b {
         B::Uniform => UNIFORM,
         B::Tex(filterable) => float_texture(filterable),
+        B::UTex => wgpu::BindingType::Texture {
+            sample_type: wgpu::TextureSampleType::Uint,
+            view_dimension: wgpu::TextureViewDimension::D2,
+            multisampled: false,
+        },
         B::Storage(format) => wgpu::BindingType::StorageTexture {
             access: wgpu::StorageTextureAccess::WriteOnly,
             format,
@@ -127,7 +132,7 @@ const PREPARE_INPUTS: &[B] = &[
     B::Tex(false),
     B::Tex(false),
     B::Storage(F::R32Float),
-    B::Storage(F::Rgba32Float),
+    B::Storage(F::R32Uint),
     B::Storage(F::R32Float),
     B::Storage(F::R32Float),
     B::Rw,
@@ -142,7 +147,7 @@ const LUMA_PYRAMID: &[B] = &[
 ];
 const SHADING_CHANGE_PYRAMID: &[B] = &[
     B::Uniform,
-    B::Tex(false),
+    B::UTex,
     B::Tex(false),
     B::Tex(false),
     B::Ro,
@@ -150,15 +155,9 @@ const SHADING_CHANGE_PYRAMID: &[B] = &[
     B::Storage(F::Rgba16Float),
     B::Storage(F::Rgba16Float),
 ];
-const SHADING_CHANGE: &[B] = &[
-    B::Uniform,
-    B::Tex(true),
-    B::Sampler,
-    B::Storage(F::Rgba8Unorm),
-];
 const PREPARE_REACTIVITY: &[B] = &[
     B::Uniform,
-    B::Tex(false),
+    B::UTex,
     B::Tex(false),
     B::Ro,
     B::Tex(false),
@@ -172,16 +171,16 @@ const PREPARE_REACTIVITY: &[B] = &[
     B::Rw,
     B::Tex(true),
     B::Storage(F::Rgba16Float),
-    B::Storage(F::R32Float),
+    B::Storage(F::Rgba8Unorm),
 ];
 const ACCUMULATE: &[B] = &[
     B::Uniform,
     B::Tex(true),
-    B::Tex(false),
+    B::UTex,
     B::Tex(false),
     B::Tex(true),
     B::Tex(true),
-    B::Tex(false),
+    B::Tex(true),
     B::Ro,
     B::Rw,
     B::Sampler,
@@ -286,6 +285,28 @@ fn buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
     )
 }
 
+/// Helper to build one FSR compute bind group with uniform at binding 0.
+fn make_group(
+    device: &wgpu::Device,
+    uniform: &wgpu::Buffer,
+    layout: &wgpu::BindGroupLayout,
+    res: &[wgpu::BindingResource<'_>],
+) -> wgpu::BindGroup {
+    let entries: Vec<_> = std::iter::once(uniform.as_entire_binding())
+        .chain(res.iter().cloned())
+        .enumerate()
+        .map(|(i, resource)| wgpu::BindGroupEntry {
+            binding: i as u32,
+            resource,
+        })
+        .collect();
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("fsr"),
+        layout,
+        entries: &entries,
+    })
+}
+
 /// What FSR keeps between frames, for an output of `upscale` (render sizes
 /// up to it).
 struct State {
@@ -297,8 +318,6 @@ struct State {
     /// This frame's and the previous frame's luma (by frame parity).
     luma: [wgpu::TextureView; 2],
     spd_mips: wgpu::TextureView,
-    spd_levels: [wgpu::TextureView; 3],
-    shading_change: wgpu::TextureView,
     dilated_reactive: wgpu::TextureView,
     accumulation: [wgpu::TextureView; 2],
     luma_history: [wgpu::TextureView; 2],
@@ -309,6 +328,21 @@ struct State {
     new_locks: wgpu::Buffer,
     luma_partials: wgpu::Buffer,
     frame_info: wgpu::Buffer,
+    /// Static parity bind groups (depend only on FSR-owned resources).
+    bg_luma_reduce: [wgpu::BindGroup; 2],
+    bg_luma_finish: [wgpu::BindGroup; 2],
+    bg_scp: [wgpu::BindGroup; 2],
+    /// Dynamic bind caches keyed by external frame views so steady-state frames
+    /// reuse bind groups with zero allocations.
+    cache_prepare: [crate::gpu::bind_cache::SingleBindCache<[wgpu::TextureView; 4]>; 2],
+    cache_reactivity: [crate::gpu::bind_cache::SingleBindCache<wgpu::TextureView>; 2],
+    cache_accumulate: crate::gpu::bind_cache::BindCache<(
+        usize,
+        wgpu::TextureView,
+        wgpu::TextureView,
+        wgpu::TextureView,
+    )>,
+    cache_rcas: crate::gpu::bind_cache::BindCache<(wgpu::TextureView, wgpu::TextureView)>,
 }
 
 /// The render pixels one workgroup of the luma and shading change
@@ -317,83 +351,140 @@ struct State {
 const TILE: (u32, u32) = (32, 16);
 
 impl State {
-    fn new(device: &wgpu::Device, upscale: (u32, u32)) -> State {
+    fn new(
+        device: &wgpu::Device,
+        uniform: &wgpu::Buffer,
+        passes: &[Pass; 6],
+        upscale: (u32, u32),
+    ) -> State {
         let half = ((upscale.0 / 2).max(1), (upscale.1 / 2).max(1));
         let spd = texture(device, "fsr spd mips", half, F::Rgba16Float, 3);
         let level = |m| crate::mips::level_view(&spd, "fsr spd level", m);
         let pixels = u64::from(upscale.0) * u64::from(upscale.1);
         let groups = u64::from(upscale.0.div_ceil(TILE.0)) * u64::from(upscale.1.div_ceil(TILE.1));
+        let dilated_depth = view(&texture(
+            device,
+            "fsr dilated depth",
+            upscale,
+            F::R32Float,
+            1,
+        ));
+        let dilated_motion = view(&texture(
+            device,
+            "fsr dilated motion",
+            upscale,
+            // Packed f16x2 motion (4 B/px, valid storage on core and compat).
+            F::R32Uint,
+            1,
+        ));
+        let farthest_depth = view(&texture(
+            device,
+            "fsr farthest depth",
+            upscale,
+            F::R32Float,
+            1,
+        ));
+        let farthest_depth_mip1 = view(&texture(
+            device,
+            "fsr farthest depth mip 1",
+            half,
+            F::Rgba16Float,
+            1,
+        ));
+        let luma = pair(device, "fsr luma", upscale, F::R32Float);
+        let spd_levels = [level(0), level(1), level(2)];
+        let spd_mips = view(&spd);
+        let dilated_reactive = view(&texture(
+            device,
+            "fsr dilated reactive",
+            upscale,
+            F::Rgba8Unorm,
+            1,
+        ));
+        let accumulation = pair(device, "fsr accumulation", upscale, F::Rgba8Unorm);
+        let luma_history = pair(device, "fsr luma history", upscale, F::Rgba16Float);
+        let luma_instability = view(&texture(
+            device,
+            "fsr luma instability",
+            upscale,
+            F::Rgba8Unorm,
+            1,
+        ));
+        let locks = pair(device, "fsr locks", upscale, F::R32Float);
+        let reconstructed_depth = buffer(device, "fsr reconstructed depth", pixels * 4);
+        let new_locks = buffer(device, "fsr new locks", pixels * 4);
+        let luma_partials = buffer(device, "fsr luma partials", groups * 8);
+        let frame_info = buffer(device, "fsr frame info", 16);
+
+        use wgpu::BindingResource as R;
+        let t = R::TextureView;
+        let luma_bg = |layout: &wgpu::BindGroupLayout, cur: usize| {
+            make_group(
+                device,
+                uniform,
+                layout,
+                &[
+                    t(&luma[cur]),
+                    t(&farthest_depth),
+                    t(&farthest_depth_mip1),
+                    luma_partials.as_entire_binding(),
+                    frame_info.as_entire_binding(),
+                ],
+            )
+        };
+        let bg_luma_reduce = [luma_bg(&passes[1].layout, 0), luma_bg(&passes[1].layout, 1)];
+        let bg_luma_finish = [luma_bg(&passes[2].layout, 0), luma_bg(&passes[2].layout, 1)];
+        let scp_bg = |cur: usize| {
+            let prev = 1 - cur;
+            make_group(
+                device,
+                uniform,
+                &passes[3].layout,
+                &[
+                    t(&dilated_motion),
+                    t(&luma[cur]),
+                    t(&luma[prev]),
+                    frame_info.as_entire_binding(),
+                    t(&spd_levels[0]),
+                    t(&spd_levels[1]),
+                    t(&spd_levels[2]),
+                ],
+            )
+        };
+        let bg_scp = [scp_bg(0), scp_bg(1)];
+
         State {
             upscale,
-            dilated_depth: view(&texture(
-                device,
-                "fsr dilated depth",
-                upscale,
-                F::R32Float,
-                1,
-            )),
-            dilated_motion: view(&texture(
-                device,
-                "fsr dilated motion",
-                upscale,
-                // The motion in rg (no two-channel storage in
-                // compatibility mode).
-                F::Rgba32Float,
-                1,
-            )),
-            farthest_depth: view(&texture(
-                device,
-                "fsr farthest depth",
-                upscale,
-                F::R32Float,
-                1,
-            )),
-            farthest_depth_mip1: view(&texture(
-                device,
-                "fsr farthest depth mip 1",
-                half,
-                F::Rgba16Float,
-                1,
-            )),
-            luma: pair(device, "fsr luma", upscale, F::R32Float),
-            spd_levels: [level(0), level(1), level(2)],
-            spd_mips: view(&spd),
-            shading_change: view(&texture(
-                device,
-                "fsr shading change",
-                half,
-                F::Rgba8Unorm,
-                1,
-            )),
-            dilated_reactive: view(&texture(
-                device,
-                "fsr dilated reactive",
-                upscale,
-                F::Rgba8Unorm,
-                1,
-            )),
-            accumulation: pair(device, "fsr accumulation", upscale, F::Rgba8Unorm),
-            luma_history: pair(device, "fsr luma history", upscale, F::Rgba16Float),
-            luma_instability: view(&texture(
-                device,
-                "fsr luma instability",
-                upscale,
-                F::R32Float,
-                1,
-            )),
-            locks: pair(device, "fsr locks", upscale, F::R32Float),
-            reconstructed_depth: buffer(device, "fsr reconstructed depth", pixels * 4),
-            new_locks: buffer(device, "fsr new locks", pixels * 4),
-            luma_partials: buffer(device, "fsr luma partials", groups * 8),
-            frame_info: buffer(device, "fsr frame info", 16),
+            dilated_depth,
+            dilated_motion,
+            farthest_depth,
+            farthest_depth_mip1,
+            luma,
+            spd_mips,
+            dilated_reactive,
+            accumulation,
+            luma_history,
+            luma_instability,
+            locks,
+            reconstructed_depth,
+            new_locks,
+            luma_partials,
+            frame_info,
+            bg_luma_reduce,
+            bg_luma_finish,
+            bg_scp,
+            cache_prepare: Default::default(),
+            cache_reactivity: Default::default(),
+            cache_accumulate: crate::gpu::bind_cache::BindCache::new(4),
+            cache_rcas: crate::gpu::bind_cache::BindCache::new(4),
         }
     }
 
     /// Everything FSR carries from frame to frame, for a checkpoint's copy.
     /// Per-frame transients (dilated depth/motion/reactive, farthest depth,
-    /// shading change, luma instability, SPD mips, reconstructed depth, new
-    /// locks, luma partials) are recomputed every dispatch and need not be
-    /// saved or restored.
+    /// luma instability, SPD mips, reconstructed depth, new locks, luma
+    /// partials) are recomputed every dispatch and need not be saved or
+    /// restored.
     fn resources(&self) -> (Vec<&wgpu::Texture>, Vec<&wgpu::Buffer>) {
         let textures = self
             .luma
@@ -413,7 +504,6 @@ impl State {
             &self.dilated_motion,
             &self.farthest_depth,
             &self.farthest_depth_mip1,
-            &self.shading_change,
             &self.dilated_reactive,
             &self.luma_instability,
             &self.spd_mips,
@@ -460,6 +550,8 @@ pub(crate) struct FsrFrame<'a> {
     /// The prepass's gbuffer and view depth, when it drew.
     pub prepass: Option<(&'a wgpu::TextureView, &'a wgpu::TextureView)>,
     pub reveal: &'a wgpu::TextureView,
+    /// True when `reveal` is an active OIT/reactive target rather than the 1x1 placeholder.
+    pub has_reactive: bool,
     /// The engine's history this frame writes and the one it read.
     pub output: &'a wgpu::TextureView,
     pub previous_output: &'a wgpu::TextureView,
@@ -469,7 +561,7 @@ pub(crate) struct FsrFrame<'a> {
 
 /// The frame's bind groups and dispatch sizes.
 struct Recorded {
-    groups: [wgpu::BindGroup; 7],
+    groups: [wgpu::BindGroup; 6],
     rcas: Option<wgpu::BindGroup>,
     render: (u32, u32),
     upscale: (u32, u32),
@@ -494,7 +586,7 @@ pub(crate) struct FsrPasses {
     device: wgpu::Device,
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
-    passes: [Pass; 7],
+    passes: [Pass; 6],
     rcas: Pass,
     state: Option<State>,
     /// Frames since the state was made: its ping-pong parity.
@@ -509,7 +601,7 @@ pub(crate) struct FsrPasses {
 
 impl FsrPasses {
     pub fn new(device: &wgpu::Device) -> FsrPasses {
-        let [prepare, luma, scp, sc, reactivity, accumulate] = SHADERS;
+        let [prepare, luma, scp, reactivity, accumulate] = SHADERS;
         FsrPasses {
             device: device.clone(),
             uniform: crate::traffic::create_buffer(
@@ -533,7 +625,6 @@ impl FsrPasses {
                 pass(device, luma, LUMA_PYRAMID, "cs_reduce"),
                 pass(device, luma, LUMA_PYRAMID, "cs_finish"),
                 pass(device, scp, SHADING_CHANGE_PYRAMID, "cs"),
-                pass(device, sc, SHADING_CHANGE, "cs"),
                 pass(device, reactivity, PREPARE_REACTIVITY, "cs"),
                 pass(device, accumulate, ACCUMULATE, "cs"),
             ],
@@ -620,7 +711,12 @@ impl FsrPasses {
     pub fn prepare(&mut self, queue: &wgpu::Queue, f: &FsrFrame) {
         let mut reset = f.reset;
         if self.state.as_ref().is_none_or(|s| s.upscale != f.upscale) {
-            self.state = Some(State::new(&self.device, f.upscale));
+            self.state = Some(State::new(
+                &self.device,
+                &self.uniform,
+                &self.passes,
+                f.upscale,
+            ));
             self.index = 0;
             self.previous = None;
             reset = true;
@@ -663,13 +759,15 @@ impl FsrPasses {
             misc: [
                 (luma_groups.0 * luma_groups.1) as f32,
                 REACTIVE_CAP,
-                0.0,
+                f32::from(u8::from(f.has_reactive)),
                 0.0,
             ],
         };
         crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
 
-        let s = self.state.as_ref().expect("made above");
+        let s = self.state.as_mut().expect("made above");
+        s.cache_accumulate.begin_frame();
+        s.cache_rcas.begin_frame();
         let (cur, prev) = ((self.index % 2) as usize, (1 - self.index % 2) as usize);
         let (velocity, view_depth) = f.prepass.unwrap_or((f.depth, f.depth));
         use wgpu::BindingResource as R;
@@ -678,112 +776,119 @@ impl FsrPasses {
             b.as_entire_binding()
         }
         let sampler = R::Sampler(&self.sampler);
-        let group = |p: &Pass, res: Vec<R>| {
-            let entries: Vec<_> = std::iter::once(self.uniform.as_entire_binding())
-                .chain(res)
-                .enumerate()
-                .map(|(i, resource)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource,
-                })
-                .collect();
-            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("fsr"),
-                layout: &p.layout,
-                entries: &entries,
+        let device = &self.device;
+        let uniform = &self.uniform;
+        let [p0, _, _, _, p4, p5] = &self.passes;
+
+        let g0 = s.cache_prepare[cur]
+            .get_or_insert_with(
+                [
+                    f.color.clone(),
+                    f.depth.clone(),
+                    velocity.clone(),
+                    view_depth.clone(),
+                ],
+                || {
+                    make_group(
+                        device,
+                        uniform,
+                        &p0.layout,
+                        &[
+                            t(f.color),
+                            t(f.depth),
+                            t(velocity),
+                            t(view_depth),
+                            t(&s.dilated_depth),
+                            t(&s.dilated_motion),
+                            t(&s.farthest_depth),
+                            t(&s.luma[cur]),
+                            buf(&s.reconstructed_depth),
+                        ],
+                    )
+                },
+            )
+            .clone();
+        let g1 = s.bg_luma_reduce[cur].clone();
+        let g2 = s.bg_luma_finish[cur].clone();
+        let g3 = s.bg_scp[cur].clone();
+        let g4 = s.cache_reactivity[cur]
+            .get_or_insert_with(f.reveal.clone(), || {
+                make_group(
+                    device,
+                    uniform,
+                    &p4.layout,
+                    &[
+                        t(&s.dilated_motion),
+                        t(&s.dilated_depth),
+                        buf(&s.reconstructed_depth),
+                        t(f.reveal),
+                        t(&s.spd_mips),
+                        t(&s.accumulation[prev]),
+                        t(&s.luma[cur]),
+                        buf(&s.frame_info),
+                        sampler.clone(),
+                        t(&s.dilated_reactive),
+                        t(&s.accumulation[cur]),
+                        buf(&s.new_locks),
+                        t(&s.luma_history[prev]),
+                        t(&s.luma_history[cur]),
+                        t(&s.luma_instability),
+                    ],
+                )
             })
-        };
-        let [p0, p1, p2, p3, p4, p5, p6] = &self.passes;
-        let luma_pyramid = || {
-            vec![
-                t(&s.luma[cur]),
-                t(&s.farthest_depth),
-                t(&s.farthest_depth_mip1),
-                buf(&s.luma_partials),
-                buf(&s.frame_info),
-            ]
-        };
-        let groups = [
-            group(
-                p0,
-                vec![
-                    t(f.color),
-                    t(f.depth),
-                    t(velocity),
-                    t(view_depth),
-                    t(&s.dilated_depth),
-                    t(&s.dilated_motion),
-                    t(&s.farthest_depth),
-                    t(&s.luma[cur]),
-                    buf(&s.reconstructed_depth),
-                ],
-            ),
-            group(p1, luma_pyramid()),
-            group(p2, luma_pyramid()),
-            group(
-                p3,
-                vec![
-                    t(&s.dilated_motion),
-                    t(&s.luma[cur]),
-                    t(&s.luma[prev]),
-                    buf(&s.frame_info),
-                    t(&s.spd_levels[0]),
-                    t(&s.spd_levels[1]),
-                    t(&s.spd_levels[2]),
-                ],
-            ),
-            group(
-                p4,
-                vec![t(&s.spd_mips), sampler.clone(), t(&s.shading_change)],
-            ),
-            group(
-                p5,
-                vec![
-                    t(&s.dilated_motion),
-                    t(&s.dilated_depth),
-                    buf(&s.reconstructed_depth),
-                    t(f.reveal),
-                    t(&s.shading_change),
-                    t(&s.accumulation[prev]),
-                    t(&s.luma[cur]),
-                    buf(&s.frame_info),
-                    sampler.clone(),
-                    t(&s.dilated_reactive),
-                    t(&s.accumulation[cur]),
-                    buf(&s.new_locks),
-                    t(&s.luma_history[prev]),
-                    t(&s.luma_history[cur]),
-                    t(&s.luma_instability),
-                ],
-            ),
-            group(
-                p6,
-                vec![
-                    t(&s.dilated_reactive),
-                    t(&s.dilated_motion),
-                    t(&s.locks[prev]),
-                    t(&s.farthest_depth_mip1),
-                    t(f.color),
-                    t(&s.luma_instability),
-                    buf(&s.frame_info),
-                    buf(&s.new_locks),
-                    sampler.clone(),
-                    t(f.previous_output),
-                    t(&s.locks[cur]),
-                    t(f.output),
-                ],
-            ),
-        ];
-        let rcas = f
-            .sharpened
-            .map(|target| group(&self.rcas, vec![t(f.output), buf(&s.frame_info), t(target)]));
+            .clone();
+        let g5 = s
+            .cache_accumulate
+            .get_or_insert_with(
+                (
+                    cur,
+                    f.color.clone(),
+                    f.previous_output.clone(),
+                    f.output.clone(),
+                ),
+                || {
+                    make_group(
+                        device,
+                        uniform,
+                        &p5.layout,
+                        &[
+                            t(&s.dilated_reactive),
+                            t(&s.dilated_motion),
+                            t(&s.locks[prev]),
+                            t(&s.farthest_depth_mip1),
+                            t(f.color),
+                            t(&s.luma_instability),
+                            buf(&s.frame_info),
+                            buf(&s.new_locks),
+                            sampler.clone(),
+                            t(f.previous_output),
+                            t(&s.locks[cur]),
+                            t(f.output),
+                        ],
+                    )
+                },
+            )
+            .clone();
+        let rcas = f.sharpened.map(|target| {
+            s.cache_rcas
+                .get_or_insert_with((f.output.clone(), target.clone()), || {
+                    make_group(
+                        device,
+                        uniform,
+                        &self.rcas.layout,
+                        &[t(f.output), buf(&s.frame_info), t(target)],
+                    )
+                })
+                .clone()
+        });
+        let reconstructed_depth = s.reconstructed_depth.clone();
         self.recorded = Some(Recorded {
-            groups,
+            groups: [g0, g1, g2, g3, g4, g5],
             rcas,
             render: f.render,
             upscale: f.upscale,
             luma_groups,
-            reconstructed_depth: s.reconstructed_depth.clone(),
+            reconstructed_depth,
         });
         self.previous = Some((f.jitter, f.render, f.upscale));
         self.index += 1;
@@ -795,16 +900,18 @@ impl FsrPasses {
         let Some(r) = &self.recorded else {
             return 0;
         };
-        encoder.clear_buffer(&r.reconstructed_depth, 0, None);
+        let clear_bytes =
+            (u64::from(r.render.1) * u64::from(r.upscale.0) * 4).min(r.reconstructed_depth.size());
+        if clear_bytes > 0 {
+            encoder.clear_buffer(&r.reconstructed_depth, 0, Some(clear_bytes));
+        }
         let (rw, rh) = r.render;
         let (uw, uh) = r.upscale;
-        let half = ((rw / 2).max(1), (rh / 2).max(1));
         let dispatches = [
             (rw.div_ceil(8), rh.div_ceil(8)),
             r.luma_groups,
             (1, 1),
             (rw.div_ceil(TILE.0), rh.div_ceil(TILE.1)),
-            (half.0.div_ceil(8), half.1.div_ceil(8)),
             (rw.div_ceil(8), rh.div_ceil(8)),
             (uw.div_ceil(8), uh.div_ceil(8)),
         ];

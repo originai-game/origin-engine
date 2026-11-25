@@ -8,7 +8,7 @@
 // within one workgroup's tile, so no device-wide step is needed. The
 // levels hold (difference, sign) in rg. Prepended by fullscreen.wgsl and fsr_common.wgsl.
 
-@group(0) @binding(1) var dilated_motion_tex: texture_2d<f32>;
+@group(0) @binding(1) var dilated_motion_tex: texture_2d<u32>;
 @group(0) @binding(2) var current_luma_tex: texture_2d<f32>;
 @group(0) @binding(3) var previous_luma_tex: texture_2d<f32>;
 @group(0) @binding(4) var<storage, read> frame_info: vec4<f32>;
@@ -109,7 +109,7 @@ fn compute_diff(uv: vec2<f32>, mv: vec2<f32>) -> f32 {
 // SpdLoadSourceImage: (difference, sign of it, 1).
 fn load_source(p: vec2<i32>) -> vec2<f32> {
   let q = clamp(p, vec2<i32>(0), render_size() - 1);
-  let mv = textureLoad(dilated_motion_tex, q, 0).xy;
+  let mv = unpack_motion(textureLoad(dilated_motion_tex, q, 0).r);
   let uv = (vec2<f32>(q) + 0.5) / vec2<f32>(render_size());
   let d = compute_diff(uv, mv);
   return vec2<f32>(d, select(0.0, sign(d), d != 0.0));

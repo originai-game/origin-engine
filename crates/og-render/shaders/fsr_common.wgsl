@@ -38,7 +38,7 @@ struct Fsr {
   // RCAS sharpness (linear, exp2(-stops)).
   extra: vec4<f32>,
   // x: the luma pyramid's workgroups (luma_partials' length), y: the
-  // OIT revealage's reactive cap, zw: 0.
+  // OIT revealage's reactive cap, z: 1 when reactive mask is active, w: 0.
   misc: vec4<f32>,
 };
 
@@ -85,8 +85,20 @@ fn shading_change_scale() -> f32 { return fsr.tuning.z; }
 fn accumulation_added_per_frame() -> f32 { return fsr.tuning.w; }
 fn min_disocclusion_accumulation() -> f32 { return fsr.extra.x; }
 fn downscale_factor() -> vec2<f32> { return vec2<f32>(render_size()) / vec2<f32>(upscale_size()); }
-fn shading_change_render_size() -> vec2<i32> { return vec2<i32>(vec2<f32>(render_size()) * 0.5); }
-fn shading_change_max_render_size() -> vec2<i32> { return vec2<i32>(vec2<f32>(max_render_size()) * 0.5); }
+fn shading_change_render_size() -> vec2<i32> { return max(render_size() / 2, vec2<i32>(1)); }
+
+// Scale UV motion by 256 before integer f16 packing so tiny sub-pixel pans
+// (down to ~2.4e-7 UV, <0.001 px at 4K) stay in the normalized 10-bit mantissa
+// range while still covering +-250 screens/frame on core WebGPU.
+const MOTION_PACK_SCALE: f32 = 256.0;
+
+fn pack_motion(mv: vec2<f32>) -> u32 {
+  return pack_f16x2(mv * MOTION_PACK_SCALE);
+}
+
+fn unpack_motion(p: u32) -> vec2<f32> {
+  return unpack_f16x2(p) * (1.0 / MOTION_PACK_SCALE);
+}
 
 // Exposure() of the callbacks: the frame info's, 1 below 2^-15.
 fn exposure_of(info: vec4<f32>) -> f32 {

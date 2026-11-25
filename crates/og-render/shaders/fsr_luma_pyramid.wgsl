@@ -87,8 +87,13 @@ fn cs_finish(@builtin(local_invocation_index) li: u32) {
     let pixels = max(f32(render_size().x * render_size().y), 1.0);
     let scene_average_luma = partial_luma[0] / pixels;
     var log_luma = partial_log[0] / pixels;
-    // A reset clears the frame info to (-1, 1, 0, 0) (fsr3upscalerDispatch).
-    var info = select(frame_info, vec4<f32>(-1.0, 1.0, 0.0, 0.0), frame_index() == 0.0);
+    // A reset clears the frame info's log luma to the sentinel so the first
+    // frame takes its own average directly instead of smoothing from 1.0.
+    var info = select(
+      frame_info,
+      vec4<f32>(-1.0, RESET_AUTO_EXPOSURE_AVERAGE_SMOOTHING, 0.0, 0.0),
+      frame_index() == 0.0,
+    );
     let prev_log_luma = info.y;
     if (prev_log_luma < RESET_AUTO_EXPOSURE_AVERAGE_SMOOTHING) {
       log_luma = prev_log_luma + (log_luma - prev_log_luma) * (1.0 - exp(-delta_time()));
