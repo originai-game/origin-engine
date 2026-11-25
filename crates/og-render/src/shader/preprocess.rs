@@ -162,7 +162,7 @@ fn expand(
 
     // Conditional stack: (parent_active, branch_active, else_seen)
     let mut cond: Vec<(bool, bool, bool)> = Vec::new();
-    let active = |c: &[(bool, bool, bool)]| c.last().map_or(true, |&(p, b, _)| p && b);
+    let active = |c: &[(bool, bool, bool)]| c.last().is_none_or(|&(p, b, _)| p && b);
 
     for (idx, raw_line) in text.lines().enumerate() {
         let line_no = idx + 1;

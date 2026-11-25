@@ -1076,13 +1076,11 @@ fn count_kills(
                 total += count_kills(module, f, body, visiting);
                 total += count_kills(module, f, continuing, visiting);
             }
-            S::Call { function, .. } => {
-                if !visiting.contains(function) {
-                    visiting.push(*function);
-                    let callee = &module.functions[*function];
-                    total += count_kills(module, callee, &callee.body, visiting);
-                    visiting.pop();
-                }
+            S::Call { function, .. } if !visiting.contains(function) => {
+                visiting.push(*function);
+                let callee = &module.functions[*function];
+                total += count_kills(module, callee, &callee.body, visiting);
+                visiting.pop();
             }
             _ => {}
         }

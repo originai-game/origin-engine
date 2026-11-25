@@ -397,9 +397,9 @@ fn crowd_parts_match(
         if ep.levels[0] != m || ep.levels[1..] != coarser[..count - 1] {
             return false;
         }
-        for k in 0..count {
+        for (k, &mat) in ep.level_materials.iter().enumerate().take(count) {
             let expected_mat = lods.map_or(material, |l| l.material(part, k, material));
-            if ep.level_materials[k] != expected_mat {
+            if mat != expected_mat {
                 return false;
             }
         }

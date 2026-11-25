@@ -133,7 +133,10 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
                 og_render::LightDesc {
                     kind: og_render::LightKind::Spot {
                         direction: forward(m),
-                        angle_degrees: v.num(&angle).map_or(0.5236_f32, |x| x as f32).to_degrees(),
+                        angle_degrees: v
+                            .num(&angle)
+                            .map_or(std::f32::consts::FRAC_PI_6, |x| x as f32)
+                            .to_degrees(),
                         penumbra: v.num(&penumbra).map_or(0.0, |x| x as f32),
                     },
                     position: m.transform_point3(Vec3::ZERO),

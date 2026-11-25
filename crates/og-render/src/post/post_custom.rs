@@ -80,8 +80,9 @@ enum Compiled {
     Ready {
         pipeline: wgpu::RenderPipeline,
         uniform: wgpu::Buffer,
-        group_cache:
+        group_cache: Box<
             std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<[wgpu::TextureView; 4]>>,
+        >,
         /// Its error scope, while the device has not answered (the web).
         pending: Option<std::pin::Pin<Box<dyn std::future::Future<Output = Option<wgpu::Error>>>>>,
     },

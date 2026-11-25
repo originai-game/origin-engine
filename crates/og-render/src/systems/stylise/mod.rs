@@ -142,8 +142,8 @@ pub(crate) fn palette_lut(colors: &[[u8; 3]]) -> Vec<u8> {
         for g in 0..n {
             let lg = lin_axis[g];
             let row = g * stride + b * n;
-            for r in 0..n {
-                let want = linear_to_oklab([lin_axis[r], lg, lb]);
+            for (r, &lr) in lin_axis.iter().enumerate().take(n) {
+                let want = linear_to_oklab([lr, lg, lb]);
                 let mut best_i = 0usize;
                 let mut best_d = f32::MAX;
                 for (k, pl) in pal_lab.iter().enumerate() {
