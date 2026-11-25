@@ -652,6 +652,14 @@ pub(crate) fn debug_lines(sim: &Sim, out: &mut Vec<super::debug_lines::DebugLine
         let rb = &sim.world.bodies[state.chassis];
         for ((s, w), pose) in state.specs.iter().zip(&state.wheels).zip(poses) {
             let hard = unv(rb.position().transform_point(v(s.mount)));
+            let down = unv(rb.rotation() * v(Vec3::NEG_Y));
+            let cap = unv(rb.rotation() * v(Vec3::X)) * s.radius * 0.2;
+            let compressed = hard + down * (s.rest - s.travel).max(0.0);
+            let extended = hard + down * (s.rest + s.travel);
+            let travel = [0.1, 0.8, 0.9, 1.0];
+            out.push((compressed, extended, travel));
+            out.push((compressed - cap, compressed + cap, travel));
+            out.push((extended - cap, extended + cap, travel));
             out.push((hard, pose.position, [0.2, 1.0, 0.3, 1.0]));
             for i in 0..16 {
                 let angle = i as f32 * std::f32::consts::TAU / 16.0;
@@ -671,16 +679,25 @@ pub(crate) fn debug_lines(sim: &Sim, out: &mut Vec<super::debug_lines::DebugLine
             }
             if pose.contact {
                 let scale = 1.0 / rb.mass().max(0.01) / 9.81;
-                out.push((
-                    w.point,
-                    w.point + w.tyre_force * scale,
-                    [1.0, 0.2, 0.1, 1.0],
-                ));
-                out.push((
-                    w.point,
-                    w.point + w.normal * w.load * scale,
-                    [0.2, 0.5, 1.0, 1.0],
-                ));
+                for (force, color) in [
+                    (w.tyre_force, [1.0, 0.2, 0.1, 1.0]),
+                    (w.normal * w.load, [0.2, 0.5, 1.0, 1.0]),
+                ] {
+                    let delta = force * scale;
+                    let length = delta.length();
+                    if length <= f32::EPSILON {
+                        continue;
+                    }
+                    let direction = delta / length;
+                    let side = direction.any_orthonormal_vector();
+                    let up = direction.cross(side);
+                    let head = (length * 0.3).min(s.radius * 0.25);
+                    let tip = w.point + delta;
+                    out.push((w.point, tip, color));
+                    for wing in [side, -side, up, -up] {
+                        out.push((tip, tip - direction * head + wing * head * 0.5, color));
+                    }
+                }
             }
         }
     }
