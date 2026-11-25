@@ -516,6 +516,11 @@ impl<C: Cell> Variants<C> {
             lean.start_at(Priority::Frame);
             return;
         }
+        // compile-ahead made the full variant for features no existing
+        // specialization covers. Do not compile another one during play.
+        if self.full.poll().is_some() {
+            return;
+        }
         if self.insert_lean(wanted).is_some() {
             return;
         }
@@ -557,6 +562,9 @@ impl<C: Cell> Variants<C> {
                 .any_ready_lean()
                 .and_then(Cell::poll)
                 .or_else(|| lean.get());
+        }
+        if let Some(v) = self.full.poll() {
+            return Some(v);
         }
         if let Some(lean) = self.insert_lean(wanted) {
             if crate::deferred::waits() {

@@ -205,15 +205,18 @@ impl Renderer {
         true
     }
 
-    /// The full variant of a batch's lit pipeline that a frame has drawn
-    /// with its variant only (pipeline_features.rs): made here, a feature
-    /// that turns on later draws at once instead of after its compile.
+    /// The full variants of the lit, depth and OIT pipelines that a frame
+    /// has drawn with a specialization only (pipeline_features.rs): made
+    /// here, a feature that turns on later draws without another compile.
     fn warm_full_lit(&mut self) -> bool {
         use crate::deferred::Warm;
         let lit = &self.lit;
         lit.pbr_pipelines
             .values()
             .chain(lit.lean_pipelines.values())
+            .chain(self.prepass.prepass_pipelines.values())
+            .chain(self.prepass.lean_prepass_pipelines.values())
+            .chain(self.oit.pipelines.values())
             .any(|v| v.full().warm())
     }
 
