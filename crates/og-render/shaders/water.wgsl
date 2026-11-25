@@ -698,9 +698,7 @@ if (sea) {
   // A lake mirrors the sun by its glitter alone (below), its facets counted: the environment's sun disc, mirrored by
   // every ripple face turned to it, drew a soft disc twice the sun's width under each glint, and bloomed.
   let lake = !sea && !water2 && !water_js;
-  let r_env = select(r, off_sun(r, mip), lake);
-  // Relit by the light volumes and occluded by the probe GI where there are, as every surface's reflection.
-  var reflected = overcast(surface_reflected(reflected_light(r_env, in.world, mip), at_n, r_env, rough, gi) * sky_mirror, r_env);
+  var reflected: vec3<f32>;
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -713,9 +711,14 @@ if (sea) {
     }
     let puv = clamp(vec2<f32>(1.0 - uv.x, uv.y) + vec2<f32>(-shift_r.x, shift_r.y), vec2<f32>(0.0), vec2<f32>(1.0));
     reflected = textureSampleLevel(reflection_tex, water_sampler, puv, 0.0).rgb;
-  } else if (water.look.y > 0.5) {
-    let hit = ssr(in.world, r);
-    reflected = mix(reflected, hit.rgb, hit.a);
+  } else {
+    let r_env = select(r, off_sun(r, mip), lake);
+    // Relit by the light volumes and occluded by the probe GI where there are, as every surface's reflection.
+    reflected = overcast(surface_reflected(reflected_light(r_env, in.world, mip), at_n, r_env, rough, gi) * sky_mirror, r_env);
+    if (water.look.y > 0.5) {
+      let hit = ssr(in.world, r);
+      reflected = mix(reflected, hit.rgb, hit.a);
+    }
   }
   if (!three_water) {
     // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn (it never
@@ -946,7 +949,9 @@ if (sea) {
   // Only where the water is as thin as a few of the pixel's footprints: behind the water a jump in what lies below (a
   // submerged bank against the far bed) changes the thickness as fast, and faded it drew a dotted line across the water.
   let edge = max(clamp(thin / max(1.5 * edge_rate, 1e-5), 0.0, 1.0), smoothstep(2.0, 4.0, thin / max(foot, 1e-4))) * sheet;
-  color = mix(textureSampleLevel(scene_color, water_sampler, uv, 0.0).rgb, color, edge);
+  if (edge < 0.999) {
+    color = mix(textureSampleLevel(scene_color, water_sampler, uv, 0.0).rgb, color, edge);
+  }
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 

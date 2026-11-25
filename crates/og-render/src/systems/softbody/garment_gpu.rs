@@ -12,6 +12,7 @@ pub(crate) struct Mesh {
     input: wgpu::Buffer,
     adjacency: wgpu::Buffer,
     points: wgpu::Buffer,
+    group: crate::gpu::bind_cache::SingleBindCache<wgpu::TextureView>,
     initialized: bool,
     /// The GPU simulation of a visual garment (SIMULATION_VISUAL).
     visual: Option<VisualMesh>,
@@ -150,56 +151,66 @@ impl Pipelines {
                 .garment
                 .as_ref()
                 .expect("garment draw");
-            let rows = inputs(g, first, previous, scene.frame.camera_cut);
-            let bytes = bytemuck::cast_slice(&rows);
-            let mesh = cache
-                .entry(g.key)
-                .or_insert_with(|| self.mesh(device, queue, g, bytes));
-            if !Arc::ptr_eq(&mesh.topology, &g.topology) || mesh.input.size() != bytes.len() as u64
-            {
-                *mesh = self.mesh(device, queue, g, bytes);
-            }
-            let mut rows = rows;
-            rows[1][3] = f32::from(!mesh.initialized || scene.frame.camera_cut);
-            // The rest pose (`inputs`) changes only with the topology, and a
-            // new topology makes the buffer anew with it: a frame writes the
-            // rows before and after it.
-            let rest = REST_FROM..REST_FROM + REST_ROWS * g.topology.rest.len();
-            let input = bytemuck::cast_slice::<_, u8>(&rows);
-            crate::traffic::write_buffer(queue, &mesh.input, 0, &input[..rest.start * 16]);
-            crate::traffic::write_buffer(
-                queue,
-                &mesh.input,
-                rest.end as u64 * 16,
-                &input[rest.end * 16..],
-            );
-            let mut entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points]
-                .into_iter()
-                .enumerate()
-                .map(|(i, b)| wgpu::BindGroupEntry {
-                    binding: i as u32,
-                    resource: b.as_entire_binding(),
-                })
-                .collect();
-            entries.push(wgpu::BindGroupEntry {
-                binding: 3,
-                resource: wgpu::BindingResource::TextureView(output),
+            let expected_rows = REST_FROM
+                + REST_ROWS * g.topology.rest.len()
+                + g.palette.len() * 4
+                + g.points.len()
+                + g.targets.len();
+            let expected_bytes = expected_rows as u64 * 16;
+            let needs_build = cache.get(&g.key).is_none_or(|mesh| {
+                !Arc::ptr_eq(&mesh.topology, &g.topology) || mesh.input.size() != expected_bytes
             });
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("garment draw"),
-                layout: &self.layout,
-                entries: &entries,
-            });
+            let mesh = if needs_build {
+                let rows = inputs(g, first, previous, true);
+                let built = self.mesh(device, queue, g, bytemuck::cast_slice(&rows));
+                cache.insert(g.key, built);
+                cache.get_mut(&g.key).expect("inserted above")
+            } else {
+                let mesh = cache.get_mut(&g.key).expect("checked above");
+                let reset = !mesh.initialized || scene.frame.camera_cut;
+                let head = input_head(g, first, previous, reset);
+                let tail = input_tail(g);
+                let tail_offset = (REST_FROM + REST_ROWS * g.topology.rest.len()) as u64 * 16;
+                crate::traffic::write_buffer(queue, &mesh.input, 0, bytemuck::cast_slice(&head));
+                if !tail.is_empty() {
+                    crate::traffic::write_buffer(
+                        queue,
+                        &mesh.input,
+                        tail_offset,
+                        bytemuck::cast_slice(&tail),
+                    );
+                }
+                mesh
+            };
             // A visual garment's points are its solver's, from this frame's
             // skinned pose (its targets); the scatter then draws them.
             let solver = visual.filter(|v| simulate(device, queue, v, mesh, g, scene).is_some());
+            let group = mesh.group.get_or_insert_with(output.clone(), || {
+                let mut entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, b)| wgpu::BindGroupEntry {
+                        binding: i as u32,
+                        resource: b.as_entire_binding(),
+                    })
+                    .collect();
+                entries.push(wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(output),
+                });
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("garment draw"),
+                    layout: &self.layout,
+                    entries: &entries,
+                })
+            });
             let dispatch = |encoder: &mut crate::Encoder, pipeline, count: usize| {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("garment draw"),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(pipeline);
-                pass.set_bind_group(0, &group, &[]);
+                pass.set_bind_group(0, group, &[]);
                 let groups = (count as u32).div_ceil(64);
                 pass.dispatch_workgroups(groups.min(65535), groups.div_ceil(65535), 1);
             };
@@ -246,6 +257,7 @@ impl Pipelines {
                     mapped_at_creation: false,
                 },
             ),
+            group: Default::default(),
             initialized: false,
             visual: None,
         }
@@ -311,9 +323,16 @@ fn simulate(
 const REST_FROM: usize = 10;
 const REST_ROWS: usize = 4;
 
-fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool) -> Vec<[f32; 4]> {
+fn input_head(
+    g: &GarmentDeformation,
+    first: u32,
+    previous: Option<u32>,
+    reset: bool,
+) -> [[f32; 4]; REST_FROM] {
     let t = &g.topology;
-    let mut rows = vec![
+    let w = g.world.to_cols_array_2d();
+    let wi = g.world.inverse().to_cols_array_2d();
+    [
         [
             t.rest.len() as f32,
             t.vertices.len() as f32,
@@ -326,9 +345,37 @@ fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool
             f32::from(previous.is_some()),
             f32::from(reset),
         ],
-    ];
-    rows.extend(g.world.to_cols_array_2d());
-    rows.extend(g.world.inverse().to_cols_array_2d());
+        w[0],
+        w[1],
+        w[2],
+        w[3],
+        wi[0],
+        wi[1],
+        wi[2],
+        wi[3],
+    ]
+}
+
+fn input_tail(g: &GarmentDeformation) -> Vec<[f32; 4]> {
+    let mut rows = Vec::with_capacity(g.palette.len() * 4 + g.points.len() + g.targets.len());
+    for m in g.palette.iter() {
+        rows.extend(m.to_cols_array_2d());
+    }
+    rows.extend(g.points.iter().map(|p| p.extend(0.).to_array()));
+    rows.extend(g.targets.iter().map(|p| p.extend(0.).to_array()));
+    rows
+}
+
+fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool) -> Vec<[f32; 4]> {
+    let t = &g.topology;
+    let mut rows = Vec::with_capacity(
+        REST_FROM
+            + REST_ROWS * t.rest.len()
+            + g.palette.len() * 4
+            + g.points.len()
+            + g.targets.len(),
+    );
+    rows.extend_from_slice(&input_head(g, first, previous, reset));
     debug_assert_eq!(rows.len(), REST_FROM);
     for ((p, n), (j, w)) in t.rest.iter().zip(&t.normals).zip(&t.skin) {
         rows.extend([
@@ -338,10 +385,6 @@ fn inputs(g: &GarmentDeformation, first: u32, previous: Option<u32>, reset: bool
             *w,
         ]);
     }
-    for m in g.palette.iter() {
-        rows.extend(m.to_cols_array_2d());
-    }
-    rows.extend(g.points.iter().map(|p| p.extend(0.).to_array()));
-    rows.extend(g.targets.iter().map(|p| p.extend(0.).to_array()));
+    rows.extend(input_tail(g));
     rows
 }

@@ -112,14 +112,14 @@ fn gi_bits(lo: f32, hi: f32, dither: f32) -> u32 {
 }
 
 // The pixel's noise: x turns the slices, y offsets the taps along them,
-// z dithers the sectors. The interleaved pattern (fxpost.wgsl ao_noise)
-// gives each of the blur's sixteen pixels its own of each; under TAA the
+// z dithers the sectors. The interleaved 3x3 pattern (fxpost.wgsl ao_noise)
+// gives each of the blur's nine pixels its own of each; under TAA the
 // frame (gi1.y) moves all three along the R2 sequence.
 fn gi_noise(pos: vec2<f32>) -> vec3<f32> {
-  let cell = floor(ao_noise(pos) * 16.0);
+  let cell = floor(ao_noise(pos) * 9.0);
   let at = vec3<i32>(vec2<i32>(pos), i32(fxp.gi1.y));
   let white = vec3<f32>(lattice3(at, 1u), lattice3(at, 2u), lattice3(at, 3u));
-  return fract((vec3<f32>(cell, cell * 5.0, 0.0) + white * vec3<f32>(1.0, 1.0, 16.0)) / 16.0 + fxp.gi1.y * vec3<f32>(0.7548776662, 0.5698402910, 0.0));
+  return fract((vec3<f32>(cell, cell * 4.0, 0.0) + white * vec3<f32>(1.0, 1.0, 9.0)) / 9.0 + fxp.gi1.y * vec3<f32>(0.7548776662, 0.5698402910, 0.0));
 }
 
 @fragment
@@ -159,7 +159,7 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
   // World units a pixel spans at depth 1 (perspective) or at any depth.
   let unit_px = 1.0 / (fxp.proj[1][1] * 0.5 * fxp.screen.y);
   let dsize = vec2<i32>(textureDimensions(tex_depth));
-  let dsize_f = vec2<f32>(dsize);
+  let top = i32(textureNumLevels(tex_depth)) - 1;
   let gsize = vec2<i32>(textureDimensions(tex_gbuffer));
   let pos = vec2<f32>(px) + 0.5;
   var light = vec3<f32>(0.0);
@@ -247,7 +247,7 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
             on_screen = false;
           } else {
             n_read = true;
-            n_d = depth_tap(n_uv, dsize, dsize_f);
+            n_d = depth_mip_tap(n_uv, dsize, depth_tap_level(n_off, top));
             if (!is_sky(n_d)) {
               // Where the pixel it reads lies along the line.
               n_w = gi_in_slice(line, dot(n_px, om), n_d);

@@ -227,7 +227,7 @@ fn bloom_source_size() -> vec2<f32> {
 // the lit image's colour weighted by its alpha, the tone-mapped fraction,
 // so those sprites neither bloom nor dim the bloom round them.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {
-  let s = sample_exact(source, linear_sampler, uv);
+  let s = textureSampleLevel(source, linear_sampler, uv, 0.0);
   if (post.extra.y > 0.5) { return s.rgb * clamp(s.a, 0.0, 1.0); }
   return s.rgb;
 }

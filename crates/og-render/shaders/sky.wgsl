@@ -1054,6 +1054,21 @@ fn clouds_covered(pos: vec2<f32>, texel: vec2<f32>) -> bool {
   let scale = size * abs(texel) * 0.5;
   let lo = vec2<i32>(floor((pos - 1.0) * scale - 0.5));
   let hi = vec2<i32>(ceil((pos + 1.0) * scale - 0.5));
+  let levels = i32(textureNumLevels(clouds_depth));
+  if (levels > 1) {
+    // depth_mips weights toward far (sky = FAR_DEPTH has infinite priority):
+    // if any full-res pixel in a mip block is sky, the mip texel is sky.
+    let mip = clamp(i32(ceil(log2(max(max(scale.x, scale.y), 1.0)))), 0, levels - 1);
+    let mlast = vec2<i32>(textureDimensions(clouds_depth, mip)) - 1;
+    let mlo = clamp(max(lo, vec2<i32>(0)) >> vec2<u32>(u32(mip)), vec2<i32>(0), mlast);
+    let mhi = clamp(max(hi - 1, vec2<i32>(0)) >> vec2<u32>(u32(mip)), vec2<i32>(0), mlast);
+    for (var y = mlo.y; y <= mhi.y; y++) {
+      for (var x = mlo.x; x <= mhi.x; x++) {
+        if (is_sky_depth(textureLoad(clouds_depth, vec2<i32>(x, y), mip).r)) { return false; }
+      }
+    }
+    return true;
+  }
   let last = vec2<i32>(size) - 1;
   // The pixel under the texel's centre first: over the sky that is the only read.
   if (is_sky_depth(textureLoad(clouds_depth, clamp(vec2<i32>(pos * scale), vec2<i32>(0), last), 0).r)) { return false; }

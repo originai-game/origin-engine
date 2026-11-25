@@ -65,17 +65,14 @@ fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
   return view_point(fxp.inv_proj, uv, d);
 }
 
-// A 4x4 Bayer ordering of the AO texel (0..15, +0.5, over 16): interleaved
-// sampling (Keller and Heidrich 2001) matched to fs_ao_blur's and
-// fs_gi_blur's 4x4 window, so every window holds each of the sixteen
-// rotations and step offsets once and the blur returns their mean, with no
-// residue of the pattern on a flat surface (IGN's, which needs a temporal
-// filter to average, left a dotted stipple on grazing roofs).
+// A 3x3 interleaved ordering of the AO texel (0..8, +0.5, over 9) matched
+// to fs_ao_blur's and fs_gi_blur's centred 3x3 windows: every 3x3 window
+// holds each of the nine rotations and offsets once with zero half-pixel
+// shift and no residue on a flat surface.
 fn ao_noise(px: vec2<f32>) -> f32 {
-  let p = vec2<u32>(px) & vec2<u32>(3u);
-  let lo = (((p.x ^ p.y) & 1u) << 1u) | (p.y & 1u);
-  let hi = ((((p.x ^ p.y) >> 1u) & 1u) << 1u) | ((p.y >> 1u) & 1u);
-  return (f32(lo * 4u + hi) + 0.5) / 16.0;
+  let p = vec2<u32>(px);
+  let idx = ((p.x % 3u) * 3u + (p.y % 3u) * 5u) % 9u;
+  return (f32(idx) + 0.5) / 9.0;
 }
 
 // Pixels per world unit at view depth `d` (vertically).
@@ -137,9 +134,9 @@ fn gtao_rotate(src: vec3<f32>, dst: vec3<f32>, x: vec3<f32>) -> vec3<f32> {
 }
 
 // The GTAO term at the AO texel `in.pos` (1 on the sky; fs_gtao, and
-// fs_ssgi's occlusion with PostEffects.ao's GTAO).
+// fs_ssgi's occlusion with PostEffects.ao's GTAO). Skips bent-normal math.
 fn gtao_term(in: VsOut) -> f32 {
-  return gtao_bent(in).x;
+  return gtao_core(in, false).x;
 }
 
 // The GTAO visibility (x) and the view-space bent normal (yzw; the normal
@@ -148,13 +145,26 @@ fn gtao_term(in: VsOut) -> f32 {
 // Occlusion", the bent normal of its Algorithm 2 extension as XeGTAO
 // computes it (MIT, third_party/xegtao/LICENSE).
 fn gtao_bent(in: VsOut) -> vec4<f32> {
+  return gtao_core(in, true);
+}
+
+fn gtao_core(in: VsOut, want_bent: bool) -> vec4<f32> {
   let px = ao_pixel(in.pos.xy);
   let uv = ao_uv(px, in.uv);
   let d = depth_at(px);
   if (is_sky(d)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
-  let p = view_pos(uv, d);
+  let ortho_cam = fxp.cam.y > 0.5;
+  // Linear view-space unprojection (avoids 36 full mat4x4 multiplies per pixel).
+  let unproject = 1.0 / vec2<f32>(fxp.proj[0][0], fxp.proj[1][1]);
+  let centre = select(
+    vec2<f32>(fxp.proj[2][0], fxp.proj[2][1]),
+    -vec2<f32>(fxp.proj[3][0], fxp.proj[3][1]),
+    ortho_cam,
+  ) * unproject;
+  let ndc0 = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let p = vec3<f32>((ndc0 * unproject + centre) * select(d, 1.0, ortho_cam), -d);
   let n = normalize((fxp.view * vec4<f32>(gbuffer_normal(px), 0.0)).xyz);
-  let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
+  let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), ortho_cam);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
   if (radius_px < 1.0) { return vec4<f32>(1.0, n); }
@@ -179,7 +189,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     // the direction the slice's line through p projects to (d(xy / -z)).
     let slice = vec2<f32>(cos(phi), sin(phi));
     let dir = gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, vec3<f32>(slice, 0.0));
-    let step = select(-p.z * dir.xy + p.xy * dir.z, dir.xy, fxp.cam.y > 0.5);
+    let step = select(-p.z * dir.xy + p.xy * dir.z, dir.xy, ortho_cam);
     let omega = normalize(vec2<f32>(step.x, -step.y));
     let ortho = dir - dot(dir, v) * v;
     let axis = normalize(cross(ortho, v));
@@ -188,6 +198,7 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     let sign_n = sign(dot(ortho, proj_n));
     let cos_n = clamp(dot(proj_n, v) / max(proj_len, 1e-5), 0.0, 1.0);
     let ang_n = sign_n * acos(cos_n);
+    let sin_n = sin(ang_n);
     let low0 = cos(ang_n + PI * 0.5);
     let low1 = cos(ang_n - PI * 0.5);
     var h0 = low0;
@@ -203,8 +214,11 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
       let level = depth_tap_level(length(offset_px), top);
       let uv0 = uv + offset;
       let uv1 = uv - offset;
-      let s0 = view_pos(uv0, depth_mip_tap(uv0, dsize, level)) - p;
-      let s1 = view_pos(uv1, depth_mip_tap(uv1, dsize, level)) - p;
+      let d0 = depth_mip_tap(uv0, dsize, level);
+      let d1 = depth_mip_tap(uv1, dsize, level);
+      let ndc_off = vec2<f32>(offset.x * 2.0, -offset.y * 2.0);
+      let s0 = vec3<f32>(((ndc0 + ndc_off) * unproject + centre) * select(d0, 1.0, ortho_cam), -d0) - p;
+      let s1 = vec3<f32>(((ndc0 - ndc_off) * unproject + centre) * select(d1, 1.0, ortho_cam), -d1) - p;
       let l0 = length(s0);
       let l1 = length(s1);
       let w0 = clamp(2.0 - 2.0 * l0 / radius, 0.0, 1.0);
@@ -216,20 +230,25 @@ fn gtao_bent(in: VsOut) -> vec4<f32> {
     var a1 = acos(clamp(h0, -1.0, 1.0));
     a0 = ang_n + clamp(a0 - ang_n, -PI * 0.5, PI * 0.5);
     a1 = ang_n + clamp(a1 - ang_n, -PI * 0.5, PI * 0.5);
-    let arc0 = (cos_n + 2.0 * a0 * sin(ang_n) - cos(2.0 * a0 - ang_n)) * 0.25;
-    let arc1 = (cos_n + 2.0 * a1 * sin(ang_n) - cos(2.0 * a1 - ang_n)) * 0.25;
+    let arc0 = (cos_n + 2.0 * a0 * sin_n - cos(2.0 * a0 - ang_n)) * 0.25;
+    let arc1 = (cos_n + 2.0 * a1 * sin_n - cos(2.0 * a1 - ang_n)) * 0.25;
     vis += proj_len * (arc0 + arc1);
-    // The slice's bent normal in its own frame (the view along +z), then
-    // turned to the view direction.
-    let t0 = (6.0 * sin(a0 - ang_n) - sin(3.0 * a0 - ang_n) + 6.0 * sin(a1 - ang_n) - sin(3.0 * a1 - ang_n)
-      + 16.0 * sin(ang_n) - 3.0 * (sin(a0 + ang_n) + sin(a1 + ang_n))) / 12.0;
-    let t1 = (-cos(3.0 * a0 - ang_n) - cos(3.0 * a1 - ang_n) + 8.0 * cos(ang_n)
-      - 3.0 * (cos(a0 + ang_n) + cos(a1 + ang_n))) / 12.0;
-    let local = vec3<f32>(slice * t0, t1);
-    bent += gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, local) * proj_len;
+    if (want_bent) {
+      // The slice's bent normal in its own frame (the view along +z), then
+      // turned to the view direction.
+      let t0 = (6.0 * sin(a0 - ang_n) - sin(3.0 * a0 - ang_n) + 6.0 * sin(a1 - ang_n) - sin(3.0 * a1 - ang_n)
+        + 16.0 * sin_n - 3.0 * (sin(a0 + ang_n) + sin(a1 + ang_n))) / 12.0;
+      let t1 = (-cos(3.0 * a0 - ang_n) - cos(3.0 * a1 - ang_n) + 8.0 * cos_n
+        - 3.0 * (cos(a0 + ang_n) + cos(a1 + ang_n))) / 12.0;
+      let local = vec3<f32>(slice * t0, t1);
+      bent += gtao_rotate(vec3<f32>(0.0, 0.0, 1.0), v, local) * proj_len;
+    }
   }
   // Not clamped to 1 (fs_gtao): the denoise averages the overshoot out.
   vis = max(vis / f32(slices), 0.0);
+  if (!want_bent) {
+    return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), n);
+  }
   let bl = length(bent);
   return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), select(n, bent / bl, bl > 1e-5));
 }
@@ -326,8 +345,9 @@ fn ao_blur_sky(d0: f32) -> bool {
   return is_sky_depth(d0) && fxp.cam.x < 1.0e8;
 }
 
-// A 4x4 depth-aware blur of the raw AO (tex_b) over its noise pattern, at
-// the AO's resolution (each texel's depth where it was searched).
+// A centred 3x3 normal- and depth-aware blur of the raw AO (tex_b) over
+// its 3x3 interleaved noise pattern, at the AO's resolution (each texel's
+// depth and normal where it was searched).
 @fragment
 fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
@@ -339,14 +359,16 @@ fn fs_ao_blur(in: VsOut) -> @location(0) vec4<f32> {
   let k = ao_divisor();
   let d0 = depth_at(px * k);
   if (ao_blur_sky(d0)) { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }
+  let n0 = gbuffer_normal(px * k);
   let size = vec2<i32>(textureDimensions(tex_b));
   let scale = max(d0 * 0.04, 1e-3);
   var sum = 0.0;
   var weight = 0.0;
-  for (var y = -2; y <= 1; y++) {
-    for (var x = -2; x <= 1; x++) {
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
-      let w = exp(-abs(depth_at(q * k) - d0) / scale);
+      let facing = max(dot(gbuffer_normal(q * k), n0), 0.0);
+      let w = exp(-abs(depth_at(q * k) - d0) / scale) * facing * facing * facing * facing + 1e-6;
       sum += textureLoad(tex_b, q, 0).r * w;
       weight += w;
     }

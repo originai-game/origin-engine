@@ -135,10 +135,14 @@ fn weather_surface_grad(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame:
   let p = p_frame + frame.origin.xyz;
   let up = clamp(geo.y, 0.0, 1.0);
   let raining = w.w > 0.0;
-  // The cover's noise: broad drifts, a finer break-up for a ragged edge,
-  // and the height mixed in so a curved face's edge wanders too.
-  let cover = weather_fbm(p.xz * 0.6 + p.y * 0.7) * 0.6 + weather_noise(p.xz * 7.1 + p.y * 5.3 + 7.0) * 0.4;
   let low = 0.5 - cavity;  // > 0 in a hollow
+  // The cover's noise: broad drifts, a finer break-up for a ragged edge,
+  // and the height mixed in so a curved face's edge wanders too. Evaluated
+  // only when dust or snow uses it.
+  var cover = 0.5;
+  if (dust > 0.0 || (w.z > 0.0 && standing >= -0.5)) {
+    cover = weather_fbm(p.xz * 0.6 + p.y * 0.7) * 0.6 + weather_noise(p.xz * 7.1 + p.y * 5.3 + 7.0) * 0.4;
+  }
 
   // Dust and sand settle on what faces up, in the low parts first; the
   // wind leaves the crests bare. Lying sand covers the tops whole and
@@ -176,10 +180,13 @@ fn weather_surface_grad(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame:
   // rain stops the crests and the open drifts dry first and the hollows
   // stay dark longest (the stored wetness falls through the dampness).
   // (The noise's values bunch about a half: stretched to fill 0..1.)
-  let damp_noise = clamp((weather_fbm(p.xz * 0.45 + 13.0) - 0.5) * 2.6 + 0.5, 0.0, 1.0);
-  let damp = clamp(0.6 * damp_noise + 0.6 * (0.5 - cavity) + 0.15 * (1.0 - up) + 0.2, 0.0, 1.0);
-  let drying = smoothstep(1.0 - w.x - 0.08, 1.0 - w.x + 0.08, damp);
-  var wet = select(drying, w.x, raining) * mix(0.55, 1.0, up) * (1.0 - snow);
+  var wet_raw = w.x;
+  if (!raining && w.x > 0.0) {
+    let damp_noise = clamp((weather_fbm(p.xz * 0.45 + 13.0) - 0.5) * 2.6 + 0.5, 0.0, 1.0);
+    let damp = clamp(0.6 * damp_noise + 0.6 * (0.5 - cavity) + 0.15 * (1.0 - up) + 0.2, 0.0, 1.0);
+    wet_raw = smoothstep(1.0 - w.x - 0.08, 1.0 - w.x + 0.08, damp);
+  }
+  var wet = wet_raw * mix(0.55, 1.0, up) * (1.0 - snow);
 
   // Rain runs down what faces sideways in streaks, flowing while it rains.
   let wall = 1.0 - smoothstep(0.35, 0.75, abs(geo.y));

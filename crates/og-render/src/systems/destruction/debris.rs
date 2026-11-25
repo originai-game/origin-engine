@@ -564,39 +564,44 @@ impl DebrisLayer {
                 bytemuck::cast_slice(&hull),
             );
         }
-        // The colliders near each body's reach, and each body's list.
-        let mut bounds = Vec::new();
-        let mut owners = Vec::new();
-        for d in &scene.objects.debris {
-            if let Some(&s) = self.slots.get(&d.id) {
-                let (c, r) = d.sphere();
-                bounds.push((c - Vec3::splat(r), c + Vec3::splat(r)));
-                owners.push(s);
+        let step_needed = steps > 0 || shift != Vec3::ZERO || !fresh.is_empty();
+        // The colliders near each body's reach, and each body's list (only
+        // read by `step`, so skipped on sub-tick/paused frames).
+        if step_needed {
+            let mut bounds = Vec::new();
+            let mut owners = Vec::new();
+            for d in &scene.objects.debris {
+                if let Some(&s) = self.slots.get(&d.id) {
+                    let (c, r) = d.sphere();
+                    bounds.push((c - Vec3::splat(r), c + Vec3::splat(r)));
+                    owners.push(s);
+                }
+            }
+            let colliders: &[SceneCollider] = &scene.world.colliders;
+            let (words, lists) = crate::scene_colliders::pack(colliders, &bounds);
+            let mut by_slot = vec![u32::MAX; self.count as usize];
+            for (s, l) in owners.iter().zip(lists) {
+                by_slot[*s as usize] = l;
+            }
+            let gpu = self.gpu.as_mut().expect("made above");
+            let bytes: &[u8] = bytemuck::cast_slice(&words);
+            if bytes.len() as u64 > gpu.colliders.size() {
+                gpu.colliders = crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some("debris colliders"),
+                        size: (bytes.len() as u64).next_power_of_two(),
+                        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                );
+            }
+            crate::traffic::write_buffer(queue, &gpu.colliders, 0, bytes);
+            if !by_slot.is_empty() {
+                crate::traffic::write_buffer(queue, &gpu.lists, 0, bytemuck::cast_slice(&by_slot));
             }
         }
-        let colliders: &[SceneCollider] = &scene.world.colliders;
-        let (words, lists) = crate::scene_colliders::pack(colliders, &bounds);
-        let mut by_slot = vec![u32::MAX; self.count as usize];
-        for (s, l) in owners.iter().zip(lists) {
-            by_slot[*s as usize] = l;
-        }
         let gpu = self.gpu.as_mut().expect("made above");
-        let bytes: &[u8] = bytemuck::cast_slice(&words);
-        if bytes.len() as u64 > gpu.colliders.size() {
-            gpu.colliders = crate::traffic::create_buffer(
-                device,
-                &wgpu::BufferDescriptor {
-                    label: Some("debris colliders"),
-                    size: (bytes.len() as u64).next_power_of_two(),
-                    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
-            );
-        }
-        crate::traffic::write_buffer(queue, &gpu.colliders, 0, bytes);
-        if !by_slot.is_empty() {
-            crate::traffic::write_buffer(queue, &gpu.lists, 0, bytemuck::cast_slice(&by_slot));
-        }
         // The writes, each target's after the one before.
         let mut writes: Vec<WriteGpu> = Vec::new();
         let mut ranges = Vec::new();
@@ -621,6 +626,9 @@ impl DebrisLayer {
                 });
             }
             ranges.push((first, writes.len() as u32 - first));
+        }
+        if !step_needed && writes.is_empty() {
+            return None;
         }
         let bytes: &[u8] = bytemuck::cast_slice(&writes);
         if bytes.len() as u64 > gpu.writes.size() {
@@ -656,6 +664,9 @@ impl DebrisLayer {
             debug_assert!(targets.len() <= 2, "at most two debris targets");
             for (k, t) in targets.iter().enumerate().take(2) {
                 let (first, n) = ranges[k];
+                if !(k == 0 && step_needed) && n == 0 {
+                    continue;
+                }
                 // Slot 0 steps (with the first target); slot 1 only writes.
                 let slot = k as u64 * SLOT;
                 let p = params(first, n);
@@ -706,7 +717,7 @@ impl DebrisLayer {
                         ],
                     });
                 pass.set_bind_group(0, &group, &[slot as u32]);
-                if k == 0 {
+                if k == 0 && step_needed {
                     pass.set_pipeline(&gpu.step);
                     pass.dispatch_workgroups(self.count.div_ceil(64), 1, 1);
                 }

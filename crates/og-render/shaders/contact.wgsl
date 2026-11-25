@@ -78,11 +78,24 @@ fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
 
 // Whether the pixel at `px` takes no light from the contact light: off
 // the screen, in the sky, or facing away from it (Bend's EarlyOutPixel).
-fn unlit(px: vec2<i32>, size: vec2<i32>) -> bool {
-  if (any(px < vec2<i32>(0)) || any(px >= size)) { return true; }
-  let d = textureLoad(tex_depth, px, 0).r;
-  if (d >= fxp.cam.x * 0.999) { return true; }
-  let p = view_pos((vec2<f32>(px) + 0.5) / vec2<f32>(size), d);
+// Reuses `start_depth` (`sampling_depth[0]`) to avoid a duplicate depth load
+// and reconstructs view position linearly without a full mat4x4 multiply.
+fn unlit(px: vec2<i32>, size: vec2<i32>, start_depth: f32) -> bool {
+  if (any(px < vec2<i32>(0)) || any(px >= size) || start_depth <= 0.0) { return true; }
+  let ortho_cam = fxp.cam.y > 0.5;
+  if (select(start_depth * fxp.cam.x * 0.999 <= 1.0, start_depth <= 0.001, ortho_cam)) {
+    return true;
+  }
+  let d = select(1.0 / start_depth, (1.0 - start_depth) * fxp.cam.x, ortho_cam);
+  let uv = (vec2<f32>(px) + 0.5) / vec2<f32>(size);
+  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+  let unproject = 1.0 / vec2<f32>(fxp.proj[0][0], fxp.proj[1][1]);
+  let centre = select(
+    vec2<f32>(fxp.proj[2][0], fxp.proj[2][1]),
+    -vec2<f32>(fxp.proj[3][0], fxp.proj[3][1]),
+    ortho_cam,
+  ) * unproject;
+  let p = vec3<f32>((ndc * unproject + centre) * select(d, 1.0, ortho_cam), -d);
   let n = normalize((fxp.view * vec4<f32>(oct_decode(textureLoad(tex_gbuffer, px, 0).xy), 0.0)).xyz);
   return dot(fxp.contact[dispatch.index].xyz - p, n) <= 0.0;
 }
@@ -192,13 +205,19 @@ fn cs_contact(@builtin(workgroup_id) group_id: vec3<u32>, @builtin(local_invocat
   if (major_start <= f32(WAVE_SIZE) && thread_step == f32(WAVE_SIZE - 1)) {
     put(vec2<i32>(floor(light.xy)), size, 65535u, 1.0);
   }
+  let start_depth = sampling_depth[0];
+  // Sky, off-screen, or back-facing pixels are uniformly unlit across every
+  // wavefront hitting `write_xy`; leaving them unwritten lets
+  // `cs_contact_compose` default them to 1.0 without atomicMax contention.
+  if (unlit(write_xy, size, start_depth)) {
+    return;
+  }
   // A pixel within one of the light's: lit (Bend's +direction bias makes
   // it lit or shadowed whole).
-  if (sample_distance[0] < 1.0 || unlit(write_xy, size)) {
+  if (sample_distance[0] < 1.0) {
     put(write_xy, size, near, 1.0);
     return;
   }
-  let start_depth = sampling_depth[0];
   // WriteScreenSpaceShadow's window: the depth scaled so a slab of
   // `thickness` is 1, offset by one slab towards the camera.
   let depth_scale = min(sample_distance[0] + direction, 1.0 / thickness) * sample_distance[0] / start_depth;

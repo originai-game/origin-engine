@@ -399,6 +399,7 @@ struct Sim {
     particles: wgpu::Buffer,
     cells: wgpu::Buffer,
     cursor: wgpu::Buffer,
+    group: crate::gpu::bind_cache::SingleBindCache<(wgpu::Buffer, wgpu::Buffer)>,
     last: Option<u64>,
     /// The tick it started at.
     start: u64,
@@ -414,7 +415,6 @@ impl Sim {
 struct Job {
     key: u64,
     plan: Plan,
-    group: wgpu::BindGroup,
 }
 
 pub(crate) struct VisualFluids {
@@ -544,20 +544,9 @@ impl VisualFluids {
             1.0 / 60.0
         };
         let grids: Vec<Grid> = slots.iter().map(|s| Grid::of(&s.fluid, tick_dt)).collect();
-        let bounds: Vec<(Vec3, Vec3)> = grids
-            .iter()
-            .map(|g| {
-                let size = Vec3::from(g.dims.map(|d| d as f32)) * g.cell;
-                (g.origin, g.origin + size)
-            })
-            .collect();
-        let (data, lists) = crate::scene_colliders::pack(colliders, &bounds);
-        let bytes: &[u8] = bytemuck::cast_slice(&data);
-        if bytes.len() as u64 > self.colliders.size() {
-            self.colliders = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
-        }
-        crate::traffic::write_buffer(queue, &self.colliders, 0, bytes);
-        for ((slot, grid), list) in slots.iter().zip(grids).zip(lists) {
+        let mut plans = Vec::with_capacity(slots.len());
+        let mut any_steps = false;
+        for (slot, grid) in slots.iter().zip(grids) {
             let f = &slot.fluid;
             let sim = self
                 .sims
@@ -581,6 +570,31 @@ impl VisualFluids {
             sim.last = Some(tick);
             sim.grid = grid;
             sim.shape = (**f).clone();
+            any_steps |= plan.steps > 0;
+            plans.push(plan);
+        }
+        let lists = if any_steps {
+            let bounds: Vec<(Vec3, Vec3)> = slots
+                .iter()
+                .map(|slot| {
+                    let g = &self.sims[&slot.fluid.key].grid;
+                    let size = Vec3::from(g.dims.map(|d| d as f32)) * g.cell;
+                    (g.origin, g.origin + size)
+                })
+                .collect();
+            let (data, lists) = crate::scene_colliders::pack(colliders, &bounds);
+            let bytes: &[u8] = bytemuck::cast_slice(&data);
+            if bytes.len() as u64 > self.colliders.size() {
+                self.colliders = collider_buffer(device, (bytes.len() as u64).next_power_of_two());
+            }
+            crate::traffic::write_buffer(queue, &self.colliders, 0, bytes);
+            lists
+        } else {
+            vec![u32::MAX; slots.len()]
+        };
+        for ((slot, plan), list) in slots.iter().zip(plans).zip(lists) {
+            let f = &slot.fluid;
+            let sim = self.sims.get_mut(&f.key).expect("inserted above");
             let elapsed = tick.saturating_sub(sim.start) + u64::from(plan.reset);
             let words = header(
                 f,
@@ -593,32 +607,38 @@ impl VisualFluids {
                 slot.first,
             );
             crate::traffic::write_buffer(queue, &sim.head, 0, bytemuck::cast_slice(&words));
-            crate::traffic::write_buffer(queue, &sim.cursor, 0, bytemuck::cast_slice(&[0u32; 4]));
-            let entries: Vec<_> = [
-                &sim.head,
-                &self.colliders,
-                &sim.particles,
-                &sim.cells,
-                &sim.cursor,
-                instances,
-            ]
-            .into_iter()
-            .enumerate()
-            .map(|(i, b)| wgpu::BindGroupEntry {
-                binding: i as u32,
-                resource: b.as_entire_binding(),
-            })
-            .collect();
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("visual fluid"),
-                layout: &self.layout,
-                entries: &entries,
+            if plan.steps > 0 {
+                crate::traffic::write_buffer(
+                    queue,
+                    &sim.cursor,
+                    0,
+                    bytemuck::cast_slice(&[0u32; 4]),
+                );
+            }
+            let key = (self.colliders.clone(), instances.clone());
+            let _ = sim.group.get_or_insert_with(key, || {
+                let entries: Vec<_> = [
+                    &sim.head,
+                    &self.colliders,
+                    &sim.particles,
+                    &sim.cells,
+                    &sim.cursor,
+                    instances,
+                ]
+                .into_iter()
+                .enumerate()
+                .map(|(i, b)| wgpu::BindGroupEntry {
+                    binding: i as u32,
+                    resource: b.as_entire_binding(),
+                })
+                .collect();
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("visual fluid"),
+                    layout: &self.layout,
+                    entries: &entries,
+                })
             });
-            self.jobs.push(Job {
-                key: f.key,
-                plan,
-                group,
-            });
+            self.jobs.push(Job { key: f.key, plan });
         }
     }
 
@@ -633,9 +653,13 @@ impl VisualFluids {
         });
         let groups = |n: u32| n.div_ceil(64);
         for job in &self.jobs {
-            let g = &self.sims[&job.key].grid;
+            let sim = &self.sims[&job.key];
+            let g = &sim.grid;
+            let Some(group) = sim.group.get() else {
+                continue;
+            };
             let (particles, cells) = (groups(g.n), groups(g.cells()));
-            pass.set_bind_group(0, &job.group, &[]);
+            pass.set_bind_group(0, group, &[]);
             let mut run = |entry: usize, count: u32| {
                 pass.set_pipeline(self.pipelines[entry].wait());
                 pass.dispatch_workgroups(count, 1, 1);
@@ -687,6 +711,7 @@ fn make(device: &wgpu::Device, grid: &Grid, f: &VisualFluid) -> Sim {
         particles: buffer("visual fluid particles", u64::from(grid.n) * 80),
         cells: buffer("visual fluid grid", u64::from(grid.cells()) * 32),
         cursor: buffer("visual fluid cursor", 16),
+        group: Default::default(),
         last: None,
         start: 0,
     }

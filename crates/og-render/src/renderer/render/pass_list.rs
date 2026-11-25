@@ -83,8 +83,8 @@ impl Renderer {
                     .gi
                     .map(|g| g.resolution)
                     .or(effects.ao.map(|a| a.resolution)),
-                depth_mips: effects.gi.is_none()
-                    && effects
+                depth_mips: effects.gi.is_some()
+                    || effects
                         .ao
                         .is_some_and(|a| matches!(a.method, AoMethod::Auto | AoMethod::Gtao)),
                 contact: effects.contact,

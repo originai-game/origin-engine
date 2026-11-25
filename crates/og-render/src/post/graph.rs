@@ -226,6 +226,16 @@ impl FrameGraph {
         self.depth_mips.as_ref()
     }
 
+    /// The view depth's MIP chain when it was built from opaque `lindepth`
+    /// rather than water `front-depth`.
+    pub fn opaque_depth_mips(&self) -> Option<&wgpu::TextureView> {
+        let water_ao_depth =
+            self.views.contains_key("front-depth") && self.cfg.is_some_and(|c| c.water_ao);
+        (!water_ao_depth)
+            .then(|| self.depth_mips.as_ref().map(depth_mips::DepthMips::view))
+            .flatten()
+    }
+
     /// The view of `name` when the current graph has it.
     pub fn try_view(&self, name: &str) -> Option<&wgpu::TextureView> {
         self.views.get(name)

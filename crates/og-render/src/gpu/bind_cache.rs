@@ -33,6 +33,10 @@ impl<K: PartialEq> SingleBindCache<K> {
         &self.entry.as_ref().expect("populated above").1
     }
 
+    pub(crate) fn get(&self) -> Option<&wgpu::BindGroup> {
+        self.entry.as_ref().map(|(_, g)| g)
+    }
+
     pub(crate) fn clear(&mut self) {
         self.entry = None;
     }

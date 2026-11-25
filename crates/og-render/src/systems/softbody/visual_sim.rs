@@ -849,6 +849,11 @@ impl VisualPipelines {
         let shift = mesh.origin - origin;
         mesh.origin = origin;
         mesh.shifted = shift != Vec3::ZERO;
+        // `encode` is a no-op when no tick steps and the origin did not shift,
+        // so skip target/normal/header buffer rebuilds and uploads too.
+        if p.steps == 0 && !p.reset && !mesh.shifted && mesh.group.is_some() {
+            return;
+        }
         for target in &mut mesh.targets {
             for k in 0..3 {
                 target[k] += shift[k];

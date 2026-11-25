@@ -255,6 +255,8 @@ fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
       let center = 1.0 - (p - 0.5 * s * k) / m;
       let mag = clamp(1.0 / abs(m), 1.0, FLARE_GHOST_MAGNIFICATION);
       let ra = ra0 * mag;
+      let t = flare_distance(q, center) / ra;
+      if (t >= 1.0) { continue; }
       var clear = 1.0;
       for (var j = 0u; j < n; j++) {
         let glare = textureLoad(flare_visibility, vec2<i32>(i32(j), 0), 0).r > 0.0;
@@ -262,8 +264,6 @@ fn flare_source_ghosts(q: vec2<f32>) -> vec3<f32> {
         clear *= select(1.0, away, glare || j == i);
       }
       if (clear <= 0.0) { continue; }
-      let t = flare_distance(q, center) / ra;
-      if (t >= 1.0) { continue; }
       c += flare_source_light(i, flare.ghosts.z, mag, exposure) * (flare_aperture(t) * clear)
         * flare_ghost_tint(k);
     }

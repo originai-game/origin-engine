@@ -86,7 +86,17 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
         // Into its own cubes and the bound IBL ones.
         FramePass::LiveSky => g.pass(name, &[], &[]),
-        // With a prepass the march skips what its surfaces cover.
+        // With a prepass the march skips what its surfaces cover; reuse the
+        // depth MIP chain when it holds opaque scene depth (not water front-depth).
+        FramePass::Clouds
+            if prepass && has(FramePass::DepthMips) && !(cfg.water_ao && front_depth) =>
+        {
+            g.pass(
+                name,
+                &[crate::post::depth_mips::DEPTH_MIPS_TARGET],
+                &["clouds.quarter", "clouds"],
+            )
+        }
         FramePass::Clouds if prepass => g.pass(name, &["lindepth"], &["clouds.quarter", "clouds"]),
         FramePass::Clouds => g.pass(name, &[], &["clouds.quarter", "clouds"]),
         // Into the light volumes' buffer, not a graph target.

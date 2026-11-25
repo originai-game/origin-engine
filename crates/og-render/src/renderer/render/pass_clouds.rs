@@ -55,8 +55,12 @@ impl Pass for CloudsPass {
             binding: 2,
             resource: t.uniform.as_entire_binding(),
         };
-        // The prepass's view depth in a frame with one: the march skips what its surfaces cover.
-        let depth = r.graph.try_view("lindepth");
+        // The prepass's view depth (or opaque depth MIP chain when available):
+        // the march skips what surfaces cover (sky.wgsl `clouds_covered`).
+        let depth = r
+            .graph
+            .opaque_depth_mips()
+            .or_else(|| r.graph.try_view("lindepth"));
         let march_group = match depth {
             Some(depth) => r.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("clouds low depth"),

@@ -70,16 +70,22 @@ impl Renderer {
                 self.canvas_stats = (key, scene.texture(t).map_or([0.0; 2], canvas_stats));
             }
         }
-        self.write_frame_stylise_uniform(
-            st,
-            scene,
-            (camera, cam),
-            upscale,
-            grid_offset,
-            lens,
-            prepass,
-            self.canvas_stats.1,
-        );
+        if st.chain_bits() != 0
+            || lens.is_some()
+            || upscale > 0
+            || self.history_size() != (self.out_width, self.out_height)
+        {
+            self.write_frame_stylise_uniform(
+                st,
+                scene,
+                (camera, cam),
+                upscale,
+                grid_offset,
+                lens,
+                prepass,
+                self.canvas_stats.1,
+            );
+        }
         PrepareFrameStyliseOutputs { stylise_key }
     }
 }
