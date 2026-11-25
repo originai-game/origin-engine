@@ -179,6 +179,12 @@ fn queries_share_the_simulation_across_restore() {
             vec![body]
         );
         w.step().unwrap();
+        assert!(
+            q.overlap_point(&PointOverlapDesc::default())
+                .unwrap()
+                .is_empty(),
+            "the frame-zero body moved; no duplicate collider may remain at its old pose"
+        );
         let saved = w.snapshot();
         w.step().unwrap();
         assert_eq!(

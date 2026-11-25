@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    {
+      "member": "og.physics",
+      "summary": "Bodies created for frame-zero scene queries retain their handles into the first simulation step, rather than leaving duplicate colliding bodies at their initial poses. Physics debug overlays no longer show a ghost chassis after a vehicle moves."
+    }
+  ]
+}

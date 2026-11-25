@@ -67,6 +67,22 @@ impl Sim {
     ) -> Result<Self> {
         let mut sim = Self::default();
         let handles = sync(settings, dt, scene, shared, &mut sim)?;
+        // No step/readback runs here to record these bodies. Keep their
+        // ownership now, or the first step builds a second copy and orphans the first.
+        for (b, &handle) in scene.bodies.iter().zip(&handles.by_body) {
+            sim.bodies.insert(
+                b.entity.to_bits(),
+                Tracked {
+                    handle,
+                    body: b.body,
+                    collider: b.collider,
+                    scale: b.scale,
+                    position: b.position,
+                    quaternion: b.quaternion,
+                    velocity: b.velocity,
+                },
+            );
+        }
         let mut out = StepOut::default();
         super::super::vehicles(scene, 0.0, &mut sim, &handles, &mut out)?;
         super::super::ragdolls(scene, 0.0, &mut sim, shared, &mut out)?;
