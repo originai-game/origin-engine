@@ -214,6 +214,12 @@ extern "C" {
 
     void compressor_params_set_rdo_uastc(CompressorParams *params, bool rdo_uastc) {
         params->pParams->m_rdo_uastc = rdo_uastc;
+        // Origin Engine: the RDO pass is always one job. basisu splits it
+        // into up to four by the pool's size, and a job matches selectors
+        // only within its own blocks, so the bytes followed the thread
+        // count. The block encode before it, whose blocks are independent,
+        // still uses every thread (third_party/basis-universal-sys/Cargo.toml).
+        params->pParams->m_rdo_uastc_multithreading = false;
     }
 
     void compressor_params_set_rdo_uastc_quality_scalar(CompressorParams *params, float rdo_uastc_quality_scalar) {

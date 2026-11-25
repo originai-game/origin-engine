@@ -12,6 +12,11 @@
 # evaluating their remaining pixels or transcoding them to BC7. Encoded
 # mips remain identical (og-cook tests/textures.rs); no search/quality
 # settings change. Retain this optimization when updating the dependency.
+# vendor/encoding_wrapper.cpp's compressor_params_set_rdo_uastc also turns
+# m_rdo_uastc_multithreading off: the UASTC RDO pass runs as one job
+# whatever the compressor's thread count, so a texture encoded on several
+# threads (its blocks are independent) is byte for byte the one a single
+# thread encodes (og-cook's texture.rs `encode_basisu`).
 # build.rs also enables basisu's SSE 4.1 kernels on x86-64 (only
 # basisu_kernels_sse.cpp is compiled for SSE 4.1; basisu picks them at run
 # time): the ETC1S searches compute the same integers, so the bytes match
