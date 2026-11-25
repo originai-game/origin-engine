@@ -54,7 +54,7 @@
     ],
     "tilemap": [
       "^og_tilemap::",
-      "^og_runtime::present::feel::tiles::",
+      "^og_runtime::present::feel::tiles::(?!(set_filter|load_flipbook|og_load_flipbook)(::|$))",
       "^og_runtime::host::wire::types::(record::)?tilemap::"
     ],
     "timeline": [
@@ -107,11 +107,13 @@
   "siblings": {
     "physics": ["physics2d", "physics3d"]
   },
-  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, the tick log the web host takes every tick, a canvas attach, a basic primitive geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
+  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, the tick log the web host takes every tick, a canvas attach, a basic primitive geometry, and the rooms' and og.shared's host side the web Worker calls on every page (src/web/worker/loop.ts takes their ops after every drawn frame; the page names the session provider, `none` included, and a Player's hello the room host). Every function they reach by direct calls stays in the primary, stopping at `entries`.",
   "roots": [
     "^og_engine_frame$",
     "^og_engine_take_log$",
     "og_web_attach_canvas",
+    "^og_room_(take|set_host)$",
+    "^og_shared_(take|deliver)$",
     "^og_render_(box|plane|sphere|buffer|update|cylinder|cone|capsule|torus|ring|circle|tube)_geometry$"
   ],
   "//world3d": "Not the 2D water (Water2d, water_2d_strips: the sprite order's strips) nor the terrains' effect group (terrain::fx), which every frame writes and binds: og-render draws a frame behind og-runtime's RenderBackend, a call the roots' graph does not follow, so an og-render function a module's pattern takes and every frame calls would load that module for every game.",

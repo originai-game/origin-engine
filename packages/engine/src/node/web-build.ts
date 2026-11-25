@@ -453,7 +453,12 @@ export interface Downloads {
     readonly videos: DownloadSum;
     /** The AV1 fallback decoder (av1/og-av1.wasm), fetched only where WebCodecs cannot decode AV1. */
     readonly av1: DownloadSum;
-    /** Split engine modules (`modules/*.wasm`, `modules-lanes/*.wasm`), fetched on demand. */
+    /**
+     * The single-threaded page's split engine modules the game does not
+     * reference (`modules/`), each fetched on its first call; the ones it
+     * references are its boot's `engine`. Only a build that carries its
+     * modules (`--modules local`) counts them: a CDN's are no file of it.
+     */
     readonly modules: DownloadSum;
     /** The service worker, the web manifest and the icons (a publish build's PWA, after the first frame). */
     readonly pwa: DownloadSum;
@@ -462,6 +467,7 @@ export interface Downloads {
 
 /** One page's boot: its total and its parts. */
 export interface DownloadBoot extends DownloadSum {
+  /** The page's engine module and the split modules the game references (og-build.json `modules`), which it puts in place before the first tick. */
   readonly engine: DownloadSum;
   /** The cooked first group (everything no streaming group holds; a chunked sound's first chunk is its own output). */
   readonly cooked: DownloadSum;
@@ -471,8 +477,8 @@ export interface DownloadBoot extends DownloadSum {
   readonly basis: DownloadSum;
 }
 
-/** What each page of a build downloads (Downloads), from its size table. */
-export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<string> = new Set()): Downloads {
+/** What each page of a build downloads (Downloads), from its size table and the split modules the game references. */
+export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<string> = new Set(), referenced: ReadonlySet<string> = new Set()): Downloads {
   // A content-hashed file counts under its plain name.
   const rows = files.map((f) => {
     const path = f.path.split("\\").join("/");
@@ -487,9 +493,12 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
   const shell = sum((p) => /^(index\.html|shell\.css|install\.js|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
-  const lanes = sum((p) => LANES_ENGINE.test(p));
+  // A split module, `modules/<name>.wasm` once unhashed, of the single-threaded (`modules`) or lanes (`modules-lanes`) engine.
+  const splitOf = (dir: string, p: string) => (SPLIT_MODULE.test(p) && p.startsWith(`${dir}/`) ? p.slice(dir.length + 1, -".wasm".length) : null);
+  const booted = (dir: string, p: string) => referenced.has(splitOf(dir, p) ?? "");
+  const lanes = sum((p) => LANES_ENGINE.test(p) || booted("modules-lanes", p));
   return {
-    boot: { single: page(sum((p) => SINGLE_ENGINE.test(p))), lanes: lanes.files > 0 ? page(lanes) : null },
+    boot: { single: page(sum((p) => SINGLE_ENGINE.test(p) || booted("modules", p))), lanes: lanes.files > 0 ? page(lanes) : null },
     later: {
       packs: sum(isPack),
       chunks: sum((p) => SOUND_CHUNK.test(p)),
@@ -498,7 +507,7 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
       worklet: sum((p) => p === "audio-worklet.js" || p === "audio-decoder.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
-      modules: sum((p) => SPLIT_MODULE.test(p)),
+      modules: sum((p) => splitOf("modules", p) !== null && !booted("modules", p)),
       pwa: sum((p) => p === "sw.js" || p === "manifest.webmanifest" || p.startsWith("icons/")),
     },
   };
@@ -507,34 +516,22 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
 /**
  * The service worker's lists (`OG_SW` without its version) for a publish
  * build's file paths: `files`, precached at install, and each engine
- * variant's (`single`, `lanes`: primary plus only the split modules the
- * game references); `lazy`, cached when the engine first fetches them: the
- * unreferenced split engine modules, streaming groups' packs, a long
+ * variant's (`single`, `lanes`: its primary and every split module the
+ * build carries, `modules/` or `modules-lanes/`, so an offline or
+ * self-hosted page has each module its game may call); `lazy`, cached when
+ * the engine first fetches them: the streaming groups' packs, a long
  * sound's chunks, a streamed texture's whole chain (`<id>#mips`, read when
- * it is big on screen), a streamed video's index and chunks, and the
- * fallback decoder.
+ * it is big on screen), a streamed video's index and chunks (a page fetches
+ * the main stream or one rendition: HEVC or H.264 where WebCodecs decodes
+ * no AV1, else the 720p one on the AV1 fallback; of it only the chunks its
+ * players reach) and the fallback decoder. A CDN build's modules are no
+ * file of the build: webBuild adds them by URL.
  */
-export function serviceWorkerLists(
-  paths: readonly string[],
-  packs: ReadonlySet<string>,
-  preloads: ReadonlySet<string> = new Set(),
-  referenced: { readonly single?: ReadonlySet<string>; readonly lanes?: ReadonlySet<string> } = {},
-): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
-  const isSingleSplit = (f: string) => f.startsWith("modules/") && SPLIT_MODULE.test(f);
-  const isLanesSplit = (f: string) => f.startsWith("modules-lanes/") && SPLIT_MODULE.test(f);
-  const isSingleRef = (f: string) => isSingleSplit(f) && (referenced.single?.has(f) ?? false);
-  const isLanesRef = (f: string) => isLanesSplit(f) && (referenced.lanes?.has(f) ?? false);
-  const onDemand = (f: string) =>
-    packs.has(f)
-    || SOUND_CHUNK.test(f)
-    || TEXTURE_MIPS.test(f)
-    || (FONT_FACE.test(f) && !preloads.has(f))
-    || (f.startsWith("cooked/") && VIDEO_STREAM.test(f))
-    || f.startsWith("av1/")
-    || (SPLIT_MODULE.test(f) && !isSingleRef(f) && !isLanesRef(f));
+export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>, preloads: ReadonlySet<string> = new Set()): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
+  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || (FONT_FACE.test(f) && !preloads.has(f)) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
   const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f));
-  const isSingle = (f: string) => SINGLE_ENGINE.test(f) || isSingleRef(f);
-  const isLanes = (f: string) => LANES_ENGINE.test(f) || isLanesRef(f);
+  const isSingle = (f: string) => SINGLE_ENGINE.test(f) || (SPLIT_MODULE.test(f) && f.startsWith("modules/"));
+  const isLanes = (f: string) => LANES_ENGINE.test(f) || (SPLIT_MODULE.test(f) && f.startsWith("modules-lanes/"));
   return {
     files: ["./", ...precache.filter((f) => !isSingle(f) && !isLanes(f))],
     lazy: paths.filter(onDemand).sort(),
@@ -552,7 +549,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
   if (d.boot.lanes) lines.push(boot("boot, lanes page (isolated)", d.boot.lanes));
   lines.push(boot("boot, single-threaded page", d.boot.single));
   const later = [
-    d.later.modules.files ? `${d.later.modules.files} split engine modules ${d.later.modules.compressed} B (on demand)` : "",
+    d.later.modules.files ? `${d.later.modules.files} split engine modules ${d.later.modules.compressed} B (single-threaded, on their first call)` : "",
     d.later.packs.files ? `${d.later.packs.files} streaming packs ${d.later.packs.compressed} B (as their groups load)` : "",
     d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
     d.later.mips.files ? `${d.later.mips.files} texture mip chains ${d.later.mips.compressed} B (when big on screen)` : "",
@@ -1250,13 +1247,11 @@ export async function webBuild(project: string, entry: string, out: string, publ
   if (publish) {
     const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
-    // The first group is precached; unreferenced split modules, streaming
-    // groups' packs, sound chunks, texture mip chains, and video streams are
-    // cached on demand when the engine fetches them.
+    // The first group and every split module the build carries are precached; a streaming
+    // group's pack, a sound's chunks, a texture's mip chain and a video's stream are cached
+    // when the engine fetches them, and so is a CDN module the game does not reference.
     const rows = fileRows();
-    const localRef = (m: EngineModules | null) =>
-      new Set(m && m.base === "" ? m.referenced.map((k) => m.files[k]).filter((f): f is string => typeof f === "string") : []);
-    const lists = serviceWorkerLists(rows.map((f) => f.path), packs, preloads, { single: localRef(single), lanes: localRef(laneModules) });
+    const lists = serviceWorkerLists(rows.map((f) => f.path), packs, preloads);
     // Each file's content, so a new build's worker carries what did not change over from the old cache.
     const known = new Set([...lists.files, ...lists.single, ...lists.lanes, ...lists.lazy]);
     const hashes: Record<string, string> = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
@@ -1356,7 +1351,10 @@ export async function sizesOf(out: string, publish: boolean): Promise<BuildSizes
   const files: SizeRow[] = paths.map((path, i) => ({ path: relative(out, path), bytes: sizes[i]!.bytes, compressed: sizes[i]!.size, codec: sizes[i]!.codec }));
   const total = files.reduce((t, f) => ({ bytes: t.bytes + f.bytes, compressed: t.compressed + f.compressed }), { bytes: 0, compressed: 0 });
   const preloads = preloadsOf(readFileSync(join(out, "cooked", ".cook.ogt"), "utf8"));
-  return { files, total, fontPreloads: files.filter((f) => preloads.has(f.path)), downloads: downloadsOf(files, preloads) };
+  // The split modules the boot puts in place (og-build.json `modules`, null for an unsplit engine).
+  const manifest = join(out, BUILD_MANIFEST);
+  const modules = existsSync(manifest) ? (JSON.parse(readFileSync(manifest, "utf8")) as Partial<BuildManifest>).modules : null;
+  return { files, total, fontPreloads: files.filter((f) => preloads.has(f.path)), downloads: downloadsOf(files, preloads, new Set(modules?.referenced ?? [])) };
 }
 
 function table(b: BuildSizes): string {

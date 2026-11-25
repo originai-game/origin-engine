@@ -1,8 +1,10 @@
 // The engine wasm's split modules (docs/web-export.md §Modules). A publish
 // wasm is cut by Binaryen's wasm-split (scripts/wasm-split.ts) into the
-// primary, which boots, and one module per optional capability (physics,
-// nav, story, motion, destruction, video). The primary imports a placeholder
-// for each function a module holds (namespace `placeholder.<module>`, field
+// primary, which boots, and one module per optional capability
+// (scripts/wasm-modules.json: physics with physics2d and physics3d, nav,
+// story, motion, destruction2d, destruction3d, video, world3d, render3d,
+// smaa, shape, tilemap, timeline, net, shared). The primary imports a
+// placeholder for each function a module holds (namespace `placeholder.<module>`, field
 // the function's slot in the primary's placeholder table, exported as
 // `%table_<n>` beside the function table `%table`); a
 // module, once instantiated against the primary's exports, writes its
@@ -151,7 +153,11 @@ export interface EngineModules {
   readonly base: string;
   readonly files: Readonly<Record<string, string>>;
   readonly referenced: readonly string[];
-  /** Optional sha256 hex digest per module, verified with Subresource Integrity on fetch. */
+  /**
+   * Each module's sha256 (hex), the fetch's Subresource Integrity in
+   * {@link fetchModuleHost}'s `load`; its synchronous load and the lanes pool
+   * Workers' fetches do not check it.
+   */
   readonly hashes?: Readonly<Record<string, string>>;
 }
 
@@ -165,10 +171,13 @@ function sriOf(hex: string | undefined): string | undefined {
 
 /**
  * The browser's module host: `files[name]` (else `modules/<name>.wasm`)
- * under `base`, fetched in CORS mode (with SRI when `hashes` gives its
- * sha256) and compiled as it streams; synchronously a blocking request,
- * which a Worker may make. The modules in `start` are fetched at once, so
- * they download beside the primary.
+ * under `base`, fetched in CORS mode and compiled as it streams, with
+ * Subresource Integrity when `hashes` gives its sha256 (the browser refuses
+ * other bytes); synchronously a blocking request, which a Worker may make
+ * and which checks no digest (Web Crypto answers only asynchronously), as
+ * the lanes pool Workers' fetches (scripts/og-pool-split.js) do not. The
+ * modules in `start` are fetched at once, so they download beside the
+ * primary.
  */
 export function fetchModuleHost(
   base: string | URL,

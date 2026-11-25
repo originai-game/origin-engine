@@ -31,8 +31,8 @@ only (§Content-hashed names), listed in og-build.json.
 | `sourcemaps/` | A publish build's source maps of the same three bundles, unlinked and not to be served (§Source maps). |
 | `origin-engine.js`, `origin-engine_bg.wasm` | The web host from wasm-bindgen: `dist/web` in a dev build, the publish variant (`dist/web-publish`, the same for every game, 2D or 3D) with `--publish` (§Variants). |
 | `origin-engine-lanes.js`, `origin-engine-lanes_bg.wasm`, `snippets/` | `--publish` with `isolation` not `off`: the lanes variant and wasm-bindgen-rayon's Worker script (§Lanes). |
-| `basis/` | Binomial's Basis transcoder and its licence. |
-| `av1/` | The AV1 fallback decoder (`og-av1.wasm`) and its Worker (`av1-worker.js`), fetched only by a browser without AV1 in WebCodecs. |
+| `basis/` | Binomial's Basis transcoder and its licence: a dev build, and a publish build whose cooked bundle holds a texture, texture array or lightmap, or that names a content base or opens a bundle at run time (og.load.bundle). Without it the page's configuration says `noBasis`. |
+| `av1/` | The AV1 fallback decoder (`og-av1.wasm`) and its Worker (`av1-worker.js`), fetched only by a browser without AV1 in WebCodecs: a build with a video, one whose code references the `video` module, or one that names a content base or opens a bundle at run time. Without it the page's configuration says `noAv1`. |
 | `cooked/` | The cooked bundle, split by streaming group: the first group and one pack per streaming group, `cooked/stream/<name>.ogb` (§Streaming groups). |
 | `icons/` | `publish.icon`, or the brand tile at 192 and 512 px. |
 | `og-build.json` | The build manifest (below). |
@@ -332,15 +332,21 @@ Each publish module, single-threaded and lanes, is split (Binaryen's `wasm-split
 the primary, which boots, and one module per optional capability:
 `physics` with its two simulations `physics3d` (rapier3d) and `physics2d`
 (rapier2d), `story` (with og.flow), `nav` (with og.ai), `motion`,
-`destruction`, `video`, `world3d` (terrain, scattered copies and
-grass, planar water, the 3D fluids and volumetric fog's shaders, with
-og.terrain) and `render3d` (the probe GI, the vegetation's wind field and
-trample map, the crowds' impostor bake) (`scripts/wasm-modules.json`
-assigns the functions). A world loads `physics` and the simulation of its
+`destruction2d` (og.PixelTerrain and og.destruction's `…2d` calls) and
+`destruction3d` (og.Destructible and the rest of og.destruction), `video`,
+`shape` (og.procgen and og.render's modelled geometries: shape, extrude,
+lathe, the polyhedra, sweep, csg, mergeGeometries), `tilemap`,
+`timeline`, `net` (lockstep rooms), `shared` (og.shared), `world3d`
+(terrain, scattered copies and grass, planar water, the 3D fluids and
+volumetric fog's shaders, with og.terrain), `render3d` (the probe GI, the
+vegetation's wind field and trample map, the crowds' impostor bake) and
+`smaa` (`scripts/wasm-modules.json` assigns the functions). A world loads `physics` and the simulation of its
 og.Physics.profile; switching the profile loads the other one. What a game using none of them runs stays in the primary,
 so such a game loads none: every function its ticks, snapshots and
 restores run (profiled by `scripts/wasm-profile.ts`), and every function
-a frame, a canvas attach or a geometry call reaches by direct calls
+a frame, a canvas attach, a primitive geometry call or the rooms' and
+og.shared's host side (the ops the Worker takes after every frame, the
+room host and session provider every page names) reaches by direct calls
 (`roots`, from Binaryen's call graph), whatever its name, up to the
 `entries`: the engine's calls into a module that run only once the game
 uses it (og.motion once og.MotionAgent is registered, a dynamic geometry's
@@ -410,7 +416,15 @@ its boot scene needs, as the cook recorded them, and those whose IDL
 module's members its code names), their `base` and the `origin` the
 page's Content-Security-Policy must allow in `connect-src`; the Worker
 fetches the referenced ones in CORS mode beside the primary during the
-loading screen and puts them in place before the first tick.
+loading screen and puts them in place before the first tick. `og.destruction`
+references `destruction2d` for its `…2d` calls and `destruction3d` for
+the others; a `physics` reference, and a `destruction` one named by no
+call or record, takes the project's profile. An asynchronous fetch (a
+referenced module, a prefetch as content is prepared) carries the
+module's SHA-256 as its Subresource Integrity (the engine's `modules.json`
+for a CDN build, the copied file's for a local one), so the browser
+refuses other bytes; a module a call loads synchronously and a lanes pool
+Worker's own fetch are not checked.
 
 **What content needs.** The cook records in cooked/.cook.ogt the modules
 each asset needs, `modules nav physics` in its block (sorted, absent when
@@ -430,7 +444,13 @@ fallback, never a different result.
 `og build --publish --modules local` copies every module into the
 output's `modules/` and fetches
 them from beside the page, for an offline or self-hosted build; an engine
-built in a checkout, which no CDN serves, does so by default.
+built in a checkout, which no CDN serves, does so by default. Its service
+worker precaches every module of the page's variant (§The shell, PWA), so an
+offline page has each one its game may call. A CDN build's precaches the
+referenced ones under their CDN URL and caches the rest on their first
+fetch. `og build`'s `downloads` count a build's own modules: the
+referenced ones in each page's boot `engine`, the single-threaded page's
+others in `later.modules`; a CDN build's are no file of it.
 `modules` is null for an unsplit engine.
 
 ## Errors
@@ -628,7 +648,8 @@ Worker's console and in the boot telemetry sample.
 - **PWA** (publish builds, in a secure context): the service worker
   precaches `./` and every file except `og-build.json`, `_headers`,
   `origingame.runtime.json`, licence and README files, the streaming packs,
-  the engine variant the page will not take and itself, under
+  the engine variant the page will not take (its primary and its split
+  modules) and itself, under
   `og-<scope>-<version>` (`<scope>` a hash of the registration's scope;
   `<version>` og-build.json's `version`'s first 16 hex digits), and drops
   only this scope's other caches. It serves the page from the network

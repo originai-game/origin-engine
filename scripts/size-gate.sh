@@ -85,41 +85,7 @@ for f in "${files[@]}"; do
 done
 pct=$((max * 100 / budget))
 printf '%-28s %-11s %12s %12s  (the largest download, %s%% of the per-download budget %s)\n' "max" "" "" "$max" "$pct" "$budget"
-
-split_json=""
-split_dir="$OG_ROOT/packages/engine/dist/web-publish"
-if [ "$#" -eq 0 ] && [ -f "$split_dir/modules/modules.json" ] && [ -f "$split_dir/origin-engine_bg.wasm" ]; then
-  split_files=("$split_dir/origin-engine_bg.wasm")
-  for m in "$split_dir"/modules/*.wasm; do
-    [ -f "$m" ] && split_files+=("$m")
-  done
-  spids=()
-  for sf in "${split_files[@]}"; do
-    cached="$OG_CONTENT_CACHE/brotli/$(og_sha256 "$sf")-$brotli_version"
-    if [ -n "${OG_SIZE_GATE_FRESH:-}" ] || [ ! -s "$cached" ]; then
-      (br="$(brotli -q 11 -c "$sf" | wc -c | tr -d ' ')" && printf '%s\n' "$br" > "$cached.part" && mv "$cached.part" "$cached") &
-      spids+=($!)
-    fi
-  done
-  for pid in "${spids[@]:-}"; do [ -z "$pid" ] || wait "$pid" || { og_err "size-gate: brotli failed"; exit 1; }; done
-  printf '\n%-28s %-11s %12s %12s\n' "split-module" "kind" "bytes" "brotli-q11"
-  for sf in "${split_files[@]}"; do
-    raw="$(og_bytes "$sf")"
-    cached="$OG_CONTENT_CACHE/brotli/$(og_sha256 "$sf")-$brotli_version"
-    br="$(cat "$cached")"
-    sname="$(basename "$sf")"
-    skind="module"
-    [ "$sname" = "origin-engine_bg.wasm" ] && skind="primary"
-    printf '%-28s %-11s %12s %12s\n' "$sname" "$skind" "$raw" "$br"
-    split_json="${split_json}${split_json:+,}{\"file\":\"$sname\",\"kind\":\"$skind\",\"bytes\":$raw,\"brotli_bytes\":$br}"
-  done
-fi
-
-if [ -n "$split_json" ]; then
-  printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"max_brotli_bytes":%s,"files":[%s],"split_modules":[%s]}\n' "$budget" "$total" "$max" "$entries" "$split_json" > "$report"
-else
-  printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"max_brotli_bytes":%s,"files":[%s]}\n' "$budget" "$total" "$max" "$entries" > "$report"
-fi
+printf '{"budget_brotli_bytes":%s,"total_brotli_bytes":%s,"max_brotli_bytes":%s,"files":[%s]}\n' "$budget" "$total" "$max" "$entries" > "$report"
 
 if [ -n "$over" ]; then
   og_err "size-gate: over wasm_core_brotli_bytes ${budget} B: $over (docs/ci.md §When the size gate fails)"
