@@ -704,36 +704,58 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
         }
     }
     for module in &ix.api.modules {
+        let mut body = String::new();
         for item in &module.items {
             if !g.wanted.contains(item.name()) {
                 continue;
             }
             match item {
-                Item::Struct(s) => g.structure(&mut out, &module.name, s),
-                Item::Enum(e) if is_closed(e) => g.enumeration(&mut out, &module.name, e),
-                Item::Union(u) => g.union(&mut out, &module.name, u),
+                Item::Struct(s) => g.structure(&mut body, &module.name, s),
+                Item::Enum(e) if is_closed(e) => g.enumeration(&mut body, &module.name, e),
+                Item::Union(u) => g.union(&mut body, &module.name, u),
                 _ => {}
             }
         }
+        if body.is_empty() {
+            continue;
+        }
+        let mod_name = field_name(&module.name);
+        let _ = writeln!(out, "pub mod {mod_name} {{");
+        let _ = writeln!(out, "    use super::*;\n");
+        for line in body.lines() {
+            if line.is_empty() {
+                out.push('\n');
+            } else {
+                let _ = writeln!(out, "    {line}");
+            }
+        }
+        let _ = writeln!(out, "}}\npub use self::{mod_name}::*;\n");
     }
     let _ = writeln!(
         out,
         "/// The rows of the engine's records (IDL `component`, `resource` and\n/// `event`), as their layouts decode them: every field, with its IDL\n/// default, read through the same rules as the wire types.\npub mod record {{\n    use super::*;\n"
     );
-    let mut rows = String::new();
     for module in &ix.api.modules {
+        let mut rows = String::new();
         for item in &module.items {
             if let Item::Record(r) = item {
                 g.fields_type(&mut rows, &module.name, &r.name, &r.fields, false);
             }
         }
-    }
-    for line in rows.lines() {
-        if line.is_empty() {
-            out.push('\n');
-        } else {
-            let _ = writeln!(out, "    {line}");
+        if rows.is_empty() {
+            continue;
         }
+        let mod_name = field_name(&module.name);
+        let _ = writeln!(out, "    pub mod {mod_name} {{");
+        let _ = writeln!(out, "        use super::*;\n");
+        for line in rows.lines() {
+            if line.is_empty() {
+                out.push('\n');
+            } else {
+                let _ = writeln!(out, "        {line}");
+            }
+        }
+        let _ = writeln!(out, "    }}\n    pub use self::{mod_name}::*;\n");
     }
     let _ = writeln!(out, "}}");
     out

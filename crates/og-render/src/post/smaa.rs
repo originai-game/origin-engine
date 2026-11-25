@@ -37,6 +37,8 @@ pub(super) struct Temporal {
 }
 
 impl Smaa {
+    // A guarded entry into the engine's `smaa` module (wasm-modules.json).
+    #[inline(never)]
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

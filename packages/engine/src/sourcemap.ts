@@ -36,9 +36,9 @@ export interface OriginalPosition {
 export class SourceMap {
   readonly sources: readonly string[];
   readonly names: readonly string[];
-  readonly #mappings: string;
+  private readonly mappings: string;
   /** Per generated line: [generated column, source, line, column, name] (0-based; -1 for none). */
-  #lines: Int32Array[] | null = null;
+  private lines: Int32Array[] | null = null;
 
   constructor(raw: RawSourceMap | string) {
     const map = (typeof raw === "string" ? JSON.parse(raw) : raw) as RawSourceMap;
@@ -48,12 +48,12 @@ export class SourceMap {
     const root = map.sourceRoot ? map.sourceRoot.replace(/\/?$/, "/") : "";
     this.sources = map.sources.map((s) => (s === null ? "" : root + s));
     this.names = map.names ?? [];
-    this.#mappings = map.mappings;
+    this.mappings = map.mappings;
   }
 
   /** The original position of a 1-based generated line and column, or null when the map says nothing for it. */
   original(line: number, column: number): OriginalPosition | null {
-    const segments = this.#decoded()[line - 1];
+    const segments = this.decoded()[line - 1];
     if (!segments || segments.length === 0) return null;
     const col = column - 1;
     // The last segment that starts at or before the column.
@@ -74,10 +74,10 @@ export class SourceMap {
     return { source: this.sources[source] ?? "", line: segments[at * 5 + 2]! + 1, column: segments[at * 5 + 3]! + 1, name: name >= 0 ? (this.names[name] ?? null) : null };
   }
 
-  #decoded(): Int32Array[] {
-    if (this.#lines) return this.#lines;
+  private decoded(): Int32Array[] {
+    if (this.lines) return this.lines;
     const lines: Int32Array[] = [];
-    const m = this.#mappings;
+    const m = this.mappings;
     let source = 0;
     let srcLine = 0;
     let srcCol = 0;
@@ -88,9 +88,10 @@ export class SourceMap {
     const vlq = (): number => {
       let result = 0;
       let shift = 0;
+      const table = base64Table();
       for (;;) {
         const c = m.charCodeAt(i++);
-        const digit = BASE64[c] ?? -1;
+        const digit = table[c] ?? -1;
         if (digit < 0) throw new Error(`source map mappings: bad character at ${i - 1}`);
         result += (digit & 31) << shift;
         if ((digit & 32) === 0) break;
@@ -136,13 +137,20 @@ export class SourceMap {
       line.push(...segment);
     }
     endLine();
-    this.#lines = lines;
+    this.lines = lines;
     return lines;
   }
 }
 
-const BASE64: Record<number, number> = {};
-"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".split("").forEach((ch, k) => (BASE64[ch.charCodeAt(0)] = k));
+let BASE64: Record<number, number> | null = null;
+function base64Table(): Record<number, number> {
+  if (!BASE64) {
+    BASE64 = {};
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    for (let k = 0; k < chars.length; k++) BASE64[chars.charCodeAt(k)] = k;
+  }
+  return BASE64;
+}
 
 /**
  * A stack frame's location, as V8 (`    at fn (url:1:2)`, `    at url:1:2`)

@@ -91,7 +91,7 @@ const [mine, other] = "threads" in choice ? [variants.lanes, variants.single] : 
 // A build on an asset base (docs/web-export.md §Asset base) has `cooked/`
 // there: those files are cached under their URL on that origin.
 const packageBase = OG_SW.assets ? new URL(`${OG_SW.assets.replace(/\/$/, "")}/`) : base;
-const href = (f: string) => new URL(f.replaceAll("#", "%23"), f.startsWith("cooked/") ? packageBase : base).href;
+const href = (f: string) => (/^https?:\/\//.test(f) ? f : new URL(f.replaceAll("#", "%23"), f.startsWith("cooked/") ? packageBase : base).href);
 const urls = new Set([...OG_SW.files, ...mine].map(href));
 const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map(href));
 const index = new URL("index.html", base).href;

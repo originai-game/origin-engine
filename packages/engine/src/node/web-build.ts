@@ -453,6 +453,8 @@ export interface Downloads {
     readonly videos: DownloadSum;
     /** The AV1 fallback decoder (av1/og-av1.wasm), fetched only where WebCodecs cannot decode AV1. */
     readonly av1: DownloadSum;
+    /** Split engine modules (`modules/*.wasm`, `modules-lanes/*.wasm`), fetched on demand. */
+    readonly modules: DownloadSum;
     /** The service worker, the web manifest and the icons (a publish build's PWA, after the first frame). */
     readonly pwa: DownloadSum;
   };
@@ -496,6 +498,7 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
       worklet: sum((p) => p === "audio-worklet.js" || p === "audio-decoder.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
+      modules: sum((p) => SPLIT_MODULE.test(p)),
       pwa: sum((p) => p === "sw.js" || p === "manifest.webmanifest" || p.startsWith("icons/")),
     },
   };
@@ -504,22 +507,39 @@ export function downloadsOf(files: readonly SizeRow[], preloads: ReadonlySet<str
 /**
  * The service worker's lists (`OG_SW` without its version) for a publish
  * build's file paths: `files`, precached at install, and each engine
- * variant's; `lazy`, cached when the engine first fetches them: the
- * streaming groups' packs, a long sound's chunks, a streamed texture's
- * whole chain (`<id>#mips`, read when it is big on screen), a streamed video's index
- * and chunks (a page fetches the main stream or one rendition: HEVC or H.264
- * where WebCodecs decodes no AV1, else the 720p one on the AV1 fallback; of
- * it only the chunks its players reach) and the
+ * variant's (`single`, `lanes`: primary plus only the split modules the
+ * game references); `lazy`, cached when the engine first fetches them: the
+ * unreferenced split engine modules, streaming groups' packs, a long
+ * sound's chunks, a streamed texture's whole chain (`<id>#mips`, read when
+ * it is big on screen), a streamed video's index and chunks, and the
  * fallback decoder.
  */
-export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>, preloads: ReadonlySet<string> = new Set()): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
-  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || (FONT_FACE.test(f) && !preloads.has(f)) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
+export function serviceWorkerLists(
+  paths: readonly string[],
+  packs: ReadonlySet<string>,
+  preloads: ReadonlySet<string> = new Set(),
+  referenced: { readonly single?: ReadonlySet<string>; readonly lanes?: ReadonlySet<string> } = {},
+): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
+  const isSingleSplit = (f: string) => f.startsWith("modules/") && SPLIT_MODULE.test(f);
+  const isLanesSplit = (f: string) => f.startsWith("modules-lanes/") && SPLIT_MODULE.test(f);
+  const isSingleRef = (f: string) => isSingleSplit(f) && (referenced.single?.has(f) ?? false);
+  const isLanesRef = (f: string) => isLanesSplit(f) && (referenced.lanes?.has(f) ?? false);
+  const onDemand = (f: string) =>
+    packs.has(f)
+    || SOUND_CHUNK.test(f)
+    || TEXTURE_MIPS.test(f)
+    || (FONT_FACE.test(f) && !preloads.has(f))
+    || (f.startsWith("cooked/") && VIDEO_STREAM.test(f))
+    || f.startsWith("av1/")
+    || (SPLIT_MODULE.test(f) && !isSingleRef(f) && !isLanesRef(f));
   const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f));
+  const isSingle = (f: string) => SINGLE_ENGINE.test(f) || isSingleRef(f);
+  const isLanes = (f: string) => LANES_ENGINE.test(f) || isLanesRef(f);
   return {
-    files: ["./", ...precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f))],
+    files: ["./", ...precache.filter((f) => !isSingle(f) && !isLanes(f))],
     lazy: paths.filter(onDemand).sort(),
-    single: precache.filter((f) => SINGLE_ENGINE.test(f)),
-    lanes: precache.filter((f) => LANES_ENGINE.test(f)),
+    single: precache.filter(isSingle),
+    lanes: precache.filter(isLanes),
   };
 }
 
@@ -532,6 +552,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
   if (d.boot.lanes) lines.push(boot("boot, lanes page (isolated)", d.boot.lanes));
   lines.push(boot("boot, single-threaded page", d.boot.single));
   const later = [
+    d.later.modules.files ? `${d.later.modules.files} split engine modules ${d.later.modules.compressed} B (on demand)` : "",
     d.later.packs.files ? `${d.later.packs.files} streaming packs ${d.later.packs.compressed} B (as their groups load)` : "",
     d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
     d.later.mips.files ? `${d.later.mips.files} texture mip chains ${d.later.mips.compressed} B (when big on screen)` : "",
@@ -901,6 +922,8 @@ const SINGLE_ENGINE = /^origin-engine(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?
 /** A streamed video's index and chunks (og-cook's output files of `<id>#stream`, its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264`, and each one's chunks `<stream>.<n>`). */
 const VIDEO_STREAM = /\.stream(720|hevc|h264)?(\.\d+)?\.ogb$/;
 const LANES_ENGINE = /^(origin-engine-lanes(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?\.wasm)|snippets\/.*)$/;
+/** Split engine WASM modules copied locally (`--modules local` or checkout builds). */
+const SPLIT_MODULE = /^modules(?:-lanes)?\/.+\.wasm$/;
 
 /**
  * The files a publish build names by content (docs/web-export.md
@@ -1027,6 +1050,12 @@ export async function webBuild(project: string, entry: string, out: string, publ
     const b = await bundleGame(src, join(out, file), "script", publish, { root: project, ...mapOptions(out, file, publish) });
     if (!b.ok) return fail(`bundling ${file}: ${b.reason}`);
   }
+  const gameGraphFile = join(out, "game.js.graph.json");
+  const reachedGameFiles = existsSync(gameGraphFile)
+    ? ((JSON.parse(readFileSync(gameGraphFile, "utf8")) as { files?: string[] }).files ?? undefined)
+    : undefined;
+  // Bundle graphs contain local absolute paths and are build inputs only, never shipped.
+  for (const file of ["game.js", "play.js", "audio-worklet.js"]) rmSync(join(out, `${file}.graph.json`), { force: true });
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) cpSync(join(engineDir, f), join(out, f));
   // The lanes variant needs cross-origin isolation, which only a build that declares it can get.
   const missingLanes = publish && p.isolation !== "off" ? LANES_FILES.filter((f) => !existsSync(join(engineDir, f))) : [];
@@ -1042,27 +1071,52 @@ export async function webBuild(project: string, entry: string, out: string, publ
   // A split engine's modules (docs/web-export.md §Modules): served from the
   // engine version's directory on the CDN, or copied here (`--modules
   // local`, and an engine built in a checkout, which no CDN serves yet).
+  const referenced = publish ? referencedModules(project, bindingsJson as never, reachedGameFiles) : [];
   const splitOf = (dir: string): EngineModules | null => {
     const listing = join(engineDir, dir, "modules.json");
     if (!publish || !existsSync(listing)) return null;
-    const listed = JSON.parse(readFileSync(listing, "utf8")) as Record<string, { file: string; base?: string }>;
+    const listed = JSON.parse(readFileSync(listing, "utf8")) as Record<string, { file: string; base?: string; sha256?: string }>;
     const entries = Object.entries(listed);
     const cdn = p.modules === "cdn" ? entries[0]?.[1].base : undefined;
     if (!cdn) cpSync(join(engineDir, dir), join(out, dir), { recursive: true });
     rmSync(join(out, dir, "modules.json"), { force: true });
     const files = Object.fromEntries(entries.map(([m, e]) => [m, cdn ? basename(e.file) : e.file]));
-    return { base: cdn ?? "", files, referenced: referenced.filter((m) => m in listed) };
+    const hashes: Record<string, string> = {};
+    for (const [m, e] of entries) {
+      if (cdn) {
+        if (typeof e.sha256 === "string" && e.sha256.length === 64) hashes[m] = e.sha256;
+      } else {
+        const localFile = join(out, e.file);
+        if (existsSync(localFile)) hashes[m] = sha256(new Uint8Array(readFileSync(localFile)));
+      }
+    }
+    return {
+      base: cdn ?? "",
+      files,
+      referenced: referenced.filter((m) => m in listed),
+      ...(Object.keys(hashes).length > 0 ? { hashes } : {}),
+    };
   };
-  const referenced = publish ? referencedModules(project, bindingsJson as never) : [];
   const single = splitOf("modules");
   const laneModules = lanes ? splitOf("modules-lanes") : null;
   if (publish && p.modules === "cdn" && single && single.base === "") {
     process.stderr.write(`og build: note: this engine (${ENGINE_VERSION}) names no CDN for its modules (an engine built in a checkout), so they are copied into ${join(out, "modules")}\n`);
   }
-  cpSync(vendor, join(out, "basis"), { recursive: true });
+  const finalManifest = assets?.manifest ?? cookedManifest;
+  const usesRuntimeBundle = (reachedGameFiles ?? []).some((f) => {
+    if (!f.startsWith(project + sep) || !existsSync(f)) return false;
+    return /\bog\.load\.bundle\b/.test(readFileSync(f, "utf8"));
+  });
+  // Only ship the Basis transcoder when the build can load Basis textures
+  // (or in dev builds / remote content / runtime bundles), and only ship the
+  // AV1 fallback decoder when video is present or referenced.
+  const needsBasis = !publish || Boolean(p.content) || usesRuntimeBundle || /^    type "?og\.(?:Texture|TextureArray|Lightmap)"?[ \t]*$/m.test(finalManifest);
+  const needsAv1 = Boolean(p.content) || usesRuntimeBundle || referenced.includes("video") || /^    type "?og\.Video(?:Stream|Chunk)?"?[ \t]*$/m.test(finalManifest) || VIDEO_STREAM.test(finalManifest);
+  if (needsBasis) cpSync(vendor, join(out, "basis"), { recursive: true });
   // The AV1 fallback decoder, fetched only by a browser without AV1 in WebCodecs (src/web/video.ts).
   const av1 = join(ENGINE_ROOT, "dist", "av1", "og-av1.wasm");
-  if (existsSync(av1)) {
+  const hasAv1 = needsAv1 && existsSync(av1);
+  if (hasAv1) {
     cpSync(av1, join(out, "av1", "og-av1.wasm"));
     writeFileSync(join(out, "av1", "av1-worker.js"), av1WorkerSource());
   }
@@ -1081,8 +1135,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
     writeFileSync(join(out, "cooked", ".cook.ogt"), assets.manifest);
   }
   // Streaming groups: a grouped output is read from its group's pack, so its own file is not shipped.
-  const split = streamGroupsOf(assets?.manifest ?? cookedManifest);
-  const preloads = preloadsOf(assets?.manifest ?? cookedManifest);
+  const split = streamGroupsOf(finalManifest);
+  const preloads = preloadsOf(finalManifest);
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
   const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
   if (existsSync(join(out, MOTION_MODEL))) packs.add(MOTION_MODEL);
@@ -1161,6 +1215,8 @@ export async function webBuild(project: string, entry: string, out: string, publ
     ...(p.content ? { content: p.content } : {}),
     // The page resolves a module base given as "" against itself (shell/page.ts).
     ...(single ? { modules: { single, ...(laneModules ? { lanes: laneModules } : {}) } } : {}),
+    ...(needsBasis ? {} : { noBasis: true }),
+    ...(hasAv1 ? {} : { noAv1: true }),
   };
   writeFileSync(join(out, "index.html"), pageHtml({ settings, profile, publish, config, icon, pwa: publish, play: served("play.js"), css: served("shell.css"), install: served("install.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
@@ -1194,13 +1250,31 @@ export async function webBuild(project: string, entry: string, out: string, publ
   if (publish) {
     const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
-    // The first group is precached; a streaming group's pack is cached when the engine fetches it.
-    // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb), and a streamed texture's whole chain (cooked/<texture>.mips.ogb).
+    // The first group is precached; unreferenced split modules, streaming
+    // groups' packs, sound chunks, texture mip chains, and video streams are
+    // cached on demand when the engine fetches them.
     const rows = fileRows();
-    const lists = serviceWorkerLists(rows.map((f) => f.path), packs, preloads);
+    const localRef = (m: EngineModules | null) =>
+      new Set(m && m.base === "" ? m.referenced.map((k) => m.files[k]).filter((f): f is string => typeof f === "string") : []);
+    const lists = serviceWorkerLists(rows.map((f) => f.path), packs, preloads, { single: localRef(single), lanes: localRef(laneModules) });
     // Each file's content, so a new build's worker carries what did not change over from the old cache.
     const known = new Set([...lists.files, ...lists.single, ...lists.lanes, ...lists.lazy]);
-    const hashes = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
+    const hashes: Record<string, string> = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
+    const addCdn = (m: EngineModules | null, target: string[]) => {
+      if (!m || m.base === "") return;
+      const refSet = new Set(m.referenced);
+      const dir = m.base.endsWith("/") ? m.base : `${m.base}/`;
+      for (const [name, file] of Object.entries(m.files)) {
+        const url = new URL(file, dir).href;
+        if (refSet.has(name)) target.push(url);
+        else lists.lazy.push(url);
+        const h = m.hashes?.[name];
+        if (h) hashes[url] = h.slice(0, 16);
+      }
+    };
+    addCdn(single, lists.single);
+    addCdn(laneModules, lists.lanes);
+    lists.lazy = [...new Set(lists.lazy)].sort();
     writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), ...lists, hashes, ...(p.assets ? { assets: p.assets } : {}) })};\n${sw}`);
     version = identity(fileRows());
   }

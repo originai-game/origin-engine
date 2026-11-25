@@ -101,6 +101,7 @@ module atmosphere {
     aliases "local fog, fog in an area, ground mist in a hollow, smoke filling a room, fog bank, haze in a cave, steam, volumetric fog zone"
     doc "Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera."
     guide "render §7"
+    split world3d
     field color Color "The fog's colour: what it tints the light it scatters." {
       default 1 1 1
     }
@@ -712,6 +713,7 @@ module atmosphere {
   resource Wind {
     doc "The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind."
     guide "render §8"
+    split render3d
     field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
       default 1 0 0
       tunable true
@@ -762,6 +764,7 @@ module atmosphere {
   component WindMotor {
     doc "A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops."
     guide "render §8"
+    split render3d
     field kind WindMotorKind "How it pushes."
     field radius f32 "How far it reaches." {
       default 6

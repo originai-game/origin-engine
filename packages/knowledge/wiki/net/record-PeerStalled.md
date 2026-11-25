@@ -27,4 +27,4 @@ event PeerStalled {
 }
 ```
 
-<sub>Module `net` line 111</sub>
+<sub>Module `net` line 112</sub>

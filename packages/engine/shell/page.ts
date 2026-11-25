@@ -47,6 +47,8 @@ import { PROBE_GLOBAL, REPLAY_SEED_PARAM } from "../src/generated/consts.ts";
 import { browserOf, crashFields, deviceOf, gpuOf, memoryOf, playFields, type Context, type MemoryInfo } from "./telemetry.ts";
 import type { EngineModules } from "../src/web/split.ts";
 
+declare const __OG_PUBLISH__: boolean | undefined;
+
 /** The page's configuration (`<script type="application/json" id="og-config">`, written by og build). */
 export interface ShellConfig {
   readonly engine: string;
@@ -113,6 +115,10 @@ export interface ShellConfig {
    * unsplit engine.
    */
   readonly modules?: { readonly single: EngineModules; readonly lanes?: EngineModules };
+  /** True when the build omitted `basis/` because no cooked Basis textures are present. */
+  readonly noBasis?: boolean;
+  /** True when the build omitted `av1/` because no video assets or video code are present. */
+  readonly noAv1?: boolean;
 }
 
 /**
@@ -232,6 +238,8 @@ export function readConfig(doc: Document = document): ShellConfig {
     ...(c.assets && typeof c.assets.base === "string" && typeof c.assets.manifest === "string" ? { assets: { base: c.assets.base, manifest: c.assets.manifest } } : {}),
     ...(typeof c.content === "string" && c.content !== "" ? { content: c.content } : {}),
     ...(c.modules && typeof c.modules.single?.base === "string" ? { modules: c.modules } : {}),
+    ...(c.noBasis === true ? { noBasis: true } : {}),
+    ...(c.noAv1 === true ? { noAv1: true } : {}),
   };
 }
 
@@ -563,7 +571,16 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
     card.querySelector("h1")!.textContent = title;
     card.querySelector("p")!.textContent = message;
     // A dev build serves its maps (§Source maps): the card shows the game's .ts lines.
-    if (config.build === "dev") void devStack(message).then((mapped) => mapped !== message && (card.querySelector("p")!.textContent = mapped));
+    if (!(typeof __OG_PUBLISH__ !== "undefined" && __OG_PUBLISH__) && config.build === "dev") {
+      void (async () => {
+        const readMap = (f: string) => within(fetch(new URL(`./${f}.map`, location.href)).then((r) => (r.ok ? r.text() : null)));
+        const [game, play] = await Promise.all([readMap("game.js"), readMap("play.js")]);
+        if (game || play) {
+          const mapped = mapStack(message, { "game.js": game, "play.js": play });
+          if (mapped !== message) card.querySelector("p")!.textContent = mapped;
+        }
+      })();
+    }
     const pre = card.querySelector<HTMLElement>("#og-error-log");
     if (pre) pre.textContent = log.lines.join("\n") || "(no log lines)";
     const dumpPre = card.querySelector<HTMLElement>("#og-error-dump");
@@ -734,12 +751,6 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
     if (!telemetry || !playingSince) return;
     player.sample(playFields("end", null, lastMemory, failures.splice(0, 20), { ms: Math.round(performance.now() - playingSince), samples }));
   };
-  /** A dev build's stack mapped with the maps it serves beside its bundles; the text as it was when they are not there. */
-  const devStack = async (text: string): Promise<string> => {
-    const map = (f: string) => within(fetch(new URL(`./${f}.map`, location.href)).then((r) => (r.ok ? r.text() : null)));
-    const [game, play] = await Promise.all([map("game.js"), map("play.js")]);
-    return game || play ? mapStack(text, { "game.js": game, "play.js": play }) : text;
-  };
   let shell: Shell;
   try {
     shell = await Shell.start({
@@ -756,10 +767,10 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
       ...(content ? { content } : {}),
       ...(deferred ? { contentLater: true } : {}),
-      basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
-      av1: at("av1/og-av1.wasm"),
+      ...(config.noBasis ? {} : { basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") } }),
+      ...(config.noAv1 ? {} : { av1: at("av1/og-av1.wasm") }),
       // The decoders' Workers from the page's own files: no `blob:` script (a strict CSP).
-      decoders: { audio: at("audio-decoder.js"), av1: at("av1/av1-worker.js") },
+      decoders: { audio: at("audio-decoder.js"), ...(config.noAv1 ? {} : { av1: at("av1/av1-worker.js") }) },
       autoplay: false,
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,

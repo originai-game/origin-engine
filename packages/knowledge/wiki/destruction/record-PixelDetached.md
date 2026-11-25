@@ -21,6 +21,7 @@ Token `og.PixelDetached`, registered under the schema name `og.PixelDetached`; i
 ```ogt
 event PixelDetached {
   doc "Cells of an og.PixelTerrain (or of an og.PixelPiece fracture2d broke) broke loose during the tick, read the tick after: one for each piece, in the order they were cut, for its sound, its dust, its score."
+  split destruction2d physics
   field terrain Entity "The og.PixelTerrain."
   field piece Entity "The og.PixelPiece it became; 0 for an island under minPiece, which vanished."
   field cells u32 "Its cells."
@@ -32,4 +33,4 @@ event PixelDetached {
 }
 ```
 
-<sub>Module `destruction` line 413</sub>
+<sub>Module `destruction` line 419</sub>

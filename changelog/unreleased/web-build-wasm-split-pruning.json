@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og build --json",
+      "summary": "Reports local split engine WASM modules under `downloads.later.modules` and verifies split module fetches with Subresource Integrity when `modules.json` provides SHA-256 digests."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og build --publish",
+      "summary": "Splits `shape`, `tilemap`, `timeline`, `net`, `shared`, `smaa`, and per-module generated wire types out of the primary WASM; excludes unreferenced split modules from service worker precaching (caching only referenced split modules for the active variant and caching CDN/local split modules on demand); omits `basis/` and `av1/` when unused; slims embedded `bindings.json` and drops `SourceMap` from publish JS bundles; removes leaked `.graph.json` files from `dist/`; and resolves `destruction` to `destruction2d`/`destruction3d` by profile."
+    }
+  ]
+}

@@ -27,4 +27,4 @@ component SharedAvatar {
 }
 ```
 
-<sub>Module `shared` line 53</sub>
+<sub>Module `shared` line 54</sub>

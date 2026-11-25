@@ -10,38 +10,80 @@
       "^og_render::fields::ground::",
       "^og_render_data::(terrain|terrain_tiles)::",
       "^og_bundle::runtime::terrain::",
-      "^og_runtime::bind::(terrain|terrain_stream|seabed)::"
+      "^og_runtime::bind::(terrain|terrain_stream|seabed)::",
+      "^og_runtime::host::wire::types::(record::)?terrain::"
     ],
     "render3d": [
       "^og_render::shading::(gi_probes|gi_scene)::",
       "^og_render::fields::(wind_field|trample)::",
       "^og_render::systems::crowd::crowd_impostor::"
     ],
+    "smaa": [
+      "^og_render::post::smaa::"
+    ],
     "video": [
       "^og_video::",
-      "^og_runtime::bind::video"
+      "^og_runtime::bind::video",
+      "^og_runtime::host::wire::types::(record::)?video::"
     ],
     "story": [
       "^og_story::",
-      "^og_runtime::bind::(story|flow)"
+      "^og_runtime::bind::(story|flow)",
+      "^og_runtime::host::wire::types::(record::)?(story|flow)::"
     ],
     "nav": [
       "^og_ai::",
       "^spade::",
       "^rstar::",
-      "^og_runtime::bind::(nav|ai|agents|sight)"
+      "^og_runtime::bind::(nav|ai|agents|sight)",
+      "^og_runtime::host::wire::types::(record::)?(nav|ai|sight)::"
     ],
     "motion": [
       "^og_anim::motion",
-      "^og_runtime::bind::motion"
+      "^og_runtime::bind::motion",
+      "^og_runtime::host::wire::types::(record::)?motion::"
+    ],
+    "shape": [
+      "^og_shape::(?!generators::earcut::)",
+      "^og_shape_formats::",
+      "^i_overlay::",
+      "^og_runtime::bind::procgen::",
+      "^og_runtime::present::geometry::build::og_render_(shape|extrude|lathe|polyhedron|icosahedron|dodecahedron|octahedron|tetrahedron|sweep|csg)_geometry$",
+      "^og_runtime::present::geometry::build::og_render_merge_geometries$",
+      "^og_runtime::host::wire::types::(record::)?procgen::"
+    ],
+    "tilemap": [
+      "^og_tilemap::",
+      "^og_runtime::present::feel::tiles::",
+      "^og_runtime::host::wire::types::(record::)?tilemap::"
+    ],
+    "timeline": [
+      "^og_timeline::(?!path::)",
+      "^og_runtime::bind::timeline::evaluate::",
+      "^og_runtime::bind::timeline::playback::(step$|og_timeline_|op$|has_timeline$|timeline_in_system$|markers$|release$)",
+      "^og_runtime::bind::timeline::present::(apply$|collect$|material_of$)",
+      "^og_runtime::host::wire::types::(record::)?timeline::"
+    ],
+    "net": [
+      "^og_net::(lockstep|protocol)::",
+      "^og_runtime::bind::net::(lockstep|rooms|host_side)::",
+      "^og_runtime::bind::net::tick::(gate_active|after_tick_active|config)$",
+      "^og_runtime::host::wire::types::(record::)?net::"
+    ],
+    "shared": [
+      "^og_shared::",
+      "^og_runtime::bind::shared::",
+      "^og_runtime::host::wire::types::(record::)?shared::"
     ],
     "destruction2d": [
       "^og_physics::destruction::terrain2d",
-      "^og_runtime::bind::destruction2d"
+      "^og_runtime::bind::destruction2d",
+      "^og_runtime::host::wire::types::(record::)?destruction::(Pixel|Carve2d|Fill2d|Explosion2d|Fracture2d)"
     ],
     "destruction3d": [
       "^og_physics::destruction",
-      "^og_runtime::bind::destruction::"
+      "^og_runtime::bind::destruction::",
+      "^og_runtime::host::wire::types::(record::)?destruction::"
     ],
     "physics2d": [
       "^rapier2d::",
@@ -57,22 +99,23 @@
       "^og_physics::",
       "^nalgebra::",
       "^simba::",
-      "^robust::"
+      "^robust::",
+      "^og_runtime::host::wire::types::(record::)?physics::"
     ]
   },
   "//siblings": "Modules built from one source per variant (og-physics' rigid/sim.rs, for dim2 and for dim3), whose identical bodies the linker folds under one name: a function one calls in the other goes to their parent (wasm-split.ts keepShared).",
   "siblings": {
     "physics": ["physics2d", "physics3d"]
   },
-  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, the tick log the web host takes every tick, a canvas attach, a geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
+  "//roots": "The engine's calls every game makes whatever it uses (scripts/wasm-split.ts framePath): a frame, the tick log the web host takes every tick, a canvas attach, a basic primitive geometry. Every function they reach by direct calls stays in the primary, stopping at `entries`.",
   "roots": [
     "^og_engine_frame$",
     "^og_engine_take_log$",
     "og_web_attach_canvas",
-    "^og_render_[a-z0-9_]+_geometry$"
+    "^og_render_(box|plane|sphere|buffer|update|cylinder|cone|capsule|torus|ring|circle|tube)_geometry$"
   ],
   "//world3d": "Not the 2D water (Water2d, water_2d_strips: the sprite order's strips) nor the terrains' effect group (terrain::fx), which every frame writes and binds: og-render draws a frame behind og-runtime's RenderBackend, a call the roots' graph does not follow, so an og-render function a module's pattern takes and every frame calls would load that module for every game.",
-  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays; og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs). og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand), and its own guarded entries into render3d: the probe GI once a look enables it (pass_gi_probes.rs), the wind field and trample map once wind, a motor or a pusher drives them, and a crowd's impostor bake once a crowd draws cards.",
+  "//entries": "The calls those make into a module only once the game uses it, each guarded in og-runtime (names without crate hashes): og.motion once og.MotionAgent is registered (engine/tick.rs render); set_mesh for a dynamic geometry's update, a streamed model's proxy and a destructible's hulls (generated geometry goes to physics' mesh source, bind/modules.rs note_mesh); the physics debug view; a video's stream once a video plays; og-runtime's terrain extraction, release, seabed and drop shadows once a terrain is loaded or named (present/extract/frame.rs uses_terrain, world/assets/release.rs); tilemap chunk quad building once a Tilemap entity exists; timeline tick stepping and material-track apply once a Timeline runs; active lockstep gate/after_tick once a peer joins a room. og-render makes its 3D world renderers through closures the frame path does not follow (renderer/resources.rs OnDemand), and its own guarded entries into render3d and smaa: the probe GI once a look enables it (pass_gi_probes.rs), the wind field and trample map once wind, a motor or a pusher drives them, a crowd's impostor bake once a crowd draws cards, and SMAA setup once antialias is Smaa/SmaaT2x.",
   "entries": [
     "^og_runtime::bind::motion::present::tick::catch_up$",
     "^og_runtime::bind::modules::set_mesh$",
@@ -86,8 +129,13 @@
     "^og_runtime::bind::terrain::(draw::)?(extract|seabed_grid)$",
     "^og_runtime::bind::terrain::ground_drop_shadows$",
     "^og_runtime::bind::terrain::(release::)?free_released$",
+    "^og_tilemap::state::chunk_quads$",
+    "^og_runtime::bind::timeline::present::apply$",
+    "^og_runtime::bind::timeline::playback::step$",
+    "^og_runtime::bind::net::tick::(gate_active|after_tick_active)$",
     "^<og_render::shading::gi_probes::GiProbes>::(new|prepare|record)$",
     "^<og_render::fields::(wind_field::WindFieldSim|trample::Trample)>::step$",
-    "^<og_render::systems::crowd::crowd_impostor::CrowdImpostors>::(new|atlas)$"
+    "^<og_render::systems::crowd::crowd_impostor::CrowdImpostors>::(new|atlas)$",
+    "^<og_render::post::smaa::Smaa>::new$"
   ]
 }

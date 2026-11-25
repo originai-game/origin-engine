@@ -151,18 +151,35 @@ export interface EngineModules {
   readonly base: string;
   readonly files: Readonly<Record<string, string>>;
   readonly referenced: readonly string[];
+  /** Optional sha256 hex digest per module, verified with Subresource Integrity on fetch. */
+  readonly hashes?: Readonly<Record<string, string>>;
+}
+
+/** Converts a 64-char sha256 hex digest to an SRI `sha256-<base64>` string. */
+function sriOf(hex: string | undefined): string | undefined {
+  if (!hex || !/^[0-9a-f]{64}$/i.test(hex)) return undefined;
+  let bin = "";
+  for (let i = 0; i < 64; i += 2) bin += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16));
+  return `sha256-${btoa(bin)}`;
 }
 
 /**
  * The browser's module host: `files[name]` (else `modules/<name>.wasm`)
- * under `base`, fetched in CORS mode and compiled as it streams;
- * synchronously a blocking request, which a Worker may make. The modules in
- * `start` are fetched at once, so they download beside the primary.
+ * under `base`, fetched in CORS mode (with SRI when `hashes` gives its
+ * sha256) and compiled as it streams; synchronously a blocking request,
+ * which a Worker may make. The modules in `start` are fetched at once, so
+ * they download beside the primary.
  */
-export function fetchModuleHost(base: string | URL, files: Readonly<Record<string, string>> = {}, start: readonly string[] = []): ModuleHost {
+export function fetchModuleHost(
+  base: string | URL,
+  files: Readonly<Record<string, string>> = {},
+  start: readonly string[] = [],
+  hashes: Readonly<Record<string, string>> = {},
+): ModuleHost {
   const url = (name: string) => moduleUrl(name, files, base).href;
   const get = async (name: string) => {
-    const r = await fetch(url(name), { mode: "cors", credentials: "omit" });
+    const integrity = sriOf(hashes[name]);
+    const r = await fetch(url(name), { mode: "cors", credentials: "omit", ...(integrity ? { integrity } : {}) });
     if (!r.ok) throw new Error(`cannot fetch engine module ${name} from ${url(name)} (HTTP ${r.status})`);
     return r;
   };

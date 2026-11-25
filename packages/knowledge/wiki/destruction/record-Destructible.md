@@ -40,6 +40,7 @@ component Destructible {
   doc "Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). A standing prop (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (its piece's hull) on an og.Chunk, replacing the entity's own Collider and RigidBody. A moving prop (a dynamic or kinematic body) collides as itself until its first break, when its chunks replace its Collider, RigidBody and Velocity, moving as it moved. Then each chunk draws its piece of the hidden model (its tint, variant, shadows)."
   doc "Chunks' colliders and mass follow og.Transform.scale's mean."
   guide "physics §9"
+  split destruction3d physics
   aliases "breakable, destructable, destructible prop, fracture, Unreal Geometry Collection"
   field toughness f32 "How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000." {
     default 800

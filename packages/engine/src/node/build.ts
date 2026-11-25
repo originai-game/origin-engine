@@ -29,7 +29,7 @@ import { createRequire, isBuiltin } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { placeAssertions } from "./assert-sites.ts";
-import { addonPath } from "./index.ts";
+import { addonPath } from "./addon.ts";
 
 type Compiled = { ok: true; code: string; map: string; warnings: string[] } | { ok: false; reason: string };
 let jsxAddon: { og_node_jsx(path: string, source: string): string } | undefined;
@@ -64,6 +64,7 @@ declare const Bun: {
     naming?: string;
     plugins?: unknown[];
     metafile?: boolean;
+    define?: Record<string, string>;
   }): Promise<{ success: boolean; logs: unknown[]; outputs: Array<{ path: string; kind: string; size: number; text(): Promise<string> }>; metafile?: Metafile }>;
   write(path: string, data: string): Promise<number>;
   resolveSync(specifier: string, parent: string): string;
@@ -332,6 +333,66 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
         const loader = /\.[cm]?ts$/.test(a.path) ? "ts" : "js";
         return { contents: text, loader };
       });
+      // In publish web builds, strip docs/metadata/unused call fields from the
+      // embedded bindings table, keeping only what the runtime actually reads
+      // (runtime/host.ts, web/host.ts, runtime/probe-params.ts, runtime/declare.ts).
+      const bindingsPath = join(ENGINE_ROOT, "types", "bindings.json");
+      if (target === "web" && minify) {
+        build.onLoad({ filter: /[\\/]types[\\/]bindings\.json$/, namespace: "file" }, (a) => {
+          if (resolve(a.path) !== bindingsPath) return undefined;
+          const raw = JSON.parse(readFileSync(a.path, "utf8")) as {
+            columns: unknown[];
+            calls: Array<{
+              symbol?: string;
+              module?: string;
+              kind?: string;
+              name?: string;
+              returns?: string;
+              publish?: boolean;
+              params?: Array<{ name: string; type: string; optional?: boolean }>;
+            }>;
+            components: Array<{ name: string; schema: string; fields: Array<{ name: string; column?: string; type?: string; default?: unknown; list?: number }> }>;
+            resources: Array<{ name: string; schema: string; fields: Array<{ name: string; column?: string; type?: string; default?: unknown; list?: number }> }>;
+            events: Array<{ name: string; schema: string }>;
+          };
+          const slimRecord = (r: { name: string; schema: string; fields: Array<{ name: string; column?: string; type?: string; default?: unknown; list?: number }> }) => ({
+            name: r.name,
+            schema: r.schema,
+            fields: r.fields.map((f) => ({
+              name: f.name,
+              ...(f.column !== undefined ? { column: f.column } : f.type !== undefined ? { type: f.type } : {}),
+              ...(f.default !== undefined ? { default: f.default } : {}),
+              ...(f.list !== undefined ? { list: f.list } : {}),
+            })),
+          });
+          const calls: unknown[] = [];
+          for (const c of raw.calls) {
+            if (c.module === "probe" && c.kind === "method") {
+              calls.push({
+                ...(c.symbol !== undefined ? { symbol: c.symbol } : {}),
+                module: c.module,
+                kind: c.kind,
+                name: c.name,
+                returns: c.returns,
+                publish: c.publish,
+                params: (c.params ?? []).map((p) => ({ name: p.name, type: p.type, optional: Boolean(p.optional) })),
+              });
+            } else if (c.publish === false) {
+              calls.push({ symbol: c.symbol, module: c.module, returns: c.returns, publish: false });
+            } else if (typeof c.symbol === "string" && typeof c.returns === "string" && c.returns.startsWith("Result<")) {
+              calls.push({ symbol: c.symbol, returns: "Result<", publish: true });
+            }
+          }
+          const slim = {
+            columns: raw.columns,
+            calls,
+            components: raw.components.map(slimRecord),
+            resources: raw.resources.map(slimRecord),
+            events: raw.events.map((e) => ({ name: e.name, schema: e.schema })),
+          };
+          return { contents: JSON.stringify(slim), loader: "json" };
+        });
+      }
       // The bundle's entry: the game's own (og:game, native) or the worker that
       // starts it (og:worker, web), each giving its og.game() token the og.assert
       // sites of this bundle's files (ADOPT_SITES).
@@ -361,6 +422,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     sourcemap: "external",
     plugins: [engine],
     metafile: true,
+    ...(target === "web" || target === "script" ? { define: { __OG_PUBLISH__: minify ? "true" : "false" } } : {}),
   });
   bundlerMs = +(performance.now() - tBun).toFixed(1);
   bundleTrace("bundle-bundler", { ms: bundlerMs, jsxMs: +jsxMs.toFixed(1), jsxCount, minify });

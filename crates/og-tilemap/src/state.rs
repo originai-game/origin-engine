@@ -981,6 +981,8 @@ fn flipped(mut uv: [f32; 4], fx: bool, fy: bool) -> [f32; 4] {
 /// The quads of chunk (cx, cy) of `layer` (map-local, without the layer's
 /// offset or parallax, which the drawer adds), with flips applied to the
 /// regions and the animated tiles' frames.
+// A guarded entry into the engine's `tilemap` module (wasm-modules.json).
+#[inline(never)]
 pub fn chunk_quads(
     state: &MapState,
     layer: usize,

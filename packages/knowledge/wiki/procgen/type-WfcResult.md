@@ -23,4 +23,4 @@ struct WfcResult {
 }
 ```
 
-<sub>Module `procgen` line 272</sub>
+<sub>Module `procgen` line 273</sub>

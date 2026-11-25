@@ -21,6 +21,7 @@ Token `og.Chunk`, registered under the schema name `og.Chunk`; its value type is
 ```ogt
 component Chunk {
   doc "One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away."
+  split destruction3d physics
   field destructible Entity "The og.Destructible it belongs to." {
     readonly true
   }
@@ -40,4 +41,4 @@ component Chunk {
 }
 ```
 
-<sub>Module `destruction` line 95</sub>
+<sub>Module `destruction` line 96</sub>

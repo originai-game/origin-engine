@@ -31,4 +31,4 @@ fn wfc {
 }
 ```
 
-<sub>Module `procgen` line 279</sub>
+<sub>Module `procgen` line 280</sub>

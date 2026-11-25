@@ -479,16 +479,16 @@ const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (
 const QUERY_DYNAMIC u32 1 "QueryFilter.kindFlags bit: include dynamic bodies."
 ```
 
-<sub>Module `physics` line 2201</sub>
+<sub>Module `physics` line 2202</sub>
 
 ```ogt
 const QUERY_FIXED u32 2 "QueryFilter.kindFlags bit: include fixed bodies and static colliders."
 ```
 
-<sub>Module `physics` line 2202</sub>
+<sub>Module `physics` line 2203</sub>
 
 ```ogt
 const QUERY_KINEMATIC u32 4 "QueryFilter.kindFlags bit: include kinematic bodies and controllers."
 ```
 
-<sub>Module `physics` line 2203</sub>
+<sub>Module `physics` line 2204</sub>

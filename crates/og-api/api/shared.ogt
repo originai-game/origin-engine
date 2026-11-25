@@ -2,6 +2,7 @@ module shared {
   doc "Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns."
   doc "The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal."
   guide "shared-worlds"
+  split shared
   core SharedAvatar RemoteAvatar join status
 
   enum SharedState {

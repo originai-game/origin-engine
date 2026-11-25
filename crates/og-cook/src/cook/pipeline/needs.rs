@@ -25,7 +25,11 @@ fn of_kind(kind: &str) -> &'static [&'static str] {
     match kind {
         "dialogue" | "quest" => &["story"],
         "video" => &["video"],
-        "navmesh" => &["nav"],
+        "navmesh" | "behaviour" => &["nav"],
+        "tilemap" | "tileset" => &["tilemap"],
+        "timeline" => &["timeline"],
+        "terrain" => &["world3d"],
+        "motion-action" => &["motion"],
         _ => &[],
     }
 }
@@ -96,6 +100,14 @@ fn of_records(text: &str, project: Profile) -> BTreeSet<&'static str> {
     }
     if out.contains("physics") {
         out.insert(simulation(profile));
+    }
+    if out.remove("destruction") && !out.contains("destruction2d") && !out.contains("destruction3d")
+    {
+        out.insert(if profile == 2 {
+            "destruction2d"
+        } else {
+            "destruction3d"
+        });
     }
     out
 }

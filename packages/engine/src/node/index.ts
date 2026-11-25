@@ -6,6 +6,8 @@ import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { addonPath } from "./addon.ts";
+export { addonPath };
 import {
   ARRAYS,
   bindHost,
@@ -19,27 +21,6 @@ import {
   type Result,
 } from "../runtime.ts";
 import type { HostAbi } from "../generated/abi.ts";
-
-/**
- * The addon the native loader uses: `OG_NATIVE_ADDON`, else this package's
- * `native/origin-engine.<platform>-<arch>.node` (a checkout's build), else the
- * per-platform package npm installed through optionalDependencies
- * (`@origingame/engine-<platform>-<arch>/origin-engine.node`).
- */
-export function addonPath(): string {
-  const fromEnv = process.env.OG_NATIVE_ADDON;
-  if (fromEnv) return resolve(fromEnv);
-  const here = dirname(fileURLToPath(import.meta.url));
-  const platform = `${process.platform}-${process.arch}`;
-  const local = join(here, "..", "..", "native", `origin-engine.${platform}.node`);
-  if (existsSync(local)) return local;
-  try {
-    const require = createRequire(import.meta.url) as unknown as { resolve(id: string): string };
-    return require.resolve(`@origingame/engine-${platform}/origin-engine.node`);
-  } catch {
-    return local;
-  }
-}
 
 /** The addon's own symbols beyond the shared ABI. */
 export interface NativeExtras {

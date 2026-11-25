@@ -65,6 +65,7 @@
     "bin",
     "dist/web",
     "dist/web-publish",
+    "dist/av1",
     "dist/build-facts.json",
     "vendor",
     "knowledge",
