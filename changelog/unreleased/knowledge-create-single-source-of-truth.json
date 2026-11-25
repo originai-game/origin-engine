@@ -1,9 +1,15 @@
 {
   "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og new --ui",
+      "summary": "`tactical-arctic` is a creation `ui` choice."
+    }
+  ],
   "fixed": [
     {
       "member": "og create",
-      "summary": "Unifies creation choices, labels, and JSON schema in `packages/knowledge/scripts/creation.ts` (including the `tactical-arctic` UI theme), fixes the 4-argument `resolveCreationChoices` call so custom `catalogue` paths are honored, and stops duplicating `styles/`, `fonts/`, `looks/`, `previews/`, and obsolete `locales/` inside `@origingame/create-game` (reading them once from `@origingame/engine`)."
+      "summary": "`resolveCreationChoices` honours a custom `catalogue` path (its fourth argument)."
     },
     {
       "member": "og cook",

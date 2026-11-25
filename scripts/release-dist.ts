@@ -240,6 +240,9 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/src/node/run.ts",
     "engine/knowledge/knowledge.json",
     "engine/knowledge/scripts/lib.ts",
+    "engine/knowledge/scripts/brief.ts",
+    "engine/knowledge/scripts/creation.ts",
+    "engine/knowledge/looks/catalogue.json",
     "engine/styles/shared/LICENSES.md",
     "engine/styles/shared/InstrumentSans-Regular.ttf",
     "engine/styles/cjk/NotoSansSC-Regular.ttf",
@@ -252,7 +255,7 @@ export function checkLayout(dir: string, t: Target): void {
     ...(tsrs ? [`node_modules/@tsrs/${tsrs}/${exe === "og.exe" ? "tsrs.exe" : "tsrs"}`] : []),
   ];
   const missing = need.filter((p) => !existsSync(join(dir, p)));
-  if (!statSync(join(dir, "engine/dist/web-publish/snippets"), { throwIfNoEntry: false })?.isDirectory()) missing.push("engine/dist/web-publish/snippets/");
+  for (const d of ["engine/dist/web-publish/snippets", "engine/fonts"]) if (!statSync(join(dir, d), { throwIfNoEntry: false })?.isDirectory()) missing.push(`${d}/`);
   if (missing.length) die(`${dir} lacks ${missing.join(", ")}`);
 }
 

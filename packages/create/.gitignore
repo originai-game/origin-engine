@@ -1,10 +1,5 @@
 /template-2d/
 node_modules/
-# Copied from templates/ and packages/knowledge/looks at prepack (scripts/pack-template.ts).
 /archetypes/
-/looks/
-/previews/
-/styles/
-/locales/
-/fonts/
+# Copied from templates/film at prepack (scripts/pack-template.ts).
 /film/

@@ -1,6 +1,5 @@
-import { CHOICE_LABELS, localized, LOOK_ZH, VARIANT_ZH } from "./choice-labels.ts";
-import { CREATION_CHOICES, creationSchema, defaultView, FORM_VIEWS, CREATION_FIELDS, formOf, GENRE_VIEWS } from "./choices.ts";
-import type { Form, View } from "./choices.ts";
+import { CHOICE_LABELS, CREATION_CHOICES, CREATION_FIELDS, creationSchema, defaultView, FORM_VIEWS, formOf, GENRE_VIEWS, localized, LOOK_ZH, VARIANT_ZH } from "./knowledge.ts";
+import type { Form, View } from "./knowledge.ts";
 import { catalogueFile, creationLooks, readCatalogue, resolveCreationChoices } from "./create.ts";
 import type { Style } from "./create.ts";
 

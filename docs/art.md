@@ -59,7 +59,7 @@ without the line conforms nothing.
 `genre`, `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`,
 `lang` and `music` (its flags of those names) in a `create` block in
 `project.ogt`.
-`packages/create/bin/choices.ts` owns the vocabulary and exports its JSON
+`packages/knowledge/scripts/creation.ts` owns the vocabulary and exports its JSON
 schema, premise inference and `resolveCreationChoices` through
 `@origingame/create-game`; these are additive public contracts beside the
 art brief. The UI choice defaults to the look's `ui` line and the mood to

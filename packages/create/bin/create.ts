@@ -2,17 +2,15 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CREATION_CHOICES, creationBlock, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput } from "./choices.ts";
-import type { View } from "./choices.ts";
 import { creationDocument } from "./creation.ts";
 import type { PreviewFile } from "./creation.ts";
-import type { CreationChoices, CreationInput } from "./choices.ts";
-import { profileOf } from "./knowledge.ts";
+import { CREATION_CHOICES, creationBlock, FILM_GENRE, FORM_VIEWS, formOf, inferCreationChoices, parseCreationInput, profileOf } from "./knowledge.ts";
+import type { CreationChoices, CreationInput, View } from "./knowledge.ts";
 import { fontPackFor } from "./languages.ts";
 import type { FontPackLanguages } from "./languages.ts";
 
-export { CREATION_CHOICES, CREATION_FIELDS, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./choices.ts";
-export type { CreationChoices, CreationInput, Form, Genre, View } from "./choices.ts";
+export { CREATION_CHOICES, CREATION_FIELDS, creationBlock, creationSchema, defaultView, FILM_GENRE, FORM_VIEWS, formOf, GENRE_VIEWS, inferCreationChoices, parseCreationInput } from "./knowledge.ts";
+export type { CreationChoices, CreationInput, Form, Genre, View } from "./knowledge.ts";
 export { creationCompat, creationDocument, lookForms, previewSlots } from "./creation.ts";
 export type { CreationCompat, CreationDocument, PreviewFile, PreviewSlot } from "./creation.ts";
 export { canonicalTag, fontPackFor, isRtl, localeScript } from "./languages.ts";
