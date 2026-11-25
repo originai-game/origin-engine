@@ -1,0 +1,7 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    "A new engine build cooks again only the assets whose cooker changed: each part of the cook (textures, models, fonts, scenes and so on) has its own revision, and the engine's version is in no cook stamp or cache key. Before, any cooker change or a new release re-encoded every texture and model. Existing projects cook everything once more on this build.",
+    "og cook, og run, og build and og test report a long cook's progress on stderr: each stage and output that took 5 s or more, and every 10 s how many outputs are cooked and which one has run longest."
+  ]
+}

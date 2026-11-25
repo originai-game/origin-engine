@@ -29,9 +29,13 @@ pub fn max_bytes() -> u64 {
         .unwrap_or(DEFAULT_MAX_BYTES)
 }
 
-pub(crate) fn key(kind: &str, parts: &[&[u8]]) -> String {
+/// A cache key: the revisions of the `areas` whose code makes the result
+/// (`format::revisions`; none when an input is a cook stamp, which holds
+/// its own), its kind, then its inputs.
+pub(crate) fn key(areas: &[crate::format::Area], kind: &str, parts: &[&[u8]]) -> String {
     let mut hash = blake3::Hasher::new();
-    for part in [super::COOKER_VERSION.as_bytes(), kind.as_bytes()]
+    let revisions = crate::format::revisions(areas).to_le_bytes();
+    for part in [&revisions[..], kind.as_bytes()]
         .into_iter()
         .chain(parts.iter().copied())
     {

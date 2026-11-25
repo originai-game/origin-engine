@@ -6,7 +6,7 @@
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::table::{TABLE_TYPE, Table};
 use std::collections::BTreeSet;
@@ -110,7 +110,7 @@ fn plan<'a>(
             .or_default()
             .extend(refs);
     }
-    let st = stamp(&[b"table", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Data], &[b"table", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Table::NAME,

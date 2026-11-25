@@ -53,7 +53,7 @@
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use std::path::Path;
@@ -758,7 +758,10 @@ fn plan_environment<'a>(
     let PlanState { parsed_refs, .. } = state;
     let deps = environment_dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"environment 3", &hash, deps.as_bytes()]);
+    let st = stamp(
+        &[Area::Lighting],
+        &[b"environment 3", &hash, deps.as_bytes()],
+    );
     outs.push((
         s.rel.clone(),
         format::EnvironmentMap::NAME,

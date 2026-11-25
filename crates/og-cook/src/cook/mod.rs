@@ -65,7 +65,7 @@ use report::{CONFORM_LOG, ConformLog, conform_log_text, conform_note, read_confo
 pub use scan::own_lines;
 use scan::{Scan, ext, output_group, plan_groups, scan};
 
-use crate::format::{self, BlobKind, COOKER_VERSION};
+use crate::format::{self, Area, BlobKind, COOKER};
 use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use kinds::{Action, Exec, Job, KindDef};
 use og_core::Schema;
@@ -124,8 +124,7 @@ pub(crate) struct Source {
     /// stamp: encoded once by the first of its two outputs to cook.
     whole: Mutex<BTreeMap<(usize, u64), std::sync::Arc<WholeTexture>>>,
     /// A model's cook (its blob, notes and LOD surfaces), made once by
-    /// the first that needs it: its plan on a cold cook (all models' at
-    /// once, `plan`), else its outputs.
+    /// the first of its outputs that needs it.
     model: std::sync::OnceLock<Result<model::ModelOutput, CookError>>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
@@ -222,9 +221,11 @@ fn output_file(id: &str) -> String {
 /// its proxy, its `#anim`): `NodeRow` version 2 carries `visible`.
 const NODE_ROWS: &[u8] = b"nodes-v2";
 
-fn stamp(parts: &[&[u8]]) -> u64 {
+/// An output's cook stamp: the revisions of the `areas` whose code wrote
+/// it ([`format::revisions`]), then its inputs.
+fn stamp(areas: &[Area], parts: &[&[u8]]) -> u64 {
     let mut h = StableHasher::new();
-    h.write_str(COOKER_VERSION);
+    h.write_u64(format::revisions(areas));
     for p in parts {
         h.write_u64(p.len() as u64);
         h.write(p);
@@ -299,8 +300,8 @@ pub fn cook_project_with_texture_cache(
     texture_cache: Option<&Path>,
 ) -> Result<Report, CookError> {
     let started = Instant::now();
-    let mut laps = Laps::new(started);
-    let cook_index = index::Index::open(root, options, texture_cache);
+    let mut laps = Laps::new(started, options.progress);
+    let cook_index = index::Index::open(root, options);
     let unchanged = cook_index.unchanged();
     laps.lap("index");
     if let Some(mut report) = unchanged {
@@ -421,7 +422,7 @@ pub fn cook_project_with_texture_cache(
         plan,
         PlanState {
             early_errors,
-            parsed_refs,
+            mut parsed_refs,
             ..
         },
     ) = plan(&cx, early_errors, threads);
@@ -435,6 +436,19 @@ pub fn cook_project_with_texture_cache(
         started,
     );
     laps.lap("execute");
+    // What only a cook could name (a model's LOD surfaces), in a round of
+    // its own.
+    let derived = derive(&cx, &plan, &mut parsed_refs, threads);
+    let derived_results = execute(
+        &cx,
+        &derived,
+        threads,
+        texture_cache,
+        project_key.as_deref(),
+        started,
+    );
+    let (plan, results) = with_derived(plan, results, derived, derived_results);
+    laps.lap("derived");
     let Assembled {
         mut reports,
         new_outputs,
@@ -461,6 +475,8 @@ pub fn cook_project_with_texture_cache(
         threads,
     )?;
     laps.lap("finish");
+    let mut warnings = warnings;
+    warnings.extend(diagnose_models(&cx, &mut reports, threads));
     let (conformed, mut warnings) = diagnose(
         &cx,
         &plan,
@@ -477,7 +493,7 @@ pub fn cook_project_with_texture_cache(
         conform: conformed,
         warnings,
         root: root.display().to_string(),
-        cooker: COOKER_VERSION.to_string(),
+        cooker: COOKER.to_string(),
         texture_encoder: texture_encoder.unwrap_or_else(|e| format!("none ({e})")),
         assets: reports,
         ignored,
@@ -528,21 +544,28 @@ fn each<T: Sync, R: Send>(items: &[T], threads: usize, f: impl Fn(&T) -> R + Syn
 struct Laps {
     last: Instant,
     stages: Vec<StageTime>,
+    /// `CookOptions::progress`: a slow stage says so on stderr.
+    progress: bool,
 }
 
 impl Laps {
-    fn new(started: Instant) -> Laps {
+    fn new(started: Instant, progress: bool) -> Laps {
         Laps {
             last: started,
             stages: Vec::new(),
+            progress,
         }
     }
 
     fn lap(&mut self, name: &str) {
         let now = Instant::now();
+        let took = now.duration_since(self.last);
+        if self.progress && took >= output::SLOW {
+            eprintln!("og cook: {name} took {:.1} s", took.as_secs_f64());
+        }
         self.stages.push(StageTime {
             name: name.to_string(),
-            ms: now.duration_since(self.last).as_secs_f64() * 1000.0,
+            ms: took.as_secs_f64() * 1000.0,
         });
         self.last = now;
     }

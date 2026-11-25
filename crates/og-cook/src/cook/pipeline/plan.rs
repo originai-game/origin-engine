@@ -61,13 +61,7 @@ pub(crate) fn plan<'a>(
     early_errors: Vec<EarlyError>,
     threads: usize,
 ) -> (Vec<Planned<'a>>, PlanState) {
-    let Cx {
-        sources,
-        cooked_dir,
-        pack_faces,
-        old_outputs,
-        ..
-    } = *cx;
+    let sources = cx.sources;
     let mut state = PlanState {
         early_errors,
         parsed_refs: BTreeMap::new(),
@@ -78,26 +72,12 @@ pub(crate) fn plan<'a>(
     // their location remains part of the action, not the content hash.
     let hash = |s: &Source| {
         if s.kind.by_content {
-            stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
+            stamp(&[], &[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
         } else {
-            stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()])
+            stamp(&[], &[&s.hash.to_le_bytes(), s.rel.as_bytes()])
         }
         .to_le_bytes()
     };
-    // A model's plan cooks the model when no cooked blob names its LOD
-    // surfaces (`Source::model`): the models are planned here first, all
-    // at once and their outputs dropped, so the loop below, which plans in
-    // order (the first to plan a shared texture owns it), finds them cooked.
-    each(sources, threads, |s| {
-        if s.error.is_none() && s.kind == &model::MODEL {
-            let mut scratch = PlanState {
-                early_errors: Vec::new(),
-                parsed_refs: BTreeMap::new(),
-                planned_textures: Default::default(),
-            };
-            (s.kind.plan)(cx, &mut scratch, s, hash(s), &mut Vec::new());
-        }
-    });
     let mut plan: Vec<Planned> = Vec::new();
     for (si, s) in sources.iter().enumerate() {
         if s.error.is_some() {
@@ -105,27 +85,77 @@ pub(crate) fn plan<'a>(
         }
         let mut outs: Vec<Out> = Vec::new();
         (s.kind.plan)(cx, &mut state, s, hash(s), &mut outs);
-        for (id, ty, st, work) in outs {
-            let file = if pack_faces.contains(&id) {
-                format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
-            } else {
-                output_file(&id)
-            };
-            plan.push(Planned {
-                source: si,
-                id,
-                file,
-                ty,
-                stamp: st,
-                work: Some(work),
-            });
+        plan.extend(outs.into_iter().map(|out| planned(cx, si, out)));
+    }
+    keep_fresh(cx, &mut plan, threads);
+    (plan, state)
+}
+
+/// A source's output as the plan holds it.
+fn planned<'a>(cx: &Cx<'a>, source: usize, (id, ty, stamp, work): Out<'a>) -> Planned<'a> {
+    let file = if cx.pack_faces.contains(&id) {
+        format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
+    } else {
+        output_file(&id)
+    };
+    Planned {
+        source,
+        id,
+        file,
+        ty,
+        stamp,
+        work: Some(work),
+    }
+}
+
+/// The outputs only a cook could name ([`Job::derived`]), planned once the
+/// first round has cooked: each after its source's own, with what is up to
+/// date left without work, as [`plan`] leaves it. An output whose cook
+/// failed derives nothing; its error is the first round's.
+pub(crate) fn derive<'a>(
+    cx: &Cx<'a>,
+    plan: &[Planned<'a>],
+    parsed_refs: &mut BTreeMap<String, BTreeSet<String>>,
+    threads: usize,
+) -> Vec<Planned<'a>> {
+    let ex = Exec {
+        options: cx.options,
+        schemas: cx.schemas,
+        known: cx.known,
+        prefab_texts: cx.prefab_texts,
+        budgets: cx.budgets,
+    };
+    // An output that cooked answers from what its cook kept; one that came
+    // from the shared cache cooks for the answer here, so all at once.
+    let derived = each(plan, threads, |p| {
+        p.work.as_ref().and_then(|work| work.derived(&ex).ok())
+    });
+    let mut more: Vec<Planned> = Vec::new();
+    for (p, outs) in plan.iter().zip(derived) {
+        for out in outs.into_iter().flatten() {
+            parsed_refs
+                .entry(cx.sources[p.source].rel.clone())
+                .or_default()
+                .insert(out.0.clone());
+            more.push(planned(cx, p.source, out));
         }
     }
+    keep_fresh(cx, &mut more, threads);
+    more
+}
+
+/// Takes the work from every planned output that is up to date.
+fn keep_fresh(cx: &Cx, plan: &mut [Planned], threads: usize) {
+    let Cx {
+        cooked_dir,
+        old_outputs,
+        ..
+    } = *cx;
     // Up to date: the manifest's stamp and file agree, and the file still
     // holds the type and schema version the loader expects today (a schema
     // change without a cooker bump would otherwise keep a blob the loader
     // refuses). Each output's file is read for it, all at once.
-    let fresh = each(&plan, threads, |p| {
+    let fresh = each(plan, threads, |p| {
         let want = format::expected_header(p.ty);
         old_outputs.get(p.id.as_str()).is_some_and(|o| {
             o.stamp == p.stamp
@@ -145,5 +175,4 @@ pub(crate) fn plan<'a>(
             p.work = None;
         }
     }
-    (plan, state)
 }

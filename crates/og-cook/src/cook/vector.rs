@@ -456,7 +456,7 @@ fn plan_vector<'a>(
 ) {
     // The stamp covers the SVG the vector names.
     let svg = dependencies(s);
-    let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
+    let st = stamp(&[Area::Vector], &[b"vector", &hash, svg.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Vector::NAME,

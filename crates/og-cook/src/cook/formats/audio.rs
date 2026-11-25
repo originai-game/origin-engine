@@ -20,8 +20,8 @@
 //! to exactly the samples of the whole file.
 
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, ext,
-    settings_block, stamp,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, settings_block,
+    stamp,
 };
 use crate::format::{self, *};
 use crate::qoa;
@@ -798,12 +798,15 @@ fn plan_sound<'a>(
         .ok()
         .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
     let shape = chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
-    let st = stamp(&[
-        b"sound",
-        &hash,
-        settings.describe().as_bytes(),
-        shape.as_bytes(),
-    ]);
+    let st = stamp(
+        &[Area::Audio],
+        &[
+            b"sound",
+            &hash,
+            settings.describe().as_bytes(),
+            shape.as_bytes(),
+        ],
+    );
     outs.push((
         s.rel.clone(),
         format::Sound::NAME,
@@ -812,7 +815,10 @@ fn plan_sound<'a>(
     ));
     if let Some((per, count)) = chunking {
         for n in 1..count {
-            let st = stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
+            let st = stamp(
+                &[Area::Audio],
+                &[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()],
+            );
             outs.push((
                 format!("{}#chunk{n}", s.rel),
                 format::SoundChunk::NAME,
@@ -835,12 +841,7 @@ impl Job for SoundJob<'_> {
     }
 
     fn action(&self) -> Action<'_> {
-        let SoundJob(s, chunks) = self;
-        Action::Input(
-            s.bytes.as_slice(),
-            format!("sound {chunks:?} {} {:?}", ext(&s.rel), s.settings),
-            false,
-        )
+        Action::Input(self.0.bytes.as_slice(), false)
     }
 }
 
@@ -855,15 +856,6 @@ impl Job for SoundChunkJob<'_> {
     }
 
     fn action(&self) -> Action<'_> {
-        let SoundChunkJob(s, chunk, count) = self;
-        Action::Input(
-            s.bytes.as_slice(),
-            format!(
-                "sound-chunk {chunk} {count} {} {:?}",
-                ext(&s.rel),
-                s.settings
-            ),
-            false,
-        )
+        Action::Input(self.0.bytes.as_slice(), false)
     }
 }

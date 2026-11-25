@@ -1,5 +1,6 @@
 //! Content-keyed prefracture actions, with a discovered dependency list.
 use super::{cache, fracture::Fractured};
+use crate::format::Area;
 use og_blob::{Blob, BlobWriter};
 use og_core::hash::hash_bytes;
 use og_physics_data::fracture::FractureAsset;
@@ -15,7 +16,11 @@ pub(crate) fn run(
     let store = directory.map(|p| cache::Store::new(p.to_owned()));
     // Discovery records contain only names. The action key also covers their
     // current contents, so equal models in different directories are safe.
-    let discovery = cache::key("fracture-dependencies", &[input.as_bytes()]);
+    let discovery = cache::key(
+        &[Area::Fracture],
+        "fracture-dependencies",
+        &[input.as_bytes()],
+    );
     if let Some(store) = &store
         && let Some((names, _)) = store.action(&discovery)
         && let Ok(names) = serde_json::from_slice::<Vec<String>>(&names)
@@ -49,6 +54,7 @@ fn action_key(input: &str, read: &[(String, Vec<u8>)]) -> String {
         .collect();
     dependencies.sort();
     cache::key(
+        &[Area::Fracture],
         "fracture-result",
         &[
             input.as_bytes(),

@@ -56,25 +56,48 @@ pub(crate) struct Exec<'a> {
 
 /// A planned output's work, cooked by the system that planned it: the
 /// blob and the cook's notes.
-pub(crate) trait Job: Sync {
+pub(crate) trait Job: Send + Sync {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError>;
 
     /// What the shared action cache keys its result by.
     fn action(&self) -> Action<'_> {
         Action::Project
     }
+
+    /// The outputs only its cook can name, each as its plan would have
+    /// planned it had it known (a model's LOD surfaces, which its cook
+    /// charts): asked once it has cooked, and cooked in a round of their
+    /// own (`plan::derive`). None for an output whose plan named them all.
+    fn derived<'a>(&self, _: &Exec) -> Result<Vec<Out<'a>>, CookError>
+    where
+        Self: 'a,
+    {
+        Ok(Vec::new())
+    }
+
+    /// How much work its cook is beside the others', for the order and
+    /// the threads `execute` gives it: a texture's encode
+    /// (`texture::encode_cost`), 0 for work that is short or of no known
+    /// size. Never changes what is cooked.
+    fn cost(&self, _: &CookOptions) -> u64 {
+        0
+    }
 }
 
-/// What the shared action cache keys an output's result by, beside the
-/// options, its type and its stamp.
+/// What the shared action cache keys an output's result by, beside its
+/// type and its stamp (`action_cache`).
 pub(crate) enum Action<'s> {
-    /// The project and the output's id.
+    /// The project, the output's id and the cook's options: the output
+    /// reads more of the project than its own input (other assets, by
+    /// path).
     Project,
     /// Nothing: the result is never shared.
     Never,
-    /// Its own input: the bytes, its settings, and whether it is a texture
-    /// (a hit is reported as the shared texture cache's).
-    Input(&'s [u8], String, bool),
+    /// Its own input alone, by its bytes: with the stamp (the options and
+    /// settings its cook reads), every project that cooks these bytes the
+    /// same way shares the result. Whether it is a texture: a hit is
+    /// reported as the shared texture cache's.
+    Input(&'s [u8], bool),
 }
 
 /// Every system's kinds, one line a system.

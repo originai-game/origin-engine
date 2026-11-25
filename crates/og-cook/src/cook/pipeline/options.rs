@@ -226,8 +226,12 @@ impl MeshOptions {
         Ok(o)
     }
 
+    /// These options as a model's stamp holds them: every one its blob
+    /// follows, so two cooks that would write different blobs never share
+    /// a stamp. The art contract is the stamp's own part
+    /// (`Conform::model_desc`); a setting left at its default adds nothing.
     pub(crate) fn describe(&self) -> String {
-        format!(
+        let mut d = format!(
             "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 sparse paired UV seams, protected boundary fans, switch-footprint shared-source baked fallback and authored-chart atlas repacking (S20){}",
             self.lod_levels,
             self.lod_ratio,
@@ -235,7 +239,23 @@ impl MeshOptions {
             self.overdraw_threshold,
             self.tangents,
             if self.clusters { "" } else { " clusters off" }
-        )
+        );
+        // `og cook` turns the raycast BVH off for a game whose code never
+        // raycasts: without this in the stamp, code that began to raycast
+        // kept every model as cooked, without one.
+        if !self.raycast {
+            d.push_str(" raycast off");
+        }
+        if let Some(lods) = &self.lods {
+            d.push_str(&format!(" fractions {lods:?}"));
+        }
+        if self.collider {
+            d.push_str(&format!(" collider {:?}", self.collider_kind));
+        }
+        if let Some(b) = self.impostor {
+            d.push_str(&format!(" impostor {} {} {}", b.grid, b.frame, b.below));
+        }
+        d
     }
 }
 
@@ -336,6 +356,10 @@ impl FontSettings {
 pub struct CookOptions {
     /// Worker threads (0 = the machine's parallelism). Does not change output.
     pub threads: usize,
+    /// Progress on stderr while a cook runs long: each stage and output
+    /// that took 5 s or more, and every 10 s how many outputs are cooked
+    /// and the one running longest. Does not change output.
+    pub progress: bool,
     pub mesh: MeshOptions,
     pub texture: TextureOptions,
     pub font: FontSettings,

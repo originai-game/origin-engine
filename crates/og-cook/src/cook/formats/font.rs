@@ -115,7 +115,7 @@ fn plan_font<'a>(
     match font_settings(s, &options.font) {
         Ok(f) => {
             // "font 11": the file and its metrics, no atlas.
-            let st = stamp(&[b"font 11", f.describe().as_bytes(), &hash]);
+            let st = stamp(&[Area::Font], &[b"font 11", f.describe().as_bytes(), &hash]);
             outs.push((
                 s.rel.clone(),
                 format::Font::NAME,
@@ -140,7 +140,6 @@ impl Job for FontJob<'_> {
     /// face serves every project that imports it the same way (a built-in
     /// style pack's fonts, first cooked when a look switches to the pack).
     fn action(&self) -> Action<'_> {
-        let FontJob(s, f) = self;
-        Action::Input(s.bytes.as_slice(), format!("font {f:?}"), false)
+        Action::Input(self.0.bytes.as_slice(), false)
     }
 }

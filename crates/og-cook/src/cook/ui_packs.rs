@@ -3,6 +3,7 @@
 use super::{
     BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, format, stamp,
 };
+use crate::format::Area;
 
 /// The kinds this module cooks.
 pub(crate) static KINDS: &[&KindDef] = &[&PACK];
@@ -54,12 +55,15 @@ fn plan_pack<'a>(
         .collect();
     // The default pack is in the stamp: a token change cooks every pack's
     // class check again.
-    let st = stamp(&[
-        b"style pack 2",
-        &hash,
-        refs.join("\n").as_bytes(),
-        og_ui_next::pack::design::DEFAULT_PACK.as_bytes(),
-    ]);
+    let st = stamp(
+        &[Area::Ui],
+        &[
+            b"style pack 2",
+            &hash,
+            refs.join("\n").as_bytes(),
+            og_ui_next::pack::design::DEFAULT_PACK.as_bytes(),
+        ],
+    );
     outs.push((s.rel.clone(), format::Pack::NAME, st, Box::new(PackJob(s))));
 }
 

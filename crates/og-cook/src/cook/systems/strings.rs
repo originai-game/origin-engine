@@ -1,7 +1,7 @@
 //! String tables (`type strings`): validated by og-i18n and kept as text.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
 /// Cooks a string table (`type strings`): validated by og-i18n, kept as text.
@@ -88,7 +88,7 @@ fn plan_strings<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"strings", &hash]);
+    let st = stamp(&[Area::Data], &[b"strings", &hash]);
     outs.push((
         s.rel.clone(),
         format::Strings::NAME,

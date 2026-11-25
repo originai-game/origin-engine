@@ -3,7 +3,7 @@
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
 pub(crate) const BEHAVIOUR_TYPE: &str = "behaviour";
@@ -94,7 +94,7 @@ fn plan<'a>(
 ) {
     // The stamp covers every subtree its `use` nodes reach.
     let deps = behaviour_dependencies(s);
-    let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Data], &[b"behaviour", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Behaviour::NAME,

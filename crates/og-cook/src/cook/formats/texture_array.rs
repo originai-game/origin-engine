@@ -264,11 +264,14 @@ fn plan_texture_array<'a>(
             outs.push((
                 s.rel.clone(),
                 format::TextureArray::NAME,
-                stamp(&base),
+                stamp(&[Area::Texture], &base),
                 Box::new(TextureArrayJob(s, decl.clone())),
             ));
             for n in 0..decl.layers.len() {
-                let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                let st = stamp(
+                    &[Area::Texture],
+                    &[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat(),
+                );
                 outs.push((
                     layer_id(&s.rel, n),
                     format::Texture::NAME,

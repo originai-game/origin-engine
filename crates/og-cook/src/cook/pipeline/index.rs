@@ -1,4 +1,6 @@
 //! Per-project stat-to-content index. A clean cook needs no source byte reads.
+//! A cook that does read a source reads the file itself: the index keeps its
+//! hash by its stat, never a copy of it.
 //!
 //! A stat proves a file unchanged only when it is older than the clock it is
 //! compared under. File times advance in ticks (4 ms on ext4, 2 s on FAT), so
@@ -128,7 +130,6 @@ struct Saved {
 pub(crate) struct Index {
     path: PathBuf,
     root: PathBuf,
-    store: Option<cache::Store>,
     saved: Mutex<Saved>,
     /// The filesystem's time before any input was read. Without it (`.og/`
     /// cannot be written) or the inputs, nothing is indexed.
@@ -211,7 +212,7 @@ fn headers(report: &Report) -> BTreeMap<String, Option<(u64, u32)>> {
 }
 
 impl Index {
-    pub fn open(root: &Path, options: &CookOptions, store: Option<&Path>) -> Self {
+    pub fn open(root: &Path, options: &CookOptions) -> Self {
         let path = root.join(".og/cook-index");
         let saved = std::fs::read(&path)
             .ok()
@@ -220,10 +221,12 @@ impl Index {
         let code = options.code.files.clone();
         let mut options = options.clone();
         options.threads = 0;
+        options.progress = false;
         // The code's files are inputs, stamped below: which ones the bundle
         // holds changing is a change to code alone.
         options.code.files.clear();
         let options = cache::key(
+            &crate::format::Area::ALL,
             "index-v3-font-preloads",
             &[format!(
                 "{options:?} {:?} {}",
@@ -250,7 +253,6 @@ impl Index {
         Self {
             path,
             root: root.to_owned(),
-            store: store.map(|p| cache::Store::new(p.to_owned())),
             saved: Mutex::new(saved),
             clock,
             inputs,
@@ -375,7 +377,10 @@ impl Index {
 
     pub fn read(&self, path: &Path) -> std::io::Result<Vec<u8>> {
         let before = stat(path)?;
-        // The lock is let go before the content is read: files are read
+        let bytes = std::fs::read(path)?;
+        // An entry already there under this stat keeps its hash: a stat that
+        // is remembered is proof the bytes are the ones it was taken from.
+        // The lock is held for the lookup alone: files are read and hashed
         // from many threads at once.
         let known = self
             .saved
@@ -383,21 +388,10 @@ impl Index {
             .expect("index lock")
             .entries
             .get(path)
-            .filter(|entry| entry.stat == before)
-            .map(|entry| entry.hash.clone());
-        if let Some(store) = &self.store
-            && let Some(hash) = known
-            && let Some(bytes) = store.content(&hash)
-        {
-            return Ok(bytes);
-        }
-        let bytes = std::fs::read(path)?;
+            .is_some_and(|entry| entry.stat == before);
         // A racy stat is not remembered, so an entry's stat is always proof.
-        if self.clock.is_some_and(|clock| !before.racy(clock)) && stat(path)? == before {
+        if !known && self.clock.is_some_and(|clock| !before.racy(clock)) && stat(path)? == before {
             let hash = blake3::hash(&bytes).to_hex().to_string();
-            if let Some(store) = &self.store {
-                let _ = store.put_content(&bytes);
-            }
             self.saved
                 .lock()
                 .expect("index lock")
@@ -435,6 +429,7 @@ impl Index {
             content.push((name.to_string_lossy().into_owned(), hash));
         }
         Some(cache::key(
+            &[],
             "project-inputs",
             &[&serde_json::to_vec(&content).ok()?],
         ))

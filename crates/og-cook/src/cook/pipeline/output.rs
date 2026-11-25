@@ -19,7 +19,10 @@ pub(crate) fn project_key(
                     })
                 })
                 .collect();
+            // No area's revision: each output's stamp, which its key in
+            // the cache holds beside this one, has its own areas'.
             cache::key(
+                &[],
                 "outputs",
                 &[
                     input.as_bytes(),
@@ -51,32 +54,151 @@ pub(crate) fn execute(
         ..
     } = *cx;
     let results: Vec<Mutex<Option<Done>>> = plan.iter().map(|_| Mutex::new(None)).collect();
-    let todo: Vec<usize> = (0..plan.len())
-        .filter(|&i| plan[i].work.is_some())
+    // What is stale, each with its cost, the least work first (results
+    // land by plan index, so the order changes no byte). A cook of many
+    // outputs keeps every core on one output each; as the queue empties,
+    // the large encodes left take the cores the others no longer use
+    // (`lanes`), where the largest, started first on one thread, would
+    // hold the whole cook to its own time.
+    let mut todo: Vec<(usize, u64)> = (0..plan.len())
+        .filter_map(|i| Some((i, plan[i].work.as_ref()?.cost(options))))
         .collect();
+    todo.sort_by_key(|&(_, cost)| cost);
+    // The cost of everything not yet cooked.
+    let left = std::sync::atomic::AtomicU64::new(todo.iter().map(|t| t.1).sum());
     let next = std::sync::atomic::AtomicUsize::new(0);
+    let workers = threads.min(todo.len());
+    // What each worker is cooking, and since when, for the progress lines.
+    let running: Vec<Mutex<Option<(usize, Instant)>>> =
+        (0..workers).map(|_| Mutex::new(None)).collect();
+    let finished = std::sync::atomic::AtomicUsize::new(0);
+    // Every worker holds a sender; the last one to finish wakes the ticker.
+    let (alive, ended) = std::sync::mpsc::channel::<()>();
     std::thread::scope(|scope| {
-        for worker in 0..threads.min(todo.len()) {
+        for worker in 0..workers {
             let (next, results, plan, schemas, known, todo, prefab_texts) =
                 (&next, &results, plan, schemas, known, &todo, prefab_texts);
+            let left = &left;
+            let (running, finished, alive) = (&running, &finished, alive.clone());
             scope.spawn(move || {
+                let _alive = alive;
                 loop {
                     let k = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let Some(&i) = todo.get(k) else { break };
+                    let Some(&(i, cost)) = todo.get(k) else { break };
                     let p = &plan[i];
+                    let lanes = lanes(
+                        threads,
+                        cost,
+                        left.load(std::sync::atomic::Ordering::Relaxed),
+                    );
                     let t = Instant::now();
+                    *running[worker].lock().expect("no poisoning") = Some((i, t));
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
                     let r = action_cache::run(texture_cache, p, options, project_key, || {
-                        run(p, options, schemas, known, prefab_texts, budgets)
+                        texture::with_encode_threads(lanes, || {
+                            run(p, options, schemas, known, prefab_texts, budgets)
+                        })
                     });
+                    left.fetch_sub(cost, std::sync::atomic::Ordering::Relaxed);
+                    let took = t.elapsed();
+                    let done = finished.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                    if options.progress && took >= SLOW {
+                        eprintln!(
+                            "og cook: {done}/{} {} took {:.1} s",
+                            todo.len(),
+                            p.id,
+                            took.as_secs_f64()
+                        );
+                    }
+                    *running[worker].lock().expect("no poisoning") = None;
                     *results[i].lock().expect("no poisoning") =
-                        Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));
+                        Some((r, took.as_secs_f64() * 1000.0, start, worker as u32));
+                }
+            });
+        }
+        drop(alive);
+        if options.progress && !todo.is_empty() {
+            let (running, finished, total) = (&running, &finished, todo.len());
+            scope.spawn(move || {
+                let begun = Instant::now();
+                while let Err(std::sync::mpsc::RecvTimeoutError::Timeout) = ended.recv_timeout(TICK)
+                {
+                    let longest = running
+                        .iter()
+                        .filter_map(|r| *r.lock().expect("no poisoning"))
+                        .min_by_key(|&(_, since)| since);
+                    let longest = longest
+                        .map(|(i, since)| {
+                            format!(
+                                "; longest running: {} ({:.0} s)",
+                                plan[i].id,
+                                since.elapsed().as_secs_f64()
+                            )
+                        })
+                        .unwrap_or_default();
+                    eprintln!(
+                        "og cook: {}/{total} outputs cooked in {:.0} s{longest}",
+                        finished.load(std::sync::atomic::Ordering::Relaxed),
+                        begun.elapsed().as_secs_f64()
+                    );
                 }
             });
         }
     });
     results
 }
+
+/// The plan and its results with the derived outputs and theirs
+/// (`plan::derive`), each source's after its own: one plan again, in the
+/// order a cook that planned them all from the start would have had.
+pub(crate) fn with_derived<'a>(
+    plan: Vec<Planned<'a>>,
+    results: Vec<Mutex<Option<Done>>>,
+    derived: Vec<Planned<'a>>,
+    derived_results: Vec<Mutex<Option<Done>>>,
+) -> (Vec<Planned<'a>>, Vec<Mutex<Option<Done>>>) {
+    if derived.is_empty() {
+        return (plan, results);
+    }
+    let mut merged = (
+        Vec::with_capacity(plan.len() + derived.len()),
+        Vec::with_capacity(plan.len() + derived.len()),
+    );
+    // Both are in source order: a source's outputs are one run of each.
+    let mut own = plan.into_iter().zip(results).peekable();
+    let mut more = derived.into_iter().zip(derived_results).peekable();
+    while let Some((p, r)) = own.next() {
+        let source = p.source;
+        merged.0.push(p);
+        merged.1.push(r);
+        if own.peek().is_none_or(|(next, _)| next.source != source) {
+            while let Some((p, r)) = more.next_if(|(p, _)| p.source == source) {
+                merged.0.push(p);
+                merged.1.push(r);
+            }
+        }
+    }
+    merged
+}
+
+/// The threads an output of `cost` may encode on, of the cook's `threads`,
+/// when the outputs not yet cooked (itself among them) cost `left`: its
+/// share of the work that is left, at least one. A share is taken as the
+/// output starts and outputs already running keep theirs, so the cook may
+/// run on up to twice its threads for as long as those take to end.
+fn lanes(threads: usize, cost: u64, left: u64) -> usize {
+    if cost == 0 || left == 0 {
+        return 1;
+    }
+    let share = (threads as u128 * cost as u128).div_ceil(left as u128);
+    (share as usize).clamp(1, threads)
+}
+
+/// An output or a stage that took this long gets its own progress line.
+pub(crate) const SLOW: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// How often a long cook says how far it is.
+const TICK: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// The reports and each source's outputs, with the aliases resolved.
 pub(crate) struct Assembled {
@@ -261,7 +383,7 @@ pub(crate) fn write(
         ..
     } = *cx;
     let mut manifest = Manifest {
-        cooker: COOKER_VERSION.to_string(),
+        cooker: COOKER.to_string(),
         profile,
         modules: Vec::new(),
         options: BTreeMap::from([
@@ -562,6 +684,53 @@ pub(crate) fn cook_code(
     Ok(true)
 }
 
+/// Each model's diagnostics (its skin report and emissive check) as notes
+/// on its report, and the warnings among them. They run on cached cooks as
+/// well, so a warning does not disappear on a rerun: each model's on its
+/// own (its emissive check decodes two of its images), on up to `threads`
+/// threads.
+pub(crate) fn diagnose_models(cx: &Cx, reports: &mut [AssetReport], threads: usize) -> Vec<String> {
+    let Cx {
+        sources,
+        assets_dir,
+        ..
+    } = *cx;
+    let mut warnings = Vec::new();
+    let models: Vec<Option<&Source>> = sources
+        .iter()
+        .zip(reports.iter())
+        .map(|(source, report)| report.error.is_none().then_some(source))
+        .collect();
+    let diagnosed = each(&models, threads, |source| {
+        let source = (*source)?;
+        let gltf = source.gltf.as_ref()?;
+        Some(anim_settings(source).and_then(|settings| {
+            let mut notes = model::skin_report::report(gltf, assets_dir, settings.rig.as_deref())?;
+            notes.extend(gltf.emissive_warnings()?);
+            Ok(notes)
+        }))
+    });
+    for ((source, report), notes) in sources.iter().zip(reports.iter_mut()).zip(diagnosed) {
+        match notes {
+            Some(Ok(notes)) => {
+                for note in notes {
+                    if note.starts_with("warning:") {
+                        warnings.push(format!("assets/{}: {note}", source.rel));
+                    }
+                    report.notes.push(note);
+                }
+            }
+            Some(Err(error)) => {
+                let note = format!("model diagnostics unavailable: {error}");
+                warnings.push(format!("assets/{}: {note}", source.rel));
+                report.notes.push(note);
+            }
+            None => {}
+        }
+    }
+    warnings
+}
+
 /// The cook's warnings and the art contract's entries: diagnostics describe
 /// source assets and never change their cooked blobs.
 pub(crate) fn diagnose(
@@ -575,7 +744,6 @@ pub(crate) fn diagnose(
 ) -> (Vec<ConformEntry>, Vec<String>) {
     let Cx {
         sources,
-        assets_dir,
         options,
         story_functions,
         ..
@@ -586,36 +754,6 @@ pub(crate) fn diagnose(
         .filter(|s| s.kind == &strings::STRINGS)
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    // Diagnostics describe source assets, never change their cooked blobs.
-    // Run on cached cooks as well so a warning does not disappear on rerun.
-    for (source, report) in sources.iter().zip(reports.iter_mut()) {
-        if report.error.is_some() {
-            continue;
-        }
-        if let Some(gltf) = &source.gltf {
-            let notes = anim_settings(source).and_then(|settings| {
-                let mut notes =
-                    model::skin_report::report(gltf, assets_dir, settings.rig.as_deref())?;
-                notes.extend(gltf.emissive_warnings()?);
-                Ok(notes)
-            });
-            match notes {
-                Ok(notes) => {
-                    for note in notes {
-                        if note.starts_with("warning:") {
-                            warnings.push(format!("assets/{}: {note}", source.rel));
-                        }
-                        report.notes.push(note);
-                    }
-                }
-                Err(error) => {
-                    let note = format!("model diagnostics unavailable: {error}");
-                    warnings.push(format!("assets/{}: {note}", source.rel));
-                    report.notes.push(note);
-                }
-            }
-        }
-    }
     // Hyphenation in a locale its pack has no dictionary for, and a
     // locale written without spaces that no pack carries a dictionary for.
     for (rel, what) in font_pack::check_hyphenation(sources, &options.code)

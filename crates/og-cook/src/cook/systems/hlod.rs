@@ -80,7 +80,7 @@ use super::{
 };
 use crate::cook::Split;
 use crate::format::{
-    self, BlobKind, HlodCellRow, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash,
+    self, Area, BlobKind, HlodCellRow, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash,
 };
 use crate::hlod::{hlod_id, node_id};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
@@ -1692,16 +1692,19 @@ fn planned<'a>(
         }
         n.center = (lo + hi) * 0.5;
         n.radius = ((hi - lo) * 0.5).length().max(1e-3);
-        n.stamp = stamp(&[
-            b"hlod-node",
-            &[VERSION],
-            &settings_bytes,
-            &n.level.to_le_bytes(),
-            &(n.own as u64).to_le_bytes(),
-            cx.mesh_desc.as_bytes(),
-            cx.tex_desc.as_bytes(),
-            &described,
-        ]);
+        n.stamp = stamp(
+            &[Area::Hlod],
+            &[
+                b"hlod-node",
+                &[VERSION],
+                &settings_bytes,
+                &n.level.to_le_bytes(),
+                &(n.own as u64).to_le_bytes(),
+                cx.mesh_desc.as_bytes(),
+                cx.tex_desc.as_bytes(),
+                &described,
+            ],
+        );
     }
     // Over the cells: each cell's sub-scene's roots, at the cell, grouped
     // as members are, after the scene's own nodes.
@@ -1798,13 +1801,16 @@ fn planned<'a>(
             node.radius = ((hi - lo) * 0.5).length().max(1e-3);
             node.level = level;
             node.emissive = emissive;
-            node.stamp = stamp(&[
-                b"hlod-cells",
-                &[VERSION],
-                &settings_bytes,
-                &level.to_le_bytes(),
-                &described,
-            ]);
+            node.stamp = stamp(
+                &[Area::Hlod],
+                &[
+                    b"hlod-cells",
+                    &[VERSION],
+                    &settings_bytes,
+                    &level.to_le_bytes(),
+                    &described,
+                ],
+            );
         }
     }
     let node_stamps: Vec<u8> = nodes.iter().flat_map(|n| n.stamp.to_le_bytes()).collect();
@@ -1813,14 +1819,17 @@ fn planned<'a>(
         .flat_map(|m| m.entity.to_le_bytes())
         .collect();
     let left_desc = format!("{left:?}");
-    let tree_stamp = stamp(&[
-        b"hlod",
-        &[VERSION],
-        &settings_bytes,
-        &node_stamps,
-        &entities,
-        left_desc.as_bytes(),
-    ]);
+    let tree_stamp = stamp(
+        &[Area::Hlod],
+        &[
+            b"hlod",
+            &[VERSION],
+            &settings_bytes,
+            &node_stamps,
+            &entities,
+            left_desc.as_bytes(),
+        ],
+    );
     Some((
         Arc::new(Shared {
             scene: s.rel.clone(),
@@ -1878,14 +1887,20 @@ pub(crate) fn plan<'a>(
         outs.push((
             node_id(&s.rel, n),
             format::Model::NAME,
-            stamp(&[b"hlod-model", &node.stamp.to_le_bytes()]),
+            stamp(
+                &[Area::Hlod, Area::Model],
+                &[b"hlod-model", &node.stamp.to_le_bytes()],
+            ),
             Box::new(ProxyJob(shared.clone(), n)),
         ));
     }
     for (n, node) in shared.nodes.iter().enumerate() {
         for page in 0..if node.emissive { 4 } else { 3 } {
             let st = |word: &[u8]| {
-                stamp(&[b"hlod-page", &[page as u8], &node.stamp.to_le_bytes(), word])
+                stamp(
+                    &[Area::Hlod, Area::Texture],
+                    &[b"hlod-page", &[page as u8], &node.stamp.to_le_bytes(), word],
+                )
             };
             let id = page_id(&s.rel, n, page);
             let job = |split| Box::new(PageJob(shared.clone(), n, page, split));

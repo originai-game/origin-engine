@@ -340,13 +340,16 @@ fn plan_font_pack<'a>(
             format!("{a}={h:016x}\n")
         })
         .collect();
-    let st = stamp(&[
-        b"font-pack 3",
-        &hash,
-        deps.as_bytes(),
-        shipped.as_bytes(),
-        words.as_bytes(),
-    ]);
+    let st = stamp(
+        &[Area::Font],
+        &[
+            b"font-pack 3",
+            &hash,
+            deps.as_bytes(),
+            shipped.as_bytes(),
+            words.as_bytes(),
+        ],
+    );
     outs.push((
         s.rel.clone(),
         format::FontPack::NAME,

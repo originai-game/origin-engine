@@ -738,7 +738,7 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
         .table("kerning", &Vec::<KernRow>::new(), row_hash::<KernRow>())
         .raw(
             "atlas.0",
-            ktx2::write_rgba8_zlib(width, height, &page, false, false, format::COOKER_VERSION),
+            ktx2::write_rgba8_zlib(width, height, &page, false, false, format::KTX_WRITER),
             16,
         )
         .raw("names", names.join("\n").into_bytes(), 16);
@@ -778,7 +778,7 @@ fn plan_icons<'a>(
 ) {
     // The stamp covers every SVG the set names.
     let deps = dependencies(s);
-    let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Font], &[b"icons", &hash, deps.as_bytes()]);
     outs.push((s.rel.clone(), format::Font::NAME, st, Box::new(IconsJob(s))));
 }
 

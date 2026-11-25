@@ -8,6 +8,7 @@ use super::{
     BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, format,
     read_sibling, stamp,
 };
+use crate::format::Area;
 use og_render_data::{MaterialShader, ShaderMode};
 
 /// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL, HLSL). The
@@ -220,7 +221,7 @@ fn plan_shader<'a>(
     let wgsl = crate::shader::shader_source(&text)
         .map(|src| read_sibling(s, &src).unwrap_or_default())
         .unwrap_or_default();
-    let st = stamp(&[b"shader", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"shader", &hash, wgsl.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Shader::NAME,
@@ -287,7 +288,7 @@ fn plan_post<'a>(
     let wgsl = crate::shader::shader_source(&text)
         .map(|src| read_sibling(s, &src).unwrap_or_default())
         .unwrap_or_default();
-    let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"post", &hash, wgsl.as_bytes()]);
     outs.push((s.rel.clone(), format::Post::NAME, st, Box::new(PostJob(s))));
 }
 
@@ -349,7 +350,7 @@ fn plan_ui_material<'a>(
     let wgsl = crate::shader::shader_source(&text)
         .map(|src| execute::read_beside(s, &src).unwrap_or_default())
         .unwrap_or_default();
-    let st = stamp(&[b"ui-material", &hash, wgsl.as_bytes()]);
+    let st = stamp(&[Area::Shader], &[b"ui-material", &hash, wgsl.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::UiMaterial::NAME,

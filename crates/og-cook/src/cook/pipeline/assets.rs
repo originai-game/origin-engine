@@ -598,8 +598,25 @@ pub(crate) fn build(
             .collect();
         (input, placed, refs)
     });
+    // The outputs no fingerprint is known for (by their hash), each
+    // decoded for its own: every new texture and sound, all at once.
+    let mut fresh: BTreeMap<u64, (&ManifestOutput, Option<&Source>)> = BTreeMap::new();
+    for (source, (input, ..)) in manifest.assets.iter().zip(&named) {
+        for output in &source.outputs {
+            if !fingerprints.contains_key(&format!("{:016x}", output.hash)) {
+                fresh.entry(output.hash).or_insert((output, *input));
+            }
+        }
+    }
+    let fresh: Vec<_> = fresh.into_values().collect();
+    let made = each(&fresh, threads, |(output, input)| {
+        fingerprint(&bundle, output, *input)
+    });
+    for ((output, _), perceptual) in fresh.iter().zip(made) {
+        fingerprints.insert(format!("{:016x}", output.hash), perceptual);
+    }
     let mut index = Index::default();
-    for (source, (input, placed, mut refs)) in manifest.assets.iter().zip(named) {
+    for (source, (_, placed, mut refs)) in manifest.assets.iter().zip(named) {
         if source.kind == super::probes::KIND {
             // Probe ids derive from runtime placement rather than source literals.
             index
@@ -627,9 +644,7 @@ pub(crate) fn build(
             }
             refs.remove(&output.id);
             let hash = format!("{:016x}", output.hash);
-            let perceptual = *fingerprints
-                .entry(hash.clone())
-                .or_insert_with(|| fingerprint(&bundle, output, input));
+            let perceptual = fingerprints.get(&hash).copied().flatten();
             index.assets.push(Asset {
                 id: output.id.clone(),
                 source: source.source.clone(),

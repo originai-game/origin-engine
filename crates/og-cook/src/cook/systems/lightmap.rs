@@ -7,7 +7,7 @@
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, hash_bytes, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use crate::lightmap::{LightmapFile, pages_from_ktx2};
 use og_blob::BlobWriter;
 
@@ -107,7 +107,7 @@ fn plan_lightmap<'a>(
     // The stamp covers its pages file.
     let deps = dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Lighting], &[b"lightmap 1", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Lightmap::NAME,

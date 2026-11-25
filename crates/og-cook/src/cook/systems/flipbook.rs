@@ -481,8 +481,11 @@ fn plan_flipbook<'a>(
         .filter(|_| !conform_off(s, options))
         .map(|m| m.describe());
     let st = match &motion {
-        Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
-        None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
+        Some(m) => stamp(
+            &[Area::Effect],
+            &[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()],
+        ),
+        None => stamp(&[Area::Effect], &[b"flipbook", &hash, deps.as_bytes()]),
     };
     outs.push((
         s.rel.clone(),
@@ -502,7 +505,10 @@ fn plan_flipbook<'a>(
         ];
         let sheet = Box::new(sheet);
         for n in 0..sheet.frames.len() {
-            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+            let st = stamp(
+                &[Area::Effect, Area::Texture],
+                &[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat(),
+            );
             outs.push((
                 texture_array::layer_id(&array_id(&s.rel), n),
                 format::Texture::NAME,
@@ -513,7 +519,7 @@ fn plan_flipbook<'a>(
         outs.push((
             array_id(&s.rel),
             format::TextureArray::NAME,
-            stamp(&base),
+            stamp(&[Area::Effect, Area::Texture], &base),
             Box::new(FlipbookArrayJob(s, sheet)),
         ));
     }

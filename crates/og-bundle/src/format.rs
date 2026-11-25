@@ -58,9 +58,134 @@
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Schema};
 
-/// Changes whenever the bytes the cook writes for the same input change.
-/// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r37");
+/// The cook that wrote a bundle, for the manifest and the report to name.
+/// No stamp reads it: a new build cooks again only the [`Area`]s whose
+/// revision moved.
+pub const COOKER: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"));
+
+/// The `KTXwriter` of every texture the cook writes: no version, so a
+/// texture's bytes are the same from every build that encodes it alike.
+pub const KTX_WRITER: &str = "og-cook";
+
+/// A part of the cook, with its own revision. Every cook stamp and cache
+/// key names the areas whose code wrote its output ([`revisions`]), so a
+/// changed area cooks again only its own outputs: a font change leaves
+/// every texture as encoded. [`Area::Blob`], the container and writers
+/// every area shares, is in every stamp.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Area {
+    /// The blob container, the KTX2 and meshopt writers every area uses.
+    Blob,
+    /// Texture decode, conform and encode (Basis Universal, mips, cut-outs).
+    Texture,
+    /// Model meshes, LOD, meshlets, proxies and impostors.
+    Model,
+    /// Skeletal clips, skins, morphs, rigs (3D and 2D) and motion.
+    Anim,
+    /// Prefracture.
+    Fracture,
+    /// Sounds and synthesized effects.
+    Audio,
+    /// Fonts, font packs and icon fonts.
+    Font,
+    /// Video frames, streams, chunks and posters.
+    Video,
+    /// SVG vectors and Rive artboards.
+    Vector,
+    /// Scenes, prefabs and timelines.
+    Scene,
+    /// Text data: behaviours, dialogue, quests, tables, strings, tilesets
+    /// and tilemaps.
+    Data,
+    /// Navigation meshes.
+    Nav,
+    /// Looks, LUTs and palettes.
+    Look,
+    /// Shaders, post passes and UI materials.
+    Shader,
+    /// Style packs.
+    Ui,
+    /// Emitters, effects, VFX graphs and flipbooks.
+    Effect,
+    /// Environment maps, lightmaps and probes.
+    Lighting,
+    /// Terrains.
+    Terrain,
+    /// HLOD trees, proxies and pages.
+    Hlod,
+}
+
+impl Area {
+    pub const ALL: [Area; 19] = [
+        Area::Blob,
+        Area::Texture,
+        Area::Model,
+        Area::Anim,
+        Area::Fracture,
+        Area::Audio,
+        Area::Font,
+        Area::Video,
+        Area::Vector,
+        Area::Scene,
+        Area::Data,
+        Area::Nav,
+        Area::Look,
+        Area::Shader,
+        Area::Ui,
+        Area::Effect,
+        Area::Lighting,
+        Area::Terrain,
+        Area::Hlod,
+    ];
+
+    /// Its name in stamps and its revision. The revision is bumped in the
+    /// commit that changes the bytes this area writes for the same input.
+    /// A layout change needs no bump: the blob's type hash and schema
+    /// version refuse the old one ([`expected_header`]). The name, not the
+    /// variant's place in the enum, is what a stamp holds, so adding or
+    /// reordering areas moves no other area's stamps.
+    const fn entry(self) -> (&'static str, u32) {
+        match self {
+            Area::Blob => ("blob", 1),
+            Area::Texture => ("texture", 1),
+            Area::Model => ("model", 1),
+            Area::Anim => ("anim", 1),
+            Area::Fracture => ("fracture", 1),
+            Area::Audio => ("audio", 1),
+            Area::Font => ("font", 1),
+            Area::Video => ("video", 1),
+            Area::Vector => ("vector", 1),
+            Area::Scene => ("scene", 1),
+            Area::Data => ("data", 1),
+            Area::Nav => ("nav", 1),
+            Area::Look => ("look", 1),
+            Area::Shader => ("shader", 1),
+            Area::Ui => ("ui", 1),
+            Area::Effect => ("effect", 1),
+            Area::Lighting => ("lighting", 1),
+            Area::Terrain => ("terrain", 1),
+            Area::Hlod => ("hlod", 1),
+        }
+    }
+
+    /// This area's revision ([`Area::entry`]).
+    pub const fn revision(self) -> u32 {
+        self.entry().1
+    }
+}
+
+/// The revisions of [`Area::Blob`] and of `areas`, hashed: what a cook
+/// stamp or a cache key of an output those areas write starts from.
+pub fn revisions(areas: &[Area]) -> u64 {
+    let mut h = StableHasher::new();
+    h.write_u64(Area::Blob.revision() as u64);
+    for &a in areas {
+        let (name, revision) = a.entry();
+        h.write_str(name);
+        h.write_u64(revision as u64);
+    }
+    h.finish()
+}
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -152,7 +277,7 @@ fn kinds() -> &'static [(&'static str, u64, u32)] {
 /// The type hash and schema version a cooked file of manifest type `name`
 /// must hold today, for every kind the cook writes. The incremental cook
 /// reads a kept output's header against this, so a schema that changed
-/// without a [`COOKER_VERSION`] bump still re-cooks its blobs instead of
+/// without an [`Area`] revision bump still re-cooks its blobs instead of
 /// leaving files the loader refuses. `None`: not a kind the cook writes
 /// (such an output is never fresh, which the first cook test shows).
 pub fn expected_header(name: &str) -> Option<(u64, u32)> {
@@ -162,7 +287,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         .map(|&(_, hash, version)| (hash, version))
 }
 
-/// One hash of [`COOKER_VERSION`] and every kind's type hash and schema
+/// One hash of every [`Area`]'s revision and every kind's type hash and schema
 /// version: equal in two builds exactly when each writes and reads the same
 /// cooked files. `og` hands its own to the engine's scripts and the native
 /// host reports its own, so an `og` and a host library built from different
@@ -172,7 +297,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
 /// this build's type hashes and schema versions ([`expected_header`]).
 pub fn format_stamp() -> u64 {
     let mut h = StableHasher::new();
-    h.write_str(COOKER_VERSION);
+    h.write_u64(revisions(&Area::ALL));
     for &(name, hash, version) in kinds() {
         h.write_str(name);
         h.write_u64(hash);

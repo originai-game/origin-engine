@@ -471,12 +471,52 @@ fn sample_channel_bilinear(img: &texture::Image, u: f32, v: f32, ch: usize) -> u
     (top * (1.0 - fy) + bot * fy).round().clamp(0.0, 255.0) as u8
 }
 
-/// Packs separate occlusion (R) and metallic-roughness (G, B) images into a
-/// single RGBA PNG (`R = AO, G = Roughness, B = Metallic, A = 255`) at
-/// `max(mr.w, ao.w) x max(mr.h, ao.h)`.
-fn pack_orm_png(mr_bytes: &[u8], ao_bytes: &[u8]) -> Result<Vec<u8>, String> {
-    let mr = texture::decode(mr_bytes)?;
-    let ao = texture::decode(ao_bytes)?;
+/// The image a material's separate occlusion and metallic-roughness maps
+/// pack into (`R = AO, G = Roughness, B = Metallic, A = 255`), as the bytes
+/// [`GltfSource::images`] holds for it: this mark, then the two encoded
+/// source images, each after its length. Nothing is decoded to make it:
+/// [`texture::decode`] packs the two when the texture cooks
+/// ([`decode_orm`]), and its stamp and its key in the shared cache are the
+/// two sources' own bytes, whatever writes an image file.
+pub(crate) const ORM_PACK: &[u8; 8] = b"og-orm\0\x01";
+
+fn orm_pack(mr: &[u8], ao: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(ORM_PACK.len() + 16 + mr.len() + ao.len());
+    out.extend_from_slice(ORM_PACK);
+    for image in [mr, ao] {
+        out.extend_from_slice(&(image.len() as u64).to_le_bytes());
+        out.extend_from_slice(image);
+    }
+    out
+}
+
+/// An [`ORM_PACK`]'s two encoded images: metallic-roughness, occlusion.
+fn orm_sources(bytes: &[u8]) -> Option<[&[u8]; 2]> {
+    let mut rest = bytes.strip_prefix(ORM_PACK)?;
+    let mut next = || {
+        let (len, after) = rest.split_first_chunk::<8>()?;
+        let (image, after) = after.split_at_checked(u64::from_le_bytes(*len) as usize)?;
+        rest = after;
+        Some(image)
+    };
+    Some([next()?, next()?])
+}
+
+/// An [`ORM_PACK`]'s width and height ([`decode_orm`]'s), from its
+/// sources' headers.
+pub(crate) fn orm_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    let [mr, ao] = orm_sources(bytes)?;
+    let (mr, ao) = (texture::size(mr)?, texture::size(ao)?);
+    Some((mr.0.max(ao.0).max(1), mr.1.max(ao.1).max(1)))
+}
+
+/// Decodes an [`ORM_PACK`]: occlusion in R, roughness in G and metallic in
+/// B, at `max(mr.w, ao.w) x max(mr.h, ao.h)`, the smaller map sampled
+/// bilinearly.
+pub(crate) fn decode_orm(bytes: &[u8]) -> Result<texture::Image, String> {
+    let [mr, ao] = orm_sources(bytes).ok_or("a truncated occlusion-roughness-metallic pack")?;
+    let mr = texture::decode(mr)?;
+    let ao = texture::decode(ao)?;
     let w = mr.width.max(ao.width).max(1);
     let h = mr.height.max(ao.height).max(1);
     let mut rgba = vec![255u8; w as usize * h as usize * 4];
@@ -501,11 +541,11 @@ fn pack_orm_png(mr_bytes: &[u8], ao_bytes: &[u8]) -> Result<Vec<u8>, String> {
             }
         }
     }
-    let img = image::RgbaImage::from_raw(w, h, rgba).ok_or("ORM pack image dimensions")?;
-    let mut out = Vec::new();
-    img.write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
-        .map_err(|e| format!("encoding packed ORM image: {e}"))?;
-    Ok(out)
+    Ok(texture::Image {
+        width: w,
+        height: h,
+        rgba,
+    })
 }
 
 pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
@@ -592,26 +632,18 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                     ext::transform(&mat_json["pbrMetallicRoughness"]["metallicRoughnessTexture"]).0;
                 let ao_tf = ext::transform(&mat_json["occlusionTexture"]).0;
                 if mr_tf == ao_tf {
-                    let packed = if let Some(&cached) = orm_cache.get(&(mr_img, ao_img)) {
-                        Some(cached)
-                    } else if let Ok(png) = pack_orm_png(&images[mr_img], &images[ao_img]) {
-                        let idx = images.len();
-                        images.push(png);
-                        orm_cache.insert((mr_img, ao_img), idx);
-                        Some(idx)
-                    } else {
-                        None
+                    let idx = *orm_cache.entry((mr_img, ao_img)).or_insert_with(|| {
+                        images.push(orm_pack(&images[mr_img], &images[ao_img]));
+                        images.len() - 1
+                    });
+                    orm_packed = Some(idx);
+                    let u = TextureUse {
+                        image: idx,
+                        kind: kind::LINEAR,
+                        cutout: None,
                     };
-                    if let Some(idx) = packed {
-                        orm_packed = Some(idx);
-                        let u = TextureUse {
-                            image: idx,
-                            kind: kind::LINEAR,
-                            cutout: None,
-                        };
-                        if !textures.contains(&u) {
-                            textures.push(u);
-                        }
+                    if !textures.contains(&u) {
+                        textures.push(u);
                     }
                 }
             }
@@ -881,7 +913,7 @@ fn plan_model<'a>(
         })
         .unwrap_or_default();
     let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
-    let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
+    let with = |areas: &[Area], parts: &[&[u8]], desc: &str, extra: &[u8]| {
         let mut v: Vec<&[u8]> = parts.to_vec();
         if g.doc.skins().len() > 0 {
             v.push(b"scale-relative-skin-binds-v1");
@@ -890,7 +922,7 @@ fn plan_model<'a>(
             v.push(desc.as_bytes());
             v.push(extra);
         }
-        stamp(&v)
+        stamp(areas, &v)
     };
     let stream_textures = match model_stream_textures(s) {
         Ok(b) => b,
@@ -941,7 +973,7 @@ fn plan_model<'a>(
             if !word.is_empty() {
                 parts.push(word);
             }
-            with(&parts, &texture_desc, &hash)
+            with(&[Area::Texture], &parts, &texture_desc, &hash)
         };
         let not_split =
             stream_textures.then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
@@ -976,6 +1008,7 @@ fn plan_model<'a>(
     // they are among its inputs.
     let st = if ext(&s.rel) == "ogt" {
         with(
+            &[Area::Model],
             &[
                 b"model",
                 NODE_ROWS,
@@ -989,6 +1022,7 @@ fn plan_model<'a>(
         )
     } else {
         with(
+            &[Area::Model],
             &[
                 b"model",
                 NODE_ROWS,
@@ -1002,18 +1036,18 @@ fn plan_model<'a>(
     };
     // The impostor's card outline is the blob's, from the bake's
     // frames: a new outline rule cooks it again.
-    let st = stamp(&[
-        b"lod-surface-v6-etc1s-normal",
-        &st.to_le_bytes(),
-        &impostor::trim_stamp(),
-    ]);
-    let prepared = std::sync::Arc::new(PreparedModel {
-        source: s,
-        ids,
-        stamp: st,
-    });
+    let st = stamp(
+        &[Area::Model],
+        &[
+            b"lod-surface-v6-etc1s-normal",
+            &st.to_le_bytes(),
+            &impostor::trim_stamp(),
+        ],
+    );
     // The LOD surfaces a cooked blob of this stamp names: the last cook's
     // in cooked/, else the shared action cache's (a fresh checkout).
+    // Without one only the model's cook can name them, and they are
+    // planned once it has cooked (`ModelJob::derived`).
     let cached = (|| {
         let bytes = cx
             .old_outputs
@@ -1050,42 +1084,20 @@ fn plan_model<'a>(
                     .ok()
                     .map(str::to_owned)
             })
-            .collect::<Option<Vec<_>>>()
+            .collect::<Option<Vec<String>>>()
             .map(|ids| {
                 ids.into_iter()
                     .filter(|id| id.starts_with(&prefix))
-                    .collect()
+                    .collect::<Vec<_>>()
             })
     })();
-    let derived: Vec<String> = if let Some(ids) = cached {
-        ids
-    } else {
-        match prepared.get(options) {
-            Ok(data) => data.textures.iter().map(|t| t.id.clone()).collect(),
-            Err(e) => {
-                early_errors.push((s.rel.clone(), "model", e.to_string()));
-                return;
-            }
-        }
-    };
-    for id in derived {
-        parsed_refs
-            .entry(s.rel.clone())
-            .or_default()
-            .insert(id.clone());
-        let texture_stamp = stamp(&[
-            b"lod-surface-v6-etc1s-normal",
-            &st.to_le_bytes(),
-            tex_desc.as_bytes(),
-            id.as_bytes(),
-        ]);
-        outs.push((
-            id,
-            format::Texture::NAME,
-            texture_stamp,
-            Box::new(LodTextureJob(prepared.clone())),
-        ));
-    }
+    let prepared = std::sync::Arc::new(PreparedModel {
+        source: s,
+        ids,
+        stamp: st,
+        tex_desc,
+        derives: cached.is_none(),
+    });
     outs.insert(
         0,
         (
@@ -1101,16 +1113,20 @@ fn plan_model<'a>(
             format::Fracture::NAME,
             // The asset's layout too: a new og-physics-data fracture version
             // recooks what the runtime would refuse.
-            stamp(&[
-                b"fracture",
-                &og_physics_data::fracture::ASSET_VERSION.to_le_bytes(),
-                &hash,
-            ]),
+            stamp(
+                &[Area::Fracture],
+                &[
+                    b"fracture",
+                    &og_physics_data::fracture::ASSET_VERSION.to_le_bytes(),
+                    &hash,
+                ],
+            ),
             Box::new(FractureJob(s)),
         ));
     }
     if group_of.contains_key(&s.rel) {
         let st = with(
+            &[Area::Model],
             &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],
             &model_desc,
             &[],
@@ -1144,6 +1160,7 @@ fn plan_model<'a>(
             // it), so an atlas baked by an older layout is baked
             // again.
             let st = with(
+                &[Area::Model, Area::Texture],
                 &[
                     b"impostor",
                     &[6, kind as u8],
@@ -1171,6 +1188,7 @@ fn plan_model<'a>(
                     .map(|m| m.describe())
                     .unwrap_or_default();
                 let st = with(
+                    &[Area::Model, Area::Anim],
                     &[
                         b"animation",
                         NODE_ROWS,
@@ -1195,6 +1213,16 @@ fn plan_model<'a>(
             Err(e) => early_errors.push((s.rel.clone(), "model", e)),
         }
     }
+    // Its LOD surfaces, after its other outputs: where a cook that had to
+    // name them itself puts them (`plan::derive`), so the manifest reads
+    // the same from either.
+    for id in cached.into_iter().flatten() {
+        parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(id.clone());
+        outs.push(prepared.lod_surface(id));
+    }
 }
 
 /// A model's one blob: its meshes, materials and skeleton.
@@ -1204,6 +1232,11 @@ struct PreparedModel<'a> {
     source: &'a Source,
     ids: Vec<String>,
     stamp: u64,
+    /// The texture options and encoder, in its LOD surfaces' stamps.
+    tex_desc: &'a str,
+    /// No cooked blob named its LOD surfaces when it was planned: its
+    /// cook does (`ModelJob::derived`).
+    derives: bool,
 }
 
 /// A model's cook, kept on its source (`Source::model`).
@@ -1213,7 +1246,26 @@ pub(crate) struct ModelOutput {
     textures: Vec<blob::LodTexture>,
 }
 
-impl PreparedModel<'_> {
+impl<'a> PreparedModel<'a> {
+    /// The LOD surface `id` of this model, as a planned texture output.
+    fn lod_surface(self: &std::sync::Arc<Self>, id: String) -> Out<'a> {
+        let stamp = stamp(
+            &[Area::Model, Area::Texture],
+            &[
+                b"lod-surface-v6-etc1s-normal",
+                &self.stamp.to_le_bytes(),
+                self.tex_desc.as_bytes(),
+                id.as_bytes(),
+            ],
+        );
+        (
+            id,
+            format::Texture::NAME,
+            stamp,
+            Box::new(LodTextureJob(self.clone())),
+        )
+    }
+
     fn get(&self, options: &super::CookOptions) -> Result<&ModelOutput, CookError> {
         self.source
             .model
@@ -1269,6 +1321,23 @@ impl Job for ModelJob<'_> {
             }
         }
         Ok((data.blob.clone(), notes))
+    }
+
+    /// Its LOD surfaces, when its plan had no cooked blob to read them
+    /// from.
+    fn derived<'a>(&self, ex: &Exec) -> Result<Vec<Out<'a>>, CookError>
+    where
+        Self: 'a,
+    {
+        if !self.0.derives {
+            return Ok(Vec::new());
+        }
+        let data = self.0.get(ex.options)?;
+        Ok(data
+            .textures
+            .iter()
+            .map(|t| self.0.lod_surface(t.id.clone()))
+            .collect())
     }
 }
 
@@ -1411,12 +1480,16 @@ impl Job for GltfTextureJob<'_> {
     }
 
     fn action(&self) -> Action<'_> {
-        let GltfTextureJob(s, image, kind, cutout, split) = self;
+        let GltfTextureJob(s, image, ..) = self;
         Action::Input(
             s.gltf.as_ref().expect("parsed model").images[*image].as_slice(),
-            format!("{kind} cutout {cutout:?} {split:?} {:?}", s.settings),
             true,
         )
+    }
+    fn cost(&self, options: &super::CookOptions) -> u64 {
+        let GltfTextureJob(s, image, k, ..) = self;
+        let bytes = &s.gltf.as_ref().expect("parsed model").images[*image];
+        texture::encode_cost(bytes, *k, &options.texture)
     }
 }
 

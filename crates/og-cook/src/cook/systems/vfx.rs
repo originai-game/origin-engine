@@ -4,7 +4,7 @@
 //! which the runtime parses again.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
 pub(crate) fn cook_vfx(
@@ -99,7 +99,7 @@ fn plan_vfx<'a>(
     } else {
         String::new()
     };
-    let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
+    let st = stamp(&[Area::Effect], &[b"vfx", &hash, st.as_bytes()]);
     outs.push((s.rel.clone(), format::Vfx::NAME, st, Box::new(VfxJob(s))));
 }
 

@@ -101,7 +101,7 @@ use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, audio, hash_bytes,
     stamp, texture_array,
 };
-use crate::format::{self, BlobKind, VideoMeta, row_hash};
+use crate::format::{self, Area, BlobKind, VideoMeta, row_hash};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use std::collections::BTreeMap;
@@ -1864,7 +1864,7 @@ fn plan_video<'a>(
             outs.push((
                 s.rel.clone(),
                 format::Video::NAME,
-                stamp(&base),
+                stamp(&[Area::Video], &base),
                 Box::new(VideoMetaJob(plan.clone())),
             ));
             if plan.decl.stream {
@@ -1872,14 +1872,20 @@ fn plan_video<'a>(
                 // and H.264 ones): its index and its chunks.
                 let mut streams = vec![(
                     stream_id(&s.rel),
-                    stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
+                    stamp(
+                        &[Area::Video],
+                        &[&base[..], &[b"stream".as_slice()]].concat(),
+                    ),
                     plan.clone(),
                 )];
                 let s720 = og_video::stream::fallback_size(plan.size);
                 if let Some(size) = s720 {
                     streams.push((
                         stream_fallback_id(&s.rel),
-                        stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
+                        stamp(
+                            &[Area::Video],
+                            &[&base[..], &[b"stream720".as_slice()]].concat(),
+                        ),
                         Box::new(fallback_plan(&plan, size)),
                     ));
                 }
@@ -1888,7 +1894,10 @@ fn plan_video<'a>(
                 {
                     streams.push((
                         stream_low_id(&s.rel),
-                        stamp(&[&base[..], &[b"stream480".as_slice()]].concat()),
+                        stamp(
+                            &[Area::Video],
+                            &[&base[..], &[b"stream480".as_slice()]].concat(),
+                        ),
                         Box::new(low_plan(&plan, size480)),
                     ));
                 }
@@ -1897,6 +1906,7 @@ fn plan_video<'a>(
                     streams.push((
                         rendition_id(&s.rel, r),
                         stamp(
+                            &[Area::Video],
                             &[&base[..], &[r.word().as_bytes(), rp.describe().as_bytes()]].concat(),
                         ),
                         Box::new(rp),
@@ -1907,7 +1917,10 @@ fn plan_video<'a>(
                         outs.push((
                             og_bundle::runtime::video_chunk_id(&id, n),
                             format::VideoChunk::NAME,
-                            stamp(&[&st.to_le_bytes()[..], &n.to_le_bytes()[..]]),
+                            stamp(
+                                &[Area::Video],
+                                &[&st.to_le_bytes()[..], &n.to_le_bytes()[..]],
+                            ),
                             Box::new(VideoChunkJob(src.clone(), src_hash, sp.clone(), n)),
                         ));
                     }
@@ -1921,7 +1934,10 @@ fn plan_video<'a>(
                 outs.push((
                     poster_id(&s.rel),
                     format::Texture::NAME,
-                    stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
+                    stamp(
+                        &[Area::Video, Area::Texture],
+                        &[&base[..], &[b"poster".as_slice()]].concat(),
+                    ),
                     Box::new(VideoPosterJob(src.clone(), src_hash, plan.clone())),
                 ));
             } else {
@@ -1929,11 +1945,17 @@ fn plan_video<'a>(
                 outs.push((
                     frames.clone(),
                     format::TextureArray::NAME,
-                    stamp(&[&base[..], &[b"array".as_slice()]].concat()),
+                    stamp(
+                        &[Area::Video, Area::Texture],
+                        &[&base[..], &[b"array".as_slice()]].concat(),
+                    ),
                     Box::new(VideoArrayJob(s, plan.clone())),
                 ));
                 for n in 0..plan.frames as usize {
-                    let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                    let st = stamp(
+                        &[Area::Video, Area::Texture],
+                        &[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat(),
+                    );
                     outs.push((
                         texture_array::layer_id(&frames, n),
                         format::Texture::NAME,
@@ -1946,6 +1968,7 @@ fn plan_video<'a>(
             let push_audio =
                 |outs: &mut Vec<Out<'a>>, aid: String, asrc: PathBuf, ahash: u64, tag: &[u8]| {
                     let ast = stamp(
+                        &[Area::Video, Area::Audio],
                         &[
                             &base[..],
                             &[b"audio-v2".as_slice(), tag, &ahash.to_le_bytes()],
@@ -1965,7 +1988,10 @@ fn plan_video<'a>(
                     ));
                     if let Some((per, count)) = audio_chunking {
                         for n in 1..count {
-                            let cst = stamp(&[&ast.to_le_bytes()[..], &n.to_le_bytes()[..]]);
+                            let cst = stamp(
+                                &[Area::Video, Area::Audio],
+                                &[&ast.to_le_bytes()[..], &n.to_le_bytes()[..]],
+                            );
                             outs.push((
                                 format!("{aid}#chunk{n}"),
                                 format::SoundChunk::NAME,

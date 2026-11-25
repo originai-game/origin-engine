@@ -8,8 +8,8 @@
 
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, Path, PlanState, Planned, Source, Split,
-    TextureOptions, conform, ext, ktx2_source, mesh_texture, normal2d, not_split, settings_block,
-    stamp, sway2d, texture_kind, texture_stream,
+    TextureOptions, conform, ktx2_source, mesh_texture, normal2d, not_split, settings_block, stamp,
+    sway2d, texture_kind, texture_stream,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -64,6 +64,10 @@ pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     if bytes.starts_with(&ktx2::IDENTIFIER) {
         return super::ktx2_source::decode_image(bytes);
     }
+    // A glTF material's occlusion and metallic-roughness maps, packed here.
+    if bytes.starts_with(super::model::ORM_PACK) {
+        return super::model::decode_orm(bytes);
+    }
     if bytes.starts_with(b"DDS ") {
         let dds = image_dds::ddsfile::Dds::read(bytes).map_err(|e| format!("DDS: {e}"))?;
         let rgba = image_dds::image_from_dds(&dds, 0).map_err(|e| format!("DDS: {e}"))?;
@@ -103,19 +107,61 @@ pub fn orientation(bytes: &[u8]) -> u32 {
         .map_or(1, |o| u32::from(o.to_exif()))
 }
 
-/// A source image's longest side, read from its header alone (a KTX2's,
-/// or what the `image` crate reads without decoding); `None` when that is
-/// not cheap (DDS, PSD, TGA) or the bytes are not an image.
-pub fn longest_side(bytes: &[u8]) -> Option<u32> {
+/// A source image's width and height, read from its header alone (a
+/// KTX2's, or what the `image` crate reads without decoding); `None` when
+/// that is not cheap (DDS, PSD, TGA) or the bytes are not an image.
+pub fn size(bytes: &[u8]) -> Option<(u32, u32)> {
     if bytes.starts_with(&ktx2::IDENTIFIER) {
-        return ktx2::parse(bytes).ok().map(|i| i.width.max(i.height));
+        return ktx2::parse(bytes).ok().map(|i| (i.width, i.height));
     }
-    let (w, h) = image::ImageReader::new(std::io::Cursor::new(bytes))
+    if bytes.starts_with(super::model::ORM_PACK) {
+        return super::model::orm_size(bytes);
+    }
+    image::ImageReader::new(std::io::Cursor::new(bytes))
         .with_guessed_format()
         .ok()?
         .into_dimensions()
-        .ok()?;
-    Some(w.max(h))
+        .ok()
+}
+
+/// A source image's longest side, by its header ([`size`]).
+pub fn longest_side(bytes: &[u8]) -> Option<u32> {
+    size(bytes).map(|(w, h)| w.max(h))
+}
+
+/// How much work encoding the image `bytes` as a texture of kind `k` is,
+/// for `execute`'s order and threads (`Job::cost`): its texels, by its
+/// header, times what its encoder takes a texel. UASTC at level 3 with RDO
+/// takes about 8 times ETC1S's time (a 1024x1024 map with its mips: 27 to
+/// 36 s against 3.8 s, one thread of an x86-64 orb); pixel art is not
+/// encoded. 0 when the header does not say its size.
+pub(crate) fn encode_cost(bytes: &[u8], k: u32, opts: &TextureOptions) -> u64 {
+    let Some((w, h)) = size(bytes) else { return 0 };
+    let texel = match k {
+        kind::PIXEL => 0,
+        _ if opts.uastc(k) => 8,
+        _ => 1,
+    };
+    u64::from(w) * u64::from(h) * texel
+}
+
+thread_local! {
+    /// The threads a texture encode on this thread may use
+    /// ([`with_encode_threads`]).
+    static ENCODE_THREADS: std::cell::Cell<u32> = const { std::cell::Cell::new(1) };
+}
+
+/// Runs `cook` with each texture it encodes allowed `threads` threads.
+/// `execute` sets it for every output it cooks, from the cores the other
+/// outputs leave idle: an encode is one thread while there are outputs
+/// enough for every core, and a lone large texture takes them all. The
+/// bytes are the same at every count ([`encode_basisu`]), so this is
+/// scheduling alone and is in no stamp.
+pub(crate) fn with_encode_threads<R>(threads: usize, cook: impl FnOnce() -> R) -> R {
+    let before = ENCODE_THREADS.replace(threads.clamp(1, 64) as u32);
+    let result = cook();
+    ENCODE_THREADS.set(before);
+    result
 }
 
 /// A streamed texture's mip tail (G3-3), from the blob of its whole chain
@@ -501,9 +547,14 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
         params.set_generate_mipmaps(opts.mipmaps);
         params.set_mipmap_smallest_dimension(1);
     }
-    // One thread per texture: the cook parallelises across assets, and a
-    // single-threaded encode is bit-for-bit reproducible.
-    let mut c = Compressor::new(1);
+    // UASTC on the threads `execute` allows this output
+    // ([`with_encode_threads`]): each block is encoded alone, and the RDO
+    // pass after them is one job at every count (the vendored wrapper's
+    // `compressor_params_set_rdo_uastc`), so the bytes are the ones a
+    // single thread writes. ETC1S stays on one thread: its codebooks are
+    // built across the pool, which nothing here has shown reproducible.
+    let threads = if uastc { ENCODE_THREADS.get() } else { 1 };
+    let mut c = Compressor::new(threads);
     unsafe {
         if !c.init(&params) {
             return Err("basisu rejected the parameters".into());
@@ -615,7 +666,7 @@ pub fn cook_oriented(
             &img.rgba,
             true,
             false,
-            crate::format::COOKER_VERSION,
+            crate::format::KTX_WRITER,
         );
         let meta = TextureMeta {
             width: img.width,
@@ -680,9 +731,8 @@ pub fn cook_oriented(
     let ktx = if opts.force_toktx {
         toktx(img, k, opts)
     } else {
-        encode_basisu(img, k, opts).and_then(|basis| {
-            ktx2::from_basis(&basis, srgb, opts.zstd, crate::format::COOKER_VERSION)
-        })
+        encode_basisu(img, k, opts)
+            .and_then(|basis| ktx2::from_basis(&basis, srgb, opts.zstd, crate::format::KTX_WRITER))
     };
     #[cfg(not(feature = "basis"))]
     let ktx = toktx(img, k, opts);
@@ -760,7 +810,7 @@ fn plan_texture<'a>(
                 if !word.is_empty() {
                     parts.push(word);
                 }
-                stamp(&parts)
+                stamp(&[Area::Texture], &parts)
             };
             let source = s.conformed.as_deref().map_or(&s.bytes[..], |b| &b[..]);
             match stream.then(|| not_split(source, k, group_of.get(&s.rel))) {
@@ -801,12 +851,15 @@ fn plan_texture<'a>(
                     };
                     match file {
                         Ok(file) => {
-                            let st = stamp(&[
-                                b"texture normal",
-                                tex_desc.as_bytes(),
-                                &hash,
-                                file.as_deref().unwrap_or(b"auto"),
-                            ]);
+                            let st = stamp(
+                                &[Area::Texture],
+                                &[
+                                    b"texture normal",
+                                    tex_desc.as_bytes(),
+                                    &hash,
+                                    file.as_deref().unwrap_or(b"auto"),
+                                ],
+                            );
                             outs.push((
                                 format!("{}#normal", s.rel),
                                 format::Texture::NAME,
@@ -831,13 +884,16 @@ fn plan_texture<'a>(
                     });
                     match map {
                         Ok(map) => {
-                            let st = stamp(&[
-                                b"texture sway 1",
-                                tex_desc.as_bytes(),
-                                &hash,
-                                &kind,
-                                map.as_deref().unwrap_or(b"found"),
-                            ]);
+                            let st = stamp(
+                                &[Area::Texture],
+                                &[
+                                    b"texture sway 1",
+                                    tex_desc.as_bytes(),
+                                    &hash,
+                                    &kind,
+                                    map.as_deref().unwrap_or(b"found"),
+                                ],
+                            );
                             outs.push((
                                 crate::runtime::sway_id(&s.rel),
                                 format::Texture::NAME,
@@ -905,12 +961,17 @@ impl Job for TextureJob<'_> {
     }
 
     fn action(&self) -> Action<'_> {
-        let TextureJob(s, kind, split) = self;
-        Action::Input(
-            s.conformed.as_deref().unwrap_or(&s.bytes).as_slice(),
-            format!("{kind} {split:?} {} {:?}", ext(&s.rel), s.settings),
-            true,
-        )
+        let s = self.0;
+        Action::Input(s.conformed.as_deref().unwrap_or(&s.bytes).as_slice(), true)
+    }
+    fn cost(&self, options: &super::CookOptions) -> u64 {
+        let TextureJob(s, k, _) = self;
+        // A `.ktx2` taken as it is encodes nothing.
+        if s.rel.ends_with(".ktx2") {
+            return 0;
+        }
+        let bytes = s.conformed.as_deref().unwrap_or(&s.bytes);
+        encode_cost(bytes, *k, &options.texture)
     }
 }
 

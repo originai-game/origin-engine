@@ -14,7 +14,7 @@ use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root,
     hash_bytes, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use og_timeline::{FieldValue, FieldsKind, FieldsTrack, NEST_DEPTH, Timeline, Track};
@@ -507,7 +507,7 @@ fn plan_timeline<'a>(
         .entry(s.rel.clone())
         .or_default()
         .extend(named_assets(s));
-    let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Scene], &[b"timeline 1", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Timeline::NAME,

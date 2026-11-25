@@ -12,7 +12,10 @@ use std::process::ExitCode;
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
     let mut root = None;
-    let mut options = CookOptions::default();
+    let mut options = CookOptions {
+        progress: true,
+        ..CookOptions::default()
+    };
     let (mut report, mut json, mut graph) = (None, None, None);
     while let Some(a) = args.next() {
         match a.as_str() {

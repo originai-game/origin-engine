@@ -16,8 +16,8 @@
 //! --project`: a bake whose assets or code changed since is stale (the
 //! runtime no longer samples it and draws the capture on first use).
 
-use super::{COOKER_VERSION, CookError, environment::environment_blob, hash_bytes, stamp};
-use crate::format::BlobKind;
+use super::{COOKER, CookError, environment::environment_blob, hash_bytes, stamp};
+use crate::format::{Area, BlobKind};
 use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use og_core::ogt::{Document, Entry, Value};
 use std::path::{Path, PathBuf};
@@ -175,7 +175,7 @@ pub fn write_probe(
         },
     )
     .map_err(|e| CookError(format!("{id}: {e}")))?;
-    let st = stamp(&[b"probe", key.as_bytes()]);
+    let st = stamp(&[Area::Lighting], &[b"probe", key.as_bytes()]);
     let (blob, _, _) = environment_blob(&map, (size, size), 1.0, 0.0, 0, st, None);
     let cooked = root.join("cooked");
     let file = format!("probes/{key}.ogb");
@@ -191,7 +191,7 @@ pub fn write_probe(
         Ok(t) => Manifest::parse(&t)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?,
         Err(_) => Manifest {
-            cooker: COOKER_VERSION.to_string(),
+            cooker: COOKER.to_string(),
             profile: match std::fs::read_to_string(root.join("project.ogt")) {
                 Ok(t) => crate::look::project_profile(
                     &og_core::ogt::parse(&t)

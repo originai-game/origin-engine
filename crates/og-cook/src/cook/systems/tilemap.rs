@@ -1378,7 +1378,7 @@ fn plan_tileset<'a>(
     let PlanState { parsed_refs, .. } = state;
     let deps = references_of_tileset(&s.bytes, &|id| known.contains(id));
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Data], &[b"tileset", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Tileset::NAME,
@@ -1426,12 +1426,15 @@ fn plan_tilemap<'a>(
         Ok(m) => {
             let refs = references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
             assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
-            let st = stamp(&[
-                b"tilemap",
-                &hash,
-                m.describe().as_bytes(),
-                refs.join("\n").as_bytes(),
-            ]);
+            let st = stamp(
+                &[Area::Data],
+                &[
+                    b"tilemap",
+                    &hash,
+                    m.describe().as_bytes(),
+                    refs.join("\n").as_bytes(),
+                ],
+            );
             outs.push((
                 s.rel.clone(),
                 format::Tilemap::NAME,

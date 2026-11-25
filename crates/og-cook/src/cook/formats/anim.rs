@@ -1312,7 +1312,7 @@ fn plan_rig<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"rig", &hash]);
+    let st = stamp(&[Area::Anim], &[b"rig", &hash]);
     outs.push((s.rel.clone(), format::Rig::NAME, st, Box::new(RigJob(s))));
 }
 
@@ -1342,7 +1342,7 @@ fn plan_motion_action<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"motion-action", &hash]);
+    let st = stamp(&[Area::Anim], &[b"motion-action", &hash]);
     outs.push((
         s.rel.clone(),
         format::MotionAction::NAME,

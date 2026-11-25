@@ -43,7 +43,7 @@ pub use super::look_styles::{
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};
 use og_blob::BlobWriter;
 use og_core::ogt::{Number, Value};
@@ -1093,7 +1093,7 @@ fn plan_lut<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"lut", &hash]);
+    let st = stamp(&[Area::Look], &[b"lut", &hash]);
     outs.push((s.rel.clone(), format::Lut::NAME, st, Box::new(LutJob(s))));
 }
 
@@ -1143,7 +1143,7 @@ fn plan_look<'a>(
     let PlanState { parsed_refs, .. } = state;
     let deps = look_dependencies(s, assets_dir, &|id| known.contains(id));
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Look], &[b"look 1", &hash, deps.as_bytes()]);
     outs.push((s.rel.clone(), format::Look::NAME, st, Box::new(LookJob(s))));
 }
 
@@ -1174,7 +1174,7 @@ fn plan_palette<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"palette 1", &hash]);
+    let st = stamp(&[Area::Look], &[b"palette 1", &hash]);
     outs.push((
         s.rel.clone(),
         format::Palette::NAME,

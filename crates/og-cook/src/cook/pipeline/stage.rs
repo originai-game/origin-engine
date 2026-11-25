@@ -148,217 +148,250 @@ pub(crate) struct Imported {
     pub(crate) reused_fractures: BTreeSet<String>,
 }
 
+/// What importing one source made beside the source itself.
+#[derive(Default)]
+struct Made {
+    /// A `type model`'s text.
+    text: Option<String>,
+    /// Its prefracture came from the cache.
+    reused_fracture: bool,
+    /// The files its glTF read, which are part of it.
+    consumed: Vec<String>,
+}
+
 /// Every model is made a glb and loaded (vox, FBX and OBJ, text models,
-/// fracture), and every source hashed.
+/// fracture), and every source hashed: each source on its own, all at
+/// once (a model's load parses its file and reads every file it names).
 pub(crate) fn import(
     sources: &mut [Source],
     consumed: &mut BTreeSet<String>,
     texture_cache: Option<&Path>,
     threads: usize,
 ) -> Imported {
+    let slots: Vec<Mutex<&mut Source>> = sources.iter_mut().map(Mutex::new).collect();
+    let made = each(&slots, threads, |slot| {
+        let s: &mut Source = &mut slot.lock().expect("no poisoning");
+        let made = import_source(s, texture_cache)?;
+        s.hash = source_hash(s);
+        Some(made)
+    });
+    drop(slots);
     let mut model_texts: BTreeMap<String, String> = BTreeMap::new();
     let mut reused_fractures = BTreeSet::new();
-    // The sources that came through whole: hashed below, all at once.
-    let mut whole = Vec::new();
-    for (i, s) in sources.iter_mut().enumerate() {
-        // What a model says it is (`conform character`, `conform effect`),
-        // read from its text or import settings before a text becomes a glb.
-        let role = if s.kind == &crate::cook::model::MODEL {
-            match conform::model_role(s) {
-                Ok(c) => c,
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
-        } else {
-            conform::ModelRole::Prop
-        };
-        // A MagicaVoxel file is a model: meshed into a glTF binary here (its
-        // import settings' `model { voxScale voxOrigin }` applied), so the
-        // rest of the cook sees a .glb.
-        if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "vox" {
-            match vox::VoxSettings::parse(settings_block(s, "model"))
-                .and_then(|v| vox::to_glb(&s.bytes, &v))
-            {
-                Ok(glb) => s.bytes = glb,
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
+    for (s, made) in sources.iter().zip(made) {
+        let Some(made) = made else { continue };
+        if let Some(text) = made.text {
+            model_texts.insert(s.rel.clone(), text);
         }
-        // An FBX or OBJ is a model: read by ufbx and written as a glTF
-        // binary here (`fbx.rs`), so the rest of the cook sees a .glb; the
-        // files it read beside the glb's own (an OBJ's .mtl, the sources
-        // of packed images) join its hash and are consumed with it.
-        let mut imported = None;
-        if s.kind == &crate::cook::model::MODEL && fbx::handles(&ext(&s.rel)) {
-            match fbx::to_glb(&s.bytes, &s.path, &ext(&s.rel)) {
-                Ok(i) => {
-                    s.bytes = i.glb;
-                    imported = Some((i.read, i.notes));
-                }
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
+        if made.reused_fracture {
+            reused_fractures.insert(s.rel.clone());
         }
-        // A model whose source is an og-shape program (the program, or a
-        // `type model` naming it with its values): replayed by the kernel
-        // and written as a glTF binary here (`model_program.rs`); the
-        // program and the files it read join its hash.
-        if s.kind == &crate::cook::model::MODEL
-            && (model_program::is_program(&s.rel)
-                || (ext(&s.rel) == "ogt"
-                    && Document::parse(&String::from_utf8_lossy(&s.bytes))
-                        .is_ok_and(|d| model_program::names_program(&d))))
-        {
-            let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
-            let read = |f: &str| std::fs::read(dir.join(f)).map_err(|e| e.to_string());
-            match model_program::parse(&s.rel, &s.bytes, &read).and_then(|p| p.glb(&read)) {
-                Ok(w) => {
-                    s.bytes = w.glb;
-                    imported = Some((w.read, Vec::new()));
-                }
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
-        }
-        // A model written as text (`type model`): its parts built and
-        // written as a glTF binary here, so the rest of the cook sees a .glb.
-        else if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
-            let text = String::from_utf8_lossy(&s.bytes).to_string();
-            match model_text::to_glb(&text) {
-                Ok(glb) => {
-                    s.bytes = glb;
-                    model_texts.insert(s.rel.clone(), text);
-                }
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
-        }
-        // Its stated front and up (`model { front "-x" up "+y" }`): turned
-        // to +Z and +Y before the fracture cut and the load read it
-        // (`model/orient.rs`).
-        if s.kind == &crate::cook::model::MODEL {
-            match model::orient::settings(settings_block(s, "model")).and_then(|o| {
-                o.map(|(front, up)| model::orient::apply(&s.bytes, front, up))
-                    .transpose()
-            }) {
-                Ok(Some(turned)) => s.bytes = turned,
-                Ok(None) => {}
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
-        }
-        // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
-        if s.kind == &crate::cook::model::MODEL {
-            let dir = s.path.parent().unwrap_or(Path::new("."));
-            let text = model_texts.get(&s.rel).map(String::as_str);
-            let input_stamp = stamp(&[
-                &s.bytes,
-                text.unwrap_or_default().as_bytes(),
-                s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
-            ]);
-            match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
-                f.map(|f| {
-                    let key = cache::key(
-                        "fracture",
-                        &[
-                            &s.bytes,
-                            text.unwrap_or_default().as_bytes(),
-                            s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
-                        ],
-                    );
-                    fracture_cache::run(texture_cache, &key, input_stamp, dir, || {
-                        fracture::fracture_glb(&s.bytes, dir, &f)
-                    })
-                })
-                .transpose()
-            }) {
-                Ok(Some((f, cached))) => {
-                    s.bytes = f.glb;
-                    s.fracture = Some(f.asset);
-                    // Its images now live in the binary; the files stay
-                    // part of the source (its hash, what it consumed).
-                    let (read, notes) = imported.take().unwrap_or_default();
-                    if cached {
-                        reused_fractures.insert(s.rel.clone());
-                    }
-                    let mut all = read;
-                    all.extend(f.read);
-                    imported = Some((all, notes));
-                }
-                Ok(None) => {}
-                Err(e) => {
-                    s.error = Some(e);
-                    continue;
-                }
-            }
-        }
-        if s.kind == &crate::cook::model::MODEL {
-            let dir = s.path.parent().unwrap_or(Path::new("."));
-            match model::load(&s.bytes, dir) {
-                Ok(mut g) => {
-                    g.role = role;
-                    if let Some((read, notes)) = imported {
-                        g.external.extend(read);
-                        g.warnings.extend(notes);
-                    }
-                    let base = s
-                        .rel
-                        .rsplit_once('/')
-                        .map_or(String::new(), |(d, _)| format!("{d}/"));
-                    for (p, _) in &g.external {
-                        // As the asset it names: `cells/../textures/a.png` is
-                        // `textures/a.png` (s59). A program reads itself, and
-                        // a model is never part of itself.
-                        let file = normalise_rel(&format!("{base}{p}"));
-                        if file != s.rel {
-                            consumed.insert(file);
-                        }
-                    }
-                    s.gltf = Some(g);
-                }
-                Err(e) => s.error = Some(e),
-            }
-        }
-        whole.push(i);
-    }
-    // A source's hash is its own bytes', a byte at a time, over every byte
-    // of the project.
-    let hashes = each(&whole, threads, |&i| {
-        let s = &sources[i];
-        let mut h = StableHasher::new();
-        h.write(&s.bytes);
-        if let Some((text, _)) = &s.settings {
-            h.write_str(text);
-        }
-        if let Some(g) = &s.gltf {
-            let mut ext: Vec<_> = g.external.iter().collect();
-            ext.sort_by(|a, b| a.0.cmp(&b.0));
-            for (p, b) in ext {
-                h.write_str(p);
-                h.write(b);
-            }
-        }
-        h.finish()
-    });
-    for (i, hash) in whole.into_iter().zip(hashes) {
-        sources[i].hash = hash;
+        consumed.extend(made.consumed);
     }
     Imported {
         model_texts,
         reused_fractures,
     }
+}
+
+/// A source's hash: its own bytes', a byte at a time, with its settings
+/// and every file its glTF read.
+fn source_hash(s: &Source) -> u64 {
+    let mut h = StableHasher::new();
+    h.write(&s.bytes);
+    if let Some((text, _)) = &s.settings {
+        h.write_str(text);
+    }
+    if let Some(g) = &s.gltf {
+        let mut ext: Vec<_> = g.external.iter().collect();
+        ext.sort_by(|a, b| a.0.cmp(&b.0));
+        for (p, b) in ext {
+            h.write_str(p);
+            h.write(b);
+        }
+    }
+    h.finish()
+}
+
+/// One source's import; `None` when it failed, with its error on the
+/// source (which then has no hash and plans nothing).
+fn import_source(s: &mut Source, texture_cache: Option<&Path>) -> Option<Made> {
+    let mut made = Made::default();
+    // What a model says it is (`conform character`, `conform effect`),
+    // read from its text or import settings before a text becomes a glb.
+    let role = if s.kind == &crate::cook::model::MODEL {
+        match conform::model_role(s) {
+            Ok(c) => c,
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    } else {
+        conform::ModelRole::Prop
+    };
+    // A MagicaVoxel file is a model: meshed into a glTF binary here (its
+    // import settings' `model { voxScale voxOrigin }` applied), so the
+    // rest of the cook sees a .glb.
+    if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "vox" {
+        match vox::VoxSettings::parse(settings_block(s, "model"))
+            .and_then(|v| vox::to_glb(&s.bytes, &v))
+        {
+            Ok(glb) => s.bytes = glb,
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    // An FBX or OBJ is a model: read by ufbx and written as a glTF
+    // binary here (`fbx.rs`), so the rest of the cook sees a .glb; the
+    // files it read beside the glb's own (an OBJ's .mtl, the sources
+    // of packed images) join its hash and are consumed with it.
+    let mut imported = None;
+    if s.kind == &crate::cook::model::MODEL && fbx::handles(&ext(&s.rel)) {
+        match fbx::to_glb(&s.bytes, &s.path, &ext(&s.rel)) {
+            Ok(i) => {
+                s.bytes = i.glb;
+                imported = Some((i.read, i.notes));
+            }
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    // A model whose source is an og-shape program (the program, or a
+    // `type model` naming it with its values): replayed by the kernel
+    // and written as a glTF binary here (`model_program.rs`); the
+    // program and the files it read join its hash.
+    if s.kind == &crate::cook::model::MODEL
+        && (model_program::is_program(&s.rel)
+            || (ext(&s.rel) == "ogt"
+                && Document::parse(&String::from_utf8_lossy(&s.bytes))
+                    .is_ok_and(|d| model_program::names_program(&d))))
+    {
+        let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
+        let read = |f: &str| std::fs::read(dir.join(f)).map_err(|e| e.to_string());
+        match model_program::parse(&s.rel, &s.bytes, &read).and_then(|p| p.glb(&read)) {
+            Ok(w) => {
+                s.bytes = w.glb;
+                imported = Some((w.read, Vec::new()));
+            }
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    // A model written as text (`type model`): its parts built and
+    // written as a glTF binary here, so the rest of the cook sees a .glb.
+    else if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
+        let text = String::from_utf8_lossy(&s.bytes).to_string();
+        match model_text::to_glb(&text) {
+            Ok(glb) => {
+                s.bytes = glb;
+                made.text = Some(text);
+            }
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    // Its stated front and up (`model { front "-x" up "+y" }`): turned
+    // to +Z and +Y before the fracture cut and the load read it
+    // (`model/orient.rs`).
+    if s.kind == &crate::cook::model::MODEL {
+        match model::orient::settings(settings_block(s, "model")).and_then(|o| {
+            o.map(|(front, up)| model::orient::apply(&s.bytes, front, up))
+                .transpose()
+        }) {
+            Ok(Some(turned)) => s.bytes = turned,
+            Ok(None) => {}
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
+    if s.kind == &crate::cook::model::MODEL {
+        let dir = s.path.parent().unwrap_or(Path::new("."));
+        let text = made.text.as_deref();
+        let input_stamp = stamp(
+            &[Area::Fracture],
+            &[
+                &s.bytes,
+                text.unwrap_or_default().as_bytes(),
+                s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
+            ],
+        );
+        match fracture::Settings::of(text, s.settings.as_ref().map(|(_, d)| d)).and_then(|f| {
+            f.map(|f| {
+                let key = cache::key(
+                    &[crate::format::Area::Fracture],
+                    "fracture",
+                    &[
+                        &s.bytes,
+                        text.unwrap_or_default().as_bytes(),
+                        s.settings.as_ref().map_or("", |(text, _)| text).as_bytes(),
+                    ],
+                );
+                fracture_cache::run(texture_cache, &key, input_stamp, dir, || {
+                    fracture::fracture_glb(&s.bytes, dir, &f)
+                })
+            })
+            .transpose()
+        }) {
+            Ok(Some((f, cached))) => {
+                s.bytes = f.glb;
+                s.fracture = Some(f.asset);
+                // Its images now live in the binary; the files stay
+                // part of the source (its hash, what it consumed).
+                let (read, notes) = imported.take().unwrap_or_default();
+                if cached {
+                    made.reused_fracture = true;
+                }
+                let mut all = read;
+                all.extend(f.read);
+                imported = Some((all, notes));
+            }
+            Ok(None) => {}
+            Err(e) => {
+                s.error = Some(e);
+                return None;
+            }
+        }
+    }
+    if s.kind == &crate::cook::model::MODEL {
+        let dir = s.path.parent().unwrap_or(Path::new("."));
+        match model::load(&s.bytes, dir) {
+            Ok(mut g) => {
+                g.role = role;
+                if let Some((read, notes)) = imported {
+                    g.external.extend(read);
+                    g.warnings.extend(notes);
+                }
+                let base = s
+                    .rel
+                    .rsplit_once('/')
+                    .map_or(String::new(), |(d, _)| format!("{d}/"));
+                for (p, _) in &g.external {
+                    // As the asset it names: `cells/../textures/a.png` is
+                    // `textures/a.png` (s59). A program reads itself, and
+                    // a model is never part of itself.
+                    let file = normalise_rel(&format!("{base}{p}"));
+                    if file != s.rel {
+                        made.consumed.push(file);
+                    }
+                }
+                s.gltf = Some(g);
+            }
+            Err(e) => s.error = Some(e),
+        }
+    }
+    Some(made)
 }
 
 /// The bundle's assets once the files other assets consume are taken out.

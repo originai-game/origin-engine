@@ -268,7 +268,10 @@ invalidated by the compiler itself.
   then the reflected struct with its payloads (meshopt vertex streams, KTX2
   Basis Universal textures, QOA audio, MSDF fonts, scenes as component
   tables). Blobs load by copy-free view where alignment allows.
-- **Cook** (`og cook`): incremental and hash-stamped. Sources live in
+- **Cook** (`og cook`): incremental and hash-stamped. A stamp holds the
+  revisions of the cook areas that write its output (`format::Area`:
+  textures, models, fonts…), never the engine's version, so a new build
+  cooks again only what a moved area writes. Sources live in
   `assets/`, output in `cooked/`; the runtime reads only `cooked/`. Colour
   textures are ETC1S unless project.ogt's `cook { color_textures uastc }`
   says otherwise (`publish { color_textures etc1s }` overrides it for the web

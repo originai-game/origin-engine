@@ -11,7 +11,7 @@ pub(crate) fn run(
     cook: impl FnOnce() -> Result<(Vec<u8>, Vec<String>), CookError>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let job = p.work.as_ref().map(|j| j.action());
-    let texture = matches!(job, Some(Action::Input(.., true)));
+    let texture = matches!(job, Some(Action::Input(_, true)));
     let action = entry(directory, job, &p.id, p.ty, p.stamp, options, project_key);
     if let Some((bytes, mut notes)) = action.as_ref().and_then(|a| hit(a, p.ty, p.stamp)) {
         notes.push(format!(
@@ -43,8 +43,21 @@ pub(crate) fn project_output(
     hit(&action, ty, stamp).map(|(bytes, _)| bytes)
 }
 
-/// An output's store and key: its action (`None`: the project's), id,
-/// type, stamp and the options.
+/// An output's store and key: what it was made from, its type and layout,
+/// and its stamp.
+///
+/// An output of its own input ([`Action::Input`]) is keyed by that
+/// input's bytes and nothing else of the cook: its stamp holds the options
+/// and settings its cook reads and its areas' revisions, as the
+/// incremental cook needs it to, so the same input cooked the same way is
+/// one entry for every project, checkout and engine build that would
+/// write the same bytes. (The whole [`CookOptions`] was keyed here once: a
+/// texture's entry then held the paths of the game's code, the mesh and
+/// font options and whether the cook was a publish's, and no two projects
+/// with code shared one.)
+///
+/// An output of the project ([`Action::Project`]) is keyed by the
+/// project's inputs, its id and the cook's options ([`project_options`]).
 fn entry(
     directory: Option<&Path>,
     job: Option<Action<'_>>,
@@ -54,40 +67,51 @@ fn entry(
     options: &CookOptions,
     project_key: Option<&str>,
 ) -> Option<(cache::Store, String)> {
-    let own_input = matches!(job, Some(Action::Input(..)));
     let input = match job {
         Some(Action::Never) => None,
-        Some(Action::Input(bytes, settings, _)) => Some((bytes, settings)),
-        Some(Action::Project) | None => project_key.map(|key| (key.as_bytes(), id.to_owned())),
-    };
-    directory.zip(input).map(|(dir, (bytes, settings))| {
-        let mut options = options.clone();
-        options.threads = 0;
-        // The game's component schemas pack scenes, which are the project's
-        // actions; an output of its own input never reads them, so a code
-        // edit or another game still shares it.
-        if own_input {
-            options.schemas.clear();
+        Some(Action::Input(bytes, _)) => Some((bytes, String::new(), String::new())),
+        Some(Action::Project) | None => {
+            project_key.map(|key| (key.as_bytes(), id.to_owned(), project_options(options)))
         }
-        let options = format!(
-            "{options:?} {:?} {:?}",
-            super::texture::encoder_name(&options.texture),
-            format::expected_header(ty)
-        );
+    };
+    directory.zip(input).map(|(dir, (bytes, id, options))| {
+        let layout = format!("{:?}", format::expected_header(ty));
         (
             cache::Store::new(dir.to_owned()),
+            // No area's revision: the stamp holds its output's.
             cache::key(
-                "output",
+                &[],
+                "output-2",
                 &[
                     bytes,
-                    settings.as_bytes(),
+                    id.as_bytes(),
                     options.as_bytes(),
                     ty.as_bytes(),
+                    layout.as_bytes(),
                     &stamp.to_le_bytes(),
                 ],
             ),
         )
     })
+}
+
+/// The cook's options as a project output's key holds them: all that can
+/// change an output, and no path. The game's code is among the project's
+/// inputs by its content (`index::Index::content_key`), and an engine
+/// table by its id, so a project keeps its entries when it or the engine
+/// moves.
+fn project_options(options: &CookOptions) -> String {
+    let mut options = options.clone();
+    options.threads = 0;
+    options.progress = false;
+    options.code.files.clear();
+    for path in options.code.tables.values_mut() {
+        path.clear();
+    }
+    format!(
+        "{options:?} {:?}",
+        super::texture::encoder_name(&options.texture)
+    )
 }
 
 /// A stored result whose blob is still of the type, schema and stamp.

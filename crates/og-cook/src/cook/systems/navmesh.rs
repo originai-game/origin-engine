@@ -41,7 +41,7 @@
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::ogt::{Block, Document, Entry};
@@ -845,7 +845,7 @@ fn plan_nav_mesh<'a>(
     let deps = navmesh_dependencies(s);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
     // Re-bake cached terrain surfaces with adaptive diagonals.
-    let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
+    let st = stamp(&[Area::Nav], &[b"navmesh 2", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::NavMesh::NAME,

@@ -1003,16 +1003,22 @@ fn plan_scene<'a>(
         .collect();
     // A scene that places no prefab keeps the stamp it had.
     let st = if placed.is_empty() && s.kind == &SCENE {
-        stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
+        stamp(
+            &[Area::Scene],
+            &[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()],
+        )
     } else {
-        stamp(&[
-            b"scene",
-            &hash,
-            &schema_hash,
-            refs.join("\n").as_bytes(),
-            placed.join("\n").as_bytes(),
-            &[options.publish as u8],
-        ])
+        stamp(
+            &[Area::Scene],
+            &[
+                b"scene",
+                &hash,
+                &schema_hash,
+                refs.join("\n").as_bytes(),
+                placed.join("\n").as_bytes(),
+                &[options.publish as u8],
+            ],
+        )
     };
     outs.push((
         s.rel.clone(),

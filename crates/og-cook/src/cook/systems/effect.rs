@@ -4,7 +4,7 @@
 //! with the bundle's handles.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, fx_field, stamp};
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
 pub(crate) fn cook_effect(
@@ -99,12 +99,15 @@ fn plan_emitter<'a>(
         .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
         .collect();
     let fields = fx_field::stamp(s, &text);
-    let st = stamp(&[
-        b"emitter",
-        &hash,
-        refs.join("\n").as_bytes(),
-        fields.as_bytes(),
-    ]);
+    let st = stamp(
+        &[Area::Effect],
+        &[
+            b"emitter",
+            &hash,
+            refs.join("\n").as_bytes(),
+            fields.as_bytes(),
+        ],
+    );
     outs.push((
         s.rel.clone(),
         format::Emitter::NAME,
@@ -218,7 +221,10 @@ fn plan_effect<'a>(
         })
         .map(|r| format!("{r}={}", known.contains(crate::runtime::asset_id(&r))))
         .collect();
-    let st = stamp(&[b"effect", &hash, refs.join("\n").as_bytes()]);
+    let st = stamp(
+        &[Area::Effect],
+        &[b"effect", &hash, refs.join("\n").as_bytes()],
+    );
     outs.push((
         s.rel.clone(),
         format::Effect::NAME,

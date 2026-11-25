@@ -1,7 +1,9 @@
 //! `og cook [project] [--threads N] [--report [out.md|out.json]] [--json] [--watch
 //! [--exit-after N]]`: assets/ into cooked/ through og-cook's
 //! `cook_project`, incrementally by stamp. `og run`, `og build`, `og dev` and
-//! `og test` cook first, so a run never reads stale blobs.
+//! `og test` cook first, so a run never reads stale blobs. A long cook says
+//! how far it is on stderr: each stage and output that took 5 s or more,
+//! and every 10 s the outputs cooked and the one running longest.
 //!
 //! `--report` prints the ten assets whose last cook took longest (each
 //! asset's time is recorded in `cooked/.cook-times.ogt`, so an up-to-date
@@ -164,6 +166,7 @@ fn options(root: &Path, threads: usize, web: bool, code: CodeGraph) -> Result<Co
     mesh.raycast = code.raycast;
     Ok(CookOptions {
         threads,
+        progress: true,
         schemas: og_cook::cook::engine_schemas(),
         texture: texture_options(root, web)?,
         mesh,

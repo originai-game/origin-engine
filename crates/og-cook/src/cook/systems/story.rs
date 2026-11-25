@@ -2,7 +2,7 @@
 //! data, and their keys checked against the base string table.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
-use crate::format::{self, BlobKind};
+use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
 /// Yarn is compiled to engine IR; quests retain their data representation.
@@ -373,7 +373,7 @@ fn plan_dialogue<'a>(
             .or_default()
             .extend(segments);
     }
-    let st = stamp(&[b"dialogue", &hash, story_functions_stamp]);
+    let st = stamp(&[Area::Data], &[b"dialogue", &hash, story_functions_stamp]);
     outs.push((
         s.rel.clone(),
         format::Dialogue::NAME,
@@ -389,7 +389,7 @@ fn plan_quest<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let st = stamp(&[b"quest", &hash]);
+    let st = stamp(&[Area::Data], &[b"quest", &hash]);
     outs.push((
         s.rel.clone(),
         format::Quest::NAME,

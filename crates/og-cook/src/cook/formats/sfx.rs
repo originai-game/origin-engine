@@ -38,9 +38,7 @@
 //! }
 //! ```
 
-use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, ext, stamp,
-};
+use super::{Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use crate::qoa;
 use og_blob::BlobWriter;
@@ -322,7 +320,7 @@ fn plan_sfx<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     // A preset's stamp moves with the synthesiser.
-    let st = stamp(&[b"sfx", SYNTH_VERSION.as_bytes(), &hash]);
+    let st = stamp(&[Area::Audio], &[b"sfx", SYNTH_VERSION.as_bytes(), &hash]);
     outs.push((s.rel.clone(), format::Sound::NAME, st, Box::new(SfxJob(s))));
 }
 
@@ -335,16 +333,6 @@ impl Job for SfxJob<'_> {
     }
 
     fn action(&self) -> Action<'_> {
-        let s = self.0;
-        Action::Input(
-            s.bytes.as_slice(),
-            format!(
-                "sound {:?} {} {:?}",
-                None::<(u32, u32)>,
-                ext(&s.rel),
-                s.settings
-            ),
-            false,
-        )
+        Action::Input(self.0.bytes.as_slice(), false)
     }
 }
