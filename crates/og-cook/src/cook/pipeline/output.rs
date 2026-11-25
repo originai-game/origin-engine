@@ -658,7 +658,20 @@ pub(crate) fn diagnose(
                     .and_then(|t| t.segment())
             })
     };
-    let (flow_errors, flow_warnings) = story::check_flows(&stories, &segment, story_functions);
+    let video_info = |id: &str| -> Option<(f64, f64)> {
+        let s = sources
+            .iter()
+            .find(|s| s.rel == id && s.kind == &video::VIDEO)?;
+        let text = std::str::from_utf8(&s.bytes).ok()?;
+        let root = crate::cook::assets_root(s);
+        let decl = video::parse(&s.rel, text, &|p| root.join(p).is_file()).ok()?;
+        let probe = video::probe(&root.join(&decl.source)).ok()?;
+        let seconds = probe.duration.min(decl.max_seconds);
+        let keyframe = if decl.stream { decl.keyframe } else { 0.0 };
+        Some((seconds, keyframe))
+    };
+    let (flow_errors, flow_warnings) =
+        story::check_flows(&stories, &segment, &video_info, story_functions);
     for (rel, what) in flow_warnings {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {

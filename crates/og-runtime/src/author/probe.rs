@@ -925,7 +925,13 @@ fn refresh_assets(eng: &Engine, fresh_ui: bool, laps: &mut Vec<(&'static str, f6
     lap(laps, "manifests");
     let failed = crate::present::ui_draw::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
+    let failed = crate::bind::video::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
+    let failed = crate::bind::story::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
     let failed = crate::bind::timeline::refresh(eng);
+    eng.state.borrow_mut().warnings.extend(failed);
+    let failed = crate::bind::flow::refresh(eng);
     eng.state.borrow_mut().warnings.extend(failed);
     lap(laps, "materials");
     let failed = crate::bind::modules::docs::refresh(eng, fresh_ui, laps);

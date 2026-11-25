@@ -57,8 +57,11 @@ pub(super) struct Run {
 pub(super) struct Shared {
     pub(super) runs: IdMap<u64, Run>,
     pub(super) ops: Vec<(u64, Op)>,
-    /// The captions the last tick showed, `(id, text)` (og.timeline.captions).
-    captions: Vec<(String, String)>,
+    /// The captions the last tick showed (og.timeline.captions).
+    captions: Vec<crate::host::wire::TimelineCaption>,
+    /// Entities suppressed this tick (e.g. og.flow's dissolving-out previous deck):
+    /// only their video/audio tracks run; camera/captions/events/plate are skipped.
+    suppressed: BTreeSet<u64>,
     /// The og.Timeline entities in pre-roll last tick: each asks for the
     /// modules it needs once, as its pre-roll begins. Not saved: a restored
     /// world asks again.
@@ -85,6 +88,21 @@ pub(super) fn shared(engine: u32) -> Arc<Mutex<Shared>> {
     crate::engine::engine(engine)
         .map(|e| e.modules.timeline.playback.clone())
         .unwrap_or_default()
+}
+
+/// Sets the timeline entities suppressed on this tick (called by `og.flow`
+/// before `og.timeline` runs for dissolving-out `previous` decks).
+pub(crate) fn set_suppressed(engine: u32, entities: BTreeSet<u64>) {
+    lock(&shared(engine)).suppressed = entities;
+}
+
+/// Whether `owner` has a scene queued for placement on the next `before_tick`
+/// and no scene placed yet (used by `og.flow` to avoid a 1-frame cut gap).
+pub(crate) fn scene_pending(engine: u32, owner: u64) -> bool {
+    lock(&shared(engine))
+        .runs
+        .get(&owner)
+        .is_some_and(|r| r.due.as_ref().is_some_and(|d| !d.is_empty()) && r.scenes.is_empty())
 }
 
 fn has_timeline(eng: &Engine, e: Entity) -> Result<u64, String> {
@@ -179,14 +197,7 @@ pub fn og_timeline_stop(world: u32, entity: f64) -> Result<(), String> {
 }
 
 pub fn og_timeline_captions(world: u32) -> Vec<crate::host::wire::TimelineCaption> {
-    lock(&shared(world))
-        .captions
-        .iter()
-        .map(|(id, text)| crate::host::wire::TimelineCaption {
-            id: id.clone(),
-            text: text.clone(),
-        })
-        .collect()
+    lock(&shared(world)).captions.clone()
 }
 
 // ── the state block ──────────────────────────────────────────────────────────
@@ -642,6 +653,7 @@ fn timeline_system(
         if st.ops.is_empty()
             && st.runs.is_empty()
             && st.captions.is_empty()
+            && st.suppressed.is_empty()
             && st.prerolled.is_empty()
             && st.preparing.is_empty()
         {
@@ -709,7 +721,8 @@ fn step(
     let reg = registry(engine_id);
     // The caption keys showing this tick, in the timelines' order: the
     // UI's `$captions` (docs/ui.md §2). Nothing here draws them.
-    let mut captions: Vec<(String, String)> = Vec::new();
+    let mut captions: Vec<crate::host::wire::TimelineCaption> = Vec::new();
+    let suppressed_set = std::mem::take(&mut lock(state).suppressed);
     // The plate a `layer under` video shows, and every timeline's own
     // player's texture (what a plate may have left on the camera).
     let mut plate: Option<u64> = None;
@@ -722,6 +735,7 @@ fn step(
     let mut scenes: BTreeSet<String> = BTreeSet::new();
     for e in rows {
         let key = e.to_bits();
+        let suppressed = suppressed_set.contains(&key);
         if let (Some(id), Some(l)) = (player, &r.video)
             && let Ok(b) = ctx.get_bytes(e, id)
             && let Ok(p) = l.read::<record::VideoPlayer>(&b)
@@ -823,6 +837,18 @@ fn step(
             // Played again after its end: from the start.
             run.num = 0;
         }
+        let has_sub_loop = row.r#loop && row.loop_end > row.loop_start && row.loop_start >= 0.0;
+        let loop_a = if has_sub_loop {
+            ((f64::from(row.loop_start) * den as f64).round() as i64).clamp(0, dur)
+        } else {
+            0
+        };
+        let loop_b = if has_sub_loop {
+            ((f64::from(row.loop_end) * den as f64).round() as i64).clamp(loop_a, dur)
+        } else {
+            dur
+        };
+        let sub_loop_valid = has_sub_loop && loop_b > loop_a;
         let from = run.num;
         if playing {
             if run.advance {
@@ -835,7 +861,15 @@ fn step(
         }
         let mut ended = false;
         let mut wrapped = false;
-        if run.num >= dur {
+        let mut wrap_from = dur;
+        let mut wrap_to = 0i64;
+        if sub_loop_valid && playing && run.num >= loop_b {
+            let span = loop_b - loop_a;
+            run.num = loop_a + (run.num - loop_a).rem_euclid(span);
+            wrapped = true;
+            wrap_from = loop_b;
+            wrap_to = loop_a;
+        } else if run.num >= dur {
             if playing && row.r#loop && dur > 0 {
                 run.num %= dur;
                 wrapped = true;
@@ -847,14 +881,16 @@ fn step(
                 }
             }
         }
-        if starting && !run.paused {
+        if starting && !run.paused && !suppressed {
             ctx.send(TimelineStarted { entity: key, asset })?;
         }
         if playing || seeked || run.active || ended {
             run.active = true;
         }
         let secs = |n: i64| n as f64 / den as f64;
-        let t = secs(run.num) as f32;
+        let t64 = secs(run.num);
+        let t = t64 as f32;
+        let loop_range = sub_loop_valid.then(|| (secs(loop_a), secs(loop_b)));
         // What playback passed this tick: (from, to] (a start includes its
         // first time), across the end when it wrapped.
         let mut spans: Vec<(f64, f64)> = Vec::new();
@@ -865,14 +901,14 @@ fn step(
                 secs(from)
             };
             if wrapped {
-                spans.push((lo, secs(dur)));
-                spans.push((-1e-9, secs(run.num)));
+                spans.push((lo, secs(wrap_from)));
+                spans.push((secs(wrap_to) - 1e-9, t64));
             } else {
-                spans.push((lo, secs(run.num)));
+                spans.push((lo, t64));
             }
         }
         // A forward seek runs the retroactive events it jumps over.
-        let retro = (seeked && run.num > before).then(|| (secs(before), secs(run.num)));
+        let retro = (seeked && run.num > before).then(|| (secs(before), t64));
         drop_ended_voices(ctx, r, &mut run, playing)?;
         if run.active {
             let mut out = Evaluated::default();
@@ -885,11 +921,14 @@ fn step(
                 &Step {
                     owner: e,
                     t,
+                    t64,
                     playing,
                     spans: &spans,
                     retro,
                     dt: time.dt(),
                     speed: row.speed,
+                    loop_range,
+                    suppressed,
                     base: 0,
                     depth: 0,
                 },
@@ -902,14 +941,15 @@ fn step(
             } = out;
             // A held or paused segment keeps its plate; a warming deck
             // shows none.
-            if !row.preroll {
+            if !row.preroll && !suppressed {
                 plate = plate.or(shown);
             }
-            captions.extend(
-                showing
-                    .into_iter()
-                    .map(|(track, k, text)| (format!("{key}:{track}:{k}"), text)),
-            );
+            if !showing.is_empty() {
+                for (track, k, mut cap) in showing {
+                    cap.id = format!("{key}:{track}:{k}");
+                    captions.push(cap);
+                }
+            }
             // Voices of a nested timeline whose key ended go with it.
             let mut gone = Vec::new();
             run.voices.retain(|v| {
@@ -949,11 +989,15 @@ fn step(
         if prerolling || playing || run.active || !run.scenes.is_empty() || run.due.is_some() {
             scenes.extend(lt.scenes.iter().cloned());
         }
-        for (a, b) in &spans {
-            markers(ctx, key, asset, &lt, *a, *b, "", 0)?;
+        if !suppressed {
+            for (a, b) in &spans {
+                markers(ctx, key, asset, &lt, *a, *b, "", 0)?;
+            }
         }
         if ended {
-            ctx.send(TimelineEnded { entity: key, asset })?;
+            if !suppressed {
+                ctx.send(TimelineEnded { entity: key, asset })?;
+            }
             run.release = true;
             run.paused = false;
         } else if !playing && run.playing && !stop {

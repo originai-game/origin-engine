@@ -55,8 +55,8 @@ pub(super) fn nest_id(parent: u32, key: usize) -> u32 {
 pub(super) struct Evaluated {
     /// The nested timelines evaluated, by their base id.
     pub touched: Vec<u32>,
-    /// The caption keys showing, each `(track id, key index, text)`.
-    pub captions: Vec<(u32, usize, String)>,
+    /// The caption keys showing, each `(track id, key index, caption)`.
+    pub captions: Vec<(u32, usize, crate::host::wire::TimelineCaption)>,
     /// The texture a `layer under` video track shows behind the scene now
     /// (its player's; og.Camera.backgroundTexture).
     pub plate: Option<u64>,
@@ -67,14 +67,43 @@ pub(super) struct Step<'a> {
     /// The og.Timeline's entity (a video track without an entity plays on it).
     pub owner: Entity,
     pub t: f32,
+    /// Exact double-precision timeline time for long-form video frame alignment.
+    pub t64: f64,
     pub playing: bool,
     pub spans: &'a [(f64, f64)],
     pub retro: Option<(f64, f64)>,
     pub dt: f32,
     pub speed: f32,
+    /// Optional sub-range loop `[start, end)` in timeline seconds.
+    pub loop_range: Option<(f64, f64)>,
+    /// Dissolving-out deck: skip camera, shot, caption, transition, event, plate.
+    pub suppressed: bool,
     /// Added to each track's index for its id (0 for the timeline itself).
     pub base: u32,
     pub depth: usize,
+}
+
+pub(super) fn caption_spans(
+    spans: &[og_timeline::captions::CaptionSpan],
+) -> Vec<crate::host::wire::TextSpan> {
+    spans
+        .iter()
+        .map(|s| {
+            let mut properties = BTreeMap::new();
+            if !s.color.is_empty() {
+                properties.insert(
+                    "color".to_string(),
+                    crate::host::wire::OneOf::A(s.color.clone()),
+                );
+            }
+            crate::host::wire::TextSpan {
+                name: s.name.clone(),
+                position: s.position,
+                length: s.length,
+                properties,
+            }
+        })
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -90,11 +119,14 @@ pub(super) fn evaluate(
     let Step {
         owner,
         t,
+        t64: _,
         playing,
         spans,
         retro,
         dt,
         speed,
+        loop_range: _,
+        suppressed,
         base,
         depth,
     } = *step;
@@ -103,17 +135,19 @@ pub(super) fn evaluate(
     for (ti, tr) in tracks.iter().enumerate() {
         let ti32 = base | ti as u32;
         match tr {
-            Track::Camera(c) => camera(ctx, engine_id, r, lt, run, c, t)?,
-            Track::Shot(keys) => shot(ctx, engine_id, r, lt, run, keys, t)?,
-            Track::Vfx(keys) if playing => {
+            Track::Camera(c) if !suppressed => camera(ctx, engine_id, r, lt, run, c, t)?,
+            Track::Shot(keys) if !suppressed => shot(ctx, engine_id, r, lt, run, keys, t)?,
+            Track::Vfx(keys) if playing && !suppressed => {
                 effects(ctx, engine_id, r, lt, run, (ti32, keys), t, spans)?;
             }
             Track::Video(v) => {
-                if let Some(t) = video(ctx, engine_id, r, lt, v, step)? {
+                if let Some(t) = video(ctx, engine_id, r, lt, v, step)?
+                    && !suppressed
+                {
                     out.plate.get_or_insert(t);
                 }
             }
-            Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
+            Track::Fields(f) if !suppressed && f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
             Track::Timeline(keys) => {
@@ -137,6 +171,7 @@ pub(super) fn evaluate(
                     retro.and_then(|(a, b)| eval::child_spans(k, until, d, a, b).first().copied());
                 let cbase = nest_id(ti32, ki);
                 out.touched.push(cbase);
+                let ct = eval::child_time(k, t, d);
                 evaluate(
                     ctx,
                     engine_id,
@@ -145,12 +180,15 @@ pub(super) fn evaluate(
                     run,
                     &Step {
                         owner,
-                        t: eval::child_time(k, t, d),
+                        t: ct,
+                        t64: f64::from(ct),
                         playing,
                         spans: &cspans,
                         retro: cretro,
                         dt,
                         speed: speed * k.speed,
+                        loop_range: None,
+                        suppressed,
                         base: cbase,
                         depth: depth + 1,
                     },
@@ -340,7 +378,7 @@ pub(super) fn evaluate(
                     }
                 }
             }
-            Track::Caption(c) => {
+            Track::Caption(c) if !suppressed => {
                 // The locale the player asked for, so a translated caption
                 // shows without a string table of that locale.
                 let l = crate::bind::i18n::og_i18n_locale(engine_id);
@@ -350,10 +388,20 @@ pub(super) fn evaluate(
                     l.requested
                 };
                 if let Some((ki, k)) = eval::caption_at(c, &locale, t) {
-                    out.captions.push((ti32, ki, k.text.clone()));
+                    out.captions.push((
+                        ti32,
+                        ki,
+                        crate::host::wire::TimelineCaption {
+                            id: String::new(),
+                            text: k.text.clone(),
+                            speaker: k.speaker.clone(),
+                            spans: caption_spans(&k.spans),
+                            position: k.position.clone(),
+                        },
+                    ));
                 }
             }
-            Track::Event(ks) => {
+            Track::Event(ks) if !suppressed => {
                 for k in ks {
                     let run_it = spans.iter().any(|(a, b)| crossed(k.time, *a, *b))
                         || (k.retroactive && retro.is_some_and(|(a, b)| crossed(k.time, a, b)));
@@ -366,7 +414,7 @@ pub(super) fn evaluate(
                     }
                 }
             }
-            Track::Transition(ks) => {
+            Track::Transition(ks) if !suppressed => {
                 if let Some(c) = eval::cover_at(ks, t) {
                     use og_ui_next::cover::{Cover, Side, Wipe};
                     let kind = match c.kind {
@@ -611,12 +659,12 @@ fn shot(
     Ok(())
 }
 
-/// A video track at the step's `t`: the entity's og.VideoPlayer (the step
+/// A video track at the step's `t64`: the entity's og.VideoPlayer (the step
 /// owner's without a name) plays the key's video from
 /// `from + (t − key) · speed`, at the timeline's speed while it plays
-/// (paused: the player holds that frame). og.video runs
-/// before og.timeline, so the time written is the one its next tick
-/// advances from.
+/// (paused: the player holds that frame). og.timeline runs right before
+/// og.video in the same tick, so og.video advances from the exact time
+/// written here and assigns `VideoPlayer.texture` on Tick 1.
 fn video(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
@@ -626,7 +674,7 @@ fn video(
     step: &Step<'_>,
 ) -> og_core::Result<Option<u64>> {
     let speed = step.playing.then_some(step.speed);
-    let Some((ki, vt)) = eval::video_at(v, step.t) else {
+    let Some((ki, vt)) = eval::video_at_f64(v, step.t64) else {
         return Ok(None);
     };
     let (Ok(id), Some(l)) = (ctx.id_by_name(crate::bind::video::PLAYER), &r.video) else {
@@ -651,6 +699,11 @@ fn video(
     let Some(&handle) = lt.videos.get(&key.video) else {
         return Ok(None);
     };
+    let vloop = step.loop_range.map(|(la, lb)| {
+        let va = f64::from(key.from) + (la - f64::from(key.time)).max(0.0) * f64::from(key.speed);
+        let vb = f64::from(key.from) + (lb - f64::from(key.time)).max(0.0) * f64::from(key.speed);
+        (va, vb)
+    });
     show(
         ctx,
         (id, l),
@@ -659,16 +712,23 @@ fn video(
         vt,
         speed.is_some(),
         key.speed * speed.unwrap_or(1.0),
+        vloop,
     )?;
-    // Under the scene: the texture og.video gave the player (0 until its
-    // first frame).
+    // Under the scene: the texture og.video gave the player, or the video's
+    // primary texture on Tick 1 before og.video runs later in this tick.
     if v.layer != og_timeline::VideoLayer::Under {
         return Ok(None);
     }
-    let texture = l
+    let mut texture = l
         .read::<record::VideoPlayer>(&ctx.get_bytes(e, id)?)
         .map_err(invalid)?
         .texture;
+    if texture == 0
+        && let Ok(eng) = engine(engine_id)
+        && let Some(info) = crate::bind::video::info_of(&eng, handle)
+    {
+        texture = info.texture;
+    }
     Ok((texture != 0).then_some(texture))
 }
 
@@ -713,14 +773,16 @@ pub(super) fn plate(
 
 /// Sets `e`'s og.VideoPlayer to `video` at `time` and `speed`, playing or
 /// holding that frame. Written only when it differs.
+#[allow(clippy::too_many_arguments)]
 fn show(
     ctx: &mut SystemContext<'_>,
     player: (SchemaId, &crate::host::codec::Layout),
     e: Entity,
     video: u64,
-    time: f32,
+    time: f64,
     playing: bool,
     speed: f32,
+    loop_range: Option<(f64, f64)>,
 ) -> og_core::Result<()> {
     let (id, l) = player;
     let old = ctx.get_bytes(e, id).ok();
@@ -732,6 +794,17 @@ fn show(
     p["time"] = json!(time.max(0.0));
     p["playing"] = json!(playing);
     p["speed"] = json!(speed);
+    if let Some((a, b)) = loop_range
+        && b > a
+    {
+        p["loop"] = json!(true);
+        p["loopStart"] = json!(a);
+        p["loopEnd"] = json!(b);
+    } else {
+        p["loop"] = json!(false);
+        p["loopStart"] = json!(0.0);
+        p["loopEnd"] = json!(0.0);
+    }
     let out = l.encode(old.as_deref(), Some(&p)).map_err(invalid)?;
     match old {
         Some(b) if b == out => {}
@@ -762,13 +835,13 @@ pub(super) fn preroll(
         if !v.entity.is_empty() {
             continue;
         }
-        let at = eval::video_at(v, t)
+        let at = eval::video_at_f64(v, f64::from(t))
             .map(|(k, time)| (&v.keys[k], time))
-            .or_else(|| v.keys.first().map(|k| (k, k.from)));
+            .or_else(|| v.keys.first().map(|k| (k, f64::from(k.from))));
         if let Some((key, time)) = at
             && let Some(&handle) = lt.videos.get(&key.video)
         {
-            show(ctx, (id, l), owner, handle, time, false, key.speed)?;
+            show(ctx, (id, l), owner, handle, time, false, key.speed, None)?;
         }
     }
     Ok(())

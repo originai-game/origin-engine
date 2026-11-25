@@ -62,6 +62,117 @@ impl RenderScene {
         t
     }
 
+    /// Adds a stream texture handle backed by a 1×1 transparent placeholder
+    /// until [`RenderScene::activate_stream_texture`] promotes it when a
+    /// player actually needs frames. Keeps hundreds of loaded video assets at
+    /// negligible VRAM while preserving stable `TextureHandle`s for snapshots.
+    pub fn add_stream_texture_parked(
+        &mut self,
+        nearest: bool,
+        packed_alpha: bool,
+    ) -> TextureHandle {
+        let t = self.add_texture_source(TextureSource::Rgba(crate::TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![0, 0, 0, 0],
+            color_space: crate::ColorSpace::Srgb,
+            mips: crate::Mips::None,
+        }));
+        if nearest {
+            self.set_texture_filter(t, TextureFilter::Nearest);
+        }
+        #[cfg(target_arch = "wasm32")]
+        if packed_alpha {
+            self.stream_packed.insert(t.index());
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = packed_alpha;
+        t
+    }
+
+    /// Ensures `handle` is backed by a `width` × `height` `TargetKind::Stream`
+    /// GPU texture (promoting from parked or resizing on ABR quality switches).
+    /// Returns `true` if the backing was newly allocated or resized.
+    pub fn activate_stream_texture(
+        &mut self,
+        handle: TextureHandle,
+        width: u32,
+        height: u32,
+        nearest: bool,
+        packed_alpha: bool,
+    ) -> bool {
+        let i = handle.index();
+        let (w, h) = (width.max(1), height.max(1));
+        if matches!(
+            self.texture_source(i),
+            Ok(TextureSource::Target(t)) if t.kind == TargetKind::Stream && t.width == w && t.height == h
+        ) && self.texture_live(i)
+        {
+            return false;
+        }
+        self.stream_frames.remove(&i);
+        #[cfg(target_arch = "wasm32")]
+        if let Some(old) = self.stream_external.get_mut().remove(&i) {
+            old.close();
+        }
+        if !self.replace_texture(
+            handle,
+            TextureSource::Target(TargetTexture {
+                width: w,
+                height: h,
+                kind: TargetKind::Stream,
+            }),
+        ) {
+            return false;
+        }
+        self.set_texture_filter(
+            handle,
+            if nearest {
+                TextureFilter::Nearest
+            } else {
+                TextureFilter::Linear
+            },
+        );
+        #[cfg(target_arch = "wasm32")]
+        if packed_alpha {
+            self.stream_packed.insert(i);
+        } else {
+            self.stream_packed.remove(&i);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let _ = packed_alpha;
+        true
+    }
+
+    /// Releases the full-resolution stream GPU texture behind `handle`,
+    /// replacing it with a 1×1 transparent placeholder and dropping any staged
+    /// CPU/VideoFrame buffers while keeping the handle live.
+    pub fn park_stream_texture(&mut self, handle: TextureHandle) -> bool {
+        let i = handle.index();
+        let is_stream = matches!(
+            self.texture_source(i),
+            Ok(TextureSource::Target(t)) if t.kind == TargetKind::Stream
+        );
+        if !is_stream {
+            return false;
+        }
+        self.stream_frames.remove(&i);
+        #[cfg(target_arch = "wasm32")]
+        if let Some(old) = self.stream_external.get_mut().remove(&i) {
+            old.close();
+        }
+        self.replace_texture(
+            handle,
+            TextureSource::Rgba(crate::TextureData {
+                width: 1,
+                height: 1,
+                rgba: vec![0, 0, 0, 0],
+                color_space: crate::ColorSpace::Srgb,
+                mips: crate::Mips::None,
+            }),
+        )
+    }
+
     /// Shows `rgba` (the texture's width x height RGBA8 rows, sRGB) in a
     /// stream texture from the next frame on. False for a handle that is
     /// not a live stream texture or rows of another size.

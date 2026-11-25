@@ -170,9 +170,17 @@ function unitOf(s: StreamUnits, n: number): { data: Uint8Array; key: boolean } |
   return { data: chunk.subarray(o, o + s.table[n * 3 + 1]!), key: s.table[n * 3 + 2] === 1 };
 }
 
-/** WebCodecs' codec string for a stream: AV1 main profile, 8-bit, a level its size fits. */
+/**
+ * WebCodecs' codec string for a stream: AV1 main profile, 8-bit, a level
+ * matching AV1 Annex A.3 MaxPicSize, MaxHSize and MaxVSize (covering portrait
+ * 9:16 and packed-alpha 2× height frames cleanly).
+ */
 export function av1Codec(width: number, height: number): string {
-  const level = width * height <= 2048 * 1152 ? "08" : width * height <= 4096 * 2304 ? "12" : "16";
+  const area = width * height;
+  const level =
+    width <= 6144 && height <= 3456 && area <= 2_359_296 ? "08"
+    : width <= 8192 && height <= 4352 && area <= 8_912_896 ? "12"
+    : "16";
   return `av01.0.${level}M.08`;
 }
 
@@ -227,8 +235,11 @@ export async function chooseDecoder(): Promise<VideoDecoderChoice> {
 
 /** One player's decoder, as the runtime asks it each frame. */
 interface Player {
+  readonly stream: number;
   /** The frame to show for `frame` (the player is at it), or null when nothing newer is decoded. */
   want(frame: number, looped: boolean): VideoFrame | null;
+  /** Fatal decoder error, if any, so the runtime can fall back or unblock stall waits. */
+  error(): string | null;
   close(): void;
 }
 
@@ -276,6 +287,7 @@ class Ready<T> {
 
 /** A player decoding with WebCodecs in this Worker. */
 class WebCodecsPlayer implements Player {
+  readonly stream: number;
   readonly #s: StreamUnits;
   readonly #decoder: VideoDecoder;
   readonly #ready = new Ready<VideoFrame>((f) => f.close());
@@ -286,21 +298,30 @@ class WebCodecsPlayer implements Player {
   #want = -1;
   #looped = false;
   #shown = -1;
-  #broken = false;
+  #error: string | null = null;
 
-  constructor(s: StreamUnits) {
+  constructor(stream: number, s: StreamUnits) {
+    this.stream = stream;
     this.#s = s;
     this.#decoder = new VideoDecoder({
       output: (f) => this.#output(f),
-      error: () => {
-        this.#broken = true;
+      error: (err) => {
+        this.#error = err instanceof Error ? err.message : String(err);
       },
     });
     this.#configure();
   }
 
   #configure(): void {
-    this.#decoder.configure(decoderConfig(this.#s));
+    try {
+      this.#decoder.configure(decoderConfig(this.#s));
+    } catch (err) {
+      this.#error = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  error(): string | null {
+    return this.#error;
   }
 
   #output(f: VideoFrame): void {
@@ -314,7 +335,7 @@ class WebCodecsPlayer implements Player {
   #pump(): void {
     const s = this.#s;
     for (;;) {
-      if (this.#broken || this.#want < 0) return;
+      if (this.#error || this.#want < 0) return;
       const has = (f: number) => this.#ready.has(f) || this.#pending.has(f);
       const present = (f: number) => s.chunks.has(Math.floor(f / s.chunkFrames));
       const step = planStep(s.frames, s.keys, this.#pos, has, this.#ready.items.length + this.#pending.size, this.#want, this.#looped, AHEAD, present);
@@ -322,8 +343,13 @@ class WebCodecsPlayer implements Player {
       if (typeof step === "number") {
         // A wrap goes on from frame 0 with what is ready; a seek starts over.
         if (this.#pos < s.frames || step !== 0) {
-          this.#decoder.reset();
-          this.#configure();
+          try {
+            this.#decoder.reset();
+            this.#configure();
+          } catch (err) {
+            this.#error = err instanceof Error ? err.message : String(err);
+            return;
+          }
           this.#pending.clear();
           this.#ready.clear();
           this.#keepFrom = Math.min(this.#want, s.frames - 1);
@@ -338,8 +364,8 @@ class WebCodecsPlayer implements Player {
       this.#pending.add(n);
       try {
         this.#decoder.decode(new EncodedVideoChunk({ type: u.key ? "key" : "delta", timestamp: n, data: u.data }));
-      } catch {
-        this.#broken = true;
+      } catch (err) {
+        this.#error = err instanceof Error ? err.message : String(err);
         return;
       }
     }
@@ -383,6 +409,8 @@ function av1WorkerMain(): void {
     keepFrom: number;
     want: number;
     looped: boolean;
+    /** Seek generation stamped on every posted frame so stale in-flight frames are discarded. */
+    gen: number;
     /** Frames posted to the engine Worker and not yet passed by its player, in order. */
     sent: number[];
   }
@@ -420,7 +448,10 @@ function av1WorkerMain(): void {
         const pic = mod.decode(p.h, chunk.subarray(o, o + s.table[n * 3 + 1]!));
         if (pic && n >= p.keepFrom) {
           p.sent.push(n);
-          ctx.postMessage({ type: "frame", player: id, frame: n, width: pic.width, height: pic.height, i420: pic.i420.buffer }, [pic.i420.buffer]);
+          ctx.postMessage(
+            { type: "frame", player: id, gen: p.gen, frame: n, width: pic.width, height: pic.height, i420: pic.i420.buffer },
+            [pic.i420.buffer],
+          );
         }
       } catch (e) {
         ctx.postMessage({ type: "error", player: id, reason: String(e) });
@@ -454,15 +485,22 @@ function av1WorkerMain(): void {
     } else if (m.type === "want") {
       let p = players.get(m.player);
       if (!p && mod) {
-        p = { stream: m.stream, h: mod.open(), pos: 0, keepFrom: 0, want: -1, looped: false, sent: [] };
+        p = { stream: m.stream, h: mod.open(), pos: 0, keepFrom: 0, want: -1, looped: false, gen: m.gen ?? 0, sent: [] };
         players.set(m.player, p);
       }
       if (!p) return;
-      const at = p.sent.indexOf(m.frame);
-      if (at >= 0) p.sent.splice(0, at);
-      else if (m.frame !== p.want) {
+      const gen = typeof m.gen === "number" ? m.gen : p.gen;
+      if (gen !== p.gen) {
+        p.gen = gen;
         p.sent.length = 0;
         p.keepFrom = m.frame;
+      } else {
+        const at = p.sent.indexOf(m.frame);
+        if (at >= 0) p.sent.splice(0, at);
+        else if (m.frame !== p.want) {
+          p.sent.length = 0;
+          p.keepFrom = m.frame;
+        }
       }
       p.want = m.frame;
       p.looped = m.looped;
@@ -497,36 +535,55 @@ function i420Frame(width: number, height: number, frame: number, i420: ArrayBuff
 }
 
 /** A player decoding with rav1d in the fallback Worker. */
-class WasmPlayer implements Player {
+export class WasmPlayer implements Player {
   readonly #ready = new Ready<{ width: number; height: number; i420: ArrayBuffer }>(() => {});
   #want = -1;
   #looped = false;
   #shown = -1;
+  #gen = 0;
+  #error: string | null = null;
 
   readonly id: number;
   readonly stream: number;
   readonly frames: number;
-  readonly worker: Worker;
+  readonly worker: Pick<Worker, "postMessage">;
 
-  constructor(id: number, stream: number, frames: number, worker: Worker) {
+  constructor(id: number, stream: number, frames: number, worker: Pick<Worker, "postMessage">) {
     this.id = id;
     this.stream = stream;
     this.frames = frames;
     this.worker = worker;
   }
 
-  /** A frame the Worker decoded. */
-  put(frame: number, value: { width: number; height: number; i420: ArrayBuffer }): void {
+  get generation(): number {
+    return this.#gen;
+  }
+
+  fail(reason: string): void {
+    this.#error = reason;
+  }
+
+  error(): string | null {
+    return this.#error;
+  }
+
+  /** A frame the Worker decoded; stale frames from prior seek generations are discarded. */
+  put(frame: number, value: { width: number; height: number; i420: ArrayBuffer }, gen?: number): void {
+    if (gen !== undefined && gen !== this.#gen) return;
     this.#ready.items.push({ frame, value });
   }
 
   want(frame: number, looped: boolean): VideoFrame | null {
     frame = Math.min(frame, this.frames - 1);
     if (frame !== this.#want || looped !== this.#looped) {
-      if (frame !== this.#want) this.#ready.moveTo(frame);
+      const seek = this.#want >= 0 && (frame < this.#want || frame > this.#want + AHEAD);
+      if (seek && !this.#ready.moveTo(frame)) {
+        this.#gen++;
+        this.#shown = -1;
+      }
       this.#want = frame;
       this.#looped = looped;
-      this.worker.postMessage({ type: "want", player: this.id, stream: this.stream, frame, looped });
+      this.worker.postMessage({ type: "want", player: this.id, stream: this.stream, frame, looped, gen: this.#gen });
     }
     const t = this.#ready.take(frame);
     if (!t || t.frame === this.#shown) return null;
@@ -535,6 +592,7 @@ class WasmPlayer implements Player {
   }
 
   close(): void {
+    this.#ready.clear();
     this.worker.postMessage({ type: "close", player: this.id });
   }
 }
@@ -543,6 +601,8 @@ class WasmPlayer implements Player {
 export class VideoStreams {
   readonly #streams = new Map<number, StreamUnits>();
   readonly #players = new Map<number, Player>();
+  readonly #errors = new Map<number, string>();
+  readonly #workerStreams = new Set<number>();
   #worker: Worker | null = null;
   #workerReady: Promise<boolean> | null = null;
   /** Why streams cannot play here, once (reported in the console). */
@@ -571,22 +631,32 @@ export class VideoStreams {
     const s = streamUnits(width, height, fps, table.slice(), chunkFrames);
     this.#streams.set(key, s);
     if (this.choice.name === "rav1d-wasm") {
-      this.#startWorker();
-      const sent = s.table.slice();
-      this.#worker?.postMessage({ type: "stream", stream: key, table: sent.buffer, chunkFrames: s.chunkFrames }, [sent.buffer]);
+      this.#ensureWorkerStream(key, s);
     }
     return true;
+  }
+
+  #ensureWorkerStream(key: number, s: StreamUnits): void {
+    this.#startWorker();
+    if (!this.#worker || this.#workerStreams.has(key)) return;
+    this.#workerStreams.add(key);
+    const sent = s.table.slice();
+    this.#worker.postMessage({ type: "stream", stream: key, table: sent.buffer, chunkFrames: s.chunkFrames }, [sent.buffer]);
+    // Forward any chunks already cached in the engine Worker (WebCodecs -> rav1d fallback).
+    for (const [n, data] of s.chunks) {
+      const copy = data.slice();
+      this.#worker.postMessage({ type: "chunk", stream: key, n, data: copy.buffer }, [copy.buffer]);
+    }
   }
 
   /** Chunk `n` of stream `key` landed (its units' bytes) or, with null, is let go. */
   chunk(key: number, n: number, data: Uint8Array | null): void {
     const s = this.#streams.get(key);
     if (!s) return;
-    if (this.choice.name === "rav1d-wasm" && !s.codec) {
-      // The fallback Worker holds the units; the engine Worker only the shape.
+    if (this.#workerStreams.has(key) && !s.codec) {
       const copy = data ? data.slice() : null;
       this.#worker?.postMessage({ type: "chunk", stream: key, n, data: copy?.buffer ?? null }, copy ? [copy.buffer] : []);
-      return;
+      if (this.choice.name === "rav1d-wasm") return;
     }
     if (data) s.chunks.set(n, data.slice());
     else s.chunks.delete(n);
@@ -609,9 +679,13 @@ export class VideoStreams {
             resolve(false);
           } else if (m.type === "frame") {
             const p = this.#players.get(m.player);
-            if (p instanceof WasmPlayer) p.put(m.frame, { width: m.width, height: m.height, i420: m.i420 });
+            if (p instanceof WasmPlayer) p.put(m.frame, { width: m.width, height: m.height, i420: m.i420 }, m.gen);
           } else if (m.type === "error") {
-            console.warn(`og.video: player ${m.player}: ${m.reason}`);
+            const reason = String(m.reason);
+            this.#errors.set(m.player, reason);
+            const p = this.#players.get(m.player);
+            if (p instanceof WasmPlayer) p.fail(reason);
+            console.warn(`og.video: player ${m.player}: ${reason}`);
           }
         };
         // Its script refused (a CSP) or missing: streams cannot play here, and nothing waits on it.
@@ -629,13 +703,51 @@ export class VideoStreams {
     }
   }
 
+  /** Closes and removes an idle player's decoder, freeing hardware slots and VideoFrames. */
+  close(player: number): void {
+    const p = this.#players.get(player);
+    if (p) {
+      p.close();
+      this.#players.delete(player);
+    }
+    this.#errors.delete(player);
+  }
+
+  /** Returns any fatal decoder error for `stream`/`player` (or null while healthy). */
+  error(_stream: number, player: number): string | null {
+    if (this.failure) return this.failure;
+    const p = this.#players.get(player);
+    return p?.error() ?? this.#errors.get(player) ?? null;
+  }
+
   /** The frame to show for player `player` of stream `stream`, at `frame`; null while nothing newer is decoded. */
   want(player: number, stream: number, frame: number, looped: boolean): VideoFrame | null {
     let p = this.#players.get(player);
+    // If a player changed streams (e.g. ABR quality switch), close the old decoder first.
+    if (p && p.stream !== stream) {
+      p.close();
+      this.#players.delete(player);
+      this.#errors.delete(player);
+      p = undefined;
+    }
+    // If WebCodecs failed at runtime on an AV1 stream, fall back seamlessly to rav1d-wasm.
+    if (p instanceof WebCodecsPlayer && p.error()) {
+      const s = this.#streams.get(stream);
+      if (s && !s.codec && typeof WebAssembly === "object" && typeof VideoFrame === "function" && !this.failure) {
+        console.warn(`og.video: WebCodecs AV1 failed (${p.error()}); falling back to rav1d-wasm`);
+        p.close();
+        this.#ensureWorkerStream(stream, s);
+        if (this.#worker) {
+          p = new WasmPlayer(player, stream, s.frames, this.#worker);
+          this.#players.set(player, p);
+          this.#errors.delete(player);
+        }
+      }
+    }
     if (!p) {
       const s = this.#streams.get(stream);
       if (!s) return null;
-      if (this.choice.name === "webcodecs" || s.codec) p = new WebCodecsPlayer(s);
+      if (this.choice.name === "webcodecs" || s.codec) p = new WebCodecsPlayer(stream, s);
       else if (this.choice.name === "rav1d-wasm" && this.#worker) p = new WasmPlayer(player, stream, s.frames, this.#worker);
       else return null;
       this.#players.set(player, p);
@@ -643,10 +755,9 @@ export class VideoStreams {
     try {
       return p.want(frame, looped);
     } catch (e) {
-      if (!this.failure) {
-        this.failure = String(e);
-        console.warn(`og.video: ${this.failure}`);
-      }
+      const reason = e instanceof Error ? e.message : String(e);
+      if (!this.#errors.has(player)) console.warn(`og.video: player ${player}: ${reason}`);
+      this.#errors.set(player, reason);
       return null;
     }
   }

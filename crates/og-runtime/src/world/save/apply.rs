@@ -131,6 +131,9 @@ pub(crate) fn rewind(
             st.name_of.insert(e.to_bits(), name.to_string());
         }
     }
+    if world.id_by_name(crate::bind::flow::FLOW).is_ok() {
+        crate::bind::flow::after_restore(eng, world);
+    }
     crate::engine::invalidate(true);
     crate::engine::clear_world_queries();
     Ok(())
@@ -199,6 +202,9 @@ pub(super) fn refresh(eng: &Engine, world: &World, from: u64, to: u64) {
         // A cut: the presentation state (the renderer's history: exposure,
         // TAA; the particles' ticks) starts afresh.
         crate::present::presentation::restore(&mut rs, 0);
+    }
+    if world.id_by_name(crate::bind::flow::FLOW).is_ok() {
+        crate::bind::flow::after_restore(eng, world);
     }
     crate::engine::invalidate(true);
     crate::engine::clear_world_queries();

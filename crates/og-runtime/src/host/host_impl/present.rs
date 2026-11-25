@@ -310,6 +310,12 @@ macro_rules! __og_host_bindings_present {
             fn og_video_capabilities(&self, world: u32) -> String {
                 $crate::host_impl::json($crate::og_video_capabilities(world))
             }
+            fn og_video_set_quality(&self, world: u32, quality: String) -> String {
+                $crate::host_impl::answer($crate::og_video_set_quality(world, quality))
+            }
+            fn og_video_buffering(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_video_buffering(world))
+            }
         }
 
         impl $crate::host_impl::api::AudioApi for $host {

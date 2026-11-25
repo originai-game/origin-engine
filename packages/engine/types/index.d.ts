@@ -32352,6 +32352,39 @@ export interface VideoInfo {
    * A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture.
    */
   readonly poster: Texture;
+  /**
+   * The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip.
+   */
+  readonly qualities: readonly string[];
+  /**
+   * Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists.
+   */
+  readonly audioLocales: readonly string[];
+}
+
+/**
+ * The quality tier for streamed video playback (presentation-only: never changes simulation).
+ * - `"auto"`: Automatic adaptive selection from decoder capabilities and playback stalls.
+ * - `"high"`: Source / highest cooked rendition.
+ * - `"medium"`: 720p rendition when cooked, else highest.
+ * - `"low"`: 480p rendition when cooked, else lowest.
+ */
+export type VideoQuality = "auto" | "high" | "medium" | "low";
+
+/** Presentation-only buffering status of active video streams. */
+export interface VideoBuffering {
+  /**
+   * Whether any active player with `wait` is currently holding the clock for decode or chunk download.
+   */
+  readonly buffering: boolean;
+  /**
+   * 0 to 1: download progress of the active stream's next needed chunk (1 when ready).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress: number;
+  /** The quality tier currently active for streamed playback. */
+  readonly quality: VideoQuality;
 }
 
 /**
@@ -32383,6 +32416,8 @@ export interface VideoCapabilities {
    */
   readonly codecs: readonly string[];
 }
+
+
 
 
 /**
@@ -32451,8 +32486,24 @@ export interface VideoPlayer {
    * @tunable
    */
   speed: number;
-  /** Start again at 0 past the end; otherwise hold the last frame and set finished. */
+  /**
+   * Start again at loopStart past loopEnd (or 0 past the end); otherwise hold the last frame and set finished.
+   */
   loop: boolean;
+  /**
+   * With `loop`: where the loop wraps back to, in seconds (0: the start).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopStart: number;
+  /**
+   * With `loop`: where the loop wraps, in seconds (0: the video's end).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopEnd: number;
   /**
    * A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game.
    * See `audio §8`.
@@ -32986,9 +33037,23 @@ export interface Timeline {
    */
   speed: number;
   /**
-   * Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.
+   * Start over at loopStart past loopEnd (or 0 past the end); otherwise stop playing there, hand the camera back and send og.TimelineEnded.
    */
   loop: boolean;
+  /**
+   * With `loop`: start of the loop region, in seconds (0: the timeline's start).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopStart: number;
+  /**
+   * With `loop`: end of the loop region, in seconds (0: the timeline's duration).
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  loopEnd: number;
   /**
    * Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always.
    */
@@ -33079,6 +33144,16 @@ export interface TimelineCaption {
   readonly id: string;
   /** Its words, in the player's locale. */
   readonly text: string;
+  /**
+   * The speaker name, if authored (WebVTT `<v Speaker>` or caption `speaker` field); empty otherwise.
+   */
+  readonly speaker: string;
+  /**
+   * Inline style spans (`emphasis`, `strong`, `color`) in Unicode scalar offsets over `text`.
+   */
+  readonly spans: readonly TextSpan[];
+  /** Placement hint: `bottom` (default) or `top` (`{\an8}` or WebVTT `line:0`). */
+  readonly position: string;
 }
 
 
@@ -35947,12 +36022,33 @@ export interface Flow {
    */
   readonly dissolveLeft: number;
   /**
-   * Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses.
+   * Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held, presses or timing tick.
    *
    * @capacity 8 elements (List.u32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    * @readonly written by the engine
    */
   readonly qte: readonly number[];
+  /**
+   * Per choice (first 8): QTE bitflags and sub-step state (fresh-press latch, sequence step, result grade).
+   *
+   * @capacity 8 elements (List.u32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   * @readonly written by the engine
+   */
+  readonly qteState: readonly number[];
+  /**
+   * Playback speed set by og.flow.setSpeed (1: normal).
+   *
+   * @default 1
+   * @range 0.25..4
+   * @readonly written by the engine
+   */
+  readonly speed: number;
+  /**
+   * True while holding inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop.
+   *
+   * @readonly written by the engine
+   */
+  readonly looping: boolean;
 }
 
 /**
@@ -35989,18 +36085,26 @@ export interface WindowView {
   readonly pending: number | null;
   /** Past flow.lock: choosing is over; the cut takes pending, else the default. */
   readonly locked: boolean;
-  /** The segment holds (flow.hold): the window never locks, and a choice cuts at once. */
+  /**
+   * The segment holds (flow.hold) or loops (flow.loopStart..flow.loopEnd): the window never locks, and a choice cuts at once (or breaks the loop).
+   */
   readonly held: boolean;
 }
 
 /**
- * A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.
+ * A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect).
  */
 export interface FlowHotspot {
-  /** The ChoiceView.index it takes. */
+  /** The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut. */
   readonly choice: number;
   /** The hotspot's id. */
   readonly id: string;
+  /**
+   * `choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected).
+   */
+  readonly kind: string;
+  /** `rect` or `circle`. */
+  readonly shape: string;
   /**
    * Its left edge, a fraction of the video frame from its left.
    *
@@ -36025,25 +36129,47 @@ export interface FlowHotspot {
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly height: number;
+  /** Its localized label (from the hotspot key's `label` i18n key, or the choice's text). */
+  readonly label: string;
+  /** Whether this `inspect` hotspot has already been triggered in this segment. */
+  readonly inspected: boolean;
 }
 
 /**
- * A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open.
+ * A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`, `#qte:timing:<action>:<start>-<end>`, `#qte:sequence:<a1>+<a2>+...`, `#qte:swipe:<dir>`, `#qte:drag:<dir>`).
  */
 export interface QteView {
   /** The ChoiceView.index it takes. */
   readonly choice: number;
-  /** press, hold or mash. */
+  /** press, hold, mash, timing, sequence, swipe or drag. */
   readonly kind: string;
-  /** The og.input action it reads. */
-  readonly action: string;
   /**
-   * 0 to 1: the hold's time or the presses so far.
+   * The og.input action it reads (or the current step's action for `sequence`; empty for `swipe`/`drag`).
+   */
+  readonly action: string;
+  /** Direction for `swipe` or `drag` (`up`, `down`, `left`, `right`); empty otherwise. */
+  readonly direction: string;
+  /**
+   * 0 to 1: the hold's time, presses, timing cursor, sequence steps or drag progress.
    *
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly progress: number;
-  /** Reached: the choice is pending. */
+  /**
+   * For `timing`: start of the target zone (0 to 1).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly zoneStart: number;
+  /**
+   * For `timing`: end of the target zone (0 to 1).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly zoneEnd: number;
+  /** Resolved result grade: `perfect`, `good`, `miss`, or empty while active. */
+  readonly grade: string;
+  /** Reached: the choice is pending (or resolved with a grade). */
   readonly done: boolean;
 }
 
@@ -36071,6 +36197,14 @@ export interface FlowView {
    * @unit s (seconds of simulation time)
    */
   readonly cut: number;
+  /** Current playback speed (og.flow.setSpeed). */
+  readonly speed: number;
+  /**
+   * Current segment's video frame width in texels (0 for a live-only segment), for aspect-exact hotspot mapping.
+   */
+  readonly videoWidth: number;
+  /** Current segment's video frame height in texels (0 for a live-only segment). */
+  readonly videoHeight: number;
   /**
    * The node's choices while its window is open or locked (og.story's), without its `#outcome` choices, which the game takes.
    */
@@ -36078,7 +36212,7 @@ export interface FlowView {
   /** The window, while it is open or locked. */
   readonly window: WindowView | null;
   /**
-   * The hotspots that take a choice now: while the window is open, those of its enabled choices.
+   * The hotspots active now: enabled choices' hotspots while the window is open, plus active `inspect` hotspots.
    */
   readonly hotspots: readonly FlowHotspot[];
   /** The quick-time events of its enabled choices while the window is open or locked. */
@@ -36097,6 +36231,16 @@ export interface FlowView {
   readonly paused: boolean;
   /** Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held). */
   readonly held: boolean;
+  /** Looping inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop. */
+  readonly looping: boolean;
+  /** Presentation-only: whether the current deck is waiting on stream download or decode. */
+  readonly buffering: boolean;
+  /**
+   * Presentation-only: 0 to 1 download progress for the current stream's next needed chunk.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly bufferProgress: number;
   /** The last chapter entered. */
   readonly chapter: string;
   /** The ending reached, once ended. */
@@ -36105,12 +36249,131 @@ export interface FlowView {
   readonly ended: boolean;
 }
 
+/**
+ * One entry in a flow's transcript backlog (og.flow.history): a caption shown or a choice taken.
+ */
+export interface FlowTranscriptLine {
+  /** Monotonic sequence number within the flow. */
+  readonly seq: number;
+  /** The flow node where it occurred. */
+  readonly node: string;
+  /** The speaker name, if any. */
+  readonly speaker: string;
+  /** The caption text or chosen option text. */
+  readonly text: string;
+  /** Inline style spans over `text`. */
+  readonly spans: readonly TextSpan[];
+  /** True for a choice the player took; false for a spoken caption. */
+  readonly chosen: boolean;
+}
+
+/**
+ * A deterministic touch or pointer gesture fed into active swipe/drag QTEs (og.flow.gesture).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlowGestureDesc {
+  /**
+   * `swipe` or `drag`.
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * `up`, `down`, `left`, or `right`.
+   *
+   * @default ""
+   */
+  readonly direction?: string;
+  /**
+   * For `drag`: 0 to 1 completion progress (1 completes); ignored for `swipe`.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+}
+
+/**
+ * Persistent cross-segment background music (og.flow.setMusic or `og-flow-music` header).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlowMusicDesc {
+  /**
+   * The sound asset id to play across segments; empty stops persistent flow music.
+   *
+   * @default ""
+   */
+  readonly sound?: string;
+  /**
+   * Target linear volume (0 to 2).
+   *
+   * @default 1
+   * @range 0..2
+   */
+  readonly volume?: number;
+  /**
+   * Crossfade duration in seconds.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly fade?: number;
+  /**
+   * Volume multiplier while a segment plays video audio (0 to 1; 1 disables ducking).
+   *
+   * @default 0.4
+   * @range 0..1
+   */
+  readonly duck?: number;
+}
+
+/**
+ * A lightweight branch-rewind checkpoint: the dialogue, node and story variables (og.flow.checkpoint / og.flow.jump).
+ */
+export interface FlowCheckpoint {
+  /** The dialogue name. */
+  readonly dialogue: string;
+  /** The flow node to resume at. */
+  readonly node: string;
+  /** Snapshot of story variables at this node. */
+  readonly vars: unknown;
+}
+
+/**
+ * Jump a running flow to another node, optionally restoring story variables from a FlowCheckpoint (og.flow.jump).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FlowJumpDesc {
+  /**
+   * The flow node title to jump to.
+   *
+   * @default ""
+   */
+  readonly node?: string;
+  /**
+   * Optional story variables to apply before entering `node` (null/omitted keeps current variables).
+   *
+   * @default null
+   */
+  readonly vars?: unknown;
+}
+
 /** A flow node on og.flow.chart's layout. */
 export interface FlowChartNode {
   /** Its title. */
   readonly node: string;
+  /** Its display title (`og-flow-title` resolved through og.i18n, else `node`). */
+  readonly title: string;
   /** Its segment's asset id. */
   readonly segment: string;
+  /** Its segment's first video's poster texture handle (0 for live-only segments). */
+  readonly poster: Texture;
+  /** `footage`, `live`, or `both`. */
+  readonly kind: string;
   /** Its `og-flow-chapter`, if any. */
   readonly chapter: string;
   /** Its `og-flow-ending`, if any. */
@@ -36133,6 +36396,12 @@ export interface FlowChartLink {
   readonly to: string;
   /** The ChoiceView.index that leads there; -1 for a node without choices. */
   readonly choice: number;
+  /** The choice's i18n text key, or empty. */
+  readonly label: string;
+  /** The `#outcome` name if this link is an outcome, else empty. */
+  readonly outcome: string;
+  /** True when reaching `to` passes through a Yarn condition or multiple targets. */
+  readonly conditional: boolean;
   /**
    * A curve from one to the other as x, y pairs in graph units: a cubic leaving and arriving level, sampled in 16 segments (NodeGraph's link `points`).
    */
@@ -36140,7 +36409,7 @@ export interface FlowChartLink {
 }
 
 /**
- * A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
+ * A dialogue's flow nodes laid out as a flowchart, columns by depth from the start with barycenter crossing minimisation: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
  */
 export interface FlowChart {
   /** Its flow nodes, in file order. */
@@ -36210,6 +36479,44 @@ export interface FlowEnded {
   /** Its `og-flow-ending`, empty without one (at most 63 bytes). */
   readonly ending: string;
 }
+
+/**
+ * An `inspect` hotspot was triggered without cutting (og.flow.inspect).
+ *
+ * The payload of the `FlowInspected` event (token `og.FlowInspected`).
+ */
+export interface FlowInspected {
+  /** The flow. */
+  readonly flow: Entity;
+  /** The node (at most 63 bytes). */
+  readonly node: string;
+  /** The hotspot's id (at most 63 bytes). */
+  readonly hotspot: string;
+}
+
+/**
+ * A quick-time event resolved with a grade (`perfect`, `good`, or `miss`).
+ *
+ * The payload of the `FlowQteResult` event (token `og.FlowQteResult`).
+ */
+export interface FlowQteResult {
+  /** The flow. */
+  readonly flow: Entity;
+  /** The node (at most 63 bytes). */
+  readonly node: string;
+  /** The ChoiceView.index. */
+  readonly choice: number;
+  /** `perfect`, `good`, or `miss` (at most 63 bytes). */
+  readonly grade: string;
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -41730,7 +42037,7 @@ export declare namespace og {
    * Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames.
    * See `audio §8`.
    */
-  const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly wait: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
+  const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f64">; readonly loopEnd: FieldSpec<"f64">; readonly wait: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
    * Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
    * Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.
@@ -41743,6 +42050,20 @@ export declare namespace og {
      * @param world The world asked.
      */
     function capabilities(world: World): VideoCapabilities;
+    /**
+     * Presentation-only: choose the quality tier (`auto`, `high`, `medium`, `low`) for streamed videos. Never affects simulation ticks or world hashes.
+     *
+     * @param world The world.
+     * @param quality The quality tier.
+     * @returns Refused for an unknown quality tier.
+     */
+    function setQuality(world: World, quality: VideoQuality): Result<void>;
+    /**
+     * Presentation-only: whether any player with `wait` is currently buffering, its download progress, and the active quality tier.
+     *
+     * @param world The world.
+     */
+    function buffering(world: World): VideoBuffering;
   }
   /**
    * Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI); and the debug views the command channel's `debug:` actions switch.
@@ -41950,7 +42271,7 @@ export declare namespace og {
   /**
    * Plays a loaded timeline. Set `playing` (or call og.timeline.play) to run it from `time`; write `time` (or call og.timeline.seek) to jump; og.timeline.stop goes back to 0 and lets go of what it owns.
    */
-  const Timeline: ComponentType<{ readonly asset: FieldSpec<"TimelineAsset">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly preroll: FieldSpec<"bool"> }, Timeline>;
+  const Timeline: ComponentType<{ readonly asset: FieldSpec<"TimelineAsset">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly preroll: FieldSpec<"bool"> }, Timeline>;
   /**
    * A timeline started playing from stopped or ended (not on a resume from pause, nor on a loop).
    */
@@ -42636,7 +42957,7 @@ export declare namespace og {
   /**
    * A flow og.flow.start made: the conversation it paces and its decks. og.flow writes it; read og.flow.view.
    */
-  const Flow: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly held: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32"> }, Flow>;
+  const Flow: ComponentType<{ readonly conversation: FieldSpec<"u32">; readonly decks: FieldSpec<"u32">; readonly current: FieldSpec<"Entity">; readonly node: FieldSpec<"u32">; readonly pending: FieldSpec<"i32">; readonly window: FieldSpec<"u32">; readonly paused: FieldSpec<"bool">; readonly chapter: FieldSpec<"u32">; readonly ended: FieldSpec<"bool">; readonly held: FieldSpec<"bool">; readonly previous: FieldSpec<"Entity">; readonly dissolve: FieldSpec<"u32">; readonly dissolveLeft: FieldSpec<"u32">; readonly qte: ListSpec<"u32">; readonly qteState: ListSpec<"u32">; readonly speed: FieldSpec<"f32">; readonly looping: FieldSpec<"bool"> }, Flow>;
   /**
    * An entity og.flow plays segments on, with an og.Timeline, an og.VideoPlayer (its `wait` set) and an og.AudioSource. The flow's current deck plays; the others hold a segment it may cut to, paused at its first frame.
    */
@@ -42649,6 +42970,10 @@ export declare namespace og {
   const FlowChapter: EventType<FlowChapter>;
   /** A flow's last segment reached its cut with the conversation ended. */
   const FlowEnded: EventType<FlowEnded>;
+  /** An `inspect` hotspot was triggered without cutting (og.flow.inspect). */
+  const FlowInspected: EventType<FlowInspected>;
+  /** A quick-time event resolved with a grade (`perfect`, `good`, or `miss`). */
+  const FlowQteResult: EventType<FlowQteResult>;
   /**
    * A game's flow as a Yarn dialogue of segments: film, cutscenes, levels and minigames. A node with an `og-flow: <timeline>` header plays that segment on a deck: footage, a live scene (a `scene` track) or both. Its choices open at `flow.open`, lock at `flow.lock` and are taken at the cut (`flow.cut`, else the end), else the `#default`. A playable segment stops at `flow.hold` until og.flow.advance takes a hidden `#outcome:<name>` choice (guide flow).
    * og.flow moves the conversation between segments and prepares those it may lead to on its other decks (og.Timeline.preroll). All of it is world state.
@@ -42687,7 +43012,7 @@ export declare namespace og {
      */
     function view(world: World, flow: Entity): FlowView | null;
     /**
-     * Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick.
+     * Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut (or immediately when tagged `#immediate`, held, or in a choice loop). Systems may call it; og.flow applies it this tick.
      *
      * @param world The world.
      * @param flow The flow.
@@ -42720,6 +43045,76 @@ export declare namespace og {
      * @returns Refused for an entity that is no flow.
      */
     function pause(world: World, flow: Entity): Result<void>;
+    /**
+     * Set playback speed (0.25 to 4.0) for the flow's active segment (fast-forward / slow-motion). Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param speed Playback speed multiplier (0.25 to 4.0).
+     * @returns Refused for an entity that is no flow, or a speed outside 0.25 to 4.0.
+     */
+    function setSpeed(world: World, flow: Entity, speed: number): Result<void>;
+    /**
+     * Seek within the current segment (0 to its cut time, e.g., -5s rewind). Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param time Seconds into the segment, clamped to 0..cut.
+     * @returns Refused for an entity that is no flow, one that has ended, or a non-finite/negative time.
+     */
+    function seek(world: World, flow: Entity, time: number): Result<void>;
+    /**
+     * Trigger an active `inspect` hotspot by id without cutting: marks it inspected and sends og.FlowInspected. Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param hotspot The hotspot's id.
+     * @returns Refused for an entity that is no flow, or an unknown/inactive inspect hotspot.
+     */
+    function inspect(world: World, flow: Entity, hotspot: string): Result<void>;
+    /**
+     * Feed a deterministic swipe or drag gesture into active QTEs (mobile touch support). Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param desc The gesture kind (`swipe` or `drag`), direction (`up`, `down`, `left`, `right`) and drag progress.
+     * @returns Refused for an entity that is no flow or an invalid gesture.
+     */
+    function gesture(world: World, flow: Entity, desc?: FlowGestureDesc): Result<void>;
+    /**
+     * Start, crossfade, or stop persistent cross-segment background music with automatic ducking over segment audio. Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param desc The sound asset id (empty stops), volume, crossfade seconds, and ducking ratio.
+     * @returns Refused for an entity that is no flow.
+     */
+    function setMusic(world: World, flow: Entity, desc?: FlowMusicDesc): Result<void>;
+    /**
+     * Recent captions and player choices recorded by this flow (backlog).
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @returns Empty for an entity that is no flow.
+     */
+    function history(world: World, flow: Entity): readonly FlowTranscriptLine[];
+    /**
+     * Capture a lightweight branch-rewind checkpoint: the current dialogue, flow node, and story variables.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @returns Refused for an entity that is no flow or has no active node.
+     */
+    function checkpoint(world: World, flow: Entity): Result<FlowCheckpoint>;
+    /**
+     * Jump a running flow directly to another flow node, optionally applying story variables from a FlowCheckpoint. Systems may call it.
+     *
+     * @param world The world.
+     * @param flow The flow.
+     * @param desc The target node and optional story variables.
+     * @returns Refused for an entity that is no flow or an unknown node.
+     */
+    function jump(world: World, flow: Entity, desc?: FlowJumpDesc): Result<void>;
     /**
      * Skip ahead in the segment playing: to its window's open (flow.open) when that is ahead, else to its cut, which takes the pending choice, else the default. For a segment the player has seen; what was seen is the game's (guide flow §5). Systems may call it.
      *

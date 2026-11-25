@@ -17,11 +17,11 @@ use serde_json::Value;
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og flow list|routes [project] [--json]";
+const USAGE: &str = "usage: og flow list|routes|check-cuts [project] [--json]";
 
 pub fn run(args: &[&str]) -> ExitCode {
     let (what, rest) = match args {
-        [w @ ("list" | "routes"), rest @ ..] => (*w, rest),
+        [w @ ("list" | "routes" | "check-cuts"), rest @ ..] => (*w, rest),
         _ => {
             eprintln!("{USAGE}");
             return ExitCode::from(2);
@@ -35,7 +35,8 @@ pub fn run(args: &[&str]) -> ExitCode {
         .unwrap_or(".");
     let result = Project::open(Path::new(dir)).and_then(|p| match what {
         "list" => og_cook::cook::flow::list(&p.root),
-        _ => og_cook::cook::flow::routes(&p.root),
+        "routes" => og_cook::cook::flow::routes(&p.root),
+        _ => og_cook::cook::flow::check_cuts(&p.root),
     });
     let facts = match result {
         Ok(v) => v,
@@ -51,8 +52,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         );
     } else if what == "list" {
         print_list(&facts);
-    } else {
+    } else if what == "routes" {
         print_routes(&facts);
+    } else {
+        print_cuts(&facts);
     }
     ExitCode::SUCCESS
 }
@@ -172,6 +175,44 @@ fn print_routes(facts: &Value) {
                 "  ! no route reaches ending(s) {}",
                 u.iter().map(s).collect::<Vec<_>>().join(", ")
             );
+        }
+        if let Some(u) = f["unreachableNodes"].as_array().filter(|u| !u.is_empty()) {
+            println!(
+                "  ! unreachable node(s) {}",
+                u.iter().map(s).collect::<Vec<_>>().join(", ")
+            );
+        }
+        if let Some(cs) = f["cycles"].as_array().filter(|c| !c.is_empty()) {
+            let list: Vec<String> = cs
+                .iter()
+                .map(|c| format!("{} -> {}", s(&c["from"]), s(&c["to"])))
+                .collect();
+            println!("  cycle(s): {}", list.join(", "));
+        }
+    }
+}
+
+fn print_cuts(facts: &Value) {
+    for f in facts["flows"].as_array().into_iter().flatten() {
+        let cuts = f["cuts"].as_array().cloned().unwrap_or_default();
+        println!(
+            "{} ({}): {} footage cut(s)",
+            s(&f["dialogue"]),
+            s(&f["file"]),
+            cuts.len()
+        );
+        for c in cuts {
+            if let Some(e) = c["error"].as_str() {
+                println!("  {} -> {}: error ({e})", s(&c["from"]), s(&c["to"]));
+            } else {
+                println!(
+                    "  {} -> {}: lumaDelta={} rgbDelta={}",
+                    s(&c["from"]),
+                    s(&c["to"]),
+                    s(&c["lumaDelta"]),
+                    s(&c["rgbDelta"])
+                );
+            }
         }
     }
 }

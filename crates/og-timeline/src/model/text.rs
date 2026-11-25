@@ -382,6 +382,22 @@ fn write_track(tr: &Track) -> Entry {
                     let mut kb = Block::new();
                     kb.push(Entry::new("text").with(Value::String(k.text.clone())));
                     kb.push(Entry::new("end").with(num(k.end)));
+                    if !k.speaker.is_empty() {
+                        kb.push(Entry::new("speaker").with(Value::String(k.speaker.clone())));
+                    }
+                    if !k.position.is_empty() {
+                        kb.push(Entry::new("position").with(Value::Word(k.position.clone())));
+                    }
+                    for s in &k.spans {
+                        let mut se = Entry::new("span")
+                            .with(Value::Word(s.name.clone()))
+                            .with(Value::Number(Number::from(s.position)))
+                            .with(Value::Number(Number::from(s.length)));
+                        if !s.color.is_empty() {
+                            se = se.with(Value::String(s.color.clone()));
+                        }
+                        kb.push(se);
+                    }
                     b.push(key_entry(k.time, kb));
                 }
             };
@@ -487,6 +503,16 @@ fn write_track(tr: &Track) -> Entry {
                         e = e.with(num(v));
                     }
                     kb.push(e);
+                    if k.shape != HotspotShape::Rect {
+                        kb.push(Entry::new("shape").with(Value::Word(k.shape.name().into())));
+                    }
+                    if k.kind != HotspotKind::Choice {
+                        kb.push(Entry::new("kind").with(Value::Word(k.kind.name().into())));
+                    }
+                    if !k.label.is_empty() {
+                        kb.push(Entry::new("label").with(Value::String(k.label.clone())));
+                    }
+                    ease_entry(&mut kb, k.ease);
                 }
                 b.push(key_entry(k.time, kb));
             }

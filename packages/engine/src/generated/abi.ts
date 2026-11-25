@@ -1187,6 +1187,10 @@ export interface HostAbi<A, V> {
   og_stream_set_budget(world: number, bytes: number): string;
   /** `og.video.capabilities` */
   og_video_capabilities(world: number): string;
+  /** `og.video.setQuality` */
+  og_video_set_quality(world: number, quality: string): string;
+  /** `og.video.buffering` */
+  og_video_buffering(world: number): string;
   /** `og.debug.line` */
   og_debug_line(world: number, from: string, to: string, desc: string | undefined): void;
   /** `og.debug.box` */
@@ -1349,6 +1353,22 @@ export interface HostAbi<A, V> {
   og_flow_play(world: number, flow: number): string;
   /** `og.flow.pause` */
   og_flow_pause(world: number, flow: number): string;
+  /** `og.flow.setSpeed` */
+  og_flow_set_speed(world: number, flow: number, speed: number): string;
+  /** `og.flow.seek` */
+  og_flow_seek(world: number, flow: number, time: number): string;
+  /** `og.flow.inspect` */
+  og_flow_inspect(world: number, flow: number, hotspot: string): string;
+  /** `og.flow.gesture` */
+  og_flow_gesture(world: number, flow: number, desc: string | undefined): string;
+  /** `og.flow.setMusic` */
+  og_flow_set_music(world: number, flow: number, desc: string | undefined): string;
+  /** `og.flow.history` */
+  og_flow_history(world: number, flow: number): string;
+  /** `og.flow.checkpoint` */
+  og_flow_checkpoint(world: number, flow: number): string;
+  /** `og.flow.jump` */
+  og_flow_jump(world: number, flow: number, desc: string | undefined): string;
   /** `og.flow.skip` */
   og_flow_skip(world: number, flow: number): string;
   /** `og.flow.chart` */
@@ -1929,6 +1949,8 @@ export const SYMBOLS: readonly string[] = [
   "og_stream_budget",
   "og_stream_set_budget",
   "og_video_capabilities",
+  "og_video_set_quality",
+  "og_video_buffering",
   "og_debug_line",
   "og_debug_box",
   "og_debug_sphere",
@@ -2010,6 +2032,14 @@ export const SYMBOLS: readonly string[] = [
   "og_flow_advance",
   "og_flow_play",
   "og_flow_pause",
+  "og_flow_set_speed",
+  "og_flow_seek",
+  "og_flow_inspect",
+  "og_flow_gesture",
+  "og_flow_set_music",
+  "og_flow_history",
+  "og_flow_checkpoint",
+  "og_flow_jump",
   "og_flow_skip",
   "og_flow_chart",
   "og_flow_stop",
@@ -2386,6 +2416,38 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_flow_pause(world: number, flow: number) {
       if (typeof flow !== "number") notEntity("og.flow.pause", "flow", flow);
       return abi.og_flow_pause(world, flow);
+    },
+    og_flow_set_speed(world: number, flow: number, speed: number) {
+      if (typeof flow !== "number") notEntity("og.flow.setSpeed", "flow", flow);
+      return abi.og_flow_set_speed(world, flow, speed);
+    },
+    og_flow_seek(world: number, flow: number, time: number) {
+      if (typeof flow !== "number") notEntity("og.flow.seek", "flow", flow);
+      return abi.og_flow_seek(world, flow, time);
+    },
+    og_flow_inspect(world: number, flow: number, hotspot: string) {
+      if (typeof flow !== "number") notEntity("og.flow.inspect", "flow", flow);
+      return abi.og_flow_inspect(world, flow, hotspot);
+    },
+    og_flow_gesture(world: number, flow: number, desc: string | undefined) {
+      if (typeof flow !== "number") notEntity("og.flow.gesture", "flow", flow);
+      return abi.og_flow_gesture(world, flow, desc);
+    },
+    og_flow_set_music(world: number, flow: number, desc: string | undefined) {
+      if (typeof flow !== "number") notEntity("og.flow.setMusic", "flow", flow);
+      return abi.og_flow_set_music(world, flow, desc);
+    },
+    og_flow_history(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.history", "flow", flow);
+      return abi.og_flow_history(world, flow);
+    },
+    og_flow_checkpoint(world: number, flow: number) {
+      if (typeof flow !== "number") notEntity("og.flow.checkpoint", "flow", flow);
+      return abi.og_flow_checkpoint(world, flow);
+    },
+    og_flow_jump(world: number, flow: number, desc: string | undefined) {
+      if (typeof flow !== "number") notEntity("og.flow.jump", "flow", flow);
+      return abi.og_flow_jump(world, flow, desc);
     },
     og_flow_skip(world: number, flow: number) {
       if (typeof flow !== "number") notEntity("og.flow.skip", "flow", flow);

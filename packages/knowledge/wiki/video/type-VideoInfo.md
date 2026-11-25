@@ -25,6 +25,8 @@ What og.load.video loaded.
 | `alpha` | `boolean` | `false` | — | — | — | Whether its frames carry the source's alpha (`alpha true` in its `type video`): keyed footage drawn over the scene through its texture shows the scene where the matte is clear. |
 | `codec` | `string` | `""` | — | — | — | The codec this host plays a stream in: `av1`, or `hevc` or `h264` where the browser decodes no AV1 and the cook made that rendition; empty for a clip. See `audio §8`. |
 | `poster` | `Texture` | `0` | — | — | — | A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture. |
+| `qualities` | `readonly string[]` | `[]` | — | — | — | The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip. |
+| `audioLocales` | `readonly string[]` | `[]` | — | — | — | Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists. |
 
 ```ogt
 struct VideoInfo {
@@ -50,6 +52,8 @@ struct VideoInfo {
     guide "audio §8"
   }
   field poster Texture "A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture."
+  field qualities List.String "The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip."
+  field audioLocales List.String "Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists."
 }
 ```
 

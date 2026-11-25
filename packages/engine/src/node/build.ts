@@ -196,6 +196,23 @@ export function reached(meta: Metafile, roots: readonly string[]): { engine: str
   return { engine: ENGINE_ROOT, files: [...seen].filter((f) => isAbsolute(f)).sort() };
 }
 
+/** Whether `project.ogt` declares a top-level `flow "..."` field (ignoring comments and nested blocks). */
+function hasProjectFlow(text: string): boolean {
+  const sep = text.indexOf("\n---");
+  const body = sep >= 0 ? text.slice(sep + 4) : text;
+  let depth = 0;
+  for (const raw of body.split("\n")) {
+    const line = raw.replace(/\/\/.*$/, "").trim();
+    if (!line || line.startsWith("#")) continue;
+    if (depth === 0 && /^flow\s+"[^"]+"/.test(line)) return true;
+    for (const ch of line) {
+      if (ch === "{") depth++;
+      else if (ch === "}") depth = Math.max(0, depth - 1);
+    }
+  }
+  return false;
+}
+
 /** Bundle `entry` (whose default export is `og.game(...)`) into `out`, its source map into `<out>.map`. */
 export async function bundleGame(entry: string, out: string, target: "native" | "web" | "script" | "web-live" | "web-code" = "native", minify = false, maps: MapOptions = {}, cacheInputs?: ReadonlySet<string>): Promise<Bundled> {
   const t0 = performance.now();
@@ -215,7 +232,7 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
     } catch { cacheable = false; }
   }
   const gameRoot = projectRoot(absEntry);
-  const flowScreen = /^flow\s/m.test(projectText(gameRoot)) ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
+  const flowScreen = hasProjectFlow(projectText(gameRoot)) ? join(ENGINE_ROOT, "src/ui/screens/flow-screen.tsx") : null;
   const engine = {
     name: "origin-engine",
     setup(build: {

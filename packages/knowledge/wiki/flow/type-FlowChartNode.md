@@ -11,7 +11,10 @@ A flow node on og.flow.chart's layout.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `node` | `string` | `""` | — | — | — | Its title. |
+| `title` | `string` | `""` | — | — | — | Its display title (`og-flow-title` resolved through og.i18n, else `node`). |
 | `segment` | `string` | `""` | — | — | — | Its segment's asset id. |
+| `poster` | `Texture` | `0` | — | — | — | Its segment's first video's poster texture handle (0 for live-only segments). |
+| `kind` | `string` | `""` | — | — | — | `footage`, `live`, or `both`. |
 | `chapter` | `string` | `""` | — | — | — | Its `og-flow-chapter`, if any. |
 | `ending` | `string` | `""` | — | — | — | Its `og-flow-ending`, if any. |
 | `depth` | `number` | `0` | — | — | — | Its column: the fewest flow nodes from the start before it (unreached nodes after the deepest). |
@@ -22,7 +25,10 @@ A flow node on og.flow.chart's layout.
 struct FlowChartNode {
   doc "A flow node on og.flow.chart's layout."
   field node String "Its title."
+  field title String "Its display title (`og-flow-title` resolved through og.i18n, else `node`)."
   field segment String "Its segment's asset id."
+  field poster Texture "Its segment's first video's poster texture handle (0 for live-only segments)."
+  field kind String "`footage`, `live`, or `both`."
   field chapter String "Its `og-flow-chapter`, if any."
   field ending String "Its `og-flow-ending`, if any."
   field depth u32 "Its column: the fewest flow nodes from the start before it (unreached nodes after the deepest)."
@@ -31,4 +37,4 @@ struct FlowChartNode {
 }
 ```
 
-<sub>Module `flow` line 149</sub>
+<sub>Module `flow` line 236</sub>

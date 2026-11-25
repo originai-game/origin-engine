@@ -28,6 +28,15 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
     let handle = match og_audio::link(eng.id) {
         // Cooked in chunks: the first is here, the others are read as the
         // playheads near them (stream::sound_chunks).
+        Some(link) if sound.chunked() && sound.is_opus() => link
+            .bank()
+            .insert_chunked_opus(
+                &sound.id,
+                &sound.opus,
+                sound.meta.chunk_frames,
+                sound.meta.chunk_count,
+            )
+            .map_err(|e| e.reason().to_string())?,
         Some(link) if sound.chunked() => link
             .bank()
             .insert_chunked(

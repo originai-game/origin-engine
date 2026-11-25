@@ -2942,6 +2942,16 @@ pub fn og_video_capabilities(world: u32) -> String {
     <Host as VideoApi>::og_video_capabilities(&Host, world)
 }
 
+#[wasm_bindgen]
+pub fn og_video_set_quality(world: u32, quality: String) -> String {
+    <Host as VideoApi>::og_video_set_quality(&Host, world, quality)
+}
+
+#[wasm_bindgen]
+pub fn og_video_buffering(world: u32) -> String {
+    <Host as VideoApi>::og_video_buffering(&Host, world)
+}
+
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
 pub fn og_debug_line(world: u32, from: String, to: String, desc: Option<String>) {
@@ -3357,6 +3367,46 @@ pub fn og_flow_play(world: u32, flow: f64) -> String {
 #[wasm_bindgen]
 pub fn og_flow_pause(world: u32, flow: f64) -> String {
     <Host as FlowApi>::og_flow_pause(&Host, world, flow)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_set_speed(world: u32, flow: f64, speed: f64) -> String {
+    <Host as FlowApi>::og_flow_set_speed(&Host, world, flow, speed)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_seek(world: u32, flow: f64, time: f64) -> String {
+    <Host as FlowApi>::og_flow_seek(&Host, world, flow, time)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_inspect(world: u32, flow: f64, hotspot: String) -> String {
+    <Host as FlowApi>::og_flow_inspect(&Host, world, flow, hotspot)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_gesture(world: u32, flow: f64, desc: Option<String>) -> String {
+    <Host as FlowApi>::og_flow_gesture(&Host, world, flow, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_set_music(world: u32, flow: f64, desc: Option<String>) -> String {
+    <Host as FlowApi>::og_flow_set_music(&Host, world, flow, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_history(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_history(&Host, world, flow)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_checkpoint(world: u32, flow: f64) -> String {
+    <Host as FlowApi>::og_flow_checkpoint(&Host, world, flow)
+}
+
+#[wasm_bindgen]
+pub fn og_flow_jump(world: u32, flow: f64, desc: Option<String>) -> String {
+    <Host as FlowApi>::og_flow_jump(&Host, world, flow, desc)
 }
 
 #[wasm_bindgen]

@@ -82,17 +82,24 @@ impl BlockFile {
     }
 }
 
-/// The QOA frames of one chunk: its bytes and each frame's byte range.
+/// The QOA frames or Opus blocks of one chunk: its bytes and each block's byte range.
 struct Chunk {
     bytes: Vec<u8>,
     frames: Vec<(usize, usize)>,
 }
 
-/// Reads chunk `n` of a chunked sound (its QOA frames), or None.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ChunkCodec {
+    Qoa,
+    Opus,
+}
+
+/// Reads chunk `n` of a chunked sound (its QOA frames or Opus blocks), or None.
 pub type ChunkLoader = Arc<dyn Fn(u32) -> Option<Vec<u8>> + Send + Sync>;
 
 struct Chunked {
-    /// QOA frames per chunk (the last chunk may hold fewer).
+    codec: ChunkCodec,
+    /// QOA frames or Opus blocks per chunk (the last chunk may hold fewer).
     per_chunk: usize,
     count: usize,
     /// Slot 0 is always the first chunk.
@@ -204,9 +211,16 @@ impl SoundData {
         }
     }
 
-    /// Whether it is an Opus sound.
+    /// Whether it is an Opus sound (whole or chunked).
     pub fn is_opus(&self) -> bool {
-        matches!(self.storage, Storage::Opus { .. })
+        matches!(
+            self.storage,
+            Storage::Opus { .. }
+                | Storage::Chunked(Chunked {
+                    codec: ChunkCodec::Opus,
+                    ..
+                })
+        )
     }
 
     /// Samples per channel in one of its blocks: a QOA frame's 5120, an
@@ -214,6 +228,7 @@ impl SoundData {
     pub fn block_len(&self) -> u64 {
         match &self.storage {
             Storage::Opus { .. } => opus::BLOCK_FRAMES,
+            Storage::Chunked(c) if c.codec == ChunkCodec::Opus => opus::BLOCK_FRAMES,
             _ => QOA_FRAME_LEN,
         }
     }
@@ -232,7 +247,7 @@ impl SoundData {
     /// For a chunked sound: sample frames per chunk and the chunk count.
     pub fn chunking(&self) -> Option<(u64, u32)> {
         match &self.storage {
-            Storage::Chunked(c) => Some((c.per_chunk as u64 * QOA_FRAME_LEN, c.count as u32)),
+            Storage::Chunked(c) => Some((c.per_chunk as u64 * self.block_len(), c.count as u32)),
             _ => None,
         }
     }
@@ -286,6 +301,16 @@ impl SoundData {
         let chunk;
         let (qoa, &(offset, size)) = match &self.storage {
             Storage::Qoa { qoa, frames } => (qoa, frames.get(k)?),
+            Storage::Chunked(c) if c.codec == ChunkCodec::Opus => {
+                let at = k / c.per_chunk;
+                chunk = c.chunk(at).or_else(|| self.load_chunk(c, at))?;
+                let &(a, b) = chunk.frames.get(k % c.per_chunk)?;
+                return Some(BlockFile::Opus {
+                    bytes: chunk.bytes[a..b].to_vec(),
+                    channels: self.channels,
+                    len: self.frame_len(k),
+                });
+            }
             Storage::Chunked(c) => {
                 let at = k / c.per_chunk;
                 chunk = c.chunk(at).or_else(|| self.load_chunk(c, at))?;
@@ -368,6 +393,15 @@ impl SoundData {
                         this
                     }
                 };
+                if c.codec == ChunkCodec::Opus {
+                    let &(a, b) = chunk.frames.get(k % c.per_chunk)?;
+                    return opus::decode_block(
+                        &chunk.bytes[a..b],
+                        self.channels,
+                        self.frame_len(k),
+                    )
+                    .ok();
+                }
                 (&chunk.bytes, chunk.frames.get(k % c.per_chunk)?)
             }
             _ => return None,
@@ -378,11 +412,22 @@ impl SoundData {
 }
 
 impl SoundData {
-    /// Chunk `k` of a chunked sound from its QOA frames, checked against
-    /// the sound's shape.
+    /// Chunk `k` of a chunked sound from its QOA frames or Opus blocks,
+    /// checked against the sound's shape.
     fn make_chunk(&self, c: &Chunked, k: usize, frames: Vec<u8>) -> Result<Arc<Chunk>> {
         if k >= c.count {
             return Err(invalid(&self.id, format!("chunk {k} of {}", c.count)));
+        }
+        if c.codec == ChunkCodec::Opus {
+            let total_blocks = opus::block_count(self.frames);
+            let first = k * c.per_chunk;
+            let expected = c.per_chunk.min(total_blocks.saturating_sub(first));
+            let index = opus::index_chunk(&frames, expected)
+                .map_err(|e| invalid(&self.id, format!("chunk {k}: {e}")))?;
+            return Ok(Arc::new(Chunk {
+                bytes: frames,
+                frames: index,
+            }));
         }
         let start = (k * c.per_chunk) as u64 * QOA_FRAME_LEN;
         let samples = (c.per_chunk as u64 * QOA_FRAME_LEN).min(self.frames - start);
@@ -863,12 +908,111 @@ impl SoundBank {
             channels,
             frames: total,
             storage: Storage::Chunked(Chunked {
+                codec: ChunkCodec::Qoa,
                 per_chunk: per_chunk as usize,
                 count: count as usize,
                 slots: RwLock::new(slots),
                 loader: RwLock::new(None),
             }),
             cache: self.cache(total, QOA_FRAME_LEN, false),
+        })
+    }
+
+    /// Adds a chunked Opus sound (`per_chunk` Opus blocks per chunk, `count`
+    /// chunks): `head` is an `ogop` header with the full length followed by
+    /// chunk 0's blocks. Chunks `1..` arrive via [`SoundBank::put_chunk`].
+    pub fn insert_chunked_opus(
+        &self,
+        id: &str,
+        head: &[u8],
+        per_chunk: u32,
+        count: u32,
+    ) -> Result<u64> {
+        let data = self.chunked_opus_data(id, head, per_chunk, count)?;
+        Ok(self.put(data))
+    }
+
+    /// Puts a chunked Opus sound behind an existing handle (streaming group
+    /// loaded), verifying rate, channels, and frame count match.
+    pub fn replace_chunked_opus(
+        &self,
+        handle: u64,
+        id: &str,
+        head: &[u8],
+        per_chunk: u32,
+        count: u32,
+    ) -> Result<bool> {
+        let Some(old) = self.get(handle) else {
+            return Ok(false);
+        };
+        let data = self.chunked_opus_data(id, head, per_chunk, count)?;
+        if (data.sample_rate, data.channels, data.frames)
+            != (old.sample_rate, old.channels, old.frames)
+        {
+            return Err(invalid(
+                id,
+                format!(
+                    "{} Hz x{} for {} frames replaces {} Hz x{} for {}",
+                    data.sample_rate,
+                    data.channels,
+                    data.frames,
+                    old.sample_rate,
+                    old.channels,
+                    old.frames
+                ),
+            ));
+        }
+        let data = Arc::new(data);
+        if let Storage::Silent(cell) = &old.storage {
+            let _ = cell.set(data.clone());
+        }
+        Ok(self.swap(handle, data))
+    }
+
+    fn chunked_opus_data(
+        &self,
+        id: &str,
+        head: &[u8],
+        per_chunk: u32,
+        count: u32,
+    ) -> Result<SoundData> {
+        let ix = opus::index_head(head).map_err(|e| invalid(id, e))?;
+        let total_blocks = opus::block_count(ix.frames);
+        let per = per_chunk as usize;
+        if per == 0 || count as usize != total_blocks.div_ceil(per).max(1) {
+            return Err(invalid(
+                id,
+                format!("{count} chunks of {per_chunk} Opus blocks for {total_blocks} blocks"),
+            ));
+        }
+        let expected_head = per.min(total_blocks);
+        if ix.blocks.len() != expected_head {
+            return Err(invalid(
+                id,
+                format!(
+                    "Opus head has {} blocks, expected {expected_head}",
+                    ix.blocks.len()
+                ),
+            ));
+        }
+        let mut slots = vec![None; count as usize];
+        slots[0] = Some(Arc::new(Chunk {
+            bytes: head.to_vec(),
+            frames: ix.blocks,
+        }));
+        Ok(SoundData {
+            id: id.to_string(),
+            sample_rate: opus::RATE,
+            channels: ix.channels,
+            frames: ix.frames,
+            storage: Storage::Chunked(Chunked {
+                codec: ChunkCodec::Opus,
+                per_chunk: per,
+                count: count as usize,
+                slots: RwLock::new(slots),
+                loader: RwLock::new(None),
+            }),
+            cache: self.cache(ix.frames, opus::BLOCK_FRAMES, false),
         })
     }
 

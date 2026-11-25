@@ -268,15 +268,27 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     if sound.chunked() {
                         // Its first chunk now; the others are read ahead of
                         // its playheads (sound_chunks), as in the first group.
-                        l.bank()
-                            .replace_chunked(
-                                *handle,
-                                id,
-                                &sound.qoa,
-                                sound.meta.chunk_frames,
-                                sound.meta.chunk_count,
-                            )
-                            .map_err(|e| e.reason().to_string())?;
+                        if sound.is_opus() {
+                            l.bank()
+                                .replace_chunked_opus(
+                                    *handle,
+                                    id,
+                                    &sound.opus,
+                                    sound.meta.chunk_frames,
+                                    sound.meta.chunk_count,
+                                )
+                                .map_err(|e| e.reason().to_string())?;
+                        } else {
+                            l.bank()
+                                .replace_chunked(
+                                    *handle,
+                                    id,
+                                    &sound.qoa,
+                                    sound.meta.chunk_frames,
+                                    sound.meta.chunk_count,
+                                )
+                                .map_err(|e| e.reason().to_string())?;
+                        }
                         chunked.push(*sound);
                     } else if sound.is_opus() {
                         l.bank()

@@ -1307,6 +1307,10 @@ pub trait StreamApi: Wire {
 pub trait VideoApi: Wire {
     /// `og.video.capabilities`
     fn og_video_capabilities(&self, world: u32) -> String;
+    /// `og.video.setQuality`
+    fn og_video_set_quality(&self, world: u32, quality: String) -> String;
+    /// `og.video.buffering`
+    fn og_video_buffering(&self, world: u32) -> String;
 }
 
 /// `debug`: packages/knowledge/wiki/debug.md.
@@ -1513,6 +1517,22 @@ pub trait FlowApi: Wire {
     fn og_flow_play(&self, world: u32, flow: f64) -> String;
     /// `og.flow.pause`
     fn og_flow_pause(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.setSpeed`
+    fn og_flow_set_speed(&self, world: u32, flow: f64, speed: f64) -> String;
+    /// `og.flow.seek`
+    fn og_flow_seek(&self, world: u32, flow: f64, time: f64) -> String;
+    /// `og.flow.inspect`
+    fn og_flow_inspect(&self, world: u32, flow: f64, hotspot: String) -> String;
+    /// `og.flow.gesture`
+    fn og_flow_gesture(&self, world: u32, flow: f64, desc: Option<String>) -> String;
+    /// `og.flow.setMusic`
+    fn og_flow_set_music(&self, world: u32, flow: f64, desc: Option<String>) -> String;
+    /// `og.flow.history`
+    fn og_flow_history(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.checkpoint`
+    fn og_flow_checkpoint(&self, world: u32, flow: f64) -> String;
+    /// `og.flow.jump`
+    fn og_flow_jump(&self, world: u32, flow: f64, desc: Option<String>) -> String;
     /// `og.flow.skip`
     fn og_flow_skip(&self, world: u32, flow: f64) -> String;
     /// `og.flow.chart`
@@ -2114,6 +2134,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_stream_budget",
     "og_stream_set_budget",
     "og_video_capabilities",
+    "og_video_set_quality",
+    "og_video_buffering",
     "og_debug_line",
     "og_debug_box",
     "og_debug_sphere",
@@ -2195,6 +2217,14 @@ pub const SYMBOLS: &[&str] = &[
     "og_flow_advance",
     "og_flow_play",
     "og_flow_pause",
+    "og_flow_set_speed",
+    "og_flow_seek",
+    "og_flow_inspect",
+    "og_flow_gesture",
+    "og_flow_set_music",
+    "og_flow_history",
+    "og_flow_checkpoint",
+    "og_flow_jump",
     "og_flow_skip",
     "og_flow_chart",
     "og_flow_stop",

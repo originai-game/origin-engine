@@ -11,6 +11,8 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct GraphChoice {
     /// Its index in its option group (what `choose` takes).
     pub index: u32,
+    /// Which option group within the node this choice belongs to (0, 1, ...).
+    pub group: u32,
     pub id: String,
     pub key: String,
     pub tags: BTreeMap<String, String>,
@@ -24,6 +26,9 @@ pub struct GraphNode {
     pub headers: BTreeMap<String, String>,
     pub choices: Vec<GraphChoice>,
     pub to: Vec<String>,
+    /// Source lines containing non-literal `<<jump {$expr}>>` / dynamic detours
+    /// whose targets cannot be statically determined for pre-warming or routing.
+    pub dynamic_jumps: Vec<usize>,
 }
 
 impl Dialogue {
@@ -35,15 +40,28 @@ impl Dialogue {
             .filter(|n| n.id == n.title)
             .map(|n| {
                 let mut choices = Vec::new();
+                let mut group_id = 0u32;
+                let mut dynamic_jumps = Vec::new();
                 let mut seen = BTreeSet::new();
-                let to = leads(&blocks, &n.title, &n.id, &mut seen, &mut |b| {
-                    for (i, c) in b.choices.iter().enumerate() {
-                        choices.push((i as u32, c));
-                    }
-                });
+                let to = leads(
+                    &blocks,
+                    &n.title,
+                    &n.id,
+                    &mut seen,
+                    &mut dynamic_jumps,
+                    &mut |b| {
+                        if !b.choices.is_empty() {
+                            let g = group_id;
+                            group_id += 1;
+                            for (i, c) in b.choices.iter().enumerate() {
+                                choices.push((i as u32, g, c));
+                            }
+                        }
+                    },
+                );
                 let choices = choices
                     .into_iter()
-                    .map(|(index, c)| {
+                    .map(|(index, group, c)| {
                         let mut to = BTreeSet::new();
                         for start in c.goto.iter().chain(c.fail.iter()) {
                             to.extend(leads(
@@ -51,11 +69,13 @@ impl Dialogue {
                                 &n.title,
                                 start,
                                 &mut BTreeSet::new(),
+                                &mut dynamic_jumps,
                                 &mut |_| {},
                             ));
                         }
                         GraphChoice {
                             index,
+                            group,
                             id: c.id.clone(),
                             key: c.text.key.clone(),
                             tags: c.tags.clone(),
@@ -63,11 +83,14 @@ impl Dialogue {
                         }
                     })
                     .collect();
+                dynamic_jumps.sort_unstable();
+                dynamic_jumps.dedup();
                 GraphNode {
                     title: n.title.clone(),
                     headers: self.headers.get(&n.title).cloned().unwrap_or_default(),
                     choices,
                     to: to.into_iter().collect(),
+                    dynamic_jumps,
                 }
             })
             .collect()
@@ -137,9 +160,14 @@ impl Dialogue {
     pub fn branches_in(&self, title: &str) -> Vec<(usize, Vec<String>)> {
         let blocks: BTreeMap<&str, &Node> = self.nodes.iter().map(|n| (n.id.as_str(), n)).collect();
         let mut body: Vec<&Node> = Vec::new();
-        leads(&blocks, title, title, &mut BTreeSet::new(), &mut |b| {
-            body.push(b)
-        });
+        leads(
+            &blocks,
+            title,
+            title,
+            &mut BTreeSet::new(),
+            &mut Vec::new(),
+            &mut |b| body.push(b),
+        );
         let mut out = Vec::new();
         let mut read = |line: usize, e: &Expr| {
             let mut vars = Vec::new();
@@ -179,6 +207,7 @@ fn leads<'a>(
     title: &str,
     start: &str,
     seen: &mut BTreeSet<String>,
+    dynamic_jumps: &mut Vec<usize>,
     group: &mut dyn FnMut(&'a Node),
 ) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
@@ -196,7 +225,8 @@ fn leads<'a>(
         }
         group(b);
         let mut next = |to: &str| stack.push(to.to_string());
-        for s in &b.steps {
+        for (i, s) in b.steps.iter().enumerate() {
+            let line = b.lines.get(i).copied().unwrap_or(0);
             match s {
                 Step::Goto(t) | Step::If(_, t) => next(t),
                 Step::Detour(t, cont) => {
@@ -204,10 +234,16 @@ fn leads<'a>(
                     next(cont);
                 }
                 Step::DynamicDetour(x, cont) => {
-                    jump(x, &mut out);
+                    if !jump(x, &mut out) {
+                        dynamic_jumps.push(line);
+                    }
                     next(cont);
                 }
-                Step::Jump(x) => jump(x, &mut out),
+                Step::Jump(x) => {
+                    if !jump(x, &mut out) {
+                        dynamic_jumps.push(line);
+                    }
+                }
                 Step::Select(picks) => picks.iter().for_each(|(t, _, _)| next(t)),
                 _ => {}
             }
@@ -219,9 +255,13 @@ fn leads<'a>(
     out
 }
 
-/// A jump's destination when it is a literal title.
-fn jump(x: &Expr, out: &mut BTreeSet<String>) {
+/// A jump's destination when it is a literal title. Returns false for dynamic
+/// expressions whose target depends on runtime variables.
+fn jump(x: &Expr, out: &mut BTreeSet<String>) -> bool {
     if let Expr::Lit(Val::Str(t)) = x {
         out.insert(t.clone());
+        true
+    } else {
+        false
     }
 }

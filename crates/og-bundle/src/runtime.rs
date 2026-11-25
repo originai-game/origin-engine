@@ -1052,11 +1052,12 @@ impl Bundle {
     }
 
     /// Reads a chunk of a sound cooked in chunks (`<id>#chunk<n>`,
-    /// [`chunk_id`]): its index and its QOA frames.
+    /// [`chunk_id`]): its index and its QOA frames or Opus blocks.
     pub fn sound_chunk(&self, id: &str, bytes: &[u8]) -> Result<(u32, Vec<u8>), LoadError> {
         let blob = self.blob::<format::SoundChunk>(id, bytes)?;
         let meta = one::<format::SoundChunkMeta>(&blob)?;
-        Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+        let data = blob.raw("opus").or_else(|_| blob.raw("qoa"))?;
+        Ok((meta.chunk, data.to_vec()))
     }
 
     /// Decodes a font blob, inflating its atlas pages.

@@ -434,7 +434,8 @@ pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<
     };
     let blob = Blob::open(aligned.as_slice(), path, &expect)?;
     let meta = one::<format::SoundChunkMeta>(&blob)?;
-    Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
+    let data = blob.raw("opus").or_else(|_| blob.raw("qoa"))?;
+    Ok((meta.chunk, data.to_vec()))
 }
 
 /// A video stream's index (`<id>#stream`) read from its file's bytes

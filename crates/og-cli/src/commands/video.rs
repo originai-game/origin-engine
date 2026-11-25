@@ -70,14 +70,20 @@ fn resolve(path: &Path) -> Result<(PathBuf, Option<f64>), String> {
     let source = source.ok_or_else(|| format!("{} names no source", path.display()))?;
     let dir = path.parent().unwrap_or(Path::new("."));
     let beside = dir.join(&source);
+    let assets_root = path
+        .ancestors()
+        .find(|a| a.file_name().is_some_and(|n| n == "assets"));
+    let under_assets = assets_root.map(|a| a.join(&source));
     let file = if beside.exists() {
         beside
+    } else if let Some(p) = under_assets.filter(|p| p.exists()) {
+        p
     } else {
         PathBuf::from(&source)
     };
     if !file.exists() {
         return Err(format!(
-            "source '{source}' is not beside {}",
+            "source '{source}' is neither beside {} nor under assets/",
             path.display()
         ));
     }
@@ -129,40 +135,75 @@ enum Edge {
 
 /// Writes one frame of `media` as a PNG with ffmpeg. The last frame is the
 /// one kept (`maxSeconds`, else the source's end): the model continues the
-/// film from there.
+/// film from there. Uses fast `-sseof` / `-ss` seeking before falling back to
+/// a full scan on tiny or sparse VFR clips.
 fn write_frame(
     media: &Path,
     edge: Edge,
     max_seconds: Option<f64>,
     out: &Path,
 ) -> Result<(), String> {
-    let mut cmd = Command::new(ffmpeg_bin());
-    cmd.args(["-v", "error", "-nostdin", "-y", "-i"]).arg(media);
-    cmd.args(["-map", "0:v:0", "-an", "-fps_mode", "passthrough"]);
-    match edge {
-        Edge::First => {
-            cmd.args(["-frames:v", "1"]);
+    let run = |seek: Option<&[String]>, limit: Option<f64>| -> Result<bool, String> {
+        let _ = std::fs::remove_file(out);
+        let mut cmd = Command::new(ffmpeg_bin());
+        cmd.args(["-v", "error", "-nostdin", "-y"]);
+        if let Some(s) = seek {
+            cmd.args(s);
         }
-        // Decode through the kept range and overwrite the same PNG. No
-        // frame limit: that would keep its first frame, not its last.
-        // Starting at zero also works for short clips and sparse VFR tails
-        // where a one-second seek window can contain no frame at all.
-        Edge::Last => {
-            if let Some(s) = max_seconds.filter(|s| s.is_finite() && *s > 0.0) {
-                cmd.args(["-t", &s.to_string()]);
+        cmd.arg("-i").arg(media);
+        cmd.args(["-map", "0:v:0", "-an", "-fps_mode", "passthrough"]);
+        match edge {
+            Edge::First => {
+                cmd.args(["-frames:v", "1"]);
+            }
+            Edge::Last => {
+                if let Some(t) = limit.filter(|s| s.is_finite() && *s > 0.0) {
+                    cmd.args(["-t", &t.to_string()]);
+                }
             }
         }
+        cmd.args(["-update", "1"]).arg(out);
+        let r = cmd
+            .output()
+            .map_err(|e| format!("cannot run ffmpeg ({}): {e}", ffmpeg_bin().display()))?;
+        if !r.status.success() {
+            return Err(format!(
+                "ffmpeg cannot read {}: {}",
+                media.display(),
+                String::from_utf8_lossy(&r.stderr).trim()
+            ));
+        }
+        Ok(out.exists() && std::fs::metadata(out).is_ok_and(|m| m.len() > 0))
+    };
+    match edge {
+        Edge::First => {
+            if !run(None, None)? {
+                return Err(format!(
+                    "ffmpeg wrote no first frame for {}",
+                    media.display()
+                ));
+            }
+            Ok(())
+        }
+        Edge::Last => {
+            let fast = match max_seconds.filter(|s| s.is_finite() && *s > 0.0) {
+                Some(s) if s > 2.0 => {
+                    let from = (s - 1.5).max(0.0);
+                    run(Some(&["-ss".into(), format!("{from:.3}")]), Some(s - from))
+                }
+                None => run(Some(&["-sseof".into(), "-1.5".into()]), None),
+                _ => Ok(false),
+            };
+            if matches!(fast, Ok(true)) {
+                return Ok(());
+            }
+            if !run(None, max_seconds)? {
+                return Err(format!(
+                    "ffmpeg wrote no last frame for {}",
+                    media.display()
+                ));
+            }
+            Ok(())
+        }
     }
-    cmd.args(["-update", "1"]).arg(out);
-    let r = cmd
-        .output()
-        .map_err(|e| format!("cannot run ffmpeg ({}): {e}", ffmpeg_bin().display()))?;
-    if !r.status.success() {
-        return Err(format!(
-            "ffmpeg cannot read {}: {}",
-            media.display(),
-            String::from_utf8_lossy(&r.stderr).trim()
-        ));
-    }
-    Ok(())
 }

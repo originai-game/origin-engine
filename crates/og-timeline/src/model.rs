@@ -191,6 +191,12 @@ pub struct CaptionKey {
     /// [`CAPTION_SECONDS`] later).
     pub end: f32,
     pub text: String,
+    /// Optional speaker name (WebVTT `<v Speaker>` or explicit `speaker`).
+    pub speaker: String,
+    /// Inline style spans (`emphasis`, `strong`, `color`) in Unicode scalars.
+    pub spans: Vec<captions::CaptionSpan>,
+    /// Optional placement hint: `bottom` (default/empty) or `top`.
+    pub position: String,
 }
 
 /// What is said over time. A caption is text only: where and how it is
@@ -491,16 +497,71 @@ pub struct SceneKey {
     pub scene: String,
 }
 
+/// Shape of a hotspot hit region.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HotspotShape {
+    #[default]
+    Rect,
+    Circle,
+}
+
+impl HotspotShape {
+    pub fn name(self) -> &'static str {
+        match self {
+            HotspotShape::Rect => "rect",
+            HotspotShape::Circle => "circle",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "rect" => Some(HotspotShape::Rect),
+            "circle" => Some(HotspotShape::Circle),
+            _ => None,
+        }
+    }
+}
+
+/// Role of a hotspot: a story choice or an in-scene non-cutting inspectable clue.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HotspotKind {
+    #[default]
+    Choice,
+    Inspect,
+}
+
+impl HotspotKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            HotspotKind::Choice => "choice",
+            HotspotKind::Inspect => "inspect",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "choice" => Some(HotspotKind::Choice),
+            "inspect" => Some(HotspotKind::Inspect),
+            _ => None,
+        }
+    }
+}
+
 /// A key of a `hotspot` track: from its time, hotspot `id` covers `rect`
 /// (x, y, width, height in fractions of the video frame, from its top
-/// left), moving linearly to the same id's next key and held after its
-/// last, until a key `off`. A hotspot is a place to click: og.flow offers
-/// a choice tagged `#hotspot:<id>` there; nothing draws it.
+/// left), eased to the same id's next key and held after its last, until
+/// a key `off`. A hotspot is a place to click: `choice` hotspots match
+/// `#hotspot:<id>` choices, `inspect` hotspots emit `og.FlowInspected`
+/// without cutting the segment.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotspotKey {
     pub time: f32,
     pub id: String,
     pub rect: [f32; 4],
+    pub shape: HotspotShape,
+    pub kind: HotspotKind,
+    pub label: String,
+    pub ease: Ease,
     /// The hotspot is gone from this key on (its rect unused).
     pub off: bool,
 }

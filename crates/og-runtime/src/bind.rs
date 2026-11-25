@@ -55,8 +55,10 @@ pub mod exports {
         og_destruction_fill2d, og_destruction_fracture2d,
     };
     pub use super::flow::{
-        og_flow_advance, og_flow_chart, og_flow_choose, og_flow_current, og_flow_load,
-        og_flow_pause, og_flow_play, og_flow_skip, og_flow_start, og_flow_stop, og_flow_view,
+        og_flow_advance, og_flow_chart, og_flow_checkpoint, og_flow_choose, og_flow_current,
+        og_flow_gesture, og_flow_history, og_flow_inspect, og_flow_jump, og_flow_load,
+        og_flow_pause, og_flow_play, og_flow_seek, og_flow_set_music, og_flow_set_speed,
+        og_flow_skip, og_flow_start, og_flow_stop, og_flow_view,
     };
     pub use super::i18n::{
         fonts_pending, og_i18n_format_compact, og_i18n_format_currency, og_i18n_format_date,
@@ -135,5 +137,8 @@ pub mod exports {
         og_timeline_play, og_timeline_seek, og_timeline_stop,
     };
     pub use super::vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
-    pub use super::video::{og_load_video, og_load_video_info, og_video_capabilities};
+    pub use super::video::{
+        og_load_video, og_load_video_info, og_video_buffering, og_video_capabilities,
+        og_video_set_quality,
+    };
 }

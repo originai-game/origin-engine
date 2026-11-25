@@ -17,13 +17,40 @@ pub(crate) fn is_stream_pack(path: &str) -> bool {
     })
 }
 
-/// `cooked/<sound>.chunk<n>.ogb`: a chunk of a sound cooked in chunks,
-/// read once each time its playhead nears it (taken, so the Worker never
-/// holds a long track whole).
+/// `cooked/<sound>.chunk<n>.ogb` or `cooked/<video>.audio#chunk<n>.ogb`:
+/// a chunk of a sound cooked in chunks, read once each time its playhead
+/// nears it (taken, so the Worker never holds a long track whole).
 pub(crate) fn is_sound_chunk(path: &str) -> bool {
     path.strip_suffix(".ogb")
-        .and_then(|p| p.rsplit_once(".chunk"))
+        .and_then(|p| p.rsplit_once(".chunk").or_else(|| p.rsplit_once("#chunk")))
         .is_some_and(|(_, n)| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// A streamed video's index (`<id>.stream[720|480|hevc|h264].ogb`), read once.
+pub(crate) fn is_video_stream(path: &str) -> bool {
+    path.strip_suffix(".ogb").is_some_and(|p| {
+        p.ends_with(".stream")
+            || p.ends_with(".stream720")
+            || p.ends_with(".stream480")
+            || p.ends_with(".streamhevc")
+            || p.ends_with(".streamh264")
+    })
+}
+
+/// A streamed video's chunk (`<id>.stream[...].<n>.ogb`), read once and
+/// never retained in the wasm heap beside the decoder's copy.
+pub(crate) fn is_video_chunk(path: &str) -> bool {
+    path.strip_suffix(".ogb")
+        .and_then(|p| p.rsplit_once('.'))
+        .is_some_and(|(stem, n)| {
+            !n.is_empty()
+                && n.bytes().all(|b| b.is_ascii_digit())
+                && (stem.ends_with(".stream")
+                    || stem.ends_with(".stream720")
+                    || stem.ends_with(".stream480")
+                    || stem.ends_with(".streamhevc")
+                    || stem.ends_with(".streamh264"))
+        })
 }
 
 /// A cooked glTF model's own blob (`<asset>.gltf.ogb`, `<asset>.glb.ogb`).
@@ -310,6 +337,8 @@ pub(crate) struct VideoHost {
     pub stream: js_sys::Function,
     pub frame: js_sys::Function,
     pub chunk: js_sys::Function,
+    pub close: js_sys::Function,
+    pub error: js_sys::Function,
     pub decoder: og_runtime::VideoDecoder,
 }
 
@@ -319,8 +348,9 @@ pub(crate) struct VideoHost {
 /// or HEVC rendition's codec string and record; `table` each frame's
 /// offset in its chunk, size and key), `chunk(stream, n, data)` a chunk's
 /// units as they land (`data` null: let go), `frame(stream, player, frame,
-/// looped)` answers the VideoFrame a player shows now or null; `decoder`
-/// is what og.video.capabilities reports (`webcodecs`, `rav1d-wasm` or
+/// looped)` answers the VideoFrame a player shows now or null, `close(player)`
+/// frees an idle decoder, `error(stream, player)` reports a fatal decoder error;
+/// `decoder` is what og.video.capabilities reports (`webcodecs`, `rav1d-wasm` or
 /// `none`), and `codecs` the other codecs WebCodecs decodes (`hevc`,
 /// `h264`), preferred first.
 #[wasm_bindgen]
@@ -329,6 +359,8 @@ pub fn og_web_install_video(
     stream: js_sys::Function,
     frame: js_sys::Function,
     chunk: js_sys::Function,
+    close: js_sys::Function,
+    error: js_sys::Function,
     decoder: String,
     hardware: bool,
     max_width: u32,
@@ -347,8 +379,10 @@ pub fn og_web_install_video(
             stream,
             frame,
             chunk,
+            close,
+            error,
             decoder,
-        })
+        });
     });
 }
 

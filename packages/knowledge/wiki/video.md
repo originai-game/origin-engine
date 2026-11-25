@@ -28,8 +28,12 @@ module video {
 | [`Video`](video/type-Video.md) | handle |  | Cooked footage: its frames as a texture array, its sound (og.load.video). |
 | [`Video()`](#column-Video) | column kind |  | A Video handle field (0 is none). |
 | [`VideoInfo`](video/type-VideoInfo.md) | struct |  | What og.load.video loaded. |
+| [`VideoQuality`](video/type-VideoQuality.md) | enum |  | The quality tier for streamed video playback (presentation-only: never changes simulation). |
+| [`VideoBuffering`](video/type-VideoBuffering.md) | struct |  | Presentation-only buffering status of active video streams. |
 | [`VideoCapabilities`](video/type-VideoCapabilities.md) | struct |  | How this host plays streams. |
 | [`og.video.capabilities`](video/fn-capabilities.md) | function | `(world: World): VideoCapabilities` | How streams play on this host: the decoder, whether it is hardware and its largest real-time size. |
+| [`og.video.setQuality`](video/fn-setQuality.md) | function | `(world: World, quality: VideoQuality): Result<void>` | Presentation-only: choose the quality tier (`auto`, `high`, `medium`, `low`) for streamed videos. |
+| [`og.video.buffering`](video/fn-buffering.md) | function | `(world: World): VideoBuffering` | Presentation-only: whether any player with `wait` is currently buffering, its download progress, and the active quality tier. |
 | [`og.MediaIntent`](video/record-MediaIntent.md) | event |  | A request for a player to change at the next tick boundary, sent through the recorded intent path, so playback stays world state. |
 | [`og.VideoPlayer`](video/record-VideoPlayer.md) | component |  | Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its s… |
 

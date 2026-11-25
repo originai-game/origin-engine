@@ -116,12 +116,6 @@ impl SoundSettings {
                 }
             }
         }
-        if s.codec == Codec::Opus && s.stream == Some(true) {
-            return Err(
-                "an Opus sound is never cooked in chunks (`stream true`): its blocks are decoded as the playheads reach them; leave stream out, or use codec qoa"
-                    .into(),
-            );
-        }
         Ok(s)
     }
 
@@ -146,11 +140,29 @@ impl SoundSettings {
         }
     }
 
-    /// QOA frames per chunk and the chunk count for a sound of this shape,
-    /// or `None` to cook it whole (always for Opus).
+    /// Blocks per chunk (QOA frames or Opus blocks) and chunk count for a
+    /// sound of this shape, or `None` to cook it whole.
     pub fn chunking(&self, rate: u32, channels: u32, frames: u64) -> Option<(u32, u32)> {
         if self.codec == Codec::Opus {
-            return None;
+            let frames_48 = (frames * u64::from(crate::opus::RATE))
+                .div_ceil(u64::from(rate.max(1)))
+                .max(1);
+            let blocks = crate::opus::block_count(frames_48) as u64;
+            let bps = u64::from(self.opus_bitrate(channels)) / 8;
+            let est_bytes = frames_48 * bps / u64::from(crate::opus::RATE);
+            let wanted = self.stream.unwrap_or(est_bytes > STREAM_BYTES);
+            if !wanted {
+                return None;
+            }
+            let per = ((f64::from(self.chunk) * f64::from(crate::opus::RATE))
+                / crate::opus::BLOCK_FRAMES as f64)
+                .ceil() as u64;
+            let per = per.max(1);
+            let count = blocks.div_ceil(per).max(1);
+            if count <= 1 && self.stream != Some(true) {
+                return None;
+            }
+            return Some((per as u32, count as u32));
         }
         let qoa_frames = frames.div_ceil(QOA_FRAME).max(1);
         let ch = u64::from(channels.max(1));
@@ -432,6 +444,16 @@ pub fn encode(pcm: &Pcm, per_chunk: Option<u32>) -> Result<Encoded, String> {
 /// resampled to 48 kHz, its first two channels, then decoded back to
 /// check the round trip (the note gives its signal-to-noise ratio).
 pub fn encode_opus(pcm: &Pcm, bitrate: u32) -> Result<Encoded, String> {
+    encode_opus_chunked(pcm, bitrate, None)
+}
+
+/// Encodes decoded PCM to an Opus sound, optionally split into chunks of
+/// `per_chunk` Opus blocks.
+pub fn encode_opus_chunked(
+    pcm: &Pcm,
+    bitrate: u32,
+    per_chunk: Option<u32>,
+) -> Result<Encoded, String> {
     let channels = (pcm.channels as usize).clamp(1, 2);
     let from = pcm.channels.max(1) as usize;
     let folded: Vec<i16> = if from == channels {
@@ -470,6 +492,10 @@ pub fn encode_opus(pcm: &Pcm, bitrate: u32) -> Result<Encoded, String> {
     } else {
         format!(" (from {} Hz)", pcm.rate)
     };
+    let chunks = match per_chunk {
+        Some(per) => Some((per, crate::opus::split(&opus, per as usize)?)),
+        None => None,
+    };
     Ok(Encoded {
         qoa: Vec::new(),
         meta: SoundMeta {
@@ -488,7 +514,56 @@ pub fn encode_opus(pcm: &Pcm, bitrate: u32) -> Result<Encoded, String> {
             crate::opus::block_count(u64::from(frames)),
         ),
         opus,
-        chunks: None,
+        chunks,
+    })
+}
+
+/// Packages pre-encoded 48 kHz Opus blocks (e.g. from `opus::StreamEncoder`)
+/// into an [`Encoded`] sound, whole or split into `per_chunk`-block chunks.
+pub fn encode_opus_blocks(
+    blocks: &[Vec<u8>],
+    channels: u32,
+    frames: u64,
+    bitrate: u32,
+    per_chunk: Option<u32>,
+    from: &str,
+) -> Result<Encoded, String> {
+    let ch = (channels as usize).clamp(1, 2);
+    let total_bytes: usize = blocks.iter().map(Vec::len).sum();
+    let (opus, chunks) = match per_chunk {
+        Some(per) => {
+            let parts = crate::opus::split_blocks(
+                blocks,
+                ch,
+                frames,
+                crate::opus::RATE,
+                bitrate,
+                per as usize,
+            )?;
+            (Vec::new(), Some((per, parts)))
+        }
+        None => (
+            crate::opus::encode_blocks_file(blocks, ch, frames, crate::opus::RATE, bitrate)?,
+            None,
+        ),
+    };
+    Ok(Encoded {
+        qoa: Vec::new(),
+        opus,
+        meta: SoundMeta {
+            sample_rate: crate::opus::RATE,
+            channels: ch as u32,
+            frames: frames as u32,
+            codec: sound_codec::OPUS,
+            ..SoundMeta::default()
+        },
+        note: format!(
+            "48000 Hz, {ch} channel(s), {:.2} s, {from} to Opus at {} kb/s ({total_bytes} B, {} blocks)",
+            frames as f64 / f64::from(crate::opus::RATE),
+            bitrate / 1000,
+            blocks.len(),
+        ),
+        chunks,
     })
 }
 
@@ -584,8 +659,8 @@ pub fn resample(samples: &[i16], channels: usize, from: u32, to: u32) -> Vec<i16
     out
 }
 
-/// The sound's blob: the whole QOA file, or with `chunking` (QOA frames
-/// per chunk, chunks) its header and first chunk; an Opus sound whole.
+/// The sound's blob: whole QOA/Opus, or with `chunking` (blocks per chunk,
+/// chunk count) its header and first chunk.
 pub fn cook(
     e: &Encoded,
     chunking: Option<(u32, u32)>,
@@ -594,16 +669,34 @@ pub fn cook(
     let mut meta = e.meta;
     let mut note = e.note.clone();
     if meta.codec == sound_codec::OPUS {
-        if chunking.is_some() {
-            return Err(CookError("an Opus sound is never cooked in chunks".into()));
-        }
+        let opus = match (chunking, &e.chunks) {
+            (None, _) => e.opus.clone(),
+            (Some(_), None) => return Err(CookError("encoded whole, planned in chunks".into())),
+            (Some((per, count)), Some((_, parts))) => {
+                if parts.len() != count as usize {
+                    return Err(CookError(format!(
+                        "{} chunks where the header promised {count}",
+                        parts.len()
+                    )));
+                }
+                meta.chunk_frames = per;
+                meta.chunk_count = count;
+                note.push_str(&format!(
+                    ", in {count} chunks of {:.2} s ({} B head)",
+                    f64::from(per) * crate::opus::BLOCK_FRAMES as f64
+                        / f64::from(crate::opus::RATE),
+                    parts[0].len(),
+                ));
+                parts[0].clone()
+            }
+        };
         let mut w = BlobWriter::new(
             format::Sound::type_hash(),
             format::Sound::schema_version(),
             stamp,
         );
         w.table("meta", &[meta], row_hash::<SoundMeta>())
-            .raw("opus", e.opus.clone(), 16);
+            .raw("opus", opus, 16);
         return Ok((w.finish(), note));
     }
     let qoa = match (chunking, &e.chunks) {
@@ -647,20 +740,28 @@ pub fn cook_chunk(e: &Encoded, n: u32, stamp: u64) -> Result<Vec<u8>, CookError>
         .get(n as usize)
         .filter(|_| n > 0)
         .ok_or_else(|| CookError(format!("no chunk {n} of {}", parts.len())))?;
-    let total = u64::from(e.meta.frames).div_ceil(QOA_FRAME);
+    let is_opus = e.meta.codec == sound_codec::OPUS;
+    let total = if is_opus {
+        crate::opus::block_count(u64::from(e.meta.frames)) as u64
+    } else {
+        u64::from(e.meta.frames).div_ceil(QOA_FRAME)
+    };
     let first = u64::from(*per) * u64::from(n);
     let meta = SoundChunkMeta {
         chunk: n,
         first_frame: first as u32,
-        frame_count: (total - first).min(u64::from(*per)) as u32,
+        frame_count: (total.saturating_sub(first)).min(u64::from(*per)) as u32,
     };
     let mut w = BlobWriter::new(
         format::SoundChunk::type_hash(),
         format::SoundChunk::schema_version(),
         stamp,
     );
-    w.table("meta", &[meta], row_hash::<SoundChunkMeta>())
-        .raw("qoa", part.clone(), 16);
+    w.table("meta", &[meta], row_hash::<SoundChunkMeta>()).raw(
+        if is_opus { "opus" } else { "qoa" },
+        part.clone(),
+        16,
+    );
     Ok(w.finish())
 }
 

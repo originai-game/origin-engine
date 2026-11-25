@@ -153,9 +153,11 @@ impl Source {
                 let settings = audio::SoundSettings::parse(settings_block(self, "sound"))?;
                 audio::decode(&self.rel, &self.bytes)
                     .and_then(|pcm| match settings.codec {
-                        audio::Codec::Opus => {
-                            audio::encode_opus(&pcm, settings.opus_bitrate(pcm.channels))
-                        }
+                        audio::Codec::Opus => audio::encode_opus_chunked(
+                            &pcm,
+                            settings.opus_bitrate(pcm.channels),
+                            per_chunk,
+                        ),
                         audio::Codec::Qoa => audio::encode(&pcm, per_chunk),
                     })
                     .map(std::sync::Arc::new)

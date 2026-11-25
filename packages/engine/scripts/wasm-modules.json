@@ -134,6 +134,7 @@
     "^og_tilemap::state::chunk_quads$",
     "^og_runtime::bind::timeline::present::apply$",
     "^og_runtime::bind::timeline::playback::step$",
+    "^og_runtime::bind::flow::after_restore$",
     "^og_runtime::bind::net::tick::(gate_active|after_tick_active)$",
     "^<og_render::shading::gi_probes::GiProbes>::(new|prepare|record)$",
     "^<og_render::fields::(wind_field::WindFieldSim|trample::Trample)>::step$",

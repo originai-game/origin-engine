@@ -6,7 +6,7 @@ Module [`flow`](../flow.md) · [index](../index.md)
 
 ### `og.flow.choose`
 
-Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick.
+Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut (or immediately when tagged `#immediate`, held, or in a choice loop). Systems may call it; og.flow applies it this tick.
 
 ```ts
 og.flow.choose(world: World, flow: Entity, index: number): Result<void>
@@ -24,7 +24,7 @@ Binding symbol `og_flow_choose` · publish builds: kept
 
 ```ogt
 fn choose {
-  doc "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick."
+  doc "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut (or immediately when tagged `#immediate`, held, or in a choice loop). Systems may call it; og.flow applies it this tick."
   param world World "The world."
   param flow Entity "The flow."
   param index u32 "ChoiceView.index."
@@ -32,4 +32,4 @@ fn choose {
 }
 ```
 
-<sub>Module `flow` line 233</sub>
+<sub>Module `flow` line 341</sub>

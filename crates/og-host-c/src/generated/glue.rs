@@ -2943,6 +2943,16 @@ unsafe extern "C" fn og_video_capabilities(args: *const crate::OgValue, out: *mu
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
+unsafe extern "C" fn og_video_set_quality(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as VideoApi>::og_video_set_quality(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_video_buffering(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as VideoApi>::og_video_buffering(&Host, unsafe { crate::arg(args, 0) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
 #[cfg(not(feature = "publish"))]
 unsafe extern "C" fn og_debug_line(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as DebugApi>::og_debug_line(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) }, unsafe { crate::arg(args, 3) });
@@ -3357,6 +3367,46 @@ unsafe extern "C" fn og_flow_play(args: *const crate::OgValue, out: *mut crate::
 
 unsafe extern "C" fn og_flow_pause(args: *const crate::OgValue, out: *mut crate::OgValue) {
     let r = <Host as FlowApi>::og_flow_pause(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_set_speed(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_set_speed(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_seek(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_seek(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_inspect(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_inspect(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_gesture(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_gesture(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_set_music(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_set_music(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_history(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_history(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_checkpoint(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_checkpoint(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) });
+    unsafe { crate::IntoC::into_c(r, out) }
+}
+
+unsafe extern "C" fn og_flow_jump(args: *const crate::OgValue, out: *mut crate::OgValue) {
+    let r = <Host as FlowApi>::og_flow_jump(&Host, unsafe { crate::arg(args, 0) }, unsafe { crate::arg(args, 1) }, unsafe { crate::arg(args, 2) });
     unsafe { crate::IntoC::into_c(r, out) }
 }
 
@@ -4076,6 +4126,8 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_stream_budget", arity: 1, call: og_stream_budget },
     crate::Symbol { name: c"og_stream_set_budget", arity: 2, call: og_stream_set_budget },
     crate::Symbol { name: c"og_video_capabilities", arity: 1, call: og_video_capabilities },
+    crate::Symbol { name: c"og_video_set_quality", arity: 2, call: og_video_set_quality },
+    crate::Symbol { name: c"og_video_buffering", arity: 1, call: og_video_buffering },
     #[cfg(not(feature = "publish"))]
     crate::Symbol { name: c"og_debug_line", arity: 4, call: og_debug_line },
     #[cfg(not(feature = "publish"))]
@@ -4169,6 +4221,14 @@ pub static SYMBOLS: &[crate::Symbol] = &[
     crate::Symbol { name: c"og_flow_advance", arity: 3, call: og_flow_advance },
     crate::Symbol { name: c"og_flow_play", arity: 2, call: og_flow_play },
     crate::Symbol { name: c"og_flow_pause", arity: 2, call: og_flow_pause },
+    crate::Symbol { name: c"og_flow_set_speed", arity: 3, call: og_flow_set_speed },
+    crate::Symbol { name: c"og_flow_seek", arity: 3, call: og_flow_seek },
+    crate::Symbol { name: c"og_flow_inspect", arity: 3, call: og_flow_inspect },
+    crate::Symbol { name: c"og_flow_gesture", arity: 3, call: og_flow_gesture },
+    crate::Symbol { name: c"og_flow_set_music", arity: 3, call: og_flow_set_music },
+    crate::Symbol { name: c"og_flow_history", arity: 2, call: og_flow_history },
+    crate::Symbol { name: c"og_flow_checkpoint", arity: 2, call: og_flow_checkpoint },
+    crate::Symbol { name: c"og_flow_jump", arity: 3, call: og_flow_jump },
     crate::Symbol { name: c"og_flow_skip", arity: 2, call: og_flow_skip },
     crate::Symbol { name: c"og_flow_chart", arity: 2, call: og_flow_chart },
     crate::Symbol { name: c"og_flow_stop", arity: 2, call: og_flow_stop },

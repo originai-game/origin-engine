@@ -167,6 +167,9 @@ impl Decoder {
 /// A picture's three planes and their strides, checked to be 8-bit 4:2:0.
 fn planes(pic: &Dav1dPicture) -> Result<[Plane<'_>; 3], String> {
     let (w, h) = (pic.p.w as usize, pic.p.h as usize);
+    if w == 0 || h == 0 {
+        return Err("a picture with zero width or height".into());
+    }
     if pic.p.bpc != 8 || pic.p.layout != DAV1D_PIXEL_LAYOUT_I420 {
         return Err(format!(
             "a {}-bit picture of layout {} (the engine plays 8-bit 4:2:0; cook it again)",
@@ -177,6 +180,9 @@ fn planes(pic: &Dav1dPicture) -> Result<[Plane<'_>; 3], String> {
     let (cw, ch) = (w.div_ceil(2), h.div_ceil(2));
     let plane = |i: usize, stride: usize, rows: usize, cols: usize| -> Result<Plane<'_>, String> {
         let p = pic.data[i].ok_or("a picture without its planes")?;
+        if rows == 0 || cols == 0 {
+            return Err("a picture plane with zero rows or columns".into());
+        }
         // SAFETY: rav1d allocates `stride` bytes for each of a plane's rows,
         // alive as long as the picture.
         let data = unsafe {

@@ -143,14 +143,20 @@ pub fn og_story_load(world: u32, path: String) -> Result<crate::host::wire::Stor
     (|| {
         let eng = engine(world)?;
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let text = {
+        let (text, hash) = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
-            bundle
+            let hash = bundle.output(&id).map(|o| o.hash).unwrap_or(0);
+            let text = bundle
                 .story_text(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
+            (text, hash)
         };
-        insert(world, &text).map_err(|e| format!("{id}: {e}"))
+        let asset = insert(world, &text).map_err(|e| format!("{id}: {e}"))?;
+        with(world, |rt| {
+            rt.loaded_files.insert(id, hash);
+        });
+        Ok(asset)
     })()
 }
 

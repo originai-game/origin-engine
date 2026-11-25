@@ -163,6 +163,7 @@ type Findings = Vec<(String, String)>;
 pub(crate) fn check_flows(
     stories: &[(&str, &[u8])],
     segment: &dyn Fn(&str) -> Option<Result<og_timeline::segment::Segment, String>>,
+    video_info: &dyn Fn(&str) -> Option<(f64, f64)>,
     functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
 ) -> (Findings, Findings) {
     let mut out = Vec::new();
@@ -180,6 +181,15 @@ pub(crate) fn check_flows(
         }
         let mut errors = Vec::new();
         for n in &graph {
+            for &line in &n.dynamic_jumps {
+                warnings.push((
+                    rel.to_string(),
+                    format!(
+                        "line {line}: node '{}' uses a dynamic jump (`<<jump {{...}}>>`), which prevents static deck pre-warming and route analysis (`og flow routes`)",
+                        n.title
+                    ),
+                ));
+            }
             let Some(seg) = n.headers.get("og-flow") else {
                 if !n.choices.is_empty() {
                     errors.push(format!(
@@ -221,11 +231,41 @@ pub(crate) fn check_flows(
                             ));
                         }
                     }
+                    if let Some((vid, from)) = &s.video
+                        && let Some((vid_secs, keyframe)) = video_info(vid)
+                    {
+                        if f64::from(*from) + f64::from(s.cut) > vid_secs + 0.05 {
+                            warnings.push((
+                                rel.to_string(),
+                                format!(
+                                    "node '{}': segment {seg} plays {vid} from {from:.2}s to cut {:.2}s, past the video's {:.2}s length",
+                                    n.title, s.cut, vid_secs
+                                ),
+                            ));
+                        }
+                        if keyframe > 0.0 && *from > 0.0 {
+                            let rem = (f64::from(*from) / keyframe).fract();
+                            if rem > 0.02 && rem < 0.98 {
+                                warnings.push((
+                                    rel.to_string(),
+                                    format!(
+                                        "node '{}': segment {seg} starts {vid} at `from {from:.2}`, which is not aligned to its {keyframe:.2}s keyframe interval (adds seek decode latency)",
+                                        n.title
+                                    ),
+                                ));
+                            }
+                        }
+                    }
                     Some(s.hotspots.into_iter().map(|k| k.id).collect())
                 }
             };
             if let Some(h) = n.headers.get("og-flow-dissolve")
                 && let Err(e) = og_timeline::segment::dissolve(h)
+            {
+                errors.push(format!("node '{}': {e}", n.title));
+            }
+            if let Some(h) = n.headers.get("og-flow-music")
+                && let Err(e) = og_timeline::segment::music_header(h)
             {
                 errors.push(format!("node '{}': {e}", n.title));
             }
@@ -251,16 +291,24 @@ pub(crate) fn check_flows(
                     }
                 }
             }
-            let defaults = n
-                .choices
-                .iter()
-                .filter(|c| c.tags.contains_key("default"))
-                .count();
-            if defaults > 1 {
-                errors.push(format!(
-                    "node '{}': {defaults} choices are #default; one at most",
-                    n.title
-                ));
+            // Group-aware #default validation: at most one #default per option group.
+            let mut by_group: std::collections::BTreeMap<u32, usize> =
+                std::collections::BTreeMap::new();
+            for c in n.choices.iter().filter(|c| c.tags.contains_key("default")) {
+                *by_group.entry(c.group).or_default() += 1;
+            }
+            for (group, defaults) in by_group {
+                if defaults > 1 {
+                    let which = if group == 0 {
+                        String::new()
+                    } else {
+                        format!(" in option group {group}")
+                    };
+                    errors.push(format!(
+                        "node '{}': {defaults} choices are #default{which}; one at most",
+                        n.title
+                    ));
+                }
             }
             let said = d.said_in(&n.title);
             if !said.is_empty() {

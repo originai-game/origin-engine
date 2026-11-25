@@ -60,7 +60,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r36");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r37");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -965,24 +965,24 @@ impl BlobKind for Texture {
 pub mod sound_codec {
     /// QOA: the `qoa` section.
     pub const QOA: u32 = 0;
-    /// Opus (`crate::opus`): the `opus` section, never chunked.
+    /// Opus (`crate::opus`): the `opus` section, whole or chunked.
     pub const OPUS: u32 = 1;
 }
 
 row!(
     /// The root of a sound blob. With `codec` QOA the `qoa` section is a QOA
-    /// file; a sound cooked in chunks (`chunk_count` > 0) holds the file's
-    /// header (the whole length) and its first `chunk_frames` QOA frames
-    /// only, and chunk `n` (1..chunk_count) is the blob `<id>#chunk<n>`
-    /// ([`SoundChunkMeta`]). With `codec` Opus the `opus` section is an Opus
-    /// sound (`crate::opus`: self-contained blocks of 0.48 s at 48 kHz),
-    /// whole. Version 3 added `codec`.
+    /// file; with `codec` Opus the `opus` section is an Opus sound
+    /// (`crate::opus`: self-contained blocks of 0.48 s at 48 kHz). When cooked
+    /// in chunks (`chunk_count` > 0), this blob holds the header (with the
+    /// whole length) and the first `chunk_frames` blocks (QOA frames or Opus
+    /// blocks), and chunk `n` (1..chunk_count) is the blob `<id>#chunk<n>`
+    /// ([`SoundChunkMeta`]). Version 3 added `codec`.
     SoundMeta, "og.Sound", 3 {
         sample_rate: u32,
         channels: u32,
         /// Samples per channel.
         frames: u32,
-        /// QOA frames (5120 samples per channel) per chunk; 0: not chunked.
+        /// Blocks per chunk (QOA frames of 5120 samples, or Opus blocks of 23,040 samples); 0: not chunked.
         chunk_frames: u32,
         /// Chunks, the first included; 0: not chunked.
         chunk_count: u32,
@@ -1002,11 +1002,12 @@ impl BlobKind for Sound {
 
 row!(
     /// The root of a chunk of a sound cooked in chunks (`<id>#chunk<n>`);
-    /// its `qoa` section is the chunk's QOA frames, without a file header.
+    /// its `qoa` section holds QOA frames without a file header, or its `opus`
+    /// section holds Opus blocks indexed by `og_bundle::opus::encode_chunk`.
     SoundChunkMeta, "og.SoundChunk", 1 {
         /// The chunk's index (1 and up: the first is in the sound's blob).
         chunk: u32,
-        /// Its first QOA frame in the whole file, and how many it holds.
+        /// Its first block (QOA frame or Opus block) in the whole file, and how many it holds.
         first_frame: u32,
         frame_count: u32,
     }

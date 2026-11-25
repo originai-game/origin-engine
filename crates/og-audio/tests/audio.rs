@@ -160,3 +160,70 @@ fn serde_like(fields: &[(&str, String)]) -> String {
         .collect();
     format!("{{\n{}\n}}\n", body.join(",\n"))
 }
+
+#[test]
+fn chunked_opus_stream_encoder_matches_whole_decode() {
+    use og_audio::opus;
+    let channels = 2usize;
+    let total_frames = 80_000usize; // 4 Opus blocks (23,040 frames each) -> 2 chunks of 2 blocks
+    let pcm: Vec<i16> = (0..total_frames * channels)
+        .map(|i| {
+            let f = (i / channels) as f64;
+            let c = (i % channels) as f64;
+            let t = f / f64::from(opus::RATE);
+            (10_000.0 * (std::f64::consts::TAU * (330.0 + 110.0 * c) * t).sin()) as i16
+        })
+        .collect();
+
+    let whole_bytes = opus::encode(&pcm, channels, 96_000, 48_000).unwrap();
+    let mut enc = opus::StreamEncoder::new(channels, 96_000).unwrap();
+    for piece in pcm.chunks(1700 * channels) {
+        enc.push(piece).unwrap();
+    }
+    let (blocks, encoded_frames) = enc.finish().unwrap();
+    assert_eq!(encoded_frames, total_frames as u64);
+    let chunks = opus::split_blocks(&blocks, channels, encoded_frames, 48_000, 96_000, 2).unwrap();
+    assert_eq!(chunks.len(), 2);
+
+    let render = |chunked: bool| -> Vec<f32> {
+        let bank = SoundBank::new();
+        let h = if chunked {
+            let id = bank
+                .insert_chunked_opus("chunked", &chunks[0], 2, chunks.len() as u32)
+                .unwrap();
+            assert!(bank.put_chunk(id, 1, &chunks[1]).unwrap());
+            id
+        } else {
+            bank.insert_opus("whole", &whole_bytes).unwrap()
+        };
+        let mut world = World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let link = og_audio::install(
+            &mut world,
+            &og_audio::AudioDesc {
+                bank: Some(bank),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        world.spawn((og_audio::AudioSource::new(h),)).unwrap();
+        let mut sink = HeadlessSink::new(
+            &link,
+            HeadlessMode::Capture {
+                sample_rate: 48_000,
+            },
+        );
+        for _ in 0..100 {
+            world.step().unwrap();
+            sink.pump();
+        }
+        sink.pcm().to_vec()
+    };
+    let whole_pcm = render(false);
+    let chunked_pcm = render(true);
+    assert_eq!(whole_pcm.len(), 100 * 800 * 2);
+    assert!(
+        whole_pcm.iter().any(|&s| s.abs() > 0.05),
+        "non-silent output"
+    );
+    assert_eq!(whole_pcm, chunked_pcm);
+}

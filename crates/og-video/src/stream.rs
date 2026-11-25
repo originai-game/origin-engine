@@ -41,6 +41,25 @@ pub fn fallback_size((w, h): (u32, u32)) -> Option<(u32, u32)> {
     Some((side(w), side(h)))
 }
 
+/// The largest stream for the low-bitrate ABR rendition (480p landscape or portrait).
+pub const LOW_MAX: (u32, u32) = (854, 480);
+
+/// The size of the low-quality rendition (`<id>#stream480`) beside a stream
+/// larger than [`LOW_MAX`] in either orientation, aspect kept, even sides, >= 64.
+pub fn low_size((w, h): (u32, u32)) -> Option<(u32, u32)> {
+    let (mw, mh) = if w >= h {
+        LOW_MAX
+    } else {
+        (LOW_MAX.1, LOW_MAX.0)
+    };
+    if w <= mw && h <= mh {
+        return None;
+    }
+    let scale = (f64::from(mw) / f64::from(w)).min(f64::from(mh) / f64::from(h));
+    let side = |v: u32| (((f64::from(v) * scale).round() as u32) & !1).max(64);
+    Some((side(w), side(h)))
+}
+
 /// Seconds of footage a playing player's next chunks are fetched ahead of
 /// it (as a chunked sound's are, og-audio's `chunks_wanted`).
 pub const LEAD: f64 = 4.0;

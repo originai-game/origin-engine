@@ -124,7 +124,14 @@ fn footage(assets: &Path, id: &str, problems: &mut Vec<String>) -> Value {
                     "its footage {id} is placeholder footage (`placeholder true`): replace the clip"
                 ));
             }
-            json!({ "id": id, "exists": true, "source": v.source, "stream": v.stream, "placeholder": v.placeholder })
+            json!({
+                "id": id,
+                "exists": true,
+                "source": v.source,
+                "stream": v.stream,
+                "placeholder": v.placeholder,
+                "audioLocales": v.audio_locales.iter().map(|(t, _)| t.clone()).collect::<Vec<_>>(),
+            })
         }
         Err(e) => {
             problems.push(format!("its footage {id}: {e}"));
@@ -148,6 +155,11 @@ pub fn list(root: &Path) -> Result<Value, String> {
             let id = &n.headers[FLOW_HEADER];
             let header = |k: &str| n.headers.get(k).cloned();
             let mut problems = Vec::new();
+            for &line in &n.dynamic_jumps {
+                problems.push(format!(
+                    "line {line}: uses dynamic jump (`<<jump {{...}}>>`), breaking static pre-warming"
+                ));
+            }
             let mut seg = json!({ "id": id });
             match timeline(&assets, id).and_then(|t| t.segment().map(|s| (t, s))) {
                 Ok((t, s)) => {
@@ -182,6 +194,7 @@ pub fn list(root: &Path) -> Result<Value, String> {
                         "duration": t.duration,
                         "window": { "open": s.open, "lock": s.lock, "cut": s.cut },
                         "hold": s.hold,
+                        "loopRegion": s.loop_region.map(|(a, b)| json!({ "start": a, "end": b })),
                         "footage": s.video.as_ref().map(|(v, from)| {
                             let mut f = footage(&assets, v, &mut problems);
                             f["from"] = json!(from);
@@ -199,8 +212,10 @@ pub fn list(root: &Path) -> Result<Value, String> {
                 .map(|c| {
                     json!({
                         "index": c.index,
+                        "group": c.group,
                         "line": c.key,
                         "default": c.tags.contains_key("default"),
+                        "immediate": c.tags.contains_key("immediate"),
                         "outcome": c.tags.get("outcome"),
                         "qte": c.tags.get("qte"),
                         "hotspot": c.tags.get("hotspot"),
@@ -210,9 +225,11 @@ pub fn list(root: &Path) -> Result<Value, String> {
                 .collect();
             nodes.push(json!({
                 "node": n.title,
+                "title": header("og-flow-title"),
                 "segment": seg,
                 "chapter": header("og-flow-chapter"),
                 "ending": header("og-flow-ending"),
+                "music": header("og-flow-music"),
                 "dissolve": header("og-flow-dissolve").and_then(|h| og_timeline::segment::dissolve(&h).ok()),
                 "choices": choices,
                 "next": if n.choices.is_empty() { flow_reach(&f.graph, &n.to) } else { Vec::new() },
@@ -250,7 +267,8 @@ fn ways<'a>(graph: &'a [GraphNode], n: &'a GraphNode) -> Vec<(Value, Vec<&'a str
 
 /// `og flow routes`: per flow dialogue, every route from its start to an
 /// ending (a node with `og-flow-ending`, or one that leads nowhere), as
-/// the steps a test takes, without passing a node twice.
+/// the steps a test takes, without passing a node twice, plus detected
+/// cycles and unreachable flow nodes.
 pub fn routes(root: &Path) -> Result<Value, String> {
     let (declared, flows) = flows(root)?;
     let mut out = Vec::new();
@@ -259,7 +277,6 @@ pub fn routes(root: &Path) -> Result<Value, String> {
             f.graph.iter().map(|n| (n.title.as_str(), n)).collect();
         let mut routes = Vec::new();
         let mut truncated = false;
-        // (path of (node, step, to), node to expand)
         let mut stack: Vec<(Vec<Value>, Vec<&str>, &str)> =
             flow_reach(&f.graph, std::slice::from_ref(&f.start))
                 .into_iter()
@@ -267,7 +284,10 @@ pub fn routes(root: &Path) -> Result<Value, String> {
                 .map(|s| (Vec::new(), vec![s], s))
                 .collect();
         let mut reached = std::collections::BTreeSet::new();
+        let mut visited_nodes = std::collections::BTreeSet::new();
+        let mut cycles = std::collections::BTreeSet::new();
         while let Some((steps, seen, at)) = stack.pop() {
+            visited_nodes.insert(at);
             if routes.len() >= MAX_ROUTES {
                 truncated = true;
                 break;
@@ -284,6 +304,7 @@ pub fn routes(root: &Path) -> Result<Value, String> {
                 let branches = to.len() > 1;
                 for next in to.into_iter().rev() {
                     if seen.contains(&next) {
+                        cycles.insert((at.to_string(), next.to_string()));
                         continue;
                     }
                     let mut s = steps.clone();
@@ -315,6 +336,18 @@ pub fn routes(root: &Path) -> Result<Value, String> {
                 })
             })
             .collect();
+        let unreachable_nodes: Vec<&str> = f
+            .graph
+            .iter()
+            .filter(|n| {
+                n.headers.contains_key(FLOW_HEADER) && !visited_nodes.contains(n.title.as_str())
+            })
+            .map(|n| n.title.as_str())
+            .collect();
+        let cycle_json: Vec<Value> = cycles
+            .into_iter()
+            .map(|(from, to)| json!({ "from": from, "to": to }))
+            .collect();
         out.push(json!({
             "dialogue": f.name,
             "file": f.rel,
@@ -322,6 +355,171 @@ pub fn routes(root: &Path) -> Result<Value, String> {
             "routes": routes,
             "truncated": truncated,
             "unreached": unreached,
+            "unreachableNodes": unreachable_nodes,
+            "cycles": cycle_json,
+        }));
+    }
+    Ok(json!({ "flows": out }))
+}
+
+/// Extracts a 64×36 RGB24 frame from `media` at `at_seconds` (if `Some`) or
+/// the clip's last frame (if `None`).
+fn sample_frame_rgb(media: &Path, at_seconds: Option<f64>) -> Result<Vec<u8>, String> {
+    let mut cmd = std::process::Command::new(super::video::ffmpeg_bin());
+    cmd.args(["-v", "error", "-nostdin"]);
+    match at_seconds {
+        Some(t) if t > 0.0 => {
+            cmd.args(["-ss", &format!("{t:.3}")]);
+        }
+        Some(_) => {}
+        None => {
+            cmd.args(["-sseof", "-1.0"]);
+        }
+    }
+    cmd.arg("-i").arg(media);
+    cmd.args(["-map", "0:v:0", "-an", "-vf", "scale=64:36:flags=area"]);
+    if at_seconds.is_some() {
+        cmd.args(["-frames:v", "1"]);
+    }
+    cmd.args(["-f", "rawvideo", "-pix_fmt", "rgb24", "-"]);
+    let out = cmd
+        .output()
+        .map_err(|e| format!("ffmpeg cannot sample {}: {e}", media.display()))?;
+    if !out.status.success() {
+        return Err(format!(
+            "ffmpeg failed on {}: {}",
+            media.display(),
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let frame_bytes = 64 * 36 * 3;
+    if out.stdout.len() < frame_bytes {
+        if at_seconds.is_some() {
+            return sample_frame_rgb(media, None);
+        }
+        return Err(format!("no frame decoded from {}", media.display()));
+    }
+    let start = out.stdout.len() - frame_bytes;
+    Ok(out.stdout[start..].to_vec())
+}
+
+/// `og flow check-cuts`: measures visual continuity (mean luminance delta and
+/// mean RGB pixel distance in `[0, 1]`) across every footage-to-footage cut
+/// edge in the project's flows. Reports facts only; the caller decides.
+pub fn check_cuts(root: &Path) -> Result<Value, String> {
+    let (_, flows) = flows(root)?;
+    let assets = root.join("assets");
+    let exists = |p: &str| assets.join(p).is_file();
+    let mut out = Vec::new();
+    for f in &flows {
+        // Resolve each flow node's (media_path, from, cut) when it has footage.
+        let mut media_of: BTreeMap<&str, (PathBuf, f64, f64)> = BTreeMap::new();
+        for n in f
+            .graph
+            .iter()
+            .filter(|n| n.headers.contains_key(FLOW_HEADER))
+        {
+            let seg_id = &n.headers[FLOW_HEADER];
+            let Ok(t) = timeline(&assets, seg_id) else {
+                continue;
+            };
+            let Ok(s) = t.segment() else { continue };
+            let Some((vid_id, from)) = s.video else {
+                continue;
+            };
+            let Ok(vtext) = std::fs::read_to_string(assets.join(&vid_id)) else {
+                continue;
+            };
+            let Ok(vdecl) = super::video::parse(&vid_id, &vtext, &exists) else {
+                continue;
+            };
+            media_of.insert(
+                n.title.as_str(),
+                (
+                    assets.join(&vdecl.source),
+                    f64::from(from),
+                    f64::from(from) + f64::from(s.cut),
+                ),
+            );
+        }
+        let mut frame_cache: BTreeMap<(PathBuf, i64), Result<Vec<u8>, String>> = BTreeMap::new();
+        let mut sample = |path: &Path, t: f64| -> Result<Vec<u8>, String> {
+            let key = (path.to_path_buf(), (t * 100.0).round() as i64);
+            frame_cache
+                .entry(key)
+                .or_insert_with(|| sample_frame_rgb(path, Some(t.max(0.0))))
+                .clone()
+        };
+        let mut cuts = Vec::new();
+        let mut seen_edges = std::collections::BTreeSet::new();
+        for n in f
+            .graph
+            .iter()
+            .filter(|n| n.headers.contains_key(FLOW_HEADER))
+        {
+            let Some((from_path, _, from_end)) = media_of.get(n.title.as_str()) else {
+                continue;
+            };
+            let targets: Vec<&str> = if n.choices.is_empty() {
+                flow_reach(&f.graph, &n.to)
+            } else {
+                n.choices
+                    .iter()
+                    .flat_map(|c| flow_reach(&f.graph, &c.to))
+                    .collect()
+            };
+            for to in targets {
+                if !seen_edges.insert((n.title.as_str(), to)) {
+                    continue;
+                }
+                let Some((to_path, to_start, _)) = media_of.get(to) else {
+                    continue;
+                };
+                match (
+                    sample(from_path, (from_end - 0.04).max(0.0)),
+                    sample(to_path, *to_start),
+                ) {
+                    (Ok(a), Ok(b)) => {
+                        let pixels = (a.len() / 3).max(1) as f64;
+                        let mut rgb_diff = 0.0f64;
+                        let mut luma_a = 0.0f64;
+                        let mut luma_b = 0.0f64;
+                        for (pa, pb) in a.as_chunks::<3>().0.iter().zip(b.as_chunks::<3>().0) {
+                            let (ra, ga, ba) = (
+                                f64::from(pa[0]) / 255.0,
+                                f64::from(pa[1]) / 255.0,
+                                f64::from(pa[2]) / 255.0,
+                            );
+                            let (rb, gb, bb) = (
+                                f64::from(pb[0]) / 255.0,
+                                f64::from(pb[1]) / 255.0,
+                                f64::from(pb[2]) / 255.0,
+                            );
+                            rgb_diff += ((ra - rb).abs() + (ga - gb).abs() + (ba - bb).abs()) / 3.0;
+                            luma_a += 0.2126 * ra + 0.7152 * ga + 0.0722 * ba;
+                            luma_b += 0.2126 * rb + 0.7152 * gb + 0.0722 * bb;
+                        }
+                        cuts.push(json!({
+                            "from": n.title,
+                            "to": to,
+                            "rgbDelta": (rgb_diff / pixels * 1000.0).round() / 1000.0,
+                            "lumaDelta": ((luma_a - luma_b).abs() / pixels * 1000.0).round() / 1000.0,
+                        }));
+                    }
+                    (Err(e), _) | (_, Err(e)) => {
+                        cuts.push(json!({
+                            "from": n.title,
+                            "to": to,
+                            "error": e,
+                        }));
+                    }
+                }
+            }
+        }
+        out.push(json!({
+            "dialogue": f.name,
+            "file": f.rel,
+            "cuts": cuts,
         }));
     }
     Ok(json!({ "flows": out }))

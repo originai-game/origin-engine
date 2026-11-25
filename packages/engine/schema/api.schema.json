@@ -14784,6 +14784,8 @@
         "Video",
         "Video",
         "VideoInfo",
+        "VideoQuality",
+        "VideoBuffering",
         "VideoCapabilities",
         "MediaIntent",
         "VideoPlayer"
@@ -14802,6 +14804,41 @@
             }
           ],
           "returns": "VideoCapabilities",
+          "publish": true
+        },
+        {
+          "name": "setQuality",
+          "doc": "Presentation-only: choose the quality tier (`auto`, `high`, `medium`, `low`) for streamed videos. Never affects simulation ticks or world hashes.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "quality",
+              "type": "VideoQuality",
+              "optional": false,
+              "doc": "The quality tier."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown quality tier.",
+          "publish": true
+        },
+        {
+          "name": "buffering",
+          "doc": "Presentation-only: whether any player with `wait` is currently buffering, its download progress, and the active quality tier.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "VideoBuffering",
           "publish": true
         }
       ],
@@ -16984,13 +17021,20 @@
         "FlowHotspot",
         "QteView",
         "FlowView",
+        "FlowTranscriptLine",
+        "FlowGestureDesc",
+        "FlowMusicDesc",
+        "FlowCheckpoint",
+        "FlowJumpDesc",
         "FlowChartNode",
         "FlowChartLink",
         "FlowChart",
         "FlowSegment",
         "FlowChoice",
         "FlowChapter",
-        "FlowEnded"
+        "FlowEnded",
+        "FlowInspected",
+        "FlowQteResult"
       ],
       "consts": [],
       "functions": [
@@ -17074,7 +17118,7 @@
         },
         {
           "name": "choose",
-          "doc": "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut, so the footage plays on to it. Systems may call it; og.flow applies it this tick.",
+          "doc": "Take a choice while the window is open: recorded now (FlowView.window.pending; a later call replaces it) and taken at the cut (or immediately when tagged `#immediate`, held, or in a choice loop). Systems may call it; og.flow applies it this tick.",
           "params": [
             {
               "name": "world",
@@ -17166,6 +17210,210 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an entity that is no flow.",
+          "publish": true
+        },
+        {
+          "name": "setSpeed",
+          "doc": "Set playback speed (0.25 to 4.0) for the flow's active segment (fast-forward / slow-motion). Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "speed",
+              "type": "f32",
+              "optional": false,
+              "doc": "Playback speed multiplier (0.25 to 4.0)."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow, or a speed outside 0.25 to 4.0.",
+          "publish": true
+        },
+        {
+          "name": "seek",
+          "doc": "Seek within the current segment (0 to its cut time, e.g., -5s rewind). Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "time",
+              "type": "f32",
+              "optional": false,
+              "doc": "Seconds into the segment, clamped to 0..cut."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow, one that has ended, or a non-finite/negative time.",
+          "publish": true
+        },
+        {
+          "name": "inspect",
+          "doc": "Trigger an active `inspect` hotspot by id without cutting: marks it inspected and sends og.FlowInspected. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "hotspot",
+              "type": "String",
+              "optional": false,
+              "doc": "The hotspot's id."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow, or an unknown/inactive inspect hotspot.",
+          "publish": true
+        },
+        {
+          "name": "gesture",
+          "doc": "Feed a deterministic swipe or drag gesture into active QTEs (mobile touch support). Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "desc",
+              "type": "FlowGestureDesc",
+              "optional": true,
+              "doc": "The gesture kind (`swipe` or `drag`), direction (`up`, `down`, `left`, `right`) and drag progress."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow or an invalid gesture.",
+          "publish": true
+        },
+        {
+          "name": "setMusic",
+          "doc": "Start, crossfade, or stop persistent cross-segment background music with automatic ducking over segment audio. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "desc",
+              "type": "FlowMusicDesc",
+              "optional": true,
+              "doc": "The sound asset id (empty stops), volume, crossfade seconds, and ducking ratio."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow.",
+          "publish": true
+        },
+        {
+          "name": "history",
+          "doc": "Recent captions and player choices recorded by this flow (backlog).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            }
+          ],
+          "returns": "List<FlowTranscriptLine>",
+          "returnsDoc": "Empty for an entity that is no flow.",
+          "publish": true
+        },
+        {
+          "name": "checkpoint",
+          "doc": "Capture a lightweight branch-rewind checkpoint: the current dialogue, flow node, and story variables.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            }
+          ],
+          "returns": "Result<FlowCheckpoint>",
+          "returnsDoc": "Refused for an entity that is no flow or has no active node.",
+          "publish": true
+        },
+        {
+          "name": "jump",
+          "doc": "Jump a running flow directly to another flow node, optionally applying story variables from a FlowCheckpoint. Systems may call it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "flow",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The flow."
+            },
+            {
+              "name": "desc",
+              "type": "FlowJumpDesc",
+              "optional": true,
+              "doc": "The target node and optional story variables."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity that is no flow or an unknown node.",
           "publish": true
         },
         {
@@ -56717,6 +56965,20 @@
         "poster": {
           "$ref": "#/$defs/Texture",
           "description": "A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture."
+        },
+        "qualities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip."
+        },
+        "audioLocales": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists."
         }
       },
       "required": [
@@ -56734,7 +56996,54 @@
         "aiGenerated",
         "alpha",
         "codec",
-        "poster"
+        "poster",
+        "qualities",
+        "audioLocales"
+      ],
+      "additionalProperties": false
+    },
+    "VideoQuality": {
+      "x-og-kind": "enum",
+      "x-og-module": "video",
+      "description": "The quality tier for streamed video playback (presentation-only: never changes simulation).",
+      "type": "string",
+      "enum": [
+        "auto",
+        "high",
+        "medium",
+        "low"
+      ],
+      "x-og-variants": {
+        "auto": "Automatic adaptive selection from decoder capabilities and playback stalls.",
+        "high": "Source / highest cooked rendition.",
+        "medium": "720p rendition when cooked, else highest.",
+        "low": "480p rendition when cooked, else lowest."
+      }
+    },
+    "VideoBuffering": {
+      "x-og-kind": "struct",
+      "x-og-module": "video",
+      "description": "Presentation-only buffering status of active video streams.",
+      "type": "object",
+      "properties": {
+        "buffering": {
+          "type": "boolean",
+          "description": "Whether any active player with `wait` is currently holding the clock for decode or chunk download."
+        },
+        "progress": {
+          "type": "number",
+          "description": "0 to 1: download progress of the active stream's next needed chunk (1 when ready).",
+          "x-og-unit": "ratio"
+        },
+        "quality": {
+          "$ref": "#/$defs/VideoQuality",
+          "description": "The quality tier currently active for streamed playback."
+        }
+      },
+      "required": [
+        "buffering",
+        "progress",
+        "quality"
       ],
       "additionalProperties": false
     },
@@ -56867,8 +57176,22 @@
         },
         "loop": {
           "type": "boolean",
-          "description": "Start again at 0 past the end; otherwise hold the last frame and set finished.",
+          "description": "Start again at loopStart past loopEnd (or 0 past the end); otherwise hold the last frame and set finished.",
           "default": false
+        },
+        "loopStart": {
+          "type": "number",
+          "description": "With `loop`: where the loop wraps back to, in seconds (0: the start).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "loopEnd": {
+          "type": "number",
+          "description": "With `loop`: where the loop wraps, in seconds (0: the video's end).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
         },
         "wait": {
           "type": "boolean",
@@ -57762,8 +58085,22 @@
         },
         "loop": {
           "type": "boolean",
-          "description": "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded.",
+          "description": "Start over at loopStart past loopEnd (or 0 past the end); otherwise stop playing there, hand the camera back and send og.TimelineEnded.",
           "default": false
+        },
+        "loopStart": {
+          "type": "number",
+          "description": "With `loop`: start of the loop region, in seconds (0: the timeline's start).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "loopEnd": {
+          "type": "number",
+          "description": "With `loop`: end of the loop region, in seconds (0: the timeline's duration).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
         },
         "preroll": {
           "type": "boolean",
@@ -57939,11 +58276,29 @@
         "text": {
           "type": "string",
           "description": "Its words, in the player's locale."
+        },
+        "speaker": {
+          "type": "string",
+          "description": "The speaker name, if authored (WebVTT `<v Speaker>` or caption `speaker` field); empty otherwise."
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Inline style spans (`emphasis`, `strong`, `color`) in Unicode scalar offsets over `text`."
+        },
+        "position": {
+          "type": "string",
+          "description": "Placement hint: `bottom` (default) or `top` (`{\\an8}` or WebVTT `line:0`)."
         }
       },
       "required": [
         "id",
-        "text"
+        "text",
+        "speaker",
+        "spans",
+        "position"
       ],
       "additionalProperties": false
     },
@@ -61564,8 +61919,34 @@
             "maximum": 4294967295
           },
           "maxItems": 8,
-          "description": "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses.",
+          "description": "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held, presses or timing tick.",
           "default": [],
+          "readOnly": true
+        },
+        "qteState": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 8,
+          "description": "Per choice (first 8): QTE bitflags and sub-step state (fresh-press latch, sequence step, result grade).",
+          "default": [],
+          "readOnly": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "Playback speed set by og.flow.setSpeed (1: normal).",
+          "default": 1,
+          "minimum": 0.25,
+          "maximum": 4,
+          "readOnly": true
+        },
+        "looping": {
+          "type": "boolean",
+          "description": "True while holding inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop.",
+          "default": false,
           "readOnly": true
         }
       },
@@ -61637,7 +62018,7 @@
         },
         "held": {
           "type": "boolean",
-          "description": "The segment holds (flow.hold): the window never locks, and a choice cuts at once."
+          "description": "The segment holds (flow.hold) or loops (flow.loopStart..flow.loopEnd): the window never locks, and a choice cuts at once (or breaks the loop)."
         }
       },
       "required": [
@@ -61653,18 +62034,26 @@
     "FlowHotspot": {
       "x-og-kind": "struct",
       "x-og-module": "flow",
-      "description": "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.",
+      "description": "A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect).",
       "type": "object",
       "properties": {
         "choice": {
           "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "The ChoiceView.index it takes."
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut."
         },
         "id": {
           "type": "string",
           "description": "The hotspot's id."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected)."
+        },
+        "shape": {
+          "type": "string",
+          "description": "`rect` or `circle`."
         },
         "x": {
           "type": "number",
@@ -61685,22 +62074,34 @@
           "type": "number",
           "description": "Its height.",
           "x-og-unit": "ratio"
+        },
+        "label": {
+          "type": "string",
+          "description": "Its localized label (from the hotspot key's `label` i18n key, or the choice's text)."
+        },
+        "inspected": {
+          "type": "boolean",
+          "description": "Whether this `inspect` hotspot has already been triggered in this segment."
         }
       },
       "required": [
         "choice",
         "id",
+        "kind",
+        "shape",
         "x",
         "y",
         "width",
-        "height"
+        "height",
+        "label",
+        "inspected"
       ],
       "additionalProperties": false
     },
     "QteView": {
       "x-og-kind": "struct",
       "x-og-module": "flow",
-      "description": "A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`): the og.input action's presses or hold while the window is open.",
+      "description": "A choice taken by a quick-time event (`#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>`, `#qte:timing:<action>:<start>-<end>`, `#qte:sequence:<a1>+<a2>+...`, `#qte:swipe:<dir>`, `#qte:drag:<dir>`).",
       "type": "object",
       "properties": {
         "choice": {
@@ -61711,27 +62112,49 @@
         },
         "kind": {
           "type": "string",
-          "description": "press, hold or mash."
+          "description": "press, hold, mash, timing, sequence, swipe or drag."
         },
         "action": {
           "type": "string",
-          "description": "The og.input action it reads."
+          "description": "The og.input action it reads (or the current step's action for `sequence`; empty for `swipe`/`drag`)."
+        },
+        "direction": {
+          "type": "string",
+          "description": "Direction for `swipe` or `drag` (`up`, `down`, `left`, `right`); empty otherwise."
         },
         "progress": {
           "type": "number",
-          "description": "0 to 1: the hold's time or the presses so far.",
+          "description": "0 to 1: the hold's time, presses, timing cursor, sequence steps or drag progress.",
           "x-og-unit": "ratio"
+        },
+        "zoneStart": {
+          "type": "number",
+          "description": "For `timing`: start of the target zone (0 to 1).",
+          "x-og-unit": "ratio"
+        },
+        "zoneEnd": {
+          "type": "number",
+          "description": "For `timing`: end of the target zone (0 to 1).",
+          "x-og-unit": "ratio"
+        },
+        "grade": {
+          "type": "string",
+          "description": "Resolved result grade: `perfect`, `good`, `miss`, or empty while active."
         },
         "done": {
           "type": "boolean",
-          "description": "Reached: the choice is pending."
+          "description": "Reached: the choice is pending (or resolved with a grade)."
         }
       },
       "required": [
         "choice",
         "kind",
         "action",
+        "direction",
         "progress",
+        "zoneStart",
+        "zoneEnd",
+        "grade",
         "done"
       ],
       "additionalProperties": false
@@ -61768,6 +62191,22 @@
           "description": "When it cuts to the next: its flow.cut marker, else its duration.",
           "x-og-unit": "s"
         },
+        "speed": {
+          "type": "number",
+          "description": "Current playback speed (og.flow.setSpeed)."
+        },
+        "videoWidth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Current segment's video frame width in texels (0 for a live-only segment), for aspect-exact hotspot mapping."
+        },
+        "videoHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Current segment's video frame height in texels (0 for a live-only segment)."
+        },
         "choices": {
           "type": "array",
           "items": {
@@ -61791,7 +62230,7 @@
           "items": {
             "$ref": "#/$defs/FlowHotspot"
           },
-          "description": "The hotspots that take a choice now: while the window is open, those of its enabled choices."
+          "description": "The hotspots active now: enabled choices' hotspots while the window is open, plus active `inspect` hotspots."
         },
         "qtes": {
           "type": "array",
@@ -61817,6 +62256,19 @@
           "type": "boolean",
           "description": "Stopped at its flow.hold, waiting for og.flow.advance (og.Flow.held)."
         },
+        "looping": {
+          "type": "boolean",
+          "description": "Looping inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop."
+        },
+        "buffering": {
+          "type": "boolean",
+          "description": "Presentation-only: whether the current deck is waiting on stream download or decode."
+        },
+        "bufferProgress": {
+          "type": "number",
+          "description": "Presentation-only: 0 to 1 download progress for the current stream's next needed chunk.",
+          "x-og-unit": "ratio"
+        },
         "chapter": {
           "type": "string",
           "description": "The last chapter entered."
@@ -61837,6 +62289,9 @@
         "texture",
         "time",
         "cut",
+        "speed",
+        "videoWidth",
+        "videoHeight",
         "choices",
         "window",
         "hotspots",
@@ -61845,10 +62300,162 @@
         "mix",
         "paused",
         "held",
+        "looping",
+        "buffering",
+        "bufferProgress",
         "chapter",
         "ending",
         "ended"
       ],
+      "additionalProperties": false
+    },
+    "FlowTranscriptLine": {
+      "x-og-kind": "struct",
+      "x-og-module": "flow",
+      "description": "One entry in a flow's transcript backlog (og.flow.history): a caption shown or a choice taken.",
+      "type": "object",
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Monotonic sequence number within the flow."
+        },
+        "node": {
+          "type": "string",
+          "description": "The flow node where it occurred."
+        },
+        "speaker": {
+          "type": "string",
+          "description": "The speaker name, if any."
+        },
+        "text": {
+          "type": "string",
+          "description": "The caption text or chosen option text."
+        },
+        "spans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextSpan"
+          },
+          "description": "Inline style spans over `text`."
+        },
+        "chosen": {
+          "type": "boolean",
+          "description": "True for a choice the player took; false for a spoken caption."
+        }
+      },
+      "required": [
+        "seq",
+        "node",
+        "speaker",
+        "text",
+        "spans",
+        "chosen"
+      ],
+      "additionalProperties": false
+    },
+    "FlowGestureDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "flow",
+      "description": "A deterministic touch or pointer gesture fed into active swipe/drag QTEs (og.flow.gesture).",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "`swipe` or `drag`.",
+          "default": ""
+        },
+        "direction": {
+          "type": "string",
+          "description": "`up`, `down`, `left`, or `right`.",
+          "default": ""
+        },
+        "progress": {
+          "type": "number",
+          "description": "For `drag`: 0 to 1 completion progress (1 completes); ignored for `swipe`.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlowMusicDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "flow",
+      "description": "Persistent cross-segment background music (og.flow.setMusic or `og-flow-music` header).",
+      "type": "object",
+      "properties": {
+        "sound": {
+          "type": "string",
+          "description": "The sound asset id to play across segments; empty stops persistent flow music.",
+          "default": ""
+        },
+        "volume": {
+          "type": "number",
+          "description": "Target linear volume (0 to 2).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "fade": {
+          "type": "number",
+          "description": "Crossfade duration in seconds.",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "duck": {
+          "type": "number",
+          "description": "Volume multiplier while a segment plays video audio (0 to 1; 1 disables ducking).",
+          "default": 0.4,
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "FlowCheckpoint": {
+      "x-og-kind": "struct",
+      "x-og-module": "flow",
+      "description": "A lightweight branch-rewind checkpoint: the dialogue, node and story variables (og.flow.checkpoint / og.flow.jump).",
+      "type": "object",
+      "properties": {
+        "dialogue": {
+          "type": "string",
+          "description": "The dialogue name."
+        },
+        "node": {
+          "type": "string",
+          "description": "The flow node to resume at."
+        },
+        "vars": {
+          "description": "Snapshot of story variables at this node."
+        }
+      },
+      "required": [
+        "dialogue",
+        "node",
+        "vars"
+      ],
+      "additionalProperties": false
+    },
+    "FlowJumpDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "flow",
+      "description": "Jump a running flow to another node, optionally restoring story variables from a FlowCheckpoint (og.flow.jump).",
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "The flow node title to jump to.",
+          "default": ""
+        },
+        "vars": {
+          "description": "Optional story variables to apply before entering `node` (null/omitted keeps current variables).",
+          "default": null
+        }
+      },
       "additionalProperties": false
     },
     "FlowChartNode": {
@@ -61861,9 +62468,21 @@
           "type": "string",
           "description": "Its title."
         },
+        "title": {
+          "type": "string",
+          "description": "Its display title (`og-flow-title` resolved through og.i18n, else `node`)."
+        },
         "segment": {
           "type": "string",
           "description": "Its segment's asset id."
+        },
+        "poster": {
+          "$ref": "#/$defs/Texture",
+          "description": "Its segment's first video's poster texture handle (0 for live-only segments)."
+        },
+        "kind": {
+          "type": "string",
+          "description": "`footage`, `live`, or `both`."
         },
         "chapter": {
           "type": "string",
@@ -61890,7 +62509,10 @@
       },
       "required": [
         "node",
+        "title",
         "segment",
+        "poster",
+        "kind",
         "chapter",
         "ending",
         "depth",
@@ -61919,6 +62541,18 @@
           "maximum": 2147483647,
           "description": "The ChoiceView.index that leads there; -1 for a node without choices."
         },
+        "label": {
+          "type": "string",
+          "description": "The choice's i18n text key, or empty."
+        },
+        "outcome": {
+          "type": "string",
+          "description": "The `#outcome` name if this link is an outcome, else empty."
+        },
+        "conditional": {
+          "type": "boolean",
+          "description": "True when reaching `to` passes through a Yarn condition or multiple targets."
+        },
         "points": {
           "type": "array",
           "items": {
@@ -61931,6 +62565,9 @@
         "from",
         "to",
         "choice",
+        "label",
+        "outcome",
+        "conditional",
         "points"
       ],
       "additionalProperties": false
@@ -61938,7 +62575,7 @@
     "FlowChart": {
       "x-og-kind": "struct",
       "x-og-module": "flow",
-      "description": "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.",
+      "description": "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start with barycenter crossing minimisation: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.",
       "type": "object",
       "properties": {
         "nodes": {
@@ -62080,6 +62717,65 @@
         "flow",
         "node",
         "ending"
+      ],
+      "additionalProperties": false
+    },
+    "FlowInspected": {
+      "x-og-kind": "event",
+      "x-og-module": "flow",
+      "description": "An `inspect` hotspot was triggered without cutting (og.flow.inspect).",
+      "type": "object",
+      "properties": {
+        "flow": {
+          "$ref": "#/$defs/Entity",
+          "description": "The flow."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node (at most 63 bytes)."
+        },
+        "hotspot": {
+          "type": "string",
+          "description": "The hotspot's id (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "flow",
+        "node",
+        "hotspot"
+      ],
+      "additionalProperties": false
+    },
+    "FlowQteResult": {
+      "x-og-kind": "event",
+      "x-og-module": "flow",
+      "description": "A quick-time event resolved with a grade (`perfect`, `good`, or `miss`).",
+      "type": "object",
+      "properties": {
+        "flow": {
+          "$ref": "#/$defs/Entity",
+          "description": "The flow."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node (at most 63 bytes)."
+        },
+        "choice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index."
+        },
+        "grade": {
+          "type": "string",
+          "description": "`perfect`, `good`, or `miss` (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "flow",
+        "node",
+        "choice",
+        "grade"
       ],
       "additionalProperties": false
     },

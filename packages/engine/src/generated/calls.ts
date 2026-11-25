@@ -909,6 +909,8 @@ export const og = Object.freeze({
   }),
   video: Object.freeze({
     capabilities: (world: { readonly id: number }): unknown => JSON.parse(abi().og_video_capabilities(world.id)) as unknown,
+    setQuality: (world: { readonly id: number }, quality: string): unknown => JSON.parse(abi().og_video_set_quality(world.id, quality)) as unknown,
+    buffering: (world: { readonly id: number }): unknown => JSON.parse(abi().og_video_buffering(world.id)) as unknown,
   }),
   debug: Object.freeze({
     line: (world: { readonly id: number }, from: unknown, to: unknown, desc?: unknown): void => abi().og_debug_line(world.id, JSON.stringify(from), JSON.stringify(to), json(desc)),
@@ -1012,6 +1014,14 @@ export const og = Object.freeze({
     advance: (world: { readonly id: number }, flow: number, outcome?: string): unknown => JSON.parse(abi().og_flow_advance(world.id, flow, outcome)) as unknown,
     play: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_play(world.id, flow)) as unknown,
     pause: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_pause(world.id, flow)) as unknown,
+    setSpeed: (world: { readonly id: number }, flow: number, speed: number): unknown => JSON.parse(abi().og_flow_set_speed(world.id, flow, speed)) as unknown,
+    seek: (world: { readonly id: number }, flow: number, time: number): unknown => JSON.parse(abi().og_flow_seek(world.id, flow, time)) as unknown,
+    inspect: (world: { readonly id: number }, flow: number, hotspot: string): unknown => JSON.parse(abi().og_flow_inspect(world.id, flow, hotspot)) as unknown,
+    gesture: (world: { readonly id: number }, flow: number, desc?: unknown): unknown => JSON.parse(abi().og_flow_gesture(world.id, flow, json(desc))) as unknown,
+    setMusic: (world: { readonly id: number }, flow: number, desc?: unknown): unknown => JSON.parse(abi().og_flow_set_music(world.id, flow, json(desc))) as unknown,
+    history: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_history(world.id, flow)) as unknown,
+    checkpoint: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_checkpoint(world.id, flow)) as unknown,
+    jump: (world: { readonly id: number }, flow: number, desc?: unknown): unknown => JSON.parse(abi().og_flow_jump(world.id, flow, json(desc))) as unknown,
     skip: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_skip(world.id, flow)) as unknown,
     chart: (world: { readonly id: number }, dialogue: string): unknown => JSON.parse(abi().og_flow_chart(world.id, dialogue)) as unknown,
     stop: (world: { readonly id: number }, flow: number): unknown => JSON.parse(abi().og_flow_stop(world.id, flow)) as unknown,

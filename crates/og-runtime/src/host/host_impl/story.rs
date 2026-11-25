@@ -116,6 +116,30 @@ macro_rules! __og_host_bindings_story {
             fn og_flow_pause(&self, world: u32, flow: f64) -> String {
                 $crate::host_impl::answer($crate::og_flow_pause(world, flow))
             }
+            fn og_flow_set_speed(&self, world: u32, flow: f64, speed: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_set_speed(world, flow, speed))
+            }
+            fn og_flow_seek(&self, world: u32, flow: f64, time: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_seek(world, flow, time))
+            }
+            fn og_flow_inspect(&self, world: u32, flow: f64, hotspot: String) -> String {
+                $crate::host_impl::answer($crate::og_flow_inspect(world, flow, hotspot))
+            }
+            fn og_flow_gesture(&self, world: u32, flow: f64, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_flow_gesture(world, flow, desc))
+            }
+            fn og_flow_set_music(&self, world: u32, flow: f64, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_flow_set_music(world, flow, desc))
+            }
+            fn og_flow_history(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::json($crate::og_flow_history(world, flow))
+            }
+            fn og_flow_checkpoint(&self, world: u32, flow: f64) -> String {
+                $crate::host_impl::answer($crate::og_flow_checkpoint(world, flow))
+            }
+            fn og_flow_jump(&self, world: u32, flow: f64, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_flow_jump(world, flow, desc))
+            }
             fn og_flow_skip(&self, world: u32, flow: f64) -> String {
                 $crate::host_impl::answer($crate::og_flow_skip(world, flow))
             }

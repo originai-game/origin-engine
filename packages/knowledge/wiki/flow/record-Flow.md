@@ -25,7 +25,10 @@ Token `og.Flow`, registered under the schema name `og.Flow`; its value type is `
 | `previous` | `Entity` | `0` | — | — | read only | The deck dissolving out (`og-flow-dissolve`), playing on under the current one; 0: none. |
 | `dissolve` | `number` | `0` | — | — | read only | The dissolve's length, ticks. |
 | `dissolveLeft` | `number` | `0` | — | — | read only | Ticks left of the dissolve; 0: none. |
-| `qte` | `readonly number[]` | `[]` | — | — | a list of at most 8 `u32` (`List.u32.8`): reads a frozen copy, writes a whole array, read only | Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses. |
+| `qte` | `readonly number[]` | `[]` | — | — | a list of at most 8 `u32` (`List.u32.8`): reads a frozen copy, writes a whole array, read only | Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held, presses or timing tick. |
+| `qteState` | `readonly number[]` | `[]` | — | — | a list of at most 8 `u32` (`List.u32.8`): reads a frozen copy, writes a whole array, read only | Per choice (first 8): QTE bitflags and sub-step state (fresh-press latch, sequence step, result grade). |
+| `speed` | `number` | `1` | 0.25 … 4 | — | read only | Playback speed set by og.flow.setSpeed (1: normal). |
+| `looping` | `boolean` | `false` | — | — | read only | True while holding inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop. |
 
 ```ogt
 component Flow {
@@ -70,7 +73,19 @@ component Flow {
   field dissolveLeft u32 "Ticks left of the dissolve; 0: none." {
     readonly true
   }
-  field qte List.u32.8 "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held or presses." {
+  field qte List.u32.8 "Per choice (ChoiceView.index, the first 8): a quick-time event's progress this window, ticks held, presses or timing tick." {
+    readonly true
+  }
+  field qteState List.u32.8 "Per choice (first 8): QTE bitflags and sub-step state (fresh-press latch, sequence step, result grade)." {
+    readonly true
+  }
+  field speed f32 "Playback speed set by og.flow.setSpeed (1: normal)." {
+    default 1
+    min 0.25
+    max 4
+    readonly true
+  }
+  field looping bool "True while holding inside the segment's `flow.loopStart`..`flow.loopEnd` idle loop." {
     readonly true
   }
 }

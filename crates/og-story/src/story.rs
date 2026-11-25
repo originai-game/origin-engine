@@ -428,6 +428,33 @@ impl Story {
         Ok(id)
     }
 
+    /// Repositions an active conversation to `node`, clearing its call stack
+    /// and choice state and honouring its `hold` header.
+    pub fn jump_to(&mut self, lib: &Library, id: u32, node: &str) -> Result<(), String> {
+        let d = self.resolve(lib, id)?;
+        if d.node(node).is_none() {
+            return Err(format!("the dialogue '{}' has no node '{node}'", d.name));
+        }
+        let c = self.convs.get_mut(&id).unwrap();
+        c.node = node.to_string();
+        c.pc = 0;
+        c.wait = Wait::Line;
+        c.timer = None;
+        c.last_roll = None;
+        c.stack.clear();
+        c.choice_values.clear();
+        c.released = false;
+        c.active_nodes = vec![if d.untracked.contains(node) {
+            Vec::new()
+        } else {
+            vec![node.to_string()]
+        }];
+        self.enter(&d, id, node);
+        self.run(lib, &d, id);
+        self.settle(lib);
+        Ok(())
+    }
+
     /// Moves a conversation past its line.
     pub fn advance(&mut self, lib: &Library, id: u32) -> Result<(), String> {
         let d = self.resolve(lib, id)?;

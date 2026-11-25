@@ -36,6 +36,25 @@ module video {
       guide "audio §8"
     }
     field poster Texture "A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture."
+    field qualities List.String "The quality tiers cooked for this stream, highest first (`high`, `medium`, `low`); empty for a clip."
+    field audioLocales List.String "Locale tags of alternate audio tracks cooked beside this video (`audioLocale`); empty when only the base track exists."
+  }
+
+  enum VideoQuality {
+    doc "The quality tier for streamed video playback (presentation-only: never changes simulation)."
+    variant auto "Automatic adaptive selection from decoder capabilities and playback stalls."
+    variant high "Source / highest cooked rendition."
+    variant medium "720p rendition when cooked, else highest."
+    variant low "480p rendition when cooked, else lowest."
+  }
+
+  struct VideoBuffering {
+    doc "Presentation-only buffering status of active video streams."
+    field buffering bool "Whether any active player with `wait` is currently holding the clock for decode or chunk download."
+    field progress f32 "0 to 1: download progress of the active stream's next needed chunk (1 when ready)." {
+      unit ratio
+    }
+    field quality VideoQuality "The quality tier currently active for streamed playback."
   }
 
   struct VideoCapabilities {
@@ -56,6 +75,19 @@ module video {
     doc "How streams play on this host: the decoder, whether it is hardware and its largest real-time size."
     param world World "The world asked."
     returns VideoCapabilities
+  }
+
+  fn setQuality {
+    doc "Presentation-only: choose the quality tier (`auto`, `high`, `medium`, `low`) for streamed videos. Never affects simulation ticks or world hashes."
+    param world World "The world."
+    param quality VideoQuality "The quality tier."
+    returns Result.Void "Refused for an unknown quality tier."
+  }
+
+  fn buffering {
+    doc "Presentation-only: whether any player with `wait` is currently buffering, its download progress, and the active quality tier."
+    param world World "The world."
+    returns VideoBuffering
   }
 
   event MediaIntent {
@@ -97,7 +129,15 @@ module video {
       max 4
       tunable true
     }
-    field loop bool "Start again at 0 past the end; otherwise hold the last frame and set finished."
+    field loop bool "Start again at loopStart past loopEnd (or 0 past the end); otherwise hold the last frame and set finished."
+    field loopStart f64 "With `loop`: where the loop wraps back to, in seconds (0: the start)." {
+      min 0
+      unit s
+    }
+    field loopEnd f64 "With `loop`: where the loop wraps, in seconds (0: the video's end)." {
+      min 0
+      unit s
+    }
     field wait bool "A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game." {
       guide "audio §8"
     }

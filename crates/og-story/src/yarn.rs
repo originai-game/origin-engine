@@ -116,14 +116,16 @@ pub fn without_comment(s: &str) -> &str {
 }
 
 /// The `og-` headers a dialogue node may carry: og.story's `og-speaker`,
-/// og.flow's segment, chapter, ending and dissolve (the other `og-` headers are a
-/// bark's).
-const NODE_HEADERS: [&str; 5] = [
+/// og.flow's segment, chapter, ending, dissolve, title and music (the other
+/// `og-` headers are a bark's).
+const NODE_HEADERS: [&str; 7] = [
     "og-speaker",
     "og-flow",
     "og-flow-chapter",
     "og-flow-ending",
     "og-flow-dissolve",
+    "og-flow-title",
+    "og-flow-music",
 ];
 
 fn split_tags(s: &str, line: usize) -> Result<(&str, BTreeMap<&str, &str>), String> {

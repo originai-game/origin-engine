@@ -303,6 +303,19 @@ pub trait Hooks {
         let _ = (stream, player, frame, looped);
         None
     }
+    /// On the web: closes player `player`'s decoder (releasing its WebCodecs
+    /// `VideoDecoder` / `VideoFrame`s or rav1d-wasm instance) when idle.
+    #[cfg(target_arch = "wasm32")]
+    fn video_close(&self, player: u64) {
+        let _ = player;
+    }
+    /// On the web: returns a fatal decoder error reported for `stream`/`player`,
+    /// if any, so `video_stalled` unblocks instead of stalling forever.
+    #[cfg(target_arch = "wasm32")]
+    fn video_error(&self, stream: u64, player: u64) -> Option<String> {
+        let _ = (stream, player);
+        None
+    }
 }
 
 /// A host's AV1 decoder, as `og.video.capabilities` reports it.

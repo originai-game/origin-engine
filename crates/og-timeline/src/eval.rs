@@ -261,9 +261,18 @@ pub fn clip_at(track: &AnimationTrack, t: f32) -> Option<(usize, f32)> {
 /// The video key playing at `t` and the video's time then: `from + (t −
 /// key) · speed` (`None` before the first key).
 pub fn video_at(track: &VideoTrack, t: f32) -> Option<(usize, f32)> {
-    let i = track.keys.iter().rposition(|k| k.time <= t)?;
+    video_at_f64(track, f64::from(t)).map(|(i, v)| (i, v as f32))
+}
+
+/// Exact `f64` form of [`video_at`], avoiding `f32` precision drift in long
+/// (>27 min) video timelines.
+pub fn video_at_f64(track: &VideoTrack, t: f64) -> Option<(usize, f64)> {
+    let i = track.keys.iter().rposition(|k| f64::from(k.time) <= t)?;
     let k = &track.keys[i];
-    Some((i, k.from + (t - k.time) * k.speed))
+    Some((
+        i,
+        f64::from(k.from) + (t - f64::from(k.time)) * f64::from(k.speed),
+    ))
 }
 
 /// The key of a `scene` track whose scene is in the world at `t`: the last
@@ -274,17 +283,21 @@ pub fn scene_at(keys: &[SceneKey], t: f32) -> Option<usize> {
     (!keys[i].scene.is_empty()).then_some(i)
 }
 
-/// A hotspot at a time: its id and where it is, x, y, width and height in
-/// fractions of the video frame.
+/// A hotspot at a time: its id, bounding box (x, y, width, height in
+/// fractions of the video frame), shape, kind, and label.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HotspotAt<'a> {
     pub id: &'a str,
     pub rect: [f32; 4],
+    pub shape: HotspotShape,
+    pub kind: HotspotKind,
+    pub label: &'a str,
 }
 
 /// The hotspots of a track at `t`, in the order their ids first appear:
 /// each from its key at or before `t` (none before its first or from a
-/// key `off`), moving linearly to its next key and held after its last.
+/// key `off`), moving with the next key's ease to its next key and held
+/// after its last.
 pub fn hotspots_at(keys: &[HotspotKey], t: f32) -> Vec<HotspotAt<'_>> {
     let mut ids: Vec<&str> = Vec::new();
     for k in keys {
@@ -304,12 +317,18 @@ pub fn hotspots_at(keys: &[HotspotKey], t: f32) -> Vec<HotspotAt<'_>> {
         // Toward its next key, unless that one ends it.
         let rect = match mine().find(|k| k.time > t) {
             Some(b) if !b.off => {
-                let u = (t - a.time) / (b.time - a.time);
+                let u = b.ease.apply((t - a.time) / (b.time - a.time));
                 std::array::from_fn(|i| a.rect[i] + (b.rect[i] - a.rect[i]) * u)
             }
             _ => a.rect,
         };
-        out.push(HotspotAt { id, rect });
+        out.push(HotspotAt {
+            id,
+            rect,
+            shape: a.shape,
+            kind: a.kind,
+            label: &a.label,
+        });
     }
     out
 }

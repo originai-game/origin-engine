@@ -220,6 +220,8 @@ export async function installVideo(glue: WebExtras, av1: string | undefined, wor
     (key, width, height, codec, config, table, chunkFrames) => streams.stream(key, width, height, 0, table, chunkFrames, codec, config),
     (stream, player, frame, looped) => streams.want(player, stream, frame, looped),
     (stream, n, data) => streams.chunk(stream, n, data),
+    (player) => streams.close(player),
+    (stream, player) => streams.error(stream, player),
     choice.name,
     choice.hardware,
     choice.maxWidth,

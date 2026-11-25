@@ -164,6 +164,11 @@ pub struct VideoDecl {
     /// `alpha true`: the frames keep the source's alpha (a stream's units
     /// pack it below the colour); otherwise they are opaque.
     pub alpha: bool,
+    /// Maximum longest side in pixels for a stream's `#poster` thumbnail
+    /// (default 480; 0 keeps full resolution).
+    pub poster_size: u32,
+    /// Alternate localized audio tracks (`audioLocale "<tag>" "<path>"`).
+    pub audio_locales: Vec<(String, String)>,
 }
 
 /// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
@@ -216,11 +221,19 @@ impl Rendition {
 /// the same crf was 70% of the stream's bytes).
 pub const RENDITION_CRF: u32 = 6;
 
+/// Default maximum longest side for a stream's `#poster` texture.
+pub const DEFAULT_POSTER_SIZE: u32 = 480;
+
 impl VideoDecl {
     /// The 720p rendition's crf.
     pub fn rendition_crf(&self) -> u32 {
         self.crf720
             .unwrap_or_else(|| (self.crf + RENDITION_CRF).min(63))
+    }
+
+    /// The 480p low-quality ABR rendition's crf.
+    pub fn low_crf(&self) -> u32 {
+        (self.rendition_crf() + 4).min(63)
     }
 }
 
@@ -262,7 +275,7 @@ impl VideoPlan {
     /// What the stamp covers besides the source's bytes.
     pub fn describe(&self) -> String {
         let mut d = format!(
-            "video 2 fps {} max {} size {}x{} frames {} kind {} audio {}",
+            "video 3 fps {} max {} size {}x{} frames {} kind {} audio {}",
             self.decl.fps,
             self.decl.max_seconds,
             self.size.0,
@@ -281,11 +294,12 @@ impl VideoPlan {
             ));
         } else if self.decl.stream {
             d.push_str(&format!(
-                " stream av1 {} keyframe {} crf {} crf720 {}",
+                " stream av1 {} keyframe {} crf {} crf720 {} poster {}",
                 self.encoder,
                 self.decl.keyframe,
                 self.decl.crf,
-                self.decl.rendition_crf()
+                self.decl.rendition_crf(),
+                self.decl.poster_size
             ));
         }
         if self.decl.stream {
@@ -299,6 +313,9 @@ impl VideoPlan {
         }
         if self.decl.alpha {
             d.push_str(" alpha");
+        }
+        for (tag, path) in &self.decl.audio_locales {
+            d.push_str(&format!(" audioLocale {tag}={path}"));
         }
         d
     }
@@ -358,6 +375,8 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         ai_generated: false,
         placeholder: false,
         alpha: false,
+        poster_size: DEFAULT_POSTER_SIZE,
+        audio_locales: Vec::new(),
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -440,6 +459,53 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                 }
                 out.crf720 = Some(v as u32);
             }
+            "posterSize" => {
+                let v = e.number(0).map_err(err)?.as_f64();
+                if v.fract() != 0.0 || (v != 0.0 && !(64.0..=4096.0).contains(&v)) {
+                    return Err(format!(
+                        "line {line}: posterSize is 0 (full size) or 64 to 4096 pixels"
+                    ));
+                }
+                out.poster_size = v as u32;
+            }
+            "audioLocale" => {
+                let tag = e.string(0).map_err(err)?.to_string();
+                let p = e.string(1).map_err(err)?;
+                if tag.is_empty()
+                    || !tag
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+                {
+                    return Err(format!("line {line}: audioLocale tag '{tag}' is invalid"));
+                }
+                if out
+                    .audio_locales
+                    .iter()
+                    .any(|(t, _)| t.eq_ignore_ascii_case(&tag))
+                {
+                    return Err(format!(
+                        "line {line}: audioLocale '{tag}' is declared twice"
+                    ));
+                }
+                if p.is_empty() || p.starts_with('/') || p.split('/').any(|c| c == "..") {
+                    return Err(format!("line {line}: '{p}' is not a path under assets/"));
+                }
+                let sibling = if dir.is_empty() {
+                    p.to_string()
+                } else {
+                    format!("{dir}/{p}")
+                };
+                let resolved = if exists(&sibling) {
+                    sibling
+                } else if exists(p) {
+                    p.to_string()
+                } else {
+                    return Err(format!(
+                        "line {line}: audioLocale '{tag}' file '{p}' is neither beside the video file nor under assets/"
+                    ));
+                };
+                out.audio_locales.push((tag, resolved));
+            }
             "renditions" => {
                 let mut list = Vec::new();
                 for i in 0..e.values.len() {
@@ -489,9 +555,9 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             }
             "loudness" => {
                 let v = e.number(0).map_err(err)?.as_f64();
-                if !(-16.0..=0.0).contains(&v) {
+                if !(-30.0..=0.0).contains(&v) {
                     return Err(format!(
-                        "line {line}: loudness is a LUFS target from -16 to 0 (-16 for streaming, -14 louder)"
+                        "line {line}: loudness is a LUFS target from -30 to 0 (-23 broadcast, -16 streaming, -14 louder)"
                     ));
                 }
                 out.loudness = Some(v);
@@ -519,7 +585,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, aiGenerated, placeholder, alpha, loudness, stream, keyframe, chunk, crf, crf720, renditions)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, audioLocale, aiGenerated, placeholder, alpha, loudness, stream, keyframe, chunk, crf, crf720, posterSize, renditions)"
                 ));
             }
         }
@@ -534,12 +600,13 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         && doc.body.entries.iter().any(|e| {
             matches!(
                 e.key.as_str(),
-                "keyframe" | "chunk" | "crf" | "crf720" | "renditions"
+                "keyframe" | "chunk" | "crf" | "crf720" | "posterSize" | "renditions"
             )
         })
     {
         return Err(
-            "keyframe, chunk, crf, crf720 and renditions are a stream's (`stream true`)".into(),
+            "keyframe, chunk, crf, crf720, posterSize and renditions are a stream's (`stream true`)"
+                .into(),
         );
     }
     Ok(out)
@@ -782,7 +849,7 @@ fn encode_keyed(
         ])
         .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"])
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
     let mut enc = encoder
@@ -792,6 +859,12 @@ fn encode_keyed(
         .spawn()
         .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
     let mut src = reader.stdout.take().expect("piped");
+    let mut reader_err = reader.stderr.take().expect("piped");
+    let err_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = reader_err.read_to_end(&mut buf);
+        buf
+    });
     let mut sink = enc.stdin.take().expect("piped");
     let per = (w * h * 4) as usize;
     let mut failed = None;
@@ -812,10 +885,17 @@ fn encode_keyed(
     }
     drop(sink);
     drop(src);
-    let _ = reader.wait();
-    let out = enc
+    let rstatus = reader.wait().ok();
+    let rstderr = err_thread.join().unwrap_or_default();
+    let mut out = enc
         .wait_with_output()
         .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    if !rstderr.is_empty() && (!out.status.success() || rstatus.is_some_and(|s| !s.success())) {
+        if !out.stderr.is_empty() {
+            out.stderr.extend_from_slice(b"\nreader: ");
+        }
+        out.stderr.extend_from_slice(&rstderr);
+    }
     match failed {
         Some(e) => Err(e),
         None => Ok(out),
@@ -873,6 +953,33 @@ pub fn frames_id(id: &str) -> String {
 /// The id of a video's sound.
 pub fn audio_id(id: &str) -> String {
     format!("{id}#audio")
+}
+
+/// The id of a video's alternate localized sound (`audioLocale`).
+pub fn audio_locale_id(id: &str, locale: &str) -> String {
+    format!("{id}#audio.{locale}")
+}
+
+/// Opus blocks per audio chunk for streamed videos (4 blocks = 1.92 s, ~22 KB).
+pub const STREAM_AUDIO_CHUNK_BLOCKS: u32 = 4;
+
+/// Exact 48 kHz sample frame count matching a video plan's picture duration.
+pub fn expected_audio_frames(plan: &VideoPlan) -> u64 {
+    (f64::from(plan.frames) * f64::from(crate::opus::RATE) / f64::from(plan.decl.fps))
+        .round()
+        .max(1.0) as u64
+}
+
+/// Chunking `(blocks_per_chunk, chunk_count)` for a streamed video's Opus
+/// audio (`None` for clips or very short streams that fit in 1 chunk).
+pub fn stream_audio_chunking(plan: &VideoPlan) -> Option<(u32, u32)> {
+    if !plan.decl.stream {
+        return None;
+    }
+    let blocks = crate::opus::block_count(expected_audio_frames(plan)) as u64;
+    let per = u64::from(STREAM_AUDIO_CHUNK_BLOCKS);
+    let count = blocks.div_ceil(per).max(1) as u32;
+    (count > 1).then_some((STREAM_AUDIO_CHUNK_BLOCKS, count))
 }
 
 /// The texture options frames are cooked with: one level (a video frame
@@ -987,11 +1094,67 @@ pub fn cook_frame(
     texture::cook(&img, plan.decl.kind, &frame_options(opts), stamp)
 }
 
-/// The sound track as 48 kHz 16-bit stereo WAV bytes, exactly as long as
-/// the picture: cut at maxSeconds, padded with silence where it ends first.
+/// Builds the ffmpeg audio filter chain: two-pass linear EBU R128 `loudnorm`
+/// when `loudness` is set (measuring integrated loudness, true peak, LRA and
+/// threshold in pass 1 before applying exact linear gain in pass 2), followed
+/// by `apad`. Falls back cleanly to `apad` on completely silent tracks.
+fn loudnorm_filter(path: &Path, seconds: f64, loudness: Option<f64>) -> Result<String, CookError> {
+    let Some(target) = loudness else {
+        return Ok("apad".into());
+    };
+    let pass1 = Command::new(ffmpeg_bin())
+        .args(["-v", "info", "-nostdin", "-i"])
+        .arg(path)
+        .args([
+            "-t",
+            &seconds.to_string(),
+            "-vn",
+            "-af",
+            &format!("loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json"),
+            "-f",
+            "null",
+            "-",
+        ])
+        .output()
+        .map_err(|e| CookError(format!("{NO_FFMPEG} ({e})")))?;
+    if !pass1.status.success() {
+        return Err(CookError(format!(
+            "ffmpeg loudness analysis failed on {}: {}",
+            path.display(),
+            String::from_utf8_lossy(&pass1.stderr).trim()
+        )));
+    }
+    let stderr = String::from_utf8_lossy(&pass1.stderr);
+    let parsed = stderr.rfind('{').and_then(|start| {
+        let end = stderr[start..].find('}')?;
+        serde_json::from_str::<serde_json::Value>(&stderr[start..=start + end]).ok()
+    });
+    let num = |v: &serde_json::Value, key: &str| -> Option<f64> {
+        v[key]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .or_else(|| v[key].as_f64())
+            .filter(|x| x.is_finite())
+    };
+    if let Some(v) = parsed
+        && let (Some(ii), Some(tp), Some(lra), Some(thresh), Some(off)) = (
+            num(&v, "input_i"),
+            num(&v, "input_tp"),
+            num(&v, "input_lra"),
+            num(&v, "input_thresh"),
+            num(&v, "target_offset"),
+        )
+    {
+        return Ok(format!(
+            "loudnorm=I={target}:TP=-1.5:LRA=11:measured_I={ii}:measured_TP={tp}:measured_LRA={lra}:measured_thresh={thresh}:offset={off}:linear=true,apad"
+        ));
+    }
+    Ok("apad".into())
+}
+
+/// The sound track as 48 kHz 16-bit stereo WAV bytes (used for short clips),
+/// cut at maxSeconds, padded with silence where it ends first.
 pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
-    // One file per call: two videos of one source (a clip and its stream)
-    // cook their sounds at once, each cut at its own length.
     static CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let tmp = std::env::temp_dir().join(format!(
         "og-video-{}-{:016x}-{}.wav",
@@ -1000,14 +1163,7 @@ pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
         CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
-    // loudnorm (when asked) then apad: level every clip the same, then pad
-    // silence past a sound that ends before the picture, so the two loop
-    // together.
-    let filter = plan
-        .decl
-        .loudness
-        .map(|i| format!("loudnorm=I={i}:TP=-1.5:LRA=11,apad"))
-        .unwrap_or_else(|| "apad".into());
+    let filter = loudnorm_filter(path, seconds, plan.decl.loudness)?;
     let out = Command::new(ffmpeg_bin())
         .args(["-v", "error", "-nostdin", "-y", "-i"])
         .arg(path)
@@ -1029,6 +1185,138 @@ pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
     bytes
 }
 
+type AudioSlot = Arc<OnceLock<Result<Arc<audio::Encoded>, String>>>;
+
+/// Encodes a streamed video's sound track once per process by piping raw 48 kHz
+/// stereo `s16le` PCM directly from ffmpeg into `og_bundle::opus::StreamEncoder`
+/// with bounded memory (zero temp WAV, exact `expected_audio_frames(plan)` length).
+fn stream_audio_encoded(
+    path: &Path,
+    hash: u64,
+    plan: &VideoPlan,
+    chunking: Option<(u32, u32)>,
+) -> Result<Arc<audio::Encoded>, CookError> {
+    static CACHE: OnceLock<Mutex<BTreeMap<String, AudioSlot>>> = OnceLock::new();
+    let key = format!(
+        "{}|{hash:016x}|{}|{:?}|{:?}",
+        path.display(),
+        expected_audio_frames(plan),
+        plan.decl.loudness,
+        chunking
+    );
+    let slot = {
+        let mut map = CACHE
+            .get_or_init(Default::default)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        map.entry(key).or_default().clone()
+    };
+    slot.get_or_init(|| encode_stream_audio_pipe(path, plan, chunking).map(Arc::new))
+        .clone()
+        .map_err(CookError)
+}
+
+fn encode_stream_audio_pipe(
+    path: &Path,
+    plan: &VideoPlan,
+    chunking: Option<(u32, u32)>,
+) -> Result<audio::Encoded, String> {
+    use std::io::Read;
+    use std::process::Stdio;
+    let want_frames = expected_audio_frames(plan);
+    let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
+    let filter = loudnorm_filter(path, seconds, plan.decl.loudness).map_err(|e| e.0)?;
+    let mut child = Command::new(ffmpeg_bin())
+        .args(["-v", "error", "-nostdin", "-i"])
+        .arg(path)
+        .args(["-t", &seconds.to_string(), "-vn", "-af", &filter])
+        .args([
+            "-ac",
+            "2",
+            "-ar",
+            "48000",
+            "-f",
+            "s16le",
+            "-c:a",
+            "pcm_s16le",
+            "-bitexact",
+            "-",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    let mut stdout = child.stdout.take().expect("piped");
+    let mut stderr = child.stderr.take().expect("piped");
+    let err_thread = std::thread::spawn(move || {
+        let mut b = Vec::new();
+        let _ = stderr.read_to_end(&mut b);
+        b
+    });
+    let bitrate = audio::SoundSettings::default().opus_bitrate(2);
+    let mut enc = crate::opus::StreamEncoder::new(2, bitrate)?;
+    let mut buf = vec![0u8; 65_536];
+    let mut carry = Vec::new();
+    let mut pushed = 0u64;
+    let mut samples = Vec::new();
+    loop {
+        let n = stdout
+            .read(&mut buf)
+            .map_err(|e| format!("reading ffmpeg audio pipe for {}: {e}", path.display()))?;
+        if n == 0 {
+            break;
+        }
+        carry.extend_from_slice(&buf[..n]);
+        let whole_frames = (carry.len() / 4) as u64;
+        if whole_frames == 0 {
+            continue;
+        }
+        let take_frames = whole_frames.min(want_frames.saturating_sub(pushed));
+        if take_frames > 0 {
+            let take_bytes = (take_frames * 4) as usize;
+            samples.clear();
+            samples.reserve((take_frames * 2) as usize);
+            for &ch in carry[..take_bytes].as_chunks::<2>().0 {
+                samples.push(i16::from_le_bytes(ch));
+            }
+            enc.push(&samples)?;
+            pushed += take_frames;
+        }
+        let consumed = (whole_frames * 4) as usize;
+        carry.drain(..consumed);
+        if pushed >= want_frames {
+            break;
+        }
+    }
+    drop(stdout);
+    let status = child.wait().map_err(|e| format!("{NO_FFMPEG} ({e})"))?;
+    let err_bytes = err_thread.join().unwrap_or_default();
+    if !status.success() && pushed == 0 {
+        return Err(format!(
+            "ffmpeg cannot read the sound of {}: {}",
+            path.display(),
+            String::from_utf8_lossy(&err_bytes).trim()
+        ));
+    }
+    // Pad any trailing samples so total_frames matches the planned duration exactly.
+    while pushed < want_frames {
+        let pad = (want_frames - pushed).min(16_384);
+        samples.clear();
+        samples.resize((pad * 2) as usize, 0);
+        enc.push(&samples)?;
+        pushed += pad;
+    }
+    let (blocks, total_frames) = enc.finish()?;
+    audio::encode_opus_blocks(
+        &blocks,
+        2,
+        total_frames,
+        bitrate,
+        chunking.map(|c| c.0),
+        "streamed 16-bit PCM",
+    )
+}
+
 /// The id of a stream's units.
 pub fn stream_id(id: &str) -> String {
     format!("{id}#stream")
@@ -1040,10 +1328,26 @@ pub fn stream_fallback_id(id: &str) -> String {
     format!("{id}#stream720")
 }
 
+/// The id of a stream's low-bitrate ABR rendition (`og_video::stream::low_size`).
+pub fn stream_low_id(id: &str) -> String {
+    format!("{id}#stream480")
+}
+
 /// The plan of a stream's fallback rendition: the same, at `size`.
 pub fn fallback_plan(plan: &VideoPlan, size: (u32, u32)) -> VideoPlan {
     let mut decl = plan.decl.clone();
     decl.crf = decl.rendition_crf();
+    VideoPlan {
+        size,
+        decl,
+        ..plan.clone()
+    }
+}
+
+/// The plan of a stream's 480p low-bitrate rendition: the same, at `size`.
+pub fn low_plan(plan: &VideoPlan, size: (u32, u32)) -> VideoPlan {
+    let mut decl = plan.decl.clone();
+    decl.crf = decl.low_crf();
     VideoPlan {
         size,
         decl,
@@ -1234,8 +1538,8 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
             "6",
             "-row-mt",
             "1",
-            "-keyint_min",
-            &key,
+            "-aom-params",
+            &format!("enable-keyframe-filtering=0:kf-min-dist={key}:kf-max-dist={key}"),
         ]),
     };
     cmd.args([
@@ -1443,7 +1747,45 @@ fn codec_name(codec: u32) -> &'static str {
     }
 }
 
-/// The poster: frame 0 as rav1d decodes it, a texture of the video's kind.
+/// Downscales an RGBA8 image by box/area averaging to fit `max_side`.
+fn downscale_poster(width: u32, height: u32, rgba: &[u8], max_side: u32) -> (u32, u32, Vec<u8>) {
+    let long = width.max(height);
+    if max_side == 0 || long <= max_side {
+        return (width, height, rgba.to_vec());
+    }
+    let scale = f64::from(max_side) / f64::from(long);
+    let dw = ((f64::from(width) * scale).round() as u32).max(2);
+    let dh = ((f64::from(height) * scale).round() as u32).max(2);
+    let mut out = vec![0u8; (dw * dh * 4) as usize];
+    for dy in 0..dh {
+        let y0 = (dy * height) / dh;
+        let y1 = (((dy + 1) * height).div_ceil(dh)).min(height).max(y0 + 1);
+        for dx in 0..dw {
+            let x0 = (dx * width) / dw;
+            let x1 = (((dx + 1) * width).div_ceil(dw)).min(width).max(x0 + 1);
+            let mut sum = [0u32; 4];
+            let mut cnt = 0u32;
+            for sy in y0..y1 {
+                for sx in x0..x1 {
+                    let i = ((sy * width + sx) * 4) as usize;
+                    for c in 0..4 {
+                        sum[c] += u32::from(rgba[i + c]);
+                    }
+                    cnt += 1;
+                }
+            }
+            let o = ((dy * dw + dx) * 4) as usize;
+            let half = cnt / 2;
+            for c in 0..4 {
+                out[o + c] = ((sum[c] + half) / cnt) as u8;
+            }
+        }
+    }
+    (dw, dh, out)
+}
+
+/// The poster: frame 0 as rav1d decodes it, scaled to `posterSize` if set,
+/// cooked as a texture of the video's kind.
 pub fn cook_poster(
     path: &Path,
     hash: u64,
@@ -1459,10 +1801,12 @@ pub fn cook_poster(
         .decode(&e.units[0].data)
         .map_err(|x| CookError(format!("{}: frame 0: {x}", path.display())))?
         .ok_or_else(|| CookError(format!("{}: frame 0 shows no picture", path.display())))?;
+    let (width, height, rgba) =
+        downscale_poster(pic.width, pic.height, &pic.rgba, plan.decl.poster_size);
     let img = texture::Image {
-        width: pic.width,
-        height: pic.height,
-        rgba: pic.rgba.to_vec(),
+        width,
+        height,
+        rgba,
     };
     texture::cook(&img, plan.decl.kind, &frame_options(opts), stamp)
 }
@@ -1498,13 +1842,19 @@ fn plan_video<'a>(
         if d.stream {
             (plan.renditions, plan.missing) = renditions(&d)?;
         }
-        Ok((src, hash_bytes(&bytes), plan))
+        let mut locale_files = Vec::with_capacity(d.audio_locales.len());
+        for (tag, rel) in &d.audio_locales {
+            let p = root.join(rel);
+            let b = std::fs::read(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+            locale_files.push((tag.clone(), p, hash_bytes(&b)));
+        }
+        Ok((src, hash_bytes(&bytes), plan, locale_files))
     });
     match planned {
-        Ok((src, src_hash, plan)) => {
+        Ok((src, src_hash, plan, locale_files)) => {
             let described = plan.describe();
             let base = [
-                b"video 2".as_slice(),
+                b"video 3".as_slice(),
                 tex_desc.as_bytes(),
                 &hash,
                 &src_hash.to_le_bytes(),
@@ -1518,18 +1868,28 @@ fn plan_video<'a>(
                 Box::new(VideoMetaJob(plan.clone())),
             ));
             if plan.decl.stream {
-                // Each stream (the AV1, its 720p rendition, its HEVC and
-                // H.264 ones): its index and its chunks.
+                // Each stream (the AV1, its 720p & 480p renditions, its HEVC
+                // and H.264 ones): its index and its chunks.
                 let mut streams = vec![(
                     stream_id(&s.rel),
                     stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
                     plan.clone(),
                 )];
-                if let Some(size) = og_video::stream::fallback_size(plan.size) {
+                let s720 = og_video::stream::fallback_size(plan.size);
+                if let Some(size) = s720 {
                     streams.push((
                         stream_fallback_id(&s.rel),
                         stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
                         Box::new(fallback_plan(&plan, size)),
+                    ));
+                }
+                if let Some(size480) = og_video::stream::low_size(plan.size)
+                    && Some(size480) != s720
+                {
+                    streams.push((
+                        stream_low_id(&s.rel),
+                        stamp(&[&base[..], &[b"stream480".as_slice()]].concat()),
+                        Box::new(low_plan(&plan, size480)),
                     ));
                 }
                 for &r in &plan.renditions {
@@ -1582,13 +1942,56 @@ fn plan_video<'a>(
                     ));
                 }
             }
+            let audio_chunking = stream_audio_chunking(&plan);
+            let push_audio =
+                |outs: &mut Vec<Out<'a>>, aid: String, asrc: PathBuf, ahash: u64, tag: &[u8]| {
+                    let ast = stamp(
+                        &[
+                            &base[..],
+                            &[b"audio-v2".as_slice(), tag, &ahash.to_le_bytes()],
+                        ]
+                        .concat(),
+                    );
+                    outs.push((
+                        aid.clone(),
+                        format::Sound::NAME,
+                        ast,
+                        Box::new(VideoAudioJob(
+                            asrc.clone(),
+                            ahash,
+                            plan.clone(),
+                            audio_chunking,
+                        )),
+                    ));
+                    if let Some((per, count)) = audio_chunking {
+                        for n in 1..count {
+                            let cst = stamp(&[&ast.to_le_bytes()[..], &n.to_le_bytes()[..]]);
+                            outs.push((
+                                format!("{aid}#chunk{n}"),
+                                format::SoundChunk::NAME,
+                                cst,
+                                Box::new(VideoAudioChunkJob(
+                                    asrc.clone(),
+                                    ahash,
+                                    plan.clone(),
+                                    (per, count),
+                                    n,
+                                )),
+                            ));
+                        }
+                    }
+                };
             if plan.audio {
-                outs.push((
-                    audio_id(&s.rel),
-                    format::Sound::NAME,
-                    stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
-                    Box::new(VideoAudioJob(src.clone(), plan.clone())),
-                ));
+                push_audio(outs, audio_id(&s.rel), src.clone(), src_hash, b"default");
+            }
+            for (tag, lpath, lhash) in locale_files {
+                push_audio(
+                    outs,
+                    audio_locale_id(&s.rel, &tag),
+                    lpath,
+                    lhash,
+                    tag.as_bytes(),
+                );
             }
         }
         Err(e) => early_errors.push((s.rel.clone(), "video", e)),
@@ -1645,26 +2048,40 @@ impl Job for VideoFrameJob {
     }
 }
 
-/// A video's sound track.
-struct VideoAudioJob(PathBuf, Box<VideoPlan>);
+/// A video's sound track (head chunk for streamed chunked Opus, or whole blob).
+struct VideoAudioJob(PathBuf, u64, Box<VideoPlan>, Option<(u32, u32)>);
 
 impl Job for VideoAudioJob {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let VideoAudioJob(src, plan) = self;
+        let VideoAudioJob(src, hash, plan, chunking) = self;
+        if plan.decl.stream {
+            let e = stream_audio_encoded(src, *hash, plan, *chunking)?;
+            return audio::cook(&e, *chunking, p.stamp)
+                .map(|(b, n)| (b, vec![format!("the video's sound: {n}")]));
+        }
         let wav = audio_wav(src, plan)?;
         let pcm =
             audio::wav(&format!("{}'s sound track", src.display()), &wav).map_err(CookError)?;
-        // A stream's sound is long: Opus (96 kb/s stereo), a clip's QOA.
-        let e = if plan.decl.stream {
-            let bitrate = audio::SoundSettings::default().opus_bitrate(pcm.channels);
-            audio::encode_opus(&pcm, bitrate).map_err(CookError)?
-        } else {
-            audio::encode(&pcm, None).map_err(CookError)?
-        };
+        let e = audio::encode(&pcm, None).map_err(CookError)?;
         audio::cook(&e, None, p.stamp).map(|(b, n)| (b, vec![format!("the video's sound: {n}")]))
     }
 
     /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// Chunk `n` (1..) of a streamed video's chunked Opus sound track.
+struct VideoAudioChunkJob(PathBuf, u64, Box<VideoPlan>, (u32, u32), u32);
+
+impl Job for VideoAudioChunkJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoAudioChunkJob(src, hash, plan, chunking, n) = self;
+        let e = stream_audio_encoded(src, *hash, plan, Some(*chunking))?;
+        audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
+    }
+
     fn action(&self) -> Action<'_> {
         Action::Never
     }

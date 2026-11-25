@@ -39,7 +39,7 @@ export function FlowChaptersScreen(props: FlowChaptersScreenProps) {
       </View>
       <Scroll class="grow shrink basis-0 p-4 -m-4">
         <View class="grid grid-cols-fill-47.5 items-start gap-4 compact:grid-cols-fill-37.5 compact:gap-3" focusGroup="stop">
-          <For each={props.chapters}>
+          <For each={props.chapters} key={(c) => c.id}>
             {(c) => (
             <View class={`group/card transition duration-control gap-y-2 p-0 data-selected:inset-ring-regular data-selected:inset-ring-accent data-down:opacity-dim`} onPress={(e) => props.onSelect?.(e, c().id)} disabled={c().locked} tabIndex={0} data-locked={c().locked} data-selected={c().id === props.selected}>
               <View class={`aspect-16/9 rounded-card bg-layer-2 overflow-hidden`}>
@@ -74,4 +74,4 @@ export const fixtures: Record<string, Partial<FlowChaptersScreenProps>> = {
 export const actions = {"select":"Play the chapter","back":"Back"} as const;
 
 /** How the screen mounts: its layer, first focus, what lies under it, input, pause and back. */
-export const screen = {"name":"flow-chapters","layer":"menu","focus":"Body/Chapters","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;
+export const screen = {"name":"flow-chapters","layer":"menu","focus":"","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;

@@ -72,6 +72,8 @@ pub(crate) struct Rt {
     granted: std::collections::BTreeSet<String>,
     /// Shots warned about as naming no virtual camera (not saved).
     unresolved: std::collections::BTreeSet<String>,
+    /// Loaded bundle story files (`asset id -> output hash`) for hot reload.
+    loaded_files: BTreeMap<String, u64>,
 }
 
 /// The records a line's `shot` writes and reads (R10): the brain's solo,
@@ -563,6 +565,101 @@ pub(crate) fn dialogue_of(engine_id: u32, conv: u32) -> Option<String> {
             .get(&conv)
             .map(|c| c.dialogue.clone())
     })
+}
+
+/// Every story global variable currently set (plus declared global defaults)
+/// as a JSON object, for lightweight `og.flow.checkpoint` snapshots.
+pub(crate) fn all_vars(engine_id: u32) -> Value {
+    story(engine_id, |lib, s| {
+        let mut out = Map::new();
+        for d in lib.dialogues.values() {
+            for v in &d.vars {
+                if v.global {
+                    out.insert(v.name.clone(), val_json(&v.value));
+                }
+            }
+        }
+        for (k, v) in &s.globals {
+            out.insert(k.clone(), val_json(v));
+        }
+        Value::Object(out)
+    })
+    .unwrap_or_else(|_| json!({}))
+}
+
+/// Restores global story variables from a JSON object (`og.flow.jump`).
+pub(crate) fn set_vars(engine_id: u32, vars: &Value) -> Result<(), String> {
+    let Some(obj) = vars.as_object() else {
+        return Ok(());
+    };
+    let mut parsed = Vec::with_capacity(obj.len());
+    for (k, v) in obj {
+        let val =
+            val_of(v).ok_or_else(|| format!("vars.{k} must be a number, a boolean or a string"))?;
+        parsed.push((k.clone(), val));
+    }
+    story(engine_id, |lib, s| {
+        for (k, val) in parsed {
+            s.set(lib, &k, val);
+        }
+    })
+}
+
+/// Repositions conversation `conv` to `node` (honouring its hold header).
+pub(crate) fn jump_conv(engine_id: u32, conv: u32, node: &str) -> Result<(), String> {
+    story(engine_id, |lib, s| s.jump_to(lib, conv, node)).and_then(|r| r)
+}
+
+/// Localizes a string key with empty args (for flow chart labels).
+pub(crate) fn localize_key(engine_id: u32, key: &str) -> String {
+    tr(engine_id, key, &json!({}))
+}
+
+/// After a hot reload: re-reads every loaded story file whose cooked output
+/// hash changed. Returns any errors without dropping old dialogues.
+pub(crate) fn refresh(eng: &crate::engine::Engine) -> Vec<String> {
+    let files: Vec<(String, u64)> = with(eng.id, |rt| {
+        rt.loaded_files
+            .iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect()
+    });
+    let mut failed = Vec::new();
+    for (id, old_hash) in files {
+        let now_hash = {
+            let a = eng.assets.borrow();
+            a.bundle_for(&id)
+                .ok()
+                .and_then(|(b, _)| b.output(&id).ok().map(|o| o.hash))
+                .unwrap_or(0)
+        };
+        if now_hash == 0 || now_hash == old_hash {
+            continue;
+        }
+        let text = {
+            let a = eng.assets.borrow();
+            match a.blob(&id).and_then(|(bytes, bundle)| {
+                bundle
+                    .story_text(&id, bytes.bytes())
+                    .map_err(|e| e.to_string())
+            }) {
+                Ok(t) => t,
+                Err(e) => {
+                    failed.push(format!("story {id}: {e}"));
+                    continue;
+                }
+            }
+        };
+        match load::insert(eng.id, &text) {
+            Ok(_) => {
+                with(eng.id, |rt| {
+                    rt.loaded_files.insert(id, now_hash);
+                });
+            }
+            Err(e) => failed.push(format!("story {id}: {e}")),
+        }
+    }
+    failed
 }
 
 /// Runs `f` on the engine's library and story, then logs the story's

@@ -3523,6 +3523,18 @@ pub fn og_video_capabilities(env: Env, world: u32) -> String {
     <Host as VideoApi>::og_video_capabilities(&Host, world)
 }
 
+#[napi(js_name = "og_video_set_quality")]
+pub fn og_video_set_quality(env: Env, world: u32, quality: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as VideoApi>::og_video_set_quality(&Host, world, quality)
+}
+
+#[napi(js_name = "og_video_buffering")]
+pub fn og_video_buffering(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as VideoApi>::og_video_buffering(&Host, world)
+}
+
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_debug_line")]
 pub fn og_debug_line(env: Env, world: u32, from: String, to: String, desc: Option<String>) {
@@ -4019,6 +4031,54 @@ pub fn og_flow_play(env: Env, world: u32, flow: f64) -> String {
 pub fn og_flow_pause(env: Env, world: u32, flow: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as FlowApi>::og_flow_pause(&Host, world, flow)
+}
+
+#[napi(js_name = "og_flow_set_speed")]
+pub fn og_flow_set_speed(env: Env, world: u32, flow: f64, speed: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_set_speed(&Host, world, flow, speed)
+}
+
+#[napi(js_name = "og_flow_seek")]
+pub fn og_flow_seek(env: Env, world: u32, flow: f64, time: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_seek(&Host, world, flow, time)
+}
+
+#[napi(js_name = "og_flow_inspect")]
+pub fn og_flow_inspect(env: Env, world: u32, flow: f64, hotspot: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_inspect(&Host, world, flow, hotspot)
+}
+
+#[napi(js_name = "og_flow_gesture")]
+pub fn og_flow_gesture(env: Env, world: u32, flow: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_gesture(&Host, world, flow, desc)
+}
+
+#[napi(js_name = "og_flow_set_music")]
+pub fn og_flow_set_music(env: Env, world: u32, flow: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_set_music(&Host, world, flow, desc)
+}
+
+#[napi(js_name = "og_flow_history")]
+pub fn og_flow_history(env: Env, world: u32, flow: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_history(&Host, world, flow)
+}
+
+#[napi(js_name = "og_flow_checkpoint")]
+pub fn og_flow_checkpoint(env: Env, world: u32, flow: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_checkpoint(&Host, world, flow)
+}
+
+#[napi(js_name = "og_flow_jump")]
+pub fn og_flow_jump(env: Env, world: u32, flow: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as FlowApi>::og_flow_jump(&Host, world, flow, desc)
 }
 
 #[napi(js_name = "og_flow_skip")]

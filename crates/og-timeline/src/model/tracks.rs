@@ -435,8 +435,15 @@ fn music(block: &Block) -> Result<Vec<MusicKey>, String> {
     Ok(sorted(ks, |k| k.time))
 }
 
-/// A caption as written: time, end if given, text.
-type RawCaption = (f32, Option<f32>, String);
+/// A caption as written: time, optional end, plain text, speaker, spans, placement.
+struct RawCaption {
+    time: f32,
+    end: Option<f32>,
+    text: String,
+    speaker: String,
+    spans: Vec<captions::CaptionSpan>,
+    position: String,
+}
 
 /// What `style` and `anchor`, which a caption had, are answered with.
 const CAPTION_LOOK: &str = "a caption is text only: the screen that shows `$captions` (the built-in `subtitles`) and the style pack decide where and how it is drawn";
@@ -492,7 +499,7 @@ fn caption_keys(
                     _ => {
                         return Err(at(
                             e,
-                            "`captions \"<file>.srt\" [offset seconds]` (or a word-timestamp .json)",
+                            "`captions \"<file>.srt\" [offset seconds]` (or .vtt / word-timestamp .json)",
                         ));
                     }
                 };
@@ -509,53 +516,125 @@ fn caption_keys(
                             ),
                         ));
                     }
-                    raw.push((start, Some(q.end + offset), q.text));
+                    raw.push(RawCaption {
+                        time: start,
+                        end: Some(q.end + offset),
+                        text: q.text,
+                        speaker: q.speaker,
+                        spans: q.spans,
+                        position: q.position,
+                    });
                 }
             }
             "key" => {
                 let time = key_time(e)?;
                 let (mut end, mut text) = (None, None);
+                let mut speaker = String::new();
+                let mut position = String::new();
+                let mut spans = Vec::new();
                 for f in key_block(e)? {
                     no_block(f)?;
                     match f.key.as_str() {
                         "text" => text = Some(string(f)?),
                         "end" => end = Some(one_number(f)?),
+                        "speaker" => speaker = string(f)?,
+                        "position" => {
+                            let w = word(f)?;
+                            if !matches!(w, "bottom" | "top") {
+                                return Err(at(f, "caption position is bottom or top"));
+                            }
+                            position = w.to_string();
+                        }
+                        "span" => {
+                            let (name, pos, len, color) = match f.values.as_slice() {
+                                [Value::Word(n), Value::Number(p), Value::Number(l)] => {
+                                    (n.clone(), p, l, String::new())
+                                }
+                                [
+                                    Value::Word(n),
+                                    Value::Number(p),
+                                    Value::Number(l),
+                                    Value::String(c),
+                                ] => (n.clone(), p, l, c.clone()),
+                                _ => {
+                                    return Err(at(
+                                        f,
+                                        "`span <name> <position> <length> [\"color\"]`",
+                                    ));
+                                }
+                            };
+                            let position = pos
+                                .as_u64()
+                                .ok()
+                                .and_then(|v| u32::try_from(v).ok())
+                                .ok_or_else(|| at(f, "span position is a whole number"))?;
+                            let length = len
+                                .as_u64()
+                                .ok()
+                                .and_then(|v| u32::try_from(v).ok())
+                                .ok_or_else(|| at(f, "span length is a whole number"))?;
+                            spans.push(captions::CaptionSpan {
+                                name,
+                                position,
+                                length,
+                                color,
+                            });
+                        }
                         "style" | "anchor" => return Err(at(f, CAPTION_LOOK)),
-                        _ => return Err(unknown(f, "caption key entry", "text or end")),
+                        _ => {
+                            return Err(unknown(
+                                f,
+                                "caption key entry",
+                                "text, end, speaker, position or span",
+                            ));
+                        }
                     }
                 }
                 let text = text.ok_or_else(|| at(e, "a caption key has `text \"...\"`"))?;
                 if end.is_some_and(|x| x <= time) {
                     return Err(at(e, "a caption's end comes after its time"));
                 }
-                raw.push((time, end, text));
+                raw.push(RawCaption {
+                    time,
+                    end,
+                    text,
+                    speaker,
+                    spans,
+                    position,
+                });
             }
             _ => {
                 return Err(unknown(e, "caption track entry", "captions, key or locale"));
             }
         }
     }
-    let raw = sorted(raw, |r| r.0);
-    for (i, (time, end, text)) in raw.iter().enumerate() {
-        let next = raw.get(i + 1).map(|r| r.0);
-        let end = end.unwrap_or_else(|| {
-            next.unwrap_or(time + CAPTION_SECONDS)
-                .min(time + CAPTION_SECONDS)
+    let raw = sorted(raw, |r| r.time);
+    for (i, r) in raw.iter().enumerate() {
+        let next = raw.get(i + 1).map(|n| n.time);
+        let end = r.end.unwrap_or_else(|| {
+            next.unwrap_or(r.time + CAPTION_SECONDS)
+                .min(r.time + CAPTION_SECONDS)
         });
         out.push(CaptionKey {
-            time: *time,
+            time: r.time,
             end,
-            text: text.clone(),
+            text: r.text.clone(),
+            speaker: r.speaker.clone(),
+            spans: r.spans.clone(),
+            position: r.position.clone(),
         });
     }
     Ok(out)
 }
 
-/// A caption file by its extension: SubRip, or word timestamps in JSON.
+/// A caption file by its extension: SubRip, WebVTT, or word timestamps in JSON.
 fn import(file: &str, text: &str) -> Result<Vec<Cue>, String> {
     let lower = file.to_ascii_lowercase();
     if lower.ends_with(".srt") {
         return captions::parse_srt(text);
+    }
+    if lower.ends_with(".vtt") {
+        return captions::parse_vtt(text);
     }
     if lower.ends_with(".json") {
         #[cfg(feature = "import")]
@@ -563,7 +642,7 @@ fn import(file: &str, text: &str) -> Result<Vec<Cue>, String> {
         #[cfg(not(feature = "import"))]
         return Err("word-timestamp JSON is imported by the cook (og cook)".into());
     }
-    Err("a caption file is .srt (SubRip) or .json (word timestamps)".into())
+    Err("a caption file is .srt (SubRip), .vtt (WebVTT) or .json (word timestamps)".into())
 }
 
 fn events(block: &Block) -> Result<Vec<EventKey>, String> {
@@ -947,6 +1026,10 @@ fn hotspots(block: &Block) -> Result<Vec<HotspotKey>, String> {
             time: key_time(e)?,
             id: String::new(),
             rect: [0.0; 4],
+            shape: HotspotShape::Rect,
+            kind: HotspotKind::Choice,
+            label: String::new(),
+            ease: Ease::Linear,
             off: false,
         };
         let mut rect = false;
@@ -974,8 +1057,28 @@ fn hotspots(block: &Block) -> Result<Vec<HotspotKey>, String> {
                     }
                     rect = true;
                 }
+                "shape" => {
+                    let w = word(f)?;
+                    k.shape = HotspotShape::from_name(w).ok_or_else(|| {
+                        at(f, format!("hotspot shape '{w}' is not rect or circle"))
+                    })?;
+                }
+                "kind" => {
+                    let w = word(f)?;
+                    k.kind = HotspotKind::from_name(w).ok_or_else(|| {
+                        at(f, format!("hotspot kind '{w}' is not choice or inspect"))
+                    })?;
+                }
+                "label" => k.label = string(f)?,
+                "ease" => k.ease = ease(f)?,
                 "off" => k.off = flag(f)?,
-                _ => return Err(unknown(f, "hotspot key entry", "id, rect or off")),
+                _ => {
+                    return Err(unknown(
+                        f,
+                        "hotspot key entry",
+                        "id, rect, shape, kind, label, ease or off",
+                    ));
+                }
             }
         }
         if k.id.is_empty() || k.id.len() > 63 {

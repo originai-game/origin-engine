@@ -323,7 +323,7 @@ impl RenderScene {
         self.replace_texture(handle, TextureSource::Encoded(upload))
     }
 
-    fn replace_texture(&mut self, handle: TextureHandle, source: TextureSource) -> bool {
+    pub(crate) fn replace_texture(&mut self, handle: TextureHandle, source: TextureSource) -> bool {
         let i = handle.index();
         if !self.texture_slots.live(i, handle.generation()) {
             return false;

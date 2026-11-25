@@ -24634,6 +24634,8 @@ pub mod video {
         pub alpha: bool,
         pub codec: String,
         pub poster: u64,
+        pub qualities: Vec<String>,
+        pub audio_locales: Vec<String>,
     }
 
     impl Default for VideoInfo {
@@ -24654,6 +24656,8 @@ pub mod video {
                 alpha: Default::default(),
                 codec: Default::default(),
                 poster: Default::default(),
+                qualities: Default::default(),
+                audio_locales: Default::default(),
             }
         }
     }
@@ -24680,6 +24684,8 @@ pub mod video {
                 alpha: field(o, "alpha", d.alpha)?,
                 codec: field(o, "codec", d.codec)?,
                 poster: field(o, "poster", d.poster)?,
+                qualities: field(o, "qualities", d.qualities)?,
+                audio_locales: field(o, "audioLocales", d.audio_locales)?,
             })
         }
     }
@@ -24702,6 +24708,90 @@ pub mod video {
             o.insert("alpha".into(), self.alpha.to_json());
             o.insert("codec".into(), self.codec.to_json());
             o.insert("poster".into(), self.poster.to_json());
+            o.insert("qualities".into(), self.qualities.to_json());
+            o.insert("audioLocales".into(), self.audio_locales.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `VideoQuality`: packages/knowledge/wiki/video.md.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum VideoQuality {
+        #[default]
+        Auto,
+        High,
+        Medium,
+        Low,
+    }
+
+    impl VideoQuality {
+        /// The variants' IDL names, in index order.
+        pub const NAMES: &'static [&'static str] = &["auto", "high", "medium", "low"];
+        /// Every variant, in index order.
+        pub const ALL: &'static [Self] = &[Self::Auto, Self::High, Self::Medium, Self::Low];
+        /// The IDL name.
+        pub fn as_str(self) -> &'static str {
+            Self::NAMES[self as usize]
+        }
+        /// The variant named `s`, or a refusal naming them all.
+        pub fn parse(s: &str) -> Result<Self, String> {
+            match Self::NAMES.iter().position(|n| *n == s) {
+                Some(i) => Ok(Self::ALL[i]),
+                None => Err(unknown_variant("VideoQuality", s, Self::NAMES)),
+            }
+        }
+    }
+
+    impl FromJson for VideoQuality {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::parse(variant(v, "VideoQuality", Self::NAMES)?)
+        }
+    }
+
+    impl ToJson for VideoQuality {
+        fn to_json(&self) -> Value {
+            Value::String(self.as_str().into())
+        }
+    }
+
+    /// `VideoBuffering`: packages/knowledge/wiki/video.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct VideoBuffering {
+        pub buffering: bool,
+        pub progress: f32,
+        pub quality: VideoQuality,
+    }
+
+    impl Default for VideoBuffering {
+        fn default() -> Self {
+            Self {
+                buffering: Default::default(),
+                progress: Default::default(),
+                quality: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for VideoBuffering {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                buffering: field(o, "buffering", d.buffering)?,
+                progress: field(o, "progress", d.progress)?,
+                quality: field(o, "quality", d.quality)?,
+            })
+        }
+    }
+
+    impl ToJson for VideoBuffering {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("buffering".into(), self.buffering.to_json());
+            o.insert("progress".into(), self.progress.to_json());
+            o.insert("quality".into(), self.quality.to_json());
             Value::Object(o)
         }
     }
@@ -25740,6 +25830,9 @@ pub mod timeline {
     pub struct TimelineCaption {
         pub id: String,
         pub text: String,
+        pub speaker: String,
+        pub spans: Vec<TextSpan>,
+        pub position: String,
     }
 
     impl Default for TimelineCaption {
@@ -25747,6 +25840,9 @@ pub mod timeline {
             Self {
                 id: Default::default(),
                 text: Default::default(),
+                speaker: Default::default(),
+                spans: Default::default(),
+                position: Default::default(),
             }
         }
     }
@@ -25760,6 +25856,9 @@ pub mod timeline {
             Ok(Self {
                 id: field(o, "id", d.id)?,
                 text: field(o, "text", d.text)?,
+                speaker: field(o, "speaker", d.speaker)?,
+                spans: field(o, "spans", d.spans)?,
+                position: field(o, "position", d.position)?,
             })
         }
     }
@@ -25769,6 +25868,9 @@ pub mod timeline {
             let mut o = Map::new();
             o.insert("id".into(), self.id.to_json());
             o.insert("text".into(), self.text.to_json());
+            o.insert("speaker".into(), self.speaker.to_json());
+            o.insert("spans".into(), self.spans.to_json());
+            o.insert("position".into(), self.position.to_json());
             Value::Object(o)
         }
     }
@@ -28081,12 +28183,16 @@ pub mod flow {
     /// `FlowHotspot`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct FlowHotspot {
-        pub choice: u32,
+        pub choice: i32,
         pub id: String,
+        pub kind: String,
+        pub shape: String,
         pub x: f32,
         pub y: f32,
         pub width: f32,
         pub height: f32,
+        pub label: String,
+        pub inspected: bool,
     }
 
     impl Default for FlowHotspot {
@@ -28094,10 +28200,14 @@ pub mod flow {
             Self {
                 choice: Default::default(),
                 id: Default::default(),
+                kind: Default::default(),
+                shape: Default::default(),
                 x: Default::default(),
                 y: Default::default(),
                 width: Default::default(),
                 height: Default::default(),
+                label: Default::default(),
+                inspected: Default::default(),
             }
         }
     }
@@ -28111,10 +28221,14 @@ pub mod flow {
             Ok(Self {
                 choice: field(o, "choice", d.choice)?,
                 id: field(o, "id", d.id)?,
+                kind: field(o, "kind", d.kind)?,
+                shape: field(o, "shape", d.shape)?,
                 x: field(o, "x", d.x)?,
                 y: field(o, "y", d.y)?,
                 width: field(o, "width", d.width)?,
                 height: field(o, "height", d.height)?,
+                label: field(o, "label", d.label)?,
+                inspected: field(o, "inspected", d.inspected)?,
             })
         }
     }
@@ -28124,10 +28238,14 @@ pub mod flow {
             let mut o = Map::new();
             o.insert("choice".into(), self.choice.to_json());
             o.insert("id".into(), self.id.to_json());
+            o.insert("kind".into(), self.kind.to_json());
+            o.insert("shape".into(), self.shape.to_json());
             o.insert("x".into(), self.x.to_json());
             o.insert("y".into(), self.y.to_json());
             o.insert("width".into(), self.width.to_json());
             o.insert("height".into(), self.height.to_json());
+            o.insert("label".into(), self.label.to_json());
+            o.insert("inspected".into(), self.inspected.to_json());
             Value::Object(o)
         }
     }
@@ -28138,7 +28256,11 @@ pub mod flow {
         pub choice: u32,
         pub kind: String,
         pub action: String,
+        pub direction: String,
         pub progress: f32,
+        pub zone_start: f32,
+        pub zone_end: f32,
+        pub grade: String,
         pub done: bool,
     }
 
@@ -28148,7 +28270,11 @@ pub mod flow {
                 choice: Default::default(),
                 kind: Default::default(),
                 action: Default::default(),
+                direction: Default::default(),
                 progress: Default::default(),
+                zone_start: Default::default(),
+                zone_end: Default::default(),
+                grade: Default::default(),
                 done: Default::default(),
             }
         }
@@ -28164,7 +28290,11 @@ pub mod flow {
                 choice: field(o, "choice", d.choice)?,
                 kind: field(o, "kind", d.kind)?,
                 action: field(o, "action", d.action)?,
+                direction: field(o, "direction", d.direction)?,
                 progress: field(o, "progress", d.progress)?,
+                zone_start: field(o, "zoneStart", d.zone_start)?,
+                zone_end: field(o, "zoneEnd", d.zone_end)?,
+                grade: field(o, "grade", d.grade)?,
                 done: field(o, "done", d.done)?,
             })
         }
@@ -28176,7 +28306,11 @@ pub mod flow {
             o.insert("choice".into(), self.choice.to_json());
             o.insert("kind".into(), self.kind.to_json());
             o.insert("action".into(), self.action.to_json());
+            o.insert("direction".into(), self.direction.to_json());
             o.insert("progress".into(), self.progress.to_json());
+            o.insert("zoneStart".into(), self.zone_start.to_json());
+            o.insert("zoneEnd".into(), self.zone_end.to_json());
+            o.insert("grade".into(), self.grade.to_json());
             o.insert("done".into(), self.done.to_json());
             Value::Object(o)
         }
@@ -28191,6 +28325,9 @@ pub mod flow {
         pub texture: u64,
         pub time: f32,
         pub cut: f32,
+        pub speed: f32,
+        pub video_width: u32,
+        pub video_height: u32,
         pub choices: Vec<ChoiceView>,
         pub window: Option<WindowView>,
         pub hotspots: Vec<FlowHotspot>,
@@ -28199,6 +28336,9 @@ pub mod flow {
         pub mix: f32,
         pub paused: bool,
         pub held: bool,
+        pub looping: bool,
+        pub buffering: bool,
+        pub buffer_progress: f32,
         pub chapter: String,
         pub ending: String,
         pub ended: bool,
@@ -28213,6 +28353,9 @@ pub mod flow {
                 texture: Default::default(),
                 time: Default::default(),
                 cut: Default::default(),
+                speed: Default::default(),
+                video_width: Default::default(),
+                video_height: Default::default(),
                 choices: Default::default(),
                 window: Default::default(),
                 hotspots: Default::default(),
@@ -28221,6 +28364,9 @@ pub mod flow {
                 mix: Default::default(),
                 paused: Default::default(),
                 held: Default::default(),
+                looping: Default::default(),
+                buffering: Default::default(),
+                buffer_progress: Default::default(),
                 chapter: Default::default(),
                 ending: Default::default(),
                 ended: Default::default(),
@@ -28241,6 +28387,9 @@ pub mod flow {
                 texture: field(o, "texture", d.texture)?,
                 time: field(o, "time", d.time)?,
                 cut: field(o, "cut", d.cut)?,
+                speed: field(o, "speed", d.speed)?,
+                video_width: field(o, "videoWidth", d.video_width)?,
+                video_height: field(o, "videoHeight", d.video_height)?,
                 choices: field(o, "choices", d.choices)?,
                 window: field(o, "window", d.window)?,
                 hotspots: field(o, "hotspots", d.hotspots)?,
@@ -28249,6 +28398,9 @@ pub mod flow {
                 mix: field(o, "mix", d.mix)?,
                 paused: field(o, "paused", d.paused)?,
                 held: field(o, "held", d.held)?,
+                looping: field(o, "looping", d.looping)?,
+                buffering: field(o, "buffering", d.buffering)?,
+                buffer_progress: field(o, "bufferProgress", d.buffer_progress)?,
                 chapter: field(o, "chapter", d.chapter)?,
                 ending: field(o, "ending", d.ending)?,
                 ended: field(o, "ended", d.ended)?,
@@ -28265,6 +28417,9 @@ pub mod flow {
             o.insert("texture".into(), self.texture.to_json());
             o.insert("time".into(), self.time.to_json());
             o.insert("cut".into(), self.cut.to_json());
+            o.insert("speed".into(), self.speed.to_json());
+            o.insert("videoWidth".into(), self.video_width.to_json());
+            o.insert("videoHeight".into(), self.video_height.to_json());
             o.insert("choices".into(), self.choices.to_json());
             o.insert("window".into(), self.window.to_json());
             o.insert("hotspots".into(), self.hotspots.to_json());
@@ -28273,9 +28428,234 @@ pub mod flow {
             o.insert("mix".into(), self.mix.to_json());
             o.insert("paused".into(), self.paused.to_json());
             o.insert("held".into(), self.held.to_json());
+            o.insert("looping".into(), self.looping.to_json());
+            o.insert("buffering".into(), self.buffering.to_json());
+            o.insert("bufferProgress".into(), self.buffer_progress.to_json());
             o.insert("chapter".into(), self.chapter.to_json());
             o.insert("ending".into(), self.ending.to_json());
             o.insert("ended".into(), self.ended.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `FlowTranscriptLine`: packages/knowledge/wiki/flow.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlowTranscriptLine {
+        pub seq: u32,
+        pub node: String,
+        pub speaker: String,
+        pub text: String,
+        pub spans: Vec<TextSpan>,
+        pub chosen: bool,
+    }
+
+    impl Default for FlowTranscriptLine {
+        fn default() -> Self {
+            Self {
+                seq: Default::default(),
+                node: Default::default(),
+                speaker: Default::default(),
+                text: Default::default(),
+                spans: Default::default(),
+                chosen: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FlowTranscriptLine {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                seq: field(o, "seq", d.seq)?,
+                node: field(o, "node", d.node)?,
+                speaker: field(o, "speaker", d.speaker)?,
+                text: field(o, "text", d.text)?,
+                spans: field(o, "spans", d.spans)?,
+                chosen: field(o, "chosen", d.chosen)?,
+            })
+        }
+    }
+
+    impl ToJson for FlowTranscriptLine {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("seq".into(), self.seq.to_json());
+            o.insert("node".into(), self.node.to_json());
+            o.insert("speaker".into(), self.speaker.to_json());
+            o.insert("text".into(), self.text.to_json());
+            o.insert("spans".into(), self.spans.to_json());
+            o.insert("chosen".into(), self.chosen.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `FlowGestureDesc`: packages/knowledge/wiki/flow.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlowGestureDesc {
+        pub kind: String,
+        pub direction: String,
+        pub progress: f32,
+    }
+
+    impl Default for FlowGestureDesc {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                direction: Default::default(),
+                progress: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FlowGestureDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                direction: field(o, "direction", d.direction)?,
+                progress: field(o, "progress", d.progress)?,
+            })
+        }
+    }
+
+    impl ToJson for FlowGestureDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("kind".into(), self.kind.to_json());
+            o.insert("direction".into(), self.direction.to_json());
+            o.insert("progress".into(), self.progress.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `FlowMusicDesc`: packages/knowledge/wiki/flow.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlowMusicDesc {
+        pub sound: String,
+        pub volume: f32,
+        pub fade: f32,
+        pub duck: f32,
+    }
+
+    impl Default for FlowMusicDesc {
+        fn default() -> Self {
+            Self {
+                sound: Default::default(),
+                volume: 1.0_f32,
+                fade: 0.5_f32,
+                duck: 0.4_f32,
+            }
+        }
+    }
+
+    impl FromJson for FlowMusicDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sound: field(o, "sound", d.sound)?,
+                volume: field(o, "volume", d.volume)?,
+                fade: field(o, "fade", d.fade)?,
+                duck: field(o, "duck", d.duck)?,
+            })
+        }
+    }
+
+    impl ToJson for FlowMusicDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("sound".into(), self.sound.to_json());
+            o.insert("volume".into(), self.volume.to_json());
+            o.insert("fade".into(), self.fade.to_json());
+            o.insert("duck".into(), self.duck.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `FlowCheckpoint`: packages/knowledge/wiki/flow.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlowCheckpoint {
+        pub dialogue: String,
+        pub node: String,
+        pub vars: Value,
+    }
+
+    impl Default for FlowCheckpoint {
+        fn default() -> Self {
+            Self {
+                dialogue: Default::default(),
+                node: Default::default(),
+                vars: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FlowCheckpoint {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                dialogue: field(o, "dialogue", d.dialogue)?,
+                node: field(o, "node", d.node)?,
+                vars: field(o, "vars", d.vars)?,
+            })
+        }
+    }
+
+    impl ToJson for FlowCheckpoint {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("dialogue".into(), self.dialogue.to_json());
+            o.insert("node".into(), self.node.to_json());
+            o.insert("vars".into(), self.vars.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `FlowJumpDesc`: packages/knowledge/wiki/flow.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlowJumpDesc {
+        pub node: String,
+        pub vars: Value,
+    }
+
+    impl Default for FlowJumpDesc {
+        fn default() -> Self {
+            Self {
+                node: Default::default(),
+                vars: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FlowJumpDesc {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                node: field(o, "node", d.node)?,
+                vars: field(o, "vars", d.vars)?,
+            })
+        }
+    }
+
+    impl ToJson for FlowJumpDesc {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("node".into(), self.node.to_json());
+            o.insert("vars".into(), self.vars.to_json());
             Value::Object(o)
         }
     }
@@ -28284,7 +28664,10 @@ pub mod flow {
     #[derive(Clone, Debug, PartialEq)]
     pub struct FlowChartNode {
         pub node: String,
+        pub title: String,
         pub segment: String,
+        pub poster: u64,
+        pub kind: String,
         pub chapter: String,
         pub ending: String,
         pub depth: u32,
@@ -28296,7 +28679,10 @@ pub mod flow {
         fn default() -> Self {
             Self {
                 node: Default::default(),
+                title: Default::default(),
                 segment: Default::default(),
+                poster: Default::default(),
+                kind: Default::default(),
                 chapter: Default::default(),
                 ending: Default::default(),
                 depth: Default::default(),
@@ -28314,7 +28700,10 @@ pub mod flow {
             let o = object(v)?;
             Ok(Self {
                 node: field(o, "node", d.node)?,
+                title: field(o, "title", d.title)?,
                 segment: field(o, "segment", d.segment)?,
+                poster: field(o, "poster", d.poster)?,
+                kind: field(o, "kind", d.kind)?,
                 chapter: field(o, "chapter", d.chapter)?,
                 ending: field(o, "ending", d.ending)?,
                 depth: field(o, "depth", d.depth)?,
@@ -28328,7 +28717,10 @@ pub mod flow {
         fn to_json(&self) -> Value {
             let mut o = Map::new();
             o.insert("node".into(), self.node.to_json());
+            o.insert("title".into(), self.title.to_json());
             o.insert("segment".into(), self.segment.to_json());
+            o.insert("poster".into(), self.poster.to_json());
+            o.insert("kind".into(), self.kind.to_json());
             o.insert("chapter".into(), self.chapter.to_json());
             o.insert("ending".into(), self.ending.to_json());
             o.insert("depth".into(), self.depth.to_json());
@@ -28344,6 +28736,9 @@ pub mod flow {
         pub from: String,
         pub to: String,
         pub choice: i32,
+        pub label: String,
+        pub outcome: String,
+        pub conditional: bool,
         pub points: Vec<f32>,
     }
 
@@ -28353,6 +28748,9 @@ pub mod flow {
                 from: Default::default(),
                 to: Default::default(),
                 choice: Default::default(),
+                label: Default::default(),
+                outcome: Default::default(),
+                conditional: Default::default(),
                 points: Default::default(),
             }
         }
@@ -28368,6 +28766,9 @@ pub mod flow {
                 from: field(o, "from", d.from)?,
                 to: field(o, "to", d.to)?,
                 choice: field(o, "choice", d.choice)?,
+                label: field(o, "label", d.label)?,
+                outcome: field(o, "outcome", d.outcome)?,
+                conditional: field(o, "conditional", d.conditional)?,
                 points: field(o, "points", d.points)?,
             })
         }
@@ -28379,6 +28780,9 @@ pub mod flow {
             o.insert("from".into(), self.from.to_json());
             o.insert("to".into(), self.to.to_json());
             o.insert("choice".into(), self.choice.to_json());
+            o.insert("label".into(), self.label.to_json());
+            o.insert("outcome".into(), self.outcome.to_json());
+            o.insert("conditional".into(), self.conditional.to_json());
             o.insert("points".into(), self.points.to_json());
             Value::Object(o)
         }
@@ -39452,6 +39856,8 @@ pub mod record {
             pub time: f64,
             pub speed: f32,
             pub r#loop: bool,
+            pub loop_start: f64,
+            pub loop_end: f64,
             pub wait: bool,
             pub frame: u32,
             pub finished: bool,
@@ -39466,6 +39872,8 @@ pub mod record {
                     time: Default::default(),
                     speed: 1.0_f32,
                     r#loop: Default::default(),
+                    loop_start: Default::default(),
+                    loop_end: Default::default(),
                     wait: Default::default(),
                     frame: Default::default(),
                     finished: Default::default(),
@@ -39486,6 +39894,8 @@ pub mod record {
                     time: field(o, "time", d.time)?,
                     speed: field(o, "speed", d.speed)?,
                     r#loop: field(o, "loop", d.r#loop)?,
+                    loop_start: field(o, "loopStart", d.loop_start)?,
+                    loop_end: field(o, "loopEnd", d.loop_end)?,
                     wait: field(o, "wait", d.wait)?,
                     frame: field(o, "frame", d.frame)?,
                     finished: field(o, "finished", d.finished)?,
@@ -39599,6 +40009,8 @@ pub mod record {
             pub time: f32,
             pub speed: f32,
             pub r#loop: bool,
+            pub loop_start: f32,
+            pub loop_end: f32,
             pub preroll: bool,
         }
 
@@ -39610,6 +40022,8 @@ pub mod record {
                     time: Default::default(),
                     speed: 1.0_f32,
                     r#loop: Default::default(),
+                    loop_start: Default::default(),
+                    loop_end: Default::default(),
                     preroll: Default::default(),
                 }
             }
@@ -39627,6 +40041,8 @@ pub mod record {
                     time: field(o, "time", d.time)?,
                     speed: field(o, "speed", d.speed)?,
                     r#loop: field(o, "loop", d.r#loop)?,
+                    loop_start: field(o, "loopStart", d.loop_start)?,
+                    loop_end: field(o, "loopEnd", d.loop_end)?,
                     preroll: field(o, "preroll", d.preroll)?,
                 })
             }
@@ -41231,6 +41647,9 @@ pub mod record {
             pub dissolve: u32,
             pub dissolve_left: u32,
             pub qte: Vec<u32>,
+            pub qte_state: Vec<u32>,
+            pub speed: f32,
+            pub looping: bool,
         }
 
         impl Default for Flow {
@@ -41250,6 +41669,9 @@ pub mod record {
                     dissolve: Default::default(),
                     dissolve_left: Default::default(),
                     qte: Default::default(),
+                    qte_state: Default::default(),
+                    speed: 1.0_f32,
+                    looping: Default::default(),
                 }
             }
         }
@@ -41275,6 +41697,9 @@ pub mod record {
                     dissolve: field(o, "dissolve", d.dissolve)?,
                     dissolve_left: field(o, "dissolveLeft", d.dissolve_left)?,
                     qte: field(o, "qte", d.qte)?,
+                    qte_state: field(o, "qteState", d.qte_state)?,
+                    speed: field(o, "speed", d.speed)?,
+                    looping: field(o, "looping", d.looping)?,
                 })
             }
         }
@@ -41435,6 +41860,73 @@ pub mod record {
                     flow: field(o, "flow", d.flow)?,
                     node: field(o, "node", d.node)?,
                     ending: field(o, "ending", d.ending)?,
+                })
+            }
+        }
+
+        /// `FlowInspected`: packages/knowledge/wiki/flow.md.
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct FlowInspected {
+            pub flow: u64,
+            pub node: String,
+            pub hotspot: String,
+        }
+
+        impl Default for FlowInspected {
+            fn default() -> Self {
+                Self {
+                    flow: Default::default(),
+                    node: Default::default(),
+                    hotspot: Default::default(),
+                }
+            }
+        }
+
+        impl FromJson for FlowInspected {
+            fn from_json(v: &Value) -> Result<Self, String> {
+                Self::from_json_over(v, Self::default())
+            }
+            fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+                let o = object(v)?;
+                Ok(Self {
+                    flow: field(o, "flow", d.flow)?,
+                    node: field(o, "node", d.node)?,
+                    hotspot: field(o, "hotspot", d.hotspot)?,
+                })
+            }
+        }
+
+        /// `FlowQteResult`: packages/knowledge/wiki/flow.md.
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct FlowQteResult {
+            pub flow: u64,
+            pub node: String,
+            pub choice: u32,
+            pub grade: String,
+        }
+
+        impl Default for FlowQteResult {
+            fn default() -> Self {
+                Self {
+                    flow: Default::default(),
+                    node: Default::default(),
+                    choice: Default::default(),
+                    grade: Default::default(),
+                }
+            }
+        }
+
+        impl FromJson for FlowQteResult {
+            fn from_json(v: &Value) -> Result<Self, String> {
+                Self::from_json_over(v, Self::default())
+            }
+            fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+                let o = object(v)?;
+                Ok(Self {
+                    flow: field(o, "flow", d.flow)?,
+                    node: field(o, "node", d.node)?,
+                    choice: field(o, "choice", d.choice)?,
+                    grade: field(o, "grade", d.grade)?,
                 })
             }
         }

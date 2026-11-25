@@ -6,7 +6,7 @@ Module [`flow`](../flow.md) · [index](../index.md)
 
 ### `FlowChart` (struct)
 
-A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
+A dialogue's flow nodes laid out as a flowchart, columns by depth from the start with barycenter crossing minimisation: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
@@ -17,7 +17,7 @@ A dialogue's flow nodes laid out as a flowchart, columns by depth from the start
 
 ```ogt
 struct FlowChart {
-  doc "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
+  doc "A dialogue's flow nodes laid out as a flowchart, columns by depth from the start with barycenter crossing minimisation: what a flowchart screen draws (the built-in NodeGraph), the game marking what the player has seen."
   field nodes List.FlowChartNode "Its flow nodes, in file order."
   field links List.FlowChartLink "Where each leads."
   field width f32 "Its extent across, graph units (NodeGraph's view is `[0, 0, width, height]`)."
@@ -25,4 +25,4 @@ struct FlowChart {
 }
 ```
 
-<sub>Module `flow` line 168</sub>
+<sub>Module `flow` line 261</sub>

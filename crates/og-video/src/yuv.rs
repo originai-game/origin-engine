@@ -72,13 +72,11 @@ pub fn i420_to_rgba(
         return;
     }
     let pair = width * 8;
-    let pairs = height.div_ceil(2);
     let threads = if cfg!(target_arch = "wasm32") || width * height < SPLIT_FROM {
         1
     } else {
         std::thread::available_parallelism().map_or(1, |n| n.get().min(THREADS))
     };
-    let band = pairs.div_ceil(threads);
     let convert = |first: usize, rows: &mut [u8]| {
         for (i, o) in rows.chunks_mut(pair).enumerate() {
             let c = first + i;
@@ -93,16 +91,239 @@ pub fn i420_to_rgba(
         convert(0, out);
         return;
     }
-    std::thread::scope(|s| {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let pairs = height.div_ceil(2);
+        let band = pairs.div_ceil(threads);
+        pool_convert(threads, band, pair, y, u, v, width, g, out);
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        convert(0, out);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+mod pool {
+    use super::{Gains, Plane, THREADS, row};
+    use std::sync::{Condvar, Mutex, OnceLock};
+
+    struct Job {
+        y_ptr: usize,
+        y_len: usize,
+        y_stride: usize,
+        u_ptr: usize,
+        u_len: usize,
+        u_stride: usize,
+        v_ptr: usize,
+        v_len: usize,
+        v_stride: usize,
+        out_ptr: usize,
+        out_len: usize,
+        width: usize,
+        first: usize,
+        pair: usize,
+        gains: Gains,
+    }
+
+    struct Slot {
+        job: Option<Job>,
+        done: bool,
+    }
+
+    struct Worker {
+        state: Mutex<Slot>,
+        wake: Condvar,
+        finished: Condvar,
+    }
+
+    struct Pool {
+        /// Serializes concurrent frames sharing the tiny worker pool so each
+        /// worker processes one band at a time with zero thread creation.
+        busy: Mutex<()>,
+        workers: Vec<std::sync::Arc<Worker>>,
+    }
+
+    fn get() -> &'static Pool {
+        static POOL: OnceLock<Pool> = OnceLock::new();
+        POOL.get_or_init(|| {
+            let count = std::thread::available_parallelism()
+                .map_or(1, |n| n.get().min(THREADS))
+                .saturating_sub(1);
+            let mut workers = Vec::with_capacity(count);
+            for i in 0..count {
+                let w = std::sync::Arc::new(Worker {
+                    state: Mutex::new(Slot {
+                        job: None,
+                        done: true,
+                    }),
+                    wake: Condvar::new(),
+                    finished: Condvar::new(),
+                });
+                let cloned = w.clone();
+                if std::thread::Builder::new()
+                    .name(format!("og-yuv-{i}"))
+                    .spawn(move || {
+                        loop {
+                            let job = {
+                                let mut s = cloned.state.lock().unwrap_or_else(|e| e.into_inner());
+                                while s.job.is_none() {
+                                    s = cloned.wake.wait(s).unwrap_or_else(|e| e.into_inner());
+                                }
+                                s.job.take().expect("job")
+                            };
+                            // SAFETY: the caller holds `&[u8]` / `&mut [u8]` alive
+                            // for disjoint bands until `finished` is signaled.
+                            unsafe {
+                                let y =
+                                    std::slice::from_raw_parts(job.y_ptr as *const u8, job.y_len);
+                                let u =
+                                    std::slice::from_raw_parts(job.u_ptr as *const u8, job.u_len);
+                                let v =
+                                    std::slice::from_raw_parts(job.v_ptr as *const u8, job.v_len);
+                                let out = std::slice::from_raw_parts_mut(
+                                    job.out_ptr as *mut u8,
+                                    job.out_len,
+                                );
+                                for (idx, o) in out.chunks_mut(job.pair).enumerate() {
+                                    let c = job.first + idx;
+                                    let ur = &u[c * job.u_stride..][..job.width.div_ceil(2)];
+                                    let vr = &v[c * job.v_stride..][..job.width.div_ceil(2)];
+                                    for (j, o) in o.chunks_exact_mut(job.width * 4).enumerate() {
+                                        row(
+                                            &y[(c * 2 + j) * job.y_stride..][..job.width],
+                                            ur,
+                                            vr,
+                                            o,
+                                            job.gains,
+                                        );
+                                    }
+                                }
+                            }
+                            let mut s = cloned.state.lock().unwrap_or_else(|e| e.into_inner());
+                            s.done = true;
+                            cloned.finished.notify_one();
+                        }
+                    })
+                    .is_ok()
+                {
+                    workers.push(w);
+                }
+            }
+            Pool {
+                busy: Mutex::new(()),
+                workers,
+            }
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn run(
+        threads: usize,
+        band: usize,
+        pair: usize,
+        y: Plane<'_>,
+        u: Plane<'_>,
+        v: Plane<'_>,
+        width: usize,
+        gains: Gains,
+        out: &mut [u8],
+    ) {
+        let p = get();
+        let _guard = p.busy.lock().unwrap_or_else(|e| e.into_inner());
+        let max_workers = p.workers.len().min(threads.saturating_sub(1));
+        if max_workers == 0 {
+            for (idx, o) in out.chunks_mut(pair).enumerate() {
+                let ur = &u.data[idx * u.stride..][..width.div_ceil(2)];
+                let vr = &v.data[idx * v.stride..][..width.div_ceil(2)];
+                for (j, o) in o.chunks_exact_mut(width * 4).enumerate() {
+                    row(
+                        &y.data[(idx * 2 + j) * y.stride..][..width],
+                        ur,
+                        vr,
+                        o,
+                        gains,
+                    );
+                }
+            }
+            return;
+        }
         let mut bands = out.chunks_mut(band * pair).enumerate();
         let first = bands.next();
+        let mut dispatched = Vec::new();
         for (b, rows) in bands {
-            s.spawn(move || convert(b * band, rows));
+            if let Some(w) = p.workers.get(b - 1) {
+                let mut s = w.state.lock().unwrap_or_else(|e| e.into_inner());
+                s.done = false;
+                s.job = Some(Job {
+                    y_ptr: y.data.as_ptr() as usize,
+                    y_len: y.data.len(),
+                    y_stride: y.stride,
+                    u_ptr: u.data.as_ptr() as usize,
+                    u_len: u.data.len(),
+                    u_stride: u.stride,
+                    v_ptr: v.data.as_ptr() as usize,
+                    v_len: v.data.len(),
+                    v_stride: v.stride,
+                    out_ptr: rows.as_mut_ptr() as usize,
+                    out_len: rows.len(),
+                    width,
+                    first: b * band,
+                    pair,
+                    gains,
+                });
+                w.wake.notify_one();
+                dispatched.push(b - 1);
+            } else {
+                for (idx, o) in rows.chunks_mut(pair).enumerate() {
+                    let c = b * band + idx;
+                    let ur = &u.data[c * u.stride..][..width.div_ceil(2)];
+                    let vr = &v.data[c * v.stride..][..width.div_ceil(2)];
+                    for (j, o) in o.chunks_exact_mut(width * 4).enumerate() {
+                        row(&y.data[(c * 2 + j) * y.stride..][..width], ur, vr, o, gains);
+                    }
+                }
+            }
         }
         if let Some((_, rows)) = first {
-            convert(0, rows);
+            for (idx, o) in rows.chunks_mut(pair).enumerate() {
+                let ur = &u.data[idx * u.stride..][..width.div_ceil(2)];
+                let vr = &v.data[idx * v.stride..][..width.div_ceil(2)];
+                for (j, o) in o.chunks_exact_mut(width * 4).enumerate() {
+                    row(
+                        &y.data[(idx * 2 + j) * y.stride..][..width],
+                        ur,
+                        vr,
+                        o,
+                        gains,
+                    );
+                }
+            }
         }
-    });
+        for idx in dispatched {
+            let w = &p.workers[idx];
+            let mut s = w.state.lock().unwrap_or_else(|e| e.into_inner());
+            while !s.done {
+                s = w.finished.wait(s).unwrap_or_else(|e| e.into_inner());
+            }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[allow(clippy::too_many_arguments)]
+fn pool_convert(
+    threads: usize,
+    band: usize,
+    pair: usize,
+    y: Plane<'_>,
+    u: Plane<'_>,
+    v: Plane<'_>,
+    width: usize,
+    gains: Gains,
+    out: &mut [u8],
+) {
+    pool::run(threads, band, pair, y, u, v, width, gains, out);
 }
 
 /// Writes the alpha of `width` x `height` RGBA8 `out` from a packed

@@ -197,6 +197,8 @@ export interface WebExtras {
     stream: (key: number, width: number, height: number, codec: string, config: Uint8Array, table: Uint32Array, chunkFrames: number) => boolean,
     frame: (stream: number, player: number, frame: number, looped: boolean) => VideoFrame | null,
     chunk: (stream: number, n: number, data: Uint8Array | null) => void,
+    close: (player: number) => void,
+    error: (stream: number, player: number) => string | null,
     decoder: string,
     hardware: boolean,
     maxWidth: number,

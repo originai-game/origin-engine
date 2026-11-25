@@ -94,4 +94,4 @@ export const fixtures: Record<string, Partial<FlowChartScreenProps>> = {
 export const actions = {"pick":"Pick a node","play":"Play from here","back":"Back"} as const;
 
 /** How the screen mounts: its layer, first focus, what lies under it, input, pause and back. */
-export const screen = {"name":"flow-chart","layer":"menu","focus":"Body/Graph","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;
+export const screen = {"name":"flow-chart","layer":"menu","focus":"","under":"dim","input":"menu","pause":true,"capture":true,"remember":true,"back":"pop"} as const;

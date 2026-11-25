@@ -16,7 +16,9 @@ Token `og.Timeline`, registered under the schema name `og.Timeline`; its value t
 | `playing` | `boolean` | `false` | — | — | — | Advances while true. |
 | `time` | `number` | `0` | ≥ 0 | `s` | — | Where it is, in seconds; written every tick it plays, set it to seek. |
 | `speed` | `number` | `1` | 0 … 16 | — | tunable | Playback rate: 1 as authored, 0.5 half speed (0 holds the time while playing). |
-| `loop` | `boolean` | `false` | — | — | — | Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded. |
+| `loop` | `boolean` | `false` | — | — | — | Start over at loopStart past loopEnd (or 0 past the end); otherwise stop playing there, hand the camera back and send og.TimelineEnded. |
+| `loopStart` | `number` | `0` | ≥ 0 | `s` | — | With `loop`: start of the loop region, in seconds (0: the timeline's start). |
+| `loopEnd` | `number` | `0` | ≥ 0 | `s` | — | With `loop`: end of the loop region, in seconds (0: the timeline's duration). |
 | `preroll` | `boolean` | `false` | — | — | — | Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always. |
 
 ```ogt
@@ -34,7 +36,15 @@ component Timeline {
     max 16
     tunable true
   }
-  field loop bool "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded."
+  field loop bool "Start over at loopStart past loopEnd (or 0 past the end); otherwise stop playing there, hand the camera back and send og.TimelineEnded."
+  field loopStart f32 "With `loop`: start of the loop region, in seconds (0: the timeline's start)." {
+    min 0
+    unit s
+  }
+  field loopEnd f32 "With `loop`: end of the loop region, in seconds (0: the timeline's duration)." {
+    min 0
+    unit s
+  }
   field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always."
 }
 ```

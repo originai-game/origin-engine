@@ -4,6 +4,8 @@ use og_render::wgpu as gpu_wgpu;
 #[path = "../../../../tests/gpu.rs"]
 mod gpu_tests;
 
+#[path = "../flow_acceptance.rs"]
+mod flow_acceptance;
 #[path = "../mid_tick_save.rs"]
 mod mid_tick_save;
 #[path = "../no_renderer.rs"]

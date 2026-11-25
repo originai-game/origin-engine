@@ -73,12 +73,15 @@ og-flow-chapter: chapter.kitchen
 | Header or tag | Meaning |
 |---|---|
 | `og-flow: <timeline>` | The segment this node plays. A node without it is a logic node: it runs through at once (branch on variables there) |
+| `og-flow-title: <title>` | Human-readable node title surfaced in `FlowChartNode.title` |
 | `og-flow-chapter: <key>` | Entering it sends og.FlowChapter: a chapter to list and to save at |
 | `og-flow-ending: <id>` | Its segment's cut with the conversation over sends og.FlowEnded with this id |
-| `og-flow-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), which plays on under it; without it the cut is hard |
-| `#default` on a choice | Taken when the window locks with nothing chosen. Put it on exactly one choice of each flow node with choices; without one the first enabled choice is taken |
-| `#hotspot:<id>` on a choice | Also taken by clicking the hotspot `id` on the picture (a `track hotspot` key of its segment). FlowView.hotspots gives it while the window is open |
-| `#qte:press:<action>`, `#qte:hold:<action>:<ms>`, `#qte:mash:<action>:<presses>` on a choice | Taken by an og.input action in the window: one press, held that long, or pressed that many times. Only the node's first 8 choices may be a QTE; FlowView.qtes gives their progress |
+| `og-flow-dissolve: <seconds>` | Its segment dissolves in over the one before (0 to 5 s), crossfading audio while suppressing the outgoing deck's captions and camera; without it the cut is hard |
+| `og-flow-music: <sound> [volume=<v>] [fade=<s>] [duck=<d>]` / `og-flow-music: none [fade=<s>]` | Starts, crossfades, or stops persistent cross-segment background music with automatic voice ducking when captions speak; keeping the same sound across consecutive nodes continues uninterrupted |
+| `#default` on a choice | Taken when the window locks with nothing chosen. Put it on at most one choice per option group; without one the first enabled choice is taken |
+| `#immediate` on a choice | Cuts on the tick the choice is selected instead of waiting for `flow.cut` |
+| `#hotspot:<id>` on a choice | Also taken by clicking the choice hotspot `id` on the picture (a `track hotspot` key of its segment). FlowView.hotspots gives it while the window is open |
+| `#qte:<kind>:...` on a choice | Taken by an og.input action or mobile touch gesture in the window: `press:<action>`, `hold:<action>:<ms>`, `mash:<action>:<presses>`, `timing:<action>:<start>-<end>`, `sequence:<a1>+<a2>+...`, `swipe:<up\|down\|left\|right>`, or `drag:<up\|down\|left\|right>`. Up to 8 `#qte` choices per node; completion or miss emits `og.FlowQteResult` |
 
 A flow node holds no Yarn lines: what is said is the segment's caption
 track, so there is one source of subtitles. Choice text is the Yarn
@@ -98,11 +101,17 @@ track video {
   }
 }
 track caption {
-  captions "kitchen.srt"
+  captions "kitchen.vtt"
 }
 track marker {
   key 12 {
     name "flow.open"
+  }
+  key 13 {
+    name "flow.loopStart"
+  }
+  key 16 {
+    name "flow.loopEnd"
   }
   key 17 {
     name "flow.lock"
@@ -111,11 +120,20 @@ track marker {
 track hotspot {
   key 12 {
     id "knife"
+    shape rect
     rect 0.61 0.42 0.12 0.2
+    ease power2.inOut
   }
   key 16 {
     id "knife"
     rect 0.58 0.45 0.12 0.2
+  }
+  key 4 {
+    id "note"
+    kind inspect
+    shape circle
+    label "Inspect note"
+    rect 0.24 0.48 0.08 0.08
   }
 }
 ```
@@ -147,13 +165,25 @@ track hotspot {
 - `flow.open` shows the choices, `flow.lock` ends choosing, and the cut is
   `flow.cut` if the segment has one, else its end. Keep
   `flow.open < flow.lock ≤ cut`.
+- `flow.loopStart` and `flow.loopEnd` loop an idle choice beat seamlessly
+  (video and audio together) while the window is open with no choice yet; as
+  soon as the player chooses, looping ends and playback continues to the cut
+  (or cuts at once for `#immediate`).
+- A caption track imports `.srt`, `.vtt` (WebVTT with `<v Speaker>`, `<i>`,
+  `<b>`, `<font color>`, and top/bottom positioning), or `.json` word timings.
+- A `type video` asset may declare `posterSize 480`, `loudness -16` (two-pass
+  linear EBU R128 normalisation), and localized dubbing tracks via
+  `audioLocale "<tag>" "<path>"` (automatically selected from `og.i18n.locale`);
+  streamed audio cooks to chunked Opus and video streams cook `#stream`,
+  `#stream720`, and `#stream480` renditions selectable via `og.video.setQuality`.
 - A node without choices plays to its cut and goes on.
 - `from` lets several segments share one long file, which the one-decoder
   mode needs (§6).
-- A `hotspot` key gives `id` and `rect x y width height` (fractions of the
-  video frame from its top left), or `off true` to end it; it moves linearly
-  to the same id's next key. A choice tagged `#hotspot:<id>` is taken by
-  clicking it. The id must match a `#hotspot` tag the cook checks.
+- A `hotspot` key gives `id`, optional `kind` (`choice` default or `inspect`
+  for non-cutting clue inspection via `og.flow.inspect` / `og.FlowInspected`),
+  optional `shape` (`rect` or `circle`), optional `label`, optional `ease`,
+  and `rect x y width height` (fractions of the video frame from its top left),
+  or `off true` to end it.
 
 Thresholds that read well:
 
@@ -236,15 +266,19 @@ flow "story/film.yarn" {
 A test takes a choice without a press through a command
 (`flow:choose:<index>`) or a playtest.
 
-The screen's hotspot layer fills the surface, so a hotspot's `rect`
-(fractions of the picture) lands on the picture only when the game draws
-`texture` to fill the same surface (the usual FMV presentation). A game that
-letterboxes the video places its own hotspots over where it drew it.
+The screen's hotspot layer aligns to `FlowView.videoWidth` and
+`FlowView.videoHeight` against the play surface (`fit: "cover"` or
+`fit: "contain"`), so choice and inspect hotspots stay pixel-accurate on
+16:9 desktop, ultrawide, and 9:16 vertical mobile screens. Swipe and drag
+QTEs feed touch gestures into `og.flow.gesture`.
 
 A choice is also taken by its QTE (`#qte` on it) or its hotspot (`#hotspot`):
-og.flow records the QTE itself from the actions the tags name, and
-`FlowChoices` shows its progress from the view. `og.flow.skip` jumps a seen segment
-to its window, then to its cut.
+og.flow records the QTE itself from the actions or gestures the tags name,
+and `FlowChoices` shows its progress and timing zone from the view.
+`og.flow.setSpeed` adjusts playback rate (0.25x to 4x), `og.flow.seek` scrubs
+within the current segment, `og.flow.history` returns the transcript backlog
+of captions and player choices, and `og.flow.skip` jumps a seen segment to
+its window, then to its cut.
 
 On the web, audio starts only after a gesture, and the page's play gate
 takes it before the first tick. A game with its own title screen pauses
@@ -255,15 +289,20 @@ button.
 ### `flow §5` Saves, chapters and seen segments
 
 A flow is world state: a snapshot taken mid-segment restores to the same
-frame, window and pending choice. On og.FlowChapter, take a snapshot into
-a save slot with the chapter's name and the segment's poster
-(VideoInfo.poster) as its thumbnail.
+frame, window, pending choice, inspected clues, transcript history, and
+persistent BGM. On og.FlowChapter, take a snapshot into a save slot with
+the chapter's name and the segment's poster (VideoInfo.poster) as its
+thumbnail. For lightweight branch rewinds from a flowchart without storing
+hundreds of full world snapshots, capture `og.flow.checkpoint(world, flow)`
+and restore directly to any flow node with `og.flow.jump(world, flow, cp)`.
 
 The built-in `flow-chapters` screen lists og.flow.load's `chapters`, each
 `{ id, title, thumb, locked }` from a chapter's save; `select` plays from
 it. `flow-gallery` lists its `endings`, locked until reached.
 `FlowChartScreen` draws `og.flow.chart` (a dialogue's flow nodes by
-depth, through logic nodes) through the built-in NodeGraph: pass its nodes
+depth, through logic nodes, laid out with barycenter crossing minimization
+and carrying `title`, `poster`, `kind`, and per-link `label`/`outcome`/
+`conditional`) through the built-in NodeGraph: pass its nodes
 as `{ id, x, y, label, icon, state, shape, team }`, marking `done` the
 segments the player has seen and `current` the one playing, its links with
 their `points`, and `view` as `[0, 0, chart.width, chart.height]`. It
@@ -289,7 +328,9 @@ Telemetry, when a game sends it: `flow_choice {node, index, timedOut}`,
 current node may lead to, paused on their first frame, the chosen one
 first, then the default. A cut then shows a frame already decoded. A deck
 that holds a segment is its timeline in pre-roll (og.Timeline.preroll):
-nothing of the segment is seen or heard until the cut plays it.
+nothing of the segment is seen or heard until the cut plays it. Idle stream
+textures park to 1×1 and close idle decoders automatically so hundreds of
+loaded segments stay within mobile VRAM budgets.
 
 | Device | Decks |
 |---|---|
@@ -309,31 +350,36 @@ a cut that lands on one decodes a single frame, not a run. A small
 ### `flow §7` Make the footage (AI models)
 
 When a generative video model makes the clips, two cook settings keep them
-consistent and one tool continues them:
+consistent and two tools verify them:
 
-- `loudness -16` in a `type video` normalises its sound to −16 LUFS, so
-  clips a model made at different levels play the same.
+- `loudness -16` in a `type video` normalises its sound to −16 LUFS via
+  two-pass linear EBU R128 loudnorm, so clips a model made at different
+  levels play the same.
 - `aiGenerated true` marks the footage; VideoInfo.aiGenerated carries it, so
   a game or store labels AI content.
 - `og video edges <clip>` writes the first and last frame of a clip as PNG.
   Feed the last frame to an image-to-video model as the seed for the next
   clip, so the cut joins; the first frame checks it against the clip before.
+- `og flow check-cuts --json` samples the end frame of every outgoing clip and
+  the start frame of every incoming clip across all footage transitions and
+  reports their `rgbDelta` and `lumaDelta` continuity facts.
 
 <a id="guide-flow-8"></a>
 ### `flow §8` Test every route
 
 `og flow list --json` is the flow as the cook reads it, without running
 it: per flow dialogue (the project.ogt one first) each node with its
-segment (footage, live or both, its length, window and hold), its
-footage (missing, streamed, placeholder), its scenes, choices, outcomes,
-hotspots, the nodes each leads to and the `problems` found. `og flow
-routes --json` walks every route from the start to an ending without
-passing a node twice: each step is the node, what takes it (`choose`,
+segment (footage, live or both, its length, window, loop region and hold),
+its footage (missing, streamed, placeholder, audio locales), its scenes,
+choices, outcomes, hotspots, the nodes each leads to and the `problems`
+found. `og flow routes --json` walks every route from the start to an ending
+without passing a node twice: each step is the node, what takes it (`choose`,
 `advance` with the outcome, or `cut`) and the node it reaches, marked
 `condition` where an `<<if>>` decides between several. Its `unreached`
-names the endings no route reaches. Each route's steps are the commands a
-test sends: `flow:choose:<i>` in the window, `flow:advance:<outcome>` for a
-held segment.
+names the endings no route reaches, `unreachableNodes` names orphan flow
+nodes, and `cycles` reports cycle back-edges. Each route's steps are the
+commands a test sends: `flow:choose:<i>` in the window,
+`flow:advance:<outcome>` for a held segment.
 
 The probe's `dump_flow` is the running side: per flow its node, paused,
 held and ended, and per deck the node it holds (current, previous, warm or

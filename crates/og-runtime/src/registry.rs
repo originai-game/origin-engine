@@ -276,6 +276,14 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::flow::RECORDS[5],
         enable: crate::bind::flow::enable,
     },
+    Lazy {
+        name: crate::bind::flow::RECORDS[6],
+        enable: crate::bind::flow::enable,
+    },
+    Lazy {
+        name: crate::bind::flow::RECORDS[7],
+        enable: crate::bind::flow::enable,
+    },
     // G3-3: world cells, read and written by the runtime's before-tick
     // hook (stream::cells); no module to grant. Naming any of the cell's
     // records registers them together; an anchor alone is its own.
@@ -736,6 +744,7 @@ pub(crate) type AttachFn = fn(Mount<'_>, &mut World) -> Result<(), String>;
 /// record is registered or at assembly: the state the module keeps of it.
 pub(crate) const ATTACH: &[(&str, AttachFn)] = &[
     (crate::bind::story::STORY, story::attach),
+    (crate::bind::flow::FLOW, flow::attach),
     (crate::world::stream::cells::CELL, stream::cells::attach),
     (crate::bind::sight::MAP, sight::attach),
 ];
@@ -766,12 +775,13 @@ pub(crate) const FRONT: &[MountFn] = &[
 
 /// Mounted after the game's systems and tweens, before og-anim.
 pub(crate) const MIDDLE: &[MountFn] = &[
+    // og.flow (moved before og.timeline) -> og.path -> og.timeline -> og.video -> og.audio:
+    // timeline sets each deck's VideoPlayer before og.video advances it and
+    // assigns its texture in the same tick.
+    |w, a| timeline::install(w, a.mount, a.layouts),
     |w, a| video::install(w, a.mount, a.layouts),
     |w, a| crate::bind::weather::install(w, a.layouts),
     |w, a| crate::bind::season::install(w, a.layouts),
-    // og.path and og.timeline after tweens, before og-anim (an animation
-    // track sets players) and physics.
-    |w, a| timeline::install(w, a.mount, a.layouts),
 ];
 
 /// Mounted after og-anim and game feel's middle, before physics' back.

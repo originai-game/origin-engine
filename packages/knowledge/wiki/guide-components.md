@@ -5433,14 +5433,25 @@ Actions: `select` (Play the chapter), `back` (Back).
 <a id="guide-components-231"></a>
 ### `components §231` FlowChoices
 
-An interactive film's choice window over its footage (flow guide §4): a thin bar over the choices drains with the time left; the choices are cut plates docked at the foot, the pending one ringed in the accent, one that cannot be taken dim, a quick-time one with its progress under its words. Hotspots are lit frames at the fractions of the picture the flow gives, so they land on it when the game draws the picture to fill the surface. Past the lock the choices stay and take nothing.
+An interactive film's choice window, hotspots, and rich QTE prompts over its footage (flow guide §4): - Choice & non-cutting inspect hotspots align to `videoBox` (landscape or 9:16 portrait), supporting both `rect` and `circle` shapes. - The countdown bar hides automatically when `window.held` (held or looping segments). - Choice plates surface `reason`, `visited`, `check`, `defaultChoice`, and all QTE types (`press`, `hold`, `mash`, `timing` zone bar, `sequence`, `swipe`, `drag`).
 
 `import { FlowChoices } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/flow-choices.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
-| `view` | `FlowView \| null` | What the flow shows now (og.flow.view's value, set each tick); null or a view without a window hides the screen. |
-| `onChoose?` | `((e: UiEvent, index: number) => void) \| undefined` | A choice was taken, by its row or its hotspot: pass `index` (ChoiceView.index) to og.flow.choose. |
+| `view` | `FlowView \| null` | What the flow shows now (og.flow.view's value, set each tick); null or a view without a window/hotspots hides the screen. |
+| `videoBox?` | `VideoBox \| undefined` | Rendered video rect in normalized surface fractions so hotspots align on any aspect ratio (16:9, 21:9, 9:16). |
+| `onChoose?` | `((e: UiEvent, index: number) => void) \| undefined` | A choice was taken, by its row or its choice hotspot: pass `index` (ChoiceView.index) to og.flow.choose. |
+| `onInspect?` | `((e: UiEvent, hotspot: string) => void) \| undefined` | A non-cutting `inspect` hotspot was pressed: pass `hotspot` id to og.flow.inspect. |
+
+Each `VideoBox`:
+
+| Field | Type | What |
+|---|---|---|
+| `left` | `number` | Left edge of the rendered video in surface width fractions. |
+| `top` | `number` | Top edge of the rendered video in surface height fractions. |
+| `width` | `number` | Width of the rendered video in surface width fractions. |
+| `height` | `number` | Height of the rendered video in surface height fractions. |
 
 Pack slots: `Screen.frame`.
 
@@ -5501,7 +5512,7 @@ Actions: `select` (Watch the ending again), `back` (Back).
 <a id="guide-components-234"></a>
 ### `components §234` FlowPicture
 
-The footage filling the surface, cropped to cover it, over a deep shade (so a live scene under the flow shows only where the footage has none): the previous picture under it while a dissolve runs. FlowChoices' hotspot fractions land on it because it fills the same surface.
+The footage filling the surface (`object-cover` or `object-contain`), never blocking pointer input to live 3D scenes underneath: the previous picture sits under it while a dissolve runs.
 
 `import { FlowPicture } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/flow-screen.tsx`).
 
@@ -5510,26 +5521,33 @@ The footage filling the surface, cropped to cover it, over a deep shade (so a li
 | `picture` | `Texture \| 0` | The footage's picture: FlowView.texture, or a cutscene's og.VideoPlayer.texture (0 before its first frame). |
 | `previous?` | `Texture \| 0 \| undefined` | The picture dissolving out under it (FlowView.previous; 0: none). |
 | `mix?` | `number \| undefined` | How far the dissolve is: the picture's opacity over the previous one (FlowView.mix). |
+| `fit?` | `"cover" \| "contain" \| undefined` | How the footage fits the surface (`"cover"` crops to fill; `"contain"` letterboxes/pillarboxes cleanly). Default `"cover"`. |
 | `onSkip?` | `((e: UiEvent) => void) \| undefined` | Given, a Skip button at the top corner calls it: a cutscene the player has seen (og.flow.skip, or the game's own). |
 
-Pack slots: `Button.plate`, `Screen.frame`.
+Pack slots: `Button.plate`, `Plate.frame`, `Screen.frame`.
 
-Fixtures: `default`, `skip`.
+Fixtures: `default`, `contain`, `skip`.
+
+Functions beside it, imported by name from `@origingame/engine/ui/components`:
+
+- `computeVideoBox( viewportWidth: number, viewportHeight: number, videoWidth: number, videoHeight: number, fit: "cover" | "contain" = "cover", ): VideoBox`: Computes the rendered image box in normalized surface coordinates (`0..1`) matching CSS `object-cover` or `object-contain`, so hotspots land on exact video features on landscape desktop, ultrawide, and 9:16 mobile portrait.
 
 <a id="guide-components-235"></a>
 ### `components §235` FlowScreen
 
-A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with its dissolve (a segment with no footage leaves the live scene showing), the captions its timelines say, and its choice window with hotspots and quick-time progress, each press passed to og.flow.choose. Read from og.flow.view each tick; nothing of it is world state.
+A flow as the player sees it, what the engine mounts for project.ogt's `flow`: its picture with dissolve, subtitles lifted clear of active choices, aspect-accurate hotspots (choice & inspect), swipe/drag touch gestures, rich QTEs, and a subtle buffering badge while waiting on network chunks.
 
 `import { FlowScreen } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/flow-screen.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
 | `flow?` | `Entity \| undefined` | The flow it draws; left out, og.flow.current's (project.ogt's `flow`). |
+| `fit?` | `"cover" \| "contain" \| undefined` | How the footage fits the play surface (`"cover"` default, or `"contain"`). |
+| `onSkip?` | `((e: UiEvent) => void) \| undefined` | Optional skip handler shown at the top corner. |
 
-Pack slots: `Button.plate`, `Screen.frame`.
+Pack slots: `Button.plate`, `Plate.frame`, `Screen.frame`.
 
-Fixtures: `default`, `skip`.
+Fixtures: `default`, `contain`, `skip`.
 
 <a id="guide-components-236"></a>
 ### `components §236` GameOverScreen
@@ -5963,14 +5981,25 @@ Fixtures: `default`, `none`, `large`, `all`.
 <a id="guide-components-252"></a>
 ### `components §252` Subtitles
 
-The latest lines at the foot of the screen, centred in HUD type over a soft dark band: the speaker in gold small capitals over the words in white. An older line steps back, smaller. Nothing shows without a line.
+The latest lines at the foot (or top, for `position: "top"` WebVTT cues) of the screen, centred in HUD type over a soft dark band: the speaker in gold small capitals over the words in white, with rich inline spans. Only older history entries in `lines` step back smaller; simultaneous caption tracks (such as bilingual subtitles) draw at full legibility together.
 
 `import { Subtitles } from "@origingame/engine/ui/components"` (kit `screens`, `packages/engine/src/ui/screens/subtitles.tsx`).
 
 | Prop | Type | What |
 |---|---|---|
-| `lines?` | `ReadonlyArray<{ id: string; speaker: string; text: string }> \| undefined` | The game's own lines, oldest first, each { id, speaker, text }; the game drops a line when it is done. |
-| `captions?` | `ReadonlyArray<{ id: string; text: string }> \| undefined` | The captions the timelines are saying (og.timeline.captions(world), set each tick), after the game's lines: a film segment's SRT track, a cutscene's caption track. |
+| `lines?` | `ReadonlyArray<{ id: string; speaker: string; text: string; spans?: readonly TextSpan[] \| undefined }> \| undefined` | The game's own lines, oldest first, each { id, speaker, text }; the game drops a line when it is done. |
+| `captions?` | `ReadonlyArray<SubtitleCaption> \| undefined` | The captions the timelines are saying (og.timeline.captions(world), set each tick), after the game's lines: a film segment's SRT/WebVTT track, a cutscene's caption track. |
+| `raised?` | `boolean \| undefined` | Lift bottom captions clear of a docked choice bar (FlowScreen sets this while a choice window is open). |
+
+Each `SubtitleCaption`:
+
+| Field | Type | What |
+|---|---|---|
+| `id` | `string` | Stable identifier while the caption shows. |
+| `text` | `string` | Spoken text in the player's locale. |
+| `speaker?` | `string \| undefined` | Optional speaker name (WebVTT `<v Speaker>` or caption track `speaker`). |
+| `spans?` | `readonly TextSpan[] \| undefined` | Optional rich inline style spans (`strong`, `emphasis`, `color`). |
+| `position?` | `string \| undefined` | Placement hint: `"bottom"` (default) or `"top"` (`{\an8}` or WebVTT `line:0`). |
 
 Pack slots: `Plate.frame`, `Screen.frame`.
 

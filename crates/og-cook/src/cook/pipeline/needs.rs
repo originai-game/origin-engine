@@ -175,11 +175,37 @@ pub(crate) fn record(
             out
         })
         .collect();
-    let bundle: BTreeSet<&'static str> = match boot.and_then(|b| owner.get(b)) {
-        Some(&i) => flow
-            .and_then(|f| owner.get(f))
-            .map_or(needs[i].clone(), |&f| &needs[i] | &needs[f]),
-        None => needs.iter().flatten().copied().collect(),
+    let flow_boot_modules = |flow_id: &str| -> BTreeSet<&'static str> {
+        let mut m = BTreeSet::from(["story", "video"]);
+        let Some(s) = by_rel.get(flow_id) else {
+            return m;
+        };
+        let Ok(text) = std::str::from_utf8(&s.bytes) else {
+            return m;
+        };
+        if let Ok(d) = og_story::yarn::compile(text) {
+            let graph = d.graph();
+            let roots = og_story::graph::flow_reach(&graph, std::slice::from_ref(&d.start));
+            for r in roots {
+                if let Some(seg) = graph
+                    .iter()
+                    .find(|n| n.title == r)
+                    .and_then(|n| n.headers.get(og_story::graph::FLOW_HEADER))
+                    && let Some(&idx) = owner.get(crate::runtime::asset_id(seg))
+                {
+                    m.extend(&needs[idx]);
+                }
+            }
+        } else if let Some(&f) = owner.get(flow_id) {
+            m.extend(&needs[f]);
+        }
+        m
+    };
+    let bundle: BTreeSet<&'static str> = match (boot.and_then(|b| owner.get(b)), flow) {
+        (Some(&i), Some(f)) => &needs[i] | &flow_boot_modules(f),
+        (Some(&i), None) => needs[i].clone(),
+        (None, Some(f)) => flow_boot_modules(f),
+        (None, None) => needs.iter().flatten().copied().collect(),
     };
     manifest.modules = bundle.into_iter().map(str::to_string).collect();
     for (a, n) in manifest.assets.iter_mut().zip(needs) {

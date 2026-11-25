@@ -6,22 +6,28 @@ Module [`flow`](../flow.md) · [index](../index.md)
 
 ### `FlowHotspot` (struct)
 
-A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open.
+A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `choice` | `number` | `0` | — | — | — | The ChoiceView.index it takes. |
+| `choice` | `number` | `0` | — | — | — | The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut. |
 | `id` | `string` | `""` | — | — | — | The hotspot's id. |
+| `kind` | `string` | `""` | — | — | — | `choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected). |
+| `shape` | `string` | `""` | — | — | — | `rect` or `circle`. |
 | `x` | `number` | `0` | — | `ratio` | — | Its left edge, a fraction of the video frame from its left. |
 | `y` | `number` | `0` | — | `ratio` | — | Its top edge, from the frame's top. |
 | `width` | `number` | `0` | — | `ratio` | — | Its width, a fraction of the frame's. |
 | `height` | `number` | `0` | — | `ratio` | — | Its height. |
+| `label` | `string` | `""` | — | — | — | Its localized label (from the hotspot key's `label` i18n key, or the choice's text). |
+| `inspected` | `boolean` | `false` | — | — | — | Whether this `inspect` hotspot has already been triggered in this segment. |
 
 ```ogt
 struct FlowHotspot {
-  doc "A place on the picture that takes a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment), while the window is open."
-  field choice u32 "The ChoiceView.index it takes."
+  doc "A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect)."
+  field choice i32 "The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut."
   field id String "The hotspot's id."
+  field kind String "`choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected)."
+  field shape String "`rect` or `circle`."
   field x f32 "Its left edge, a fraction of the video frame from its left." {
     unit ratio
   }
@@ -34,7 +40,9 @@ struct FlowHotspot {
   field height f32 "Its height." {
     unit ratio
   }
+  field label String "Its localized label (from the hotspot key's `label` i18n key, or the choice's text)."
+  field inspected bool "Whether this `inspect` hotspot has already been triggered in this segment."
 }
 ```
 
-<sub>Module `flow` line 93</sub>
+<sub>Module `flow` line 105</sub>

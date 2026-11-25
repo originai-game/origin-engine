@@ -3,3 +3,4 @@ version 1
 ---
 locale "zh-CN"
 string "screen.flow-screen.skip" "跳过"
+string "screen.flow-screen.buffering" "缓冲中…"

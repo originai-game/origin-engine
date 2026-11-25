@@ -27,7 +27,15 @@ module timeline {
       max 16
       tunable true
     }
-    field loop bool "Start over at the end; otherwise stop playing there, hand the camera back and send og.TimelineEnded."
+    field loop bool "Start over at loopStart past loopEnd (or 0 past the end); otherwise stop playing there, hand the camera back and send og.TimelineEnded."
+    field loopStart f32 "With `loop`: start of the loop region, in seconds (0: the timeline's start)." {
+      min 0
+      unit s
+    }
+    field loopEnd f32 "With `loop`: end of the loop region, in seconds (0: the timeline's duration)." {
+      min 0
+      unit s
+    }
     field preroll bool "Prepare without showing: while stopped and holding nothing, the timeline is not evaluated; the entity's og.VideoPlayer holds the frame its own video track starts with, paused, its scene tracks' scenes are loaded, and the engine modules it needs are fetched. Playing or seeking evaluates it as always."
   }
 
@@ -77,6 +85,9 @@ module timeline {
     doc "A caption a playing timeline is saying."
     field id String "Stable while it shows: the timeline's entity, its track and its key."
     field text String "Its words, in the player's locale."
+    field speaker String "The speaker name, if authored (WebVTT `<v Speaker>` or caption `speaker` field); empty otherwise."
+    field spans List.TextSpan "Inline style spans (`emphasis`, `strong`, `color`) in Unicode scalar offsets over `text`."
+    field position String "Placement hint: `bottom` (default) or `top` (`{\\an8}` or WebVTT `line:0`)."
   }
 
   fn captions {

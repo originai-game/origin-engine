@@ -30,13 +30,15 @@
 
 use crate::engine::{Engine, engine};
 use crate::host::codec::Layout;
-use crate::host::wire::{FromJson, VideoCapabilities, VideoInfo, record};
+use crate::host::wire::{
+    FromJson, VideoBuffering, VideoCapabilities, VideoInfo, VideoQuality, record,
+};
 use crate::present::extract::RenderState;
 use crate::world::assets;
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
 /// The system's name.
@@ -45,23 +47,41 @@ pub(crate) const PLAYER: &str = "og.VideoPlayer";
 const AUDIO: &str = "og.AudioSource";
 /// A request to change a player at the tick boundary (IDL og.MediaIntent).
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
+/// Consecutive chunk fetch failures before a stream marks itself failed and
+/// unblocks `video_stalled`.
+const MAX_CHUNK_FAILURES: u32 = 3;
+/// Idle frames before a stream view parks its GPU storage and closes its decoder.
+const IDLE_PARK_FRAMES: u32 = 2;
 
 /// What the system needs of a loaded video.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Clip {
     fps: u32,
     frames: u32,
     seconds: f64,
     sound: u64,
+    /// Localized audio tracks (`(BCP-47 tag, sound handle)`).
+    locale_sounds: Vec<(String, u64)>,
 }
 
 type Clips = Arc<Mutex<IdMap<u64, Clip>>>;
 
 /// og.video on one engine: its loaded videos, by Video handle (kept across
-/// a reload).
-#[derive(Default)]
+/// a reload), plus presentation-only ABR quality and buffering progress.
 pub(crate) struct ModuleState {
     clips: Clips,
+    quality: Mutex<VideoQuality>,
+    buffer_progress: Mutex<f32>,
+}
+
+impl Default for ModuleState {
+    fn default() -> Self {
+        Self {
+            clips: Clips::default(),
+            quality: Mutex::new(VideoQuality::Auto),
+            buffer_progress: Mutex::new(1.0),
+        }
+    }
 }
 
 /// Applies last tick's og.MediaIntent to the players they name: a
@@ -144,6 +164,8 @@ fn clips(eng: &crate::engine::Engine) -> Clips {
 /// A loaded video in the render state (by Video handle index).
 pub(crate) struct LoadedVideo {
     pub id: String,
+    /// Cooked manifest output hash of `id` (for hot reload).
+    pub hash: u64,
     /// Its textures, each with its Texture handle: the first is
     /// VideoInfo.texture, the others made as further players claimed one.
     /// A texture is never dropped (a snapshot may name it).
@@ -164,6 +186,11 @@ pub(crate) enum Frames {
 /// One player's stream texture and decoder.
 pub(crate) struct StreamView {
     texture: og_render::TextureHandle,
+    /// Whether full-resolution GPU storage is currently allocated (false:
+    /// parked as a 1x1 placeholder so idle streams take 4 bytes of VRAM).
+    active: bool,
+    /// Consecutive frames no player wanted this view.
+    idle_frames: u32,
     /// Natively its rav1d thread, started once the units are read.
     #[cfg(not(target_arch = "wasm32"))]
     player: Option<og_video::stream::Player>,
@@ -174,10 +201,30 @@ pub(crate) struct StreamView {
 impl StreamView {
     fn new(scene: &mut og_render::RenderScene, s: &StreamSource) -> StreamView {
         StreamView {
-            texture: scene.add_stream_texture(s.width, s.height, s.nearest, s.alpha),
+            texture: scene.add_stream_texture_parked(s.nearest, s.alpha),
+            active: false,
+            idle_frames: 0,
             #[cfg(not(target_arch = "wasm32"))]
             player: None,
             shown: None,
+        }
+    }
+
+    /// Releases GPU storage (back to 1x1 placeholder) and closes the decoder
+    /// while preserving `self.texture` handle validity for snapshots.
+    fn park(&mut self, scene: &mut og_render::RenderScene, _s: &StreamSource) {
+        if self.active {
+            scene.park_stream_texture(self.texture);
+            self.active = false;
+        }
+        self.shown = None;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.player = None;
+        }
+        #[cfg(target_arch = "wasm32")]
+        if let Some(h) = crate::engine::hooks() {
+            h.video_close(scene_key(self));
         }
     }
 }
@@ -185,6 +232,10 @@ impl StreamView {
 /// A stream: its index, read from its cooked file once a player wants its
 /// frames, and its chunks, which land and go as players need them.
 pub(crate) struct StreamSource {
+    /// Base cooked video asset id (e.g. `videos/intro.ogt`).
+    base_id: String,
+    /// Full source resolution (width, height) for quality selection.
+    base_size: (u32, u32),
     /// The index's cooked file (`<root>/cooked/...`) and its stamp.
     path: String,
     stamp: u64,
@@ -196,8 +247,12 @@ pub(crate) struct StreamSource {
     /// colour above, the matte below), folded into the frame's alpha.
     alpha: bool,
     fps: u32,
+    /// Active quality tier currently selected for this stream.
+    active_quality: VideoQuality,
     /// Each chunk's cooked file and stamp (`<stream id>.<n>`).
     chunks: Vec<(String, u64)>,
+    /// Consecutive fetch/decode failures per chunk index.
+    chunk_failures: BTreeMap<u32, u32>,
     /// The index while its rows are needed: natively to split each chunk
     /// into its units; on the web until it is handed to the host.
     index: Option<og_bundle::runtime::CookedVideoStream>,
@@ -415,6 +470,8 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
         }
     }
     let mut out = Vec::new();
+    let mut active_wanted: u32 = 0;
+    let mut active_ready: u32 = 0;
     for (i, video) in rs.videos.iter_mut().enumerate() {
         let Some(source) = video.stream.as_mut() else {
             continue;
@@ -425,15 +482,26 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
             source.poll();
         }
         let Some(units) = source.units.clone() else {
+            if wants.range((i, 0)..=(i, u64::MAX)).next().is_some() {
+                active_wanted += 1;
+            }
             continue;
         };
         let mut need: BTreeMap<u32, f64> = BTreeMap::new();
+        let mut active_need: BTreeSet<u32> = BTreeSet::new();
         for w in wants.range((i, 0)..=(i, u64::MAX)).map(|(_, w)| w) {
             for (n, seconds) in og_video::stream::chunks_wanted(
                 &units, source.fps, w.frame, w.playing, w.speed, w.looped,
             ) {
+                active_need.insert(n);
                 let s = need.entry(n).or_insert(seconds);
                 *s = s.min(seconds);
+            }
+        }
+        for n in &active_need {
+            active_wanted += 1;
+            if source.has(*n) {
+                active_ready += 1;
             }
         }
         for &(from, seconds) in ahead.get(&i).into_iter().flatten() {
@@ -448,7 +516,7 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
             }
         }
         for (n, seconds) in need {
-            if source.has(n) {
+            if source.has(n) || source.error.is_some() {
                 continue;
             }
             out.push(crate::world::stream::VideoChunkWant {
@@ -460,6 +528,16 @@ pub(crate) fn wanted_chunks(eng: &Engine) -> Vec<crate::world::stream::VideoChun
             });
         }
     }
+    let progress = if active_wanted == 0 {
+        1.0
+    } else {
+        (active_ready as f32 / active_wanted as f32).clamp(0.0, 1.0)
+    };
+    *eng.modules
+        .video
+        .buffer_progress
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = progress;
     out
 }
 
@@ -480,6 +558,7 @@ pub(crate) fn stream_json(eng: &Engine) -> Value {
                     "video": v.id,
                     "file": s.path,
                     "codec": v.info.codec,
+                    "quality": s.active_quality.as_str(),
                     "index": s.units.is_some(),
                     "chunks": s.chunks.len(),
                     "resident": resident,
@@ -496,13 +575,20 @@ pub(crate) fn deliver_chunk(eng: &Engine, video: usize, n: u32, bytes: Result<Ve
     let Some(source) = rs.videos.get_mut(video).and_then(|v| v.stream.as_mut()) else {
         return;
     };
-    // A failed read is said once and read again while a player wants it.
+    // A failed read retries up to MAX_CHUNK_FAILURES times, then marks the
+    // stream broken so players with `wait` unblock instead of hanging forever.
     match bytes.and_then(|b| source.land(n, &b)) {
         Ok(()) => {
+            source.chunk_failures.remove(&n);
             #[cfg(not(target_arch = "wasm32"))]
             wake(&rs.videos[video]);
         }
         Err(e) => {
+            let count = source.chunk_failures.entry(n).or_default();
+            *count += 1;
+            if *count >= MAX_CHUNK_FAILURES && source.error.is_none() {
+                source.error = Some(e.clone());
+            }
             drop(rs);
             let mut st = eng.state.borrow_mut();
             if st.ui_warned.insert(e.clone()) {
@@ -540,7 +626,7 @@ fn record(
     Ok((id, layout))
 }
 
-/// Schedules `og.video` here (after the game's systems, before og.audio).
+/// Schedules `og.video` here (after og.timeline, before og.audio).
 /// og.VideoPlayer is lazy (crate::engine::lazy): registered, and granted to this
 /// system, when a game first names it, so a world without footage keeps
 /// its type table and hash; until then the system has nothing to play.
@@ -575,7 +661,50 @@ pub(crate) fn install(
 /// The frame shown at `time` (a hair of slack, so a sum of ticks that lands
 /// a rounding short of a frame's start shows that frame).
 fn frame_at(time: f64, c: &Clip) -> u32 {
-    ((time * f64::from(c.fps) + 1e-6).floor().max(0.0) as u32).min(c.frames - 1)
+    ((time * f64::from(c.fps) + 1e-6).floor().max(0.0) as u32).min(c.frames.saturating_sub(1))
+}
+
+/// Picks the localized audio track matching `locale` (exact BCP-47 tag first,
+/// then primary language subtag), falling back to the base track.
+fn sound_for_locale(c: &Clip, locale: &str) -> u64 {
+    if c.locale_sounds.is_empty() || locale.is_empty() {
+        return c.sound;
+    }
+    if let Some((_, h)) = c
+        .locale_sounds
+        .iter()
+        .find(|(tag, _)| tag.eq_ignore_ascii_case(locale))
+    {
+        return *h;
+    }
+    if let Some(lang) = locale.split(['-', '_']).next()
+        && let Some((_, h)) = c.locale_sounds.iter().find(|(tag, _)| {
+            tag.split(['-', '_'])
+                .next()
+                .is_some_and(|l| l.eq_ignore_ascii_case(lang))
+        })
+    {
+        return *h;
+    }
+    c.sound
+}
+
+fn stop_audio(
+    ctx: &mut SystemContext<'_>,
+    e: Entity,
+    audio: &(SchemaId, Layout),
+    bad: &impl Fn(String) -> og_core::Error,
+) -> og_core::Result<()> {
+    let Ok(ab) = ctx.get_bytes(e, audio.0) else {
+        return Ok(());
+    };
+    let mut s = audio.1.decode(&ab);
+    if s["playing"].as_bool() == Some(true) {
+        s["playing"] = json!(false);
+        let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
+        ctx.set_bytes(e, audio.0, &out)?;
+    }
+    Ok(())
 }
 
 fn run(
@@ -614,14 +743,39 @@ fn run(
         })
         .collect::<og_core::Result<_>>()?;
     let textures = assign(engine_id, decoded.iter().map(|d| &d.3)).map_err(bad)?;
+    let locale = {
+        let l = crate::bind::i18n::og_i18n_locale(engine_id);
+        if l.requested.is_empty() {
+            l.active
+        } else {
+            l.requested
+        }
+    };
     for ((e, bytes, mut v, row), texture) in decoded.into_iter().zip(textures) {
-        let Some(c) = clips.get(&row.video).copied() else {
+        let Some(c) = clips.get(&row.video) else {
+            if row.texture != 0 {
+                v["texture"] = json!(0.0);
+                let out = player.1.encode(Some(&bytes), Some(&v)).map_err(bad)?;
+                ctx.set_bytes(e, player.0, &out)?;
+            }
+            stop_audio(ctx, e, audio, &bad)?;
             continue;
         };
         let fps = f64::from(c.fps);
         let speed = f64::from(row.speed).clamp(0.0, 4.0);
         let playing = row.playing;
         let looped = row.r#loop;
+        let has_sub_loop = looped && row.loop_end > row.loop_start && row.loop_start >= 0.0;
+        let loop_start = if has_sub_loop {
+            row.loop_start.min(c.seconds)
+        } else {
+            0.0
+        };
+        let loop_end = if has_sub_loop {
+            row.loop_end.min(c.seconds)
+        } else {
+            c.seconds
+        };
         let start = row.time.max(0.0);
         // A player this system has not written yet starts where it says;
         // afterwards a time outside the frame last written is a seek.
@@ -633,7 +787,12 @@ fn run(
             time += speed / f64::from(rate);
         }
         let mut finished = false;
-        if time >= c.seconds {
+        if has_sub_loop && loop_end > loop_start {
+            if time >= loop_end {
+                let span = loop_end - loop_start;
+                time = loop_start + (time - loop_start).rem_euclid(span);
+            }
+        } else if time >= c.seconds {
             if looped && c.seconds > 0.0 {
                 time %= c.seconds;
             } else {
@@ -642,28 +801,31 @@ fn run(
             }
         }
         v["time"] = json!(time);
-        v["frame"] = json!(frame_at(time, &c));
+        v["frame"] = json!(frame_at(time, c));
         v["finished"] = json!(finished);
         v["texture"] = json!(texture as f64);
         let out = player.1.encode(Some(&bytes), Some(&v)).map_err(bad)?;
         ctx.set_bytes(e, player.0, &out)?;
         // The sound: started at the video's time, stopped for a tick on a
-        // seek so it starts again there on the next.
-        if c.sound == 0 {
+        // seek so it starts again there on the next. A silent clip stops any
+        // sound left over from an earlier video on the same entity.
+        let sound = sound_for_locale(c, &locale);
+        if sound == 0 {
+            stop_audio(ctx, e, audio, &bad)?;
             continue;
         }
         let Ok(ab) = ctx.get_bytes(e, audio.0) else {
             continue;
         };
         let mut s = audio.1.decode(&ab);
-        s["sound"] = json!(c.sound as f64);
+        s["sound"] = json!(sound as f64);
         s["playing"] = json!(playing && !finished && !seek && speed > 0.0);
         s["playbackRate"] = json!(speed.max(0.0625));
         s["loop"] = json!(looped);
         // The loop wraps where the picture does, never at the sound's own
         // end (an encoder's last frame may run past it).
-        s["loopStart"] = json!(0.0);
-        s["loopEnd"] = json!(c.seconds);
+        s["loopStart"] = json!(loop_start);
+        s["loopEnd"] = json!(loop_end);
         s["startOffset"] = json!(start);
         let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
         ctx.set_bytes(e, audio.0, &out)?;
@@ -743,6 +905,8 @@ fn assign<'a>(
 
 /// Extraction: each player's texture shows its frame. A player with
 /// `wait` whose frame is not shown yet holds the clock (`video_stalled`).
+/// Idle stream views park their GPU texture and close their decoder after
+/// `IDLE_PARK_FRAMES` frames so long-form interactive films keep bounded VRAM.
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     rs.video_stalled = false;
     if rs.videos.is_empty() {
@@ -752,6 +916,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         return;
     };
     let want = wants(world, layout);
+    let wanted_keys: BTreeSet<(usize, u64)> = want.keys().copied().collect();
     let mut stalled = false;
     let RenderState { videos, scene, .. } = rs;
     for ((i, t), w) in want {
@@ -767,15 +932,55 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 f.show(scene, w.frame as usize);
                 true
             }
-            Frames::Stream(sv) if ready => match video.stream.as_mut() {
-                Some(source) => show_stream(scene, source, sv, w.frame, w.looped),
-                None => true,
-            },
-            Frames::Stream(_) => false,
+            Frames::Stream(sv) => {
+                sv.idle_frames = 0;
+                if !sv.active
+                    && let Some(source) = video.stream.as_ref()
+                {
+                    scene.activate_stream_texture(
+                        sv.texture,
+                        source.width,
+                        source.height,
+                        source.nearest,
+                        source.alpha,
+                    );
+                    sv.active = true;
+                }
+                if ready {
+                    match video.stream.as_mut() {
+                        Some(source) => show_stream(scene, source, sv, w.frame, w.looped),
+                        None => true,
+                    }
+                } else {
+                    false
+                }
+            }
         };
         // A stream that cannot play (a failed read, no decoder) never holds it.
         let broken = video.stream.as_ref().is_some_and(|s| s.error.is_some());
         stalled |= w.wait && w.playing && w.speed > 0.0 && !shown && !broken;
+    }
+    for (i, video) in videos.iter_mut().enumerate() {
+        let Some(source) = video.stream.as_ref() else {
+            continue;
+        };
+        for (h, view) in &mut video.views {
+            if wanted_keys.contains(&(i, *h)) {
+                continue;
+            }
+            if let Frames::Stream(sv) = view {
+                #[cfg(not(target_arch = "wasm32"))]
+                let open = sv.active || sv.player.is_some();
+                #[cfg(target_arch = "wasm32")]
+                let open = sv.active;
+                if open {
+                    sv.idle_frames = sv.idle_frames.saturating_add(1);
+                    if sv.idle_frames > IDLE_PARK_FRAMES {
+                        sv.park(scene, source);
+                    }
+                }
+            }
+        }
     }
     rs.video_stalled = stalled;
 }
@@ -912,6 +1117,9 @@ fn show_stream(
     if let Some(f) = hooks.video_frame(source.key, player, frame, looped) {
         sv.shown = Some(f.timestamp() as u32);
         scene.write_stream_frame(sv.texture, f);
+    } else if let Some(err) = hooks.video_error(source.key, player) {
+        source.error = Some(format!("{}: {err}", source.id));
+        return false;
     }
     sv.shown == Some(frame)
 }
@@ -927,11 +1135,165 @@ fn scene_key(sv: &StreamView) -> u64 {
 #[cfg(not(target_arch = "wasm32"))]
 const DECODE_THREADS: u32 = 4;
 
+fn has_output(eng: &Engine, id: &str) -> bool {
+    let a = eng.assets.borrow();
+    a.bundle_for(id).is_ok_and(|(b, _)| b.output(id).is_ok())
+}
+
+/// Picks the cooked stream rendition for `base_id` given the host's decoder
+/// capabilities and the player's quality preference.
+fn select_rendition(
+    eng: &Engine,
+    base_id: &str,
+    base_size: (u32, u32),
+    pref: VideoQuality,
+) -> (
+    String,
+    (u32, u32),
+    Option<og_video::mp4::Codec>,
+    &'static str,
+    VideoQuality,
+) {
+    let decoder = crate::engine::hooks()
+        .map_or_else(crate::engine::VideoDecoder::default, |h| h.video_decoder());
+    let stream_high = format!("{base_id}#stream");
+    let stream_med = format!("{base_id}#stream720");
+    let stream_low = format!("{base_id}#stream480");
+    let has_med = has_output(eng, &stream_med);
+    let has_low = has_output(eng, &stream_low);
+    let med_size = og_video::stream::fallback_size(base_size).unwrap_or(base_size);
+    let low_size = og_video::stream::low_size(base_size).unwrap_or(med_size);
+
+    let pick_high = || -> (String, (u32, u32), Option<og_video::mp4::Codec>, &'static str, VideoQuality) {
+        if !matches!(decoder.name.as_str(), "rav1d" | "webcodecs") {
+            for c in &decoder.codecs {
+                let kind = match c.as_str() {
+                    "hevc" => og_video::mp4::Codec::Hevc,
+                    "h264" => og_video::mp4::Codec::H264,
+                    _ => continue,
+                };
+                let s = format!("{base_id}#stream{c}");
+                if has_output(eng, &s) {
+                    let word = if c == "hevc" { "hevc" } else { "h264" };
+                    return (s, base_size, Some(kind), word, VideoQuality::High);
+                }
+            }
+        }
+        (stream_high.clone(), base_size, None, "av1", VideoQuality::High)
+    };
+
+    match pref {
+        VideoQuality::Low => {
+            if has_low {
+                (stream_low, low_size, None, "av1", VideoQuality::Low)
+            } else if has_med {
+                (stream_med, med_size, None, "av1", VideoQuality::Medium)
+            } else {
+                pick_high()
+            }
+        }
+        VideoQuality::Medium => {
+            if has_med {
+                (stream_med, med_size, None, "av1", VideoQuality::Medium)
+            } else {
+                pick_high()
+            }
+        }
+        VideoQuality::High => pick_high(),
+        VideoQuality::Auto => {
+            let high = pick_high();
+            if high.2.is_some() {
+                return high;
+            }
+            if decoder.name == "rav1d-wasm"
+                && has_med
+                && og_video::stream::fallback_size(base_size).is_some()
+            {
+                (stream_med, med_size, None, "av1", VideoQuality::Medium)
+            } else {
+                high
+            }
+        }
+    }
+}
+
+type StreamManifest = (String, u64, Vec<(String, u64)>);
+
+fn read_stream_manifest(eng: &Engine, stream_id: &str) -> Result<StreamManifest, String> {
+    let a = eng.assets.borrow();
+    let (bundle, dir) = a.bundle_for(stream_id)?;
+    let o = bundle.output(stream_id).map_err(|e| e.to_string())?;
+    let mut chunks = Vec::new();
+    while let Ok(c) = bundle.output(&og_bundle::runtime::video_chunk_id(
+        stream_id,
+        chunks.len() as u32,
+    )) {
+        chunks.push((format!("{dir}/{}", c.file), c.stamp));
+    }
+    if chunks.is_empty() {
+        return Err(format!("{stream_id} has no chunks: cook it again"));
+    }
+    Ok((format!("{dir}/{}", o.file), o.stamp, chunks))
+}
+
+fn available_qualities(eng: &Engine, base_id: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    if has_output(eng, &format!("{base_id}#stream"))
+        || has_output(eng, &format!("{base_id}#streamhevc"))
+        || has_output(eng, &format!("{base_id}#streamh264"))
+    {
+        out.push("high".to_string());
+    }
+    if has_output(eng, &format!("{base_id}#stream720")) {
+        out.push("medium".to_string());
+    }
+    if has_output(eng, &format!("{base_id}#stream480")) {
+        out.push("low".to_string());
+    }
+    out
+}
+
+fn discover_audio_locales(eng: &Engine, id: &str) -> Result<Vec<(String, u64)>, String> {
+    let prefix = format!("{id}#audio.");
+    let mut tags: Vec<String> = {
+        let a = eng.assets.borrow();
+        let Ok((bundle, _)) = a.bundle_for(id) else {
+            return Ok(Vec::new());
+        };
+        bundle
+            .manifest()
+            .outputs()
+            .filter(|o| o.ty == "og.Sound")
+            .filter_map(|o| o.id.strip_prefix(&prefix))
+            .filter(|tag| !tag.contains('#') && !tag.is_empty())
+            .map(str::to_string)
+            .collect()
+    };
+    tags.sort();
+    tags.dedup();
+    let mut out = Vec::with_capacity(tags.len());
+    for tag in tags {
+        let i = assets::load_sound(eng, &format!("{prefix}{tag}"))?;
+        let handle = eng.assets.borrow().sound_handles[i];
+        out.push((tag, handle));
+    }
+    Ok(out)
+}
+
+fn output_hash(eng: &Engine, id: &str) -> u64 {
+    let a = eng.assets.borrow();
+    a.bundle_for(id)
+        .ok()
+        .and_then(|(b, _)| b.output(id).ok().map(|o| o.hash))
+        .unwrap_or(0)
+}
+
 fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     if let Some(v) = eng.render.borrow().videos.iter().find(|v| v.id == id) {
         return Ok(v.info.clone());
     }
+    let hash = output_hash(eng, &id);
     let meta = {
         let a = eng.assets.borrow();
         let (bytes, bundle) = a.blob(&id)?;
@@ -945,77 +1307,44 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
     } else {
         0
     };
+    let locale_sounds = discover_audio_locales(eng, &id)?;
+    let audio_locales: Vec<String> = locale_sounds.iter().map(|(t, _)| t.clone()).collect();
     let player = eng.state.borrow().layouts.get(PLAYER).cloned();
     let nearest = meta.kind == og_bundle::format::kind::PIXEL;
+    let pref = *eng
+        .modules
+        .video
+        .quality
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     let mut codec = "av1";
+    let qualities = if meta.streamed == 1 {
+        available_qualities(eng, &id)
+    } else {
+        Vec::new()
+    };
     let (view, stream, format, bytes, poster) = if meta.streamed == 1 {
-        let decoder = crate::engine::hooks()
-            .map_or_else(crate::engine::VideoDecoder::default, |h| h.video_decoder());
-        // Where AV1 has no decoder but software, a browser whose WebCodecs
-        // decodes HEVC or H.264 plays that rendition (its first the cook
-        // made, in the browser's order), never the AV1 as well.
-        let has = |stream: &str| {
-            let a = eng.assets.borrow();
-            a.bundle_for(stream)
-                .is_ok_and(|(b, _)| b.output(stream).is_ok())
-        };
-        let other = if matches!(decoder.name.as_str(), "rav1d" | "webcodecs") {
-            None
-        } else {
-            decoder.codecs.iter().find_map(|c| {
-                let kind = match c.as_str() {
-                    "hevc" => og_video::mp4::Codec::Hevc,
-                    "h264" => og_video::mp4::Codec::H264,
-                    _ => return None,
-                };
-                let stream = format!("{id}#stream{c}");
-                has(&stream).then_some((stream, kind, c.as_str()))
-            })
-        };
-        // Otherwise the web's software fallback plays the 720p rendition the
-        // cook adds beside a larger stream (og_video::stream::fallback_size).
-        let software = decoder.name == "rav1d-wasm";
-        let small = og_video::stream::fallback_size((meta.width, meta.height))
-            .filter(|_| software && other.is_none())
-            .map(|size| (format!("{id}#stream720"), size));
-        let rendition = other.as_ref().map(|(_, k, _)| *k);
-        if let Some((_, _, word)) = &other {
-            codec = if *word == "hevc" { "hevc" } else { "h264" };
-        }
-        let (stream_id, (width, height)) = match (other, small) {
-            (Some((s, _, _)), _) => (s, (meta.width, meta.height)),
-            (None, Some(s)) => s,
-            (None, None) => (format!("{id}#stream"), (meta.width, meta.height)),
-        };
-        // The index's file and each chunk's: read when players want them.
-        let (path, stamp, chunks) = {
-            let a = eng.assets.borrow();
-            let (bundle, dir) = a.bundle_for(&stream_id)?;
-            let o = bundle.output(&stream_id).map_err(|e| e.to_string())?;
-            let mut chunks = Vec::new();
-            while let Ok(c) = bundle.output(&og_bundle::runtime::video_chunk_id(
-                &stream_id,
-                chunks.len() as u32,
-            )) {
-                chunks.push((format!("{dir}/{}", c.file), c.stamp));
-            }
-            (format!("{dir}/{}", o.file), o.stamp, chunks)
-        };
-        if chunks.is_empty() {
-            return Err(format!("{stream_id} has no chunks: cook it again"));
-        }
+        let (stream_id, (width, height), rendition, chosen_codec, active_quality) =
+            select_rendition(eng, &id, (meta.width, meta.height), pref);
+        codec = chosen_codec;
+        let (path, stamp, chunks) = read_stream_manifest(eng, &stream_id)?;
         let poster = assets::handle(assets::load_texture(eng, &format!("{id}#poster"))?);
-        // Nothing is fetched until a player wants its frames.
+        // Nothing is fetched until a player wants its frames, and GPU storage
+        // stays parked (4 bytes) until a player activates it in `extract`.
         let source = StreamSource {
+            base_id: id.clone(),
+            base_size: (meta.width, meta.height),
             path,
             stamp,
-            id: stream_id.clone(),
+            id: stream_id,
             width,
             height,
             nearest,
             alpha: meta.alpha == 1,
             fps: meta.fps,
+            active_quality,
             chunks,
+            chunk_failures: BTreeMap::new(),
             index: None,
             units: None,
             rendition,
@@ -1073,9 +1402,12 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
         alpha: meta.alpha == 1,
         codec: if stream.is_some() { codec } else { "" }.to_string(),
         poster: poster.unwrap_or(texture),
+        qualities,
+        audio_locales,
     };
     rs.videos.push(LoadedVideo {
         id,
+        hash,
         views: vec![(texture, view)],
         info: info.clone(),
         stream,
@@ -1088,9 +1420,145 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
             frames: meta.frames,
             seconds: f64::from(meta.frames) / f64::from(meta.fps),
             sound,
+            locale_sounds,
         },
     );
     Ok(info)
+}
+
+/// Switches a loaded stream to a new rendition (for ABR `setQuality` or hot reload).
+fn switch_stream(
+    eng: &Engine,
+    scene: &mut og_render::RenderScene,
+    video: &mut LoadedVideo,
+    pref: VideoQuality,
+    force: bool,
+) -> Result<(), String> {
+    let Some(source) = video.stream.as_mut() else {
+        return Ok(());
+    };
+    let (stream_id, (width, height), rendition, codec, active_quality) =
+        select_rendition(eng, &source.base_id, source.base_size, pref);
+    if !force && source.id == stream_id && source.error.is_none() {
+        return Ok(());
+    }
+    let (path, stamp, chunks) = read_stream_manifest(eng, &stream_id)?;
+    for n in 0..source.chunks.len() as u32 {
+        source.release(n);
+    }
+    for (_, view) in &mut video.views {
+        if let Frames::Stream(sv) = view {
+            sv.park(scene, source);
+        }
+    }
+    source.path = path;
+    source.stamp = stamp;
+    source.id = stream_id;
+    source.width = width;
+    source.height = height;
+    source.rendition = rendition;
+    source.active_quality = active_quality;
+    source.chunks = chunks;
+    source.chunk_failures.clear();
+    source.index = None;
+    source.units = None;
+    source.config.clear();
+    source.handed = false;
+    #[cfg(target_arch = "wasm32")]
+    source.inbox.clear();
+    source.error = None;
+    video.info.codec = codec.to_string();
+    video.info.bytes = f64::from(width) * f64::from(height) * 4.0;
+    Ok(())
+}
+
+/// After a hot reload: refreshes every loaded streamed video whose cooked
+/// output hash changed.
+pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
+    let pref = *eng
+        .modules
+        .video
+        .quality
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    let mut failed = Vec::new();
+    let count = eng.render.borrow().videos.len();
+    for i in 0..count {
+        let (id, old_hash, streamed) = {
+            let rs = eng.render.borrow();
+            let v = &rs.videos[i];
+            (v.id.clone(), v.hash, v.stream.is_some())
+        };
+        let now_hash = output_hash(eng, &id);
+        if now_hash == 0 || now_hash == old_hash {
+            continue;
+        }
+        if !streamed {
+            continue;
+        }
+        let meta = {
+            let a = eng.assets.borrow();
+            match a.blob(&id).and_then(|(bytes, bundle)| {
+                bundle.video(&id, bytes.bytes()).map_err(|e| e.to_string())
+            }) {
+                Ok(m) => m,
+                Err(e) => {
+                    failed.push(format!("video {id}: {e}"));
+                    continue;
+                }
+            }
+        };
+        let qualities = available_qualities(eng, &id);
+        let mut rs = eng.render.borrow_mut();
+        let RenderState { videos, scene, .. } = &mut *rs;
+        let v = &mut videos[i];
+        v.hash = now_hash;
+        v.info.width = meta.width;
+        v.info.height = meta.height;
+        v.info.frames = meta.frames;
+        v.info.fps = meta.fps;
+        v.info.seconds = meta.seconds;
+        v.info.qualities = qualities;
+        if let Some(s) = v.stream.as_mut() {
+            s.base_size = (meta.width, meta.height);
+            s.fps = meta.fps;
+        }
+        if let Err(e) = switch_stream(eng, scene, v, pref, true) {
+            failed.push(format!("video {id}: {e}"));
+        }
+        let video_handle = v.info.video;
+        drop(rs);
+        if let Some(c) = clips(eng)
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_mut(&video_handle)
+        {
+            c.fps = meta.fps;
+            c.frames = meta.frames;
+            c.seconds = f64::from(meta.frames) / f64::from(meta.fps);
+        }
+    }
+    failed
+}
+
+/// Info of a loaded video handle (for og.flow view dimensions & chart posters).
+pub(crate) fn info_of(eng: &Engine, video: u64) -> Option<VideoInfo> {
+    let rs = eng.render.try_borrow().ok()?;
+    assets::index_of(video as f64)
+        .and_then(|i| rs.videos.get(i))
+        .map(|v| v.info.clone())
+}
+
+/// Current presentation buffering status `(buffering, progress)` for `og.flow`.
+pub(crate) fn buffering_state(eng: &Engine) -> (bool, f32) {
+    let buffering = eng.render.try_borrow().is_ok_and(|rs| rs.video_stalled);
+    let progress = *eng
+        .modules
+        .video
+        .buffer_progress
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    (buffering, if buffering { progress } else { 1.0 })
 }
 
 /// A video's og.VideoPlayer.video handle, loaded as og.load.video does (a
@@ -1140,5 +1608,45 @@ pub fn og_video_capabilities(world: u32) -> crate::host::wire::VideoCapabilities
         max_width: if streamed { d.max_width } else { 0 },
         max_height: if streamed { d.max_height } else { 0 },
         codecs,
+    }
+}
+
+/// `og.video.setQuality`: presentation-only quality switch for streamed videos.
+pub fn og_video_set_quality(world: u32, quality: String) -> Result<(), String> {
+    let q = VideoQuality::parse(&quality)?;
+    let eng = engine(world)?;
+    *eng.modules
+        .video
+        .quality
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = q;
+    let mut rs = eng.render.borrow_mut();
+    let RenderState { videos, scene, .. } = &mut *rs;
+    for v in videos.iter_mut() {
+        switch_stream(&eng, scene, v, q, false)?;
+    }
+    Ok(())
+}
+
+/// `og.video.buffering`: presentation-only buffering state.
+pub fn og_video_buffering(world: u32) -> VideoBuffering {
+    let Ok(eng) = engine(world) else {
+        return VideoBuffering {
+            buffering: false,
+            progress: 1.0,
+            quality: VideoQuality::Auto,
+        };
+    };
+    let (buffering, progress) = buffering_state(&eng);
+    let quality = *eng
+        .modules
+        .video
+        .quality
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    VideoBuffering {
+        buffering,
+        progress,
+        quality,
     }
 }

@@ -31,7 +31,7 @@ pub(crate) use stage::{before_tick, gate, waiting};
 use crate::{present::feel, world::assets};
 use evaluate::{Evaluated, NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate, preroll};
 use playback::{Op, Rec, Run, shared};
-pub(crate) use playback::{install, register_records};
+pub(crate) use playback::{install, register_records, scene_pending, set_suppressed};
 pub use playback::{
     og_timeline_captions, og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop,
 };
@@ -574,6 +574,41 @@ pub(crate) fn scenes_of(engine: u32, h: u64) -> Vec<String> {
         .filter(|k| !k.scene.is_empty())
         .map(|k| k.scene.clone())
         .collect()
+}
+
+/// Evaluates caption tracks of loaded timeline `h` directly at time `t` for
+/// `owner` (pure and deterministic across save/restore, zero 1-tick lag).
+pub(crate) fn captions_at(
+    engine: u32,
+    h: u64,
+    owner: u64,
+    t: f32,
+) -> Vec<crate::host::wire::TimelineCaption> {
+    let Some(tl) = lock(&registry(engine)).timeline(h) else {
+        return Vec::new();
+    };
+    let l = crate::bind::i18n::og_i18n_locale(engine);
+    let locale = if l.requested.is_empty() {
+        l.active
+    } else {
+        l.requested
+    };
+    let loaded = lock(&tl);
+    let mut out = Vec::new();
+    for (ti, tr) in loaded.timeline.tracks.iter().enumerate() {
+        if let Track::Caption(c) = tr
+            && let Some((ki, k)) = eval::caption_at(c, &locale, t)
+        {
+            out.push(crate::host::wire::TimelineCaption {
+                id: format!("{owner}:{ti}:{ki}"),
+                text: k.text.clone(),
+                speaker: k.speaker.clone(),
+                spans: evaluate::caption_spans(&k.spans),
+                position: k.position.clone(),
+            });
+        }
+    }
+    out
 }
 
 /// A timeline's handle by asset path, loaded (and granted) as

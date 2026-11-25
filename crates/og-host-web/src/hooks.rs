@@ -1,7 +1,9 @@
 //! The runtime's hooks on the web host: the JavaScript dispatcher, what
 //! the Worker fetched or decoded for the engine, and this thread's clocks.
 
-use crate::assets::{drop_textures, is_model, is_sound_chunk, is_stream_pack};
+use crate::assets::{
+    drop_textures, is_model, is_sound_chunk, is_stream_pack, is_video_chunk, is_video_stream,
+};
 use crate::{
     DECODED_IMAGES, FETCHER, FILES, IMAGE_DECODER, INFLATED, INFLATER, ORPHANED, PERFORMANCE,
     REQUESTED, VIDEO,
@@ -41,15 +43,13 @@ impl Hooks for WebHooks {
     }
 
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        // A pack is read once per load: taken, not copied, and fetched
-        // again (a failure too) the next time its group loads. So is a
-        // model: the runtime decodes it once into the renderer's meshes
-        // (assets::load_gltf keeps the asset by path) and a refresh fetches
-        // it again; kept, a large scene's models would sit in the wasm heap
-        // twice, encoded beside decoded. og.motion's model is read once,
-        // into the GPU's buffers.
+        // One-shot files are taken, not copied, so video chunks, sound chunks,
+        // stream indices, packs and models never pile up in the wasm heap (and
+        // transient fetch failures can retry cleanly).
         let known = if is_stream_pack(path)
             || is_sound_chunk(path)
+            || is_video_chunk(path)
+            || is_video_stream(path)
             || is_model(path)
             || path.ends_with("/motion/model.ogb")
         {
@@ -255,6 +255,32 @@ impl Hooks for WebHooks {
             );
             let f = h.frame.apply(&JsValue::NULL, &args).ok()?;
             (!f.is_null() && !f.is_undefined()).then(|| f.unchecked_into())
+        })
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn video_close(&self, player: u64) {
+        VIDEO.with(|v| {
+            let Some(h) = &*v.borrow() else { return };
+            let _ = h
+                .close
+                .call1(&JsValue::NULL, &JsValue::from_f64(player as f64));
+        });
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn video_error(&self, stream: u64, player: u64) -> Option<String> {
+        VIDEO.with(|v| {
+            let h = v.borrow().as_ref().cloned()?;
+            let r = h
+                .error
+                .call2(
+                    &JsValue::NULL,
+                    &JsValue::from_f64(stream as f64),
+                    &JsValue::from_f64(player as f64),
+                )
+                .ok()?;
+            r.as_string().filter(|s| !s.is_empty())
         })
     }
 }
