@@ -43,8 +43,16 @@ fn hit(o: vec2<f32>, d: vec2<f32>, ab: vec4<f32>) -> f32 {
   return FAR;
 }
 
+// Written as a vec4: WebGPU refuses fewer components than the target has,
+// and the target is Rgba16Float where Rg32Float is not renderable (Compat).
 @fragment
-fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec2<f32> {
+fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
+  let hits = first_hits(pos);
+  return vec4<f32>(hits, 0.0, 0.0);
+}
+
+// The nearest occluder along this texel's ray and where the ray leaves it.
+fn first_hits(pos: vec4<f32>) -> vec2<f32> {
   let col = u32(pos.x);
   let row = min(u32(pos.y), 63u);
   let theta = (f32(col) + 0.5) / f32(max(shadows.info.x, 1u)) * 2.0 * PI;
