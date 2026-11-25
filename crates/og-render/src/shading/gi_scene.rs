@@ -385,9 +385,13 @@ pub(crate) struct GiScene {
     pub static_len: usize,
     /// The bottom levels changed since the buffer was written.
     pub static_dirty: bool,
+    /// The top level changed since the buffer was written.
+    pub tlas_dirty: bool,
     /// The top level's root (its vec4 index), and the instances placed.
     pub root: usize,
     pub instances: usize,
+    /// Last frame's placed instances, so static scenes skip CPU SAH TLAS rebuild and GPU upload.
+    last_placed: Vec<Placed>,
     /// The mean base colour of each texture (by index and revision).
     texture_means: HashMap<(usize, u64), Vec3>,
 }
@@ -401,6 +405,9 @@ impl GiScene {
         placed: &[Placed],
         mut triangles: impl FnMut(Source) -> Vec<[Vec3; 3]>,
     ) {
+        if !self.words.is_empty() && self.last_placed == placed {
+            return;
+        }
         let mut sources: Vec<Source> = placed.iter().map(|p| p.source).collect();
         sources.sort();
         sources.dedup();
@@ -466,6 +473,9 @@ impl GiScene {
         }
         self.root = at;
         self.instances = keep.len();
+        self.last_placed.clear();
+        self.last_placed.extend_from_slice(placed);
+        self.tlas_dirty = true;
     }
 
     /// The mean colour of an sRGB texture's texels (linear), cached by its

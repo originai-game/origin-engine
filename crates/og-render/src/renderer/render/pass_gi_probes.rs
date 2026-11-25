@@ -34,23 +34,15 @@ impl Pass for GiProbesPass {
         let r = cx.ctx.r;
         let g = st.as_ref().expect("planned with it");
         let ibl = r.lights.ibl.views();
-        let frame = crate::volumetric::bind_at(
-            &r.device,
-            "gi probes frame",
-            &g.frame_layout,
-            &[
-                (0, r.lights.frame_buffer.as_entire_binding()),
-                (3, wgpu::BindingResource::TextureView(&ibl.irradiance)),
-                (4, wgpu::BindingResource::TextureView(&ibl.prefiltered)),
-                (6, wgpu::BindingResource::Sampler(&ibl.sampler)),
-                (7, r.lights.light_tables.as_entire_binding()),
-                (8, r.lights.lightmaps.probe_buffer.as_entire_binding()),
-            ],
-        );
         g.record(
             &r.device,
             cx.encoder,
-            &frame,
+            &r.lights.frame_buffer,
+            &r.shadows.cascade_map.array_view,
+            &ibl.irradiance,
+            &ibl.prefiltered,
+            &ibl.sampler,
+            &r.lights.light_tables,
             &r.lights.lightmaps.probe_buffer,
         );
     }

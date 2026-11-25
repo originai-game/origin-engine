@@ -522,6 +522,8 @@ pub(crate) struct PostPasses {
     pub contact: contact::ContactPasses,
     /// The view depth's MIP chain's compute pass (`depth_mips.rs`).
     pub depth_mips: depth_mips::DepthMipsPass,
+    /// Prefiltered colour MIP pyramid compute pass for SSGI (`depth_mips.rs`).
+    pub color_mips: depth_mips::ColorMipsPass,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -693,6 +695,7 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
     .chain([
         ("contact", contact::source()),
         ("depth mips", depth_mips::source()),
+        ("color mips", depth_mips::color_source()),
     ])
     .collect()
 }

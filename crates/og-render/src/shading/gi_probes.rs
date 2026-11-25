@@ -167,7 +167,7 @@ pub(crate) fn plan(
             spacing,
             first: region + c * per * STRIDE,
         });
-        let period = if reset { 1 } else { 1u32 << c };
+        let period = if reset { 1 } else { 2u32 << c };
         let phase = (frame % period as u64) as u32;
         let probes = (per as u32 - phase).div_ceil(period);
         slices.push(Slice {
@@ -405,6 +405,16 @@ pub(crate) struct GiProbes {
     blend_bind: std::cell::RefCell<
         crate::gpu::bind_cache::SingleBindCache<(wgpu::Buffer, wgpu::Buffer, wgpu::Buffer)>,
     >,
+    frame_bind: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(
+            wgpu::Buffer,
+            wgpu::TextureView,
+            wgpu::TextureView,
+            wgpu::TextureView,
+            wgpu::Buffer,
+            wgpu::Buffer,
+        )>,
+    >,
 }
 
 impl GiProbes {
@@ -444,6 +454,7 @@ impl GiProbes {
                         min_binding_size: None,
                     },
                 ),
+                crate::ShadowMap::cascade_layout_entry(1, compute),
                 entry(3, cube),
                 entry(4, cube),
                 entry(
@@ -495,7 +506,7 @@ impl GiProbes {
                     module: &module,
                     entry_point: Some(entry),
                     compilation_options: Default::default(),
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
             )
         };
@@ -539,6 +550,7 @@ impl GiProbes {
             written: Vec::new(),
             trace_bind: Default::default(),
             blend_bind: Default::default(),
+            frame_bind: Default::default(),
         }
     }
 
@@ -604,7 +616,8 @@ impl GiProbes {
         if self.bvh.fit(device, (words.len() * 16) as u64) || self.scene.static_dirty {
             crate::traffic::write_buffer(queue, self.bvh.get(), 0, bytemuck::cast_slice(words));
             self.scene.static_dirty = false;
-        } else {
+            self.scene.tlas_dirty = false;
+        } else if self.scene.tlas_dirty {
             let at = self.scene.static_len;
             crate::traffic::write_buffer(
                 queue,
@@ -612,6 +625,7 @@ impl GiProbes {
                 (at * 16) as u64,
                 bytemuck::cast_slice(&words[at..]),
             );
+            self.scene.tlas_dirty = false;
         }
         let (cascades, slices) = plan(&desc, eye, forward, region, self.frame, reset);
         let rays = rays(&desc);
@@ -710,17 +724,50 @@ impl GiProbes {
         !self.slices.is_empty()
     }
 
-    /// Records this frame's trace and blend, `frame` the trace's frame group
-    /// (made with [`GiProbes::frame_layout`]).
+    /// Records this frame's trace and blend, caching the frame bind group
+    /// over the frame uniform, cascades, IBL cubes, light tables and probe buffer.
     // A guarded entry into the engine's `render3d` module (wasm-modules.json).
+    #[allow(clippy::too_many_arguments)]
     #[inline(never)]
     pub fn record(
         &self,
         device: &wgpu::Device,
         encoder: &mut crate::Encoder,
-        frame: &wgpu::BindGroup,
+        frame_buffer: &wgpu::Buffer,
+        cascades: &wgpu::TextureView,
+        irradiance: &wgpu::TextureView,
+        prefiltered: &wgpu::TextureView,
+        ibl_sampler: &wgpu::Sampler,
+        light_tables: &wgpu::Buffer,
         probes: &wgpu::Buffer,
     ) {
+        let mut frame_cache = self.frame_bind.borrow_mut();
+        let frame = frame_cache.get_or_insert_with(
+            (
+                frame_buffer.clone(),
+                cascades.clone(),
+                irradiance.clone(),
+                prefiltered.clone(),
+                light_tables.clone(),
+                probes.clone(),
+            ),
+            || {
+                crate::volumetric::bind_at(
+                    device,
+                    "gi probes frame",
+                    &self.frame_layout,
+                    &[
+                        (0, frame_buffer.as_entire_binding()),
+                        (1, wgpu::BindingResource::TextureView(cascades)),
+                        (3, wgpu::BindingResource::TextureView(irradiance)),
+                        (4, wgpu::BindingResource::TextureView(prefiltered)),
+                        (6, wgpu::BindingResource::Sampler(ibl_sampler)),
+                        (7, light_tables.as_entire_binding()),
+                        (8, probes.as_entire_binding()),
+                    ],
+                )
+            },
+        );
         let params = wgpu::BindingResource::Buffer(wgpu::BufferBinding {
             buffer: &self.params,
             offset: 0,
@@ -768,7 +815,7 @@ impl GiProbes {
         pass.set_bind_group(0, frame, &[]);
         for (k, s) in self.slices.iter().enumerate() {
             pass.set_bind_group(1, trace, &[(k as u64 * PARAMS_STRIDE) as u32]);
-            pass.dispatch_workgroups((s.probes * rays).div_ceil(64), 1, 1);
+            pass.dispatch_workgroups(s.probes.div_ceil(64), rays, 1);
         }
         pass.set_pipeline(&self.blend);
         for (k, s) in self.slices.iter().enumerate() {

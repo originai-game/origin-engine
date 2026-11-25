@@ -532,6 +532,7 @@ impl PostPasses {
             fsr: fsr::FsrPasses::new(device),
             contact: contact::ContactPasses::new(device),
             depth_mips: depth_mips::DepthMipsPass::new(device),
+            color_mips: depth_mips::ColorMipsPass::new(device),
             source_layout,
             post_layout,
             taa_layout,

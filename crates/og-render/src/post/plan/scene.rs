@@ -99,8 +99,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         }
         FramePass::Clouds if prepass => g.pass(name, &["lindepth"], &["clouds.quarter", "clouds"]),
         FramePass::Clouds => g.pass(name, &[], &["clouds.quarter", "clouds"]),
-        // Into the light volumes' buffer, not a graph target.
-        FramePass::GiProbes => g.pass(name, &[], &[]),
+        // Into the light volumes' buffer, sampling cascades for sun visibility.
+        FramePass::GiProbes => g.pass(name, &["cascades"], &[]),
         FramePass::Reflection(k) => {
             let mut writes = vec![reflection_target(k, ""), reflection_target(k, "-depth")];
             if msaa {

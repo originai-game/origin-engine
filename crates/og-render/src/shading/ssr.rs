@@ -868,7 +868,7 @@ impl Pipelines {
                         zero_initialize_workgroup_memory: false,
                         ..Default::default()
                     },
-                    cache: None,
+                    cache: crate::pipeline_cache::of(device).as_ref(),
                 },
             )
         });

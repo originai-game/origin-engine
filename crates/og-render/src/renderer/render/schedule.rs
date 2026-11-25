@@ -264,11 +264,11 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     if d.live_sky {
         push(FramePass::LiveSky);
     }
-    if d.gi_probes {
-        push(FramePass::GiProbes);
-    }
     for i in 0..d.cascades {
         push(FramePass::Cascade(i));
+    }
+    if d.gi_probes {
+        push(FramePass::GiProbes);
     }
     if d.shelter {
         push(FramePass::Shelter);

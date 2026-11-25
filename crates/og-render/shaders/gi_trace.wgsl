@@ -34,7 +34,7 @@ struct GiParams {
 @group(1) @binding(2) var<uniform> gp: GiParams;
 
 const GI_MISS: f32 = 1.0e9;
-const GI_STACK: u32 = 32u;
+const GI_STACK: u32 = 36u;
 
 struct GiHit {
   t: f32,
@@ -81,9 +81,9 @@ fn gi_triangle(at: u32, o: vec3<f32>, d: vec3<f32>) -> f32 {
 }
 
 // The first hit along the ray from `o` along unit `d` within `t_max`; with
-// `any`, any hit (a shadow ray). Both levels are walked with a stack of
-// absolute vec4 links, the nearer child first (gi_scene.rs's `trace` is
-// the same walk, tested on the CPU).
+// `any`, any hit (a shadow ray). Both levels share one unified stack of
+// absolute vec4 links (TLAS in `[0, sp)`, BLAS in `[sp, ip)`), cutting
+// per-thread private stack memory nearly in half.
 fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
   var best: GiHit;
   best.t = t_max;
@@ -148,21 +148,19 @@ fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
       let lo = vec3<f32>(dot(r0, vec4<f32>(o, 1.0)), dot(r1, vec4<f32>(o, 1.0)), dot(r2, vec4<f32>(o, 1.0)));
       let ld = vec3<f32>(dot(r0.xyz, d), dot(r1.xyz, d), dot(r2.xyz, d));
       let linv = gi_safe_inverse(ld);
-      var inner: array<u32, GI_STACK>;
-      var inner_t: array<f32, GI_STACK>;
       let blas_root = u32(gi_bvh[rec + 3u].x);
       let t_blas = gi_box(blas_root, lo, linv, best.t);
-      var ip = 0u;
-      if (t_blas <= best.t) {
-        inner[0] = blas_root;
-        inner_t[0] = t_blas;
-        ip = 1u;
+      var ip = sp;
+      if (t_blas <= best.t && ip < GI_STACK) {
+        stack[ip] = blas_root;
+        stack_t[ip] = t_blas;
+        ip += 1u;
       }
       loop {
-        if (ip == 0u) { break; }
+        if (ip <= sp) { break; }
         ip -= 1u;
-        if (inner_t[ip] > best.t) { continue; }
-        let m = inner[ip];
+        if (stack_t[ip] > best.t) { continue; }
+        let m = stack[ip];
         let l2 = u32(gi_bvh[m].w);
         let c2 = u32(gi_bvh[m + 1u].w);
         if (c2 == 0u) {
@@ -173,22 +171,22 @@ fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
           if (hit_l && hit_r) {
             if (ip + 2u <= GI_STACK) {
               let l_near = tl <= tr;
-              inner[ip] = select(l2, l2 + 2u, l_near);
-              inner_t[ip] = select(tl, tr, l_near);
-              inner[ip + 1u] = select(l2 + 2u, l2, l_near);
-              inner_t[ip + 1u] = select(tr, tl, l_near);
+              stack[ip] = select(l2, l2 + 2u, l_near);
+              stack_t[ip] = select(tl, tr, l_near);
+              stack[ip + 1u] = select(l2 + 2u, l2, l_near);
+              stack_t[ip + 1u] = select(tr, tl, l_near);
               ip += 2u;
             }
           } else if (hit_l) {
             if (ip < GI_STACK) {
-              inner[ip] = l2;
-              inner_t[ip] = tl;
+              stack[ip] = l2;
+              stack_t[ip] = tl;
               ip += 1u;
             }
           } else if (hit_r) {
             if (ip < GI_STACK) {
-              inner[ip] = l2 + 2u;
-              inner_t[ip] = tr;
+              stack[ip] = l2 + 2u;
+              stack_t[ip] = tr;
               ip += 1u;
             }
           }
@@ -216,18 +214,49 @@ fn gi_sky(d: vec3<f32>) -> vec3<f32> {
   return textureSampleLevel(prefiltered_map, ibl_sampler, d, min(2.0, frame.params.y)).rgb * frame.params.x;
 }
 
+// Directional sun visibility at a hit point: samples the directional shadow
+// cascade map in one tap when the point lies inside the cascades, falling
+// back to a BVH shadow ray outside them or when cascades are disabled.
+fn gi_sun_visible(p: vec3<f32>, n: vec3<f32>, l: vec3<f32>, n_dot_l: f32, q: vec3<f32>) -> bool {
+  let count = u32(frame.light_dir.w);
+  if (count > 0u) {
+    let far = distance(p, frame.cascade_anchor.xyz);
+    var c = count;
+    for (var i = 0u; i < count; i++) {
+      if (far <= frame.cascade_bias[i].z) {
+        c = i;
+        break;
+      }
+    }
+    if (c < count) {
+      let bias = frame.cascade_bias[c];
+      let sin_l = sqrt(max(1.0 - n_dot_l * n_dot_l, 0.0));
+      let offset = p + n * bias.x * (0.25 + sin_l);
+      let sp = frame.cascade_view_proj[c] * vec4<f32>(offset, 1.0);
+      let uv = vec2<f32>(sp.x * 0.5 + 0.5, 0.5 - sp.y * 0.5);
+      if (sp.z >= 0.0 && sp.z <= 1.0 && all(uv >= vec2<f32>(0.01)) && all(uv <= vec2<f32>(0.99))) {
+        let size = vec2<i32>(textureDimensions(cascade_map));
+        let at = clamp(vec2<i32>(floor(uv * vec2<f32>(size))), vec2<i32>(0), size - 1);
+        let ref_depth = sp.z - bias.y * (1.0 + 2.0 * sin_l / max(n_dot_l, 0.25));
+        return ref_depth <= textureLoad(cascade_map, at, i32(c)).r;
+      }
+    }
+  }
+  return gi_trace(q, l, gp.trace.w, true).record == 0u;
+}
+
 // The light leaving the surface hit at `p` (unit world normal `n`) back
 // along `-d`: its albedo times what reaches it, plus its emission.
 fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) -> vec3<f32> {
   let albedo = gi_bvh[record + 4u].rgb;
   let emissive = gi_bvh[record + 5u].rgb;
   let q = p + n * (0.002 + 0.01 * gp.grid0.w);
-  // The sun, behind a shadow ray.
+  // The sun, via cascade shadow lookup inside cascades or BVH shadow ray outside.
   var direct = vec3<f32>(0.0);
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = dot(n, l);
   if (n_dot_l > 0.0 && any(frame.light_color.rgb > vec3<f32>(0.0))) {
-    if (gi_trace(q, l, gp.trace.w, true).record == 0u) {
+    if (gi_sun_visible(p, n, l, n_dot_l, q)) {
       direct += frame.light_color.rgb * n_dot_l;
     }
   }
@@ -271,12 +300,15 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
   return reflected + emissive;
 }
 
-@compute @workgroup_size(64)
+// 2D coherent dispatch: id.x = probe index `k`, id.y = ray direction `ray`.
+// Every thread in a 64-wide workgroup traces the identical direction `d`
+// across 64 neighbouring probes for coherent BVH traversal and cache hits.
+@compute @workgroup_size(64, 1, 1)
 fn cs_trace(@builtin(global_invocation_id) id: vec3<u32>) {
   let rays = gp.slice.w;
-  let k = id.x / rays;
-  let ray = id.x % rays;
-  if (k >= gp.slice.z) { return; }
+  let k = id.x;
+  let ray = id.y;
+  if (k >= gp.slice.z || ray >= rays) { return; }
   let flat = gp.slice.y + k * gp.slice.x;
   let counts = vec3<i32>(gp.grid1.xyz);
   let slot = vec3<i32>(i32(flat) % counts.x, (i32(flat) / counts.x) % counts.y, i32(flat) / (counts.x * counts.y));
@@ -302,7 +334,8 @@ fn cs_trace(@builtin(global_invocation_id) id: vec3<u32>) {
       // relocation and the classification (gi_blend.wgsl).
       out = vec4<f32>(0.0, 0.0, 0.0, -hit.t);
     } else {
-      let seed = pcg(id.x ^ pcg(gp.misc.x * 9781u + gp.misc.y));
+      let linear_id = k * rays + ray;
+      let seed = pcg(linear_id ^ pcg(gp.misc.x * 9781u + gp.misc.y));
       out = vec4<f32>(gi_shade(o + d * hit.t, n, d, rec, seed), hit.t);
     }
   }

@@ -160,6 +160,7 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
   let unit_px = 1.0 / (fxp.proj[1][1] * 0.5 * fxp.screen.y);
   let dsize = vec2<i32>(textureDimensions(tex_depth));
   let top = i32(textureNumLevels(tex_depth)) - 1;
+  let color_top = f32(max(i32(textureNumLevels(tex_a)) - 1, 0));
   let gsize = vec2<i32>(textureDimensions(tex_gbuffer));
   let pos = vec2<f32>(px) + 0.5;
   var light = vec3<f32>(0.0);
@@ -321,7 +322,8 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
               // (gbuffer zw: its screen-space velocity, uv per frame).
               let prev = c_uv - g.zw;
               if (dot(hit_n, f) <= 0.1 * dist && all(prev >= vec2<f32>(0.0)) && all(prev <= vec2<f32>(1.0))) {
-                var l = max(textureSampleLevel(tex_a, fx_linear, prev, 0.0).rgb, vec3<f32>(0.0));
+                let color_lod = clamp(log2(max(c_off * 0.25, 1.0)), 0.0, color_top);
+                var l = max(textureSampleLevel(tex_a, fx_linear, prev, color_lod).rgb, vec3<f32>(0.0));
                 // Fireflies: a tiny bright emitter a few taps meet is
                 // held to a level the blur can spread.
                 l *= min(1.0, 32.0 / max(luma(l), 1e-4));
@@ -399,13 +401,15 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
   let n0 = gbuffer_normal(px * k);
   let size = vec2<i32>(textureDimensions(tex_b));
   let scale = max(d0 * 0.04, 1e-3);
-  var sum = vec4<f32>(0.0);
-  var weight = 0.0;
+  var sum = textureLoad(tex_b, px, 0);
+  var weight = 1.0;
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
+      if (x == 0 && y == 0) { continue; }
       let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
       let facing = max(dot(gbuffer_normal(q * k), n0), 0.0);
-      let w = exp(-abs(depth_at(q * k) - d0) / scale) * facing * facing * facing * facing + 1e-6;
+      let f2 = facing * facing;
+      let w = exp(-abs(depth_at(q * k) - d0) / scale) * f2 * f2 + 1e-6;
       sum += textureLoad(tex_b, q, 0) * w;
       weight += w;
     }

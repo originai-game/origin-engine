@@ -425,15 +425,26 @@ fn ssr_ray_origin(rt: vec2<i32>) -> vec2<i32> {
 fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
   let rt = vec2<i32>(gid.xy);
   if (any(rt >= vec2<i32>(ssr.ray.xy))) { return; }
-  {
-    let q = ssr_rep(rt);
-    let dr = textureLoad(ssr_depth, q, 0).rg;
-    let oct = textureLoad(ssr_gbuffer, q, 0).xy;
-    textureStore(guide_out, rt, vec4<f32>(oct, dr.r, ssr_decode_roughness(dr.g)));
+  let q = ssr_rep(rt);
+  let dr_rep = textureLoad(ssr_depth, q, 0).rg;
+  let oct_rep = textureLoad(ssr_gbuffer, q, 0).xy;
+  // Store log2(depth) in f16 guide.z so far scenes (>500m) keep ~0.1%
+  // relative precision and never overflow f16.
+  textureStore(
+    guide_out,
+    rt,
+    vec4<f32>(oct_rep, log2(max(dr_rep.r, 1e-4)), ssr_decode_roughness(dr_rep.g)),
+  );
+  // Without a previous frame's lit image no hit has valid radiance: skip the march.
+  if (ssr.flags.x < 0.5) {
+    textureStore(ray_radiance_out, rt, vec4<f32>(0.0));
+    textureStore(ray_hit_out, rt, vec4<f32>(0.0));
+    return;
   }
   let px = ssr_ray_origin(rt);
-  let d = ssr_view_depth(px);
-  let roughness = ssr_roughness(px);
+  let dr = select(textureLoad(ssr_depth, px, 0).rg, dr_rep, ssr.flags.z < 1.5);
+  let d = dr.r;
+  let roughness = ssr_decode_roughness(dr.g);
   // w 0: no ray (the sky, a surface too rough to trace).
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(ray_radiance_out, rt, vec4<f32>(0.0));
@@ -442,7 +453,8 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   let uv = (vec2<f32>(px) + 0.5) * ssr.screen.zw;
   let p = ssr_view_pos(uv, d);
-  let n = ssr_view_normal(px);
+  let n_oct = select(textureLoad(ssr_gbuffer, px, 0).xy, oct_rep, ssr.flags.z < 1.5);
+  let n = normalize((ssr.view * vec4<f32>(oct_decode(n_oct), 0.0)).xyz);
   let v = -normalize(p);
   let alpha = ssr_alpha(roughness);
   let a2 = alpha * alpha;
@@ -500,7 +512,9 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
     // FidelityFX's validation: not on the starting pixel, not the sky, not
     // a back face, and within the thickness behind the surface.
     let moved = any(abs(hit.xy - uv) >= 2.0 * ssr.screen.zw);
-    let back = dot(ssr_view_normal(hit_px), l) > 0.0;
+    let hit_gb = textureLoad(ssr_gbuffer, ssr_clamp_px(hit_px), 0);
+    let hit_vn = normalize((ssr.view * vec4<f32>(oct_decode(hit_gb.xy), 0.0)).xyz);
+    let back = dot(hit_vn, l) > 0.0;
     if (moved && !ssr_is_sky(surface_depth) && !back) {
       let behind = 1.0 - smoothstep(0.0, ssr.trace.y, abs(ray_depth - surface_depth));
       let fade = max(ssr.params.x, 1e-3);
@@ -513,8 +527,8 @@ fn trace(@builtin(global_invocation_id) gid: vec3<u32>) {
       // pixel it enters by and a filtered read there is half the pixel the
       // ray came over (a bright rim where that was a lamp).
       let at = (vec2<f32>(hit_px) + 0.5) * ssr.screen.zw;
-      let prev = at - ssr_velocity(hit_px);
-      if (ssr.flags.x < 0.5 || any(prev < vec2<f32>(0.0)) || any(prev > vec2<f32>(1.0))) {
+      let prev = at - hit_gb.zw;
+      if (any(prev < vec2<f32>(0.0)) || any(prev > vec2<f32>(1.0))) {
         confidence = 0.0;
       }
       if (confidence > 0.0) {
@@ -540,12 +554,14 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
   if (any(px >= ssr_chain_size())) { return; }
   let rp = ssr_rep(px);
-  let d = ssr_view_depth(rp);
-  let roughness = ssr_roughness(rp);
+  let dr = textureLoad(ssr_depth, rp, 0).rg;
+  let d = dr.r;
+  let roughness = ssr_decode_roughness(dr.g);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(resolved_out, px, vec4<f32>(0.0));
     return;
   }
+  let d_log = log2(max(d, 1e-4));
   let uv = (vec2<f32>(rp) + 0.5) * ssr.screen.zw;
   let p = ssr_view_pos(uv, d);
   let world_n = ssr_world_normal(rp);
@@ -572,13 +588,15 @@ fn resolve(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (k > 0) { rt = clamp(home + vec2<i32>(round(rot * ring[k - 1] * radius)), vec2<i32>(0), ray_size - 1); }
     let hit = textureLoad(ray_hit, rt, 0);
     if (hit.w <= 0.0) { continue; }
-    // A neighbour's ray started on another surface only if its pixel
-    // differs in depth or facing.
-    let opx = ssr_ray_origin(rt);
-    // (Normals compared in the world: the dot is the same in view space.)
-    let facing = max(dot(ssr_world_normal(opx), world_n), 1e-6);
-    var bilateral = exp(16.0 * log(facing) - abs(ssr_view_depth(opx) - d) / max(d, 1e-3) * 32.0);
-    if (k == 0) { bilateral = 1.0; }
+    // A neighbour's ray started on another surface only if its guide differs
+    // in depth or facing (single compact guide load instead of 2 full-res loads).
+    var bilateral = 1.0;
+    if (k > 0) {
+      let g = ssr_guide(rt);
+      let facing = max(dot(oct_decode(g.xy), world_n), 1e-6);
+      let rel_d = exp2(min(abs(g.z - d_log), 12.0)) - 1.0;
+      bilateral = exp(16.0 * log(facing) - rel_d * 32.0);
+    }
     let l = normalize(hit.xyz - p);
     let n_dot_l = dot(n, l);
     if (n_dot_l <= 0.0) { continue; }
@@ -639,10 +657,11 @@ fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
   if (any(px >= ssr_chain_size())) { return; }
   let center = textureLoad(resolved, px, 0);
   let own = ssr_guide(px);
-  let d = own.z;
+  let d_log = own.z;
   let roughness = own.w;
+  let sky_log = log2(max(ssr.params.z * 0.999, 1e-4));
   // A mirror keeps its own ray: a blur would soften what it reflects.
-  if (ssr_is_sky(d) || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
+  if (d_log >= sky_log || roughness > ssr.trace.w || roughness < SSR_MIRROR) {
     textureStore(filtered_out, px, center);
     return;
   }
@@ -673,8 +692,9 @@ fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
     // floored at 1e-2 as FidelityFX's), and a neighbour of another
     // roughness, which lies on another lobe.
     let facing = max(dot(n, oct_decode(g.xy)), 1e-6);
+    let rel_d = exp2(min(abs(d_log - g.z), 12.0)) - 1.0;
     let w = exp(SSR_NORMAL_SIGMA * log(facing)
-      - abs(d - g.z) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0
+      - rel_d * SSR_DEPTH_SIGMA * 8.0
       - min(SSR_RADIANCE_BIAS * length(s.rgb - mean.rgb), 4.6052)
       - abs(g.w - roughness) * 16.0);
     sum += s * w;
@@ -718,17 +738,19 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
   if (any(px >= ssr_chain_size())) { return; }
   let rp = ssr_rep(px);
-  let d = ssr_view_depth(rp);
-  let world_n = ssr_world_normal(rp);
-  let roughness = ssr_roughness(rp);
-  let center = textureLoad(resolved, px, 0);
+  let dr = textureLoad(ssr_depth, rp, 0).rg;
+  let d = dr.r;
+  let roughness = ssr_decode_roughness(dr.g);
+  let gb = textureLoad(ssr_gbuffer, rp, 0);
+  let world_n = oct_decode(gb.xy);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(history_out, px, vec4<f32>(0.0));
-    textureStore(meta_out, px, vec4<f32>(0.0, d, oct_encode(world_n)));
+    textureStore(meta_out, px, vec4<f32>(0.0, d, gb.xy));
     textureStore(fast_out, px, vec4<f32>(0.0));
     textureStore(spread_out, px, vec4<f32>(0.0));
     return;
   }
+  let center = textureLoad(resolved, px, 0);
   // The neighbourhood's mean and deviation over FidelityFX's 9x9 window
   // (radius 4), Gaussian-weighted with its K of 3, read every second texel
   // within the diamond (13 taps; the corners' Gaussian weight is a fifth of
@@ -763,7 +785,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
     // The surface's own motion, and for a mirror the reflected point's:
     // a ray of the reflection's length straight through the surface
     // (FidelityFX's hit position reprojection).
-    let surface_uv = uv_c - ssr_velocity(rp);
+    let surface_uv = uv_c - gb.zw;
     var history_uv = surface_uv;
     let hit = textureLoad(ray_hit, px, 0);
     if (roughness < 0.25 && hit.w > 0.0) {
@@ -835,7 +857,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   out = max(out, vec4<f32>(0.0));
   textureStore(history_out, px, out);
-  textureStore(meta_out, px, vec4<f32>(samples, d, oct_encode(world_n)));
+  textureStore(meta_out, px, vec4<f32>(samples, d, gb.xy));
   textureStore(fast_out, px, fast);
   textureStore(spread_out, px, spread);
 }
@@ -851,12 +873,14 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
 fn upsample(@builtin(global_invocation_id) gid: vec3<u32>) {
   let px = vec2<i32>(gid.xy);
   if (any(px >= ssr_size())) { return; }
-  let d = ssr_view_depth(px);
-  let roughness = ssr_roughness(px);
+  let dr = textureLoad(ssr_depth, px, 0).rg;
+  let d = dr.r;
+  let roughness = ssr_decode_roughness(dr.g);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(lit_out, px, vec4<f32>(0.0));
     return;
   }
+  let d_log = log2(max(d, 1e-4));
   let n = ssr_world_normal(px);
   let c = (vec2<f32>(px) + 0.5) * ssr.chain.xy * ssr.screen.zw - 0.5;
   let base = vec2<i32>(floor(c));
@@ -870,7 +894,8 @@ fn upsample(@builtin(global_invocation_id) gid: vec3<u32>) {
     let q = ssr_clamp_chain(base + o);
     let g = textureLoad(guide, q, 0);
     let facing = max(dot(n, oct_decode(g.xy)), 1e-6);
-    let like = exp(16.0 * log(facing) - abs(g.z - d) / max(d, 1e-3) * 32.0
+    let rel_d = exp2(min(abs(g.z - d_log), 12.0)) - 1.0;
+    let like = exp(16.0 * log(facing) - rel_d * 32.0
       - abs(g.w - roughness) * 16.0);
     let share = select(1.0 - f.x, f.x, o.x == 1) * select(1.0 - f.y, f.y, o.y == 1);
     let v = textureLoad(history, q, 0);

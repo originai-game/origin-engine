@@ -17,11 +17,17 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
                 Some(mips) => mips.view(),
                 None => cx.ao_depth(),
             };
-            let previous = |slot: usize| match (cx.cfg.gi, cx.history(), &cx.persistent.gi) {
+            let previous = |slot: usize| match (
+                cx.cfg.gi,
+                cx.graph.color_mips(),
+                cx.history(),
+                &cx.persistent.gi,
+            ) {
                 (false, ..) => black,
-                (true, Some(h), _) => &h[1 - slot],
-                (true, None, Some((_, g))) => &g[1 - slot],
-                (true, None, None) => black,
+                (true, Some(cm), ..) => cm.view(),
+                (true, None, Some(h), _) => &h[1 - slot],
+                (true, None, None, Some((_, g))) => &g[1 - slot],
+                (true, None, None, None) => black,
             };
             cx.pair(|slot| cx.fx_depth(previous(slot), d, black))
         }

@@ -22,6 +22,8 @@ use cx::*;
 struct Bindings {
     /// The view depth's MIP chain's fill (`depth_mips.rs`).
     depth_mips: Option<wgpu::BindGroup>,
+    /// Prefiltered previous-frame colour pyramid fill for SSGI (`depth_mips.rs`).
+    color_mips: Option<Pair>,
     fx: fx::Fx,
     motion: Option<motion::Motion>,
     contact: Option<contact_shadows::ContactShadows>,
@@ -35,11 +37,20 @@ struct Bindings {
 
 impl Bindings {
     fn new(cx: &BindCx) -> Bindings {
+        let black = &cx.passes.black;
+        let prev_lit = |slot: usize| match (cx.history(), &cx.persistent.gi) {
+            (Some(h), _) => &h[1 - slot],
+            (None, Some((_, g))) => &g[1 - slot],
+            (None, None) => black,
+        };
         Bindings {
             depth_mips: cx.graph.depth_mips().map(|mips| {
                 cx.passes
                     .depth_mips
                     .bind(cx.device, &cx.passes.fx_buffer, cx.ao_depth(), mips)
+            }),
+            color_mips: cx.graph.color_mips().map(|mips| {
+                cx.pair(|slot| cx.passes.color_mips.bind(cx.device, prev_lit(slot), mips))
             }),
             fx: fx::Fx::bind(cx),
             motion: motion::Motion::bind(cx),
@@ -60,7 +71,14 @@ impl Bindings {
             let group = self.depth_mips.as_ref().expect("depth mips bound");
             let mips = cx.graph.depth_mips().expect("depth mips realized");
             cx.passes.depth_mips.encode(encoder, group, mips.size());
-            return Some(1);
+            let mut dispatches = 1;
+            if let (Some(groups), Some(cm)) = (&self.color_mips, cx.graph.color_mips()) {
+                cx.passes
+                    .color_mips
+                    .encode(encoder, &groups[cx.slot], cm.source_size());
+                dispatches += 1;
+            }
+            return Some(dispatches);
         }
         if pass == FramePass::Contact {
             let contact = self.contact.as_ref().expect("contact bound");
@@ -106,6 +124,8 @@ pub(crate) struct FrameGraph {
     /// The view depth's MIP chain at the frame's size, while the frame has
     /// its pass.
     depth_mips: Option<depth_mips::DepthMips>,
+    /// Prefiltered colour MIP pyramid of the previous frame's lit image for SSGI.
+    color_mips: Option<depth_mips::ColorMips>,
     bindings: Option<Bindings>,
     /// The fog of war texture the bindings hold (`SightTexture::generation`).
     sight_key: u64,
@@ -226,6 +246,11 @@ impl FrameGraph {
         self.depth_mips.as_ref()
     }
 
+    /// Prefiltered colour MIP pyramid of the previous frame's lit image for SSGI.
+    pub fn color_mips(&self) -> Option<&depth_mips::ColorMips> {
+        self.color_mips.as_ref()
+    }
+
     /// The view depth's MIP chain when it was built from opaque `lindepth`
     /// rather than water `front-depth`.
     pub fn opaque_depth_mips(&self) -> Option<&wgpu::TextureView> {
@@ -333,6 +358,21 @@ impl FrameGraph {
                     Some(m) if m.size() == size => m,
                     _ => depth_mips::DepthMips::new(device, (cfg.width, cfg.height)),
                 });
+        let color_src = persistent
+            .history
+            .as_ref()
+            .filter(|_| passes.contains(&FramePass::Taa))
+            .map(|h| {
+                let s = h[0].texture().size();
+                (s.width.max(16), s.height.max(16))
+            })
+            .unwrap_or((cfg.width.max(16), cfg.height.max(16)));
+        self.color_mips = (cfg.gi && passes.contains(&FramePass::DepthMips)).then(|| {
+            match self.color_mips.take() {
+                Some(m) if m.source_size() == color_src => m,
+                _ => depth_mips::ColorMips::new(device, color_src),
+            }
+        });
         self.views.clear();
         for (name, slot) in plan.transients() {
             self.views

@@ -173,3 +173,141 @@ impl DepthMipsPass {
         pass.dispatch_workgroups(size.0.div_ceil(16), size.1.div_ceil(16), 1);
     }
 }
+
+const COLOR_MIPS_WGSL: &str = wgsl_library!("color_mips.wgsl");
+
+/// Prefiltered half..sixteenth colour pyramid levels written in one dispatch.
+pub(crate) const COLOR_MIP_LEVELS: u32 = 4;
+const COLOR_MIPS_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
+/// The colour pyramid module's source, for validation (`shaders.rs`).
+pub(crate) fn color_source() -> String {
+    COLOR_MIPS_WGSL.to_string()
+}
+
+/// Prefiltered colour pyramid of the previous frame's lit image for SSGI.
+pub(crate) struct ColorMips {
+    source_size: (u32, u32),
+    view: wgpu::TextureView,
+    levels: Vec<wgpu::TextureView>,
+}
+
+impl ColorMips {
+    pub fn new(device: &wgpu::Device, (width, height): (u32, u32)) -> ColorMips {
+        let source_size = (width.max(16), height.max(16));
+        let half = (
+            source_size.0.div_ceil(2).max(8),
+            source_size.1.div_ceil(2).max(8),
+        );
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("color mips"),
+            size: wgpu::Extent3d {
+                width: half.0,
+                height: half.1,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: COLOR_MIP_LEVELS,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: COLOR_MIPS_FORMAT,
+            usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+            texture_binding_view_dimension: None,
+        });
+        ColorMips {
+            source_size,
+            view: texture.create_view(&Default::default()),
+            levels: crate::mips::level_views(&texture, "color mips level"),
+        }
+    }
+
+    pub fn source_size(&self) -> (u32, u32) {
+        self.source_size
+    }
+
+    pub fn view(&self) -> &wgpu::TextureView {
+        &self.view
+    }
+}
+
+/// Single-dispatch LDS colour pyramid pass (`color_mips.wgsl`).
+pub(crate) struct ColorMipsPass {
+    pub layout: wgpu::BindGroupLayout,
+    pipeline: Deferred<wgpu::ComputePipeline>,
+}
+
+impl ColorMipsPass {
+    pub fn new(device: &wgpu::Device) -> ColorMipsPass {
+        let entries: Vec<_> = [B::Tex(false)]
+            .into_iter()
+            .chain((0..COLOR_MIP_LEVELS).map(|_| B::Storage(COLOR_MIPS_FORMAT)))
+            .enumerate()
+            .map(|(i, b)| wgpu::BindGroupLayoutEntry {
+                binding: i as u32,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: fsr::binding_type(b),
+                count: None,
+            })
+            .collect();
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("color mips"),
+            entries: &entries,
+        });
+        let module = crate::deferred::module(device, "color mips", COLOR_MIPS_WGSL.to_string());
+        let pipeline = {
+            let (device, layout) = (device.clone(), layout.clone());
+            Deferred::new(move || {
+                let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("color mips"),
+                    bind_group_layouts: &[Some(&layout)],
+                    immediate_size: 0,
+                });
+                crate::traffic::create_compute_pipeline(
+                    &device,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some("color mips"),
+                        layout: Some(&pl),
+                        module: module.get(),
+                        entry_point: Some("cs_color_mips"),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    },
+                )
+            })
+        };
+        ColorMipsPass { layout, pipeline }
+    }
+
+    pub fn bind(
+        &self,
+        device: &wgpu::Device,
+        source: &wgpu::TextureView,
+        mips: &ColorMips,
+    ) -> wgpu::BindGroup {
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: wgpu::BindingResource::TextureView(source),
+        }];
+        entries.extend(
+            (0..COLOR_MIP_LEVELS as usize).map(|l| wgpu::BindGroupEntry {
+                binding: 1 + l as u32,
+                resource: wgpu::BindingResource::TextureView(&mips.levels[l]),
+            }),
+        );
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("color mips"),
+            layout: &self.layout,
+            entries: &entries,
+        })
+    }
+
+    pub fn encode(&self, encoder: &mut crate::Encoder, group: &wgpu::BindGroup, size: (u32, u32)) {
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("color-mips"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(self.pipeline.wait());
+        pass.set_bind_group(0, group, &[]);
+        pass.dispatch_workgroups(size.0.div_ceil(16), size.1.div_ceil(16), 1);
+    }
+}
