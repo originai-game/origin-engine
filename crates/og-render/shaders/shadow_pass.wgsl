@@ -65,6 +65,21 @@ fn shadow_paraboloid_cut(world: vec3<f32>) -> bool {
   return paraboloid_local(to, shadow_pass.paraboloid.x).z < -PARABOLOID_MARGIN * dist;
 }
 
+struct ShadowGrad {
+  dx: vec3<f32>,
+  dy: vec3<f32>,
+};
+
+// Compute screen-space world derivatives only for dual-paraboloid local point
+// lights (uniform branch), avoiding 6 fine derivative instructions per pixel
+// across directional cascades and perspective spot/cube shadow passes.
+fn shadow_world_grad(world: vec3<f32>) -> ShadowGrad {
+  if (abs(shadow_pass.paraboloid.x) > 0.5) {
+    return ShadowGrad(dpdxFine(world), dpdyFine(world));
+  }
+  return ShadowGrad(vec3<f32>(0.0), vec3<f32>(0.0));
+}
+
 // What a local light's pass stores: distance / range. In a paraboloid
 // hemisphere a triangle's interpolated points are not where the curved
 // projection puts them (its edges stay straight), so the distance is

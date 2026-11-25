@@ -349,39 +349,50 @@ impl GrassRenderer {
                     write_mask: wgpu::ColorWrites::ALL,
                 })
             };
-            let raster =
-                |label, layout, module, vs, fs, targets: &[Option<wgpu::ColorTargetState>]| {
-                    crate::traffic::create_render_pipeline(
-                        device,
-                        &wgpu::RenderPipelineDescriptor {
-                            label: Some(label),
-                            layout: Some(layout),
-                            vertex: wgpu::VertexState {
-                                module,
-                                entry_point: Some(vs),
-                                compilation_options: Default::default(),
-                                buffers: &[],
-                            },
-                            primitive: Default::default(),
-                            depth_stencil: depth.clone(),
-                            multisample: Default::default(),
-                            fragment: Some(wgpu::FragmentState {
-                                module,
-                                entry_point: Some(fs),
-                                compilation_options: Default::default(),
-                                targets,
-                            }),
-                            multiview_mask: None,
-                            cache: crate::pipeline_cache::of(device).as_ref(),
+            let raster = |label,
+                          layout,
+                          module,
+                          vs,
+                          fs,
+                          depth_stencil: Option<wgpu::DepthStencilState>,
+                          unclipped_depth: bool,
+                          targets: &[Option<wgpu::ColorTargetState>]| {
+                crate::traffic::create_render_pipeline(
+                    device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(layout),
+                        vertex: wgpu::VertexState {
+                            module,
+                            entry_point: Some(vs),
+                            compilation_options: Default::default(),
+                            buffers: &[],
                         },
-                    )
-                };
+                        primitive: wgpu::PrimitiveState {
+                            unclipped_depth,
+                            ..Default::default()
+                        },
+                        depth_stencil,
+                        multisample: Default::default(),
+                        fragment: Some(wgpu::FragmentState {
+                            module,
+                            entry_point: Some(fs),
+                            compilation_options: Default::default(),
+                            targets,
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(device).as_ref(),
+                    },
+                )
+            };
             let prepass = raster(
                 "grass prepass",
                 &prepass_layout,
                 &lit_module,
                 "vs_prepass",
                 "fs_prepass",
+                depth,
+                false,
                 &[
                     target(crate::post::GBUFFER_FORMAT),
                     target(crate::post::LINDEPTH_FORMAT),
@@ -389,12 +400,17 @@ impl GrassRenderer {
                     target(crate::post::MOTION_DEPTH_FORMAT),
                 ],
             );
+            let unclipped = device
+                .features()
+                .contains(wgpu::Features::DEPTH_CLIP_CONTROL);
             let shadow = raster(
                 "grass shadow",
                 &shadow_layout,
                 &shadow_module,
                 "vs_shadow",
                 "fs_shadow",
+                Some(crate::ShadowTarget::depth()),
+                unclipped,
                 &[Some(wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::R32Float,
                     blend: None,

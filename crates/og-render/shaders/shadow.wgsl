@@ -161,27 +161,24 @@ fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f3
 
 @fragment
 fn fs(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-  let dx = dpdxFine(in.world);
-  let dy = dpdyFine(in.world);
-  return shadow_value(in, dx, dy, front);
+  let g = shadow_world_grad(in.world);
+  return shadow_value(in, g.dx, g.dy, front);
 }
 
 @fragment
 fn fs_lean(in: LeanVsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-  let dx = dpdxFine(in.world);
-  let dy = dpdyFine(in.world);
-  return shadow_depth(in.world, in.clip, dx, dy, front);
+  let g = shadow_world_grad(in.world);
+  return shadow_depth(in.world, in.clip, g.dx, g.dy, front);
 }
 
 fn shadow_dissolve(in: VsOut, front: bool) -> vec4<f32> {
-  let dx = dpdxFine(in.world);
-  let dy = dpdyFine(in.world);
+  let g = shadow_world_grad(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let alpha = material.base_color.a * base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv)).a * in.color.a;
   let cut = dissolve_at(in.uv, in.local_pos).w > 0.5
     || dither_cut(in.hidden, in.clip.xy, shadow_dither_turn())
     || (material.emissive.w >= 0.0 && alpha < material.emissive.w);
-  return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
+  return shadow_depth_cut(in.world, in.clip, g.dx, g.dy, front, cut);
 }
 
 // Dissolving and alpha-tested casters: the dissolved pixels, and those under
@@ -195,11 +192,10 @@ fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) ve
 // alpha test (and the dissolve) casts no shadow, as it is not drawn lit.
 @fragment
 fn fs_hooked(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-  let dx = dpdxFine(in.world);
-  let dy = dpdyFine(in.world);
+  let g = shadow_world_grad(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let base = surface_color(shadow_hook(in), shader_params(), material.base_color * base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv)) * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5 || dither_cut(in.hidden, in.clip.xy, shadow_dither_turn());
   let cut = (material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved;
-  return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
+  return shadow_depth_cut(in.world, in.clip, g.dx, g.dy, front, cut);
 }

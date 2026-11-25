@@ -161,7 +161,9 @@ fn shadow_turn(texel: vec2<f32>) -> f32 {
 // kernel off a receiver tilted from the light (an open one; a closed one
 // compares past its own depth, as [`shadow_closed`]). Every read is a
 // textureLoad compare, as pcf's.
+const PCSS_BLOCKERS: i32 = 12;
 const PCSS_TAPS: i32 = 16;
+const PCSS_DIFFUSION_TAPS: i32 = 8;
 const PCSS_MAX_TEXELS: f32 = 24.0;
 
 fn vogel(i: i32, n: i32, radius: f32, turn: f32) -> vec2<f32> {
@@ -183,13 +185,14 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   let closed = shadow_closed && bias.w >= 0.0;
   let slope = select(bias.y * min(tan_l, 4.0), 0.0, closed);
   let reference = select(ref_depth, ref_depth + 1.25 * bias.y, closed);
-  let turn = shadow_turn(uv * size);
+  let p_tex = uv * size;
+  let turn = shadow_turn(p_tex);
   let search = clamp(softness * ref_depth * depth_range / texel, 1.0, PCSS_MAX_TEXELS);
   var blockers = 0.0;
   var sum = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, search, turn);
-    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
+  for (var i = 0; i < PCSS_BLOCKERS; i++) {
+    let o = vogel(i, PCSS_BLOCKERS, search, turn);
+    let at = clamp(vec2<i32>(floor(p_tex + o)), vec2<i32>(0), isize - 1);
     let d = textureLoad(cascade_map, at, i32(c)).r;
     if (d < reference - slope * length(o)) {
       blockers += 1.0;
@@ -198,41 +201,38 @@ fn pcss(uv: vec2<f32>, c: u32, ref_depth: f32, bias: vec4<f32>, tan_l: f32) -> f
   }
   if (blockers < 0.5) { return 1.0; }
   let blocker = sum / blockers;
-  // The light's penumbra (its disc's radius in texels) convolved with the
-  // hard sun's own filter, as a soft shadow is the hard one blurred by the
-  // light: their variances add. pcf_tent averages two bilinear PCFs half
-  // a texel either side per axis (variance 1/4 beyond the bilinear each
-  // tap here already takes), the disc of radius r has r² / 4, so the disc
-  // that carries both has r² + 1. A soft sun is then never sharper than
-  // the hard one at contact (a texel there) and every edge is the light's
-  // width on top of the map's filter, not the larger of the two.
   let disc = softness * (ref_depth - blocker) * depth_range / texel;
   let penumbra = min(sqrt(disc * disc + 1.0), PCSS_MAX_TEXELS);
-  var lit = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, penumbra, turn);
-    lit += pcf(uv + o / size, c, reference - slope * length(o), vec2<f32>(0.0));
-  }
-  lit /= f32(PCSS_TAPS);
   let fill = frame.shadow.z;
+  // Full-umbra fast path: every blocker tap hit within the search disc and
+  // the penumbra fits inside it, so skip the filter loop completely.
+  if (blockers >= f32(PCSS_BLOCKERS) - 0.5 && penumbra <= search && fill <= 0.0) {
+    return 0.0;
+  }
+  var lit = 0.0;
+  if (penumbra <= 1.25) {
+    // Crisp contact penumbra: 9-tap separable tent avoids 4x redundant PCF reads.
+    lit = pcf_tent(uv, c, reference, vec2<f32>(0.0));
+  } else {
+    // Wide penumbra: 16 IGN-rotated single-load Vogel taps (4x less bandwidth
+    // than 16x4 nested bilinear PCF, converging cleanly under TAA).
+    for (var i = 0; i < PCSS_TAPS; i++) {
+      let o = vogel(i, PCSS_TAPS, penumbra, turn + 0.7);
+      let at = clamp(vec2<i32>(floor(p_tex + o)), vec2<i32>(0), isize - 1);
+      lit += select(0.0, 1.0, reference - slope * length(o) <= textureLoad(cascade_map, at, i32(c)).r);
+    }
+    lit /= f32(PCSS_TAPS);
+  }
   if (fill <= 0.0) { return lit; }
-  // The light a cover scatters (frame.shadow.z, at most 0.65 of the beam)
-  // leaves the cloud near-diffuse, multiply scattered: it reaches the
-  // shadow as far as the sky over the receiver is open, read in the map
-  // over a 45-degree cone (the cosine lobe's median angle) round the light:
-  // a disc as wide as the blockers stand above it, the share of its taps
-  // nothing blocks. Under a pole or a plank most of it is open and the
-  // shadow fills in; under a roof, a bridge or at a box's foot it stays
-  // shade (a uniform fill lit the floor under a snowed-in shelter as the
-  // open snow beside it, and floated the shelter).
+  // Overcast multiply-scattered fill: 8 IGN-rotated taps over the 45-degree sky cone.
   let cone = min((ref_depth - blocker) * depth_range / texel, 4.0 * PCSS_MAX_TEXELS);
   var open = 0.0;
-  for (var i = 0; i < PCSS_TAPS; i++) {
-    let o = vogel(i, PCSS_TAPS, cone, turn + 1.3);
-    let at = clamp(vec2<i32>(floor(uv * size + o)), vec2<i32>(0), isize - 1);
+  for (var i = 0; i < PCSS_DIFFUSION_TAPS; i++) {
+    let o = vogel(i, PCSS_DIFFUSION_TAPS, cone, turn + 1.3);
+    let at = clamp(vec2<i32>(floor(p_tex + o)), vec2<i32>(0), isize - 1);
     open += select(0.0, 1.0, textureLoad(cascade_map, at, i32(c)).r >= reference - slope * length(o));
   }
-  return mix(lit, 1.0, fill * open / f32(PCSS_TAPS));
+  return mix(lit, 1.0, fill * open / f32(PCSS_DIFFUSION_TAPS));
 }
 
 // One cascade's shadow at p (-1: beyond its depth, lit). The bias is in
@@ -337,18 +337,30 @@ fn cascade_occlusion(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -> f3
   let count = u32(frame.light_dir.w);
   let depth = cascade_distance(p);
   let band = frame.cascade_bias[c].w;
-  // This cascade and, across its blend band, the next, in one loop: one
-  // copy of the filter's code (DXC inlines every call).
-  let taps = select(1u, 2u, c + 1u < count && depth > band);
   var shadow = 1.0;
-  for (var k = 0u; k < taps; k++) {
-    var s = cascade_sample(c + k, p, n, n_dot_l, wide);
-    if (k == 0u) {
-      if (s < 0.0) { return 1.0; }
-      shadow = s;
-    } else {
-      if (s < 0.0) { s = 1.0; }
-      shadow = mix(shadow, s, smoothstep(band, frame.cascade_bias[c].z, depth));
+  let in_band = c + 1u < count && depth > band;
+  // Under TAA, dither cascade selection across the blend band with temporal IGN
+  // so each pixel evaluates 1 cascade instead of 2 (50% lower blend-band cost).
+  if (in_band && frame.shadow.w > 0.5) {
+    let blend = smoothstep(band, frame.cascade_bias[c].z, depth);
+    let sp = frame.cascade_view_proj[c] * vec4<f32>(p, 1.0);
+    let texel_pos = (vec2<f32>(sp.x * 0.5 + 0.5, 0.5 - sp.y * 0.5)) * vec2<f32>(textureDimensions(cascade_map));
+    let dither = ign(texel_pos + (frame.shadow.w - 1.0) * 5.588238);
+    let chosen = select(c, c + 1u, blend > dither);
+    let s = cascade_sample(chosen, p, n, n_dot_l, wide);
+    shadow = select(s, 1.0, s < 0.0);
+  } else {
+    // Non-TAA fallback: smooth two-cascade blend in one loop.
+    let taps = select(1u, 2u, in_band);
+    for (var k = 0u; k < taps; k++) {
+      var s = cascade_sample(c + k, p, n, n_dot_l, wide);
+      if (k == 0u) {
+        if (s < 0.0) { return 1.0; }
+        shadow = s;
+      } else {
+        if (s < 0.0) { s = 1.0; }
+        shadow = mix(shadow, s, smoothstep(band, frame.cascade_bias[c].z, depth));
+      }
     }
   }
   let last = frame.cascade_bias[count - 1u].z;

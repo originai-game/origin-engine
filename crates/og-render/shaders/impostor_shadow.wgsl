@@ -71,8 +71,9 @@ struct ImpostorShadowFrag {
 @fragment
 fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool) -> ImpostorShadowFrag {
   imp_set_level(in.uv01.xy);
-  let dx = dpdxFine(in.world);
-  let dy = dpdyFine(in.world);
+  let g = shadow_world_grad(in.world);
+  let dx = g.dx;
+  let dy = g.dy;
   var dd: ImpDepths;
   dd.pd = in.pd;
   dd.vd = in.vd;
