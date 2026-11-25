@@ -160,13 +160,24 @@ pub(crate) struct UiRenderer {
     layer_backdrop_params: wgpu::Buffer,
     filters: super::filter::FilterRunner,
     /// The shape instances and the points, data textures
-    /// (data_texture.rs) the vertex stages read.
+    /// (data_texture.rs) the vertex stages read; `instances_fs` mirrors
+    /// `instances` for fragment storage reads.
     instances: crate::gpu::data_texture::DataTexture,
+    instances_fs: wgpu::Buffer,
     gradients: wgpu::Buffer,
     clips: wgpu::Buffer,
     points: crate::gpu::data_texture::DataTexture,
-    /// Snapshots in instance, gradient, clip, point order.
-    table_uploads: [crate::gpu::buffers::RetainedUpload; 4],
+    /// Snapshots in instance, instances_fs, gradient, clip, point order.
+    table_uploads: [crate::gpu::buffers::RetainedUpload; 5],
+    main_group_cache: crate::gpu::bind_cache::SingleBindCache<(
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::Buffer,
+        wgpu::TextureView,
+        wgpu::TextureView,
+        wgpu::TextureView,
+    )>,
     uniforms: Vec<wgpu::Buffer>,
     layer_params: Vec<wgpu::Buffer>,
     mass_layout: wgpu::BindGroupLayout,

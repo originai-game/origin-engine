@@ -16,18 +16,25 @@ impl UiRenderer {
         self.table_uploads[1].write(
             device,
             queue,
+            &mut self.instances_fs,
+            "ui instances fs",
+            &frame.ui_instances,
+        );
+        self.table_uploads[2].write(
+            device,
+            queue,
             &mut self.gradients,
             "ui gradients",
             &frame.tables.gradients,
         );
-        self.table_uploads[2].write(
+        self.table_uploads[3].write(
             device,
             queue,
             &mut self.clips,
             "ui clips",
             &frame.tables.clips,
         );
-        self.table_uploads[3].write_data(
+        self.table_uploads[4].write_data(
             device,
             queue,
             &mut self.points,
@@ -83,6 +90,11 @@ impl UiRenderer {
                 std::mem::size_of::<LayerParams>() as u64,
             ));
         }
+        let clips = &self.clips;
+        let gradients = &self.gradients;
+        let points_view = &self.points.view;
+        let instances_view = &self.instances.view;
+        let instances_fs = &self.instances_fs;
         let group0 = |buffer: &wgpu::Buffer| {
             crate::bind_group(
                 device,
@@ -90,17 +102,31 @@ impl UiRenderer {
                 overlay_layout,
                 &[
                     buffer.as_entire_binding(),
-                    self.clips.as_entire_binding(),
-                    self.gradients.as_entire_binding(),
-                    wgpu::BindingResource::TextureView(&self.points.view),
-                    wgpu::BindingResource::TextureView(&self.instances.view),
+                    clips.as_entire_binding(),
+                    gradients.as_entire_binding(),
+                    wgpu::BindingResource::TextureView(points_view),
+                    wgpu::BindingResource::TextureView(instances_view),
                     wgpu::BindingResource::TextureView(depth),
+                    instances_fs.as_entire_binding(),
                 ],
             )
         };
         crate::traffic::write_buffer(queue, &self.uniforms[0], 0, bytemuck::cast_slice(&uniform));
+        let main_key = (
+            self.uniforms[0].clone(),
+            clips.clone(),
+            gradients.clone(),
+            instances_fs.clone(),
+            points_view.clone(),
+            instances_view.clone(),
+            depth.clone(),
+        );
+        let main_group = self
+            .main_group_cache
+            .get_or_insert_with(main_key, || group0(&self.uniforms[0]))
+            .clone();
         let mut groups = UiFrameGroups {
-            main: Some(group0(&self.uniforms[0])),
+            main: Some(main_group),
             ..Default::default()
         };
         if !frame.mass_instances.is_empty() {

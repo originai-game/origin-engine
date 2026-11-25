@@ -260,6 +260,7 @@ impl UiRenderer {
                 1,
                 wgpu::TextureUsages::COPY_DST,
             ),
+            instances_fs: storage_buffer(device, "ui instances fs", 256),
             gradients: storage_buffer(device, "ui gradients", 256),
             clips: storage_buffer(device, "ui clips", 256),
             points: crate::gpu::data_texture::DataTexture::new(
@@ -270,6 +271,7 @@ impl UiRenderer {
                 wgpu::TextureUsages::COPY_DST,
             ),
             table_uploads: Default::default(),
+            main_group_cache: Default::default(),
             uniforms: Vec::new(),
             layer_params: Vec::new(),
             mass_camera: uniform_buffer(

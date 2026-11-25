@@ -255,8 +255,9 @@ pub(crate) struct PaintRenderer {
     /// behind the frame's floats).
     preblend: bool,
     /// The quads and the transforms, data textures (data_texture.rs) the
-    /// vertex stage reads.
+    /// vertex stage reads; `quads_fs` mirrors `quads` for fragment storage reads.
     quads: DataTexture,
+    quads_fs: wgpu::Buffer,
     gradients: wgpu::Buffer,
     stops: wgpu::Buffer,
     segments: wgpu::Buffer,
@@ -343,6 +344,14 @@ fn preblend_table() -> [u8; PREBLEND_TABLE] {
         }
     }
     table
+}
+
+/// The preblend table row (0..7) for a linear ink colour `rgb`, matching
+/// Skia's `computeLuminance` at gamma 1.2 (top 3 bits of 8).
+fn preblend_row(rgb: [f32; 3]) -> u32 {
+    let s = rgb.map(|v| og_core::color::linear_to_srgb(v).clamp(0.0, 1.0).powf(1.2));
+    let luma = s[0] * 0.2126 + s[1] * 0.7152 + s[2] * 0.0722;
+    (((luma.powf(1.0 / 1.2) * 255.0).round() as u32) >> 5).min(7)
 }
 
 /// Its module: the library every shader may call, then ui_paint.wgsl.
@@ -527,9 +536,9 @@ impl PaintRenderer {
         output_format: wgpu::TextureFormat,
         sprite_layout: &wgpu::BindGroupLayout,
     ) -> PaintRenderer {
-        let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
+        let entry = |binding, visibility, ty| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            visibility,
             ty: wgpu::BindingType::Buffer {
                 ty,
                 has_dynamic_offset: false,
@@ -541,12 +550,17 @@ impl PaintRenderer {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ui paint"),
             entries: &[
-                entry(0, wgpu::BufferBindingType::Uniform),
-                data_entry(1, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
-                entry(2, storage),
-                entry(3, storage),
-                entry(4, storage),
+                entry(
+                    0,
+                    wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    wgpu::BufferBindingType::Uniform,
+                ),
+                data_entry(1, wgpu::ShaderStages::VERTEX, true),
+                entry(2, wgpu::ShaderStages::FRAGMENT, storage),
+                entry(3, wgpu::ShaderStages::FRAGMENT, storage),
+                entry(4, wgpu::ShaderStages::FRAGMENT, storage),
                 data_entry(5, wgpu::ShaderStages::VERTEX, false),
+                entry(6, wgpu::ShaderStages::FRAGMENT, storage),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -672,6 +686,7 @@ impl PaintRenderer {
                 1,
                 wgpu::TextureUsages::COPY_DST,
             ),
+            quads_fs: buffer(device, "ui paint quads fs", 0),
             gradients: buffer(device, "ui paint gradients", 0),
             stops: buffer(device, "ui paint stops", 0),
             segments: buffer(device, "ui paint icons", 0),
@@ -787,6 +802,13 @@ impl PaintRenderer {
             "ui paint quads",
             bytemuck::cast_slice(&self.gpu),
         );
+        grew |= write(
+            device,
+            queue,
+            &mut self.quads_fs,
+            "ui paint quads fs",
+            &self.gpu,
+        );
         self.gradient_rows.clear();
         // Three rows a gradient: its angle, stops and shape, its centre
         // and radii, and a mask's box (ui_paint.wgsl `gradients`).
@@ -882,6 +904,7 @@ impl PaintRenderer {
                 self.stops.as_entire_binding(),
                 self.segments.as_entire_binding(),
                 wgpu::BindingResource::TextureView(&self.transforms.view),
+                self.quads_fs.as_entire_binding(),
             ],
         )
     }
@@ -1154,6 +1177,11 @@ impl PaintRenderer {
                 }
                 let s = side as f32;
                 g.uv = [q.uv[0] / s, q.uv[1] / s, q.uv[2] / s, q.uv[3] / s];
+                if q.a == 0 {
+                    // Precompute Skia's 3-bit preblend luminance row on the CPU
+                    // (g.k[2] is unread by raster glyph shaders).
+                    g.k[2] = preblend_row([q.color[0], q.color[1], q.color[2]]);
+                }
                 wants = Some(PaintBind::Glyphs(q.a as u8, q.b as u16));
             } else if q.kind == PaintKind::Group as u32 {
                 // Its layer, or none when it shows nothing (and what it

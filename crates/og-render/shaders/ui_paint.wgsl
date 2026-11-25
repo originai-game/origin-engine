@@ -58,20 +58,9 @@ struct PaintGpu {
 };
 // A data texture (data_texture.rs), a quad nine texels in a row
 // (paint.rs `PaintGpu`): a vertex stage reads no storage under WebGPU's
-// compatibility mode.
+// compatibility mode. The fragment stage reads the same array directly
+// through `quads_fs` (binding 6), avoiding 9 textureLoads per fragment.
 @group(0) @binding(1) var quads: texture_2d<u32>;
-
-fn paint_quad(i: u32) -> PaintGpu {
-  var t: array<vec4<u32>, 9>;
-  for (var k = 0u; k < 9u; k++) {
-    t[k] = textureLoad(quads, data_at(i * 9u + k), 0);
-  }
-  return PaintGpu(
-    bitcast<vec4<f32>>(t[0]), bitcast<vec4<f32>>(t[1]), bitcast<vec4<f32>>(t[2]),
-    bitcast<vec4<f32>>(t[3]), bitcast<vec4<f32>>(t[4]), bitcast<vec4<f32>>(t[5]),
-    t[6], bitcast<vec4<f32>>(t[7]), t[8],
-  );
-}
 // Three entries a gradient: x the angle (radians, CSS: 0 up, clockwise), y
 // its first stop, z its stops, w its shape (0 linear, 1 radial, 2 conic);
 // then its centre (xy, CSS px from the box's centre) and a radial one's radii
@@ -88,6 +77,9 @@ fn paint_quad(i: u32) -> PaintGpu {
 // Paint-time transforms, two entries each: CSS's matrix a b c d, then e f;
 // a data texture (data_texture.rs) the vertex stage reads.
 @group(0) @binding(5) var transforms: texture_2d<f32>;
+// The quads as a fragment-only storage buffer (4 FS storage buffers total,
+// within WebGPU compatibility mode's limit of 4).
+@group(0) @binding(6) var<storage, read> quads_fs: array<PaintGpu>;
 
 @group(1) @binding(0) var page: texture_2d<f32>;
 @group(1) @binding(1) var page_sampler: sampler;
@@ -245,7 +237,7 @@ fn gradient_at(gi: u32, p: vec2<f32>, half: vec2<f32>) -> vec4<f32> {
   if (m.a <= 0.0) {
     return vec4<f32>(0.0);
   }
-  return vec4<f32>(srgb_decode(m.rgb / m.a), m.a);
+  return vec4<f32>(m.rgb / m.a, m.a);
 }
 
 // One axis of a nine-slice: `x` CSS px into a box `w` wide whose start and
@@ -305,238 +297,248 @@ fn icon_distance(p: vec2<f32>, first: u32, count: u32) -> f32 {
   return best - 1.0;
 }
 
-// Skia's preblend of a glyph's coverage `c` for an ink `rgb` (linear):
-// the row of the ink's luminance as Skia takes it (its sRGB code values at
-// gamma 1.2, the top three bits of eight), the coverage's entry in it.
-fn preblend(c: f32, rgb: vec3<f32>) -> f32 {
-  let luma = dot(pow(clamp(srgb_encode(rgb), vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.2)), vec3<f32>(0.2126, 0.7152, 0.0722));
-  let row = u32(round(pow(luma, 1.0 / 1.2) * 255.0)) >> 5u;
-  let i = row * 256u + u32(round(clamp(c, 0.0, 1.0) * 255.0));
+// Skia's preblend of a glyph's coverage `c` for its precomputed luminance
+// row `row` (0..7, computed on the CPU in paint.rs `preblend_row`).
+fn preblend(c: f32, row: u32) -> f32 {
+  let i = (row & 7u) * 256u + u32(round(clamp(c, 0.0, 1.0) * 255.0));
   let word = frame.preblend[i / 16u][(i / 4u) % 4u];
   return f32((word >> ((i % 4u) * 8u)) & 0xffu) / 255.0;
 }
 
 @fragment
 fn fs_paint(in: PaintOut) -> @location(0) vec4<f32> {
-  // Sampled before any branch: derivatives need uniform control flow.
-  let m = textureSample(page, page_sampler, in.uv);
-  let screen_tex = vec2<f32>(1.0) / fwidthFine(in.uv);
+  // Derivatives before any branch: WGSL requires uniform control flow.
+  let uv_dx = dpdxFine(in.uv);
+  let uv_dy = dpdyFine(in.uv);
   let local_dx = dpdx(in.local);
   let local_dy = dpdy(in.local);
-  let q = paint_quad(in.index);
+  let q = quads_fs[in.index];
   let css = (in.position.xy + frame.extra.zw) / frame.output.z;
   var cut = css.x < q.clip.x || css.y < q.clip.y || css.x >= q.clip.z || css.y >= q.clip.w;
-  let scale = in.aa;
-  let half = 0.5 * q.rect.zw;
   var rgb = q.color.rgb;
   var a = q.color.a;
   var dither = false;
-  switch q.k.x {
-    case 1u: {
-      let g = gradient_at(q.k.y, in.local, half);
-      rgb = g.rgb;
-      a *= g.a;
-      dither = true;
-      a *= edge(sd_round_box(in.local, half, q.r), scale);
-    }
-    case 9u: {
-      if (q.k.y == 0u) {
-        // Coverage through Skia's preblend, then blended in encoded
-        // values, as Chrome's text is.
-        a *= preblend(m.r, rgb);
-      } else if (q.k.y == 1u) {
-        // A colour glyph: premultiplied, sRGB-encoded.
-        rgb = srgb_decode(m.rgb / max(m.a, 1e-4));
-        a *= m.a;
-      } else {
-        // A distance field, `p.z` atlas pixels across: grown by `p.x`, and
-        // blurred by `p.y` (CSS's radius, a deviation of half). Sharp fills
-        // use the multi-channel median for crisp corners; strokes and glows
-        // use the true-SDF alpha channel (`m.a`) to avoid corner spikes.
-        let size = vec2<f32>(textureDimensions(page));
-        let px_range = max(0.5 * dot(vec2<f32>(q.p.z) / size, screen_tex), 1.0);
-        let grow = min(q.p.x * scale, max(0.5 * px_range - 0.75, 0.0));
-        let sd = select(median(m.r, m.g, m.b), m.a, q.p.x > 0.0 || q.p.y > 0.0);
-        let d = px_range * (sd - 0.5) + grow;
-        if (q.p.y * scale > 1.0) {
-          a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
+  var encoded = false;
+  if (!cut) {
+    let scale = in.aa;
+    let half = 0.5 * q.rect.zw;
+    switch q.k.x {
+      case 1u: {
+        let g = gradient_at(q.k.y, in.local, half);
+        rgb = g.rgb;
+        a *= g.a;
+        dither = true;
+        encoded = true;
+        a *= edge(sd_round_box(in.local, half, q.r), scale);
+      }
+      case 9u: {
+        let m = textureSampleGrad(page, page_sampler, in.uv, uv_dx, uv_dy);
+        if (q.k.y == 0u) {
+          // Coverage through Skia's preblend, then blended in encoded
+          // values, as Chrome's text is.
+          a *= preblend(m.r, q.k.z);
+        } else if (q.k.y == 1u) {
+          // A colour glyph: premultiplied, sRGB-encoded.
+          rgb = m.rgb / max(m.a, 1e-4);
+          a *= m.a;
+          encoded = true;
         } else {
-          a *= clamp(d + 0.5, 0.0, 1.0);
+          // A distance field, `p.z` atlas pixels across: grown by `p.x`, and
+          // blurred by `p.y` (CSS's radius, a deviation of half). Sharp fills
+          // use the multi-channel median for crisp corners; strokes and glows
+          // use the true-SDF alpha channel (`m.a`) to avoid corner spikes.
+          let size = vec2<f32>(textureDimensions(page));
+          let screen_tex = vec2<f32>(1.0) / max(abs(uv_dx) + abs(uv_dy), vec2<f32>(1e-6));
+          let px_range = max(0.5 * dot(vec2<f32>(q.p.z) / size, screen_tex), 1.0);
+          let grow = min(q.p.x * scale, max(0.5 * px_range - 0.75, 0.0));
+          let sd = select(median(m.r, m.g, m.b), m.a, q.p.x > 0.0 || q.p.y > 0.0);
+          let d = px_range * (sd - 0.5) + grow;
+          if (q.p.y * scale > 1.0) {
+            a *= 0.5 + 0.5 * erf_approx(d / (0.5 * q.p.y * scale * 1.4142135));
+          } else {
+            a *= clamp(d + 0.5, 0.0, 1.0);
+          }
         }
       }
-    }
-    case 3u: {
-      let side = max(min(q.rect.z, q.rect.w), 1e-3);
-      let p = (in.local + vec2<f32>(0.5 * side)) * (24.0 / side);
-      let d = icon_distance(p, q.k.y, q.k.z) * (side / 24.0);
-      a *= clamp(0.5 - d * scale, 0.0, 1.0);
-    }
-    case 4u: {
-      // The ring between the box and its inner edge, each side in by its
-      // width, each corner's radius less its wider side's.
-      let w = q.p;
-      let ihalf = half - 0.5 * vec2<f32>(w.w + w.y, w.x + w.z);
-      let ic = 0.5 * vec2<f32>(w.w - w.y, w.x - w.z);
-      let ir = max(q.r - vec4<f32>(max(w.x, w.w), max(w.x, w.y), max(w.z, w.y), max(w.z, w.w)), vec4<f32>(0.0));
-      var inner = 0.0;
-      if (ihalf.x > 0.0 && ihalf.y > 0.0) {
-        inner = edge(sd_round_box(in.local - ic, ihalf, ir), scale);
+      case 3u: {
+        let side = max(min(q.rect.z, q.rect.w), 1e-3);
+        let p = (in.local + vec2<f32>(0.5 * side)) * (24.0 / side);
+        let d = icon_distance(p, q.k.y, q.k.z) * (side / 24.0);
+        a *= clamp(0.5 - d * scale, 0.0, 1.0);
       }
-      let ring = edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - inner);
-      a *= ring;
-      if (q.k.z != 0u) {
-        // The side a pixel is on: the nearest edge in units of its width,
-        // so two sides meet on the line from the outer to the inner corner.
-        let e = vec4<f32>(in.local.y + half.y, half.x - in.local.x, half.y - in.local.y, in.local.x + half.x)
-          / max(w, vec4<f32>(1e-4));
-        var side = 0u;
-        var best = e.x;
-        if (e.y < best) { best = e.y; side = 1u; }
-        if (e.z < best) { best = e.z; side = 2u; }
-        if (e.w < best) { side = 3u; }
-        if ((q.k.z & (1u << side)) != 0u) {
-          rgb = q.uv.rgb;
-          a = q.uv.a * ring;
+      case 4u: {
+        // The ring between the box and its inner edge, each side in by its
+        // width, each corner's radius less its wider side's.
+        let w = q.p;
+        let ihalf = half - 0.5 * vec2<f32>(w.w + w.y, w.x + w.z);
+        let ic = 0.5 * vec2<f32>(w.w - w.y, w.x - w.z);
+        let ir = max(q.r - vec4<f32>(max(w.x, w.w), max(w.x, w.y), max(w.z, w.y), max(w.z, w.w)), vec4<f32>(0.0));
+        var inner = 0.0;
+        if (ihalf.x > 0.0 && ihalf.y > 0.0) {
+          inner = edge(sd_round_box(in.local - ic, ihalf, ir), scale);
+        }
+        let ring = edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - inner);
+        a *= ring;
+        if (q.k.z != 0u) {
+          // The side a pixel is on: the nearest edge in units of its width,
+          // so two sides meet on the line from the outer to the inner corner.
+          let e = vec4<f32>(in.local.y + half.y, half.x - in.local.x, half.y - in.local.y, in.local.x + half.x)
+            / max(w, vec4<f32>(1e-4));
+          var side = 0u;
+          var best = e.x;
+          if (e.y < best) { best = e.y; side = 1u; }
+          if (e.z < best) { best = e.z; side = 2u; }
+          if (e.w < best) { side = 3u; }
+          if ((q.k.z & (1u << side)) != 0u) {
+            rgb = q.uv.rgb;
+            a = q.uv.a * ring;
+          }
         }
       }
-    }
-    case 5u: {
-      let s = sd_round_box(in.local - q.p.xy, half + vec2<f32>(q.p.w), grown(q.r, q.p.w));
-      let body = edge(sd_round_box(in.local, half, q.r), scale);
-      a *= blurred(s, q.p.z, scale) * (1.0 - body);
-    }
-    case 6u: {
-      let hole_half = half - vec2<f32>(q.p.w);
-      var hole = 0.0;
-      if (hole_half.x > 0.0 && hole_half.y > 0.0) {
-        hole = blurred(sd_round_box(in.local - q.p.xy, hole_half, grown(q.r, -q.p.w)), q.p.z, scale);
+      case 5u: {
+        let s = sd_round_box(in.local - q.p.xy, half + vec2<f32>(q.p.w), grown(q.r, q.p.w));
+        let body = edge(sd_round_box(in.local, half, q.r), scale);
+        a *= blurred(s, q.p.z, scale) * (1.0 - body);
       }
-      a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - hole);
-    }
-    case 7u: {
-      // A texture's region, nine-sliced: its colour times the quad's (the
-      // ink tints a mask; a picture's is white).
-      let size = vec2<f32>(textureDimensions(page));
-      let region = (q.uv.zw - q.uv.xy) * size;
-      let tile = (q.k.z & 2u) != 0u;
-      let fill = (q.k.z & 1u) != 0u;
-      let at = in.local + half;
-      let x = slice_axis(at.x, 2.0 * half.x, q.r.w, q.r.y, q.p.w, q.p.y, region.x, tile);
-      let y = slice_axis(at.y, 2.0 * half.y, q.r.x, q.r.z, q.p.x, q.p.z, region.y, tile);
-      // Each axis's slice scale over the fragment's step in the box. A
-      // stretched middle is uniform along its stretch (the art is made so),
-      // so it filters by the other axis's scale: a squeezed strip would
-      // otherwise take a mip that smears the thin edge across it.
-      var kx = x.z;
-      var ky = y.z;
-      if (!tile && x.y > 0.5) { kx = min(kx, ky); }
-      if (!tile && y.y > 0.5) { ky = min(ky, x.z); }
-      let k = vec2<f32>(kx, ky) / size;
-      let s = textureSampleGrad(page, page_sampler, q.uv.xy + vec2<f32>(x.x, y.x) / size, local_dx * k, local_dy * k);
-      rgb *= s.rgb;
-      a *= s.a;
-      if (!fill && x.y > 0.5 && y.y > 0.5) {
-        a = 0.0;
+      case 6u: {
+        let hole_half = half - vec2<f32>(q.p.w);
+        var hole = 0.0;
+        if (hole_half.x > 0.0 && hole_half.y > 0.0) {
+          hole = blurred(sd_round_box(in.local - q.p.xy, hole_half, grown(q.r, -q.p.w)), q.p.z, scale);
+        }
+        a *= edge(sd_round_box(in.local, half, q.r), scale) * (1.0 - hole);
       }
-      if (q.w.x > 0.0) {
-        // The radial wipe: shown from the start angle round to the amount
-        // left, its two edges antialiased by their distance in pixels.
-        let turn = 6.2831853;
-        var t = (atan2(in.local.x, -in.local.y) - q.w.y) / turn;
-        t = select(t, -t, q.w.z > 0.5);
-        t = fract(t);
-        let shown = 1.0 - q.w.x;
-        let r = length(in.local) * scale * turn;
-        a *= clamp(min(t, shown - t) * r + 0.5, 0.0, 1.0) * select(0.0, 1.0, shown > 0.0);
-      }
-    }
-    case 10u: {
-      // A group's filtered layer, or a backdrop's filtered capture
-      // (premultiplied, sRGB-encoded), at its opacity; a backdrop cut to
-      // its element's rounded box.
-      if (m.a <= 0.0) {
-        cut = true;
-      } else {
-        rgb = srgb_decode(m.rgb / m.a);
-        a *= m.a;
-        if ((q.k.z & 1u) != 0u) {
-          a *= edge(sd_round_box(in.local, half, q.r), scale);
+      case 7u: {
+        // A texture's region, nine-sliced: its colour times the quad's (the
+        // ink tints a mask; a picture's is white).
+        let size = vec2<f32>(textureDimensions(page));
+        let region = (q.uv.zw - q.uv.xy) * size;
+        let tile = (q.k.z & 2u) != 0u;
+        let fill = (q.k.z & 1u) != 0u;
+        let at = in.local + half;
+        let x = slice_axis(at.x, 2.0 * half.x, q.r.w, q.r.y, q.p.w, q.p.y, region.x, tile);
+        let y = slice_axis(at.y, 2.0 * half.y, q.r.x, q.r.z, q.p.x, q.p.z, region.y, tile);
+        // Each axis's slice scale over the fragment's step in the box. A
+        // stretched middle is uniform along its stretch (the art is made so),
+        // so it filters by the other axis's scale: a squeezed strip would
+        // otherwise take a mip that smears the thin edge across it.
+        var kx = x.z;
+        var ky = y.z;
+        if (!tile && x.y > 0.5) { kx = min(kx, ky); }
+        if (!tile && y.y > 0.5) { ky = min(ky, x.z); }
+        let k = vec2<f32>(kx, ky) / size;
+        let s = textureSampleGrad(page, page_sampler, q.uv.xy + vec2<f32>(x.x, y.x) / size, local_dx * k, local_dy * k);
+        rgb *= s.rgb;
+        a *= s.a;
+        if (!fill && x.y > 0.5 && y.y > 0.5) {
+          a = 0.0;
+        }
+        if (q.w.x > 0.0) {
+          // The radial wipe: shown from the start angle round to the amount
+          // left, its two edges antialiased by their distance in pixels.
+          let turn = 6.2831853;
+          var t = (atan2(in.local.x, -in.local.y) - q.w.y) / turn;
+          t = select(t, -t, q.w.z > 0.5);
+          t = fract(t);
+          let shown = 1.0 - q.w.x;
+          let r = length(in.local) * scale * turn;
+          a *= clamp(min(t, shown - t) * r + 0.5, 0.0, 1.0) * select(0.0, 1.0, shown > 0.0);
         }
       }
-    }
-    case 8u: {
-      // A polyline's segment, round capped: painted only where it is the
-      // nearest of itself and its neighbours (a tie to the lower one), so
-      // a join draws once.
-      let at = q.rect.xy + half + in.local;
-      let flags = u32(q.p.y);
-      let d = segment_distance(at, q.uv.xy, q.uv.zw);
-      if ((flags & 1u) != 0u) {
-        let dp = segment_distance(at, q.r.xy, q.uv.xy);
-        if (dp < d || ((flags & 4u) != 0u && dp == d)) {
+      case 10u: {
+        // A group's filtered layer, or a backdrop's filtered capture
+        // (premultiplied, sRGB-encoded), at its opacity; a backdrop cut to
+        // its element's rounded box.
+        let m = textureSampleGrad(page, page_sampler, in.uv, uv_dx, uv_dy);
+        if (m.a <= 0.0) {
           cut = true;
+        } else {
+          rgb = m.rgb / m.a;
+          a *= m.a;
+          encoded = true;
+          if ((q.k.z & 1u) != 0u) {
+            a *= edge(sd_round_box(in.local, half, q.r), scale);
+          }
         }
       }
-      if ((flags & 2u) != 0u) {
-        let dn = segment_distance(at, q.uv.zw, q.r.zw);
-        if (dn < d || ((flags & 8u) != 0u && dn == d)) {
-          cut = true;
+      case 8u: {
+        // A polyline's segment, round capped: painted only where it is the
+        // nearest of itself and its neighbours (a tie to the lower one), so
+        // a join draws once.
+        let at = q.rect.xy + half + in.local;
+        let flags = u32(q.p.y);
+        let d = segment_distance(at, q.uv.xy, q.uv.zw);
+        if ((flags & 1u) != 0u) {
+          let dp = segment_distance(at, q.r.xy, q.uv.xy);
+          if (dp < d || ((flags & 4u) != 0u && dp == d)) {
+            cut = true;
+          }
         }
+        if ((flags & 2u) != 0u) {
+          let dn = segment_distance(at, q.uv.zw, q.r.zw);
+          if (dn < d || ((flags & 8u) != 0u && dn == d)) {
+            cut = true;
+          }
+        }
+        a *= edge(d - 0.5 * q.p.x, scale);
       }
-      a *= edge(d - 0.5 * q.p.x, scale);
+      default: {
+        a *= edge(sd_round_box(in.local, half, q.r), scale);
+      }
     }
-    default: {
-      a *= edge(sd_round_box(in.local, half, q.r), scale);
+    // Its mask's alpha where it falls in the mask's box (CSS's mask-image:
+    // drawn where the mask is opaque, not where it is transparent).
+    if (!cut && q.w.w > 0.5) {
+      let mi = u32(q.w.w) - 1u;
+      let box = gradients[3u * mi + 2u];
+      let mh = 0.5 * box.zw;
+      a *= gradient_at(mi, in.at - box.xy - mh, mh).a;
     }
-  }
-  // Its mask's alpha where it falls in the mask's box (CSS's mask-image:
-  // drawn where the mask is opaque, not where it is transparent).
-  if (!cut && q.w.w > 0.5) {
-    let mi = u32(q.w.w) - 1u;
-    let box = gradients[3u * mi + 2u];
-    let mh = 0.5 * box.zw;
-    a *= gradient_at(mi, in.at - box.xy - mh, mh).a;
-  }
-  // Its rounded clip, at the fragment's place in the clip's own space
-  // (through the inverse of its transform), whatever the quad's kind or
-  // transform: so an image or a glyph crossing a rounded corner is cut
-  // round, antialiased, and a spotlight's shade spares its round hole.
-  if (!cut && q.f.y != 0u) {
-    let ri = q.f.y - 1u;
-    let box = gradients[ri];
-    let inv = gradients[ri + 2u];
-    let t = gradients[ri + 3u];
-    let p = mat2x2<f32>(inv.xy, inv.zw) * css + t.xy;
-    let k = frame.output.z / sqrt(max(abs(inv.x * inv.w - inv.y * inv.z), 1e-12));
-    var c = edge(sd_round_box(p - 0.5 * (box.xy + box.zw), 0.5 * (box.zw - box.xy), gradients[ri + 1u]), k);
-    if (t.z > 0.5) {
-      c = 1.0 - c;
+    // Its rounded clip, at the fragment's place in the clip's own space
+    // (through the inverse of its transform), whatever the quad's kind or
+    // transform: so an image or a glyph crossing a rounded corner is cut
+    // round, antialiased, and a spotlight's shade spares its round hole.
+    if (!cut && q.f.y != 0u) {
+      let ri = q.f.y - 1u;
+      let box = gradients[ri];
+      let inv = gradients[ri + 2u];
+      let t = gradients[ri + 3u];
+      let p = mat2x2<f32>(inv.xy, inv.zw) * css + t.xy;
+      let k = frame.output.z / sqrt(max(abs(inv.x * inv.w - inv.y * inv.z), 1e-12));
+      var c = edge(sd_round_box(p - 0.5 * (box.xy + box.zw), 0.5 * (box.zw - box.xy), gradients[ri + 1u]), k);
+      if (t.z > 0.5) {
+        c = 1.0 - c;
+      }
+      a *= c;
     }
-    a *= c;
-  }
-  if (a <= 0.0) {
-    cut = true;
-  }
-  rgb = srgb_encode(rgb);
-  // Its colour filters (CSS's brightness(), grayscale() and the rest, on
-  // the encoded, unpremultiplied colour), composed into one matrix.
-  if (!cut && q.f.x != 0u) {
-    let fi = q.f.x - 1u;
-    let c = vec4<f32>(rgb, a);
-    let o = clamp(
-      vec4<f32>(
-        dot(gradients[fi], c),
-        dot(gradients[fi + 1u], c),
-        dot(gradients[fi + 2u], c),
-        dot(gradients[fi + 3u], c),
-      ) + gradients[fi + 4u],
-      vec4<f32>(0.0),
-      vec4<f32>(1.0),
-    );
-    rgb = o.rgb;
-    a = o.a;
     if (a <= 0.0) {
       cut = true;
+    }
+    if (!cut) {
+      if (!encoded) {
+        rgb = srgb_encode(rgb);
+      }
+      // Its colour filters (CSS's brightness(), grayscale() and the rest, on
+      // the encoded, unpremultiplied colour), composed into one matrix.
+      if (q.f.x != 0u) {
+        let fi = q.f.x - 1u;
+        let c = vec4<f32>(rgb, a);
+        let o = clamp(
+          vec4<f32>(
+            dot(gradients[fi], c),
+            dot(gradients[fi + 1u], c),
+            dot(gradients[fi + 2u], c),
+            dot(gradients[fi + 3u], c),
+          ) + gradients[fi + 4u],
+          vec4<f32>(0.0),
+          vec4<f32>(1.0),
+        );
+        rgb = o.rgb;
+        a = o.a;
+        if (a <= 0.0) {
+          cut = true;
+        }
+      }
     }
   }
   if (cut) {

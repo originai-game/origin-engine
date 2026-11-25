@@ -1073,8 +1073,10 @@ struct UiInstance {
   extra: vec4<f32>,
 };
 // A data texture (data_texture.rs), an instance fourteen texels in a row
-// (build.rs `UiGpu`).
+// (build.rs `UiGpu`) for the vertex stage; `instances_fs` mirrors it as a
+// fragment-only storage buffer (3 FS storage buffers total, within Compat's 4).
 @group(0) @binding(4) var instances: texture_2d<u32>;
+@group(0) @binding(6) var<storage, read> instances_fs: array<UiInstance>;
 
 fn ui_instance(i: u32) -> UiInstance {
   var t: array<vec4<u32>, 14>;

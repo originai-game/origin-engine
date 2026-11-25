@@ -920,7 +920,7 @@ impl OverlayRenderer {
     ) -> OverlayRenderer {
         let storage = |binding| wgpu::BindGroupLayoutEntry {
             binding,
-            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+            visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Storage { read_only: true },
                 has_dynamic_offset: false,
@@ -945,9 +945,10 @@ impl OverlayRenderer {
                 storage(2),
                 // The points and the shape instances, data textures
                 // (data_texture.rs): a vertex stage reads no storage under
-                // WebGPU's compatibility mode.
+                // WebGPU's compatibility mode. The fragment stage reads
+                // `instances_fs` (binding 6) directly as storage.
                 crate::gpu::data_texture::data_entry(3, wgpu::ShaderStages::VERTEX_FRAGMENT, false),
-                crate::gpu::data_texture::data_entry(4, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
+                crate::gpu::data_texture::data_entry(4, wgpu::ShaderStages::VERTEX, true),
                 // The frame's view depth (occluders, mass elements).
                 wgpu::BindGroupLayoutEntry {
                     binding: 5,
@@ -959,6 +960,7 @@ impl OverlayRenderer {
                     },
                     count: None,
                 },
+                storage(6),
             ],
         });
         let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

@@ -27,8 +27,10 @@ const FIT_SCALE_DOWN: u32 = 8u;
 struct ImageUv {
   // Where to sample.
   uv: vec2<f32>,
-  // The same without its wraps (tiles, slices), for the sampling gradients.
-  raw: vec2<f32>,
+  // Analytic screen-space sampling gradients (computed from uniform local
+  // derivatives so image_uv can stay inside the PAINT_IMAGE branch).
+  gx: vec2<f32>,
+  gy: vec2<f32>,
   // 0 where the image draws nothing (outside a contained image, a
   // nine-slice's empty centre).
   mask: f32,
@@ -38,7 +40,7 @@ struct ImageUv {
 // long, repeated (1, from its start or, `centered`, one tile centred),
 // rounded to a whole number (2) or spaced (3: whole tiles, the room left
 // shared out between and around them). The fraction of the tile, its
-// unwrapped twin (tiles), and 1 where a tile is drawn.
+// rate per CSS px (1 / w), and 1 where a tile is drawn.
 fn tile_mid(q: f32, mid: f32, tile: f32, rep: u32, centered: bool) -> vec3<f32> {
   var w = max(tile, 1e-4);
   var o = 0.0;
@@ -61,59 +63,61 @@ fn tile_mid(q: f32, mid: f32, tile: f32, rep: u32, centered: bool) -> vec3<f32> 
   if (rep == 3u && (k < 0.0 || k >= n)) {
     drawn = 0.0;
   }
-  return vec3<f32>(min(t, 1.0), k * pitch / w, drawn);
+  return vec3<f32>(min(t, 1.0), 1.0 / w, drawn);
 }
 
 // One axis of a nine-slice: `x` CSS px from the box's start of `len`, the
 // border `a`, `b` drawn (CSS px) of source border `sa`, `sb` (fractions of
-// the region) — the fraction of the region to sample, its unwrapped twin,
+// the region) — the fraction of the region to sample, its rate per CSS px,
 // 1 in the centre, and 1 where it draws (not in a space's gap).
 fn nine_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, edges: u32, src_len: f32) -> vec4<f32> {
   if (x < a) {
-    return vec4<f32>(x / max(a, 1e-4) * sa, x / max(a, 1e-4) * sa, 0.0, 1.0);
+    let d = sa / max(a, 1e-4);
+    return vec4<f32>(x * d, d, 0.0, 1.0);
   }
   if (x > len - b) {
     let t = (x - (len - b)) / max(b, 1e-4);
     let f = 1.0 - sb + t * sb;
-    return vec4<f32>(f, f, 0.0, 1.0);
+    return vec4<f32>(f, sb / max(b, 1e-4), 0.0, 1.0);
   }
   let mid = max(len - a - b, 1e-4);
   let src_mid = max(1.0 - sa - sb, 1e-4);
   let t = (x - a) / mid;
   if (edges == 0u) {
     let f = sa + t * src_mid;
-    return vec4<f32>(f, f, 1.0, 1.0);
+    return vec4<f32>(f, src_mid / mid, 1.0, 1.0);
   }
   // A tile is the source's middle at the border's scale (its pixels per
   // CSS px).
   let scale = select(sa * src_len / max(a, 1e-4), sb * src_len / max(b, 1e-4), a <= 0.0);
   let r = tile_mid(x - a, mid, src_mid * src_len / max(scale, 1e-4), edges, false);
-  return vec4<f32>(sa + r.x * src_mid, sa + r.y * src_mid, 1.0, r.z);
+  return vec4<f32>(sa + r.x * src_mid, r.y * src_mid, 1.0, r.z);
 }
 
 // One axis of a CSS border image (CSS Backgrounds 3 §6.2): `x` CSS px
 // across `len`, the widths `a`, `b` drawn of the slices `sa`, `sb` (image
 // px of `src`), the middle at `scale` CSS px an image px filled by `rep`
 // (0 stretch, 1 repeat centred, 2 round, 3 space). The fraction of the
-// image, its unwrapped twin, 1 where it draws, and 1 in the middle.
+// image, its rate per CSS px, 1 where it draws, and 1 in the middle.
 fn border_axis(x: f32, len: f32, a: f32, b: f32, sa: f32, sb: f32, src: f32, scale: f32, rep: u32) -> vec4<f32> {
   let n = max(src, 1e-4);
   if (x < a) {
-    let f = x / max(a, 1e-4) * sa / n;
-    return vec4<f32>(f, f, 1.0, 0.0);
+    let d = sa / (max(a, 1e-4) * n);
+    return vec4<f32>(x * d, d, 1.0, 0.0);
   }
   if (x > len - b) {
-    let f = (src - sb + (x - (len - b)) / max(b, 1e-4) * sb) / n;
-    return vec4<f32>(f, f, 1.0, 0.0);
+    let d = sb / (max(b, 1e-4) * n);
+    let f = (src - sb) / n + (x - (len - b)) * d;
+    return vec4<f32>(f, d, 1.0, 0.0);
   }
   let mid = max(len - a - b, 1e-4);
   let smid = max(src - sa - sb, 1e-4);
   if (rep == 0u) {
     let f = (sa + (x - a) / mid * smid) / n;
-    return vec4<f32>(f, f, 1.0, 1.0);
+    return vec4<f32>(f, smid / (mid * n), 1.0, 1.0);
   }
   let r = tile_mid(x - a, mid, smid * scale, rep, true);
-  return vec4<f32>((sa + r.x * smid) / n, (sa + r.y * smid) / n, r.z, 1.0);
+  return vec4<f32>((sa + r.x * smid) / n, r.y * smid / n, r.z, 1.0);
 }
 
 // A border width over its slice: the CSS px an image px of that edge is
@@ -125,8 +129,8 @@ fn border_scale(w: f32, slice: f32) -> f32 {
 // One axis of a CSS background layer: `x` CSS px from the box's start of
 // `len`, the image `w` long placed at `origin`, repeated by `rep` (0
 // repeat, 1 no-repeat, 2 space, 3 round, whose `w` is already rounded):
-// the fraction of the image to sample, its unwrapped twin, and 1 where an
-// image is drawn (not in a gap, not past a lone image).
+// the fraction of the image to sample, its rate per CSS px (1 / iw), and
+// 1 where an image is drawn (not in a gap, not past a lone image).
 fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: u32) -> vec3<f32> {
   let iw = max(w, 1e-4);
   var o = origin;
@@ -146,11 +150,11 @@ fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: u32) -> vec3<f32>
   let q = x - o;
   if (!tiled) {
     let t = q / iw;
-    return vec3<f32>(clamp(t, 0.0, 1.0), t, select(0.0, 1.0, t >= 0.0 && t <= 1.0));
+    return vec3<f32>(clamp(t, 0.0, 1.0), 1.0 / iw, select(0.0, 1.0, t >= 0.0 && t <= 1.0));
   }
   let k = q / pitch;
   let t = fract(k) * pitch / iw;
-  return vec3<f32>(min(t, 1.0), k * pitch / iw, select(0.0, 1.0, t <= 1.0));
+  return vec3<f32>(min(t, 1.0), 1.0 / iw, select(0.0, 1.0, t <= 1.0));
 }
 
 // An image's texture orientation (UiOrientation, kinds.y bits 18..21):
@@ -175,7 +179,15 @@ fn region_uv(s: UiInstance, f: vec2<f32>) -> vec2<f32> {
   return mix(s.paint.xy, s.paint.zw, t);
 }
 
-fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
+// The differential of `region_uv` for a fraction differential `df`.
+fn region_uv_grad(s: UiInstance, df: vec2<f32>) -> vec2<f32> {
+  let o = orientation(s);
+  var t = select(df, df.yx, (o & 4u) != 0u);
+  t = select(t, -t, vec2<bool>((o & 1u) != 0u, (o & 2u) != 0u));
+  return (s.paint.zw - s.paint.xy) * t;
+}
+
+fn image_uv(s: UiInstance, p: vec2<f32>, ldx: vec2<f32>, ldy: vec2<f32>) -> ImageUv {
   var out: ImageUv;
   out.mask = 1.0;
   let fit = (s.kinds.y >> 4u) & 15u;
@@ -188,7 +200,9 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
   }
   let density = select(1.0, s.extra.y, (s.kinds.y & 15u) == PAINT_IMAGE);
   img = img / density;
-  var f = pos / max(size, vec2<f32>(1e-4));
+  let inv_size = vec2<f32>(1.0) / max(size, vec2<f32>(1e-4));
+  var f = pos * inv_size;
+  var df_scale = inv_size;
   switch fit {
     case 1u, 2u, 8u: {
       // Cover crops, contain fits (scale-down never above its own size);
@@ -200,6 +214,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let drawn = img * k;
       let origin = (size - drawn) * s.paint2.xy + s.paint3.xy;
       f = (pos - origin) / drawn;
+      df_scale = vec2<f32>(1.0) / drawn;
       if (fit != FIT_COVER && (any(f < vec2<f32>(0.0)) || any(f > vec2<f32>(1.0)))) {
         out.mask = 0.0;
       }
@@ -207,6 +222,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
     case 3u: {
       let origin = (size - img) * s.paint2.xy + s.paint3.xy;
       f = (pos - origin) / img;
+      df_scale = vec2<f32>(1.0) / img;
       if (any(f < vec2<f32>(0.0)) || any(f > vec2<f32>(1.0))) {
         out.mask = 0.0;
       }
@@ -221,10 +237,10 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       if (!center && ax.z > 0.5 && ay.z > 0.5) {
         out.mask = 0.0;
       }
-      let uv0 = region_uv(s, vec2<f32>(ax.x, ay.x));
-      let raw = region_uv(s, vec2<f32>(ax.y, ay.y));
-      out.uv = uv0;
-      out.raw = raw;
+      let rate = vec2<f32>(ax.y, ay.y);
+      out.uv = region_uv(s, vec2<f32>(ax.x, ay.x));
+      out.gx = region_uv_grad(s, ldx * rate);
+      out.gy = region_uv_grad(s, ldy * rate);
       return out;
     }
     case 5u: {
@@ -235,7 +251,8 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let r = rotate2(moved, -s.geo2.w);
       let k = r / tile;
       out.uv = region_uv(s, fract(k));
-      out.raw = region_uv(s, k);
+      out.gx = region_uv_grad(s, rotate2(ldx, -s.geo2.w) / tile);
+      out.gy = region_uv_grad(s, rotate2(ldy, -s.geo2.w) / tile);
       return out;
     }
     case 6u: {
@@ -285,9 +302,11 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let origin = s.paint3.xy * (size - w) + s.paint3.zw;
       let ax = background_axis(pos.x, size.x, w.x, origin.x, rx);
       let ay = background_axis(pos.y, size.y, w.y, origin.y, ry);
+      let rate = vec2<f32>(ax.y, ay.y);
       out.mask = ax.z * ay.z;
       out.uv = region_uv(s, vec2<f32>(ax.x, ay.x));
-      out.raw = region_uv(s, vec2<f32>(ax.y, ay.y));
+      out.gx = region_uv_grad(s, ldx * rate);
+      out.gy = region_uv_grad(s, ldy * rate);
       return out;
     }
     case 7u: {
@@ -324,19 +343,22 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let ry = (s.kinds.y >> 10u) & 3u;
       let ax = border_axis(pos.x, size.x, wd.x, wd.z, sl.x, sl.z, img.x, select(1.0, fx, fx > 0.0), rx);
       let ay = border_axis(pos.y, size.y, wd.y, wd.w, sl.y, sl.w, img.y, select(1.0, fy, fy > 0.0), ry);
+      let rate = vec2<f32>(ax.y, ay.y);
       out.mask = ax.z * ay.z;
       if (((s.kinds.y >> 12u) & 1u) == 0u && ax.w > 0.5 && ay.w > 0.5) {
         out.mask = 0.0;
       }
       out.uv = region_uv(s, vec2<f32>(ax.x, ay.x));
-      out.raw = region_uv(s, vec2<f32>(ax.y, ay.y));
+      out.gx = region_uv_grad(s, ldx * rate);
+      out.gy = region_uv_grad(s, ldy * rate);
       return out;
     }
     default: {}
   }
   let c = clamp(f, vec2<f32>(0.0), vec2<f32>(1.0));
   out.uv = region_uv(s, c);
-  out.raw = region_uv(s, f);
+  out.gx = region_uv_grad(s, ldx * df_scale);
+  out.gy = region_uv_grad(s, ldy * df_scale);
   return out;
 }
 
@@ -356,9 +378,13 @@ fn blend_out(rgb: vec3<f32>, a: f32, blend: u32) -> vec4<f32> {
   }
 }
 
-fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f32>) -> vec4<f32> {
-  var c = flat_paint(s, in.local, in.position.xy);
+fn shape_color(s: UiInstance, in: UiOut, ldx: vec2<f32>, ldy: vec2<f32>) -> vec4<f32> {
   let kind = s.kinds.y & 15u;
+  if (kind != PAINT_IMAGE && kind != PAINT_GRADIENT_IMAGE) {
+    return flat_paint(s, in.local, in.position.xy);
+  }
+  let im = image_uv(s, in.local, ldx, ldy);
+  var c = vec4<f32>(0.0);
   if (kind == PAINT_IMAGE) {
     var t = vec4<f32>(0.0);
     if (((s.kinds.y >> 17u) & 1u) == 1u) {
@@ -369,14 +395,14 @@ fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f3
       let texel = (floor(im.uv * dims) + vec2<f32>(0.5)) / dims;
       t = textureSampleLevel(sprite_tex, sprite_sampler, texel, 0.0);
     } else {
-      t = textureSampleGrad(sprite_tex, sprite_sampler, im.uv, gx, gy);
+      t = textureSampleGrad(sprite_tex, sprite_sampler, im.uv, im.gx, im.gy);
     }
     c = t * s.color * vec4<f32>(1.0, 1.0, 1.0, im.mask);
-  } else if (kind == PAINT_GRADIENT_IMAGE) {
+  } else {
     c = gradient_color(u32(s.extra.y), im.uv, s.paint2.zw, in.position.xy);
     c.a *= im.mask;
   }
-  if (((s.kinds.y >> 16u) & 1u) == 1u && (kind == PAINT_IMAGE || kind == PAINT_GRADIENT_IMAGE)) {
+  if (((s.kinds.y >> 16u) & 1u) == 1u) {
     // A luminance mask (CSS Masking 1 §7.1): the luminance of its
     // sRGB-encoded colour times its alpha.
     let l = dot(encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), vec3<f32>(0.2125, 0.7154, 0.0721));
@@ -387,14 +413,16 @@ fn shape_color(s: UiInstance, in: UiOut, im: ImageUv, gx: vec2<f32>, gy: vec2<f3
 
 @fragment
 fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
-  let s = ui_instance(in.instance);
-  let px = local_px(in.local);
-  let im = image_uv(s, in.local);
-  let gx = dpdxFine(im.raw);
-  let gy = dpdyFine(im.raw);
-  let cov = mode_coverage(s, in.local, px);
-  let c = shape_color(s, in, im, gx, gy);
-  let a = clamp(cov * c.a * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
+  let ldx = dpdxFine(in.local);
+  let ldy = dpdyFine(in.local);
+  let px = max(0.5 * (length(ldx) + length(ldy)), 1e-6);
+  let s = instances_fs[in.instance];
+  let vis = mode_coverage(s, in.local, px) * s.extra.x * instance_clip(s, in.position.xy);
+  var c = vec4<f32>(0.0);
+  if (vis > 0.0) {
+    c = shape_color(s, in, ldx, ldy);
+  }
+  let a = clamp(vis * c.a, 0.0, 1.0);
   return blend_out(c.rgb, a, (s.kinds.z >> 4u) & 31u);
 }
 
@@ -402,14 +430,16 @@ fn fs_shape(in: UiOut) -> @location(0) vec4<f32> {
 // the formula, laid over it by the shape's coverage.
 @fragment
 fn fs_shape_dst(in: UiOut) -> @location(0) vec4<f32> {
-  let s = ui_instance(in.instance);
-  let px = local_px(in.local);
-  let im = image_uv(s, in.local);
-  let gx = dpdxFine(im.raw);
-  let gy = dpdyFine(im.raw);
-  let cov = mode_coverage(s, in.local, px);
-  let c = shape_color(s, in, im, gx, gy);
-  let a = clamp(cov * c.a * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
+  let ldx = dpdxFine(in.local);
+  let ldy = dpdyFine(in.local);
+  let px = max(0.5 * (length(ldx) + length(ldy)), 1e-6);
+  let s = instances_fs[in.instance];
+  let vis = mode_coverage(s, in.local, px) * s.extra.x * instance_clip(s, in.position.xy);
+  var c = vec4<f32>(0.0);
+  if (vis > 0.0) {
+    c = shape_color(s, in, ldx, ldy);
+  }
+  let a = clamp(vis * c.a, 0.0, 1.0);
   return blend_over(c.rgb, a, (s.kinds.z >> 4u) & 31u, in.position.xy);
 }
 
@@ -449,7 +479,7 @@ fn backdrop_limit(rgb: vec3<f32>, limit: f32) -> vec3<f32> {
 
 @fragment
 fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
-  let s = ui_instance(in.instance);
+  let s = instances_fs[in.instance];
   let px = local_px(in.local);
   let d = shape_distance(s, in.local).x;
   let cov = clamp(0.5 - d / px, 0.0, 1.0);
@@ -571,7 +601,7 @@ fn vs_vector(@location(0) pn: vec4<f32>, @location(1) ap: vec2<u32>, @builtin(in
 
 @fragment
 fn fs_vector(in: UiOut) -> @location(0) vec4<f32> {
-  let s = ui_instance(in.instance);
+  let s = instances_fs[in.instance];
   let vb = s.geo;
   let k = min(2.0 * s.center_half.z / max(vb.z, 1e-4), 2.0 * s.center_half.w / max(vb.w, 1e-4));
   let f = (in.local - vb.xy) / max(vb.zw, vec2<f32>(1e-4));
