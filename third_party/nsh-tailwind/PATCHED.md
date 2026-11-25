@@ -90,5 +90,8 @@ the changes after it are only these:
   `writing-vertical-rl` and `writing-horizontal-tb` set
   `ClassProps::vertical`, which og-ui-next lays out as columns.
 
+- `Cargo.toml` allows `dead_code` and `unused_imports`: the subset kept
+  here leaves items nsh-core's other modules call unused.
+
 Its own tests (`tailwind/tests.rs`, `geometry/tests.rs`, `style.rs`) run
 unchanged otherwise.

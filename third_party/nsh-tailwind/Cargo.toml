@@ -20,3 +20,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
 ordered-float = { version = "5", default-features = false }
+
+# The subset kept here leaves some of nsh-core's items and imports unused.
+[lints.rust]
+dead_code = "allow"
+unused_imports = "allow"

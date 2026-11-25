@@ -6,3 +6,6 @@ From NSH (https://github.com/longbridge/nsh), commit
 `crates/nsh-core/src/reactive/tests.rs`, both unmodified. The file has no
 dependency on the rest of nsh-core, so it is a crate of its own here; og-ui's
 new core runs its components on it.
+
+`Cargo.toml` allows `dead_code`: some helpers are called only from nsh-core
+modules not kept here.

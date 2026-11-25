@@ -9,3 +9,7 @@ publish = false
 
 [lib]
 path = "src/lib.rs"
+
+# nsh-core's own callers of some of its helpers are not part of this crate.
+[lints.rust]
+dead_code = "allow"

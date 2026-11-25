@@ -24,3 +24,9 @@ repository = "https://github.com/google/font-rs"
 sse = []
 [target."cfg(target_feature = \"sse\")".build-dependencies.gcc]
 version = "0.3"
+
+# og (PATCHED.md): upstream's 2015-edition idioms warn on current rustc.
+[lints.rust]
+deprecated = "allow"
+mismatched_lifetime_syntaxes = "allow"
+unused_parens = "allow"

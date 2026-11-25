@@ -13,3 +13,7 @@ flattens a quadratic into chords within 0.05 px of it (threshold
 `3`). At 12–16 px upstream's chords cut inside curves enough to draw a
 glyph up to 3 % lighter than its outline (14 px `g`), and an edge pixel up
 to 0.13 off its share, which a browser's FreeType fill does not.
+
+`Cargo.toml` also allows the lints upstream's 2015-edition code raises on
+current rustc (`deprecated`, `mismatched_lifetime_syntaxes`,
+`unused_parens`), so `src/` stays upstream's.
