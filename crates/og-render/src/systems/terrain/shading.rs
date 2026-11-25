@@ -104,9 +104,28 @@ const TERRAIN_VERTEX_WGSL: &str = wgsl!("terrain_vertex.wgsl");
 /// (`fx.rs`: the trample map after them).
 const SHADING: crate::Shading = crate::Shading::lit().weather().effects(3).decals();
 
+const CORNERS_TEX_DECL: &str = "@group(2) @binding(1) var terrain_corners: texture_2d<u32>;\nfn corner_load(idx: u32) -> vec4<u32> { return textureLoad(terrain_corners, data_at(idx), 0); }";
+const CORNERS_BUF_DECL: &str = "@group(2) @binding(1) var<storage, read> terrain_corners: array<vec4<u32>>;\nfn corner_load(idx: u32) -> vec4<u32> { return terrain_corners[idx]; }";
+
+const CORNERS_OUT_TEX_DECL: &str = "@group(0) @binding(0) var corners_out: texture_storage_2d<rgba32uint, write>;\nfn corner_store(idx: u32, v: vec4<u32>) { textureStore(corners_out, data_at(idx), v); }";
+const CORNERS_OUT_BUF_DECL: &str = "@group(0) @binding(0) var<storage, read_write> corners_out: array<vec4<u32>>;\nfn corner_store(idx: u32, v: vec4<u32>) { corners_out[idx] = v; }";
+
+fn terrain_vertex_wgsl(vertex_storage: bool) -> String {
+    if vertex_storage {
+        assert!(
+            TERRAIN_VERTEX_WGSL.contains(CORNERS_TEX_DECL),
+            "terrain_vertex.wgsl missing expected texture corner binding"
+        );
+        TERRAIN_VERTEX_WGSL.replacen(CORNERS_TEX_DECL, CORNERS_BUF_DECL, 1)
+    } else {
+        TERRAIN_VERTEX_WGSL.to_string()
+    }
+}
+
 /// The terrain's lit module: the frame, the shared shading, then the
 /// ground.
-pub(crate) fn terrain_lit_source() -> String {
+pub(crate) fn terrain_lit_source(vertex_storage: bool) -> String {
+    let vertex = terrain_vertex_wgsl(vertex_storage);
     crate::assemble(
         &[
             crate::FRAME_WGSL,
@@ -116,7 +135,7 @@ pub(crate) fn terrain_lit_source() -> String {
             GRASS_COMMON_WGSL,
             TERRAIN_WGSL,
             TERRAIN_LAYERS_WGSL,
-            TERRAIN_VERTEX_WGSL,
+            &vertex,
             wgsl!("terrain_lit.wgsl"),
         ],
         &crate::Capability::OPAQUE_SURFACE,
@@ -161,25 +180,36 @@ fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4
 
 /// The terrain's shadow module for the layer-array variant's layout (the
 /// same entry points; the layer arrays declared).
-pub(crate) fn terrain_shadow_array_source() -> String {
-    terrain_array_source(&terrain_shadow_source())
+pub(crate) fn terrain_shadow_array_source(vertex_storage: bool) -> String {
+    terrain_array_source(&terrain_shadow_source(vertex_storage))
 }
 
 /// The corner cache's writer module (its layer-array variant:
 /// [`terrain_array_source`] of it).
-pub(crate) fn terrain_corners_source() -> String {
+pub(crate) fn terrain_corners_source(vertex_storage: bool) -> String {
+    let vertex = terrain_vertex_wgsl(vertex_storage);
+    let corners = wgsl!("terrain_corners.wgsl");
+    let corners = if vertex_storage {
+        assert!(
+            corners.contains(CORNERS_OUT_TEX_DECL),
+            "terrain_corners.wgsl missing expected storage texture binding"
+        );
+        corners.replacen(CORNERS_OUT_TEX_DECL, CORNERS_OUT_BUF_DECL, 1)
+    } else {
+        corners.to_string()
+    };
     format!(
-        "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
+        "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{vertex}{corners}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        wgsl!("terrain_corners.wgsl")
     )
 }
 
 /// The terrain's shadow module.
-pub(crate) fn terrain_shadow_source() -> String {
+pub(crate) fn terrain_shadow_source(vertex_storage: bool) -> String {
+    let vertex = terrain_vertex_wgsl(vertex_storage);
     format!(
-        "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
+        "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{vertex}{}{}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::SHADOW_PASS_WGSL,

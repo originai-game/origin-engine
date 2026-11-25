@@ -55,3 +55,13 @@ fn fs_shadow(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @locat
     || dither_cut(scatter_hidden(in.fade), in.clip.xy, shadow_dither_turn());
   return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
 }
+
+// Opaque scattered meshes (trunks, rocks, boulders): skip base_color_tex
+// sampling and UV transforms in every shadow pass.
+@fragment
+fn fs_shadow_opaque(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
+  let cut = dither_cut(scatter_hidden(in.fade), in.clip.xy, shadow_dither_turn());
+  return shadow_depth_cut(in.world, in.clip, dx, dy, front, cut);
+}

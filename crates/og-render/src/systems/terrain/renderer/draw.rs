@@ -4,9 +4,10 @@ use super::*;
 use crate::gpu::bundle::Encode;
 
 /// Fills each terrain's corner cache for this frame (`terrain_corners.wgsl`):
-/// every level's corners, before any pass draws them.
+/// every level's corners, before any pass draws them. Terrains whose inputs
+/// did not change since the last frame keep their cached corners.
 pub(crate) fn encode_corners(encoder: &mut crate::Encoder, draws: &[TerrainDraw]) {
-    if draws.is_empty() {
+    if !draws.iter().any(|d| d.corners_dirty) {
         return;
     }
     let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
@@ -14,6 +15,9 @@ pub(crate) fn encode_corners(encoder: &mut crate::Encoder, draws: &[TerrainDraw]
         timestamp_writes: None,
     });
     for d in draws {
+        if !d.corners_dirty {
+            continue;
+        }
         pass.set_pipeline(d.passes.corners.wait());
         pass.set_bind_group(0, &d.corners_write, &[]);
         for l in &d.levels {

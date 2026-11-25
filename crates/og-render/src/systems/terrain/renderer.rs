@@ -73,6 +73,7 @@ impl TerrainRenderer {
     pub(crate) fn forget_groups(&mut self) {
         for slot in &mut self.slots {
             slot.group = None;
+            slot.corners_key = None;
         }
     }
 

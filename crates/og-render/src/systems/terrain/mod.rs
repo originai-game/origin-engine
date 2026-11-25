@@ -212,6 +212,9 @@ pub(crate) struct TerrainDraw {
     pub corners_write: wgpu::BindGroup,
     /// Corners per level: (ring + 1)².
     pub corner_count: u32,
+    /// Whether the corner cache needs to be recomputed this frame (skipped on
+    /// static frames when height/layer/clipmap inputs are unchanged).
+    pub corners_dirty: bool,
     /// Its pipelines (the layer-array variant's when its layers sample
     /// arrays).
     pub passes: TerrainPasses,
@@ -328,19 +331,37 @@ struct GpuData {
     drawn: bool,
 }
 
+/// Backing store for a terrain's corner cache: a data texture on Compat or a
+/// linear storage buffer on Tier::Full (`Caps::VERTEX_STORAGE`).
+enum CornersBacking {
+    Texture(crate::gpu::data_texture::DataTexture),
+    Buffer {
+        #[allow(dead_code)]
+        buffer: wgpu::Buffer,
+        cap: u32,
+    },
+}
+
+impl CornersBacking {
+    fn capacity(&self) -> u32 {
+        match self {
+            CornersBacking::Texture(t) => t.texels,
+            CornersBacking::Buffer { cap, .. } => *cap,
+        }
+    }
+}
+
 struct Slot {
     uniform: wgpu::Buffer,
     levels: wgpu::Buffer,
     /// The bind group and what it was made from: (data index, data
     /// generation, the layers' textures).
     group: Option<(GroupKey, wgpu::BindGroup)>,
-    /// Its corner cache, a data texture, and its groups to read and to
-    /// write it (made again, larger, when it is outgrown).
-    corners: Option<(
-        crate::gpu::data_texture::DataTexture,
-        wgpu::BindGroup,
-        wgpu::BindGroup,
-    )>,
+    /// Its corner cache (data texture or linear storage buffer) and its
+    /// groups to read and write it (made again, larger, when outgrown).
+    corners: Option<(CornersBacking, wgpu::BindGroup, wgpu::BindGroup)>,
+    /// Fingerprint of the last inputs written into `corners`.
+    corners_key: Option<u64>,
 }
 
 type GroupKey = (
@@ -383,6 +404,7 @@ pub(crate) struct TerrainRenderer {
     shadow_layout: wgpu::BindGroupLayout,
     lit_source: String,
     samples: u32,
+    vertex_storage: bool,
     layer_sampler: wgpu::Sampler,
     map_sampler: wgpu::Sampler,
     white: wgpu::TextureView,
@@ -443,6 +465,8 @@ pub(crate) struct TerrainPipelines<'a> {
     pub samples: u32,
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,
+    /// Use a linear storage buffer for `terrain_corners` (`Caps::VERTEX_STORAGE`).
+    pub vertex_storage: bool,
 }
 
 /// The lit, prepass and shadow pipelines of one terrain group layout: the
@@ -525,20 +549,63 @@ pub(crate) struct TerrainPassLayouts<'a> {
 
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
-    add("terrain", crate::terrain::terrain_lit_source());
-    add("terrain shadow", crate::terrain::terrain_shadow_source());
-    let terrain = crate::terrain::terrain_lit_source();
+    add("terrain", crate::terrain::terrain_lit_source(false));
+    add(
+        "terrain shadow",
+        crate::terrain::terrain_shadow_source(false),
+    );
+    let terrain = crate::terrain::terrain_lit_source(false);
     add(
         "terrain (layer arrays)",
         crate::terrain::terrain_array_source(&terrain),
     );
     add(
         "terrain shadow (layer arrays)",
-        crate::terrain::terrain_shadow_array_source(),
+        crate::terrain::terrain_shadow_array_source(false),
     );
-    add("terrain corners", crate::terrain::terrain_corners_source());
+    add(
+        "terrain corners",
+        crate::terrain::terrain_corners_source(false),
+    );
     add(
         "terrain corners (layer arrays)",
-        crate::terrain::terrain_array_source(&crate::terrain::terrain_corners_source()),
+        crate::terrain::terrain_array_source(&crate::terrain::terrain_corners_source(false)),
     );
+}
+
+/// Terrain modules compiled only when [`crate::Caps::VERTEX_STORAGE`] is present.
+pub(crate) fn vertex_storage_shader_sources(out: &mut Vec<crate::ShaderSource>) {
+    let caps = crate::Caps::VERTEX_STORAGE;
+    let lit = crate::terrain::terrain_lit_source(true);
+    let corners = crate::terrain::terrain_corners_source(true);
+    out.push(crate::ShaderSource::with_caps(
+        "terrain (vertex storage)",
+        lit.clone(),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "terrain shadow (vertex storage)",
+        crate::terrain::terrain_shadow_source(true),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "terrain (layer arrays, vertex storage)",
+        crate::terrain::terrain_array_source(&lit),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "terrain shadow (layer arrays, vertex storage)",
+        crate::terrain::terrain_shadow_array_source(true),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "terrain corners (vertex storage)",
+        corners.clone(),
+        caps,
+    ));
+    out.push(crate::ShaderSource::with_caps(
+        "terrain corners (layer arrays, vertex storage)",
+        crate::terrain::terrain_array_source(&corners),
+        caps,
+    ));
 }

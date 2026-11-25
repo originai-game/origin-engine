@@ -151,7 +151,13 @@ impl ScatterRenderer {
             let lit = (
                 shader,
                 b.side,
-                kind as u8 + if b.foliage { FOLIAGE_KIND } else { 0 },
+                kind as u8
+                    + if b.foliage { FOLIAGE_KIND } else { 0 }
+                    + if kind == ScatterPass::Shadow && b.opaque_shadow {
+                        OPAQUE_SHADOW_KIND
+                    } else {
+                        0
+                    },
             );
             let p = match equal {
                 true => pipeline(&(lit.0, lit.1, lit.2 + EQUAL_KIND)).or_else(|| pipeline(&lit)),

@@ -30,36 +30,17 @@
 // frame for every view the same way, as Far Cry 5's and Frostbite's do).
 
 // A data texture (data_texture.rs), as the vertex stage reads no storage
-// under WebGPU's compatibility mode.
+// under WebGPU's compatibility mode; swapped to a linear storage buffer on
+// Tier::Full (`Caps::VERTEX_STORAGE`, terrain/shading.rs).
 @group(2) @binding(1) var terrain_corners: texture_2d<u32>;
-
-// Two floats as IEEE halves in one word, packed and read by hand (as
-// area.wgsl's table): pack2x16float and unpack2x16float need a capability
-// some backends lack. Rounded to nearest; past a half's range clamped to
-// its largest, under its smallest normal flushed to zero.
-fn corner_half(x: f32) -> u32 {
-  let b = bitcast<u32>(x);
-  let r = (b & 0x7fffffffu) + 0x1000u;
-  let e = i32(r >> 23u) - 112;
-  let sign = (b >> 16u) & 0x8000u;
-  if (e <= 0) { return sign; }
-  if (e >= 31) { return sign | 0x7bffu; }
-  return sign | (u32(e) << 10u) | ((r >> 13u) & 0x3ffu);
-}
+fn corner_load(idx: u32) -> vec4<u32> { return textureLoad(terrain_corners, data_at(idx), 0); }
 
 fn corner_pack(v: vec2<f32>) -> u32 {
-  return corner_half(v.x) | (corner_half(v.y) << 16u);
-}
-
-fn corner_float(h: u32) -> f32 {
-  let e = (h >> 10u) & 31u;
-  let sign = (h & 0x8000u) << 16u;
-  if (e == 0u) { return bitcast<f32>(sign); }
-  return bitcast<f32>(sign | ((e + 112u) << 23u) | ((h & 0x3ffu) << 13u));
+  return pack_f16x2(v);
 }
 
 fn corner_unpack(w: u32) -> vec2<f32> {
-  return vec2<f32>(corner_float(w & 0xffffu), corner_float(w >> 16u));
+  return unpack_f16x2(w);
 }
 
 // The cached corner at whole grid position `g` (0 to n) of the level whose
@@ -68,7 +49,7 @@ fn corner_unpack(w: u32) -> vec2<f32> {
 fn cached_corner(first: f32, g: vec2<f32>) -> vec4<u32> {
   let n = u32(level.grid.x) + 1u;
   let i = vec2<u32>(clamp(g + 0.5, vec2<f32>(0.0), vec2<f32>(f32(n) - 0.5)));
-  return textureLoad(terrain_corners, data_at(u32(first) + i.y * n + i.x), 0);
+  return corner_load(u32(first) + i.y * n + i.x);
 }
 
 // This level's own height at its grid corner `g`.
@@ -321,31 +302,46 @@ fn morphed_grid(c: vec2<f32>) -> vec2<f32> {
   return grid_clamp(mix(c, floor(c / s2) * s2, a));
 }
 
-// Grid corner `g` in the terrain's space.
-fn terrain_grid_corner(g: vec2<f32>) -> vec3<f32> {
+struct TerrainVertex {
+  local: vec3<f32>,
+  relief: vec4<f32>,
+};
+
+// Grid corner `g` in the terrain's space (and its relief when requested),
+// reading its cached corner once.
+fn terrain_grid_corner(g: vec2<f32>, want_relief: bool) -> TerrainVertex {
   let c = grid_corner(g);
   let m = morphed_grid(c);
-  var h = own_height(g);
+  let raw = cached_corner(level.corners.z, g);
+  var h = bitcast<f32>(raw.x);
   if (morph_alpha(c) > 0.0) {
     h = morphed(c, h, coarse_cell(c));
   }
   let xz = terrain_min() + m * level.camera.z;
-  return vec3<f32>(xz.x, h, xz.y);
+  var relief = vec4<f32>(0.0);
+  if (want_relief) {
+    relief = vec4<f32>(corner_unpack(raw.y), corner_unpack(raw.z));
+  }
+  return TerrainVertex(vec3<f32>(xz.x, h, xz.y), relief);
 }
 
 // Cell `g`'s centre in the terrain's space: on its own diagonal's middle
 // (its corners as morphed), moving to its coarser cell's diagonal over
-// the morph. Its own diagonal is chosen from its corners' own heights and
-// the coarser one from the coarser cell's, so neither changes mid-morph.
-fn terrain_cell_centre(g: vec2<f32>) -> vec3<f32> {
+// the morph. Reads each of its four corners once for both height and relief.
+fn terrain_cell_centre(g: vec2<f32>, want_relief: bool) -> TerrainVertex {
   let s = level.center.z;
   let c00 = grid_corner(g);
   let cs = array<vec2<f32>, 4>(c00, c00 + vec2<f32>(s, 0.0), c00 + vec2<f32>(0.0, s), c00 + vec2<f32>(s, s));
   var own: vec4<f32>;
+  var relief = vec4<f32>(0.0);
   var morphing = morph_alpha(c00 + 0.5 * s) > 0.0;
   let gs = array<vec2<f32>, 4>(g, g + vec2<f32>(1.0, 0.0), g + vec2<f32>(0.0, 1.0), g + vec2<f32>(1.0, 1.0));
   for (var i = 0u; i < 4u; i++) {
-    own[i] = own_height(gs[i]);
+    let raw = cached_corner(level.corners.z, gs[i]);
+    own[i] = bitcast<f32>(raw.x);
+    if (want_relief) {
+      relief += 0.25 * vec4<f32>(corner_unpack(raw.y), corner_unpack(raw.z));
+    }
     morphing = morphing || morph_alpha(cs[i]) > 0.0;
   }
   let flip = zigzag(own.x, own.y, own.z, own.w);
@@ -366,37 +362,23 @@ fn terrain_cell_centre(g: vec2<f32>) -> vec3<f32> {
   }
   let m = 0.25 * (morphed_grid(cs[0]) + morphed_grid(cs[1]) + morphed_grid(cs[2]) + morphed_grid(cs[3]));
   let xz = terrain_min() + m * level.camera.z;
-  return vec3<f32>(xz.x, h, xz.y);
+  return TerrainVertex(vec3<f32>(xz.x, h, xz.y), relief);
+}
+
+// Vertex `vi` of the level's mesh in the terrain's space (and its relief
+// when `want_relief` is set), without reading the corner cache twice.
+fn terrain_vertex(vi: u32, want_relief: bool) -> TerrainVertex {
+  let n = u32(level.grid.x);
+  let corners = (n + 1u) * (n + 1u);
+  if (vi < corners) {
+    return terrain_grid_corner(vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u))), want_relief);
+  }
+  let k = vi - corners;
+  return terrain_cell_centre(vec2<f32>(f32(k % n), f32(k / n)), want_relief);
 }
 
 // Vertex `vi` of the level's mesh in the terrain's space: a corner, then
 // the cells' centres.
 fn terrain_local_vertex(vi: u32) -> vec3<f32> {
-  let n = u32(level.grid.x);
-  let corners = (n + 1u) * (n + 1u);
-  if (vi < corners) {
-    return terrain_grid_corner(vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u))));
-  }
-  let k = vi - corners;
-  return terrain_cell_centre(vec2<f32>(f32(k % n), f32(k / n)));
-}
-
-// The displaced surface's relief at vertex `vi` (terrain_relief's slope in
-// xy, its bare part in zw): a corner's own, a centre's the mean of its
-// four corners'.
-fn corner_relief(g: vec2<f32>) -> vec4<f32> {
-  let c = cached_corner(level.corners.z, g);
-  return vec4<f32>(corner_unpack(c.y), corner_unpack(c.z));
-}
-
-fn terrain_vertex_relief(vi: u32) -> vec4<f32> {
-  let n = u32(level.grid.x);
-  let corners = (n + 1u) * (n + 1u);
-  if (vi < corners) {
-    return corner_relief(vec2<f32>(f32(vi % (n + 1u)), f32(vi / (n + 1u))));
-  }
-  let k = vi - corners;
-  let g = vec2<f32>(f32(k % n), f32(k / n));
-  return 0.25 * (corner_relief(g) + corner_relief(g + vec2<f32>(1.0, 0.0))
-    + corner_relief(g + vec2<f32>(0.0, 1.0)) + corner_relief(g + vec2<f32>(1.0, 1.0)));
+  return terrain_vertex(vi, false).local;
 }

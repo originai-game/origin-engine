@@ -4,6 +4,7 @@
 // Prepended by terrain.wgsl, terrain_layers.wgsl and terrain_vertex.wgsl.
 
 @group(0) @binding(0) var corners_out: texture_storage_2d<rgba32uint, write>;
+fn corner_store(idx: u32, v: vec4<u32>) { textureStore(corners_out, data_at(idx), v); }
 
 // A corner's height (the terrain's space) is the one a level of its step
 // draws at its clamped grid point: the field's, displaced near the camera
@@ -23,5 +24,5 @@ fn write_corners(@builtin(global_invocation_id) id: vec3<u32>) {
   if (fade > 0.0 || terrain.displace.w > 0.0) { maps = corner_maps(s, level.center.z); }
   let r = terrain_relief(c, h, level.center.z, fade, maps);
   let total = h + r.d + terrain_snow_lift(maps);
-  textureStore(corners_out, data_at(u32(level.corners.z) + id.x), vec4<u32>(bitcast<u32>(total), corner_pack(r.slope), corner_pack(r.bare), 0u));
+  corner_store(u32(level.corners.z) + id.x, vec4<u32>(bitcast<u32>(total), corner_pack(r.slope), corner_pack(r.bare), 0u));
 }

@@ -112,13 +112,14 @@ impl ScatterRenderer {
             crate::traffic::write_buffer(queue, buffer, 0, bytemuck::cast_slice(&transforms));
         }
         for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-            self.pipeline(device, None, Side::Double, pass, true, false);
+            self.pipeline(device, None, Side::Double, pass, true, false, false);
         }
         out
     }
 
     /// Builds the chunks this frame needs and answers what to draw.
-    /// `side_of` answers a material's side (`None`: not of this scene);
+    /// `side_of` answers a material's side and whether it is an opaque occluder
+    /// (`None`: not of this scene);
     /// `mesh_bounds` a mesh's radius about its origin, its top above it
     /// and its index count (`None`: no geometry).
     #[allow(clippy::too_many_arguments)]
@@ -131,7 +132,7 @@ impl ScatterRenderer {
         (view_proj, height, lod_bias): (Mat4, u32, f32),
         prev_view_proj: Mat4,
         (wind_grid, lean_cap, trample): (crate::wind_field::WindGrid, f32, [f32; 4]),
-        side_of: impl Fn(usize) -> Option<Side>,
+        side_of: impl Fn(usize) -> Option<(Side, bool)>,
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32, u32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
@@ -295,12 +296,27 @@ impl ScatterRenderer {
                 tops[slot] = tops[slot].max(top);
             }
         }
+        let has_other_views = !scene.world.water.is_empty()
+            || !scene.lighting.reflection_probes.is_empty()
+            || !scene.frame.views.is_empty();
+        let dir_shadow_reach = if scene.lighting.light.intensity > 0.0 {
+            scene.lighting.light.max_shadow_distance.max(0.0)
+        } else {
+            0.0
+        };
+        let local_shadow_lights: Vec<(Vec3, f32)> = scene
+            .lighting
+            .lights
+            .iter()
+            .filter(|l| l.cast_shadows && l.range > 0.0)
+            .map(|l| (l.position, l.range))
+            .collect();
         for (si, d) in scene.world.scatters.iter().enumerate() {
             let Some(t) = scene.world.terrains.get(d.terrain) else {
                 continue;
             };
             let di = t.terrain.index();
-            let (Some(source), Some(side), Some((mesh_r, _, index_count))) = (
+            let (Some(source), Some((side, occluder)), Some((mesh_r, _, index_count))) = (
                 sources.get(di),
                 side_of(d.material.index()),
                 mesh_bounds(d.mesh.index()),
@@ -734,11 +750,27 @@ impl ScatterRenderer {
                         .map(|(_, e)| (e.mesh, e.material)),
                 ),
             };
-            let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
+            // Multi-part children (`d.with.is_some()`) inherit their first part's
+            // impostor distance so distant canopies fade out and cull instead of
+            // leaking LOD0 into shadow cascades and camera draws.
+            let owner = &scene.world.scatters[ScatterDraw::placed_by(&scene.world.scatters, si)];
+            let effective_impostor_distance = if d.impostor.is_some() && d.impostor_distance > 0.0 {
+                d.impostor_distance
+            } else if owner.impostor.is_some() && owner.impostor_distance > 0.0 {
+                owner.impostor_distance
+            } else {
+                0.0
+            };
+            let impostor = d
+                .impostor
+                .or(owner.impostor)
+                .filter(|_| effective_impostor_distance > 0.0);
             if let Some(i) = &impostor {
-                gpu.impostor(i, d.impostor_distance, light, self.samples > 1);
-                for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                    self.pipeline(device, None, Side::Double, pass, true, false);
+                gpu.impostor(i, effective_impostor_distance, light, self.samples > 1);
+                if d.with.is_none() {
+                    for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
+                        self.pipeline(device, None, Side::Double, pass, true, false, false);
+                    }
                 }
             }
             crate::traffic::write_buffer(
@@ -754,6 +786,11 @@ impl ScatterRenderer {
                     .iter()
                     .map_while(|l| *l)
                     .all(|(m, _)| scene.mesh_foliage(m).is_some());
+            let opaque_shadow = occluder
+                && d.lod_materials
+                    .iter()
+                    .flatten()
+                    .all(|m| side_of(m.index()).is_some_and(|(_, occ)| occ));
             let shader = shader_of(d.material.index());
             if let Some(sh) = shader
                 && !self.hooked.contains_key(&sh)
@@ -770,7 +807,7 @@ impl ScatterRenderer {
                 self.hooked.insert(sh, (module, declared));
             }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                self.pipeline(device, shader, side, pass, false, foliage);
+                self.pipeline(device, shader, side, pass, false, foliage, opaque_shadow);
             }
             // Its coarser levels, as far as they follow one another: each
             // one's mesh, index count and error.
@@ -783,10 +820,11 @@ impl ScatterRenderer {
                 *to = Some((m.index(), indices, error));
             }
             // A scatter of several levels, of a card or thinned by a map
-            // lists its copies for the passes off the camera too: every
-            // chunk in reach is culled. Any other: the chunks the camera
-            // may see, copy by copy.
-            let off_camera = lods[0].is_some() || impostor.is_some() || s.density_map.is_some();
+            // lists its copies for the passes off the camera too — only when
+            // shadows, reflections, probes or secondary views can draw it.
+            let needs_off_camera = d.cast_shadows || has_other_views;
+            let off_camera = needs_off_camera
+                && (lods[0].is_some() || impostor.is_some() || s.density_map.is_some());
             let culled = keys
                 .iter()
                 .map(|k| {
@@ -794,8 +832,22 @@ impl ScatterRenderer {
                     let slot = c.slot?;
                     // Its bounds are about the terrain, as its copies are.
                     let center = c.center + at;
-                    if !off_camera && !view.intersects_sphere(center, c.radius + sway) {
-                        return None;
+                    let bound_r = c.radius + sway;
+                    let in_camera = view.intersects_sphere(center, bound_r);
+                    if !in_camera {
+                        if !off_camera {
+                            return None;
+                        }
+                        if !has_other_views {
+                            let in_dir = dir_shadow_reach > 0.0
+                                && (center - camera).length() <= dir_shadow_reach + bound_r;
+                            let in_local = local_shadow_lights.iter().any(|&(pos, range)| {
+                                (center - pos).length_squared() <= (range + bound_r).powi(2)
+                            });
+                            if !in_dir && !in_local {
+                                return None;
+                            }
+                        }
                     }
                     cull_items.push(crate::scatter_cull::CullItem {
                         id: d.id,
@@ -812,7 +864,7 @@ impl ScatterRenderer {
                         distance: s.distance,
                         density_map: s.density_map,
                         levels: lods.map(|l| l.map(|(_, indices, error)| (indices, error))),
-                        card_from: impostor.map_or(0.0, |_| d.impostor_distance),
+                        card_from: impostor.map_or(0.0, |_| effective_impostor_distance),
                         card: impostor.is_some() && d.with.is_none(),
                         off_camera,
                         reach: {
@@ -834,6 +886,7 @@ impl ScatterRenderer {
                 material: d.material.index(),
                 shader,
                 cast_shadows: d.cast_shadows,
+                opaque_shadow,
                 side,
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,

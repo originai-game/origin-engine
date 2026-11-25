@@ -86,6 +86,7 @@ impl ScatterRenderer {
         }))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn pipeline(
         &mut self,
         device: &wgpu::Device,
@@ -94,11 +95,14 @@ impl ScatterRenderer {
         pass: ScatterPass,
         impostor: bool,
         foliage: bool,
+        opaque_shadow: bool,
     ) {
         let foliage = foliage && !impostor;
+        let opaque_shadow = opaque_shadow && !impostor && pass == ScatterPass::Shadow;
         let kind = pass as u8
             + if impostor { IMPOSTOR_KIND } else { 0 }
-            + if foliage { FOLIAGE_KIND } else { 0 };
+            + if foliage { FOLIAGE_KIND } else { 0 }
+            + if opaque_shadow { OPAQUE_SHADOW_KIND } else { 0 };
         // The shadow pass reads no material shader (copies cast as cut by the material's alpha).
         let shader = shader.filter(|_| pass != ScatterPass::Shadow);
         let key = if impostor {
@@ -119,6 +123,7 @@ impl ScatterRenderer {
                     &self.shadow_module,
                     side,
                     foliage,
+                    opaque_shadow,
                 )
             };
             self.shadow_pipelines.insert(key, set);
@@ -211,15 +216,25 @@ impl ScatterRenderer {
         module: &wgpu::ShaderModule,
         side: Side,
         foliage: bool,
+        opaque: bool,
     ) -> wgpu::RenderPipeline {
         let (buffers, vs) = match foliage {
             true => (FOLIAGE_BUFFERS, "vs_shadow_foliage"),
             false => (MESH_BUFFERS, "vs_shadow"),
         };
+        let fs = if opaque {
+            "fs_shadow_opaque"
+        } else {
+            "fs_shadow"
+        };
         crate::traffic::create_render_pipeline(
             device,
             &wgpu::RenderPipelineDescriptor {
-                label: Some("scatter shadow"),
+                label: Some(if opaque {
+                    "scatter shadow (opaque)"
+                } else {
+                    "scatter shadow"
+                }),
                 layout: Some(layout),
                 vertex: wgpu::VertexState {
                     module,
@@ -235,7 +250,7 @@ impl ScatterRenderer {
                 multisample: Default::default(),
                 fragment: Some(wgpu::FragmentState {
                     module,
-                    entry_point: Some("fs_shadow"),
+                    entry_point: Some(fs),
                     compilation_options: Default::default(),
                     targets: &[Some(crate::ShadowTarget::color())],
                 }),

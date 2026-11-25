@@ -82,8 +82,8 @@ impl TerrainRenderer {
             },
             self.samples,
             terrain_array_source(&self.lit_source),
-            terrain_shadow_array_source(),
-            terrain_array_source(&terrain_corners_source()),
+            terrain_shadow_array_source(self.vertex_storage),
+            terrain_array_source(&terrain_corners_source(self.vertex_storage)),
             false,
         );
         let solid = |label, rgba: [u8; 4]| {
@@ -131,15 +131,15 @@ impl TerrainRenderer {
                 (
                     layout,
                     terrain_array_source(&self.lit_source),
-                    terrain_shadow_array_source(),
-                    terrain_array_source(&terrain_corners_source()),
+                    terrain_shadow_array_source(self.vertex_storage),
+                    terrain_array_source(&terrain_corners_source(self.vertex_storage)),
                 )
             } else {
                 (
                     &self.layout,
                     self.lit_source.clone(),
-                    terrain_shadow_source(),
-                    terrain_corners_source(),
+                    terrain_shadow_source(self.vertex_storage),
+                    terrain_corners_source(self.vertex_storage),
                 )
             };
             let passes = terrain_passes(
@@ -237,24 +237,47 @@ impl TerrainRenderer {
                 entries: &[entry],
             })
         };
-        // A data texture (data_texture.rs): read at binding 1 (the stamps'
-        // passes have their uniform at 0 of group 2), written at 0 of the
-        // writer's group 0.
-        let corners_layout = corners(crate::gpu::data_texture::data_entry(
-            1,
-            wgpu::ShaderStages::VERTEX,
-            true,
-        ));
-        let corners_write_layout = corners(wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            visibility: wgpu::ShaderStages::COMPUTE,
-            ty: wgpu::BindingType::StorageTexture {
-                access: wgpu::StorageTextureAccess::WriteOnly,
-                format: wgpu::TextureFormat::Rgba32Uint,
-                view_dimension: wgpu::TextureViewDimension::D2,
-            },
-            count: None,
+        // Linear storage buffer on Tier::Full (`Caps::VERTEX_STORAGE`), or a
+        // data texture on Compat: read at binding 1 (the stamps' passes have
+        // their uniform at 0 of group 2), written at 0 of the writer's group 0.
+        let corners_layout = corners(if p.vertex_storage {
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }
+        } else {
+            crate::gpu::data_texture::data_entry(1, wgpu::ShaderStages::VERTEX, true)
         });
+        let corners_write_layout = corners(if p.vertex_storage {
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }
+        } else {
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::StorageTexture {
+                    access: wgpu::StorageTextureAccess::WriteOnly,
+                    format: wgpu::TextureFormat::Rgba32Uint,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                },
+                count: None,
+            }
+        });
+        let lit_source = p.off.leave_out(terrain_lit_source(p.vertex_storage));
         let passes = terrain_passes(
             device,
             TerrainPassLayouts {
@@ -267,9 +290,9 @@ impl TerrainRenderer {
                 corners_write: &corners_write_layout,
             },
             p.samples,
-            p.off.leave_out(terrain_lit_source()),
-            terrain_shadow_source(),
-            terrain_corners_source(),
+            lit_source.clone(),
+            terrain_shadow_source(p.vertex_storage),
+            terrain_corners_source(p.vertex_storage),
             false,
         );
         let layer_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -339,8 +362,9 @@ impl TerrainRenderer {
             array_stand_ins: None,
             frame_layout: p.frame_layout.clone(),
             shadow_layout: p.shadow_layout.clone(),
-            lit_source: p.off.leave_out(terrain_lit_source()),
+            lit_source,
             samples: p.samples,
+            vertex_storage: p.vertex_storage,
             layer_sampler,
             map_sampler,
             white: p.white,

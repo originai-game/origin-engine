@@ -54,6 +54,7 @@ impl Renderer {
         let terrain_fx = terrain::fx::TerrainFx::new(device);
         let (device, queue) = (device.clone(), queue.clone());
         let (frame_layout, shadow_layout) = (frame_layout.clone(), shadow_bind_layout.clone());
+        let terrain_vertex_storage = info.caps.contains(Caps::VERTEX_STORAGE);
         let terrain = {
             let (device, queue) = (device.clone(), queue.clone());
             let (frame_layout, shadow_layout) = (frame_layout.clone(), shadow_layout.clone());
@@ -71,6 +72,7 @@ impl Renderer {
                         samples,
                         white,
                         flat_normal,
+                        vertex_storage: terrain_vertex_storage,
                     },
                 )
             }))

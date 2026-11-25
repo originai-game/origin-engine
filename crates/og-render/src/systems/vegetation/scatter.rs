@@ -534,6 +534,9 @@ const EQUAL_KIND: u8 = 9;
 /// copies bend, flutter, grow, turn and drop their leaves and shade their
 /// crown as the meshlet path's (foliage.wgsl).
 const FOLIAGE_KIND: u8 = 16;
+/// Past a shadow pipeline's kind, its opaque twin (`fs_shadow_opaque`): skips
+/// `base_color_tex` sampling for opaque trunks, rocks and boulders.
+const OPAQUE_SHADOW_KIND: u8 = 32;
 
 /// A scattered mesh's buffers as a draw binds them: its vertices, indices
 /// and index count, and its foliage stream when it has foliage.
@@ -656,6 +659,8 @@ pub(crate) struct ScatterBatch {
     /// pipelines run its hooks.
     pub shader: Option<usize>,
     pub cast_shadows: bool,
+    /// All materials of this batch are opaque occluders (no alpha cut-off).
+    pub opaque_shadow: bool,
     pub side: Side,
     offset: u32,
     chunks: Vec<ChunkKey>,

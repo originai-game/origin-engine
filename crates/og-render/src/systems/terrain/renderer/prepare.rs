@@ -95,6 +95,7 @@ impl TerrainRenderer {
                 ),
                 group: None,
                 corners: None,
+                corners_key: None,
             });
         }
         let mut draws = Vec::with_capacity(scene.world.terrains.len());
@@ -363,37 +364,67 @@ impl TerrainRenderer {
                 });
             }
             crate::traffic::write_buffer(queue, &slot.levels, 0, &level_bytes);
-            // The corner cache: every level's corners, a data texture's
-            // texel each.
+            // The corner cache: linear storage buffer on Tier::Full
+            // (`Caps::VERTEX_STORAGE`), or a data texture on Compat.
             let needed = corner_count * list.len().max(1) as u32;
+            let mut corners_reallocated = false;
             if slot
                 .corners
                 .as_ref()
-                .is_none_or(|(have, ..)| have.texels < needed)
+                .is_none_or(|(have, ..)| have.capacity() < needed)
             {
-                let texture = crate::gpu::data_texture::DataTexture::new(
-                    device,
-                    "terrain corners",
-                    wgpu::TextureFormat::Rgba32Uint,
-                    needed,
-                    wgpu::TextureUsages::STORAGE_BINDING,
-                );
-                let group = |layout, binding| {
-                    device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("terrain corners"),
-                        layout,
-                        entries: &[wgpu::BindGroupEntry {
-                            binding,
-                            resource: wgpu::BindingResource::TextureView(&texture.view),
-                        }],
-                    })
+                corners_reallocated = true;
+                let (backing, read, write) = if self.vertex_storage {
+                    let cap = needed.next_power_of_two().max(64);
+                    let buffer = crate::traffic::create_buffer(
+                        device,
+                        &wgpu::BufferDescriptor {
+                            label: Some("terrain corners"),
+                            size: u64::from(cap) * 16,
+                            usage: wgpu::BufferUsages::STORAGE,
+                            mapped_at_creation: false,
+                        },
+                    );
+                    let group = |layout, binding| {
+                        device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("terrain corners"),
+                            layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding,
+                                resource: buffer.as_entire_binding(),
+                            }],
+                        })
+                    };
+                    let read = group(&self.corners_layout, 1);
+                    let write = group(&self.corners_write_layout, 0);
+                    (CornersBacking::Buffer { buffer, cap }, read, write)
+                } else {
+                    let texture = crate::gpu::data_texture::DataTexture::new(
+                        device,
+                        "terrain corners",
+                        wgpu::TextureFormat::Rgba32Uint,
+                        needed,
+                        wgpu::TextureUsages::STORAGE_BINDING,
+                    );
+                    let group = |layout, binding| {
+                        device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("terrain corners"),
+                            layout,
+                            entries: &[wgpu::BindGroupEntry {
+                                binding,
+                                resource: wgpu::BindingResource::TextureView(&texture.view),
+                            }],
+                        })
+                    };
+                    let read = group(&self.corners_layout, 1);
+                    let write = group(&self.corners_write_layout, 0);
+                    (CornersBacking::Texture(texture), read, write)
                 };
-                let read = group(&self.corners_layout, 1);
-                let write = group(&self.corners_write_layout, 0);
-                slot.corners = Some((texture, read, write));
+                slot.corners = Some((backing, read, write));
             }
             let key: GroupKey = (di, data.generation, handles, t.layer_arrays);
-            if slot.group.as_ref().is_none_or(|(k, _)| *k != key) && arrayed {
+            let group_changed = slot.group.as_ref().is_none_or(|(k, _)| *k != key);
+            if group_changed && arrayed {
                 let (layout, _) = self.arrays.as_ref().expect("made above");
                 let (white, flat) = self
                     .array_stand_ins
@@ -493,14 +524,49 @@ impl TerrainRenderer {
             // terrain is left out, so no pass draws from an unfilled cache
             // (gpu/deferred.rs).
             if passes.corners.ready().is_none() {
+                slot.corners_key = None;
                 continue;
             }
+            // Fingerprint everything `terrain_corners.wgsl` reads (excluding
+            // view_proj/prev_view_proj/grass so camera rotation alone does not
+            // invalidate the cache).
+            let corners_fp = {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::hash::DefaultHasher::new();
+                di.hash(&mut h);
+                data.generation.hash(&mut h);
+                data.revision.hash(&mut h);
+                bytemuck::cast_slice::<f32, u8>(&data.table_cpu).hash(&mut h);
+                key.0.hash(&mut h);
+                key.1.hash(&mut h);
+                key.2.hash(&mut h);
+                key.3.albedo.hash(&mut h);
+                key.3.normal.hash(&mut h);
+                bytemuck::bytes_of(&gpu.model).hash(&mut h);
+                bytemuck::bytes_of(&gpu.normal).hash(&mut h);
+                bytemuck::bytes_of(&gpu.origin).hash(&mut h);
+                bytemuck::bytes_of(&gpu.extent).hash(&mut h);
+                bytemuck::bytes_of(&gpu.params).hash(&mut h);
+                bytemuck::bytes_of(&gpu.tiles).hash(&mut h);
+                bytemuck::bytes_of(&gpu.displace).hash(&mut h);
+                bytemuck::bytes_of(&gpu.pyramid).hash(&mut h);
+                bytemuck::bytes_of(&gpu.layers).hash(&mut h);
+                bytemuck::bytes_of(&gpu.water).hash(&mut h);
+                level_bytes.hash(&mut h);
+                corner_count.hash(&mut h);
+                needed.hash(&mut h);
+                h.finish()
+            };
+            let corners_dirty =
+                corners_reallocated || group_changed || slot.corners_key != Some(corners_fp);
+            slot.corners_key = Some(corners_fp);
             let (_, corners, corners_write) = slot.corners.as_ref().expect("made above");
             draws.push(TerrainDraw {
                 group: slot.group.as_ref().expect("made above").1.clone(),
                 corners: corners.clone(),
                 corners_write: corners_write.clone(),
                 corner_count,
+                corners_dirty,
                 passes,
                 features: self.features,
                 levels: out,

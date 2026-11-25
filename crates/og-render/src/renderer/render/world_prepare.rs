@@ -106,7 +106,7 @@ impl Renderer {
                         self.world.wind_field.lean_cap(),
                         self.world.trample.grid(),
                     ),
-                    |m| materials.get(m).map(|g| g.side),
+                    |m| materials.get(m).map(|g| (g.side, g.occluder)),
                     |m| {
                         meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
                             let (r, top) = g
