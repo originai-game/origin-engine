@@ -384,6 +384,9 @@ impl Renderer {
                 self.cache.ribbon_groups.push(None);
             }
             self.queue.submit(Some(encoder.finish()));
+            if let Some(bt) = &mut self.lit.bindless {
+                bt.mark_dirty();
+            }
         }
         // Replaced textures: uploaded again, and everything bound to the old
         // view (materials, sprite and trail groups, fonts, the effect
@@ -478,6 +481,9 @@ impl Renderer {
             }
             self.queue.submit(Some(encoder.finish()));
             self.lights.fx_groups = None;
+            if let Some(bt) = &mut self.lit.bindless {
+                bt.mark_dirty();
+            }
             if let Some(t) = self.world.terrain.get_mut() {
                 t.forget_groups();
             }
@@ -621,8 +627,14 @@ impl Renderer {
                 .get(i)
                 .filter(|m| m.shader == hooked.map(|h| h.0.index()))
                 .and_then(|m| m.params);
-            let (bind_group, array, factors, stochastic) =
-                self.material_bind_group(i, material, hooked.map(|h| h.1), previous_params)?;
+            let uploads::MaterialBindOutput {
+                bind_group,
+                array,
+                factors,
+                stochastic,
+                bindless_fits,
+                bindless_record,
+            } = self.material_bind_group(i, material, hooked.map(|h| h.1), previous_params)?;
             if previous_params.is_some_and(|p| Some(p) != hooked.map(|h| h.1)) {
                 params_moved.push(i as u32);
             }
@@ -651,6 +663,15 @@ impl Renderer {
                 None
             };
             let transmissive = physical.is_some() && material.is_transmissive();
+            let bindless_ok = bindless_fits
+                && !material.is_transparent()
+                && !transmissive
+                && physical.is_none()
+                && array.is_none()
+                && hooked.is_none()
+                && !material.dissolves()
+                && material.alphaTest <= 0.0
+                && material.stochastic <= 0.0;
             let gpu = GpuMaterial {
                 revision,
                 params: hooked.map(|h| h.1),
@@ -691,6 +712,8 @@ impl Renderer {
                     }),
                     angle: material.wireframeAngle.clamp(0.0, 180.0),
                 }),
+                bindless_ok,
+                bindless_record,
             };
             let gpu = GpuMaterial {
                 // The material style's surface reads the mesh's own
@@ -721,6 +744,34 @@ impl Renderer {
                 .fold(crate::pipeline_features::Features::NONE, |f, m| {
                     f | m.features
                 });
+            if self
+                .info
+                .caps
+                .contains(Caps::BINDLESS_TEXTURES | Caps::VERTEX_STORAGE)
+                && !self.cache.materials.is_empty()
+            {
+                let planar = self.planar_slot();
+                let bt = self.lit.bindless.get_or_insert_with(|| {
+                    crate::bindless::BindlessTable::new(
+                        &self.device,
+                        &self.frame_layout,
+                        &self.fx_layout,
+                        self.info.without.features().leave_out(
+                            crate::bindless::bindless_lit_source(&lit_source_with(
+                                &hooks::default_hooks(),
+                                planar,
+                            )),
+                        ),
+                    )
+                });
+                let records: Vec<crate::bindless::BindlessMaterialGpu> = self
+                    .cache
+                    .materials
+                    .iter()
+                    .map(|m| m.bindless_record)
+                    .collect();
+                bt.sync_materials(&self.device, &self.queue, &records);
+            }
         }
         // Also when the pass was skipped: nothing is stamped in that frame.
         self.instances.sorted.set_params_moved(params_moved);

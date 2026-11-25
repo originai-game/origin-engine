@@ -28,6 +28,10 @@ pub(crate) fn capabilities_for(needs: og_render::Caps) -> Capabilities {
     if needs.contains(og_render::Caps::SUBGROUP) {
         caps |= Capabilities::SUBGROUP;
     }
+    if needs.contains(og_render::Caps::BINDLESS_TEXTURES) {
+        caps |= Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY
+            | Capabilities::TEXTURE_AND_SAMPLER_BINDING_ARRAY_NON_UNIFORM_INDEXING;
+    }
     caps
 }
 

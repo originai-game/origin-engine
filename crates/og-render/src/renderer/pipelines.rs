@@ -775,6 +775,8 @@ pub(crate) struct LitPipelines {
     /// The array-map variant of the lit, prepass and shadow pipelines, made
     /// when a scene first draws a material with array maps (`material.rs`).
     pub(crate) array_maps: Option<material::ArrayMaps>,
+    /// Native `Tier::Full` bindless material table (`bindless.rs`).
+    pub(crate) bindless: Option<crate::bindless::BindlessTable>,
     /// The features the renderer was made without that a scene used
     /// ([`RenderDesc::without`]): the log said so once for each.
     pub(crate) warned_without: LitFeatures,

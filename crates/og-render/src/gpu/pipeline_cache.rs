@@ -17,15 +17,42 @@ mod native {
     use std::path::PathBuf;
     use std::sync::Mutex;
 
-    static DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+    enum CacheDir {
+        Default,
+        Explicit(Option<PathBuf>),
+    }
 
-    /// Where renderers made from now on keep compiled pipelines (`None`: nowhere).
+    static DIR: Mutex<CacheDir> = Mutex::new(CacheDir::Default);
+
+    fn default_dir() -> Option<PathBuf> {
+        if let Some(xdg) = std::env::var_os("XDG_CACHE_HOME")
+            && !xdg.is_empty()
+        {
+            return Some(PathBuf::from(xdg).join("origin-engine").join("pipelines"));
+        }
+        if let Some(local) = std::env::var_os("LOCALAPPDATA")
+            && !local.is_empty()
+        {
+            return Some(PathBuf::from(local).join("origin-engine").join("pipelines"));
+        }
+        std::env::var_os("HOME").filter(|h| !h.is_empty()).map(|h| {
+            PathBuf::from(h)
+                .join(".cache")
+                .join("origin-engine")
+                .join("pipelines")
+        })
+    }
+
+    /// Where renderers made from now on keep compiled pipelines (`None`: disable).
     pub fn set_pipeline_cache_dir(dir: Option<PathBuf>) {
-        *DIR.lock().unwrap_or_else(|e| e.into_inner()) = dir;
+        *DIR.lock().unwrap_or_else(|e| e.into_inner()) = CacheDir::Explicit(dir);
     }
 
     pub(crate) fn dir() -> Option<PathBuf> {
-        DIR.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        match &*DIR.lock().unwrap_or_else(|e| e.into_inner()) {
+            CacheDir::Default => default_dir(),
+            CacheDir::Explicit(d) => d.clone(),
+        }
     }
 
     /// The caches of the renderers' devices: shared by every thread, since

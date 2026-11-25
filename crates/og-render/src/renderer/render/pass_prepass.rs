@@ -177,6 +177,21 @@ impl Renderer {
         }
         stats.prepass_draws += bundled!("prepass: instances", |p| {
             let mut current = None;
+            let pass_wide = match (main_list.indirect, culled_gpu) {
+                (Some(g), Some(gc)) if gc.uses_first_instance() => {
+                    p.set_vertex_buffer(1, gc.pass_instances_slice(g));
+                    p.set_vertex_buffer(
+                        2,
+                        if object_motion {
+                            gc.pass_previous_slice(g)
+                        } else {
+                            gc.pass_instances_slice(g)
+                        },
+                    );
+                    true
+                }
+                _ => false,
+            };
             for &(b, first, count) in &main_list.ranges {
                 let batch = &batches[b as usize];
                 let key = (
@@ -198,11 +213,13 @@ impl Renderer {
                 let m = &self.cache.materials[batch.material];
                 p.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
                 let mesh = &self.cache.meshes[batch.mesh];
-                let start = first as u64 * INSTANCE_STRIDE;
-                let end = start + count as u64 * INSTANCE_STRIDE;
                 p.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
-                p.set_vertex_buffer(1, instances.slice(start..end));
-                p.set_vertex_buffer(2, prev.slice(start..end));
+                if !pass_wide {
+                    let start = first as u64 * INSTANCE_STRIDE;
+                    let end = start + count as u64 * INSTANCE_STRIDE;
+                    p.set_vertex_buffer(1, instances.slice(start..end));
+                    p.set_vertex_buffer(2, prev.slice(start..end));
+                }
                 if let Some(surface) = &mesh.surface {
                     p.set_vertex_buffer(3, surface.previous.slice(..));
                 }
@@ -312,6 +329,13 @@ impl Renderer {
             p.set_bind_group(0, frame_bind_group, &[]);
             p.set_bind_group(2, fx_group, &[]);
             let mut side = None;
+            let pass_wide = match (main_list.indirect, culled_gpu) {
+                (Some(g), Some(gc)) if gc.uses_first_instance() => {
+                    p.set_vertex_buffer(1, gc.pass_instances_slice(g));
+                    true
+                }
+                _ => false,
+            };
             for &(b, first, count) in &main_list.ranges {
                 let batch = &batches[b as usize];
                 if side != Some(batch.faces) {
@@ -320,10 +344,12 @@ impl Renderer {
                 }
                 p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                 let mesh = &self.cache.meshes[batch.mesh];
-                let start = first as u64 * INSTANCE_STRIDE;
-                let end = start + count as u64 * INSTANCE_STRIDE;
                 p.set_vertex_buffer(0, mesh.vertex_slice(false));
-                p.set_vertex_buffer(1, instances.slice(start..end));
+                if !pass_wide {
+                    let start = first as u64 * INSTANCE_STRIDE;
+                    let end = start + count as u64 * INSTANCE_STRIDE;
+                    p.set_vertex_buffer(1, instances.slice(start..end));
+                }
                 p.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
                 match (main_list.indirect, culled_gpu) {
                     (Some(g), Some(gc)) => {

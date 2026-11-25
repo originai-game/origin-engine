@@ -1,6 +1,7 @@
 //! How a surface is lit: materials, lights and clusters, shadows, indirect light, reflections, transparency.
 
 pub(crate) mod area;
+pub(crate) mod bindless;
 pub(crate) mod clusters;
 pub(crate) mod decals;
 pub(crate) mod environment;

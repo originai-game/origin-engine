@@ -34,6 +34,12 @@ pub(crate) trait Encode {
     fn draw_indexed(&mut self, indices: Range<u32>, base_vertex: i32, instances: Range<u32>);
     fn draw_indirect(&mut self, args: &wgpu::Buffer, offset: wgpu::BufferAddress);
     fn draw_indexed_indirect(&mut self, args: &wgpu::Buffer, offset: wgpu::BufferAddress);
+    fn multi_draw_indexed_indirect(
+        &mut self,
+        args: &wgpu::Buffer,
+        offset: wgpu::BufferAddress,
+        count: u32,
+    );
 }
 
 impl Encode for wgpu::RenderPass<'_> {
@@ -66,6 +72,18 @@ impl Encode for wgpu::RenderPass<'_> {
     fn draw_indexed_indirect(&mut self, args: &wgpu::Buffer, offset: wgpu::BufferAddress) {
         wgpu::RenderPass::draw_indexed_indirect(self, args, offset);
     }
+    fn multi_draw_indexed_indirect(
+        &mut self,
+        args: &wgpu::Buffer,
+        offset: wgpu::BufferAddress,
+        count: u32,
+    ) {
+        if count == 1 {
+            wgpu::RenderPass::draw_indexed_indirect(self, args, offset);
+        } else if count > 1 {
+            wgpu::RenderPass::multi_draw_indexed_indirect(self, args, offset, count);
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -84,6 +102,7 @@ enum Command {
     DrawIndexed(Range<u32>, i32, Range<u32>),
     DrawIndirect(wgpu::Buffer, wgpu::BufferAddress),
     DrawIndexedIndirect(wgpu::Buffer, wgpu::BufferAddress),
+    MultiDrawIndexedIndirect(wgpu::Buffer, wgpu::BufferAddress, u32),
 }
 
 /// A part's commands in order, as the draw helpers wrote them.
@@ -164,12 +183,29 @@ impl Encode for Draws {
         self.commands
             .push(Command::DrawIndexedIndirect(args.clone(), offset));
     }
+    fn multi_draw_indexed_indirect(
+        &mut self,
+        args: &wgpu::Buffer,
+        offset: wgpu::BufferAddress,
+        count: u32,
+    ) {
+        if count == 1 {
+            self.commands
+                .push(Command::DrawIndexedIndirect(args.clone(), offset));
+        } else if count > 1 {
+            self.commands.push(Command::MultiDrawIndexedIndirect(
+                args.clone(),
+                offset,
+                count,
+            ));
+        }
+    }
 }
 
-/// Plays `draws` into `$out`: a render pass or a bundle encoder, whose
-/// methods have the same names.
+/// Plays `draws` into `$out`: a render pass (`multi = true`) or a bundle
+/// encoder (`multi = false`, where multi-draw expands into indexed indirect).
 macro_rules! replay {
-    ($draws:expr, $out:expr) => {{
+    ($draws:expr, $out:expr, $multi:tt) => {{
         let (draws, out) = ($draws, $out);
         for c in &draws.commands {
             match c {
@@ -185,9 +221,20 @@ macro_rules! replay {
                 Command::DrawIndexed(x, b, i) => out.draw_indexed(x.clone(), *b, i.clone()),
                 Command::DrawIndirect(b, at) => out.draw_indirect(b, *at),
                 Command::DrawIndexedIndirect(b, at) => out.draw_indexed_indirect(b, *at),
+                Command::MultiDrawIndexedIndirect(b, at, n) => {
+                    replay!(@mdi out, b, *at, *n, $multi);
+                }
             }
         }
     }};
+    (@mdi $out:expr, $b:expr, $at:expr, $n:expr, true) => {
+        $out.multi_draw_indexed_indirect($b, $at, $n);
+    };
+    (@mdi $out:expr, $b:expr, $at:expr, $n:expr, false) => {
+        for k in 0..$n {
+            $out.draw_indexed_indirect($b, $at + u64::from(k) * 20);
+        }
+    };
 }
 
 /// The attachments a part draws into, which its bundle must match.
@@ -334,7 +381,7 @@ impl Bundles {
             *scratch = draws;
             return (out, played);
         }
-        replay!(&draws, &mut *pass);
+        replay!(&draws, &mut *pass, true);
         if let Some(prev) = parts.insert(
             part,
             Part {
@@ -365,6 +412,6 @@ fn record(
         sample_count: target.samples,
         multiview: None,
     });
-    replay!(draws, &mut encoder);
+    replay!(draws, &mut encoder, false);
     encoder.finish(&wgpu::RenderBundleDescriptor { label: Some(label) })
 }

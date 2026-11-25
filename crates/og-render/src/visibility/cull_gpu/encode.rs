@@ -405,7 +405,7 @@ impl GpuCulling {
                     counts: [n, b, which.len() as u32, p as u32],
                     sizes: [blocks, levels, width, height],
                     motion: [
-                        previous.is_some() as u32,
+                        (previous.is_some() as u32) | ((self.first_instance as u32) << 1),
                         base as u32,
                         skinned_from as u32,
                         ns,
@@ -517,17 +517,28 @@ impl GpuCulling {
                 if let Some(g) = occluders {
                     pass.set_bind_group(0, &self.view_group, &[]);
                     let mut kind = None;
+                    let mut mesh_bound: Option<(usize, bool)> = None;
                     let seen = tested(&passes[g].planes);
-                    for (i, x) in batches.iter().enumerate() {
-                        // An occluder out of the camera's view has none of
-                        // its instances kept: its draw would draw nothing.
-                        if skinned_batch(i)
-                            || x.simulated
-                            || meshes[x.mesh].surface.is_some()
-                            || !materials[x.material].occluder
-                            || x.reveal
-                            || !x.reaches(seen)
-                        {
+                    let mdi = self.first_instance
+                        && device
+                            .features()
+                            .contains(wgpu::Features::MULTI_DRAW_INDIRECT_COUNT);
+                    if self.first_instance {
+                        pass.set_vertex_buffer(1, self.pass_instances_slice(g as u32));
+                    }
+                    let eligible = |idx: usize, x: &Batch| {
+                        !skinned_batch(idx)
+                            && !x.simulated
+                            && meshes[x.mesh].surface.is_none()
+                            && materials[x.material].occluder
+                            && !x.reveal
+                            && x.reaches(seen)
+                    };
+                    let mut i = 0;
+                    while i < batches.len() {
+                        let x = &batches[i];
+                        if !eligible(i, x) {
+                            i += 1;
                             continue;
                         }
                         if kind != Some((x.faces, x.compact)) {
@@ -537,17 +548,46 @@ impl GpuCulling {
                             kind = Some((x.faces, x.compact));
                         }
                         let mesh = &meshes[x.mesh];
-                        let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
-                        pass.set_vertex_buffer(0, mesh.position_slice(x.compact));
-                        pass.set_vertex_buffer(
-                            1,
-                            self.instances
-                                .slice(start..start + x.count as u64 * INSTANCE_STRIDE),
-                        );
-                        pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                        if mesh_bound != Some((x.mesh, x.compact)) {
+                            pass.set_vertex_buffer(0, mesh.position_slice(x.compact));
+                            pass.set_index_buffer(
+                                mesh.indices.slice(..),
+                                wgpu::IndexFormat::Uint32,
+                            );
+                            mesh_bound = Some((x.mesh, x.compact));
+                        }
+                        if !self.first_instance {
+                            let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
+                            pass.set_vertex_buffer(
+                                1,
+                                self.instances
+                                    .slice(start..start + x.count as u64 * INSTANCE_STRIDE),
+                            );
+                        }
+                        let mut run_len = 1u32;
+                        if mdi {
+                            while i + (run_len as usize) < batches.len() {
+                                let next_idx = i + run_len as usize;
+                                let nx = &batches[next_idx];
+                                if eligible(next_idx, nx)
+                                    && nx.faces == x.faces
+                                    && nx.compact == x.compact
+                                    && nx.mesh == x.mesh
+                                {
+                                    run_len += 1;
+                                } else {
+                                    break;
+                                }
+                            }
+                        }
                         let (args, at) = self.draw_args(g as u32, i as u32);
-                        pass.draw_indexed_indirect(args, at);
+                        if run_len > 1 {
+                            pass.multi_draw_indexed_indirect(args, at, run_len);
+                        } else {
+                            pass.draw_indexed_indirect(args, at);
+                        }
                         occluder_draws += 1;
+                        i += run_len as usize;
                     }
                 }
             }

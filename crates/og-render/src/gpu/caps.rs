@@ -67,10 +67,16 @@ impl Caps {
     pub const SHADER_F16: Caps = Caps(1 << 14);
     /// Subgroup / warp wave intrinsics (`Features::SUBGROUP`).
     pub const SUBGROUP: Caps = Caps(1 << 15);
+    /// Hardware multi-draw indirect (`Features::MULTI_DRAW_INDIRECT_COUNT`).
+    pub const MULTI_DRAW_INDIRECT_COUNT: Caps = Caps(1 << 16);
+    /// Bindless sampled texture binding arrays with non-uniform indexing
+    /// (`TEXTURE_BINDING_ARRAY`, `SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING`,
+    /// `PARTIALLY_BOUND_BINDING_ARRAY`, and `max_binding_array_elements_per_shader_stage >= 1024`).
+    pub const BINDLESS_TEXTURES: Caps = Caps(1 << 17);
     /// Every capability above: the full tier.
-    pub const FULL: Caps = Caps((1 << 16) - 1);
+    pub const FULL: Caps = Caps((1 << 18) - 1);
 
-    const NAMES: [(Caps, &'static str); 16] = [
+    const NAMES: [(Caps, &'static str); 18] = [
         (Caps::COMPUTE, "compute"),
         (Caps::MRT, "mrt"),
         (Caps::ASYNC_PIPELINES, "asyncPipelines"),
@@ -87,6 +93,8 @@ impl Caps {
         (Caps::DEPTH_CLIP_CONTROL, "depthClipControl"),
         (Caps::SHADER_F16, "shaderF16"),
         (Caps::SUBGROUP, "subgroup"),
+        (Caps::MULTI_DRAW_INDIRECT_COUNT, "multiDrawIndirectCount"),
+        (Caps::BINDLESS_TEXTURES, "bindlessTextures"),
     ];
 
     /// What an adapter with `features` (already less the caller's
@@ -129,6 +137,19 @@ impl Caps {
         caps |= feature(wgpu::Features::DEPTH_CLIP_CONTROL, Caps::DEPTH_CLIP_CONTROL);
         caps |= feature(wgpu::Features::SHADER_F16, Caps::SHADER_F16);
         caps |= feature(wgpu::Features::SUBGROUP, Caps::SUBGROUP);
+        caps |= feature(
+            wgpu::Features::MULTI_DRAW_INDIRECT_COUNT,
+            Caps::MULTI_DRAW_INDIRECT_COUNT,
+        );
+        let bindless_feats = wgpu::Features::TEXTURE_BINDING_ARRAY
+            | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+            | wgpu::Features::PARTIALLY_BOUND_BINDING_ARRAY;
+        if features.contains(bindless_feats)
+            && limits.max_binding_array_elements_per_shader_stage
+                >= crate::bindless::MAX_BINDLESS_TEXTURES
+        {
+            caps |= Caps::BINDLESS_TEXTURES;
+        }
         if limits.max_color_attachments > 1 {
             caps |= Caps::MRT;
         }
@@ -208,6 +229,16 @@ impl Caps {
             (Caps::DEPTH_CLIP_CONTROL, wgpu::Features::DEPTH_CLIP_CONTROL),
             (Caps::SHADER_F16, wgpu::Features::SHADER_F16),
             (Caps::SUBGROUP, wgpu::Features::SUBGROUP),
+            (
+                Caps::MULTI_DRAW_INDIRECT_COUNT,
+                wgpu::Features::MULTI_DRAW_INDIRECT_COUNT,
+            ),
+            (
+                Caps::BINDLESS_TEXTURES,
+                wgpu::Features::TEXTURE_BINDING_ARRAY
+                    | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+                    | wgpu::Features::PARTIALLY_BOUND_BINDING_ARRAY,
+            ),
         ] {
             if !self.contains(c) {
                 features.remove(f);
@@ -300,7 +331,9 @@ impl Tier {
             | Caps::RG11B10_RENDERABLE.0
             | Caps::DEPTH_CLIP_CONTROL.0
             | Caps::SHADER_F16.0
-            | Caps::SUBGROUP.0;
+            | Caps::SUBGROUP.0
+            | Caps::MULTI_DRAW_INDIRECT_COUNT.0
+            | Caps::BINDLESS_TEXTURES.0;
         let mini_game = Caps::FULL.without(Caps(
             Caps::MRT.0 | Caps::ASYNC_PIPELINES.0 | Caps::TIMESTAMPS.0 | full_only,
         ));

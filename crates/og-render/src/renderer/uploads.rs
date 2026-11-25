@@ -7,6 +7,8 @@ mod frame_resources;
 mod materials;
 mod textures;
 
+pub(super) use materials::MaterialBindOutput;
+
 impl Renderer {
     /// The f32 vertices of `mesh` on the GPU (its tangents generated where
     /// it lacks them); a 16-byte placeholder for a mesh without vertices.

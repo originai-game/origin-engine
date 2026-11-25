@@ -581,6 +581,10 @@ pub(crate) struct GpuCulling {
     per_draw: Option<crate::indirect_own::OwnArgs>,
     /// Compute workgroup width (`128` on Compat, `256` with `Caps::SUBGROUP`).
     workgroup: u32,
+    /// When true (`INDIRECT_FIRST_INSTANCE` and no per-draw copy), static draws
+    /// populate `first_instance = batch.first` so vertex buffer 1 binds once per
+    /// pass and contiguous indirect runs coalesce into `multi_draw_indexed_indirect`.
+    first_instance: bool,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -663,6 +667,25 @@ impl GpuCulling {
     /// The byte offset of pass `g`'s draw of batch `b` in `args`.
     pub fn draw_offset(&self, g: u32, b: u32) -> u64 {
         (g as u64 * self.b as u64 + b as u64) * 20
+    }
+
+    /// True when static indirect draws carry `first_instance = batch.first`.
+    pub fn uses_first_instance(&self) -> bool {
+        self.first_instance
+    }
+
+    /// Pass `g`'s compacted static instances slice (`(g + 1) * n .. (g + 2) * n`).
+    pub fn pass_instances_slice(&self, g: u32) -> wgpu::BufferSlice<'_> {
+        let base = ((g as u64 + 1) * self.n as u64 * INSTANCE_STRIDE).min(self.instances.size());
+        let end = ((g as u64 + 2) * self.n as u64 * INSTANCE_STRIDE).min(self.instances.size());
+        self.instances.slice(base..end)
+    }
+
+    /// Pass `g`'s compacted previous transforms slice (`(g + 1) * n .. (g + 2) * n`).
+    pub fn pass_previous_slice(&self, g: u32) -> wgpu::BufferSlice<'_> {
+        let base = ((g as u64 + 1) * self.n as u64 * INSTANCE_STRIDE).min(self.previous.size());
+        let end = ((g as u64 + 2) * self.n as u64 * INSTANCE_STRIDE).min(self.previous.size());
+        self.previous.slice(base..end)
     }
 
     /// The buffer and byte offset pass `g`'s draw of batch `b` reads its

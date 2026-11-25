@@ -2,26 +2,27 @@
 
 use super::*;
 
+/// Output of [`Renderer::material_bind_group`].
+pub(crate) struct MaterialBindOutput {
+    pub bind_group: wgpu::BindGroup,
+    pub array: Option<wgpu::BindGroup>,
+    pub factors: wgpu::Buffer,
+    pub stochastic: wgpu::Buffer,
+    pub bindless_fits: bool,
+    pub bindless_record: crate::bindless::BindlessMaterialGpu,
+}
+
 impl Renderer {
     /// A material's standard group, its array-map group when it draws with
     /// array maps (made by the caller's [`material::ArrayMaps`]), and its
     /// uniform buffer and the stochastic lookup shared with the physical pass.
-    #[allow(clippy::type_complexity)]
     pub(crate) fn material_bind_group(
         &self,
         index: usize,
         m: &StandardMaterial,
         custom: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
         previous: Option<[[f32; 4]; MAX_SHADER_PARAMS]>,
-    ) -> Result<
-        (
-            wgpu::BindGroup,
-            Option<wgpu::BindGroup>,
-            wgpu::Buffer,
-            wgpu::Buffer,
-        ),
-        RenderError,
-    > {
+    ) -> Result<MaterialBindOutput, RenderError> {
         let [
             map,
             metalness,
@@ -53,10 +54,10 @@ impl Renderer {
         let normal_gpu = texture(normal)?;
         let normal_view =
             normal_gpu.map_or_else(|| self.default_normal.clone(), |g| g.view.clone());
-        let emissive = view(emissive, &self.default_white)?;
-        let ao = view(ao, &self.default_white)?;
-        let gradient = view(gradient, &self.default_white)?;
-        let dissolve = view(dissolve, &self.default_white)?;
+        let emissive_view = view(emissive, &self.default_white)?;
+        let ao_view = view(ao, &self.default_white)?;
+        let gradient_view = view(gradient, &self.default_white)?;
+        let dissolve_view = view(dissolve, &self.default_white)?;
         let two_channel = normal_gpu.is_some_and(|g| g.format.two_channel());
         let mut uniform: MaterialUniform = material::uniform(m, two_channel);
         let stochastic = self
@@ -71,8 +72,8 @@ impl Renderer {
                     &metal,
                     &rough,
                     &normal_view,
-                    &emissive,
-                    &ao,
+                    &emissive_view,
+                    &ao_view,
                 ]),
             );
         if let Some(c) = custom {
@@ -83,6 +84,41 @@ impl Renderer {
             uniform.previous_custom = previous.unwrap_or(c);
             uniform.stamp = [self.frame_index as u32, 0, 0, 0];
         }
+        let tex_slot = |t: Option<TextureHandle>, default: u32| -> Option<u32> {
+            match t {
+                None => Some(default),
+                Some(h) => {
+                    let slot = 2u32.saturating_add(h.index() as u32);
+                    (slot < crate::bindless::MAX_BINDLESS_TEXTURES).then_some(slot)
+                }
+            }
+        };
+        let slots = [
+            tex_slot(map, 0),
+            tex_slot(metalness, 0),
+            tex_slot(roughness, 0),
+            tex_slot(normal, 1),
+            tex_slot(emissive, 0),
+            tex_slot(ao, 0),
+            tex_slot(gradient, 0),
+            tex_slot(dissolve, 0),
+        ];
+        let bindless_fits = slots.iter().all(Option::is_some);
+        let bindless_record = crate::bindless::BindlessMaterialGpu {
+            factors: uniform,
+            tex0: [
+                slots[0].unwrap_or(0),
+                slots[1].unwrap_or(0),
+                slots[2].unwrap_or(0),
+                slots[3].unwrap_or(1),
+            ],
+            tex1: [
+                slots[4].unwrap_or(0),
+                slots[5].unwrap_or(0),
+                slots[6].unwrap_or(0),
+                slots[7].unwrap_or(0),
+            ],
+        };
         // The array maps' views (a material shader keeps the standard path).
         let arrays = match self.lit.array_maps.as_ref() {
             Some(a) if custom.is_none() && m.draws_array_maps() => {
@@ -144,11 +180,11 @@ impl Renderer {
             wgpu::BindingResource::TextureView(&metal),
             wgpu::BindingResource::TextureView(&rough),
             wgpu::BindingResource::TextureView(&normal_view),
-            wgpu::BindingResource::TextureView(&emissive),
-            wgpu::BindingResource::TextureView(&ao),
+            wgpu::BindingResource::TextureView(&emissive_view),
+            wgpu::BindingResource::TextureView(&ao_view),
             wgpu::BindingResource::Sampler(&self.material_sampler),
-            wgpu::BindingResource::TextureView(&gradient),
-            wgpu::BindingResource::TextureView(&dissolve),
+            wgpu::BindingResource::TextureView(&gradient_view),
+            wgpu::BindingResource::TextureView(&dissolve_view),
             stochastic.as_entire_binding(),
         ];
         let group = bind_group(&self.device, "material", &self.material_layout, &entries);
@@ -158,7 +194,14 @@ impl Renderer {
             entries[4] = wgpu::BindingResource::TextureView(&normal);
             bind_group(&self.device, "material (array maps)", &a.layout, &entries)
         });
-        Ok((group, array, factors, stochastic))
+        Ok(MaterialBindOutput {
+            bind_group: group,
+            array,
+            factors,
+            stochastic,
+            bindless_fits,
+            bindless_record,
+        })
     }
 
     /// A physical material's group for its lit pass (`physical.rs`): its

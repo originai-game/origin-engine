@@ -238,6 +238,14 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         crate::post::bloom_spd::source_f16(),
         crate::Caps::SHADER_F16,
     ));
+    for (planars, planar) in planar_variants() {
+        out.push(ShaderSource {
+            label: format!("pbr bindless{planars}"),
+            wgsl: crate::bindless::bindless_lit_source(&crate::lit_source_with(&hooks, planar)),
+            constants: vec![("ANALYTIC".to_string(), 1.0), ("DISCARD".to_string(), 0.0)],
+            needs: crate::Caps::BINDLESS_TEXTURES | crate::Caps::VERTEX_STORAGE,
+        });
+    }
 }
 
 /// `out` and its modules' variants.

@@ -80,6 +80,7 @@ use og_render_data::custom;
 use post::color_vision;
 use shader::blue_noise;
 use shading::area;
+use shading::bindless;
 use shading::clusters;
 use shading::decals;
 use systems::crowd;

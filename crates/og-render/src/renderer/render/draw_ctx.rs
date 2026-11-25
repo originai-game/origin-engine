@@ -463,6 +463,16 @@ impl<'f> DrawCtx<'f> {
         pass.set_bind_group(0, groups.0, &[]);
         pass.set_bind_group(2, groups.1, &[]);
         let mut draws = 0;
+        let indirect = list.indirect.zip(culled_gpu);
+        let pass_wide = match indirect {
+            Some((g, gc)) if gc.uses_first_instance() => {
+                let s = gc.pass_instances_slice(g);
+                pass.set_vertex_buffer(1, s);
+                pass.set_vertex_buffer(2, s);
+                true
+            }
+            _ => false,
+        };
         for &(b, first, count) in &list.ranges {
             let batch = &batches[b as usize];
             let Some(pipeline) = r.prepass_pipeline_of(batch, false) else {
@@ -472,14 +482,15 @@ impl<'f> DrawCtx<'f> {
             let m = &r.cache.materials[batch.material];
             pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
             let mesh = &r.cache.meshes[batch.mesh];
-            let start = first as u64 * INSTANCE_STRIDE;
-            let range = start..start + count as u64 * INSTANCE_STRIDE;
-            // A view's GPU-culled list: its pass's region and draws.
-            let indirect = list.indirect.zip(culled_gpu);
-            let instances = indirect.map_or(&r.instances.instance_buffer, |(_, gc)| &gc.instances);
             pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
-            pass.set_vertex_buffer(1, instances.slice(range.clone()));
-            pass.set_vertex_buffer(2, instances.slice(range));
+            if !pass_wide {
+                let start = first as u64 * INSTANCE_STRIDE;
+                let range = start..start + count as u64 * INSTANCE_STRIDE;
+                let instances =
+                    indirect.map_or(&r.instances.instance_buffer, |(_, gc)| &gc.instances);
+                pass.set_vertex_buffer(1, instances.slice(range.clone()));
+                pass.set_vertex_buffer(2, instances.slice(range));
+            }
             if let Some(surface) = &mesh.surface {
                 pass.set_vertex_buffer(3, surface.previous.slice(..));
             }

@@ -260,6 +260,9 @@ impl Renderer {
         if let Some(a) = &mut self.lit.array_maps {
             a.lit.clear();
         }
+        if let Some(b) = &mut self.lit.bindless {
+            b.clear_pipelines();
+        }
         if let Some(p) = &mut self.lit.physical {
             p.pipelines.clear();
         }

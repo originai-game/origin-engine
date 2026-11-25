@@ -614,6 +614,11 @@ impl SortedInstances {
         })
     }
 
+    /// Monotonic serial incremented whenever the sorted runs / instance slots rebuild.
+    pub fn serial(&self) -> u64 {
+        self.serial
+    }
+
     /// Gives back what [`SortedInstances::update`] lent: `transforms` cut to
     /// the sorted instances (a frame appends culled copies after them).
     pub fn restore(&mut self, mut transforms: Vec<GpuTransform>, spheres: Vec<(Vec3, f32)>) {

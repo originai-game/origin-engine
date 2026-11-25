@@ -93,6 +93,9 @@ impl Renderer {
                 .max_compute_workgroup_size_y
                 .max(256)
                 .min(per_stage.max_compute_workgroup_size_y);
+            limits.max_binding_array_elements_per_shader_stage =
+                crate::bindless::MAX_BINDLESS_TEXTURES
+                    .min(per_stage.max_binding_array_elements_per_shader_stage);
         } else {
             // Compute and storage buffers at downlevel defaults' counts, with
             // WebGPU's eight storage buffers a stage (og.motion's kernels bind
@@ -192,6 +195,16 @@ impl Renderer {
             (Caps::DEPTH_CLIP_CONTROL, wgpu::Features::DEPTH_CLIP_CONTROL),
             (Caps::SHADER_F16, wgpu::Features::SHADER_F16),
             (Caps::SUBGROUP, wgpu::Features::SUBGROUP),
+            (
+                Caps::MULTI_DRAW_INDIRECT_COUNT,
+                wgpu::Features::MULTI_DRAW_INDIRECT_COUNT,
+            ),
+            (
+                Caps::BINDLESS_TEXTURES,
+                wgpu::Features::TEXTURE_BINDING_ARRAY
+                    | wgpu::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING
+                    | wgpu::Features::PARTIALLY_BOUND_BINDING_ARRAY,
+            ),
         ] {
             if caps.contains(cap) {
                 features |= feat;

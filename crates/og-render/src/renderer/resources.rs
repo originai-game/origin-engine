@@ -241,6 +241,10 @@ pub(crate) struct GpuMaterial {
     /// three.js's wireframe). MaterialStyle.wireframe's (2) keeps the
     /// triangles under its edges, so they hide what lies behind them.
     pub(crate) wire_only: bool,
+    /// Eligible for the native `Tier::Full` bindless material table (`bindless.rs`).
+    pub(crate) bindless_ok: bool,
+    /// Flat material + texture-slot record mirrored into `BindlessTable::materials_buf`.
+    pub(crate) bindless_record: crate::bindless::BindlessMaterialGpu,
 }
 
 pub(crate) struct GpuTexture {

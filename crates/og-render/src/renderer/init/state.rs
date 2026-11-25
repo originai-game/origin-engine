@@ -258,6 +258,7 @@ impl LitPipelines {
             lean_pipelines: HashMap::new(),
             physical: None,
             array_maps: None,
+            bindless: None,
             warned_without: LitFeatures::NONE,
         }
     }

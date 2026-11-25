@@ -246,6 +246,10 @@ impl GpuCulling {
             skinned_base_batch: 0,
             per_draw: per_draw.then(Default::default),
             workgroup,
+            first_instance: !per_draw
+                && device
+                    .features()
+                    .contains(wgpu::Features::INDIRECT_FIRST_INSTANCE),
         }
     }
 

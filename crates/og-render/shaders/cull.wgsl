@@ -278,16 +278,17 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   } else if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
-    if (params.motion.x != 0u && ((b.flags & FOLIAGE) != 0u || passes[pass_at(wid.y)].info.x == MAIN)) {
+    if ((params.motion.x & 1u) != 0u && ((b.flags & FOLIAGE) != 0u || passes[pass_at(wid.y)].info.x == MAIN)) {
       for (var j = 0u; j < 16u; j++) { previous[to + j] = previous[k * 16u + j]; }
     }
   }
   if (k == b.first) {
     let draw = (g * params.counts.y + bi) * 5u;
+    let first_inst = select(0u, b.first, (params.motion.x & 2u) != 0u && (b.flags & SKINNED) == 0u);
     atomicStore(&args[draw], b.index_count);
     atomicStore(&args[draw + 1u], scan[at + b.first + b.count] - start);
     atomicStore(&args[draw + 2u], 0u);
     atomicStore(&args[draw + 3u], 0u);
-    atomicStore(&args[draw + 4u], 0u);
+    atomicStore(&args[draw + 4u], first_inst);
   }
 }

@@ -95,6 +95,28 @@ impl Renderer {
             skinned_batches,
             prepass || view_depth || face_depth,
         );
+        if let Some(bt) = &mut self.lit.bindless {
+            let instance_count = batches
+                .iter()
+                .map(|b| (b.first + b.count) as usize)
+                .max()
+                .unwrap_or(0);
+            bt.sync_instances(
+                &self.device,
+                &self.queue,
+                self.instances.sorted.serial(),
+                instance_count,
+                batches,
+            );
+            bt.ensure_bind_group(
+                &self.device,
+                &self.default_white,
+                &self.default_normal,
+                &self.cache.textures,
+                &self.material_sampler,
+            );
+            bt.ensure_pipelines(&self.device, batches, &self.cache.materials, self.samples);
+        }
         // The instances fading in whose first frame is still to come.
         self.ensure_ahead(ahead, prepass || view_depth || face_depth);
         // A view may draw a skinned batch the main camera culled or hides.
