@@ -112,7 +112,7 @@ A variant's `material` blocks replace only the fields they name (`color`
 is linear here, as in glTF). `atlas <px>` packs every part's UVs into one
 atlas, the layout `og model bake` paints its maps on.
 
-## 4b. Procedural surfaces
+### Procedural surfaces
 
 A `material` op takes `surface` instead of `map`: layers of patterns
 cooked into a base-colour, metallic-roughness, normal and (when a layer

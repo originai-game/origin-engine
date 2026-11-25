@@ -76,7 +76,7 @@ module probe {
 | [`DumpKind`](probe/type-DumpKind.md) | enum |  | What dump() reports. |
 | [`DumpDesc`](probe/type-DumpDesc.md) | desc struct |  | What to dump. |
 | [`ArchetypeDump`](probe/type-ArchetypeDump.md) | struct |  | One archetype table. |
-| [`SystemDump`](probe/type-SystemDump.md) | struct |  | One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time). |
+| [`SystemDump`](probe/type-SystemDump.md) | struct |  | One system: declared access, matched count, and timing (ms, totalMs, runs) when the host supplies a clock. |
 | [`WorldDump`](probe/type-WorldDump.md) | struct |  | The world: tables, systems, resources. |
 | [`EntityDump`](probe/type-EntityDump.md) | struct |  | One entity. |
 | [`DrawReason`](probe/type-DrawReason.md) | enum |  | Why the main camera draws an entity or not, the first that holds. |

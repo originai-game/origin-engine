@@ -92,9 +92,18 @@ impl BackgroundGame {
 struct Server {
     /// Games `run` started in the background.
     games: Vec<BackgroundGame>,
+    /// Cached API wiki index, loaded lazily on first `api_*` call.
+    wiki: Option<crate::api_lookup::WikiCache>,
 }
 
 impl Server {
+    fn wiki(&mut self) -> Result<&crate::api_lookup::WikiCache, String> {
+        if self.wiki.is_none() {
+            self.wiki = Some(crate::api_lookup::WikiCache::open()?);
+        }
+        Ok(self.wiki.as_ref().expect("initialized"))
+    }
+
     /// One message in; the answer frame, none for a notification.
     fn handle(&mut self, line: &str) -> Option<Value> {
         let msg: Value = match serde_json::from_str(line) {
@@ -118,7 +127,7 @@ impl Server {
                         "protocolVersion": version,
                         "capabilities": { "tools": {} },
                         "serverInfo": { "name": "og", "version": env!("CARGO_PKG_VERSION") },
-                        "instructions": "The Origin Engine tool. `api_find` and `api_show` answer the API and its guides (`api_show start`, `api_show testing`); `create`, `check`, `cook`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `ui`, `style`, `model`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members).",
+                        "instructions": "The Origin Engine tool. `api_list`, `api_find` and `api_show` answer the API and its guides (`api_show start`, `api_show testing`); `create`, `check`, `cook`, `build`, `run`, `test`, `explore`, `replay`, `render`, `compare`, `frame`, `cost`, `ui`, `style`, `model`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `fmt`, `font`, `assets`, `prefab` and `doctor` operate the project; `probe` and `run_logs` inspect a running game (`api_show probe` lists the members).",
                     }),
                 )
             }
@@ -163,6 +172,72 @@ impl Server {
         match name {
             "probe" => return Ok(probe(a)),
             "run_logs" => return Ok(self.run_logs(a)),
+            "api_find" => {
+                let words = a
+                    .get("words")
+                    .and_then(Value::as_str)
+                    .ok_or("api_find: words is the text to look for")?;
+                let kind = a.get("kind").and_then(Value::as_str);
+                let limit = a
+                    .get("limit")
+                    .and_then(Value::as_u64)
+                    .map_or(12, |n| n as usize);
+                return Ok(match self.wiki() {
+                    Ok(wiki) => {
+                        let (body, found) = wiki.find_json(words, kind, limit);
+                        json!({
+                            "content": [{ "type": "text", "text": body.to_string() }],
+                            "structuredContent": body,
+                            "isError": !found,
+                        })
+                    }
+                    Err(e) => failed(format!("og api find: {e}")),
+                });
+            }
+            "api_show" => {
+                let what = a
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .ok_or("api_show: name is the entry, module or guide")?;
+                let every = a.get("all").and_then(Value::as_bool).unwrap_or(false);
+                let guide = a.get("guide").and_then(Value::as_bool).unwrap_or(false);
+                let as_json = a.get("json").and_then(Value::as_bool).unwrap_or(false);
+                return Ok(match self.wiki() {
+                    Ok(wiki) => match wiki.show_output(what, guide, every, as_json) {
+                        Ok(text) => {
+                            let mut out = json!({
+                                "content": [{ "type": "text", "text": text }],
+                                "isError": false,
+                            });
+                            if as_json && let Ok(v) = serde_json::from_str::<Value>(&text) {
+                                out["structuredContent"] = v;
+                            }
+                            out
+                        }
+                        Err(e) => failed(e),
+                    },
+                    Err(e) => failed(format!("og api show: {e}")),
+                });
+            }
+            "api_list" => {
+                let kind = a.get("kind").and_then(Value::as_str);
+                if let Some(k) = kind
+                    && !matches!(k, "module" | "guide")
+                {
+                    return Err("api_list: kind must be `module` or `guide`".into());
+                }
+                return Ok(match self.wiki() {
+                    Ok(wiki) => {
+                        let body = wiki.list_json(kind);
+                        json!({
+                            "content": [{ "type": "text", "text": body.to_string() }],
+                            "structuredContent": body,
+                            "isError": false,
+                        })
+                    }
+                    Err(e) => failed(format!("og api list: {e}")),
+                });
+            }
             "run" => {
                 args.push("run".into());
                 project(&mut args);
@@ -214,13 +289,16 @@ impl Server {
                 push(&mut args, "--name", "name");
                 push(&mut args, "--id", "id");
                 push(&mut args, "--premise", "premise");
+                push(&mut args, "--form", "form");
                 push(&mut args, "--genre", "genre");
                 push(&mut args, "--view", "view");
                 push(&mut args, "--look", "look");
+                push(&mut args, "--variant", "variant");
                 push(&mut args, "--ui", "ui");
                 push(&mut args, "--platform", "platform");
                 push(&mut args, "--input", "input");
                 push(&mut args, "--players", "players");
+                push(&mut args, "--lang", "lang");
                 push(&mut args, "--music", "music");
                 flag(&mut args, "--force", "force");
                 append_json = false;
@@ -275,12 +353,15 @@ impl Server {
                 let sub = a
                     .get("subcommand")
                     .and_then(Value::as_str)
-                    .ok_or("style: subcommand must be `list`, `check-project`, `new` or `add`")?;
+                    .ok_or("style: subcommand must be `list`, `check-project`, `init`, `validate` or `add`")?;
                 args.extend(["style".into(), sub.into()]);
                 if let Some(target) = a.get("target").and_then(Value::as_str) {
                     args.push(target.into());
                 }
-                project(&mut args);
+                if sub != "validate" {
+                    project(&mut args);
+                }
+                push(&mut args, "--from", "from");
                 flag(&mut args, "--no-frames", "noFrames");
                 append_json = matches!(sub, "list" | "check-project");
             }
@@ -363,23 +444,120 @@ impl Server {
                 push(&mut args, "--flip", "flip");
                 push(&mut args, "--regions", "regions");
             }
-            "api_find" => {
-                let words = a
-                    .get("words")
+            "frame" => {
+                let png = a
+                    .get("png")
                     .and_then(Value::as_str)
-                    .ok_or("api_find: words is the text to look for")?;
-                args.extend(["api".into(), "find".into(), words.into()]);
-                push(&mut args, "--kind", "kind");
-                push(&mut args, "--limit", "limit");
+                    .ok_or("frame: png is the captured PNG path")?;
+                args.extend(["frame".into(), "measure".into(), png.into()]);
+                push(&mut args, "--region", "region");
+                push(&mut args, "--against", "against");
+                push(&mut args, "--units", "units");
+                push(&mut args, "--metric", "metric");
+                push(&mut args, "--rows", "rows");
+                flag(&mut args, "--require-checked", "requireChecked");
             }
-            "api_show" => {
-                let what = a
-                    .get("name")
+            "cost" => {
+                args.push("cost".into());
+                project(&mut args);
+                push(&mut args, "--off", "off");
+                push(&mut args, "--on", "on");
+                push(&mut args, "--runs", "runs");
+                push(&mut args, "--ticks", "ticks");
+            }
+            "vfx" => {
+                let sub = a
+                    .get("subcommand")
                     .and_then(Value::as_str)
-                    .ok_or("api_show: name is the entry, module or guide")?;
-                args.extend(["api".into(), "show".into(), what.into()]);
-                flag(&mut args, "--all", "all");
-                flag(&mut args, "--guide", "guide");
+                    .ok_or("vfx: subcommand must be `add`, `import` or `preview`")?;
+                args.extend(["vfx".into(), sub.into()]);
+                if let Some(target) = a.get("target").and_then(Value::as_str) {
+                    args.push(target.into());
+                }
+                if sub == "add" {
+                    project(&mut args);
+                    flag(&mut args, "--any-engine", "anyEngine");
+                } else if sub == "preview" {
+                    push(&mut args, "--project", "project");
+                    push(&mut args, "--out", "out");
+                    push(&mut args, "--size", "size");
+                    push(&mut args, "--quality", "quality");
+                    flag(&mut args, "--no-cost", "noCost");
+                    flag(&mut args, "--together", "together");
+                } else {
+                    if let Some(out) = a.get("out").and_then(Value::as_str) {
+                        args.push(out.into());
+                    }
+                    push(&mut args, "--root", "root");
+                    flag(&mut args, "--hit", "hit");
+                }
+                append_json = sub == "preview";
+            }
+            "sfx" => {
+                args.push("sfx".into());
+                if let Some(preset) = a.get("preset").and_then(Value::as_str) {
+                    args.push(preset.into());
+                }
+                push(&mut args, "--seed", "seed");
+                push(&mut args, "--pitch", "pitch");
+                push(&mut args, "--length", "length");
+                push(&mut args, "--volume", "volume");
+                push(&mut args, "--out", "out");
+                append_json = false;
+            }
+            "sprite" => {
+                let input = a
+                    .get("input")
+                    .and_then(Value::as_str)
+                    .ok_or("sprite: input is the animated image or sheet.ogt path")?;
+                args.extend(["sprite".into(), "inspect".into(), input.into()]);
+                push(&mut args, "--key", "key");
+                push(&mut args, "--tolerance", "tolerance");
+                flag(&mut args, "--holes", "holes");
+                push(&mut args, "--out", "out");
+            }
+            "materials" => {
+                let sub = a
+                    .get("subcommand")
+                    .and_then(Value::as_str)
+                    .ok_or("materials: subcommand must be `brief` or `make`")?;
+                let library = a
+                    .get("library")
+                    .and_then(Value::as_str)
+                    .ok_or("materials: library is the library .ogt path")?;
+                args.extend(["materials".into(), sub.into(), library.into()]);
+            }
+            "i18n" => {
+                args.extend(["i18n".into(), "extract".into()]);
+                project(&mut args);
+                flag(&mut args, "--write", "write");
+                flag(&mut args, "--check", "check");
+            }
+            "flow" => {
+                let sub = a
+                    .get("subcommand")
+                    .and_then(Value::as_str)
+                    .ok_or("flow: subcommand must be `list` or `routes`")?;
+                args.extend(["flow".into(), sub.into()]);
+                project(&mut args);
+            }
+            "fmt" => {
+                args.push("fmt".into());
+                if let Some(path) = a.get("path").and_then(Value::as_str) {
+                    args.push(path.into());
+                }
+                flag(&mut args, "--check", "check");
+            }
+            "font" => {
+                let sub = a
+                    .get("subcommand")
+                    .and_then(Value::as_str)
+                    .ok_or("font: subcommand must be `list` or `add`")?;
+                args.extend(["font".into(), sub.into()]);
+                if let Some(target) = a.get("target").and_then(Value::as_str) {
+                    args.push(target.into());
+                }
+                project(&mut args);
                 append_json = false;
             }
             _ => return Err(format!("unknown tool `{name}`")),
@@ -708,10 +886,12 @@ fn tools() -> Value {
             json!({
                 "dir": s("Target directory."), "name": s("Game display name."),
                 "id": s("Game slug."), "premise": s("One-line premise."),
-                "genre": s("Genre choice."), "view": s("Camera view choice."),
-                "look": s("Catalogue look preset."), "ui": s("UI style."),
+                "form": s("Game form choice."), "genre": s("Genre choice."),
+                "view": s("Camera view choice."), "look": s("Catalogue look preset."),
+                "variant": s("Look variant."), "ui": s("UI style."),
                 "platform": s("Target platform."), "input": s("Primary input."),
-                "players": s("Player count mode."), "music": s("Music style."),
+                "players": s("Player count mode."), "lang": s("Comma-separated locales, e.g. en,zh."),
+                "music": s("Music style."),
                 "force": b("Overwrite an existing directory."), "args": args,
             }),
             &[],
@@ -755,10 +935,11 @@ fn tools() -> Value {
         ),
         tool(
             "style",
-            "`og style <subcommand>`: list, check-project, new, or add style packs and art-contract checks.",
+            "`og style <subcommand>`: list, check-project, init, validate, or add UI styles and art-contract checks.",
             json!({
-                "subcommand": s("`list`, `check-project`, `new`, or `add`."),
-                "target": s("Style name or directory (for `new`/`add`)."),
+                "subcommand": s("`list`, `check-project`, `init`, `validate`, or `add`."),
+                "target": s("Style name (for `init`) or directory (for `validate`/`add`)."),
+                "from": s("Base built-in theme recipe for `init` (default: `minimal`)."),
                 "project": project, "noFrames": b("Skip frame captures on `check-project`."),
                 "args": args,
             }),
@@ -830,23 +1011,136 @@ fn tools() -> Value {
             &["reference", "render"],
         ),
         tool(
+            "frame",
+            "`og frame measure --json`: measure WCAG contrast, high-pass energy, mean colour, and row luminance ramp on a captured PNG.",
+            json!({
+                "png": s("Captured PNG path."),
+                "region": s("Measured box `x,y,w,h`."), "against": s("Background box `x,y,w,h`."),
+                "units": s("`px` or `fraction`."), "metric": s("Comma-separated metrics (`contrast,highpass,mean,ramp`)."),
+                "rows": n("Number of horizontal bands for `ramp`."),
+                "requireChecked": b("Fail if checks cannot run."), "args": args,
+            }),
+            &["png"],
+        ),
+        tool(
+            "cost",
+            "`og cost --json`: measure median GPU frame span difference with a feature off vs on.",
+            json!({
+                "project": project, "off": s("`og run` options with the feature off."),
+                "on": s("`og run` options with the feature on."),
+                "runs": n("Alternating runs per side."), "ticks": s("Measured tick range `A..B`."),
+                "args": args,
+            }),
+            &["off"],
+        ),
+        tool(
+            "vfx",
+            "`og vfx add|import|preview`: install effect packs, import Effekseer effects, or preview `type vfx`/`vfx2d` assets.",
+            json!({
+                "subcommand": s("`add`, `import`, or `preview`."),
+                "target": s("Pack name/dir (`add`), Effekseer file (`import`), or effect `.ogt` (`preview`)."),
+                "project": project, "out": s("Output directory."),
+                "size": s("Preview WxH."), "quality": s("`low`, `medium`, or `high`."),
+                "root": s("Assets root for `import`."), "hit": b("Add hit light/shake on `import`."),
+                "noCost": b("Skip GPU cost run on `preview`."), "together": b("Preview together on a grid."),
+                "anyEngine": b("Allow newer `minEngine` on `add`."), "args": args,
+            }),
+            &["subcommand"],
+        ),
+        tool(
+            "sfx",
+            "`og sfx`: list procedural sound presets, synthesise one into `.ogt`/`.wav`, or write a library.",
+            json!({
+                "preset": s("Preset name (omit to list all presets) or `library`."),
+                "seed": n("Synth RNG seed."), "pitch": { "type": "number" },
+                "length": { "type": "number" }, "volume": { "type": "number" },
+                "out": s("Output `.ogt` or `.wav` path."), "args": args,
+            }),
+            &[],
+        ),
+        tool(
+            "sprite",
+            "`og sprite inspect --json`: measure animated sprite or flipbook sheet frames, drift, loop seam, and alpha fringe.",
+            json!({
+                "input": s("Path to `.gif`, `.webp`, `.png`, or flipbook `.ogt`."),
+                "key": s("Background key: `auto`, `off`, or `#rrggbb`."),
+                "tolerance": { "type": "number" }, "holes": b("Also key enclosed background pockets."),
+                "out": s("Write measured frames sheet PNG."), "args": args,
+            }),
+            &["input"],
+        ),
+        tool(
+            "materials",
+            "`og materials brief|make --json`: list art-brief images for a material library or build periodic PBR maps.",
+            json!({
+                "subcommand": s("`brief` or `make`."),
+                "library": s("Path to material library `.ogt`."), "args": args,
+            }),
+            &["subcommand", "library"],
+        ),
+        tool(
+            "i18n",
+            "`og i18n extract --json`: check or extract translation keys from dialogues, quests, and tables.",
+            json!({
+                "project": project, "write": b("Add missing keys to the base locale table."),
+                "check": b("Exit non-zero if any locale table is incomplete."), "args": args,
+            }),
+            &[],
+        ),
+        tool(
+            "flow",
+            "`og flow list|routes --json`: inspect interactive-film flows and reachable endings.",
+            json!({
+                "subcommand": s("`list` or `routes`."), "project": project, "args": args,
+            }),
+            &["subcommand"],
+        ),
+        tool(
+            "fmt",
+            "`og fmt --json`: format `.ogt` files into canonical layout or check formatting.",
+            json!({
+                "path": s("File, directory, or project root (default: current directory)."),
+                "check": b("Check without writing."), "args": args,
+            }),
+            &[],
+        ),
+        tool(
+            "font",
+            "`og font list|add`: list bundled/installed script font packs or install one into a project.",
+            json!({
+                "subcommand": s("`list` or `add`."),
+                "target": s("Font pack name or directory (for `add`)."),
+                "project": project, "args": args,
+            }),
+            &["subcommand"],
+        ),
+        tool(
             "api_find",
-            "`og api find --json`: the API and guide entries for some words, ranked.",
+            "`og api find --json` (in-process cached index): rank API and guide entries matching words.",
             json!({
                 "words": s("A name, a purpose, a typo."),
-                "kind": s("fn, record, type, member, const, value, column or guide."),
-                "limit": n("How many."), "args": args,
+                "kind": s("module, fn, record, type, member, const, value, column or guide."),
+                "limit": n("How many."),
             }),
             &["words"],
         ),
         tool(
             "api_show",
-            "`og api show`: one API entry, module or guide in full (`og.physics.castRay`, `probe`, `testing`, `start`, `saves §2`).",
+            "`og api show` (in-process cached index): one API entry, module, UI component or guide (`og.physics.castRay`, `probe`, `Button`, `testing`, `start`, `saves §2`).",
             json!({
-                "name": s("The entry, module or guide."), "all": b("Every member of a module."),
-                "guide": b("The guide, when a module has the same name."), "args": args,
+                "name": s("The entry, module, component or guide."), "all": b("Every member of a module, or every section of a large guide."),
+                "guide": b("The guide, when a module has the same name."),
+                "json": b("Return structured JSON."),
             }),
             &["name"],
+        ),
+        tool(
+            "api_list",
+            "`og api list --json` (in-process cached index): list every API module and guide with summaries.",
+            json!({
+                "kind": s("Optional filter: `module` or `guide`."),
+            }),
+            &[],
         ),
     ])
 }

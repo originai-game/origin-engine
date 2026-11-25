@@ -12,6 +12,7 @@ The UI tree, flattened in draw order.
 |---|---|---|---|---|---|---|
 | `tick` | `number` | `0` | — | — | — | The tick. |
 | `surface` | `UiSurface \| null` | `null` | — | — | — | The surface the bounds are on; null without a UI module. |
+| `style` | `unknown` | `null` | — | — | optional | Active UI style pack and theme summary; null without a UI module. |
 | `elements` | `readonly UiElement[]` | `[]` | — | — | — | The elements. |
 
 ```ogt
@@ -19,8 +20,11 @@ struct UiDump {
   doc "The UI tree, flattened in draw order."
   field tick u32 "The tick."
   field surface Option.UiSurface "The surface the bounds are on; null without a UI module."
+  field style Json "Active UI style pack and theme summary; null without a UI module." {
+    optional true
+  }
   field elements List.UiElement "The elements."
 }
 ```
 
-<sub>Module `probe` line 569</sub>
+<sub>Module `probe` line 579</sub>

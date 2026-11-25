@@ -6,7 +6,7 @@ Module [`game`](../game.md) · [index](../index.md)
 
 ### `UiSetupFn` (callback)
 
-Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR.
+Register named presentation stores and mount TSX screens (`mount` from `@origingame/engine/ui`). Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed.
 
 Game code supplies this function.
 
@@ -20,7 +20,7 @@ type UiSetupFn = (world: World) => void
 
 ```ogt
 callback UiSetupFn {
-  doc "Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR."
+  doc "Register named presentation stores and mount TSX screens (`mount` from `@origingame/engine/ui`). Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed."
   param world World "The world, read only during registration."
 }
 ```

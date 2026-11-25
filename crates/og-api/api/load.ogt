@@ -387,16 +387,17 @@ module load {
   }
 
   fn vector {
-    doc "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path."
+    doc "A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path."
     param world World "The world whose renderer owns it."
     param path String "The asset id, such as `ui/emblem.ogt`."
     returns Result.VectorArt "Refused for a path not in the bundle or not a vector."
   }
 
   fn uiMaterial {
-    doc "A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path."
+    doc "A custom UI material resource from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>` and up to four `param <name> float|vec2|vec3|vec4|color <default...>` lines. The cook compiles it for every back end. Loaded once per path (ui-materials §2)."
+    guide "ui-materials §2"
     param world World "The world whose renderer owns it."
-    param path String "The asset id, such as `ui/duotone.ogt`."
+    param path String "The asset id, such as `materials/materials/rarity.ogt`."
     returns Result.UiMaterial "Refused for a path not in the bundle or not a UI material."
   }
 
@@ -419,11 +420,11 @@ module load {
   }
 
   fn style {
-    doc "Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3 is the CSS dialect every built-in style uses; versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`."
+    doc "Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path."
     guide "loading §6"
     param world World "The world whose UI uses it."
-    param path String "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
-    returns Result.Style "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load."
+    param path String "The style directory or built-in slug, such as `styles/main` or `tactical-dark`."
+    returns Result.Style "Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse."
   }
 
   fn look {

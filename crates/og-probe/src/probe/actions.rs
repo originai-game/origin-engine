@@ -34,9 +34,9 @@ impl Probe {
             // commands and a timeline's event keys reach); the ones that only
             // observe it for a tool are not built in.
             #[cfg(feature = "publish")]
-            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "apply_prefab"
-            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "dump_drawn" | "get"
-            | "help" => Err(format!(
+            "screenshot" | "listen" | "describe" | "expect" | "invariant" | "save_scene"
+            | "apply_prefab" | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity"
+            | "dump_drawn" | "get" | "help" => Err(format!(
                 "`{}` is not built into a publish build",
                 step.action
             )),

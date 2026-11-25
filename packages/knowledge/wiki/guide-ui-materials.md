@@ -8,7 +8,7 @@ no custom-material attachment prop or pack slot field. Loading a material
 does not apply it to a component. Do not use the former document CSS
 `-og-material` or `<og-overlay>` syntax: neither is a TSX API.
 
-## Backdrop glass is optional
+### Backdrop glass is optional
 
 Backdrop filtering is separate from custom material presets. A TSX
 element or pack variant uses supported classes such as

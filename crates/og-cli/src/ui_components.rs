@@ -74,7 +74,7 @@ fn doc_text(raw: &str) -> String {
         }
         p.push_str(line);
     }
-    paras.retain(|p| !p.is_empty());
+    paras.retain(|p| !p.is_empty() && !p.starts_with("Dropped from the .svelte:"));
     paras.join("\n\n")
 }
 
@@ -166,7 +166,10 @@ fn exported_const<'p, 'a>(program: &'p Program<'a>, name: &str) -> Option<&'p Ex
     })
 }
 
-fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
+fn read(root: &Path, name: &str, local: &str, rel: &str) -> Result<Option<Component>, String> {
+    if !name.starts_with(|c: char| c.is_ascii_uppercase()) {
+        return Ok(None);
+    }
     let file = format!("{DIR}/{rel}.tsx")
         .replace("/./", "/")
         .replace("components/../", "");
@@ -178,6 +181,7 @@ fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
     }
     let program = &parsed.program;
     let comments = &program.comments[..];
+    let mut found_fn = false;
     let mut doc = String::new();
     let mut props_type = String::new();
     let mut types: Vec<(String, Vec<Field>)> = Vec::new();
@@ -188,8 +192,9 @@ fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
         };
         match decl {
             Declaration::FunctionDeclaration(f)
-                if f.id.as_ref().is_some_and(|i| i.name == name) =>
+                if f.id.as_ref().is_some_and(|i| i.name == local) =>
             {
+                found_fn = true;
                 doc = doc_at(comments, &src, at);
                 if let Some(t) = f
                     .params
@@ -210,6 +215,9 @@ fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
             }
             _ => {}
         }
+    }
+    if !found_fn {
+        return Ok(None);
     }
     // The interfaces are often not exported; read every one in the file.
     for s in &program.body {
@@ -264,7 +272,7 @@ fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
             .collect()
     };
     let kit = file.rsplit('/').nth(1).unwrap_or_default().to_string();
-    Ok(Component {
+    Ok(Some(Component {
         name: name.to_string(),
         file,
         kit,
@@ -275,11 +283,12 @@ fn read(root: &Path, name: &str, rel: &str) -> Result<Component, String> {
         panel,
         fixtures: keys("fixtures").into_iter().map(|(k, _)| k).collect(),
         actions: keys("actions"),
-    })
+    }))
 }
 
-/// The exports of `index.tsx`, as (name, path from the components' directory).
-fn exports(root: &Path) -> Result<Vec<(String, String)>, String> {
+/// The value exports of `index.tsx`, as (exported name, local name, path from
+/// the components' directory); type-only re-exports are skipped.
+fn exports(root: &Path) -> Result<Vec<(String, String, String)>, String> {
     let index = format!("{DIR}/index.tsx");
     let src = std::fs::read_to_string(root.join(&index)).map_err(|e| format!("{index}: {e}"))?;
     let alloc = Allocator::default();
@@ -287,9 +296,16 @@ fn exports(root: &Path) -> Result<Vec<(String, String)>, String> {
     let mut out = Vec::new();
     for s in &parsed.program.body {
         if let Statement::ExportFromDeclaration(e) = s {
+            if e.export_kind.is_type() {
+                continue;
+            }
             for sp in &e.specifiers {
+                if sp.export_kind.is_type() {
+                    continue;
+                }
                 out.push((
                     sp.exported.name().to_string(),
+                    sp.local.name().to_string(),
                     e.source.value.display().to_string(),
                 ));
             }
@@ -319,9 +335,10 @@ A component marked as a piece of a panel is drawn on a panel's ground (inside a 
         }
     };
     let mut comps: Vec<Component> = Vec::new();
-    for (name, rel) in &list {
-        match read(root, name, rel) {
-            Ok(c) => comps.push(c),
+    for (name, local, rel) in &list {
+        match read(root, name, local, rel) {
+            Ok(Some(c)) => comps.push(c),
+            Ok(None) => {}
             Err(e) => {
                 let _ = writeln!(out, "\n{name}: {e}");
             }

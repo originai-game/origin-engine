@@ -36,9 +36,9 @@ module ui {
 | [`og.ui.configure`](ui/fn-configure.md) | function | `(world: World, desc?: UiDesc): Result<void>` | Set how the UI looks (the scheme, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. |
 | [`og.ui.viewport`](ui/fn-viewport.md) | function | `(world: World): Viewport` | This tick's play surface as the UI lays out on it: the render target's size, safe area and covered region in CSS px and device pixels per CSS px, from what the host reports. |
 | [`og.ui.theme`](ui/fn-theme.md) | function | `(world: World): UiTheme` | The style values the UI draws with. |
-| [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for a store and the Svelte text spans binding. |
+| [`TextSpan`](ui/type-TextSpan.md) | struct |  | A named attribute range in plain text for presentation stores and rich text. |
 | [`Breakpoint`](ui/type-Breakpoint.md) | enum |  | The play surface's size class. |
-| [`ColorVision`](ui/type-ColorVision.md) | enum |  | A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)). |
+| [`ColorVision`](ui/type-ColorVision.md) | enum |  | A colour vision deficiency filter (UiDesc.colorVision). |
 | [`ColorVisionFilter`](ui/type-ColorVisionFilter.md) | enum |  | What UiDesc.colorVision does to the frame. |
 | [`Contrast`](ui/type-Contrast.md) | enum |  | The theme variant: high contrast remaps muted inks, fills and lines to the style's stronger ones and outlines every control (no new colour). |
 | [`UiRect`](ui/type-UiRect.md) | struct |  | A rectangle of the play surface. |
@@ -64,10 +64,10 @@ module ui {
 | [`Notation`](ui/type-Notation.md) | enum |  | How a number is written. |
 | [`NumberFormatDesc`](ui/type-NumberFormatDesc.md) | desc struct |  | How og.ui.formatNumber and the counters write a number. |
 | [`og.ui.formatNumber`](ui/fn-formatNumber.md) | function | `(value: number, format?: NumberFormatDesc): string` | A number written in a notation: grouped, compact, idle letters, scientific or engineering, with a sign, prefix and suffix and the locale's separators, and past 1e308 through its exponent. |
-| [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill. |
-| [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through. |
-| [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
-| [`UiMaterial()`](#column-UiMaterial) | column kind |  | A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint. |
+| [`VectorArt`](ui/type-VectorArt.md) | handle |  | A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector. |
+| [`UiMaterial`](ui/type-UiMaterial.md) | handle |  | A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial. |
+| [`VectorArt()`](#column-VectorArt) | column kind |  | A VectorArt handle field (0 is none): a vector handle og.load.vector answered. |
+| [`UiMaterial()`](#column-UiMaterial) | column kind |  | A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered. |
 | [`UiSource`](ui/type-UiSource.md) | interface |  | A store's stable checkpoint identity. |
 | [`UiCollectionDesc`](ui/type-UiCollectionDesc.md) | struct |  | A keyed collection's identity rule. |
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract: the TSX UI reads them. |
@@ -79,27 +79,27 @@ Each is a factory, `VectorArt(value?, options?)`, that makes one field of a comp
 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
-| <a id="column-VectorArt"></a>`VectorArt` | `VectorArt` | `Uint32Array` | 2 | A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill. |
-| <a id="column-UiMaterial"></a>`UiMaterial` | `UiMaterial` | `Uint32Array` | 2 | A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint. |
+| <a id="column-VectorArt"></a>`VectorArt` | `VectorArt` | `Uint32Array` | 2 | A VectorArt handle field (0 is none): a vector handle og.load.vector answered. |
+| <a id="column-UiMaterial"></a>`UiMaterial` | `UiMaterial` | `Uint32Array` | 2 | A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered. |
 
 ```ogt
 column VectorArt {
-  doc "A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill."
+  doc "A VectorArt handle field (0 is none): a vector handle og.load.vector answered."
   array Uint32Array
   stride 2
   value VectorArt
 }
 ```
 
-<sub>Module `ui` line 471</sub>
+<sub>Module `ui` line 460</sub>
 
 ```ogt
 column UiMaterial {
-  doc "A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint."
+  doc "A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered."
   array Uint32Array
   stride 2
   value UiMaterial
 }
 ```
 
-<sub>Module `ui` line 478</sub>
+<sub>Module `ui` line 467</sub>

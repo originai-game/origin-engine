@@ -21725,7 +21725,7 @@ impl ToJson for DumpKind {
 /// `DumpDesc`: packages/knowledge/wiki/probe.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DumpDesc {
-    pub what: DumpKind,
+    pub what: Option<OneOf<DumpKind, String>>,
     pub id: String,
 }
 
@@ -21806,6 +21806,8 @@ pub struct SystemDump {
     pub reads: Option<Vec<String>>,
     pub writes: Option<Vec<String>>,
     pub ms: Option<f32>,
+    pub total_ms: Option<f32>,
+    pub runs: Option<u32>,
     pub never_matched: Option<Vec<String>>,
 }
 
@@ -21817,6 +21819,8 @@ impl Default for SystemDump {
             reads: Default::default(),
             writes: Default::default(),
             ms: Default::default(),
+            total_ms: Default::default(),
+            runs: Default::default(),
             never_matched: Default::default(),
         }
     }
@@ -21834,6 +21838,8 @@ impl FromJson for SystemDump {
             reads: field(o, "reads", d.reads)?,
             writes: field(o, "writes", d.writes)?,
             ms: field(o, "ms", d.ms)?,
+            total_ms: field(o, "totalMs", d.total_ms)?,
+            runs: field(o, "runs", d.runs)?,
             never_matched: field(o, "neverMatched", d.never_matched)?,
         })
     }
@@ -21847,6 +21853,10 @@ impl ToJson for SystemDump {
         o.insert("reads".into(), self.reads.to_json());
         o.insert("writes".into(), self.writes.to_json());
         o.insert("ms".into(), self.ms.to_json());
+        o.insert("totalMs".into(), self.total_ms.to_json());
+        if let Some(x) = &self.runs {
+            o.insert("runs".into(), x.to_json());
+        }
         o.insert("neverMatched".into(), self.never_matched.to_json());
         Value::Object(o)
     }
@@ -21912,6 +21922,7 @@ pub struct EntityDump {
     pub id: String,
     pub name: Option<String>,
     pub components: BTreeMap<String, Value>,
+    pub render: Option<Value>,
     pub prefab: Option<EntityPrefab>,
     pub visible: Option<Visibility>,
 }
@@ -21922,6 +21933,7 @@ impl Default for EntityDump {
             id: Default::default(),
             name: Default::default(),
             components: Default::default(),
+            render: Default::default(),
             prefab: Default::default(),
             visible: Default::default(),
         }
@@ -21938,6 +21950,7 @@ impl FromJson for EntityDump {
             id: field(o, "id", d.id)?,
             name: field(o, "name", d.name)?,
             components: field(o, "components", d.components)?,
+            render: field(o, "render", d.render)?,
             prefab: field(o, "prefab", d.prefab)?,
             visible: field(o, "visible", d.visible)?,
         })
@@ -21950,6 +21963,9 @@ impl ToJson for EntityDump {
         o.insert("id".into(), self.id.to_json());
         o.insert("name".into(), self.name.to_json());
         o.insert("components".into(), self.components.to_json());
+        if let Some(x) = &self.render {
+            o.insert("render".into(), x.to_json());
+        }
         if let Some(x) = &self.prefab {
             o.insert("prefab".into(), x.to_json());
         }
@@ -22385,6 +22401,7 @@ impl ToJson for UiSurface {
 pub struct UiDump {
     pub tick: u32,
     pub surface: Option<UiSurface>,
+    pub style: Option<Value>,
     pub elements: Vec<UiElement>,
 }
 
@@ -22393,6 +22410,7 @@ impl Default for UiDump {
         Self {
             tick: Default::default(),
             surface: Default::default(),
+            style: Default::default(),
             elements: Default::default(),
         }
     }
@@ -22407,6 +22425,7 @@ impl FromJson for UiDump {
         Ok(Self {
             tick: field(o, "tick", d.tick)?,
             surface: field(o, "surface", d.surface)?,
+            style: field(o, "style", d.style)?,
             elements: field(o, "elements", d.elements)?,
         })
     }
@@ -22417,6 +22436,9 @@ impl ToJson for UiDump {
         let mut o = Map::new();
         o.insert("tick".into(), self.tick.to_json());
         o.insert("surface".into(), self.surface.to_json());
+        if let Some(x) = &self.style {
+            o.insert("style".into(), x.to_json());
+        }
         o.insert("elements".into(), self.elements.to_json());
         Value::Object(o)
     }

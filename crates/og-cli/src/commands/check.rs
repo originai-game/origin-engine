@@ -55,8 +55,7 @@ pub const TSGO_VERSION: &str = "7.0.2";
 /// tsconfig.json of its own.
 const TEMPLATE_TSCONFIG: &str = include_str!("../../../../packages/create/template/tsconfig.json");
 
-const USAGE: &str =
-    "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]";
+const USAGE: &str = "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]";
 
 mod lints;
 mod tsgo;

@@ -6,12 +6,12 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `UiMaterial` (handle)
 
-A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through.
+A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial.
 
 A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
 
 ```ogt
-handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
+handle UiMaterial "A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial."
 ```
 
-<sub>Module `ui` line 469</sub>
+<sub>Module `ui` line 458</sub>

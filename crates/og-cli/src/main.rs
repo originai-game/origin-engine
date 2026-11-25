@@ -130,7 +130,8 @@ commands:
                       --raw prints the whole answer frame (the testing guide §9)
   mcp                 serve the og tool over MCP on stdio: probe, run_logs, run, test, check, cook,
                       build, create, explore, replay, ui, style, model, assets, prefab, doctor,
-                      render, compare, api_find and api_show, with the same JSON as the commands
+                      render, compare, frame, cost, vfx, sfx, sprite, materials, i18n, flow, fmt,
+                      font, api_find, api_show and api_list, with the same JSON as the commands
   dev [project] [--port P] [--exit-after N] [--json] [--engine]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
@@ -142,8 +143,8 @@ commands:
                       kept, a reload only when project.ogt changes (the testing guide §1)
   check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]
                       type-check the game code with tsrs (tsgo where tsrs has no package);
-                      --json prints the diagnostics as one `check` event; og run, og test and
-                      og build check before bundling (--no-check skips it), og dev on each save
+                      --json prints NDJSON (`check` plus optional `ui-check`/`style-check` events);
+                      og run, og test and og build check before bundling (--no-check skips it), og dev on each save
   test [project] [--filter <path>] [--skip <path>] [--affected <rev>] [--jobs N] [--json] [--no-check] [--require-checked]
                       the project's bun tests, then each tests/*.og.ts playtest file (bun:test,
                       its tests awaiting runPlaytest) under bun test against the built game
@@ -337,15 +338,18 @@ commands:
                       move project.ogt's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and
                       list what needs a hand edit; exit 0 done, 3 hand edits listed, 1 failed
-  api find <words> [--kind fn|record|type|member|const|value|column|guide] [--limit N] [--json]
+  api find <words> [--kind module|fn|record|type|member|const|value|column|guide] [--limit N] [--json]
                       the API reference and guide entries for the words (a name, a purpose, a
                       typo), ranked by BM25F over name, summary, members and body fused with
                       static word embeddings, one line each; --json adds the scores
-  api show <name> [--all] [--guide]
+  api show <name> [--all] [--guide] [--json]
                       one API entry in full: signature, fields, doc (og.CharacterController,
-                      og.physics.castRay, MAX_RAYCAST_HITS, \"saves §2\"; og. may be left out); a module
-                      shows its overview and its core members, --all every member; --guide shows
-                      the guide named like a module (physics, input, camera, audio, render)
+                      og.physics.castRay, MAX_RAYCAST_HITS, Button, \"saves §2\"; og. may be left out);
+                      a module shows its overview and its core members, --all every member; --guide shows
+                      the guide named like a module (physics, input, camera, audio, render); large guides
+                      print a section table unless --all is passed
+  api list [--kind module|guide] [--json]
+                      list every API module and guide with one-line summaries and section counts
   api gen [--wiki] [--root <dir>]
                       regenerate the IDL outputs (packages/engine/{types,schema}, the hosts' glue,
                       the knowledge wiki); --wiki writes only the wiki

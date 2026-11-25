@@ -1,0 +1,31 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og api list",
+      "summary": "Lists all engine API modules and guides with summaries (`--kind module|guide`, `--json`), also available via MCP `api_list`."
+    },
+    {
+      "member": "og api show",
+      "summary": "Supports `--json` output, prints a compact overview and section TOC for large guides unless `--all` is passed, resolves guide section titles (such as `og api show Button`), and runs in-process with index caching inside `og mcp`."
+    },
+    {
+      "member": "og mcp",
+      "summary": "Adds MCP tools for `api_list`, `frame`, `cost`, `vfx`, `sfx`, `sprite`, `materials`, `i18n`, `flow`, `fmt`, and `font`, and aligns `style` and `create` schemas with the CLI."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og api show",
+      "summary": "Lists module `value`, `const`, and `column` members (e.g. `og api show systems`) and stops top-level module/guide overviews before section headings instead of dumping entire guide pages."
+    },
+    {
+      "member": "og api find",
+      "summary": "Indexes guide section heading titles in BM25F and omits type-only and non-component re-exports from `components.md` while resolving aliased components such as `DropdownMenu`."
+    },
+    {
+      "member": "EngineProbe.dump",
+      "summary": "Routes `dump` RPC calls through `dump_named` so all registered subsystem dumps (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`), `ui:layers`, and `ui:motion` work over protocol 5; adds `invariant` refusal in publish builds and aligns `probe.ogt` with wire fields (`SystemDump.totalMs`/`runs`, `EntityDump.render`, `UiDump.style`)."
+    }
+  ]
+}

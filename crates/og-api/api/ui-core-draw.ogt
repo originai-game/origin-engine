@@ -1,17 +1,17 @@
-  # ── element draws (docs/ui.md §3.3): shapes, paints, effects, masks, layers ──
+  # ── element draws (docs/ui.md §3.3): vector art and UI material handles ──
 
-  handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
-  handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
+  handle VectorArt "A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector."
+  handle UiMaterial "A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial."
 
   column VectorArt {
-    doc "A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill."
+    doc "A VectorArt handle field (0 is none): a vector handle og.load.vector answered."
     array Uint32Array
     stride 2
     value VectorArt
   }
 
   column UiMaterial {
-    doc "A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint."
+    doc "A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered."
     array Uint32Array
     stride 2
     value UiMaterial

@@ -41,12 +41,9 @@ story.ogt
 platform.ogt
 i18n.ogt
 ui-core.ogt
-ui-data.ogt
-ui-core-foundations.ogt
 ui-core-motion.ogt
 ui-feedback.ogt
 ui-core-draw.ogt
-ui-world-primitives.ogt
 ui-reactive.ogt
 systems.ogt
 commands.ogt

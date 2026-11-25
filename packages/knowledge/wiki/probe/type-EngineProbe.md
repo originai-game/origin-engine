@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 873</sub>
+<sub>Module `probe` line 886</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 878</sub>
+<sub>Module `probe` line 891</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,7 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 883</sub>
+<sub>Module `probe` line 896</sub>
 
 <a id="member-EngineProbe-captureViews"></a>
 
@@ -143,7 +143,7 @@ fn captureViews {
 }
 ```
 
-<sub>Module `probe` line 904</sub>
+<sub>Module `probe` line 917</sub>
 
 <a id="member-EngineProbe-visible"></a>
 
@@ -177,7 +177,7 @@ fn visible {
 }
 ```
 
-<sub>Module `probe` line 920</sub>
+<sub>Module `probe` line 933</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -216,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 927</sub>
+<sub>Module `probe` line 940</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -239,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 937</sub>
+<sub>Module `probe` line 950</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -269,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 941</sub>
+<sub>Module `probe` line 954</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -292,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 948</sub>
+<sub>Module `probe` line 961</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -315,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 952</sub>
+<sub>Module `probe` line 965</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -344,37 +344,37 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 956</sub>
+<sub>Module `probe` line 969</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
 #### `EngineProbe.dump`
 
-A world, entity or UI dump, as the command channel's dump actions write.
+A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`).
 
 ```ts
-EngineProbe.dump(desc?: DumpDesc): DumpResult | null
+EngineProbe.dump(desc?: DumpDesc): DumpResult | unknown | null
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `desc` | `DumpDesc` | yes | What to dump. Its fields travel as the call's own parameters on the wire. |
 
-**Returns** `DumpResult | null`: Null for an unknown entity.
+**Returns** `DumpResult | unknown | null`: Null for an unknown entity or an inactive optional dump.
 
 Binding symbol `og_engine_probe_dump` · publish builds: dropped
 
 ```ogt
 fn dump {
-  doc "A world, entity or UI dump, as the command channel's dump actions write."
+  doc "A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`)."
   param desc DumpDesc "What to dump." {
     flatten true
   }
-  returns Option.DumpResult "Null for an unknown entity."
+  returns Option.OneOf.DumpResult.Json "Null for an unknown entity or an inactive optional dump."
 }
 ```
 
-<sub>Module `probe` line 962</sub>
+<sub>Module `probe` line 975</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -402,7 +402,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 969</sub>
+<sub>Module `probe` line 982</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -432,7 +432,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 974</sub>
+<sub>Module `probe` line 987</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -455,7 +455,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 981</sub>
+<sub>Module `probe` line 994</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -485,7 +485,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 985</sub>
+<sub>Module `probe` line 998</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -513,7 +513,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 992</sub>
+<sub>Module `probe` line 1005</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -536,7 +536,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 997</sub>
+<sub>Module `probe` line 1010</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -566,7 +566,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 1001</sub>
+<sub>Module `probe` line 1014</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -589,7 +589,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 1008</sub>
+<sub>Module `probe` line 1021</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -623,7 +623,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 1012</sub>
+<sub>Module `probe` line 1025</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -657,7 +657,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 1022</sub>
+<sub>Module `probe` line 1035</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -687,7 +687,7 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 1032</sub>
+<sub>Module `probe` line 1045</sub>
 
 <a id="member-EngineProbe-logs"></a>
 
@@ -717,7 +717,7 @@ fn logs {
 }
 ```
 
-<sub>Module `probe` line 1038</sub>
+<sub>Module `probe` line 1051</sub>
 
 <a id="member-EngineProbe-set"></a>
 
@@ -747,7 +747,7 @@ fn set {
 }
 ```
 
-<sub>Module `probe` line 1045</sub>
+<sub>Module `probe` line 1058</sub>
 
 <a id="member-EngineProbe-get"></a>
 
@@ -775,4 +775,4 @@ fn get {
 }
 ```
 
-<sub>Module `probe` line 1051</sub>
+<sub>Module `probe` line 1064</sub>

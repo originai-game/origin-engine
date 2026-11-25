@@ -182,13 +182,15 @@ export function shownModules(text: string): Set<string> {
  * nothing (`og api show` and `og api find` answer instead), and every
  * `og api show <module>` names a module the wiki has a page for.
  */
-function apiPointers(at: string, text: string, modules: ReadonlySet<string>): string[] {
+function apiPointers(at: string, text: string, modules: ReadonlySet<string>, guideNames: ReadonlySet<string>): string[] {
   const problems: string[] = [];
   for (const page of new Set([...text.matchAll(/\breference\/([a-z0-9-]+\.md)\b/g)].map((m) => m[1]!))) {
     problems.push(`${at}: names reference/${page}, which no reader opens: name \`og api show <module>\` for a module, \`og api show <exact name>\` for one name, or \`og api find <words>\``);
   }
   for (const m of shownModules(text)) {
-    if (!modules.has(m)) problems.push(`${at}: names \`og api show ${m}\`, and the generated wiki has no module ${m} (wiki/index.md lists them; write a type or function as its full name, og.<name>)`);
+    if (!modules.has(m) && !guideNames.has(m)) {
+      problems.push(`${at}: names \`og api show ${m}\`, and the generated wiki has no module or guide ${m} (wiki/index.md lists them; write a type or function as its full name, og.<name>)`);
+    }
   }
   return problems;
 }
@@ -218,11 +220,12 @@ function guideSections(text: string): Set<string> {
 function guides(roots: Roots, rules: Rules, problems: string[]): void {
   const texts = guideTexts(roots);
   const modules = wikiModules(roots);
+  const guideNames = new Set(texts.keys());
   const sections = new Map([...texts].map(([g, t]) => [g, guideSections(t)]));
   for (const [g, text] of texts) {
     const at = `wiki/${GUIDE_PREFIX}${g}.md`;
     for (const t of namedTools(text, rules)) problems.push(`${at}: names \`${t}\`, which is no tool a Session can be offered; rename it or put it in a code block if it is not a tool (crates/og-api/guides/${g}.md)`);
-    problems.push(...apiPointers(at, text, modules));
+    problems.push(...apiPointers(at, text, modules, guideNames));
     problems.push(...sectionRefs(at, g, text, sections));
   }
   const repo = join(roots.pkg, "..", "..");
@@ -329,15 +332,16 @@ export function sectionRefs(at: string, own: string, text: string, sections: Rea
  * What a sentence that says "skin" must also name for the word to be one of
  * its other meanings: a glTF rig's skin (joints, morphs, a model), the
  * character controllers' collision gap (the `skin` field, off a surface),
- * a 2D skeleton's skin (a rig2d `skin` block swapping a slot's attachment,
- * `og.Skeleton2D.skin`, an armature's setup pose), or a surface (a skin
- * tone, peach skin, a crowd's or a tile set's looks).
+ * a garment/cloth backstop behind the pose skin, a 2D skeleton's skin (a rig2d
+ * `skin` block swapping a slot's attachment, `og.Skeleton2D.skin`, an
+ * armature's setup pose), or a surface (a skin tone, peach skin, a crowd's or
+ * a tile set's looks).
  */
-export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
+export const SKIN_ELSEWHERE = /gltf|joint|skelet|morph|\brig\b|bone|mesh|model|clips?\b|anim|`skins?`|slot|attach|armature|\bswap\b|setup pose|backstop|\bpose\b|garment|cloth|surface|\bgap\b|collid|\btones?\b|peach|crowd|tiles/i;
 
 /**
  * A wiki page never calls a UI style a "skin": og-ui's word is
- * style (`type style`, `og.load.style`, `UiDesc.style`, `styles/<name>/`).
+ * style (`og.load.style`, `UiDesc.style`, `styles/<name>/theme.json` or `pack.json`).
  * Each sentence holding `skin` or `skins` must name one of the word's
  * other meanings (SKIN_ELSEWHERE).
  */
@@ -351,7 +355,7 @@ function skinWord(roots: Roots, problems: string[]): void {
       // Sentences, and a table's cells, of the paragraph's joined lines.
       for (const sentence of paragraph.replace(/\s*\n\s*/g, " ").split(/(?<=[.;!?])\s+|\s\|\s/)) {
         if (/\bskins?\b/i.test(sentence) && !SKIN_ELSEWHERE.test(sentence)) {
-          problems.push(`${name}: calls a UI style a skin ("${sentence.trim().slice(0, 120)}"); og-ui's word is style (type style, og.load.style, styles/<name>/)`);
+          problems.push(`${name}: calls a UI style a skin ("${sentence.trim().slice(0, 120)}"); og-ui's word is style (og.load.style, styles/<name>/)`);
         }
       }
     }

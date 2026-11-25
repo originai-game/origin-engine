@@ -11,8 +11,7 @@
 
 use crate::input::InjectedInput;
 use crate::probe::{
-    DumpKind, MAX_CAPTURE_EDGE, MAX_SWEEP_VALUES, PLAYTEST_MAX_TICKS, Probe, SweepDesc,
-    served_members,
+    MAX_CAPTURE_EDGE, MAX_SWEEP_VALUES, PLAYTEST_MAX_TICKS, Probe, SweepDesc, served_members,
 };
 use og_ecs::World;
 use serde_json::{Map, Value, json};
@@ -297,25 +296,14 @@ fn marks_desc(p: &Value) -> Result<crate::probe::MarksDesc, RpcError> {
 
 /// `dump`'s parameters: what to dump, and the entity's id for an entity.
 #[cfg(not(feature = "publish"))]
-fn dump_target(p: &Value) -> Result<(DumpKind, &str), RpcError> {
-    let kind = match string(p, "what")? {
-        "world" => DumpKind::World,
-        "entity" => DumpKind::Entity,
-        "ui" => DumpKind::Ui,
-        "desync" => DumpKind::Desync,
-        "drawn" => DumpKind::Drawn,
-        _ => {
-            return Err(RpcError::invalid(
-                "what must be world, entity, ui, desync or drawn",
-            ));
-        }
-    };
-    let id = if kind == DumpKind::Entity {
+fn dump_target(p: &Value) -> Result<(&str, &str), RpcError> {
+    let what = string(p, "what")?;
+    let id = if what == "entity" {
         string(p, "id")?
     } else {
         ""
     };
-    Ok((kind, id))
+    Ok((what, id))
 }
 
 /// `listen`'s seconds: 0 to 2, 1 when absent.
@@ -485,8 +473,11 @@ impl Probe {
             "restore" => json!(self.restore(world, string(p, "id")?)),
             #[cfg(not(feature = "publish"))]
             "dump" => {
-                let (kind, id) = dump_target(p)?;
-                or_null(self.dump(world, kind, id))
+                let (what, id) = dump_target(p)?;
+                or_null(
+                    self.dump_named(world, what, id)
+                        .map_err(RpcError::invalid)?,
+                )
             }
             #[cfg(not(feature = "publish"))]
             "visible" => or_null(self.visible(world, string(p, "id")?)),

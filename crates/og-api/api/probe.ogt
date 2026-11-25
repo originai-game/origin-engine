@@ -35,7 +35,7 @@ module probe {
     field text String "The text it shows; empty for none."
     field rect UiRect "Where it shows."
     field layer Option.String "The screen whose layer it is in; null for code-built UI outside one."
-    field source Option.String "The document line that built it (`ui/shop.ogt:42`); null for code-built UI."
+    field source Option.String "The document line that built it (`ui/shop.tsx:42`); null for code-built UI."
     field part Option.String "The style part it is drawn as, with its variant and state flags (`Button.base[primary][hover]`); null for one no style dresses."
     field rule Option.UiPickRule "The most specific rule that dresses it: the last of rules."
     field rules List.UiPickRule "Every style rule that dresses its part, in the order they apply."
@@ -97,7 +97,7 @@ module probe {
     field paused bool "Whether the clock is held."
     field seed u32 "The seed the world was assembled from."
     field timings ProbeTimings "The last tick's timings."
-    field entities List.ProbeEntityRef "The named entities."
+    field entities List.ProbeEntityRef "All live entities (named first, then unnamed as `#<index>.<generation>`)."
     field facts Json "What GameDesc.facts returned, or null."
   }
 
@@ -247,7 +247,7 @@ module probe {
     field text String "The text the element shows, or the entity's name; empty for none."
     field rect MarkRect "Its box on the image."
     field point ScreenPoint "A point of the play surface on it, for pick, pickUi or touch_move_to: the element's centre, or a visible point of the entity (describe's point)."
-    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
+    field source Option.String "Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
     field part Option.String "The style part the element is drawn as (`Button.base[primary]`); null for an entity or an element no style dresses."
     field rule Option.UiPickRule "The most specific style rule that dresses the element; null when none does."
     field depth Option.f32 "The entity's distance from the camera to its nearest visible point; null for an element." {
@@ -418,7 +418,7 @@ module probe {
   struct DumpDesc {
     doc "What to dump."
     desc true
-    field what DumpKind "The kind of dump."
+    field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`."
     field id String "The probe id, for an entity dump."
   }
 
@@ -429,13 +429,20 @@ module probe {
   }
 
   struct SystemDump {
-    doc "One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time)."
+    doc "One system: declared access, matched count, and timing (ms, totalMs, runs) when the host supplies a clock."
     field name String "Its name."
     field matched Option.u32 "Entities its queries match now; null for a system the host did not declare to the probe."
     field reads Option.List.String "What it declared it reads; null when undeclared."
     field writes Option.List.String "What it declared it writes; null when undeclared."
     field ms Option.f32 "Time it took on the last tick; null when not measured." {
       unit ms
+    }
+    field totalMs Option.f32 "Cumulative milliseconds across timed runs; null when not measured." {
+      optional true
+      unit ms
+    }
+    field runs u32 "Number of timed runs accumulated in totalMs." {
+      optional true
     }
     field neverMatched Option.List.String "For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one." {
       optional true
@@ -457,6 +464,9 @@ module probe {
     field id String "Its probe id."
     field name Option.String "Its name."
     field components Map.Json "Each component's field values, by component name."
+    field render Json "Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer." {
+      optional true
+    }
     field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
       optional true
     }
@@ -570,6 +580,9 @@ module probe {
     doc "The UI tree, flattened in draw order."
     field tick u32 "The tick."
     field surface Option.UiSurface "The surface the bounds are on; null without a UI module."
+    field style Json "Active UI style pack and theme summary; null without a UI module." {
+      optional true
+    }
     field elements List.UiElement "The elements."
   }
 
@@ -960,11 +973,11 @@ module probe {
       returns bool "False for an unknown id."
     }
     fn dump {
-      doc "A world, entity or UI dump, as the command channel's dump actions write."
+      doc "A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`)."
       param desc DumpDesc "What to dump." {
         flatten true
       }
-      returns Option.DumpResult "Null for an unknown entity."
+      returns Option.OneOf.DumpResult.Json "Null for an unknown entity or an inactive optional dump."
     }
     fn commands {
       doc "Schedule a command script on simulation time, as `og run --commands`."
