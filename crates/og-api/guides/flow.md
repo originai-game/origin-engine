@@ -169,8 +169,9 @@ track hotspot {
 - A `type video` asset may declare `posterSize 480`, `loudness -16` (two-pass
   linear EBU R128 normalisation), and localized dubbing tracks via
   `audioLocale "<tag>" "<path>"` (automatically selected from `og.i18n.locale`);
-  streamed audio cooks to chunked Opus and video streams cook `#stream`,
-  `#stream720`, and `#stream480` renditions selectable via `og.video.setQuality`.
+  streamed audio cooks to chunked Opus and video streams cook `#stream` and
+  `#stream720` renditions, and with `lowRendition true` a `#stream480` one,
+  selectable via `og.video.setQuality` (`low` without it plays the 720p).
 - A node without choices plays to its cut and goes on.
 - `from` lets several segments share one long file, which the one-decoder
   mode needs (§6).

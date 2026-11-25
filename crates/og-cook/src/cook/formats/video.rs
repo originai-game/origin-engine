@@ -169,6 +169,10 @@ pub struct VideoDecl {
     pub poster_size: u32,
     /// Alternate localized audio tracks (`audioLocale "<tag>" "<path>"`).
     pub audio_locales: Vec<(String, String)>,
+    /// `lowRendition true`: a stream also cooks its 480p rendition
+    /// (`<id>#stream480`, og.video.setQuality's `low`). Off by default: it is
+    /// one more AV1 encode of every stream, and `low` falls back to 720p.
+    pub low_rendition: bool,
 }
 
 /// A stream's copy in a codec other than AV1, for browsers whose WebCodecs
@@ -377,6 +381,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         alpha: false,
         poster_size: DEFAULT_POSTER_SIZE,
         audio_locales: Vec::new(),
+        low_rendition: false,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -576,6 +581,13 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     .and_then(|v| v.as_bool())
                     .ok_or_else(|| format!("line {line}: placeholder is true or false"))?;
             }
+            "lowRendition" => {
+                out.low_rendition = e
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| format!("line {line}: lowRendition is true or false"))?;
+            }
             "alpha" => {
                 out.alpha = e
                     .values
@@ -600,12 +612,18 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         && doc.body.entries.iter().any(|e| {
             matches!(
                 e.key.as_str(),
-                "keyframe" | "chunk" | "crf" | "crf720" | "posterSize" | "renditions"
+                "keyframe"
+                    | "chunk"
+                    | "crf"
+                    | "crf720"
+                    | "posterSize"
+                    | "renditions"
+                    | "lowRendition"
             )
         })
     {
         return Err(
-            "keyframe, chunk, crf, crf720, posterSize and renditions are a stream's (`stream true`)"
+            "keyframe, chunk, crf, crf720, posterSize, renditions and lowRendition are a stream's (`stream true`)"
                 .into(),
         );
     }
@@ -1889,7 +1907,8 @@ fn plan_video<'a>(
                         Box::new(fallback_plan(&plan, size)),
                     ));
                 }
-                if let Some(size480) = og_video::stream::low_size(plan.size)
+                if let Some(size480) =
+                    og_video::stream::low_size(plan.size).filter(|_| plan.decl.low_rendition)
                     && Some(size480) != s720
                 {
                     streams.push((

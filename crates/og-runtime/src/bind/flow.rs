@@ -2597,7 +2597,7 @@ fn offers(
         let [x, y, width, height] = h.rect;
         let mark = format!("{}:{}", node.title, h.id);
         hotspots.push(FlowHotspot {
-            choice: -1,
+            choice: None,
             id: h.id.to_string(),
             kind: "inspect".to_string(),
             shape: h.shape.name().to_string(),
@@ -2618,7 +2618,7 @@ fn offers(
         {
             let [x, y, width, height] = h.rect;
             hotspots.push(FlowHotspot {
-                choice: c.index as i32,
+                choice: Some(c.index),
                 id: id.to_string(),
                 kind: "choice".to_string(),
                 shape: h.shape.name().to_string(),

@@ -3,8 +3,16 @@
   "breaking": [
     {
       "member": "FlowHotspot.choice",
-      "change": "Changed from u32 to i32 (-1 for non-cutting inspect hotspots) and added kind, shape, label, and inspected fields.",
-      "fix": "Check hotspot.kind === \"inspect\" (or hotspot.choice < 0) before passing hotspot.choice to og.flow.choose, and route inspect hotspots to og.flow.inspect."
+      "change": "Is an Option.u32: null for a non-cutting inspect hotspot, the ChoiceView.index otherwise; FlowHotspot also gains kind, shape, label and inspected.",
+      "fix": "Check hotspot.kind === \"inspect\" (choice is null) and route it to og.flow.inspect; pass a choice hotspot's choice to og.flow.choose."
+    },
+    {
+      "member": "FlowChartLink.choice",
+      "change": "Is an Option.u32: null for a link from a node without choices, instead of -1.",
+      "fix": "Test link.choice === null where the code tested -1.",
+      "find": [
+        "choice"
+      ]
     },
     {
       "member": "og.timeline / og.video",
@@ -43,7 +51,7 @@
     },
     {
       "member": "og.video.setQuality",
-      "summary": "Presentation-only ABR quality selection (auto, high, medium, low) backed by #stream, #stream720, and #stream480 renditions plus og.video.buffering status."
+      "summary": "Presentation-only ABR quality selection (auto, high, medium, low) backed by #stream and #stream720, plus #stream480 for a stream cooked with `lowRendition true` (low plays the 720p without it), and og.video.buffering status."
     },
     {
       "member": "TimelineCaption",

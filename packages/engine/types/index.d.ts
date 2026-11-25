@@ -32367,7 +32367,7 @@ export interface VideoInfo {
  * - `"auto"`: Automatic adaptive selection from decoder capabilities and playback stalls.
  * - `"high"`: Source / highest cooked rendition.
  * - `"medium"`: 720p rendition when cooked, else highest.
- * - `"low"`: 480p rendition when cooked, else lowest.
+ * - `"low"`: The 480p rendition (a stream cooked with `lowRendition true`), else the lowest cooked.
  */
 export type VideoQuality = "auto" | "high" | "medium" | "low";
 
@@ -36095,8 +36095,8 @@ export interface WindowView {
  * A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect).
  */
 export interface FlowHotspot {
-  /** The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut. */
-  readonly choice: number;
+  /** The ChoiceView.index it takes; null for an `inspect` hotspot, which does not cut. */
+  readonly choice: number | null;
   /** The hotspot's id. */
   readonly id: string;
   /**
@@ -36394,8 +36394,8 @@ export interface FlowChartLink {
   readonly from: string;
   /** The flow node it may lead to. */
   readonly to: string;
-  /** The ChoiceView.index that leads there; -1 for a node without choices. */
-  readonly choice: number;
+  /** The ChoiceView.index that leads there; null for a node without choices. */
+  readonly choice: number | null;
   /** The choice's i18n text key, or empty. */
   readonly label: string;
   /** The `#outcome` name if this link is an outcome, else empty. */

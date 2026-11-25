@@ -182,7 +182,7 @@ pub(super) fn build(engine_id: u32, p: &Prepared) -> FlowChart {
             y,
         });
         let mut push_link =
-            |to: u32, choice: i32, label: String, outcome: String, conditional: bool| {
+            |to: u32, choice: Option<u32>, label: String, outcome: String, conditional: bool| {
                 let Some(t) = p.nodes.get(&to) else { return };
                 let (x2, y2) = at[&to];
                 out.links.push(FlowChartLink {
@@ -206,7 +206,7 @@ pub(super) fn build(engine_id: u32, p: &Prepared) -> FlowChart {
             for &to in &c.to {
                 push_link(
                     to,
-                    c.index as i32,
+                    Some(c.index),
                     label.clone(),
                     outcome.clone(),
                     conditional,
@@ -216,7 +216,7 @@ pub(super) fn build(engine_id: u32, p: &Prepared) -> FlowChart {
         if n.choices_list.is_empty() {
             let conditional = n.next.len() > 1;
             for &to in &n.next {
-                push_link(to, -1, String::new(), String::new(), conditional);
+                push_link(to, None, String::new(), String::new(), conditional);
             }
         }
     }

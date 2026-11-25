@@ -10,7 +10,7 @@ A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `choice` | `number` | `0` | — | — | — | The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut. |
+| `choice` | `number \| null` | `null` | — | — | — | The ChoiceView.index it takes; null for an `inspect` hotspot, which does not cut. |
 | `id` | `string` | `""` | — | — | — | The hotspot's id. |
 | `kind` | `string` | `""` | — | — | — | `choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected). |
 | `shape` | `string` | `""` | — | — | — | `rect` or `circle`. |
@@ -24,7 +24,7 @@ A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track
 ```ogt
 struct FlowHotspot {
   doc "A place on the picture: either a choice (`#hotspot:<id>` on the choice, a `track hotspot` key in its segment) while the window is open, or a non-cutting `inspect` hotspot (triggered with og.flow.inspect)."
-  field choice i32 "The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut."
+  field choice Option.u32 "The ChoiceView.index it takes; null for an `inspect` hotspot, which does not cut."
   field id String "The hotspot's id."
   field kind String "`choice` (takes a choice) or `inspect` (non-cutting investigation point, fires og.FlowInspected)."
   field shape String "`rect` or `circle`."

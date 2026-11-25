@@ -57017,7 +57017,7 @@
         "auto": "Automatic adaptive selection from decoder capabilities and playback stalls.",
         "high": "Source / highest cooked rendition.",
         "medium": "720p rendition when cooked, else highest.",
-        "low": "480p rendition when cooked, else lowest."
+        "low": "The 480p rendition (a stream cooked with `lowRendition true`), else the lowest cooked."
       }
     },
     "VideoBuffering": {
@@ -62038,10 +62038,17 @@
       "type": "object",
       "properties": {
         "choice": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647,
-          "description": "The ChoiceView.index it takes; -1 for an `inspect` hotspot that does not cut."
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ChoiceView.index it takes; null for an `inspect` hotspot, which does not cut."
         },
         "id": {
           "type": "string",
@@ -62536,10 +62543,17 @@
           "description": "The flow node it may lead to."
         },
         "choice": {
-          "type": "integer",
-          "minimum": -2147483648,
-          "maximum": 2147483647,
-          "description": "The ChoiceView.index that leads there; -1 for a node without choices."
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The ChoiceView.index that leads there; null for a node without choices."
         },
         "label": {
           "type": "string",

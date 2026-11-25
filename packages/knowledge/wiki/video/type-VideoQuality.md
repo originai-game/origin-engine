@@ -15,7 +15,7 @@ A string: one of the variants below. The zero value is `"auto"`.
 | `"auto"` | Automatic adaptive selection from decoder capabilities and playback stalls. |
 | `"high"` | Source / highest cooked rendition. |
 | `"medium"` | 720p rendition when cooked, else highest. |
-| `"low"` | 480p rendition when cooked, else lowest. |
+| `"low"` | The 480p rendition (a stream cooked with `lowRendition true`), else the lowest cooked. |
 
 ```ogt
 enum VideoQuality {
@@ -23,7 +23,7 @@ enum VideoQuality {
   variant auto "Automatic adaptive selection from decoder capabilities and playback stalls."
   variant high "Source / highest cooked rendition."
   variant medium "720p rendition when cooked, else highest."
-  variant low "480p rendition when cooked, else lowest."
+  variant low "The 480p rendition (a stream cooked with `lowRendition true`), else the lowest cooked."
 }
 ```
 

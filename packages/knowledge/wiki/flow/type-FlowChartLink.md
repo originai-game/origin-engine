@@ -12,7 +12,7 @@ Where a flow node may lead, through logic nodes.
 |---|---|---|---|---|---|---|
 | `from` | `string` | `""` | — | — | — | The node. |
 | `to` | `string` | `""` | — | — | — | The flow node it may lead to. |
-| `choice` | `number` | `0` | — | — | — | The ChoiceView.index that leads there; -1 for a node without choices. |
+| `choice` | `number \| null` | `null` | — | — | — | The ChoiceView.index that leads there; null for a node without choices. |
 | `label` | `string` | `""` | — | — | — | The choice's i18n text key, or empty. |
 | `outcome` | `string` | `""` | — | — | — | The `#outcome` name if this link is an outcome, else empty. |
 | `conditional` | `boolean` | `false` | — | — | — | True when reaching `to` passes through a Yarn condition or multiple targets. |
@@ -23,7 +23,7 @@ struct FlowChartLink {
   doc "Where a flow node may lead, through logic nodes."
   field from String "The node."
   field to String "The flow node it may lead to."
-  field choice i32 "The ChoiceView.index that leads there; -1 for a node without choices."
+  field choice Option.u32 "The ChoiceView.index that leads there; null for a node without choices."
   field label String "The choice's i18n text key, or empty."
   field outcome String "The `#outcome` name if this link is an outcome, else empty."
   field conditional bool "True when reaching `to` passes through a Yarn condition or multiple targets."

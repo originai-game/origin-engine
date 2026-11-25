@@ -45,7 +45,7 @@ interface Spot {
   id: string;
   kind: "choice" | "inspect";
   shape: "rect" | "circle";
-  index: number;
+  index: number | null;
   left: number;
   top: number;
   width: number;
@@ -156,8 +156,8 @@ export function FlowChoices(props: FlowChoicesProps) {
                   onPress={(e) => {
                     if (s().kind === "inspect") {
                       props.onInspect?.(e, s().id);
-                    } else if (!now().locked && s().index >= 0) {
-                      props.onChoose?.(e, s().index);
+                    } else if (!now().locked && s().index !== null) {
+                      props.onChoose?.(e, s().index!);
                     }
                   }}
                 >

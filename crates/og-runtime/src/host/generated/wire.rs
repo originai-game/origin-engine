@@ -28183,7 +28183,7 @@ pub mod flow {
     /// `FlowHotspot`: packages/knowledge/wiki/flow.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct FlowHotspot {
-        pub choice: i32,
+        pub choice: Option<u32>,
         pub id: String,
         pub kind: String,
         pub shape: String,
@@ -28735,7 +28735,7 @@ pub mod flow {
     pub struct FlowChartLink {
         pub from: String,
         pub to: String,
-        pub choice: i32,
+        pub choice: Option<u32>,
         pub label: String,
         pub outcome: String,
         pub conditional: bool,
