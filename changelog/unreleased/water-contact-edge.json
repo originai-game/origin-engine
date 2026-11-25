@@ -1,0 +1,16 @@
+{
+  "fixed": [
+    {
+      "member": "og.Water",
+      "summary": "Where water meets the ground or a stone it fades into what lies behind over a pixel and a half, its tint and refraction growing from none at the contact: the line was a hard, stair-stepped cut, the thinnest film darkened to the full shallow colour and the stone's foot drawn shifted from the stone above it."
+    },
+    {
+      "member": "og.Water.foamWidth",
+      "summary": "On flowing water the contact foam piles only where the current runs into a bank or stone (its upstream faces), and on any water it fades where the band is narrower than a few pixels: it drew a white rim round every stone and along each bank's whole length."
+    },
+    {
+      "member": "og.Water.river",
+      "summary": "A fall's sheet thins at its sides into strands with what lies behind showing between them, more broken the further down: it was opaque to the ribbon's straight sides, a board with two vertical cuts hung in front of the rock."
+    }
+  ]
+}

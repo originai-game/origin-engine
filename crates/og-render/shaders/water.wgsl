@@ -535,12 +535,27 @@ if (rippled() && !is_sea()) {
   let uv = px * water.screen.zw;
   let here = view_depth(in.world);
   let scene_here = textureLoad(scene_depth, depth_texel(px), 0).r;
+  // How fast the water's thickness changes across a pixel, for the soft line where it meets what stands in it (below;
+  // taken here, before any return on a per-pixel value).
+  let edge_rate = fwidthFine(scene_here - here);
+  // Which way the water deepens over the surface's local plane (the thickness's change across the pixel solved
+  // through the local point's), for where a current runs into what stands in it (the flowing band, below).
+  let dthx = dpdxFine(scene_here - here);
+  let dthy = dpdyFine(scene_here - here);
+  let jdet = dlx.x * dly.y - dlx.y * dly.x;
+  let deepens = select(vec2<f32>(0.0), vec2<f32>(dthx * dly.y - dthy * dlx.y, dthy * dlx.x - dthx * dly.x) / jdet,
+    abs(jdet) > 1e-12);
+  // The view depth of water over what lies straight behind it: the refraction, the tint and the edge all grow from
+  // none at the line where the surface meets the ground or a stone.
+  let thin = max(scene_here - here, 0.0);
   // Refraction: the scene behind, shifted by the detail normal, unless the
   // shifted sample is in front of the water.
   // three.js Water2 (a normal map with a flow): its look, term for term (see below). three.js Water (glint > 0): its body.
   let water2 = water.normals.w > 0.5 && flows();
   let water_js = water.under.w > 0.0;
-  var shift = (n - in.normal).xz * water.waves.w * water.screen.zw * 40.0 / max(here * 0.2, 1.0);
+  // A refracted ray is bent off the straight one by as much as it runs through the water: none at the contact (bent as
+  // much there as over the deep, a stone's foot was drawn shifted from the stone above it, a seam along the waterline).
+  var shift = (n - in.normal).xz * water.waves.w * water.screen.zw * 40.0 / max(here * 0.2, 1.0) * min(thin, 1.0);
   if (water2) {
     // Water2: uv + coord.z · N.xz · 0.05 (coord.z, the depth in [0, 1], is about 1), with screen v down here.
     let d = (n - in.normal).xz;
@@ -621,7 +636,10 @@ if (sea) {
     let sc = frame.light_color.rgb * water.under.w * 0.5;
     deep = (sc * sc * 0.15 * max(dot(l, n), 0.0) + deep_albedo * max(dot(n, v), 0.0)) * sun;
   }
-  var color = mix(below * water.shallow.rgb, deep, clamp(absorb * water.deep.w, 0.0, 1.0));
+  // `shallow` is what the water lets through over its depth fade: none of it at no depth, as Beer–Lambert's (applied
+  // whole at any depth, the thinnest film over a stone darkened it to the shallow colour, a hard line at the contact).
+  let tint = pow(max(water.shallow.rgb, vec3<f32>(1e-4)), vec3<f32>(min(thickness / max(water.shallow.w, 1e-3), 1.0)));
+  var color = mix(below * tint, deep, clamp(absorb * water.deep.w, 0.0, 1.0));
   if (water.optics[0].w > 0.5) {
     // W2: the physical body. The light seen through the water travels the view ray's path in it, from the surface to
     // what lies below (the depth prepass's point, `thickness` along the view's forward), and had come down to that
@@ -796,7 +814,12 @@ if (sea) {
   let d = clamp(wet / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
   let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
-  let piled = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d));
+  // The band as many pixels wide as it is drawn: against a steep stone or post the water deepens so fast that the
+  // whole band fits in a pixel or two, a hard white line at the contact rather than foam piled against it. Narrower
+  // than some four pixels it fades, as a pixel averages a line thinner than itself.
+  let wet_rate = edge_rate * max(dot(v, in.normal), 0.0) / max(dot(-v, frame.view_forward.xyz), 0.05);
+  let band_px = water.foam.w / max(wet_rate, 1e-5);
+  let piled = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d)) * smoothstep(1.5, 5.0, band_px);
   let stir = max(smoothstep(0.02, 0.25, in.slope), clamp(ripple_foam * 2.0, 0.0, 1.0));
   // As lace, its cover growing with the band and the stir, never a closed sheet (a band scaled by noise alone drew a
   // solid white collar round every post in waves).
@@ -822,7 +845,11 @@ if (flowing) {
     let pa = bank_patches(in.local - f * (ph0 * period), foot);
     let pb = bank_patches(in.local - f * (ph1 * period) + vec2<f32>(17.3, 9.1), foot);
     let patches = mix(pa, pb, abs(ph0 - 0.5) * 2.0);
-    band = piled * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
+    // Only where the current runs into the bank or stone, the water shoaling along the flow (its upstream faces): along
+    // a bank the flow runs beside and in a stone's lee it piles nothing (round every contact, each stone and the
+    // banks' whole length drew one white rim).
+    let into = -dot(normalize(deepens + vec2<f32>(1e-9, 0.0)), f / max(speed, 1e-5));
+    band = piled * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed) * smoothstep(0.25, 0.75, into);
   }
   }
   // The ripples' foam: lumps with gaps between them, its cover growing with how much of it there is (a soft disc of
@@ -832,6 +859,8 @@ if (flowing) {
   let lumpy = smoothstep(1.0 - amount, 1.12 - amount, lumps) * (0.5 + 0.5 * amount);
   let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
   color = mix(color, foam_albedo * white_water_light(in.normal, l, sun), foam * step(0.001, water.foam.w));
+  // How much of the surface a fall's sheet covers at its sides (below; 1 off falls).
+  var sheet = 1.0;
   if (water.waterline.w > 0.5) {
     // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, none a fall's churn
     // length on), in patches carried down by the current in two phases as the bank foam: the patches cover the water
@@ -867,6 +896,11 @@ if (flowing) {
     let white_water = foam_cut(streak, 1.05 - 0.75 * aired, 1.25 - 0.75 * aired, streak_w);
     let fall_white = step(1e-3, ft.a) * white_water * mix(0.7, 1.0, aired);
     let river_white = clamp(max(churned, fall_white), 0.0, 1.0);
+    // A fall's sheet thins at its sides into strands with the rock showing between them, more of it broken the further
+    // down (a sheet the ribbon's whole width, opaque to its straight sides, hung in front of the gorge's walls as a
+    // board with two vertical cuts).
+    let side = min(in.uv.x, 1.0 - in.uv.x) / 0.14 + (streak - 0.5) * 1.4 - 0.4 * aired;
+    sheet = select(1.0, foam_cut(side, 0.15, 0.6, streak_w * 2.0 + 2.0 * uv_foot / 0.14), ft.a > 1e-3);
     let white_lit = white_water_light(in.normal, l, sun) * mix(0.85, 1.0, white_water);
     color = mix(color, foam_albedo * white_lit, river_white);
   }
@@ -906,6 +940,13 @@ if (sea) {
   let lit = Surface(mix(body, foam_albedo, cover), 0.0, clamp(mix(rough, 1.0, cover), 0.09, 1.0),
     vec3<f32>(f0 * water.look.x), 0.0, 0.0, n, 0.0);
   color += local_lights_on(px, lit, in.world, n, v, false);
+  // Where the surface meets the ground or a stone the water fades into what lies behind over a pixel and a half of its
+  // thickness: the surfaces' intersection was a hard, stair-stepped cut (the water's own reflection and foam ending
+  // in one pixel).
+  // Only where the water is as thin as a few of the pixel's footprints: behind the water a jump in what lies below (a
+  // submerged bank against the far bed) changes the thickness as fast, and faded it drew a dotted line across the water.
+  let edge = max(clamp(thin / max(1.5 * edge_rate, 1e-5), 0.0, 1.0), smoothstep(2.0, 4.0, thin / max(foot, 1e-4))) * sheet;
+  color = mix(textureSampleLevel(scene_color, water_sampler, uv, 0.0).rgb, color, edge);
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 
