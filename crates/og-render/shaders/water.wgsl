@@ -381,9 +381,11 @@ fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
   return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
 }
 
-// What the reflection maps' light is multiplied by to be as bright as the sky is drawn (`fs`, below its Fresnel).
+// What the reflection maps' light is multiplied by to be as bright as the sky is drawn (`fs`, below its Fresnel): the
+// environment's intensity, as every surface's reflection. (A further 1.8 here mirrored the sky nearly twice as bright as
+// it is drawn, so at a grazing view, where the Fresnel nears 1, a river or lake turned white.)
 fn sky_as_drawn() -> f32 {
-  return frame.params.x * water.ao.w * 1.8;
+  return frame.params.x * water.ao.w;
 }
 
 @fragment
