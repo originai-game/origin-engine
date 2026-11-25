@@ -56,7 +56,14 @@ fn scan_blocks(@builtin(local_invocation_index) li: u32) {
   }
   if (li == 0u) {
     block_sums[blocks()] = carry;
-    draws[params.w * 4u] = min(carry.y, params.z);
+    let soft_n = min(carry.y, params.z);
+    draws[params.w * 4u] = soft_n;
+    // Soft raster indirect dispatch args at +8 (16-byte aligned).
+    let r_base = params.w * 4u + 8u;
+    draws[r_base + 0u] = min(soft_n, 65535u);
+    draws[r_base + 1u] = select(0u, (soft_n + 65534u) / 65535u, soft_n > 0u);
+    draws[r_base + 2u] = select(0u, 1u, soft_n > 0u);
+    draws[r_base + 3u] = soft_n;
   }
 }
 

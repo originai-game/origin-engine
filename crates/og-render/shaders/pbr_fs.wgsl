@@ -28,6 +28,8 @@ var<private> analytic_dx: vec3<f32>;
 var<private> analytic_dy: vec3<f32>;
 var<private> analytic_local_dx: vec3<f32>;
 var<private> analytic_local_dy: vec3<f32>;
+var<private> analytic_dnx: vec3<f32>;
+var<private> analytic_dny: vec3<f32>;
 
 // The gradient along `d` (uv per pixel) of slot `slot`'s uv.
 fn analytic_grad(slot: u32, uv: vec2<f32>, d: vec2<f32>) -> vec2<f32> {
@@ -399,13 +401,15 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // from the AO map, whose crevices hold water and dust first.
   var weathered: Weathered;
   if (ANALYTIC) {
-    weathered = weather_surface_grad(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u), length(dpx) + length(dpy), 0.0);
+    weathered = weather_surface_grad(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u), length(dpx) + length(dpy), length(analytic_dnx) + length(analytic_dny));
   } else {
     weathered = weather_surface_at(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   }
   s = weathered.s;
   n = weathered.n;
-  if (!ANALYTIC) {
+  if (ANALYTIC) {
+    s.roughness = specular_aa(n, s.roughness, analytic_dnx, analytic_dny);
+  } else {
     s.roughness = specular_aa(n, s.roughness, dpdxFine(n), dpdyFine(n));
   }
   s.coat = material.coat.x;

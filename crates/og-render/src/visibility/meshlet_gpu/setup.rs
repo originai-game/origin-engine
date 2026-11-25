@@ -9,37 +9,51 @@ impl MeshletGpu {
         wind_field: wgpu::TextureView,
     ) -> MeshletGpu {
         let c = wgpu::ShaderStages::COMPUTE;
-        let cull_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("meshlet cull"),
+        let dyn_params = wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: c,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: true,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+        let pyramid_entry = wgpu::BindGroupLayoutEntry {
+            binding: 8,
+            visibility: c,
+            ty: wgpu::BindingType::Texture {
+                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                view_dimension: wgpu::TextureViewDimension::D2,
+                multisampled: false,
+            },
+            count: None,
+        };
+        let inst_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("meshlet cull instances"),
             entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: c,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: true,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
+                dyn_params,
                 storage(1, true, c),
                 storage(2, true, c),
                 storage(3, true, c),
                 storage(4, true, c),
+                storage(7, false, c),
+                pyramid_entry,
+                storage(10, false, c),
+            ],
+        });
+        let cluster_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("meshlet cull clusters"),
+            entries: &[
+                dyn_params,
+                storage(1, true, c),
+                storage(2, true, c),
                 storage(5, true, c),
                 storage(6, false, c),
                 storage(7, false, c),
-                wgpu::BindGroupLayoutEntry {
-                    binding: 8,
-                    visibility: c,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
+                pyramid_entry,
                 storage(9, false, c),
+                storage(10, false, c),
             ],
         });
         let v = wgpu::ShaderStages::VERTEX;
@@ -84,24 +98,36 @@ impl MeshletGpu {
                 source: wgpu::ShaderSource::Wgsl(MESHLET_CULL_WGSL.into()),
             },
         );
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("meshlet cull"),
-            bind_group_layouts: &[Some(&cull_layout)],
+        let inst_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("meshlet cull instances"),
+            bind_group_layouts: &[Some(&inst_layout)],
+            immediate_size: 0,
+        });
+        let cluster_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("meshlet cull clusters"),
+            bind_group_layouts: &[Some(&cluster_layout)],
             immediate_size: 0,
         });
         let (d, m) = (device.clone(), module.clone());
         let cull = crate::deferred::Deferred::anywhere(move || {
-            crate::traffic::create_compute_pipeline(
-                &d,
-                &wgpu::ComputePipelineDescriptor {
-                    label: Some("meshlet cull"),
-                    layout: Some(&layout),
-                    module: &m,
-                    entry_point: Some("cull_clusters"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&d).as_ref(),
-                },
-            )
+            let make = |label: &str, pl: &wgpu::PipelineLayout, entry: &str| {
+                crate::traffic::create_compute_pipeline(
+                    &d,
+                    &wgpu::ComputePipelineDescriptor {
+                        label: Some(label),
+                        layout: Some(pl),
+                        module: &m,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&d).as_ref(),
+                    },
+                )
+            };
+            [
+                make("meshlet cull instances", &inst_pl, "cull_instances"),
+                make("meshlet finalize chunks", &inst_pl, "finalize_chunks"),
+                make("meshlet cull clusters", &cluster_pl, "cull_clusters"),
+            ]
         });
         crate::deferred::Start::start(&cull);
         let no_pyramid = device
@@ -158,7 +184,8 @@ impl MeshletGpu {
         );
         let compact = compact::Compact::new(device);
         MeshletGpu {
-            cull_layout,
+            inst_layout,
+            cluster_layout,
             cull,
             compact,
             draw_layout,
@@ -188,8 +215,9 @@ impl MeshletGpu {
             held: Default::default(),
             items: buffer(device, "meshlet items", 0, storage_usage()),
             draws: buffer(device, "meshlet draws", 0, Self::draws_usage()),
+            chunks: buffer(device, "meshlet cull chunks", 0, storage_usage()),
             no_pyramid,
-            cull_group: None,
+            cull_groups: None,
             mesh_groups: HashMap::new(),
             window: 0,
             frame: Vec::new(),
@@ -395,7 +423,7 @@ impl MeshletGpu {
             indices: make("meshlet indices", bytemuck::cast_slice(&indices)),
             vertices: pool,
         });
-        self.cull_group = None;
+        self.cull_groups = None;
         self.mesh_groups.clear();
     }
 

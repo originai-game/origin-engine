@@ -466,15 +466,28 @@ struct Readback {
     applied: GpuCounts,
 }
 
-/// The depth pyramid and the views and groups that build it.
+/// Which SPD Hi-Z kernel a pass runs.
+#[derive(Clone, Copy)]
+enum HizKind {
+    Base,
+    Reduce,
+    Tail,
+}
+
+/// One multi-level SPD Hi-Z dispatch (writes 1..=4 mip levels).
+struct HizPass {
+    kind: HizKind,
+    group: wgpu::BindGroup,
+    dispatch: (u32, u32),
+}
+
+/// The depth pyramid and the views and SPD groups that build it.
 struct Pyramid {
     size: (u32, u32, u32),
     depth: wgpu::TextureView,
     full: wgpu::TextureView,
     levels: u32,
-    base_group: wgpu::BindGroup,
-    reduce_groups: Vec<wgpu::BindGroup>,
-    level_sizes: Vec<(u32, u32)>,
+    passes: Vec<HizPass>,
 }
 
 /// What [`GpuCulling`]'s tables hold as last written (`view`, `params`,
@@ -492,10 +505,10 @@ pub(crate) struct GpuCulling {
     /// Asked for when it is made; the frame culls on the CPU until they
     /// are ready (gpu/deferred.rs).
     stages: crate::deferred::Deferred<CullStages>,
-    hiz_base_layout: [wgpu::BindGroupLayout; 2],
-    hiz_reduce_layout: wgpu::BindGroupLayout,
-    hiz_base: [Option<wgpu::ComputePipeline>; 2],
-    hiz_reduce: crate::deferred::Deferred<wgpu::ComputePipeline>,
+    hiz_layout: wgpu::BindGroupLayout,
+    hiz_pipelines: crate::deferred::Deferred<[wgpu::ComputePipeline; 3]>,
+    hiz_counts: [wgpu::Buffer; 4],
+    hiz_dummy: wgpu::TextureView,
     depth_module: wgpu::ShaderModule,
     depth_pipeline_layout: wgpu::PipelineLayout,
     depth_pipelines: HashMap<(Faces, bool, u32), wgpu::RenderPipeline>,
@@ -621,7 +634,7 @@ impl GpuCulling {
     /// Whether its pipelines are ready (asked for when not yet:
     /// gpu/deferred.rs).
     pub(crate) fn ready(&self) -> bool {
-        self.stages.ready().is_some() & self.hiz_reduce.ready().is_some()
+        self.stages.ready().is_some() & self.hiz_pipelines.ready().is_some()
     }
 
     /// Whether `n` instances and `skinned` skinned ones in `passes` passes

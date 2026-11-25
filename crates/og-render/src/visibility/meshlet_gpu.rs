@@ -140,6 +140,7 @@ struct Params {
     sizes: [u32; 4],
     phase: [u32; 4],
     soft: [u32; 4],
+    chunks: [u32; 4],
 }
 
 /// `struct RasterParams` in meshlet_raster.wgsl.
@@ -154,8 +155,6 @@ struct RasterParams {
     wind: [crate::foliage::FoliageWind; 2],
     /// The leaves' year (`foliage::LeafCalendar::gpu`).
     leaf_year: [[f32; 4]; 2],
-    /// xyz: towards the sun (meshlet_sway.wgsl `meshlet_crown`), w unused.
-    sun: [f32; 4],
 }
 
 /// `struct MeshletDraw` in meshlet_sway.wgsl.
@@ -167,13 +166,6 @@ struct DrawParams {
     /// The leaves' year (`foliage::LeafCalendar::gpu`).
     leaf_year: [[f32; 4]; 2],
 }
-
-/// vec4 rows per visibility-buffer record (meshlet_raster.wgsl `setup`).
-const RECORD_ROWS: u64 = 6;
-/// With the frame's material surface, affine texturing or a foliage mesh:
-/// three more, the local position's gradients, the affine uv, the lit uv's
-/// gradients and the canopy dome/season/crown.
-const RECORD_ROWS_EXTRA: u64 = 9;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]
@@ -325,9 +317,10 @@ pub(crate) struct MeshletGpu {
     vis_buffer: vis::VisBuffer,
     /// The wind field's lean the foliage sways by (`wind_field.rs`).
     wind_field: wgpu::TextureView,
-    cull_layout: wgpu::BindGroupLayout,
-    /// Asked for when it is made (gpu/deferred.rs).
-    cull: crate::deferred::Deferred<wgpu::ComputePipeline>,
+    inst_layout: wgpu::BindGroupLayout,
+    cluster_layout: wgpu::BindGroupLayout,
+    /// `[cull_instances, finalize_chunks, cull_clusters]`, asked for when made (gpu/deferred.rs).
+    cull: crate::deferred::Deferred<[wgpu::ComputePipeline; 3]>,
     compact: compact::Compact,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Faces, bool), wgpu::RenderPipeline>,
@@ -360,15 +353,11 @@ pub(crate) struct MeshletGpu {
     held: HeldTables,
     items: wgpu::Buffer,
     draws: wgpu::Buffer,
+    /// Balanced 64-cluster work chunks emitted by `cull_instances` for `cull_clusters`.
+    chunks: wgpu::Buffer,
     no_pyramid: wgpu::TextureView,
-    /// The cull group and what it binds (GPU culling's instances and
-    /// arguments, the pyramid's view, the pools' and this frame's buffers).
-    cull_group: Option<(
-        Vec<wgpu::Buffer>,
-        Option<wgpu::TextureView>,
-        u64,
-        wgpu::BindGroup,
-    )>,
+    /// Cached `[inst_group, cluster_group]` and the bound resources/sizes key.
+    cull_groups: Option<CullGroupsCache>,
     /// Per mesh: its draw group and what it binds (the buffers, and the
     /// bytes of `items` its window binds, and where its vertices start).
     mesh_groups: HashMap<usize, (DrawBound, wgpu::BindGroup)>,
@@ -400,6 +389,12 @@ fn storage(
 /// What a mesh's draw group binds: its buffers, the bytes of `items` its
 /// window binds and where its vertices start.
 type DrawBound = (Vec<wgpu::Buffer>, (u64, u64));
+type CullGroupsCache = (
+    Vec<wgpu::Buffer>,
+    Option<wgpu::TextureView>,
+    (u64, u64),
+    [wgpu::BindGroup; 2],
+);
 
 fn uniform(binding: u32, stages: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {

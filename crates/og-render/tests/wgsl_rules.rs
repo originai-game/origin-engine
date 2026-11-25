@@ -907,6 +907,10 @@ mod compat {
                 }
                 let most = if ep.stage == ShaderStage::Vertex {
                     0
+                } else if ep.name == "fs_meshlet_resolve" {
+                    // Direct-pull tile-classified VisBuffer resolve is gated at runtime
+                    // on `max_storage_buffers_in_fragment_stage >= 10` (`meshlet_gpu/encode.rs`).
+                    10
                 } else if !compat_reachable || vertex_storage {
                     8
                 } else {

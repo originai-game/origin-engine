@@ -1,25 +1,21 @@
-// The visibility buffer (meshlet.rs states each step on the CPU,
-// meshlet_gpu.rs drives it; three.js#35191's software rasteriser). The
-// camera's small clusters, which meshlet_compact.wgsl put in the soft
-// list, are rasterised here, one workgroup a cluster and one thread a
-// triangle: `raster_depth` takes each covered pixel's nearest depth
-// (an atomic max of meshlet.rs `vis_depth`), `raster_id` writes the
-// triangle's id where its depth is the pixel's (`vis_id`, an atomic max:
-// equal depths keep the highest stable list/triangle id), then `setup`,
-// one thread a pixel, rebuilds the
-// seen triangle's attributes there and appends them to `attrs` (its slot
-// in the pixel's word at the front), for the resolve (meshlet.wgsl `fs_meshlet_resolve`) to
-// shade. After instance.wgsl.
+// Compact 8 B/px visibility buffer software rasteriser and 8x8 tile classifier
+// (meshlet_gpu/vis.rs):
+//   - `raster_depth` / `raster_id`: dispatched indirectly for only the active
+//     soft clusters, using incremental edge stepping and an early depth pre-test
+//     before `atomicMax` into `vbuf` (8 B/px: depth[wh] + id[wh]).
+//   - `classify_count` / `classify_prefix` / `classify_emit`: bins every active
+//     8x8 screen tile into compact per-batch tile lists (`tile_list`) and fills
+//     per-batch `DrawIndirect` args (`tile_draws`), eliminating the old 148 B/px
+//     `attrs` G-buffer, the full-screen `setup` pass, and full-screen overdraw.
+// After instance.wgsl and meshlet_sway.wgsl.
 
 struct RasterParams {
   // The camera's (jittered, as the hardware draws it).
   view_proj: mat4x4<f32>,
-  // xy: the screen's size; z: the most records `attrs` holds; w: 1 tints
-  // each instance by its level (RenderScene::lod_debug).
+  // x: width, y: height, z: soft_rows, w: max tile_list capacity in u32 words.
   size: vec4<u32>,
-  // x: the soft list's first item, y: its capacity in clusters, z: its
-  // count (copied from the cull's), w: vec4 rows per record (8, or 12
-  // with the extra rows).
+  // x: soft list's first item, y: capacity in clusters, z: count (copied from
+  // compaction), w: unused.
   soft: vec4<u32>,
   // Retro 3D (frame.wgsl `stylise`, stylise.rs `Retro3d::uniform`): the
   // snap grid in cells, the affine share, the depth bits.
@@ -28,8 +24,6 @@ struct RasterParams {
   wind: array<FoliageWind, 2>,
   // The leaves' year (foliage.wgsl `LeafYear`).
   leaf_year: LeafYear,
-  // xyz: towards the sun (foliage.wgsl `meshlet_crown`).
-  sun: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> raster: RasterParams;
@@ -40,26 +34,25 @@ struct RasterParams {
 @group(0) @binding(2) var<storage, read> items: array<vec2<u32>>;
 @group(0) @binding(3) var<storage, read> clusters: array<vec4<u32>>;
 @group(0) @binding(4) var<storage, read> indices: array<u32>;
-// Every clustered mesh's vertices (scene Vertex: 4 x vec4).
+// Every clustered mesh's vertices (scene Vertex: 4 x vec4) + foliage regions.
 @group(0) @binding(5) var<storage, read> vertices: array<vec4<f32>>;
-// The depth words (one a pixel), the id words, then the records' count.
+// Compact 8 B/px visibility buffer: depth words [0..wh), id words [wh..2*wh).
 @group(0) @binding(6) var<storage, read_write> vbuf: array<atomic<u32>>;
-// Per pixel its record's slot plus one (0: none of the soft list's),
-// then per record RECORD_WORDS words (meshlet.wgsl `meshlet_record`).
-@group(0) @binding(7) var<storage, read_write> attrs: array<u32>;
-// The instances' previous transforms, at the same slots.
-@group(0) @binding(8) var<storage, read> previous: array<vec4<f32>>;
+// Per soft batch DrawIndirectArgs (4 words: 6, tile_count, 0, 0).
+@group(0) @binding(7) var<storage, read_write> tile_draws: array<atomic<u32>>;
+// Front [0..2*soft_rows): (start_offset, write_cursor) per soft row;
+// tail [2*soft_rows..max_tiles): packed 8x8 tile coords (tx | (ty << 16)).
+@group(0) @binding(8) var<storage, read_write> tile_list: array<atomic<u32>>;
 // The wind field's lean (wind_field.rs; meshlet_sway.wgsl).
 @group(0) @binding(9) var meshlet_wind_tex: texture_2d<f32>;
 
-const WG: u32 = 64u;
 const WORKGROUPS_PER_ROW: u32 = 65535u;
-// meshlet.rs SUBPIXEL and RASTER_MAX.
 const SUBPIXEL: i32 = 256;
 const RASTER_MAX: f32 = 64.0;
+const INVALID_ROW: u32 = 0xffffffffu;
 
-// pbr.wgsl `retro_clip` (meshlet.rs `retro_clip`) over the raster's
-// stylise: the hardware path's clip position, snapped and stepped.
+var<workgroup> wg_tile_rows: array<u32, 64>;
+
 fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
   var c = clip;
   if (c.w <= 0.0) { return c; }
@@ -75,56 +68,31 @@ fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
   return c;
 }
 
-// The leaf of vertex `local` of a foliage cluster whose first row's w is
-// `region`, on the instance at `now` (foliage.wgsl `meshlet_leaf`).
 fn raster_leaf(local: u32, region: u32, now: mat4x4<f32>) -> MeshletLeaf {
   let at = meshlet_sway_row(region, local);
   return meshlet_leaf(vertices[region], vertices[at + 1u], now, raster.wind[0].origin.xyz, raster.leaf_year);
 }
 
-// Vertex `local` (the mesh's own index) of a cluster of level `level`
-// whose first row's w is `region` (meshlet_sway.wgsl; 0: no foliage), in
-// a mesh at `base` of the pool: where instance slot `inst` puts it in the
-// mesh's own space, its leaf grown as on the instance `now` and as large
-// as its level draws it, swayed by this frame's wind, or the last drawn
-// frame's at `model` (the previous transform) with `from_previous`.
-fn raster_position(base: u32, local: u32, region: u32, level: u32, inst: u32, now: mat4x4<f32>, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
+fn raster_position(base: u32, local: u32, region: u32, level: u32, inst: u32, model: mat4x4<f32>) -> vec3<f32> {
   var p = vertices[(base + local) * 4u].xyz;
   if (region == 0u) { return p; }
   let at = meshlet_sway_row(region, local);
   let scale = meshlet_level_scale(vertices[meshlet_scale_row(region, level)], level);
-  p = meshlet_grown(p, vertices[at + 1u], raster_leaf(local, region, now).leaf.kept * scale);
-  var layer = instances[inst * 4u + 3u].x;
-  var wind = raster.wind[0];
-  if (from_previous) {
-    layer = previous[inst * 4u + 3u].x;
-    wind = raster.wind[1];
-  }
-  return p + meshlet_sway(p, vertices[region - 1u], vertices[at], vertices[at + 1u], model, wind, foliage_sway(layer), from_previous);
+  p = meshlet_grown(p, vertices[at + 1u], raster_leaf(local, region, model).leaf.kept * scale);
+  let layer = instances[inst * 4u + 3u].x;
+  return p + meshlet_sway(p, vertices[region - 1u], vertices[at], vertices[at + 1u], model, raster.wind[0], foliage_sway(layer), false);
 }
 
-fn transform_at(buf_index: u32, from_previous: bool) -> mat4x4<f32> {
-  var t0: vec4<f32>;
-  var t1: vec4<f32>;
-  var t2: vec4<f32>;
-  if (from_previous) {
-    t0 = previous[buf_index * 4u];
-    t1 = previous[buf_index * 4u + 1u];
-    t2 = previous[buf_index * 4u + 2u];
-  } else {
-    t0 = instances[buf_index * 4u];
-    t1 = instances[buf_index * 4u + 1u];
-    t2 = instances[buf_index * 4u + 2u];
-  }
+fn transform_at(buf_index: u32) -> mat4x4<f32> {
+  let t0 = instances[buf_index * 4u];
+  let t1 = instances[buf_index * 4u + 1u];
+  let t2 = instances[buf_index * 4u + 2u];
   return instance_matrix(t0.xyz, vec3<f32>(t0.w, t1.xy), vec3<f32>(t1.zw, t2.x), t2.yzw);
 }
 
-// One soft cluster's triangle in pixels and depth (meshlet.rs
-// `to_screen`, `raster_class`): ok false when it covers nothing here.
 struct Tri {
   ok: bool,
   p: array<vec3<f32>, 3>,
-  // The pixel centres of its box, inclusive.
   lo: vec2<i32>,
   hi: vec2<i32>,
 };
@@ -140,13 +108,12 @@ fn triangle(k: u32, tri: u32) -> Tri {
   let f = items[raster.soft.x + k * 2u + 1u];
   let c = clusters[e.y * 3u];
   if (tri >= c.y) { return t; }
-  let model = transform_at(e.x, false);
+  let model = transform_at(e.x);
   let size = vec2<f32>(raster.size.xy);
   for (var j = 0u; j < 3u; j++) {
     let local = indices[c.x + tri * 3u + j];
-    let world = model * vec4<f32>(raster_position(f.y, local, c.w, c.z, e.x, model, model, false), 1.0);
+    let world = model * vec4<f32>(raster_position(f.y, local, c.w, c.z, e.x, model), 1.0);
     let clip = raster_retro(mul_point(raster.view_proj, world));
-    // Never for a soft cluster (it lies past the near plane): skipped.
     if (clip.w <= 1e-6 || clip.z > clip.w) { return t; }
     let ndc = clip.xyz / clip.w;
     t.p[j] = vec3<f32>((ndc.x * 0.5 + 0.5) * size.x, (0.5 - ndc.y * 0.5) * size.y, ndc.z);
@@ -172,18 +139,13 @@ fn edge(a: vec2<i32>, b: vec2<i32>, p: vec2<i32>) -> i32 {
   return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
 }
 
-// meshlet.rs `owns`.
 fn owns(a: vec2<i32>, b: vec2<i32>) -> bool {
   let d = b - a;
   return d.y < 0 || (d.y == 0 && d.x > 0);
 }
 
-fn inside(e: i32, a: vec2<i32>, b: vec2<i32>) -> bool {
-  return e > 0 || (e == 0 && owns(a, b));
-}
-
-// meshlet.rs `covers` over the triangle's box: per covered pixel, the
-// depth word, then `id` (0: the depth pass).
+// Incremental half-space rasterisation with top-left ownership bias and early
+// atomicLoad pre-test before atomicMax to cut coherent L2 atomic contention.
 fn cover(t: Tri, id: u32) {
   let o = floor(min(t.p[0].xy, min(t.p[1].xy, t.p[2].xy)));
   var v = array<vec2<i32>, 3>(
@@ -201,28 +163,46 @@ fn cover(t: Tri, id: u32) {
     z = z.xzy;
     area = -area;
   }
+  let inv_area = 1.0 / f32(area);
   let w = raster.size.x;
   let wh = raster.size.x * raster.size.y;
   let oi = vec2<i32>(o);
   let half = SUBPIXEL / 2;
+  let c0 = (t.lo - oi) * SUBPIXEL + vec2<i32>(half);
+  let bias = vec3<i32>(
+    select(-1, 0, owns(v[1], v[2])),
+    select(-1, 0, owns(v[2], v[0])),
+    select(-1, 0, owns(v[0], v[1])),
+  );
+  let step_x = vec3<i32>(v[1].y - v[2].y, v[2].y - v[0].y, v[0].y - v[1].y) * SUBPIXEL;
+  let step_y = vec3<i32>(v[2].x - v[1].x, v[0].x - v[2].x, v[1].x - v[0].x) * SUBPIXEL;
+  var row_e = vec3<i32>(
+    edge(v[1], v[2], c0),
+    edge(v[2], v[0], c0),
+    edge(v[0], v[1], c0),
+  );
   for (var y = t.lo.y; y <= t.hi.y; y++) {
+    var e = row_e;
+    let row_px = u32(y) * w;
     for (var x = t.lo.x; x <= t.hi.x; x++) {
-      let c = (vec2<i32>(x, y) - oi) * SUBPIXEL + vec2<i32>(half);
-      let e0 = edge(v[1], v[2], c);
-      let e1 = edge(v[2], v[0], c);
-      let e2 = edge(v[0], v[1], c);
-      if (!(inside(e0, v[1], v[2]) && inside(e1, v[2], v[0]) && inside(e2, v[0], v[1]))) { continue; }
-      let depth = (f32(e0) * z.x + f32(e1) * z.y + f32(e2) * z.z) / f32(area);
-      if (depth < 0.0 || depth > 1.0) { continue; }
-      // Reverse-Z: nearer depth is larger, and 0u is the far plane (0.0).
-      let word = bitcast<u32>(max(depth, 0.0));
-      let pixel = u32(y) * w + u32(x);
-      if (id == 0u) {
-        atomicMax(&vbuf[pixel], word);
-      } else if (atomicLoad(&vbuf[pixel]) == word) {
-        atomicMax(&vbuf[wh + pixel], id);
+      let eb = e + bias;
+      if ((eb.x | eb.y | eb.z) >= 0) {
+        let depth = (f32(e.x) * z.x + f32(e.y) * z.y + f32(e.z) * z.z) * inv_area;
+        if (depth >= 0.0 && depth <= 1.0) {
+          let word = bitcast<u32>(max(depth, 0.0));
+          let pixel = row_px + u32(x);
+          if (id == 0u) {
+            if (atomicLoad(&vbuf[pixel]) < word) {
+              atomicMax(&vbuf[pixel], word);
+            }
+          } else if (atomicLoad(&vbuf[pixel]) == word) {
+            atomicMax(&vbuf[wh + pixel], id);
+          }
+        }
       }
+      e += step_x;
     }
+    row_e += step_y;
   }
 }
 
@@ -239,247 +219,83 @@ fn raster_id(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_ind
   let k = soft_cluster(wg);
   if (k >= min(raster.soft.z, raster.soft.y)) { return; }
   let t = triangle(k, li);
-  // meshlet.rs `vis_id`. Compaction orders k by row/instance/cluster,
-  // never by the cull workgroups' arrival order.
   if (t.ok) { cover(t, ((k << 6u) | li) + 1u); }
 }
 
-// pbr.wgsl `object_id`.
-fn raster_object(model: mat4x4<f32>) -> u32 {
-  var h = 2166136261u;
-  for (var c = 0u; c < 3u; c++) {
-    h = (h ^ bitcast<u32>(model[3][c])) * 16777619u;
-    h = (h ^ bitcast<u32>(model[0][c] + model[1][c] * 3.0 + model[2][c] * 7.0)) * 16777619u;
-  }
-  h = h ^ (h >> 16u);
-  return 1u + h % 255u;
-}
-
-// lod.rs `debug_color` packed 8:8:8 (meshlet.wgsl `meshlet_level_color`).
-fn raster_level_color(level: u32) -> f32 {
-  var c = vec3<f32>(0.9, 0.08, 0.08);
-  if (level == 0u) { c = vec3<f32>(0.1, 0.85, 0.15); }
-  else if (level == 1u) { c = vec3<f32>(0.95, 0.85, 0.1); }
-  else if (level == 2u) { c = vec3<f32>(1.0, 0.45, 0.05); }
-  let q = vec3<u32>(c * 255.0 + 0.5);
-  return f32((q.x << 16u) | (q.y << 8u) | q.z);
-}
-
-// meshlet.rs `screen_weights`: the screen-linear weights at `ndc` (affine
-// texturing's), extrapolated past the triangle's edges as a quad's helper
-// pixels are.
-fn raster_screen(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
-  let p0 = clip[0].xy / clip[0].w;
-  let p1 = clip[1].xy / clip[1].w;
-  let p2 = clip[2].xy / clip[2].w;
-  let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-  return vec3<f32>(
-    (p1.x - ndc.x) * (p2.y - ndc.y) - (p1.y - ndc.y) * (p2.x - ndc.x),
-    (p2.x - ndc.x) * (p0.y - ndc.y) - (p2.y - ndc.y) * (p0.x - ndc.x),
-    (p0.x - ndc.x) * (p1.y - ndc.y) - (p0.y - ndc.y) * (p1.x - ndc.x),
-  ) / area;
-}
-
-// meshlet.rs `barycentrics`: the perspective-correct weights.
-fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
-  let q = l / vec3<f32>(clip[0].w, clip[1].w, clip[2].w);
-  return q / (q.x + q.y + q.z);
-}
-
-// One thread a pixel: the seen soft triangle's attributes at the pixel's
-// centre, perspective-correct, as a record: (world, depth), (normal oct,
-// uv, colour), (tangent oct, tangent w, its batch row with back-face bit
-// 31, object id), the
-// instance's look, (last frame's world, local x), (d(uv)/dx, d(uv)/dy),
-// (d(world)/dx, local y), (d(world)/dy, local z); with the extra rows
-// (`raster.soft.w` 12) then (d(local)/dx, affine u), (d(local)/dy,
-// affine v), (d(lit uv)/dx, d(lit uv)/dy), the lit uv being pbr.wgsl
-// `stylised_uv`'s mix of the two, and (the canopy dome's oct, 1 with
-// one, a seasonal leaf's autumn colour packed 8:8:8:8, its rgb square
-// roots and how far it replaces the leaf's own, and what its crown
-// hides of the light around it and of the sun, unorm16). A foliage mesh's corners are swayed (`raster_position`):
-// now for the pixel, at the last drawn frame for last frame's world. The gradients are the differences to
-// the next pixel right and down on the same triangle's plane, which the
-// hardware's quads take and the resolve's full-screen quads cannot
-// (pbr_fs.wgsl `ANALYTIC`). The triangle's corners are the hardware's,
-// retro 3D's snap and depth steps included (`raster_retro`).
-@compute @workgroup_size(8, 8)
-fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
-  if (gid.x >= raster.size.x || gid.y >= raster.size.y) { return; }
+fn pixel_batch_row(gid: vec2<u32>) -> u32 {
+  if (gid.x >= raster.size.x || gid.y >= raster.size.y) { return INVALID_ROW; }
   let wh = raster.size.x * raster.size.y;
-  let pixel = gid.y * raster.size.x + gid.x;
-  let id = atomicLoad(&vbuf[wh + pixel]);
-  if (id == 0u) {
-    attrs[pixel] = 0u;
-    return;
-  }
+  let id = atomicLoad(&vbuf[wh + gid.y * raster.size.x + gid.x]);
+  if (id == 0u) { return INVALID_ROW; }
   let k = (id - 1u) >> 6u;
-  let tri = (id - 1u) & 63u;
-  let e = items[raster.soft.x + k * 2u];
-  let f = items[raster.soft.x + k * 2u + 1u];
-  let c = clusters[e.y * 3u];
-  let model = transform_at(e.x, false);
-  let prev = transform_at(e.x, true);
-  let size = vec2<f32>(raster.size.xy);
-  let ndc = vec2<f32>((f32(gid.x) + 0.5) / size.x * 2.0 - 1.0, 1.0 - (f32(gid.y) + 0.5) / size.y * 2.0);
-  var vi: array<u32, 3>;
-  var clip: array<vec4<f32>, 3>;
-  // Each corner where it is now and where it was (swayed for foliage).
-  var at: array<vec3<f32>, 3>;
-  var was: array<vec3<f32>, 3>;
-  for (var j = 0u; j < 3u; j++) {
-    let local = indices[c.x + tri * 3u + j];
-    vi[j] = f.y + local;
-    at[j] = raster_position(f.y, local, c.w, c.z, e.x, model, model, false);
-    was[j] = raster_position(f.y, local, c.w, c.z, e.x, model, prev, true);
-    clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(at[j], 1.0)));
-  }
-  let l = raster_screen(clip, ndc);
-  // The next pixel right and down (framebuffer y runs down, ndc y up).
-  let lx = raster_screen(clip, ndc + vec2<f32>(2.0 / size.x, 0.0));
-  let ly = raster_screen(clip, ndc - vec2<f32>(0.0, 2.0 / size.y));
-  let b = raster_bary(clip, l);
-  let bx = raster_bary(clip, lx);
-  let by = raster_bary(clip, ly);
-  var position = vec3<f32>(0.0);
-  var normal = vec3<f32>(0.0);
-  var uv = vec2<f32>(0.0);
-  var color = vec4<f32>(0.0);
-  var tangent = vec4<f32>(0.0);
-  var dpos_x = vec3<f32>(0.0);
-  var dpos_y = vec3<f32>(0.0);
-  var duv_x = vec2<f32>(0.0);
-  var duv_y = vec2<f32>(0.0);
-  var affine = vec2<f32>(0.0);
-  var daff_x = vec2<f32>(0.0);
-  var daff_y = vec2<f32>(0.0);
-  var before = vec3<f32>(0.0);
-  // A foliage mesh's canopy dome (foliage.wgsl `foliage_normal` at
-  // full strength), which the resolve blends in by its material's.
-  var dome = vec3<f32>(0.0);
-  // A seasonal leaf's autumn colour (meshlet_sway.wgsl
-  // `meshlet_leaf_color`), which the resolve puts in place of its own.
-  var season = vec4<f32>(0.0);
-  // How much of the light around it and of the sun its crown hides
-  // (foliage.wgsl `meshlet_crown`).
-  var crown = vec2<f32>(0.0);
-  let sun = meshlet_model_dir(model, raster.sun.xyz);
-  for (var j = 0u; j < 3u; j++) {
-    let a = vertices[vi[j] * 4u];
-    let v = vertices[vi[j] * 4u + 1u];
-    dpos_x += at[j] * (bx[j] - b[j]);
-    dpos_y += at[j] * (by[j] - b[j]);
-    before += was[j] * b[j];
-    if (c.w != 0u) {
-      let k = meshlet_sway_row(c.w, vi[j] - f.y);
-      dome += foliage_normal(vec3<f32>(a.w, v.xy), vertices[k + 1u].xyz, vertices[c.w - 1u].xyz, 1.0) * b[j];
-      season += meshlet_leaf_color(vertices[c.w + 1u], vertices[c.w + 2u], raster_leaf(vi[j] - f.y, c.w, model)) * b[j];
-      let axis = meshlet_crown_axis(vec3<f32>(a.w, v.xy), vertices[k + 1u], vertices[c.w - 1u], vertices[c.w]);
-      crown += meshlet_crown(at[j], axis, sun, vertices[c.w - 1u], vertices[c.w + 3u]) * b[j];
+  let row = items[raster.soft.x + k * 2u + 1u].x & 0x0fffffffu;
+  if (row >= raster.size.z) { return INVALID_ROW; }
+  return row;
+}
+
+// Pass 1: count unique active batches per 8x8 tile into tile_draws[row].instance_count.
+@compute @workgroup_size(8, 8)
+fn classify_count(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(local_invocation_index) li: u32) {
+  let row = pixel_batch_row(gid.xy);
+  wg_tile_rows[li] = row;
+  workgroupBarrier();
+  if (row != INVALID_ROW) {
+    var first = true;
+    for (var j = 0u; j < li; j++) {
+      if (wg_tile_rows[j] == row) {
+        first = false;
+        break;
+      }
     }
-    duv_x += v.zw * (bx[j] - b[j]);
-    duv_y += v.zw * (by[j] - b[j]);
-    affine += v.zw * l[j];
-    daff_x += v.zw * (lx[j] - l[j]);
-    daff_y += v.zw * (ly[j] - l[j]);
-    position += at[j] * b[j];
-    normal += vec3<f32>(a.w, v.xy) * b[j];
-    uv += v.zw * b[j];
-    color += vertices[vi[j] * 4u + 2u] * b[j];
-    tangent += vertices[vi[j] * 4u + 3u] * b[j];
-  }
-  let slot = atomicAdd(&vbuf[2u * wh], 1u);
-  if (slot >= raster.size.z) {
-    attrs[pixel] = 0u;
-    return;
-  }
-  let world = (model * vec4<f32>(position, 1.0)).xyz;
-  let n = world_normal(model, normal);
-  let tw = (model * vec4<f32>(tangent.xyz, 0.0)).xyz;
-  let t = select(vec3<f32>(0.0, 0.0, 1.0), normalize(tw), dot(tw, tw) > 1e-20);
-  var look = instances[e.x * 4u + 3u];
-  // Its outline group (pbr.wgsl `look_outline`), read before the level
-  // view below writes over the flash word.
-  let group = u32(max(floor(look.y * 0.5), 0.0));
-  if (raster.size.w != 0u) {
-    look.y = 0.8;
-    look.z = raster_level_color(c.z);
-  }
-  let depth = bitcast<f32>(atomicLoad(&vbuf[pixel]));
-  let dwx = (model * vec4<f32>(dpos_x, 0.0)).xyz;
-  let dwy = (model * vec4<f32>(dpos_y, 0.0)).xyz;
-  // The original triangle's projected winding, as triangle() culls it;
-  // never infer facing from its interpolated normal. NDC y runs up.
-  let p0 = clip[0].xy / clip[0].w;
-  let e1 = clip[1].xy / clip[1].w - p0;
-  let e2 = clip[2].xy / clip[2].w - p0;
-  let back = e1.x * e2.y - e1.y * e2.x < 0.0;
-  let prev_world = (prev * vec4<f32>(before, 1.0)).xyz;
-  let delta = clamp(prev_world - world, vec3<f32>(-65000.0), vec3<f32>(65000.0));
-  let h_duv_x = clamp(duv_x, vec2<f32>(-65000.0), vec2<f32>(65000.0));
-  let h_duv_y = clamp(duv_y, vec2<f32>(-65000.0), vec2<f32>(65000.0));
-  let h_dwx = clamp(dwx, vec3<f32>(-65000.0), vec3<f32>(65000.0));
-  let h_dwy = clamp(dwy, vec3<f32>(-65000.0), vec3<f32>(65000.0));
-  // Tangent sign code: 0 none, 1 positive (+1), 2 negative (-1), stored in bits 29..30.
-  let has_t = dot(tw, tw) > 1e-20 && tangent.w != 0.0;
-  let tan_code = select(0u, select(2u, 1u, tangent.w > 0.0), has_t);
-  let obj = select(raster_object(model), group, group > 0u);
-  let rows = array<vec4<u32>, 6>(
-    vec4<u32>(bitcast<vec3<u32>>(world), bitcast<u32>(depth)),
-    vec4<u32>(pack2x16snorm(oct_encode(n)), bitcast<vec2<u32>>(uv), pack4x8unorm(color)),
-    vec4<u32>(
-      pack2x16snorm(oct_encode(t)),
-      (f.x & 0x0fffffffu) | (tan_code << 29u) | select(0u, 0x80000000u, back),
-      (obj & 0xffffu) | ((pack_f16x2(vec2<f32>(delta.z, 0.0)) & 0xffffu) << 16u),
-      pack_f16x2(h_duv_x),
-    ),
-    bitcast<vec4<u32>>(look),
-    vec4<u32>(bitcast<vec3<u32>>(position), pack_f16x2(h_duv_y)),
-    vec4<u32>(
-      pack_f16x2(h_dwx.xy),
-      pack_f16x2(vec2<f32>(h_dwx.z, h_dwy.x)),
-      pack_f16x2(h_dwy.yz),
-      pack_f16x2(delta.xy),
-    ),
-  );
-  // The records from the slots' end, rounded up to a vec4.
-  let stride = raster.soft.w;
-  let r = ((wh + 3u) & ~3u) + slot * stride * 4u;
-  for (var i = 0u; i < 6u; i++) {
-    for (var j = 0u; j < 4u; j++) { attrs[r + i * 4u + j] = rows[i][j]; }
-  }
-  if (stride > 6u) {
-    let k = raster.stylise.z;
-    // The dome in the world (0: none).
-    var dome_world = 0u;
-    if (c.w != 0u) { dome_world = pack2x16snorm(oct_encode(world_normal(model, dome))); }
-    let h_lx = clamp(dpos_x, vec3<f32>(-65000.0), vec3<f32>(65000.0));
-    let h_ly = clamp(dpos_y, vec3<f32>(-65000.0), vec3<f32>(65000.0));
-    let h_lux = clamp(mix(duv_x, daff_x, k), vec2<f32>(-65000.0), vec2<f32>(65000.0));
-    let h_luy = clamp(mix(duv_y, daff_y, k), vec2<f32>(-65000.0), vec2<f32>(65000.0));
-    let more = array<vec4<u32>, 3>(
-      vec4<u32>(
-        pack_f16x2(h_lx.xy),
-        pack_f16x2(vec2<f32>(h_lx.z, h_ly.x)),
-        pack_f16x2(h_ly.yz),
-        pack_f16x2(h_lux),
-      ),
-      vec4<u32>(
-        bitcast<u32>(affine.x),
-        bitcast<u32>(affine.y),
-        pack_f16x2(h_luy),
-        dome_world,
-      ),
-      vec4<u32>(
-        u32(c.w != 0u),
-        pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)),
-        pack2x16unorm(crown),
-        0u,
-      ),
-    );
-    for (var i = 0u; i < 3u; i++) {
-      for (var j = 0u; j < 4u; j++) { attrs[r + (6u + i) * 4u + j] = more[i][j]; }
+    if (first) {
+      atomicAdd(&tile_draws[row * 4u + 1u], 1u);
     }
   }
-  attrs[pixel] = slot + 1u;
+}
+
+// Pass 2: exclusive prefix sum over soft batch tile counts and initialize DrawIndirect args.
+@compute @workgroup_size(1)
+fn classify_prefix() {
+  let soft_rows = raster.size.z;
+  let max_tiles = raster.size.w;
+  var cursor = soft_rows * 2u;
+  for (var r = 0u; r < soft_rows; r++) {
+    let raw = atomicLoad(&tile_draws[r * 4u + 1u]);
+    let avail = select(0u, max_tiles - cursor, max_tiles > cursor);
+    let n = min(raw, avail);
+    atomicStore(&tile_draws[r * 4u + 0u], 6u);
+    atomicStore(&tile_draws[r * 4u + 1u], n);
+    atomicStore(&tile_draws[r * 4u + 2u], 0u);
+    atomicStore(&tile_draws[r * 4u + 3u], 0u);
+    atomicStore(&tile_list[r * 2u], cursor);
+    atomicStore(&tile_list[r * 2u + 1u], 0u);
+    cursor += n;
+  }
+}
+
+// Pass 3: scatter each 8x8 tile coordinate into its active batches' compact tile slices.
+@compute @workgroup_size(8, 8)
+fn classify_emit(@builtin(global_invocation_id) gid: vec3<u32>,
+                 @builtin(workgroup_id) wg: vec3<u32>,
+                 @builtin(local_invocation_index) li: u32) {
+  let row = pixel_batch_row(gid.xy);
+  wg_tile_rows[li] = row;
+  workgroupBarrier();
+  if (row != INVALID_ROW) {
+    var first = true;
+    for (var j = 0u; j < li; j++) {
+      if (wg_tile_rows[j] == row) {
+        first = false;
+        break;
+      }
+    }
+    if (first) {
+      let base = atomicLoad(&tile_list[row * 2u]);
+      let limit = atomicLoad(&tile_draws[row * 4u + 1u]);
+      let slot = atomicAdd(&tile_list[row * 2u + 1u], 1u);
+      if (slot < limit) {
+        atomicStore(&tile_list[base + slot], (wg.x & 0xffffu) | ((wg.y & 0xffffu) << 16u));
+      }
+    }
+  }
 }

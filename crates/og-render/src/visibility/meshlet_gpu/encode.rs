@@ -62,13 +62,11 @@ impl MeshletGpu {
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();
         let pools = self.pools.as_mut()?;
-        // The visibility buffer takes the camera's small clusters of
-        // occluder batches (opaque, depth exactly their triangles') under
-        // a perspective camera (retro 3D's vertices snap and its uv go
-        // affine in the rasteriser too, and the material style's surface
-        // takes its gradients from the records).
-        // And only while the device makes the resolve's pipelines (vis.rs).
+        // Direct-pull tile-classified VisBuffer uses 9 fragment storage buffers
+        // in `fs_meshlet_resolve`; devices below 10 fall back cleanly to the
+        // hardware meshlet path.
         let soft_on = scene.objects.visibility_buffer
+            && device.limits().max_storage_buffers_in_fragment_stage >= 10
             && self.vis_buffer.usable()
             && matches!(
                 scene.frame.camera.projection,
@@ -80,19 +78,11 @@ impl MeshletGpu {
             views.iter().map(|v| (v.taken.as_slice(), v.lit)),
             |m| pools.slots.get(&m).copied(),
             |b| b.faces == Side::Front.into(),
-            // A mirrored batch's triangles wind the other way: the hardware
-            // path's pipelines take that as the front (`Faces::front`).
             |b| soft_on && occluder(b) && !b.faces.mirrored,
         );
         if rows.is_empty() || items as u64 * 8 > self.max_binding {
             return None;
         }
-        // A batch out of a view's planes has none of its clusters kept
-        // there: its draw (and its resolve) would draw nothing, so the view
-        // leaves it out. Its row stays, so every cluster keeps its slot in
-        // the visibility halves while the camera turns. A foliage batch is
-        // drawn whatever its box: its clusters' spheres widen by the wind
-        // here on their own.
         draws.retain(|d| {
             let b = &batches[d.batch as usize];
             b.foliage || b.reaches(tested(&views[d.view as usize].planes))
@@ -100,6 +90,12 @@ impl MeshletGpu {
         let slots = rows
             .last()
             .map_or(0, |r| r.first_item + r.instances * r.most);
+        let max_chunks_raw: u64 = rows
+            .iter()
+            .map(|r| u64::from(r.instances) * u64::from(r.most.div_ceil(64)))
+            .sum();
+        let chunks_bytes = (max_chunks_raw.max(1) * 32).min(self.max_binding);
+        let max_chunks = (chunks_bytes / 32) as u32;
         if grow(
             device,
             &mut self.batches,
@@ -109,9 +105,6 @@ impl MeshletGpu {
         ) {
             self.held.batches.invalidate();
         }
-        // A draw binds a window of `items` from its batch's first item,
-        // as wide as the largest batch's items: the buffer holds the last
-        // batch's whole window.
         let (window, items_buffer) = item_window(&rows, items);
         self.window = window;
         grow(
@@ -121,13 +114,23 @@ impl MeshletGpu {
             items_buffer,
             storage_usage(),
         );
+        // Per row 4 words DrawIndirect, then:
+        //   +0..+4: [soft_count, triangles, 0, 0]
+        //   +4..+8: Stage 2 cull_clusters DispatchWorkgroupsIndirect [dx, dy, dz, total_chunks]
+        //   +8..+12: Soft raster DispatchWorkgroupsIndirect [dx, dy, dz, soft_count]
         grow(
             device,
             &mut self.draws,
             "meshlet draws",
-            // And the soft list's count.
-            (rows.len() * 16 + 16) as u64,
+            (rows.len() * 16 + 48) as u64,
             Self::draws_usage(),
+        );
+        grow(
+            device,
+            &mut self.chunks,
+            "meshlet cull chunks",
+            chunks_bytes,
+            storage_usage(),
         );
         let (soft_first, soft_cap) = list.unwrap_or((0, 0));
         self.compact.prepare(
@@ -136,8 +139,6 @@ impl MeshletGpu {
             [slots, soft_first, soft_cap, rows.len() as u32],
             [&self.batches, &pools.meshes, &self.items, &self.draws],
         );
-        // The visibility halves: a new size starts every slot hidden (the
-        // late phase then finds what the early one missed).
         let half = (items as u64).max(1);
         if half != self.vis_half || half * 8 > self.vis.size() {
             if half * 8 > self.vis.size() {
@@ -161,7 +162,6 @@ impl MeshletGpu {
             rows[VIEW_PLANES] = view.eye.extend(view.per_unit).to_array();
             rows[VIEW_PLANES + 1] = [view.perspective as u32 as f32, 0.0, 0.0, 0.0];
         }
-        // The levels callers picked, after the views' rows.
         let level_row = planes.len();
         let picked = levels.iter().any(|&l| l != u8::MAX);
         if picked {
@@ -185,13 +185,16 @@ impl MeshletGpu {
         let draw_args: Vec<[u32; 4]> = rows
             .iter()
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
-            .chain(std::iter::once([0; 4]))
+            .chain([[0; 4]; 3])
             .collect();
         crate::traffic::write_buffer(queue, &self.draws, 0, bytemuck::cast_slice(&draw_args));
-        // Two phases with the pyramid and its depth, one without.
         let pyramid = gc.pyramid();
         let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
-        let triangles_word = rows.len() as u32 * 4 + 1;
+        let soft_count_word = rows.len() as u32 * 4;
+        let triangles_word = soft_count_word + 1;
+        let chunk_indirect_word = soft_count_word + 4;
+        let soft_dispatch_byte = (u64::from(soft_count_word) + 8) * 4;
+        let chunk_indirect_byte = u64::from(chunk_indirect_word) * 4;
         let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
             lod: [
@@ -201,16 +204,14 @@ impl MeshletGpu {
                 scene.frame.camera.near,
             ],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
-            phase: [phase, read as u32, write as u32, 0],
-            // w: the word after the soft list's count that sums the
-            // camera's drawn clusters' triangles (FrameStats::triangles).
+            phase: [phase, read as u32, write as u32, workgroups],
             soft: match list {
-                Some((first, cap)) => [first, cap, rows.len() as u32 * 4, triangles_word],
+                Some((first, cap)) => [first, cap, soft_count_word, triangles_word],
                 None => [0, 0, 0, triangles_word],
             },
+            chunks: [chunk_indirect_word, max_chunks, 0, 0],
         };
         let (first, second) = if depth.is_some() { (1, 2) } else { (0, 0) };
-        // Both phases' parameters, at their slots.
         let mut both = vec![0u8; PARAMS_SLOT as usize + std::mem::size_of::<Params>()];
         both[..std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&params(first)));
         both[PARAMS_SLOT as usize..].copy_from_slice(bytemuck::bytes_of(&params(second)));
@@ -224,12 +225,7 @@ impl MeshletGpu {
                 leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
             }),
         );
-        // Each foliage mesh's deformation bound at this frame's wind and
-        // the last drawn frame's (an instance's motion vector spans both),
-        // into its mesh row (`meshlet_cull.wgsl` widens its spheres by it).
         for (slot, bounds, written) in &mut pools.foliage {
-            // og.Wind's lean, or the wind field's this frame (`winds.2`,
-            // driven or settling) where it leans further.
             let lean = |w: crate::Wind| {
                 crate::wind_field::lean_cap(Some(w).filter(|w| w.strength > 0.0), false)
                     .max(winds.2)
@@ -256,32 +252,59 @@ impl MeshletGpu {
             self.compact.selected.clone(),
             self.draws.clone(),
             pools.meshes.clone(),
+            pools.clusters.clone(),
             self.vis.clone(),
+            self.chunks.clone(),
         ];
         let view = pyramid.map(|p| p.0.clone());
+        let sizes_key = (selected_bytes, chunks_bytes);
         if self
-            .cull_group
+            .cull_groups
             .as_ref()
-            .is_none_or(|(b, v, n, _)| *b != bound || *v != view || *n != selected_bytes)
+            .is_none_or(|(b, v, n, _)| *b != bound || *v != view || *n != sizes_key)
         {
-            let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("meshlet cull"),
-                layout: &self.cull_layout,
+            let params_entry = wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &self.params,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(std::mem::size_of::<Params>() as u64),
+                }),
+            };
+            let pyr_view = view.as_ref().unwrap_or(&self.no_pyramid);
+            let chunks_entry = wgpu::BindGroupEntry {
+                binding: 10,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &self.chunks,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(chunks_bytes),
+                }),
+            };
+            let inst_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("meshlet cull instances"),
+                layout: &self.inst_layout,
                 entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                            buffer: &self.params,
-                            offset: 0,
-                            size: wgpu::BufferSize::new(std::mem::size_of::<Params>() as u64),
-                        }),
-                    },
+                    params_entry.clone(),
                     entry(1, &gc.instances),
                     entry(2, &self.views),
                     entry(3, &self.batches),
                     entry(4, &pools.meshes),
+                    entry(7, &self.draws),
+                    wgpu::BindGroupEntry {
+                        binding: 8,
+                        resource: wgpu::BindingResource::TextureView(pyr_view),
+                    },
+                    chunks_entry.clone(),
+                ],
+            });
+            let cluster_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("meshlet cull clusters"),
+                layout: &self.cluster_layout,
+                entries: &[
+                    params_entry,
+                    entry(1, &gc.instances),
+                    entry(2, &self.views),
                     entry(5, &pools.clusters),
-                    // Stable candidate slots, not append destinations.
                     wgpu::BindGroupEntry {
                         binding: 6,
                         resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
@@ -293,14 +316,13 @@ impl MeshletGpu {
                     entry(7, &self.draws),
                     wgpu::BindGroupEntry {
                         binding: 8,
-                        resource: wgpu::BindingResource::TextureView(
-                            view.as_ref().unwrap_or(&self.no_pyramid),
-                        ),
+                        resource: wgpu::BindingResource::TextureView(pyr_view),
                     },
                     entry(9, &self.vis),
+                    chunks_entry,
                 ],
             });
-            self.cull_group = Some((bound, view, selected_bytes, group));
+            self.cull_groups = Some((bound, view, sizes_key, [inst_group, cluster_group]));
         }
         self.frame = draws;
         self.ensure_groups(device, batches, (&gc.instances, previous), vertices);
@@ -313,15 +335,23 @@ impl MeshletGpu {
         } else {
             encoder.clear_buffer(&self.vis, write * 4, Some(half * 4));
         }
-        let cull_group = &self.cull_group.as_ref().expect("made above").3;
+        let [inst_group, cluster_group] = &self.cull_groups.as_ref().expect("made above").3;
+        let inst_wgs = workgroups.div_ceil(64);
         let dispatch = |pass: &mut wgpu::ComputePass<'_>, slot: u64| {
-            pass.set_pipeline(self.cull.wait());
-            pass.set_bind_group(0, cull_group, &[slot as u32]);
+            let [p_inst, p_fin, p_cluster] = self.cull.wait();
+            pass.set_pipeline(p_inst);
+            pass.set_bind_group(0, inst_group, &[slot as u32]);
             pass.dispatch_workgroups(
-                workgroups.min(WORKGROUPS_PER_ROW),
-                workgroups.div_ceil(WORKGROUPS_PER_ROW),
+                inst_wgs.min(WORKGROUPS_PER_ROW),
+                inst_wgs.div_ceil(WORKGROUPS_PER_ROW),
                 1,
             );
+            pass.set_pipeline(p_fin);
+            pass.set_bind_group(0, inst_group, &[slot as u32]);
+            pass.dispatch_workgroups(1, 1, 1);
+            pass.set_pipeline(p_cluster);
+            pass.set_bind_group(0, cluster_group, &[slot as u32]);
+            pass.dispatch_workgroups_indirect(&self.draws, chunk_indirect_byte);
             self.compact.encode(pass, slots);
         };
         {
@@ -332,7 +362,6 @@ impl MeshletGpu {
             dispatch(&mut pass, 0);
         }
         if let Some((depth, samples)) = depth {
-            // The early phase's camera clusters into the occluders' depth.
             for d in self.frame.iter().filter(|d| d.view == 0) {
                 let b = &batches[d.batch as usize];
                 if occluder(b) {
@@ -376,6 +405,8 @@ impl MeshletGpu {
                     pass.draw_indirect(&self.draws, d.row as u64 * 16);
                 }
             }
+            // Reset Stage 2 chunk counter before late-phase instance cull.
+            encoder.clear_buffer(&self.draws, chunk_indirect_byte, Some(16));
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("meshlet late"),
                 timestamp_writes: None,
@@ -383,8 +414,6 @@ impl MeshletGpu {
             gc.rebuild_pyramid(&mut pass);
             dispatch(&mut pass, PARAMS_SLOT);
         }
-        // The camera's drawn triangles, into the word of GPU culling's
-        // counts that takes them (`GpuCulling::meshlet_triangles_word`).
         if let Some(word) = gc.meshlet_triangles_word() {
             encoder.copy_buffer_to_buffer(
                 &self.draws,
@@ -394,8 +423,16 @@ impl MeshletGpu {
                 4,
             );
         }
-        // The soft list both phases appended, rasterised once.
-        if let (Some(list), Some(pools)) = (list, self.pools.as_ref()) {
+        let soft_rows = self
+            .frame
+            .iter()
+            .filter(|d| d.soft)
+            .map(|d| d.row + 1)
+            .max()
+            .unwrap_or(0);
+        if let (Some(list), Some(pools)) = (list, self.pools.as_ref())
+            && soft_rows > 0
+        {
             self.vis_buffer.encode(
                 device,
                 queue,
@@ -404,23 +441,19 @@ impl MeshletGpu {
                     view_proj,
                     size: (width, height),
                     list,
-                    count: (&self.draws, rows.len() as u64 * 16),
+                    soft_rows,
+                    count: (&self.draws, u64::from(soft_count_word) * 4),
+                    soft_dispatch: (&self.draws, soft_dispatch_byte),
+                    draw_params: &self.draw_params,
                     instances: &gc.instances,
                     previous,
                     items: &self.items,
                     clusters: &pools.clusters,
                     indices: &pools.indices,
                     vertices: &pools.vertices,
-                    lod_debug: scene.objects.lod_debug,
                     stylise: crate::Retro3d::uniform(scene.look.stylise.retro, width, height),
                     wind: winds.1,
                     leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
-                    sun: scene
-                        .lighting
-                        .light
-                        .direction_to_light
-                        .normalize_or(glam::Vec3::Y),
-                    extra: scene.look.stylise.material.surface_on() || !pools.foliage.is_empty(),
                     max_binding: self.max_binding,
                 },
             );

@@ -49,42 +49,77 @@ impl GpuCulling {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let hiz_base_layout = [false, true].map(|multisampled| {
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("depth pyramid base"),
-                entries: &[
-                    level_out(1),
-                    texture(
-                        2,
-                        wgpu::TextureSampleType::Float { filterable: false },
-                        multisampled,
-                    ),
-                ],
-            })
-        });
-        let hiz_reduce_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("depth pyramid"),
+        let hiz_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("depth pyramid spd"),
             entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::COMPUTE,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
                 texture(
-                    0,
+                    1,
                     wgpu::TextureSampleType::Float { filterable: false },
                     false,
                 ),
-                level_out(1),
+                level_out(2),
+                level_out(3),
+                level_out(4),
+                level_out(5),
             ],
         });
         let hiz_module = crate::gpu::shader_module(
             device,
             wgpu::ShaderModuleDescriptor {
-                label: Some("depth pyramid"),
-                source: wgpu::ShaderSource::Wgsl(hiz_source(false).into()),
+                label: Some("depth pyramid spd"),
+                source: wgpu::ShaderSource::Wgsl(hiz_source().into()),
             },
         );
-        let reduce_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("depth pyramid"),
-            bind_group_layouts: &[Some(&hiz_reduce_layout)],
+        let hiz_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("depth pyramid spd"),
+            bind_group_layouts: &[Some(&hiz_layout)],
             immediate_size: 0,
         });
+        let hiz_counts = std::array::from_fn(|i| {
+            let count = (i + 1) as u32;
+            let buf = crate::traffic::create_buffer(
+                device,
+                &wgpu::BufferDescriptor {
+                    label: Some("depth pyramid count"),
+                    size: 16,
+                    usage: wgpu::BufferUsages::UNIFORM,
+                    mapped_at_creation: true,
+                },
+            );
+            buf.slice(..)
+                .get_mapped_range_mut()
+                .expect("mapped at creation")
+                .copy_from_slice(bytemuck::cast_slice(&[count, 0u32, 0u32, 0u32]));
+            buf.unmap();
+            buf
+        });
+        let hiz_dummy = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("depth pyramid dummy"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::R32Float,
+                usage: wgpu::TextureUsages::STORAGE_BINDING,
+                view_formats: &[],
+                texture_binding_view_dimension: None,
+            })
+            .create_view(&Default::default());
         let view = buffer(
             device,
             "occluder view",
@@ -123,16 +158,21 @@ impl GpuCulling {
         let readbacks = Vec::new();
         let (d, l, m) = (device.clone(), pipeline_layout.clone(), module.clone());
         let stages = crate::deferred::Deferred::anywhere(move || CullStages::new(&d, &l, &m));
-        let (d, l, m) = (device.clone(), reduce_layout.clone(), hiz_module.clone());
-        let hiz_reduce =
-            crate::deferred::Deferred::anywhere(move || compute_stage(&d, &l, &m, "reduce"));
-        crate::deferred::start_all(&[&stages, &hiz_reduce]);
+        let (d, l, m) = (device.clone(), hiz_pl, hiz_module);
+        let hiz_pipelines = crate::deferred::Deferred::anywhere(move || {
+            [
+                compute_stage(&d, &l, &m, "base_spd"),
+                compute_stage(&d, &l, &m, "reduce_spd"),
+                compute_stage(&d, &l, &m, "tail_spd"),
+            ]
+        });
+        crate::deferred::start_all(&[&stages, &hiz_pipelines]);
         GpuCulling {
             stages,
-            hiz_reduce,
-            hiz_base: [None, None],
-            hiz_base_layout,
-            hiz_reduce_layout,
+            hiz_layout,
+            hiz_pipelines,
+            hiz_counts,
+            hiz_dummy,
             depth_module: crate::gpu::shader_module(
                 device,
                 wgpu::ShaderModuleDescriptor {

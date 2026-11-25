@@ -172,11 +172,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     add("particle sim", crate::particles_gpu::sim_source());
     add("particle compact", crate::particles_gpu::compact_source());
     add("cull", crate::cull_gpu::CULL_WGSL.to_string());
-    add("depth pyramid", crate::cull_gpu::hiz_source(false));
-    add(
-        "depth pyramid (multisampled)",
-        crate::cull_gpu::hiz_source(true),
-    );
+    add("depth pyramid", crate::cull_gpu::hiz_source());
     add("occluder depth", crate::cull_gpu::DEPTH_WGSL.to_string());
     // Order-independent transparency's resolve (oit.rs), each variant.
     for (msaa, list) in [(false, false), (true, false), (false, true), (true, true)] {
@@ -214,7 +210,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         label: "meshlet resolve".to_string(),
         wgsl: crate::meshlet_gpu::lit_source(false),
         constants: vec![("ANALYTIC".to_string(), 1.0), ("DISCARD".to_string(), 0.0)],
-        needs: crate::Caps::VERTEX_STORAGE,
+        needs: crate::Caps::VERTEX_STORAGE | crate::Caps::HIGH_BINDING_SLOTS,
     });
     // Tier::Full subgroup (WG=256) and f16 compute shader variants.
     out.push(ShaderSource::with_caps(

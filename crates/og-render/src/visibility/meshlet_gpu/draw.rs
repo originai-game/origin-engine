@@ -48,9 +48,9 @@ impl MeshletGpu {
     }
 
     /// Draws the camera's soft batches' resolves into `pass` (the camera's
-    /// lit pass, or its prepass with `prepass`): one full-screen triangle
-    /// each, shading the visibility buffer's pixels of its batch; groups 0
-    /// and 2 bound by the caller. Returns the draws made.
+    /// lit pass, or its prepass with `prepass`): indirect 8x8 tile quads for
+    /// only the tiles classified active for each batch; groups 0 and 2 bound
+    /// by the caller. Returns the draws made.
     pub fn draw_resolve<'m, E: Encode>(
         &self,
         pass: &mut E,
@@ -59,12 +59,9 @@ impl MeshletGpu {
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
         mut probe: impl FnMut(&mut E, &Batch),
     ) -> u32 {
-        // A pipeline the device has not answered for may be refused: its
-        // draw would invalidate the frame (vis.rs).
         let Some(group) = self
             .vis_buffer
-            .resolve_group
-            .as_ref()
+            .resolve_group()
             .filter(|_| self.vis_buffer.ready())
         else {
             return 0;
@@ -83,8 +80,8 @@ impl MeshletGpu {
             probe(pass, b);
             pass.set_pipeline(pipeline);
             pass.set_bind_group(1, material(b), &[]);
-            pass.set_bind_group(3, group, &[]);
-            pass.draw(0..3, d.row..d.row + 1);
+            pass.set_bind_group(3, group, &[d.row * vis::ROW_OFFSET_STRIDE]);
+            pass.draw_indirect(&self.vis_buffer.tile_draws, d.row as u64 * 16);
             n += 1;
         }
         n

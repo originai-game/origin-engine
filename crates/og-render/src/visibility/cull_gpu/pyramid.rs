@@ -1,23 +1,11 @@
-//! The depth pyramid occlusion tests against.
+//! The depth pyramid occlusion tests against, built via multi-level conservative
+//! LDS SPD passes (`shaders/hiz.wgsl`).
 
 use super::*;
 
-/// The pyramid's base: the farthest of a pixel's samples, the depth read
-/// as an unfilterable float texture (compatibility mode loads no
-/// `texture_depth_2d`).
-pub(crate) fn hiz_source(multisampled: bool) -> String {
-    let decl = if multisampled {
-        "@group(0) @binding(2) var depth_in: texture_multisampled_2d<f32>;\n\
-         fn farthest_sample(xy: vec2<u32>) -> f32 {\n\
-           var d = 1.0;\n\
-           for (var s = 0u; s < textureNumSamples(depth_in); s++) { d = min(d, textureLoad(depth_in, xy, i32(s)).r); }\n\
-           return d;\n\
-         }\n"
-    } else {
-        "@group(0) @binding(2) var depth_in: texture_2d<f32>;\n\
-         fn farthest_sample(xy: vec2<u32>) -> f32 { return textureLoad(depth_in, xy, 0).r; }\n"
-    };
-    format!("{decl}{HIZ_WGSL}")
+/// The conservative SPD depth pyramid shader (`hiz.wgsl`).
+pub(crate) fn hiz_source() -> String {
+    HIZ_WGSL.to_string()
 }
 
 pub(super) fn level_out(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -31,6 +19,10 @@ pub(super) fn level_out(binding: u32) -> wgpu::BindGroupLayoutEntry {
         },
         count: None,
     }
+}
+
+fn exact_half((w, h): (u32, u32)) -> bool {
+    (w <= 1 || w.is_multiple_of(2)) && (h <= 1 || h.is_multiple_of(2))
 }
 
 impl GpuCulling {
@@ -70,22 +62,18 @@ impl GpuCulling {
         }
     }
 
-    /// The pyramid's levels from the occluders' depth: the base (the
-    /// farthest sample per texel), then each level from the one below.
+    /// Builds all pyramid levels via the precomputed conservative SPD batches.
     pub(super) fn build_pyramid(&self, pass: &mut wgpu::ComputePass<'_>, pyramid: &Pyramid) {
-        let (width, height, samples) = pyramid.size;
-        pass.set_pipeline(
-            self.hiz_base[(samples > 1) as usize]
-                .as_ref()
-                .expect("made with the pyramid"),
-        );
-        pass.set_bind_group(0, &pyramid.base_group, &[]);
-        pass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
-        pass.set_pipeline(self.hiz_reduce.wait());
-        for (l, group) in pyramid.reduce_groups.iter().enumerate() {
-            let (w, h) = pyramid.level_sizes[l + 1];
-            pass.set_bind_group(0, group, &[]);
-            pass.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        let pipes = self.hiz_pipelines.wait();
+        for p in &pyramid.passes {
+            let pipe = match p.kind {
+                HizKind::Base => &pipes[0],
+                HizKind::Reduce => &pipes[1],
+                HizKind::Tail => &pipes[2],
+            };
+            pass.set_pipeline(pipe);
+            pass.set_bind_group(0, &p.group, &[]);
+            pass.dispatch_workgroups(p.dispatch.0, p.dispatch.1, 1);
         }
     }
 
@@ -94,8 +82,10 @@ impl GpuCulling {
         device: &wgpu::Device,
         width: u32,
         height: u32,
-        samples: u32,
+        _samples: u32,
     ) {
+        // Occluder depth is always 1x non-MSAA (`encode.rs`).
+        let samples = 1u32;
         if self
             .pyramid
             .as_ref()
@@ -103,7 +93,6 @@ impl GpuCulling {
         {
             return;
         }
-        let multisampled = samples > 1;
         let depth = device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("occluder depth"),
@@ -139,73 +128,102 @@ impl GpuCulling {
             texture_binding_view_dimension: None,
         });
         let level_views = crate::mips::level_views(&texture, "depth pyramid level");
-        let base_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("depth pyramid base"),
-            layout: &self.hiz_base_layout[multisampled as usize],
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&level_views[0]),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&depth),
-                },
-            ],
-        });
-        let reduce_groups = (1..levels as usize)
-            .map(|l| {
-                device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("depth pyramid"),
-                    layout: &self.hiz_reduce_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&level_views[l - 1]),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::TextureView(&level_views[l]),
-                        },
-                    ],
-                })
-            })
+        let level_sizes: Vec<(u32, u32)> = (0..levels)
+            .map(|l| ((width >> l).max(1), (height >> l).max(1)))
             .collect();
-        if self.hiz_base[multisampled as usize].is_none() {
-            let module = crate::gpu::shader_module(
-                device,
-                wgpu::ShaderModuleDescriptor {
-                    label: Some("depth pyramid base"),
-                    source: wgpu::ShaderSource::Wgsl(hiz_source(multisampled).into()),
-                },
-            );
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("depth pyramid base"),
-                bind_group_layouts: &[Some(&self.hiz_base_layout[multisampled as usize])],
-                immediate_size: 0,
-            });
-            self.hiz_base[multisampled as usize] = Some(crate::traffic::create_compute_pipeline(
-                device,
-                &wgpu::ComputePipelineDescriptor {
-                    label: Some("depth pyramid base"),
-                    layout: Some(&layout),
-                    module: &module,
-                    entry_point: Some("base"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                },
-            ));
+
+        let make_group = |src: &wgpu::TextureView, start: usize, count: usize| {
+            let dst = |i: usize| {
+                if i < count {
+                    &level_views[start + i]
+                } else {
+                    &self.hiz_dummy
+                }
+            };
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("depth pyramid spd"),
+                layout: &self.hiz_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.hiz_counts[count - 1].as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(src),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::TextureView(dst(0)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: wgpu::BindingResource::TextureView(dst(1)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::TextureView(dst(2)),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: wgpu::BindingResource::TextureView(dst(3)),
+                    },
+                ],
+            })
+        };
+
+        let mut passes = Vec::new();
+        // Batch 0: fused base copy (level 0) + up to 3 in-LDS 2x2 reductions
+        // while each source level has even (or 1) dimensions so 2x2 is exact.
+        let mut base_count = 1usize;
+        while base_count < 4
+            && base_count < levels as usize
+            && exact_half(level_sizes[base_count - 1])
+        {
+            base_count += 1;
         }
+        passes.push(HizPass {
+            kind: HizKind::Base,
+            group: make_group(&depth, 0, base_count),
+            dispatch: (width.div_ceil(16), height.div_ceil(16)),
+        });
+
+        let mut next = base_count;
+        while next < levels as usize {
+            let src_size = level_sizes[next - 1];
+            let rem = levels as usize - next;
+            if src_size.0 <= 16 && src_size.1 <= 16 {
+                let count = rem.min(4);
+                passes.push(HizPass {
+                    kind: HizKind::Tail,
+                    group: make_group(&level_views[next - 1], next, count),
+                    dispatch: (1, 1),
+                });
+                next += count;
+            } else {
+                let mut count = 1usize;
+                while count < 4
+                    && next + count < levels as usize
+                    && exact_half(level_sizes[next + count - 1])
+                {
+                    count += 1;
+                }
+                let (w0, h0) = level_sizes[next];
+                passes.push(HizPass {
+                    kind: HizKind::Reduce,
+                    group: make_group(&level_views[next - 1], next, count),
+                    dispatch: (w0.div_ceil(8), h0.div_ceil(8)),
+                });
+                next += count;
+            }
+        }
+
         self.pyramid = Some(Pyramid {
             size: (width, height, samples),
             depth,
             full: texture.create_view(&Default::default()),
             levels,
-            base_group,
-            reduce_groups,
-            level_sizes: (0..levels)
-                .map(|l| ((width >> l).max(1), (height >> l).max(1)))
-                .collect(),
+            passes,
         });
         self.groups = None;
     }

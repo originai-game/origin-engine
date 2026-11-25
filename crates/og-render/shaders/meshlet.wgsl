@@ -1,10 +1,17 @@
-// The meshlet path's vertex stages (meshlet.rs, meshlet_gpu.rs), after
-// pbr.wgsl and pbr_prepass.wgsl in the standard lit module. A batch is one
-// draw of 64 x 3 vertices per visible cluster: the instance index names a
-// work item (an instance and a cluster, written by meshlet_cull.wgsl), the
-// vertex index a corner of one of the cluster's triangles, read from the
-// cluster pool's indices and the mesh's own f32 vertices (vertex pulling).
-// A corner past the cluster's triangles is degenerate (w 0: clipped).
+// The meshlet path's vertex stages and tile-classified visibility-buffer
+// resolve (meshlet_gpu.rs), after pbr.wgsl and pbr_prepass.wgsl in the
+// standard lit module.
+//
+// Hardware path (`vs_meshlet`, `vs_prepass_meshlet`): 64 x 3 vertices per
+// visible cluster pulled from group 3 bindings 8..14, 17, 18.
+//
+// Visibility-buffer resolve (`vs_meshlet_resolve`, `fs_meshlet_resolve`,
+// `fs_prepass_meshlet_resolve`): draws only the 8x8 tiles classified active for
+// each soft batch via indirect draws (`vis_tiles`, `vis_row`), pulls the
+// winning triangle directly from the 8 B/px visibility buffer (`vis_vbuf`) +
+// geometry pools, computes exact perspective-correct barycentrics and analytic
+// UV/world/local/normal derivatives (fixing B3 overflow & B8 specular AA /
+// weathering bend), and shades via `lit_fragment` / `prepass_targets`.
 
 // meshlet_sway.wgsl's `MeshletDraw`.
 @group(3) @binding(8) var<uniform> meshlet_draw: MeshletDraw;
@@ -12,37 +19,40 @@
 @group(3) @binding(18) var meshlet_wind_tex: texture_2d<f32>;
 // The culled instances' transforms (instances.rs `GpuTransform`, 4 x vec4).
 @group(3) @binding(9) var<storage, read> meshlet_instances: array<vec4<f32>>;
-// The batch's work items (bound at its first): instance, cluster.
+// Work items: hardware draws bind a dynamic window; resolve binds the whole buffer.
 @group(3) @binding(10) var<storage, read> meshlet_items: array<vec2<u32>>;
-// Per cluster 3 x vec4: (first index, triangles, level, 0), sphere, cone.
+// Per cluster 3 x vec4: (first index, triangles, level, foliage region + 1), sphere, cone.
 @group(3) @binding(11) var<storage, read> meshlet_clusters: array<vec4<u32>>;
 @group(3) @binding(12) var<storage, read> meshlet_indices: array<u32>;
-// The mesh's vertices (scene Vertex: 16 floats).
+// Hardware draw mesh vertices (scene Vertex: 16 floats).
 @group(3) @binding(13) var<storage, read> meshlet_vertices: array<vec4<f32>>;
-// The instances' previous transforms, at the same slots (the current ones
-// without object motion).
+// The instances' previous transforms, at the same slots (read by prepass only).
 @group(3) @binding(14) var<storage, read> meshlet_previous: array<vec4<f32>>;
-// The vertex pool, read for its foliage regions (meshlet_sway.wgsl).
+// The full vertex pool (all clustered meshes' vertices followed by foliage regions).
 @group(3) @binding(17) var<storage, read> meshlet_foliage: array<vec4<f32>>;
+
+// Visibility-buffer resolve bindings (vis.rs):
+// (width, height, soft_first, 0).
+@group(3) @binding(15) var<uniform> meshlet_screen: vec4<u32>;
+// Compact 8 B/px visibility buffer: depth words [0..wh), id words [wh..2*wh).
+@group(3) @binding(16) var<storage, read> vis_vbuf: array<u32>;
+// Compact tile lists: [0..2*soft_rows) = (start, count), tail = (tx | ty << 16).
+@group(3) @binding(19) var<storage, read> vis_tiles: array<u32>;
+// Current soft batch row (dynamic uniform offset per draw).
+@group(3) @binding(20) var<uniform> vis_row: vec4<u32>;
 
 struct MeshletVertex {
   ok: bool,
   v: VertexIn,
   model: mat4x4<f32>,
   look: vec4<f32>,
-  // The instance's sorted slot.
   slot: u32,
-  // Its foliage region plus one (0: none) and the vertex's own index.
   region: u32,
   index: u32,
-  // Where the vertex rests, as its leaf's year has grown it (the swayed
-  // position is v.position).
   rest: vec3<f32>,
-  // Its leaf in its year (foliage.wgsl `meshlet_leaf`).
   leaf: MeshletLeaf,
 };
 
-// The vertex's foliage rows (meshlet_sway.wgsl).
 fn meshlet_rows(region: u32, index: u32) -> array<vec4<f32>, 3> {
   let at = meshlet_sway_row(region, index);
   return array<vec4<f32>, 3>(meshlet_foliage[region - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u]);
@@ -52,7 +62,6 @@ fn meshlet_transform(t0: vec4<f32>, t1: vec4<f32>, t2: vec4<f32>) -> mat4x4<f32>
   return instance_matrix(t0.xyz, vec3<f32>(t0.w, t1.xy), vec3<f32>(t1.zw, t2.x), t2.yzw);
 }
 
-// lod.rs `debug_color`, packed 8:8:8 as pbr.wgsl's `look_rgb` reads it.
 fn meshlet_level_color(level: u32) -> f32 {
   var c = vec3<f32>(0.9, 0.08, 0.08);
   if (level == 0u) { c = vec3<f32>(0.1, 0.85, 0.15); }
@@ -96,7 +105,6 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
     r.rest = meshlet_grown(r.rest, f[2], r.leaf.leaf.kept * scale);
     r.v.position = r.rest + meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
   }
-  // The scene's tint, or the view's own (frame.drawn.y, View::lod_debug).
   if (meshlet_draw.flags.x != 0u || frame.drawn.y != 0u) {
     r.look.y = 0.8;
     r.look.z = meshlet_level_color(c.z);
@@ -114,16 +122,12 @@ fn vs_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
   }
   var v = p.v;
   if (p.region != 0u) {
-    // The leaves' canopy dome (the material's foliage, coat.w), on the lit
-    // pass alone: the shadow casters and the prepass keep the mesh's own.
     let f = meshlet_rows(p.region, p.index);
     v.normal = foliage_normal(v.normal, f[2].xyz, f[0].xyz, material.coat.w);
   }
   var o = lit_vertex(p.model, v);
   o.look = p.look;
   if (p.region != 0u) {
-    // Its autumn colour, which the fragment puts in place of its own, and
-    // the light its crown hides.
     o.season = meshlet_leaf_color(meshlet_foliage[p.region + 1u], meshlet_foliage[p.region + 2u], p.leaf);
     let f = meshlet_rows(p.region, p.index);
     let axis = meshlet_crown_axis(p.v.normal, f[2], f[0], meshlet_foliage[p.region]);
@@ -141,11 +145,8 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
     o.clip = vec4<f32>(0.0);
     return o;
   }
-  // Last frame's transform for the velocity (TAA, motion blur).
   let q = p.slot * 4u;
   let prev = meshlet_transform(meshlet_previous[q], meshlet_previous[q + 1u], meshlet_previous[q + 2u]);
-  // A foliage vertex was where the last drawn frame's wind and sway (the
-  // previous record's layer word) put it, its leaf grown as now.
   var before = p.rest;
   if (p.region != 0u) {
     let f = meshlet_rows(p.region, p.index);
@@ -154,15 +155,7 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
   return prepass_vertex_from(p.model, prev, p.v, before);
 }
 
-// The visibility buffer's resolve (meshlet_raster.wgsl): one full-screen
-// triangle per soft batch, its row the instance index. A pixel whose
-// record is the batch's is shaded as the hardware path shades a fragment
-// (`lit_fragment`, `prepass_targets`) at the rasteriser's depth; any
-// other is discarded.
-// Per pixel its record's slot plus one, then the records
-// (meshlet_raster.wgsl `setup`); binding 15 its screen width.
-@group(3) @binding(15) var<uniform> meshlet_screen: vec4<u32>;
-@group(3) @binding(16) var<storage, read> meshlet_attrs: array<vec4<u32>>;
+// ── Tile-classified visibility-buffer resolve ──────────────────────────────
 
 struct MeshletResolveOut {
   @builtin(position) clip: vec4<f32>,
@@ -170,94 +163,235 @@ struct MeshletResolveOut {
 };
 
 @vertex
-fn vs_meshlet_resolve(@builtin(vertex_index) vi: u32, @builtin(instance_index) row: u32) -> MeshletResolveOut {
+fn vs_meshlet_resolve(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> MeshletResolveOut {
+  let row = vis_row.x;
+  let base = vis_tiles[row * 2u];
+  let packed = vis_tiles[base + ii];
+  let tx = packed & 0xffffu;
+  let ty = packed >> 16u;
+  let w = f32(meshlet_screen.x);
+  let h = f32(meshlet_screen.y);
+  let x0 = f32(tx * 8u);
+  let y0 = f32(ty * 8u);
+  let x1 = min(x0 + 8.0, w);
+  let y1 = min(y0 + 8.0, h);
+  let nx0 = x0 / w * 2.0 - 1.0;
+  let nx1 = x1 / w * 2.0 - 1.0;
+  let ny0 = 1.0 - y0 / h * 2.0;
+  let ny1 = 1.0 - y1 / h * 2.0;
+  var pos = vec2<f32>(nx0, ny0);
+  if (vi == 1u) { pos = vec2<f32>(nx0, ny1); }
+  else if (vi == 2u || vi == 4u) { pos = vec2<f32>(nx1, ny1); }
+  else if (vi == 5u) { pos = vec2<f32>(nx1, ny0); }
   var o: MeshletResolveOut;
-  o.clip = fullscreen_clip(vi);
+  o.clip = vec4<f32>(pos, 0.0, 1.0);
   o.row = row;
   return o;
 }
 
-struct MeshletRecord {
-  // The pixel is this batch's.
+fn vis_screen_weights(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
+  let p0 = clip[0].xy / clip[0].w;
+  let p1 = clip[1].xy / clip[1].w;
+  let p2 = clip[2].xy / clip[2].w;
+  let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+  let inv = select(0.0, 1.0 / area, abs(area) > 1e-20);
+  return vec3<f32>(
+    (p1.x - ndc.x) * (p2.y - ndc.y) - (p1.y - ndc.y) * (p2.x - ndc.x),
+    (p2.x - ndc.x) * (p0.y - ndc.y) - (p2.y - ndc.y) * (p0.x - ndc.x),
+    (p0.x - ndc.x) * (p1.y - ndc.y) - (p0.y - ndc.y) * (p1.x - ndc.x),
+  ) * inv;
+}
+
+fn vis_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
+  let q = l / vec3<f32>(clip[0].w, clip[1].w, clip[2].w);
+  let sum = q.x + q.y + q.z;
+  return select(vec3<f32>(1.0 / 3.0), q / sum, abs(sum) > 1e-20);
+}
+
+fn vis_leaf(local: u32, region: u32, now: mat4x4<f32>) -> MeshletLeaf {
+  let at = meshlet_sway_row(region, local);
+  return meshlet_leaf(meshlet_foliage[region], meshlet_foliage[at + 1u], now, meshlet_draw.wind[0].origin.xyz, meshlet_draw.leaf_year);
+}
+
+fn vis_rest_position(base: u32, local: u32, region: u32, level: u32, now: mat4x4<f32>) -> vec3<f32> {
+  var p = meshlet_foliage[(base + local) * 4u].xyz;
+  if (region == 0u) { return p; }
+  let at = meshlet_sway_row(region, local);
+  let scale = meshlet_level_scale(meshlet_foliage[meshlet_scale_row(region, level)], level);
+  return meshlet_grown(p, meshlet_foliage[at + 1u], vis_leaf(local, region, now).leaf.kept * scale);
+}
+
+struct VisPull {
   ok: bool,
   front: f32,
   depth: f32,
   v: VertexOut,
-  prev_world: vec3<f32>,
-  object: u32,
-  // The lit pass's uv gradients: pbr.wgsl `stylised_uv`'s (affine
-  // texturing's mix), the raw uv's without the extra rows.
   lit_uv: vec4<f32>,
+  object: u32,
+  // Triangle & barycentric data reused by prepass to compute previous world pos.
+  inst: u32,
+  region: u32,
+  locals: vec3<u32>,
+  rest: array<vec3<f32>, 3>,
+  bary: vec3<f32>,
 };
 
-fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
-  var r: MeshletRecord;
-  // meshlet_screen: (width, height, its pixels rounded up to a row, vec4
-  // rows per record).
-  let pixel = u32(pos.y) * meshlet_screen.x + u32(pos.x);
-  let slot = meshlet_attrs[pixel / 4u][pixel % 4u];
+fn vis_pull(pos: vec4<f32>, row: u32) -> VisPull {
+  var r: VisPull;
   r.ok = false;
   r.depth = 0.0;
-  if (slot == 0u) { return r; }
-  let at = meshlet_screen.z / 4u + (slot - 1u) * meshlet_screen.w;
-  let a = meshlet_attrs[at];
-  let b = meshlet_attrs[at + 1u];
-  let c = meshlet_attrs[at + 2u];
-  if ((c.y & 0x0fffffffu) != row) { return r; }
+  let w = meshlet_screen.x;
+  let h = meshlet_screen.y;
+  let px = u32(pos.x);
+  let py = u32(pos.y);
+  if (px >= w || py >= h) { return r; }
+  let wh = w * h;
+  let pixel = py * w + px;
+  let id = vis_vbuf[wh + pixel];
+  if (id == 0u) { return r; }
+  let k = (id - 1u) >> 6u;
+  let tri = (id - 1u) & 63u;
+  let f = meshlet_items[meshlet_screen.z + k * 2u + 1u];
+  if ((f.x & 0x0fffffffu) != row) { return r; }
+
   r.ok = true;
-  r.front = select(1.0, -1.0, (c.y & 0x80000000u) != 0u);
-  r.depth = bitcast<f32>(a.w);
-  r.v.clip = pos;
-  r.v.world_pos = bitcast<vec3<f32>>(a.xyz);
-  r.v.normal = oct_decode(unpack2x16snorm(b.x));
-  r.v.uv = bitcast<vec2<f32>>(b.yz);
-  r.v.color = unpack4x8unorm(b.w);
-  let r4 = meshlet_attrs[at + 4u];
-  let r5 = meshlet_attrs[at + 5u];
-  // The material style's surface pattern lies in the mesh's own space.
-  r.v.local_pos = bitcast<vec3<f32>>(r4.xyz);
-  let tan_code = (c.y >> 29u) & 3u;
-  let tan_w = select(0.0, select(-1.0, 1.0, tan_code == 1u), tan_code != 0u);
-  r.v.tangent = select(vec4<f32>(0.0), vec4<f32>(oct_decode(unpack2x16snorm(c.x)), tan_w), tan_code != 0u);
-  r.v.affine = vec3<f32>(r.v.uv, 1.0);
-  r.v.look = bitcast<vec4<f32>>(meshlet_attrs[at + 3u]);
-  let delta_xy = unpack_f16x2(r5.w);
-  let delta_z = unpack_f16x2(c.z >> 16u).x;
-  r.prev_world = r.v.world_pos + vec3<f32>(delta_xy, delta_z);
-  // The pixel's gradients (pbr_fs.wgsl `ANALYTIC`).
-  analytic_uv = vec4<f32>(unpack_f16x2(c.w), unpack_f16x2(r4.w));
-  let dw0 = unpack_f16x2(r5.x);
-  let dw1 = unpack_f16x2(r5.y);
-  let dw2 = unpack_f16x2(r5.z);
-  analytic_dx = vec3<f32>(dw0.x, dw0.y, dw1.x);
-  analytic_dy = vec3<f32>(dw1.y, dw2.x, dw2.y);
-  r.lit_uv = analytic_uv;
-  if (meshlet_screen.w > 6u) {
-    // The extra rows (meshlet_raster.wgsl `setup`).
-    let e0 = meshlet_attrs[at + 6u];
-    let e1 = meshlet_attrs[at + 7u];
-    let e2 = meshlet_attrs[at + 8u];
-    let dl0 = unpack_f16x2(e0.x);
-    let dl1 = unpack_f16x2(e0.y);
-    let dl2 = unpack_f16x2(e0.z);
-    analytic_local_dx = vec3<f32>(dl0.x, dl0.y, dl1.x);
-    analytic_local_dy = vec3<f32>(dl1.y, dl2.x, dl2.y);
-    // Affine texturing's uv, which `stylised_uv` mixes in.
-    r.v.affine = vec3<f32>(bitcast<f32>(e1.x), bitcast<f32>(e1.y), 1.0);
-    r.lit_uv = vec4<f32>(unpack_f16x2(e0.w), unpack_f16x2(e1.z));
-    // A foliage mesh's canopy dome, by its material's foliage (coat.w),
-    // as `vs_meshlet` blends it per vertex.
-    if (e2.x != 0u && material.coat.w > 0.0) {
-      r.v.normal = normalize(mix(normalize(r.v.normal), oct_decode(unpack2x16snorm(e1.w)), clamp(material.coat.w, 0.0, 1.0)));
+  r.depth = bitcast<f32>(vis_vbuf[pixel]);
+  let e = meshlet_items[meshlet_screen.z + k * 2u];
+  let c = meshlet_clusters[e.y * 3u];
+  let q = e.x * 4u;
+  let model = meshlet_transform(meshlet_instances[q], meshlet_instances[q + 1u], meshlet_instances[q + 2u]);
+  var look = meshlet_instances[q + 3u];
+  let sway_val = foliage_sway(look.x);
+  let size = vec2<f32>(f32(w), f32(h));
+  let ndc = vec2<f32>((f32(px) + 0.5) / size.x * 2.0 - 1.0, 1.0 - (f32(py) + 0.5) / size.y * 2.0);
+
+  var locals: array<u32, 3>;
+  var rest: array<vec3<f32>, 3>;
+  var at: array<vec3<f32>, 3>;
+  var clip: array<vec4<f32>, 3>;
+  for (var j = 0u; j < 3u; j++) {
+    let local = meshlet_indices[c.x + tri * 3u + j];
+    locals[j] = local;
+    let rp = vis_rest_position(f.y, local, c.w, c.z, model);
+    rest[j] = rp;
+    var sp = rp;
+    if (c.w != 0u) {
+      let fr = meshlet_rows(c.w, local);
+      sp += meshlet_sway(rp, fr[0], fr[1], fr[2], model, meshlet_draw.wind[0], sway_val, false);
     }
-    // Its leaf's autumn colour (meshlet_raster.wgsl `setup`: rgb square
-    // roots, then how far it replaces the leaf's own).
-    let season = unpack4x8unorm(e2.y);
-    r.v.season = vec4<f32>(season.rgb * season.rgb, season.a);
-    // And what its crown hides of the light around it and of the sun.
-    r.v.crown = unpack2x16unorm(e2.z);
+    at[j] = sp;
+    clip[j] = retro_clip(mul_point(frame.view_proj, model * vec4<f32>(sp, 1.0)));
   }
-  r.object = c.z & 0xffffu;
+
+  let l = vis_screen_weights(clip, ndc);
+  let lx = vis_screen_weights(clip, ndc + vec2<f32>(2.0 / size.x, 0.0));
+  let ly = vis_screen_weights(clip, ndc - vec2<f32>(0.0, 2.0 / size.y));
+  let b = vis_bary(clip, l);
+  let bx = vis_bary(clip, lx);
+  let by = vis_bary(clip, ly);
+
+  var position = vec3<f32>(0.0);
+  var normal = vec3<f32>(0.0);
+  var dnorm_x = vec3<f32>(0.0);
+  var dnorm_y = vec3<f32>(0.0);
+  var uv = vec2<f32>(0.0);
+  var color = vec4<f32>(0.0);
+  var tangent = vec4<f32>(0.0);
+  var dpos_x = vec3<f32>(0.0);
+  var dpos_y = vec3<f32>(0.0);
+  var duv_x = vec2<f32>(0.0);
+  var duv_y = vec2<f32>(0.0);
+  var affine = vec2<f32>(0.0);
+  var daff_x = vec2<f32>(0.0);
+  var daff_y = vec2<f32>(0.0);
+  var dome = vec3<f32>(0.0);
+  var season = vec4<f32>(0.0);
+  var crown = vec2<f32>(0.0);
+  let sun = meshlet_model_dir(model, frame.light_dir.xyz);
+
+  for (var j = 0u; j < 3u; j++) {
+    let vi = f.y + locals[j];
+    let va = meshlet_foliage[vi * 4u];
+    let vb = meshlet_foliage[vi * 4u + 1u];
+    let vn = vec3<f32>(va.w, vb.xy);
+    let dbx = bx[j] - b[j];
+    let dby = by[j] - b[j];
+    position += at[j] * b[j];
+    dpos_x += at[j] * dbx;
+    dpos_y += at[j] * dby;
+    normal += vn * b[j];
+    dnorm_x += vn * dbx;
+    dnorm_y += vn * dby;
+    uv += vb.zw * b[j];
+    duv_x += vb.zw * dbx;
+    duv_y += vb.zw * dby;
+    affine += vb.zw * l[j];
+    daff_x += vb.zw * (lx[j] - l[j]);
+    daff_y += vb.zw * (ly[j] - l[j]);
+    color += meshlet_foliage[vi * 4u + 2u] * b[j];
+    tangent += meshlet_foliage[vi * 4u + 3u] * b[j];
+    if (c.w != 0u) {
+      let fr = meshlet_rows(c.w, locals[j]);
+      dome += foliage_normal(vn, fr[2].xyz, fr[0].xyz, 1.0) * b[j];
+      season += meshlet_leaf_color(meshlet_foliage[c.w + 1u], meshlet_foliage[c.w + 2u], vis_leaf(locals[j], c.w, model)) * b[j];
+      let axis = meshlet_crown_axis(vn, fr[2], fr[0], meshlet_foliage[c.w]);
+      crown += meshlet_crown(at[j], axis, sun, fr[0], meshlet_foliage[c.w + 3u]) * b[j];
+    }
+  }
+
+  let world = (model * vec4<f32>(position, 1.0)).xyz;
+  var n = world_normal(model, normal);
+  let n_rx = world_normal(model, normal + dnorm_x);
+  let n_ry = world_normal(model, normal + dnorm_y);
+  if (c.w != 0u && material.coat.w > 0.0) {
+    let dome_w = world_normal(model, dome);
+    n = normalize(mix(n, dome_w, clamp(material.coat.w, 0.0, 1.0)));
+  }
+  let m3 = mat3x3<f32>(model[0].xyz, model[1].xyz, model[2].xyz);
+  let hand = select(-1.0, 1.0, determinant(m3) >= 0.0);
+  let tw = (model * vec4<f32>(tangent.xyz, 0.0)).xyz;
+  let t_vec = select(vec3<f32>(0.0), normalize(tw), dot(tw, tw) > 1e-20);
+
+  let p0 = clip[0].xy / clip[0].w;
+  let e1 = clip[1].xy / clip[1].w - p0;
+  let e2 = clip[2].xy / clip[2].w - p0;
+  let back = e1.x * e2.y - e1.y * e2.x < 0.0;
+  r.front = select(1.0, -1.0, back);
+
+  r.object = outline_object(model[0].xyz, model[1].xyz, model[2].xyz, model[3].xyz, look) & 0xffffu;
+  if (meshlet_draw.flags.x != 0u || frame.drawn.y != 0u) {
+    look.y = 0.8;
+    look.z = meshlet_level_color(c.z);
+  }
+
+  r.v.clip = pos;
+  r.v.world_pos = world;
+  r.v.normal = n;
+  r.v.uv = uv;
+  r.v.color = color;
+  r.v.local_pos = position;
+  r.v.tangent = vec4<f32>(t_vec, tangent.w * hand);
+  r.v.affine = vec3<f32>(affine, 1.0);
+  r.v.look = look;
+  r.v.season = season;
+  r.v.crown = crown;
+  r.v.moves = 0u;
+
+  analytic_uv = vec4<f32>(duv_x, duv_y);
+  analytic_dx = (model * vec4<f32>(dpos_x, 0.0)).xyz;
+  analytic_dy = (model * vec4<f32>(dpos_y, 0.0)).xyz;
+  analytic_local_dx = dpos_x;
+  analytic_local_dy = dpos_y;
+  analytic_dnx = n_rx - n;
+  analytic_dny = n_ry - n;
+  let aff_share = clamp(frame.stylise.z, 0.0, 1.0);
+  r.lit_uv = vec4<f32>(mix(duv_x, daff_x, aff_share), mix(duv_y, daff_y, aff_share));
+
+  r.inst = e.x;
+  r.region = c.w;
+  r.locals = vec3<u32>(locals[0], locals[1], locals[2]);
+  r.rest = rest;
+  r.bary = b;
   return r;
 }
 
@@ -268,7 +402,7 @@ struct MeshletResolveLit {
 
 @fragment
 fn fs_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolveLit {
-  let r = meshlet_record(in.clip, in.row);
+  let r = vis_pull(in.clip, in.row);
   if (!r.ok) { discard; }
   var o: MeshletResolveLit;
   o.depth = r.depth;
@@ -288,8 +422,21 @@ struct MeshletResolvePrepass {
 
 @fragment
 fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
-  let r = meshlet_record(in.clip, in.row);
+  let r = vis_pull(in.clip, in.row);
   if (!r.ok) { discard; }
+  let q = r.inst * 4u;
+  let prev = meshlet_transform(meshlet_previous[q], meshlet_previous[q + 1u], meshlet_previous[q + 2u]);
+  let prev_sway = foliage_sway(meshlet_previous[q + 3u].x);
+  var before = vec3<f32>(0.0);
+  for (var j = 0u; j < 3u; j++) {
+    var wp = r.rest[j];
+    if (r.region != 0u) {
+      let fr = meshlet_rows(r.region, r.locals[j]);
+      wp += meshlet_sway(wp, fr[0], fr[1], fr[2], prev, meshlet_draw.wind[1], prev_sway, true);
+    }
+    before += wp * r.bary[j];
+  }
+  let prev_world = (prev * vec4<f32>(before, 1.0)).xyz;
   var p: PrepassOut;
   p.clip = in.clip;
   p.world_pos = r.v.world_pos;
@@ -299,7 +446,7 @@ fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
   p.local_pos = r.v.local_pos;
   p.affine = r.v.affine;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(r.v.world_pos, 1.0);
-  p.prev_clip = mul_point(fx.prev_view_proj, vec4<f32>(r.prev_world, 1.0));
+  p.prev_clip = mul_point(fx.prev_view_proj, vec4<f32>(prev_world, 1.0));
   p.object = r.object;
   hook_front = r.front;
   let t = prepass_targets(p);
