@@ -6,8 +6,6 @@ pub(super) struct DrawListInputs<'a, P, F0> {
     pub(super) pass: &'a mut P,
     pub(super) list: &'a DrawList,
     pub(super) lit: bool,
-    /// What a shadow pass (`lit` false) draws into.
-    pub(super) shadow: ShadowTarget,
     pub(super) current: &'a mut Option<LitDrawKey>,
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probes: Option<probe_select::ProbeGroups<'a>>,
@@ -27,7 +25,6 @@ impl Renderer {
             pass,
             list,
             lit,
-            shadow,
             current,
             physical_fx,
             probes,
@@ -158,7 +155,7 @@ impl Renderer {
                     .get() else {
                         continue;
                     };
-                    pass.set_pipeline(set.get(shadow));
+                    pass.set_pipeline(set);
                     shadow_key = Some(key);
                 }
                 if batch.dissolve || batch.shader.is_some() {

@@ -474,7 +474,6 @@ impl Renderer {
                 shared_depth,
                 card_depth.as_ref(),
                 cards,
-                ShadowTarget::Cascade,
             ));
             stats.draw_calls += n;
             stats.scatter_draws += n;

@@ -458,10 +458,10 @@ pub(crate) struct TerrainPasses {
     /// front. The shadows draw both faces and need no second.
     pub lit: [Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>; 2],
     pub prepass: [Rc<Variants<Deferred<wgpu::RenderPipeline>>>; 2],
-    pub shadow: Rc<Deferred<crate::ShadowSet>>,
+    pub shadow: Rc<Deferred<wgpu::RenderPipeline>>,
     pub stamp_lit: [Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>; 2],
     pub stamp_prepass: [Rc<Variants<Deferred<wgpu::RenderPipeline>>>; 2],
-    pub stamp_shadow: Rc<Deferred<crate::ShadowSet>>,
+    pub stamp_shadow: Rc<Deferred<wgpu::RenderPipeline>>,
     /// The corner cache's writer (`terrain_corners.wgsl`).
     pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
 }
@@ -508,8 +508,7 @@ impl TerrainPasses {
 pub(crate) enum TerrainPass {
     Lit,
     Prepass,
-    /// Into a shadow layer of this kind (shadow_target.rs).
-    Shadow(crate::ShadowTarget),
+    Shadow,
 }
 
 /// The pipeline layouts and modules [`terrain_passes`] builds from.

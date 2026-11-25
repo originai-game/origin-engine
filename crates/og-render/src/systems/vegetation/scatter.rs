@@ -817,8 +817,8 @@ pub(crate) struct ScatterRenderer {
     /// The features the frame's lit and prepass pipelines draw with (the
     /// renderer's `frame_features`: every one in a capture).
     pub features: Features,
-    /// The shadow kinds' pipelines, one per target (shadow_target.rs).
-    shadow_pipelines: HashMap<(Option<usize>, Side, u8), crate::ShadowSet>,
+    /// The shadow kinds' pipelines (single-pass R32Float, shadow_target.rs).
+    shadow_pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
     uniform_layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     slots: u64,

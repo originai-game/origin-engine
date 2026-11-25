@@ -97,7 +97,6 @@ impl MeshletGpu {
     pub fn draw_shadow<'m>(
         &self,
         pass: &mut impl Encode,
-        target: crate::ShadowTarget,
         batches: &[Batch],
         view: u32,
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
@@ -111,7 +110,7 @@ impl MeshletGpu {
             ) else {
                 continue;
             };
-            pass.set_pipeline(pipeline.get(target));
+            pass.set_pipeline(pipeline);
             pass.set_bind_group(1, material(b), &[]);
             pass.set_bind_group(3, group, &[d.first_item * 8]);
             pass.draw_indirect(&self.draws, d.row as u64 * 16);

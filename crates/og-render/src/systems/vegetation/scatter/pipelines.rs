@@ -113,15 +113,13 @@ impl ScatterRenderer {
             let set = if impostor {
                 self.card_shadows(device, false)
             } else {
-                // A local layer's pair only when a frame draws one (shadow_target.rs).
-                let (device, layout, module) = (
-                    device.clone(),
-                    self.shadow_layout.clone(),
-                    self.shadow_module.clone(),
-                );
-                crate::ShadowSet::lazy(move |t| {
-                    Self::mesh_shadow_pipeline(&device, &layout, &module, side, foliage, t)
-                })
+                Self::mesh_shadow_pipeline(
+                    device,
+                    &self.shadow_layout,
+                    &self.shadow_module,
+                    side,
+                    foliage,
+                )
             };
             self.shadow_pipelines.insert(key, set);
             return;
@@ -206,15 +204,13 @@ impl ScatterRenderer {
         })
     }
 
-    /// A scattered mesh's shadow pipeline into `target`: as shadow.wgsl's
-    /// casters (shadow_target.rs).
+    /// A scattered mesh's shadow pipeline (shadow_target.rs).
     fn mesh_shadow_pipeline(
         device: &wgpu::Device,
         layout: &wgpu::PipelineLayout,
         module: &wgpu::ShaderModule,
         side: Side,
         foliage: bool,
-        target: crate::ShadowTarget,
     ) -> wgpu::RenderPipeline {
         let (buffers, vs) = match foliage {
             true => (FOLIAGE_BUFFERS, "vs_shadow_foliage"),
@@ -232,19 +228,16 @@ impl ScatterRenderer {
                     buffers,
                 },
                 primitive: wgpu::PrimitiveState {
-                    cull_mode: target.cull(side),
+                    cull_mode: crate::ShadowTarget::cull(side),
                     ..Default::default()
                 },
-                depth_stencil: Some(target.depth()),
+                depth_stencil: Some(crate::ShadowTarget::depth()),
                 multisample: Default::default(),
                 fragment: Some(wgpu::FragmentState {
                     module,
                     entry_point: Some("fs_shadow"),
-                    compilation_options: wgpu::PipelineCompilationOptions {
-                        constants: crate::ShadowTarget::constants(side),
-                        ..Default::default()
-                    },
-                    targets: &[Some(target.color())],
+                    compilation_options: Default::default(),
+                    targets: &[Some(crate::ShadowTarget::color())],
                 }),
                 multiview_mask: None,
                 cache: crate::pipeline_cache::of(device).as_ref(),
@@ -253,22 +246,20 @@ impl ScatterRenderer {
     }
 
     /// An impostor's (`impostor_shadow.wgsl`) or a crowd card's
-    /// (`crowd_card_shadow.wgsl`) shadow pipelines: the card has no vertex
-    /// buffer but the instances' (slot 0), both faces cast, and a local
-    /// layer's pair is made when a frame draws one (shadow_target.rs).
-    pub(super) fn card_shadows(&self, device: &wgpu::Device, card: bool) -> crate::ShadowSet {
-        let (device, layout, module) = (
-            device.clone(),
-            self.shadow_layout.clone(),
-            self.shadow_module.clone(),
-        );
+    /// (`crowd_card_shadow.wgsl`) shadow pipeline: the card has no vertex
+    /// buffer but the instances' (slot 0), both faces cast (shadow_target.rs).
+    pub(super) fn card_shadows(&self, device: &wgpu::Device, card: bool) -> wgpu::RenderPipeline {
         let (label, entry, buffers) = match card {
             true => ("crowd card", "crowd_card", CARD_BUFFERS),
             false => ("impostor", "impostor", IMPOSTOR_BUFFERS),
         };
-        crate::ShadowSet::lazy(move |target| {
-            card_shadow(&device, (&layout, &module), label, entry, buffers, target)
-        })
+        card_shadow(
+            device,
+            (&self.shadow_layout, &self.shadow_module),
+            label,
+            entry,
+            buffers,
+        )
     }
 }
 
@@ -278,7 +269,6 @@ fn card_shadow(
     label: &'static str,
     entry: &str,
     buffers: &[Option<wgpu::VertexBufferLayout<'static>>],
-    target: crate::ShadowTarget,
 ) -> wgpu::RenderPipeline {
     let (vs, fs) = (format!("vs_{entry}_shadow"), format!("fs_{entry}_shadow"));
     crate::traffic::create_render_pipeline(
@@ -293,17 +283,13 @@ fn card_shadow(
                 buffers,
             },
             primitive: Default::default(),
-            depth_stencil: Some(target.depth()),
+            depth_stencil: Some(crate::ShadowTarget::depth()),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module,
                 entry_point: Some(&fs),
-                // Both faces cast (shadow_target.rs).
-                compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: crate::ShadowTarget::constants(Side::Double),
-                    ..Default::default()
-                },
-                targets: &[Some(target.color())],
+                compilation_options: Default::default(),
+                targets: &[Some(crate::ShadowTarget::color())],
             }),
             multiview_mask: None,
             cache: crate::pipeline_cache::of(device).as_ref(),

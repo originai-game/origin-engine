@@ -43,6 +43,37 @@ impl ScatterRenderer {
         queries
     }
 
+    /// World bounding spheres of all shadow-casting scatter chunks and model
+    /// impostor batches, plus whether any crowd card batch casts shadows
+    /// (unbounded in world space). Used by shadow cache overlay culling so
+    /// static shadow faces outside all casting scatter/impostor bounds stay
+    /// cached.
+    pub(crate) fn shadow_bounds(&self, all: &ScatterBatches) -> (Vec<(Vec3, f32)>, bool) {
+        let mut spheres = Vec::new();
+        for b in &all.scatters {
+            if !b.cast_shadows {
+                continue;
+            }
+            for k in &b.chunks {
+                if let Some(c) = self.chunks.get(k)
+                    && c.buffer.is_some()
+                {
+                    spheres.push((c.center + b.at, c.radius + b.sway));
+                }
+            }
+        }
+        for b in &all.impostors {
+            if b.cast_shadows {
+                spheres.push((b.center, b.radius));
+            }
+        }
+        let cards_cast = all
+            .cards
+            .iter()
+            .any(|b| b.input.cast_shadows && b.group.is_some());
+        (spheres, cards_cast)
+    }
+
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
     /// frame bound by the caller): the chunks whose bounds `visible` keeps,
     /// with their copies' impostors, then the model impostors; `camera`:
@@ -69,11 +100,9 @@ impl ScatterRenderer {
         prepass_depth: bool,
         card_depth: Option<&wgpu::BindGroup>,
         cards: CardSource<'_>,
-        // What a shadow pass draws into (shadow_target.rs).
-        target: crate::ShadowTarget,
     ) -> (u32, u32) {
         let pipeline = |key: &(Option<usize>, Side, u8)| match kind {
-            ScatterPass::Shadow => self.shadow_pipelines.get(key).map(|s| s.get(target)),
+            ScatterPass::Shadow => self.shadow_pipelines.get(key),
             _ => self.pipelines.get(key).and_then(|v| v.get(self.features)),
         };
         // The main camera's prepass and lit pass draw the copies the GPU

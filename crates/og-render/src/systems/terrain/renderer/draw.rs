@@ -38,7 +38,7 @@ pub(crate) fn draw_levels(
     let mut calls = 0;
     let mut triangles = 0;
     for d in draws {
-        if matches!(which, TerrainPass::Shadow(_)) && !d.cast_shadows {
+        if matches!(which, TerrainPass::Shadow) && !d.cast_shadows {
             continue;
         }
         pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
@@ -47,7 +47,7 @@ pub(crate) fn draw_levels(
         let Some(pipeline) = (match which {
             TerrainPass::Lit => d.passes.lit[usize::from(d.mirrored)].get(d.features),
             TerrainPass::Prepass => d.passes.prepass[usize::from(d.mirrored)].get(d.features),
-            TerrainPass::Shadow(t) => d.passes.shadow.get().map(|s| s.get(t)),
+            TerrainPass::Shadow => d.passes.shadow.get(),
         }) else {
             continue;
         };
@@ -78,7 +78,7 @@ pub(crate) fn draw_levels(
         // The facing of the stamp pipeline bound, once one is.
         let mut bound = None;
         for st in &d.stamps {
-            if (matches!(which, TerrainPass::Shadow(_)) && !st.cast_shadows)
+            if (matches!(which, TerrainPass::Shadow) && !st.cast_shadows)
                 || !frustum.intersects_sphere(st.center, st.radius)
             {
                 continue;
@@ -88,7 +88,7 @@ pub(crate) fn draw_levels(
                 let Some(pipeline) = (match which {
                     TerrainPass::Lit => d.passes.stamp_lit[m].get(d.features),
                     TerrainPass::Prepass => d.passes.stamp_prepass[m].get(d.features),
-                    TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().map(|s| s.get(t)),
+                    TerrainPass::Shadow => d.passes.stamp_shadow.get(),
                 }) else {
                     continue;
                 };

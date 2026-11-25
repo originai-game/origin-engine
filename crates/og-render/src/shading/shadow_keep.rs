@@ -122,19 +122,19 @@ impl ShadowKeep {
         }
     }
 
-    /// A texture to keep a layer of `format` and side `size` in.
-    pub(crate) fn layer(
-        &self,
-        device: &wgpu::Device,
-        size: u32,
-        format: wgpu::TextureFormat,
-    ) -> KeptLayer {
+    /// A texture to keep a layer of side `size` in (`local`: radial local-light
+    /// layer whose depth buffer differs from its stored distance).
+    pub(crate) fn layer(&self, device: &wgpu::Device, size: u32, local: bool) -> KeptLayer {
         let usage = wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::TEXTURE_BINDING;
         let texture = |label, format| {
             crate::gpu::texture::target_texture(device, label, size, size, format, usage)
         };
+        let format = if local {
+            LOCAL_SHADOW_FORMAT
+        } else {
+            CASCADE_FORMAT
+        };
         let color = texture("kept shadow", format);
-        let local = format == LOCAL_SHADOW_FORMAT;
         let depth = local.then(|| texture("kept shadow depth", DEPTH_FORMAT));
         let view = |t: &wgpu::Texture| t.create_view(&Default::default());
         let views: Vec<wgpu::TextureView> =
@@ -162,17 +162,11 @@ impl ShadowKeep {
     }
 
     /// Draws `layer` into a pass that cleared its targets, before the
-    /// casters drawn over it. `targets`: the pass's ([`ShadowTarget`]).
-    pub(crate) fn put_back(
-        &self,
-        pass: &mut impl Encode,
-        layer: &KeptLayer,
-        targets: &[ShadowTarget],
-    ) {
-        let put = if targets == [ShadowTarget::Cascade] {
-            &self.cascade
-        } else {
-            &self.local
+    /// casters drawn over it.
+    pub(crate) fn put_back(&self, pass: &mut impl Encode, layer: &KeptLayer, target: ShadowTarget) {
+        let put = match target {
+            ShadowTarget::Cascade => &self.cascade,
+            ShadowTarget::Local => &self.local,
         };
         pass.set_pipeline(&put.pipeline);
         pass.set_bind_group(0, &layer.bind_group, &[]);

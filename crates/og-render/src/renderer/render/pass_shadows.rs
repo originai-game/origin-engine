@@ -20,9 +20,14 @@ pub(super) struct Casters<'a> {
     pub meshlet_casters: &'a [u32],
     pub shadow_split: &'a shadow_cache::Split,
     dynamic: shadow_cache::DynamicFirsts,
-    /// The casters drawn unculled over every layer: skinned, scattered
-    /// copies, clustered.
-    unculled_overlay: bool,
+    /// True when an overlay caster has no world bounds (GPU crowd, crowd cards,
+    /// or more casting skinned instances than `MAX_TESTED_DYNAMIC`), forcing
+    /// every cached layer to take a dynamic overlay pass.
+    unbounded_overlay: bool,
+    /// World AABBs of casting opaque skinned instances (bounded overlay check).
+    skinned_boxes: Vec<(Vec3, Vec3)>,
+    /// World spheres of casting scatter chunks and model impostor batches.
+    scatter_spheres: Vec<(Vec3, f32)>,
     grass_casts: bool,
     terrain_casters: bool,
     terrain_draws: &'a [terrain::TerrainDraw],
@@ -35,34 +40,60 @@ impl<'a> Casters<'a> {
         meshlet_casters: &'a [u32],
         shadow_split: &'a shadow_cache::Split,
         skinned_batches: &[Batch],
+        all_skinned_boxes: &[(Vec3, Vec3)],
         scatter_batches: &scatter::ScatterBatches,
+        scatter_renderer: Option<&scatter::ScatterRenderer>,
         grass_frame: &grass::GrassFrame,
         terrain_casters: bool,
         terrain_draws: &'a [terrain::TerrainDraw],
     ) -> Casters<'a> {
         // The static shadow cache (shadow_cache.rs): what each cascade and
         // local face draws this frame. A layer needs its dynamic casters
-        // drawn over the cached static ones when one reaches it, or when it
-        // draws casters every frame whatever they do: the skinned ones and
-        // scattered copies (unculled), the clustered ones (their level
-        // follows the camera), terrain levels in its volume (the clipmap
-        // follows the camera) and grass (the first cascade).
+        // drawn over the cached static ones when one reaches its frustum:
+        // moving static batches, skinned instances, scattered copies,
+        // clustered casters, terrain levels in its volume, and grass (the
+        // first cascades).
         let dynamic = crate::shadow_cache::DynamicFirsts::new(
             seen.batches
                 .iter()
                 .zip(&shadow_split.dynamic)
                 .map(|(b, d)| (b.first, b.count, *d)),
         );
-        let unculled_overlay = skinned_batches.iter().any(|b| b.cast && !b.transparent)
-            || !scatter_batches.scatters.is_empty()
-            || !scatter_batches.impostors.is_empty()
-            || !meshlet_casters.is_empty();
+        let (scatter_spheres, cards_cast) = scatter_renderer.map_or_else(
+            || (Vec::new(), scatter_batches.casts()),
+            |s| s.shadow_bounds(scatter_batches),
+        );
+        let mut unbounded_overlay = cards_cast;
+        let mut skinned_boxes = Vec::new();
+        for b in skinned_batches {
+            if !b.cast || b.transparent || b.count == 0 {
+                continue;
+            }
+            if b.crowd.is_some()
+                || skinned_boxes.len() + b.count as usize > shadow_cache::MAX_TESTED_DYNAMIC
+            {
+                unbounded_overlay = true;
+                skinned_boxes.clear();
+                break;
+            }
+            let first = b.first as usize;
+            let end = first + b.count as usize;
+            if let Some(slice) = all_skinned_boxes.get(first..end) {
+                skinned_boxes.extend_from_slice(slice);
+            } else {
+                unbounded_overlay = true;
+                skinned_boxes.clear();
+                break;
+            }
+        }
         Casters {
             seen,
             meshlet_casters,
             shadow_split,
             dynamic,
-            unculled_overlay,
+            unbounded_overlay,
+            skinned_boxes,
+            scatter_spheres,
             grass_casts: grass_frame.casts(),
             terrain_casters,
             terrain_draws,
@@ -93,10 +124,31 @@ impl<'a> Casters<'a> {
     }
 
     /// Whether the layer at shadow slot `slot` draws dynamic casters over
-    /// its cached static ones: those in `f`, what the frame culls its own
-    /// casters to.
+    /// its cached static ones: those intersecting `f`, what the frame culls
+    /// its own casters to.
     fn overlay_in(&self, slot: usize, f: &Frustum) -> bool {
-        self.unculled_overlay
+        self.unbounded_overlay
+            || self
+                .skinned_boxes
+                .iter()
+                .any(|&(lo, hi)| f.intersects_box(lo, hi))
+            || self
+                .scatter_spheres
+                .iter()
+                .any(|&(c, r)| f.intersects_sphere(c, r))
+            || self.meshlet_casters.iter().any(|&bi| {
+                let b = &self.seen.batches[bi as usize];
+                if b.count == 0 {
+                    return false;
+                }
+                b.reach.is_none_or(|(lo, hi)| {
+                    f.intersects_box(lo, hi)
+                        && (b.count as usize > shadow_cache::MAX_TESTED_DYNAMIC
+                            || self.seen.spheres[b.first as usize..(b.first + b.count) as usize]
+                                .iter()
+                                .any(|&(c, r)| f.intersects_sphere(c, r)))
+                })
+            })
             || (slot < grass::SHADOW_CASCADES && self.grass_casts)
             || (self.terrain_casters
                 && self
@@ -201,20 +253,13 @@ impl<'a> Casters<'a> {
 }
 
 /// Makes the textures the plans of `kept` keep their layers in
-/// (`shadow_keep.rs`), at their layer's side (`(slot, plan, side,
-/// format)`), on first need.
+/// (`shadow_keep.rs`), at their layer's side (`(slot, plan, side, local)`),
+/// on first need.
 fn cache_maps<'p>(
     r: &mut Renderer,
-    kept: impl Iterator<
-        Item = (
-            usize,
-            &'p crate::shadow_cache::Plan,
-            u32,
-            wgpu::TextureFormat,
-        ),
-    >,
+    kept: impl Iterator<Item = (usize, &'p crate::shadow_cache::Plan, u32, bool)>,
 ) {
-    for (slot, _, side, format) in kept.filter(|(_, p, _, _)| p.keeps()) {
+    for (slot, _, side, local) in kept.filter(|(_, p, _, _)| p.keeps()) {
         if r.shadows.shadow_cache_maps.len() <= slot {
             r.shadows.shadow_cache_maps.resize_with(slot + 1, || None);
         }
@@ -226,7 +271,7 @@ fn cache_maps<'p>(
                 .shadows
                 .shadow_keep
                 .get_or_insert_with(|| crate::shadow_keep::ShadowKeep::new(&r.device));
-            r.shadows.shadow_cache_maps[slot] = Some(keep.layer(&r.device, side, format));
+            r.shadows.shadow_cache_maps[slot] = Some(keep.layer(&r.device, side, local));
         }
     }
 }
@@ -404,7 +449,7 @@ impl Pass for CascadePass {
                 .plans
                 .iter()
                 .enumerate()
-                .map(|(i, p)| (i, p, shadow_size, crate::shadow_keep::CASCADE_FORMAT)),
+                .map(|(i, p)| (i, p, shadow_size, false)),
         );
     }
 
@@ -433,7 +478,7 @@ impl Pass for CascadePass {
             plan.views.get(i as usize).copied().unwrap_or(0),
             cx.stats,
             true,
-            &[ShadowTarget::Cascade],
+            ShadowTarget::Cascade,
             plan.cascades[i as usize].reach,
         );
     }
@@ -524,7 +569,7 @@ impl Pass for ShelterPass {
             plan.view,
             cx.stats,
             false,
-            &[ShadowTarget::Cascade],
+            ShadowTarget::Cascade,
             f32::INFINITY,
         );
     }
@@ -625,7 +670,7 @@ impl Pass for GroundHeightsPass {
             plan.view,
             cx.stats,
             false,
-            &[ShadowTarget::Cascade],
+            ShadowTarget::Cascade,
             f32::INFINITY,
         );
         // The openness, from the heights just drawn (ground_open.wgsl).
@@ -724,7 +769,7 @@ impl Pass for LocalFacePass {
                 .plans
                 .iter()
                 .enumerate()
-                .map(|(l, p)| (CASCADES + l, p, side, LOCAL_SHADOW_FORMAT)),
+                .map(|(l, p)| (CASCADES + l, p, side, true)),
         );
     }
 
@@ -760,7 +805,7 @@ impl Pass for LocalFacePass {
             plan.views[l],
             cx.stats,
             true,
-            &ShadowTarget::LOCAL,
+            ShadowTarget::Local,
             f32::INFINITY,
         );
     }

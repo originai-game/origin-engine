@@ -19,8 +19,8 @@ fn fs_cascade(in: VsOut) -> KeptOut {
   return KeptOut(value, value.r);
 }
 
-// A local layer's two channels are distances, not its depth
-// (`local_value`): the depth is kept beside them.
+// A local layer's red channel is radial distance, not clip depth
+// (`local_value`): the depth is kept beside it.
 @fragment
 fn fs_local(in: VsOut) -> KeptOut {
   let at = vec2<i32>(in.pos.xy);

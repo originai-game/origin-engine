@@ -205,10 +205,8 @@ impl Renderer {
     }
 
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        let local = self.info.shadowed_lights > 0;
         let (features, declared) = (self.frame_features, self.lit.pbr_shader.declared);
         for (slot, work) in self.pipeline_jobs(batches, skinned, prepass) {
-            use Made::{Pipeline as P, Shadows as S};
             let job = match work {
                 Work::Once(job) => job,
                 Work::Variants(job) => {
@@ -225,47 +223,27 @@ impl Renderer {
             };
             // Each is asked for here, ahead of the pass that first sets it
             // (gpu/deferred.rs).
-            if let Slot::ArrayShadow(_)
-            | Slot::HookShadow(_)
-            | Slot::CompactShadow(_)
-            | Slot::Shadow(_) = slot
-            {
-                let set = deferred(move || match job() {
-                    S(set) => {
-                        if local {
-                            set.local();
-                        }
-                        set
-                    }
-                    P(_) => unreachable!("a shadow slot's job makes shadows"),
-                });
-                match slot {
-                    Slot::ArrayShadow(k) => {
-                        self.lit
-                            .array_maps
-                            .as_mut()
-                            .expect("array material")
-                            .shadow
-                            .insert(k, set);
-                    }
-                    Slot::HookShadow(k) => {
-                        self.cache.hook_shadow_pipelines.insert(k, set);
-                    }
-                    Slot::CompactShadow(k) => {
-                        self.shadows.compact_shadow_pipelines.insert(k, set);
-                    }
-                    Slot::Shadow(k) => {
-                        self.shadows.shadow_pipelines.insert(k, set);
-                    }
-                    _ => unreachable!("a shadow slot"),
-                }
-                continue;
-            }
             let p = deferred(move || match job() {
-                P(p) => p,
-                S(_) => unreachable!("a pipeline slot's job makes a pipeline"),
+                Made::Pipeline(p) => p,
             });
             match slot {
+                Slot::ArrayShadow(k) => {
+                    self.lit
+                        .array_maps
+                        .as_mut()
+                        .expect("array material")
+                        .shadow
+                        .insert(k, p);
+                }
+                Slot::HookShadow(k) => {
+                    self.cache.hook_shadow_pipelines.insert(k, p);
+                }
+                Slot::CompactShadow(k) => {
+                    self.shadows.compact_shadow_pipelines.insert(k, p);
+                }
+                Slot::Shadow(k) => {
+                    self.shadows.shadow_pipelines.insert(k, p);
+                }
                 Slot::SurfacePrepass(k) => {
                     self.cache.surface_prepass_pipelines.insert(k, p);
                 }

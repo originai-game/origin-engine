@@ -266,7 +266,6 @@ impl Renderer {
                 false,
                 None,
                 cards,
-                ShadowTarget::Cascade,
             ));
             stats.prepass_draws += n;
         }

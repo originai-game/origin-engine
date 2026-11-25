@@ -430,7 +430,7 @@ use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;
 use shadow_fit::Cascade;
-use shadow_target::{LOCAL_SHADOW_FORMAT, ShadowSet, ShadowTarget};
+use shadow_target::{LOCAL_SHADOW_FORMAT, ShadowTarget};
 use shadows::LOCAL_SHADOW_LAYERS;
 use sprites::{RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
 use std::collections::HashMap;

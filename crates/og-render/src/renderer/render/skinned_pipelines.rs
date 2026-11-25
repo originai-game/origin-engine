@@ -8,7 +8,7 @@ use super::*;
 pub(super) struct SkinnedPipelines<'a> {
     pub lit: Vec<Option<&'a wgpu::RenderPipeline>>,
     pub lit_standard: Vec<Option<&'a wgpu::RenderPipeline>>,
-    pub shadow: Vec<Option<&'a ShadowSet>>,
+    pub shadow: Vec<Option<&'a wgpu::RenderPipeline>>,
     pub prepass: Vec<Option<&'a wgpu::RenderPipeline>>,
 }
 
@@ -30,7 +30,7 @@ impl Renderer {
             .iter()
             .map(|b| self.lit_pipeline_of(b, true, false))
             .collect();
-        let shadow_skinned: Vec<Option<&ShadowSet>> = skinned_batches
+        let shadow_skinned: Vec<Option<&wgpu::RenderPipeline>> = skinned_batches
             .iter()
             .map(|b| match b.shader {
                 Some(sh) => self.cache.hook_shadow_pipelines[&(sh, b.faces, true)].get(),

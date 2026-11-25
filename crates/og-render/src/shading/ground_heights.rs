@@ -181,6 +181,7 @@ impl GroundCatcher {
             wgpu::TextureFormat::R32Float,
             // Its one layer is bound as a 2D texture (the bake reads it).
             wgpu::TextureViewDimension::D2,
+            false,
         );
         let uniform = crate::traffic::create_buffer(
             device,

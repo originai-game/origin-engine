@@ -284,7 +284,7 @@ pub(crate) struct SceneCache {
     pub(crate) hook_pipelines:
         HashMap<(usize, Faces, bool, bool, bool), Deferred<wgpu::RenderPipeline>>,
     /// Their shadow and prepass pipelines by (shader, side, skinned).
-    pub(crate) hook_shadow_pipelines: HashMap<(usize, Faces, bool), Deferred<ShadowSet>>,
+    pub(crate) hook_shadow_pipelines: HashMap<(usize, Faces, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) hook_prepass_pipelines:
         HashMap<(usize, Faces, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) surface_prepass_pipelines:
@@ -617,6 +617,7 @@ impl ShadowMap {
         layers: u32,
         format: wgpu::TextureFormat,
         binding: wgpu::TextureViewDimension,
+        storage: bool,
     ) -> ShadowMap {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
@@ -629,13 +630,14 @@ impl ShadowMap {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            // The cascades are read as a storage texture
-            // ([`ShadowMap::cascade_layout_entry`]).
+            // Only the cascades array is read as a storage texture
+            // ([`ShadowMap::cascade_layout_entry`]); omitting STORAGE_BINDING
+            // on local shadow maps preserves GPU framebuffer compression (DCC).
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
                 | wgpu::TextureUsages::COPY_DST
-                | if format == crate::shadow_keep::CASCADE_FORMAT {
+                | if storage {
                     wgpu::TextureUsages::STORAGE_BINDING
                 } else {
                     wgpu::TextureUsages::empty()
@@ -740,10 +742,10 @@ pub(crate) struct Shadows {
     /// Shadow layouts: plain, with the material (dissolve), skinned.
     pub(crate) shadow_layouts: [wgpu::PipelineLayout; 3],
     pub(crate) shadow_shader: deferred::Module,
-    pub(crate) shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
+    pub(crate) shadow_pipelines: HashMap<ShadowKey, Deferred<wgpu::RenderPipeline>>,
     /// The shadow pipelines of compact casters (lean, from the compact
     /// vertices) by side.
-    pub(crate) compact_shadow_pipelines: HashMap<Faces, Deferred<ShadowSet>>,
+    pub(crate) compact_shadow_pipelines: HashMap<Faces, Deferred<wgpu::RenderPipeline>>,
     /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
     /// and per shadow slot the texture a layer's static casters are kept
     /// in while dynamic ones are drawn over it (`shadow_keep.rs`), with

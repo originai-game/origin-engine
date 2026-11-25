@@ -336,7 +336,7 @@ pub(crate) struct MeshletGpu {
     lit_module: Option<(bool, wgpu::ShaderModule)>,
     /// The shadow casters' pipelines by (side, the whole vertex for an
     /// alpha-tested or dissolving material), and their module.
-    shadow: HashMap<(Faces, bool), crate::ShadowSet>,
+    shadow: HashMap<(Faces, bool), wgpu::RenderPipeline>,
     shadow_module: Option<wgpu::ShaderModule>,
     pools: Option<Pools>,
     params: wgpu::Buffer,

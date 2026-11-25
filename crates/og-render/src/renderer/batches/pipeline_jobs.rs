@@ -132,7 +132,7 @@ impl Renderer {
                         );
                         let (side, dissolve) = key;
                         Work::Once(Box::new(move || {
-                            Made::Shadows(shadow_pipeline(
+                            Made::Pipeline(shadow_pipeline(
                                 &d,
                                 &layouts,
                                 &module,
@@ -233,7 +233,7 @@ impl Renderer {
                             self.cache.shadow_shaders[sh].clone(),
                         );
                         Work::Once(Box::new(move || {
-                            Made::Shadows(shadow_pipeline(
+                            Made::Pipeline(shadow_pipeline(
                                 &d, &layouts, &module, shadow, true, false,
                             ))
                         }))
@@ -324,7 +324,7 @@ impl Renderer {
                                 b.faces,
                             );
                             Work::Once(Box::new(move || {
-                                Made::Shadows(shadow_pipeline(
+                                Made::Pipeline(shadow_pipeline(
                                     &d,
                                     &layouts,
                                     &module,
@@ -379,7 +379,9 @@ impl Renderer {
                             shadow_shader.clone(),
                         );
                         Work::Once(Box::new(move || {
-                            Made::Shadows(shadow_pipeline(&d, &layouts, &module, key, false, false))
+                            Made::Pipeline(shadow_pipeline(
+                                &d, &layouts, &module, key, false, false,
+                            ))
                         }))
                     }
                 );
@@ -443,7 +445,6 @@ pub(super) enum Slot {
 /// What a batch pipeline's job makes.
 pub(crate) enum Made {
     Pipeline(wgpu::RenderPipeline),
-    Shadows(ShadowSet),
 }
 
 /// A batch pipeline's making, which owns what it reads: run on the
@@ -507,7 +508,6 @@ pub(crate) fn variants(
         let job = job.clone();
         Deferred::anywhere(move || match job(&f.constants(declared)) {
             Made::Pipeline(p) => p,
-            Made::Shadows(_) => unreachable!("a lit slot's job makes a pipeline"),
         })
     });
     v.start(features);

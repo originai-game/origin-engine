@@ -171,7 +171,6 @@ impl Renderer {
                     false,
                     None,
                     scatter::CardSource::Cpu,
-                    ShadowTarget::Cascade,
                 )
             });
             if n > 0 {

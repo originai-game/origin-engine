@@ -33,7 +33,7 @@ pub(super) struct DrawCtx<'f> {
     pub terrain_draws: &'f [terrain::TerrainDraw],
     pub scatter_batches: &'f scatter::ScatterBatches,
     pub grass_frame: &'f grass::GrassFrame,
-    pub shadow_skinned: &'f [Option<&'f ShadowSet>],
+    pub shadow_skinned: &'f [Option<&'f wgpu::RenderPipeline>],
     pub skinned_batches: &'f [Batch],
     pub terrain_casters: bool,
 }
@@ -173,7 +173,6 @@ impl<'f> DrawCtx<'f> {
             pass,
             list: &part_list,
             lit: true,
-            shadow: ShadowTarget::Cascade,
             current: &mut None,
             physical_fx,
             probes,
@@ -245,7 +244,6 @@ impl<'f> DrawCtx<'f> {
             pass,
             list,
             lit,
-            shadow: ShadowTarget::Cascade,
             current,
             physical_fx,
             probes,
@@ -538,7 +536,6 @@ impl<'f> DrawCtx<'f> {
                         false,
                         None,
                         self.card_source(None),
-                        ShadowTarget::Cascade,
                     )
                 })
                 .0;

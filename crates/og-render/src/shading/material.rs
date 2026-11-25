@@ -477,7 +477,7 @@ pub(crate) struct ArrayMaps {
     /// layer: the standard shadow pipelines draw them).
     pub shadow: std::collections::HashMap<
         (crate::Faces, bool),
-        crate::deferred::Deferred<crate::ShadowSet>,
+        crate::deferred::Deferred<wgpu::RenderPipeline>,
     >,
     pub shadow_layouts: [wgpu::PipelineLayout; 3],
     /// One-layer stand-ins for a missing array: white, and the flat normal.

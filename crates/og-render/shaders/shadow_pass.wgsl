@@ -89,22 +89,11 @@ fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32
   return dist / shadow_pass.light.w;
 }
 
-// The material's sides as its shadow pipeline was made (shadow_target.rs
-// `ShadowTarget::constants`): 0 front-sided, 1 back-sided, 2 double-sided.
-override SHADOW_SIDE: u32 = 0u;
-
-// What a local light's caster fragment stores (shadow_target.rs): in red
-// the layer's far sides, the surfaces facing away from the light (a
-// front-sided caster's back faces, which the cascades keep too), in green its near sides, those facing it; 1 (past the range)
-// in the channel this fragment is not. Both channels keep their nearest,
-// by MIN blending in one pass or by a depth test per channel in two, and
-// the lit shaders compare against the midpoint of the two
-// (lighting.wgsl `local_depth`). A double-sided caster is both.
-fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
-  let d = local_distance(world, frag, dx, dy);
-  let near = SHADOW_SIDE == 2u || (front == (SHADOW_SIDE == 0u));
-  let far = SHADOW_SIDE == 2u || !near;
-  return vec4<f32>(select(1.0, d, far), select(1.0, d, near), 0.0, 1.0);
+// What a local light's caster fragment stores (shadow_target.rs): its radial
+// distance over range in red (back faces projected in a single pass, matching
+// cascades).
+fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>) -> vec4<f32> {
+  return vec4<f32>(local_distance(world, frag, dx, dy), 0.0, 0.0, 1.0);
 }
 
 // What a caster's fragment at `world` stores (`frag`: its position
@@ -114,7 +103,7 @@ fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, 
 fn shadow_depth_cut(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool, cut: bool) -> vec4<f32> {
   if (cut || shadow_paraboloid_cut(world)) { discard; }
   if (shadow_pass.light.w > 0.0) {
-    return local_value(world, frag, dx, dy, front);
+    return local_value(world, frag, dx, dy);
   }
   return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
 }
@@ -142,7 +131,7 @@ fn shadow_card_cut(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec
     o.depth = clamp(flat.z / flat.w, 0.0, 1.0);
   }
   if (shadow_pass.light.w > 0.0) {
-    o.value = local_value(surface, frag, dx, dy, front);
+    o.value = local_value(surface, frag, dx, dy);
   } else {
     o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
   }

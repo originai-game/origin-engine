@@ -466,16 +466,10 @@ fn local_wide(uv: vec2<f32>, layer: u32, ref_depth: f32, slope: vec2<f32>) -> f3
   return lit / 12.0;
 }
 
-// A local layer's depth at a texel: the midpoint of its casters' far sides
-// (red) and near sides (green) for closed casters, falling back to biased
-// front depth when only a single-sided wall/plane was drawn so open walls
-// still block light without self-shadowing.
+// A local layer's depth at a texel: radial distance over range from the
+// single-pass back-face shadow map (R32Float).
 fn local_depth(at: vec2<i32>, layer: u32) -> f32 {
-  let v = textureLoad(local_shadow_map, at, i32(layer), 0);
-  if (v.r < 1.0 && v.g < 1.0) { return 0.5 * (v.r + v.g); }
-  if (v.r < 1.0) { return v.r; }
-  if (v.g < 1.0) { return min(v.g + 0.002, 1.0); }
-  return 1.0;
+  return textureLoad(local_shadow_map, at, i32(layer), 0).r;
 }
 
 // `pcf` over a local layer's depths ([`local_depth`]).
