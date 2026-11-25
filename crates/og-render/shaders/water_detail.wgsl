@@ -279,8 +279,17 @@ fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32, w: f32) -> Detail {
 
 // A stream's bank foam at point q (its drift taken out): patches cut at their middle, so half of a bank has none (a
 // lower cut left a faint foam all along it: a bright line).
-fn bank_patches(q: vec2<f32>) -> f32 {
-  return smoothstep(0.55, 0.75, foam_noise(q * 0.9) * 0.7 + foam_noise(q * 3.3) * 0.3);
+// `foot`: the pixel's footprint (m).
+fn bank_patches(q: vec2<f32>, foot: f32) -> f32 {
+  return foam_cut(foam_noise(q * 0.9) * 0.7 + foam_noise(q * 3.3) * 0.3, 0.55, 0.75, 1.6 * foot);
+}
+
+// A foam pattern `x` cut between `lo` and `hi`, the cut widened by `w`, as much as `x` changes across the pixel (its
+// rate per metre times the pixel's footprint; derivatives taken here would break WGSL's uniformity rules): where the
+// pattern is finer than a pixel its edge is the pattern's average, not a pixel's coin toss between white and water
+// (cut at a fixed width, a pool's churn and a fall's streaks broke into stair-stepped blocks at a distance).
+fn foam_cut(x: f32, lo: f32, hi: f32, w: f32) -> f32 {
+  return smoothstep(lo - w, hi + w, x);
 }
 
 // A river pool's churn at point q (its drift taken out): the bank patches' noise before their cut (0 to 1), which

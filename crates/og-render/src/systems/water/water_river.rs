@@ -23,6 +23,8 @@ const MAX_ROWS: usize = 4096;
 const STEP: f32 = 1.0;
 /// A drop over a run steeper than this is a fall (1: 45 degrees).
 const FALL_SLOPE: f32 = 1.0;
+/// The most a fall's arc runs or drops between two rows (m).
+const NAPPE_ROW: f32 = 0.25;
 
 /// How far below a fall of `drop` metres a river `width` across churns
 /// white (m). The plunging jet carries air down into its pool and the
@@ -44,7 +46,8 @@ pub(crate) struct Ribbon {
     /// rgba8 rows of [`ACROSS`] texels, the first row the river's mouth
     /// (the image's top at v 1: three.js' flipY, as flow maps are read): rg
     /// the current over the river's speed (`* 0.5 + 0.5`), b how churned the
-    /// water is below a fall.
+    /// water is below a fall, a how far down a fall's arc it is (0 at the
+    /// lip and off falls, 1 at the foot).
     pub flow: Vec<[u8; 4]>,
     pub rows: u32,
 }
@@ -69,12 +72,35 @@ pub(crate) fn ribbon(river: &River, inverse: Mat4) -> Ribbon {
     let length = river.length() as f32;
     let budget = (MAX_ROWS - 1).saturating_sub(points.len() - 1).max(1);
     let step = (length / budget as f32).max(STEP);
+    // A fall's stretch is the arc of the water leaving its lip (a jet
+    // thrown level, x = v·t, y = -g·t²/2: down by the run's fraction
+    // squared), a row every NAPPE_ROW of it: the brink curves over glassy
+    // and steepens into the sheet. Straight from lip to foot, the fall was
+    // two flat quads under one hard line across the river. `fallen`: how
+    // far down its fall each point is (0 at the lip, 1 at the foot).
     let mut course: Vec<Vec3> = vec![points[0]];
+    let mut fallen = vec![0.0f32];
     for w in points.windows(2) {
-        let pieces = (w[0].xz().distance(w[1].xz()) / step).ceil().max(1.0) as usize;
-        course.extend((1..=pieces).map(|k| w[0].lerp(w[1], k as f32 / pieces as f32)));
+        let (a, b) = (w[0], w[1]);
+        let run = a.xz().distance(b.xz());
+        let drop = a.y - b.y;
+        if drop > FALL_SLOPE * run {
+            let pieces = (run.max(drop) / NAPPE_ROW).ceil().max(1.0) as usize;
+            for k in 1..=pieces {
+                let s = k as f32 / pieces as f32;
+                let mut p = a.lerp(b, s);
+                p.y = a.y - drop * s * s;
+                course.push(p);
+                fallen.push(s * s);
+            }
+        } else {
+            let pieces = (run / step).ceil().max(1.0) as usize;
+            course.extend((1..=pieces).map(|k| a.lerp(b, k as f32 / pieces as f32)));
+            fallen.extend((1..=pieces).map(|_| 0.0));
+        }
     }
     course.truncate(MAX_ROWS);
+    fallen.truncate(MAX_ROWS);
     let n = course.len();
     let tangent = |i: usize| -> Vec2 {
         let a = course[i.saturating_sub(1)].xz();
@@ -91,7 +117,7 @@ pub(crate) fn ribbon(river: &River, inverse: Mat4) -> Ribbon {
     for i in 1..n {
         let (a, b) = (course[i - 1], course[i]);
         let run = a.xz().distance(b.xz());
-        if a.y - b.y > FALL_SLOPE * run {
+        if fallen[i] > 0.0 {
             // A fall over several points drops their sum.
             let above = if falling {
                 since.map_or(0.0, |s| s.1)
@@ -105,6 +131,11 @@ pub(crate) fn ribbon(river: &River, inverse: Mat4) -> Ribbon {
             if let Some(s) = since.as_mut() {
                 s.0 += run;
             }
+        }
+        // The pool churns, not the sheet above it (white all down its
+        // arc, the sheet drew as one flat sheet of foam).
+        if fallen[i] > 0.0 && fallen[i] < 1.0 {
+            continue;
         }
         churn[i] = since.map_or(0.0, |(d, drop)| {
             // Thinning fast past the foot and easing out: (1 - t)², no
@@ -144,7 +175,8 @@ pub(crate) fn ribbon(river: &River, inverse: Mat4) -> Ribbon {
             let f = t * bank_profile(across);
             let byte = |x: f32| ((x * 0.5 + 0.5).clamp(0.0, 1.0) * 255.0).round() as u8;
             let white = (churn[i] * 255.0).round() as u8;
-            flow[row * ACROSS as usize + k as usize] = [byte(f.x), byte(f.y), white, 255];
+            let down = (fallen[i] * 255.0).round() as u8;
+            flow[row * ACROSS as usize + k as usize] = [byte(f.x), byte(f.y), white, down];
         }
     }
     let mut indices = Vec::with_capacity(6 * (n - 1));

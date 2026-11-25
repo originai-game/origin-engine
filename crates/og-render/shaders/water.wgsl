@@ -519,6 +519,9 @@ if (rippled() && !is_sea()) {
   let ms = n.xz / max(n.y, 1e-3);
   let dsx = dpdxFine(ms);
   let dsy = dpdyFine(ms);
+  // The pixel's footprint (m) and its span across a river's ribbon, for the foam's cuts (foam_cut).
+  let foot = max(length(dx), length(dy));
+  let uv_foot = abs(dpdxFine(in.uv.x)) + abs(dpdyFine(in.uv.x));
   let l = normalize(frame.light_dir.xyz);
   var sun = 1.0;
   if (water.extra.x > 0.0 && frame.light_dir.w > 0.5) {
@@ -798,7 +801,7 @@ if (sea) {
   let lace_cover = piled * stir * 0.55;
   let lace = foam_noise(in.local * 3.1 + vec2<f32>(t * 0.25, -t * 0.15)) * 0.6
     + foam_noise(in.local * 9.7 - vec2<f32>(0.0, t * 0.3)) * 0.4;
-  var band = smoothstep(1.0 - lace_cover, 1.1 - lace_cover, lace) * (0.5 + 0.5 * lace_cover);
+  var band = foam_cut(lace, 1.0 - lace_cover, 1.1 - lace_cover, 5.7 * foot) * (0.5 + 0.5 * lace_cover);
   let flowing = flows() && water.normals.w < 0.5 && !is_sea();
   if (OG_FLOW) {
 if (flowing) {
@@ -814,8 +817,8 @@ if (flowing) {
     let period = 8.0;
     let ph0 = fract(water.spray.w / period);
     let ph1 = fract(water.spray.w / period + 0.5);
-    let pa = bank_patches(in.local - f * (ph0 * period) + vec2<f32>(0.0, 0.0));
-    let pb = bank_patches(in.local - f * (ph1 * period) + vec2<f32>(17.3, 9.1));
+    let pa = bank_patches(in.local - f * (ph0 * period), foot);
+    let pb = bank_patches(in.local - f * (ph1 * period) + vec2<f32>(17.3, 9.1), foot);
     let patches = mix(pa, pb, abs(ph0 - 0.5) * 2.0);
     band = piled * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
   }
@@ -831,9 +834,8 @@ if (flowing) {
     // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, none a fall's churn
     // length on), in patches carried down by the current in two phases as the bank foam: the patches cover the water
     // as b grows, closing up at the foot and thinning to scattered flecks over the water's own colour (a floor of
-    // white under every patch drew the whole reach as one grey sheet); and where the ribbon hangs (its
-    // normal more than some 40 degrees off up: the course falls there) the water is a sheet falling some 7 m/s,
-    // streaked along its fall.
+    // white under every patch drew the whole reach as one grey sheet); and down a fall's arc (water_river.rs) the
+    // water is a sheet falling some 7 m/s, streaked along its fall.
     let ft = flow_texel(in.uv);
     let current = (ft.rg * 2.0 - 1.0) * length(water.normals.yz);
     let ph0 = fract(water.spray.w / 8.0);
@@ -850,14 +852,18 @@ if (flowing) {
     // a closed sheet to a few flecks shows over the churn's length; and the flecks fade as well as thin (thinned
     // alone, the last of them stopped at full white along a line across the river).
     let lumps = clamp((mix(pa, pb, abs(ph0 - 0.5) * 2.0) - 0.25) * 2.0, 0.0, 1.0);
-    let churned = smoothstep(1.0 - ft.b, 1.2 - ft.b, lumps) * smoothstep(0.0, 1.0, ft.b);
-    let hang = 1.0 - smoothstep(0.62, 0.8, in.normal.y);
+    let churned = foam_cut(lumps, 1.0 - ft.b, 1.2 - ft.b, 5.5 * foot) * smoothstep(0.0, 1.0, ft.b);
     let fall = water.spray.w * 7.0;
     let streak = foam_noise(vec2<f32>(in.uv.x * 40.0, in.world.y * 0.9 + fall * 0.9)) * 0.65
       + foam_noise(vec2<f32>(in.uv.x * 113.0, in.world.y * 2.7 + fall * 2.7)) * 0.35;
-    // The streaks thin where the ribbon only starts to hang (the lip, still glassy) and close up where it falls.
-    let white_water = smoothstep(0.3, 0.7, streak) * mix(0.55, 1.0, hang);
-    let fall_white = hang * white_water;
+    // The sheet takes air as it falls (the flow map's a: 0 at the lip, 1 at the foot): glassy over the brink, the
+    // first strands opening a little way down, white nearly across by the foot, the water's own colour between its
+    // streaks to the end (a sheet white from the lip, its tilt alone deciding, drew a flat white board under a hard
+    // line).
+    let aired = smoothstep(0.0, 0.8, ft.a);
+    let streak_w = 65.6 * uv_foot + 1.5 * (abs(dx.y) + abs(dy.y));
+    let white_water = foam_cut(streak, 1.05 - 0.75 * aired, 1.25 - 0.75 * aired, streak_w);
+    let fall_white = step(1e-3, ft.a) * white_water * mix(0.7, 1.0, aired);
     let river_white = clamp(max(churned, fall_white), 0.0, 1.0);
     let white_lit = white_water_light(in.normal, l, sun) * mix(0.85, 1.0, white_water);
     color = mix(color, foam_albedo * white_lit, river_white);
