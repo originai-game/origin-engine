@@ -333,25 +333,21 @@ refuses any other and names the ones it takes.
   puddles and snow, and screen-space reflections by its roughness and
   metalness. The prepass and every shadow pass draw through the same
   entries.
-- A UI style is an `.ogt` of `type style`. Version 3 is the CSS dialect
-  (docs/ui.md §3.2), which `og style upgrade` and `og style new` write
-  and every built-in style uses. It holds the
-  tokens: rarity, team, damage and chart colours, each with its cue; the
-  type scale per breakpoint; the space, size, radius and stroke scales;
-  elevation; the shape language; motion springs and eases; and sounds and
-  haptics per UI event. Colours and lengths are custom properties
-  (`--panel-raised: #211a15`). Selector blocks dress the parts
-  (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2
-  still load. The grammar is og-ui's `parse_style`.
+- A UI style is a directory under `assets/styles/<name>/` holding a theme
+  recipe (`theme.json`), a style pack (`pack.json`) laid over it, or both
+  (screens §3, themes §1). Start one with `og style init <name> [--from <theme>]`,
+  install a directory with `og style add <directory>`, and check it with
+  `og style validate <directory>`. Legacy `style.ogt` CSS packs are removed
+  and refused by the cook and runtime.
 - A look is an `.ogt` of `type look`. Its top-level lines are `name`,
-  `extends`, `ui` and `antialias`. `extends` names a built-in preset's
-  slug or another look's asset id; the game's own
+  `extends`, `variant`, `mood`, `ui`, `uiSeeds` and `antialias`. `extends`
+  names a built-in preset's slug or another look's asset id; the game's own
   `assets/looks/<slug>.ogt` wins over the preset of that slug. `ui` names
-  a built-in style's slug or the game's style file. Then comes one block
-  per resource it sets, with that resource's fields by name and an asset
-  id where a field is a handle (`lut "luts/warm.cube"`). The cook checks
-  every field against the reflected schema and flattens `extends`, so
-  the blob is the whole look (looks §1).
+  a built-in theme slug or the game's style directory (`styles/<name>`).
+  Then comes one block per resource it sets, with that resource's fields by
+  name and an asset id where a field is a handle (`lut "luts/warm.cube"`).
+  The cook checks every field against the reflected schema and flattens
+  `extends`, so the blob is the whole look (looks §1).
 
 ## 7. Animation clips
 

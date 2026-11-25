@@ -11,11 +11,6 @@ pub struct Manifest {
     pub name: String,
     pub version: String,
     pub description: String,
-    /// Retired: the engine ships no skills (its built-in components are
-    /// documented in their own READMEs). Still read, and checked when present, so a game's older
-    /// pack keeps loading.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub skill: Option<String>,
     /// A vfx pack's catalog fields (the asset library reads them; the engine
     /// checks their shape): the lowest engine release it needs (x.y.z), its
     /// tags and its lowercase search words.
@@ -209,10 +204,10 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     }
     let all = files(directory)?;
     for file in m
-        .skill
-        .as_deref()
-        .into_iter()
-        .chain(m.faces.iter().flatten().map(String::as_str))
+        .faces
+        .iter()
+        .flatten()
+        .map(String::as_str)
         .chain(m.hyphenation.iter().flatten().map(String::as_str))
     {
         if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
@@ -251,10 +246,8 @@ fn style_description(directory: &Path) -> String {
     };
     if directory.join(og_cook::cook::ui_themes::RECIPE).is_file() {
         about_in(og_cook::cook::ui_themes::RECIPE).unwrap_or_else(|| "UI theme recipe".into())
-    } else if directory.join("pack.json").is_file() {
-        about_in("pack.json").unwrap_or_else(|| "UI style pack".into())
     } else {
-        "CSS style pack".into()
+        about_in("pack.json").unwrap_or_else(|| "UI style pack".into())
     }
 }
 
@@ -469,11 +462,17 @@ fn add_extension(
 
 pub fn list(args: &[&str], kind: Option<&str>) -> ExitCode {
     let result = (|| {
-        let (project, json) = match args {
-            [] => (".", false),
-            ["--json"] => (".", true),
-            [p] => (*p, false),
-            [p, "--json"] => (*p, true),
+        let mut json = false;
+        let mut positional = Vec::new();
+        for &arg in args {
+            match arg {
+                "--json" => json = true,
+                _ => positional.push(arg),
+            }
+        }
+        let project = match positional.as_slice() {
+            [] => ".",
+            [p] => *p,
             _ => return Err("usage: og ui list [project] [--json]".into()),
         };
         let extensions: Vec<_> = discover(Path::new(project))?
@@ -496,9 +495,6 @@ pub fn list(args: &[&str], kind: Option<&str>) -> ExitCode {
                     if e.installed { "installed" } else { "bundled" },
                     m.description
                 );
-                if let Some(skill) = &m.skill {
-                    println!("  skill: {}", e.directory.join(skill).display());
-                }
             }
         }
         Ok(())

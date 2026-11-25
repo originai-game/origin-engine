@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `ColorVision` (enum)
 
-A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)).
+A colour vision deficiency filter (UiDesc.colorVision).
 
 A string: one of the variants below. The zero value is `"none"`.
 
@@ -19,7 +19,7 @@ A string: one of the variants below. The zero value is `"none"`.
 
 ```ogt
 enum ColorVision {
-  doc "A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>))."
+  doc "A colour vision deficiency filter (UiDesc.colorVision)."
   variant none "Typical colour vision: no filter."
   variant protanopia "No red-sensitive cones: reds dark, red and green confused."
   variant deuteranopia "No green-sensitive cones: red and green confused."

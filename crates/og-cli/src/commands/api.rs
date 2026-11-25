@@ -17,7 +17,7 @@ pub fn run(args: &[&str]) -> ExitCode {
                 Err(code) => code,
             }
         }
-        [cmd @ ("find" | "show"), rest @ ..] => crate::api_lookup::run(cmd, rest),
+        [cmd @ ("find" | "show" | "list"), rest @ ..] => crate::api_lookup::run(cmd, rest),
         ["check", rest @ ..] => {
             let list = rest.contains(&"--budget");
             let rest: Vec<&str> = rest.iter().copied().filter(|a| *a != "--budget").collect();
@@ -36,7 +36,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
         _ => {
             eprintln!(
-                "og api: expected `og api find`, `og api show`, `og api gen` or `og api check`; run `og --help` for the options."
+                "og api: expected `og api find`, `og api show`, `og api list`, `og api gen` or `og api check`; run `og --help` for the options."
             );
             ExitCode::from(2)
         }

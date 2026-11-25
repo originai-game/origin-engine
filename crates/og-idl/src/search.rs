@@ -51,7 +51,7 @@ pub fn entries(page: &str, text: &str) -> Vec<Entry> {
         };
         let end = lines[h..]
             .iter()
-            .position(|l| l.starts_with("## "))
+            .position(|l| l.starts_with("## ") || block_anchor(l).is_some())
             .map_or(lines.len(), |n| h + n);
         let summary = lines[h + 1..end]
             .iter()
@@ -104,13 +104,27 @@ pub fn entries(page: &str, text: &str) -> Vec<Entry> {
                 .copied()
                 .unwrap_or("");
             let name = between(heading, '`', '`').unwrap_or_default().to_string();
-            let summary = block
+            let raw_summary = block
                 .iter()
                 .skip_while(|l| !l.starts_with('#'))
                 .skip(1)
                 .find(|l| !l.trim().is_empty())
                 .map(|l| first_sentence(l))
                 .unwrap_or_default();
+            let summary = if kind == "guide" {
+                let heading_title = heading
+                    .splitn(3, '`')
+                    .nth(2)
+                    .map(str::trim)
+                    .filter(|t| !t.is_empty());
+                match heading_title {
+                    Some(t) if raw_summary.is_empty() => t.to_string(),
+                    Some(t) => clip_summary(&format!("{t} — {raw_summary}")),
+                    None => raw_summary,
+                }
+            } else {
+                raw_summary
+            };
             out.push(Entry {
                 name,
                 kind,
@@ -144,6 +158,14 @@ fn between(s: &str, open: char, close: char) -> Option<&str> {
     Some(&s[start..end])
 }
 
+fn clip_summary(s: &str) -> String {
+    if s.chars().count() > 200 {
+        s.chars().take(199).collect::<String>() + "…"
+    } else {
+        s.to_string()
+    }
+}
+
 /// The first sentence of a doc, cut at 200 characters: an entry's summary.
 pub fn first_sentence(s: &str) -> String {
     let s = s.trim();
@@ -152,11 +174,7 @@ pub fn first_sentence(s: &str) -> String {
         .map(|(i, _)| i + 1)
         .find(|&i| i >= 20)
         .unwrap_or(s.len());
-    let mut out = s[..end].to_string();
-    if out.chars().count() > 200 {
-        out = out.chars().take(199).collect::<String>() + "…";
-    }
-    out
+    clip_summary(&s[..end])
 }
 
 /// The name without `og.`, lowercased: how a name is matched exactly.
@@ -292,7 +310,10 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
     // often) scores as the body it opens, not as a summary a whole entry
     // stands behind.
     let guide = e.kind == "guide";
-    let name = format!("{} {}", e.name, e.name.rsplit('.').next().unwrap_or(""));
+    let name = match (guide, title(e)) {
+        (true, Some(t)) => format!("{} {} {t}", e.name, e.name.rsplit('.').next().unwrap_or("")),
+        _ => format!("{} {}", e.name, e.name.rsplit('.').next().unwrap_or("")),
+    };
     [
         tokens(&name),
         if guide {
@@ -308,13 +329,26 @@ fn fields(e: &Entry) -> [Vec<String>; NF] {
 
 /// A guide section's title: its heading after the name (`### `components
 /// §38` Crosshair`).
-fn title(e: &Entry) -> Option<&str> {
+pub fn entry_title(e: &Entry) -> Option<&str> {
     e.body
         .lines()
         .find(|l| l.starts_with('#'))
         .and_then(|h| h.splitn(3, '`').nth(2))
         .map(str::trim)
         .filter(|t| !t.is_empty())
+}
+
+fn title(e: &Entry) -> Option<&str> {
+    entry_title(e)
+}
+
+/// A guide section's heading title, as stored in [`Doc::summary`] (`<title> — …`).
+pub fn section_title(doc: &Doc) -> Option<&str> {
+    if doc.kind == "guide" && doc.name.contains(" §") {
+        doc.summary.split(" — ").next().filter(|t| !t.is_empty())
+    } else {
+        None
+    }
 }
 
 /// One entry of the index: what `find` prints, and its fields' lengths.
@@ -487,11 +521,9 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        let version = match lines.next()?.split(':').next()? {
-            "# og api find index 3" => 3,
-            "# og api find index 4" => 4,
-            _ => return None,
-        };
+        if lines.next()?.split(':').next()? != "# og api find index 4" {
+            return None;
+        }
         for line in lines {
             let mut cols = line.split('\t');
             match cols.next()? {
@@ -520,7 +552,7 @@ impl SearchIndex {
                         vscale,
                     });
                 }
-                "words" if version == 4 => {
+                "words" => {
                     let doc = u32::try_from(ix.docs.len().checked_sub(1)?).ok()?;
                     for post in cols.next()?.split_whitespace() {
                         let (word, counts) = post.split_once(':')?;
@@ -534,24 +566,6 @@ impl SearchIndex {
                             .or_default()
                             .push((doc, counts.try_into().ok()?));
                     }
-                }
-                "term" if version == 3 => {
-                    let w = cols.next()?.to_string();
-                    let mut posts = Vec::new();
-                    for p in cols
-                        .next()
-                        .unwrap_or("")
-                        .split(' ')
-                        .filter(|p| !p.is_empty())
-                    {
-                        let (d, c) = p.split_once(':')?;
-                        let mut counts = [0u16; NF];
-                        for (k, n) in c.split(',').enumerate().take(NF) {
-                            counts[k] = n.parse().ok()?;
-                        }
-                        posts.push((d.parse().ok()?, counts));
-                    }
-                    ix.terms.insert(w, posts);
                 }
                 _ => return None,
             }
@@ -629,11 +643,15 @@ impl SearchIndex {
         // A query that holds a whole multi-word name in order
         // ("character controller zzzqx") leans to that name.
         let holds = |doc: &Doc| {
-            let name = tokens(doc.name.rsplit('.').next().unwrap_or(""));
-            name.len() >= 2
-                && query_words
-                    .windows(name.len())
-                    .any(|w| w == name.as_slice())
+            let matches = |label: &str| {
+                let name = tokens(label);
+                name.len() >= 2
+                    && query_words
+                        .windows(name.len())
+                        .any(|w| w == name.as_slice())
+            };
+            matches(doc.name.rsplit('.').next().unwrap_or(""))
+                || section_title(doc).is_some_and(matches)
         };
         let exact = |doc: &Doc| {
             let name = bare(&doc.name);
@@ -643,6 +661,11 @@ impl SearchIndex {
                 || (!spelled.is_empty()
                     && tokens(doc.name.rsplit('.').next().unwrap_or("")).concat() == spelled)
         };
+        let title_exact = |doc: &Doc| {
+            section_title(doc).is_some_and(|t| {
+                bare(t) == want || (!spelled.is_empty() && tokens(t).concat() == spelled)
+            })
+        };
         let mut out: Vec<(usize, f64)> = score
             .into_iter()
             .map(|(d, s)| (d as usize, s))
@@ -650,7 +673,7 @@ impl SearchIndex {
                 self.docs
                     .iter()
                     .enumerate()
-                    .filter_map(|(d, doc)| exact(doc).then_some((d, 0.0))),
+                    .filter_map(|(d, doc)| (exact(doc) || title_exact(doc)).then_some((d, 0.0))),
             )
             .fold(BTreeMap::<usize, f64>::new(), |mut m, (d, s)| {
                 *m.entry(d).or_default() += s;
@@ -664,6 +687,8 @@ impl SearchIndex {
                     d,
                     s + if exact(doc) {
                         100.0
+                    } else if title_exact(doc) {
+                        80.0
                     } else if holds(doc) {
                         PHRASE
                     } else {
@@ -689,11 +714,16 @@ impl SearchIndex {
         // leads the fusion behind an exact name, as it leads BM25F.
         let query_words = tokens(query);
         let holds = |d: usize| {
-            let name = tokens(self.docs[d].name.rsplit('.').next().unwrap_or(""));
-            name.len() >= 2
-                && query_words
-                    .windows(name.len())
-                    .any(|w| w == name.as_slice())
+            let doc = &self.docs[d];
+            let matches = |label: &str| {
+                let name = tokens(label);
+                name.len() >= 2
+                    && query_words
+                        .windows(name.len())
+                        .any(|w| w == name.as_slice())
+            };
+            matches(doc.name.rsplit('.').next().unwrap_or(""))
+                || section_title(doc).is_some_and(matches)
         };
         let model = crate::embed::model();
         let q = model.embed(query);
@@ -725,6 +755,8 @@ impl SearchIndex {
                     score: 1.0 / (RRF_K + rank as f64 + 1.0)
                         + if s >= 100.0 {
                             1.0
+                        } else if s >= 80.0 {
+                            0.8
                         } else if holds(d) {
                             0.5
                         } else {
@@ -756,7 +788,7 @@ impl SearchIndex {
         let mut later = Vec::new();
         let mut guides = 0;
         for h in out {
-            let guide = self.docs[h.doc].kind == "guide" && h.score < 1.0;
+            let guide = self.docs[h.doc].kind == "guide" && h.score < 0.8;
             if guide && guides >= GUIDE_CAP && kept.len() < GUIDE_WINDOW {
                 later.push(h);
                 continue;

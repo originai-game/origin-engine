@@ -183,8 +183,8 @@ module ui {
   }
 
   struct TextSpan {
-    doc "A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup."
-    field name String "The style part name, for example emphasis or character."
+    doc "A named attribute range in plain text for presentation stores and rich text. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Text is never reinterpreted as markup."
+    field name String "The span kind or role name, for example emphasis or character."
     field position u32 "Start in Unicode scalar values; an astral character counts once."
     field length u32 "Number of Unicode scalars. Zero is a metadata marker."
     field properties Map.OneOf.String.OneOf.f64.bool "Typed attribute properties: only string, finite number or boolean, never nested data or null."
@@ -201,7 +201,7 @@ module ui {
   }
 
   enum ColorVision {
-    doc "A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>))."
+    doc "A colour vision deficiency filter (UiDesc.colorVision)."
     variant none "Typical colour vision: no filter."
     variant protanopia "No red-sensitive cones: reds dark, red and green confused."
     variant deuteranopia "No green-sensitive cones: red and green confused."

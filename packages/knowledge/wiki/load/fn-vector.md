@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.vector`
 
-A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path.
+A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path.
 
 ```ts
 og.load.vector(world: World, path: string): Result<VectorArt>
@@ -23,7 +23,7 @@ Binding symbol `og_load_vector` · publish builds: kept
 
 ```ogt
 fn vector {
-  doc "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path."
+  doc "A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path."
   param world World "The world whose renderer owns it."
   param path String "The asset id, such as `ui/emblem.ogt`."
   returns Result.VectorArt "Refused for a path not in the bundle or not a vector."

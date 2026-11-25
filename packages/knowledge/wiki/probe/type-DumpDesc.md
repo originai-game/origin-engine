@@ -12,14 +12,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `what` | `DumpKind` | `"world"` | — | — | — | The kind of dump. |
+| `what` | `DumpKind \| string \| null` | `null` | — | — | — | A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`. |
 | `id` | `string` | `""` | — | — | — | The probe id, for an entity dump. |
 
 ```ogt
 struct DumpDesc {
   doc "What to dump."
   desc true
-  field what DumpKind "The kind of dump."
+  field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`."
   field id String "The probe id, for an entity dump."
 }
 ```

@@ -34,7 +34,7 @@ and `og api check` (the gate's drift step) holds them to the IDL.
 | wasm-bindgen glue | `crates/og-host-web/src/generated/glue.rs` | the web host's exports |
 | napi glue | `crates/og-host-node/src/generated/glue.rs` | the native host's exports |
 | host ABI interface | `packages/engine/src/generated/abi.ts` | the TypeScript runtime (`HostAbi`, `SYMBOLS`) |
-| wiki: one page per module and `index.md` | `packages/knowledge/wiki/` | agents, through `@origingame/engine-knowledge` (mounted as the `og-game` skill's `reference/`) |
+| wiki: one page per module, guides and `search.tsv` | `packages/knowledge/wiki/` | agents, through `og api find` / `og api show` / `og api list` and `@origingame/engine` |
 
 Every generated file's header names `api.ogt`, meaning the concatenated
 IDL. Wiki pages quote each declaration's IDL text
@@ -102,11 +102,9 @@ comment   = "#" to the end of the line, where "#" starts a token
 ## The IDL
 
 Top level: `package "<npm name>"`, `doc "..."` lines, `unit <name> "<doc>"`
-and `module <name> { ... }`. A module holds `skill og-<name>` (the
-knowledge skill that teaches it: the wiki's index groups modules by it, each
-page names it, and the knowledge package checks that skill names the page),
-`doc`, optionally `place namespace|root|top` and `publish false`, then
-declarations.
+and `module <name> { ... }`. A module holds `doc`, optional `guide "<guide> §N"`
+references, `place namespace|root|top`, `publish false`, `split <module>`, and
+`core <items...>`, then declarations.
 
 Most declarations accept a trailing quoted doc on their own line
 (`field x f32 "The x component."`) and `doc "..."` lines in their block;

@@ -45,7 +45,7 @@ UI marks come first in reading order, then entities nearest first. A layout cont
 
 An entity's `what` names what draws it. A grass field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it.
 
-A review then says "7 is cut off" and the map says `ui/shop.tsx:42`, `Button.base[primary]` from `styles/clean/style.ogt:210`: the line to change.
+A review then says "7 is cut off" and the map says `ui/shop.tsx:42`, `Button.base[primary]` from `styles/clean/pack.json:210`: the line to change.
 
 <a id="guide-captures-3"></a>
 ### `captures §3` Key frames of a run

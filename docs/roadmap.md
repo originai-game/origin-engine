@@ -242,8 +242,9 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 
 ## Decided
 
-- **Familiar syntax first:** Svelte templates and stores, standard CSS,
-  GSAP, Yarn, bun:test, Rapier and the three.js vocabulary.
+- **Familiar syntax first:** TypeScript TSX components with Tailwind v4.1
+  utility classes and `svelte/store`-shaped presentation stores, GSAP, Yarn,
+  bun:test, Rapier and the three.js vocabulary.
 - **New style packs** need a separate art sign-off.
 - **Video to game** (`docs/design.md` §2.9): `og video study` is its one
   command; no gameplay template, `og video pair`, new `artBrief` member or
@@ -252,6 +253,3 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   CRIU or process fork, VLM gating, Rust hot patching, splitting tests
   across machines, Radiance Cascades, and from Exact its Contract UI
   language, Rust gameplay and the DOM host.
-- **`-og` properties that stay:** `-og-scroll-fade`,
-  `-og-layout-transition` and `-og-text-path`, since standard CSS has no
-  equivalent that keeps their output.

@@ -30,7 +30,7 @@ Their exported `<Name>Props` interfaces describe inputs and callbacks;
 `fixtures` in the same `.tsx` file supply named presentation examples.
 The bundler follows imports and their string tables/assets transitively.
 There is no `<ui:name>` syntax, implicit component registry,
-`og.load.document` or screen-name push operation.
+separate document loader or screen-name push operation.
 
 ```tsx
 import { mount } from "@origingame/engine/ui";

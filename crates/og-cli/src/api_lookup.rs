@@ -1,24 +1,84 @@
-//! `og api find <words>` and `og api show <name>`: the API reference one
-//! entry at a time. The wiki pages `og api gen` writes (the knowledge
-//! package's `wiki/`, shipped in @origingame/engine) give every function,
-//! component, type, member, constant and value an anchor (`<a id="kind-…">`);
-//! an entry is the anchor's block (to the next anchor or `## ` section) or,
-//! for a table row (constants, record columns), the row. `find` ranks entries
-//! by their name and first sentence; `show` prints one entry without its IDL
-//! source, so an agent reads a few kilobytes instead of a 400 KB page.
+//! `og api find <words>`, `og api show <name>` and `og api list`: the API
+//! reference one entry at a time. The wiki pages `og api gen` writes (the
+//! knowledge package's `wiki/`, shipped in @origingame/engine) give every
+//! function, component, type, member, constant, value and guide section an
+//! anchor (`og_idl::search::entries`). `find` ranks entries with the index
+//! `og api gen` ships beside the pages (`search.tsv`, `og_idl::search`: BM25F
+//! and static embeddings, fused); `show` loads only the matched page(s) and
+//! prints one entry without its IDL source, so an agent reads a few kilobytes
+//! instead of a whole wiki.
 
-//! `og api find <words>` and `og api show <name>`: the API reference one
-//! entry at a time. The wiki pages `og api gen` writes (the knowledge
-//! package's `wiki/`, shipped in @origingame/engine) give every function,
-//! component, type, member, constant, value and guide section an anchor;
-//! an entry is the anchor's block or table row (`og_idl::search::entries`).
-//! `find` ranks entries with the index `og api gen` ships beside the pages
-//! (`search.tsv`, `og_idl::search`: BM25F and static embeddings, fused); `show` prints one entry without
-//! its IDL source, so an agent reads a few kilobytes instead of a page.
-
-use og_idl::search::{Doc, Entry, Hit, SearchIndex, bare, entries};
+use og_idl::search::{Doc, Entry, Hit, SearchIndex, bare, entries, entry_title, section_title};
+use std::collections::BTreeSet;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+
+/// Guides larger than this print their overview and a numbered section table
+/// unless `--all` is passed, so `og api show components --guide` stays within
+/// a model's context budget.
+const GUIDE_INLINE_MAX_BYTES: usize = 28_000;
+
+/// Cached wiki directory and search index, kept in process by `og mcp`.
+pub struct WikiCache {
+    dir: PathBuf,
+    index: SearchIndex,
+}
+
+impl WikiCache {
+    pub fn open() -> Result<Self, String> {
+        let dir = wiki_dir().ok_or_else(|| {
+            format!(
+                "no API reference found: {}; or set OG_WIKI_DIR to the knowledge package's wiki/",
+                crate::project::NO_ENGINE
+            )
+        })?;
+        let index = index(&dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
+        Ok(Self { dir, index })
+    }
+
+    pub fn find_json(
+        &self,
+        query: &str,
+        kind: Option<&str>,
+        limit: usize,
+    ) -> (serde_json::Value, bool) {
+        let hits = find(&self.index, query, kind);
+        let rows: Vec<serde_json::Value> = hits
+            .iter()
+            .take(limit)
+            .map(|(d, score)| {
+                serde_json::json!({
+                    "name": d.name,
+                    "kind": d.kind,
+                    "page": format!("{}.md", d.page),
+                    "summary": d.summary,
+                    "score": (score.score * 10000.0).round() / 10000.0,
+                    "bm25": score.bm25.map(|b| (b * 1000.0).round() / 1000.0),
+                    "cosine": (f64::from(score.cosine) * 1000.0).round() / 1000.0,
+                })
+            })
+            .collect();
+        (
+            serde_json::json!({ "query": query, "total": hits.len(), "entries": rows }),
+            !hits.is_empty(),
+        )
+    }
+
+    pub fn show_output(
+        &self,
+        query: &str,
+        guide: bool,
+        every: bool,
+        json: bool,
+    ) -> Result<String, String> {
+        show_formatted(&self.dir, &self.index, query, None, guide, every, json)
+    }
+
+    pub fn list_json(&self, kind: Option<&str>) -> serde_json::Value {
+        list_value(&self.index, kind)
+    }
+}
 
 /// The ranked entries for `query`, best first, with their scores.
 pub fn find<'a>(ix: &'a SearchIndex, query: &str, kind: Option<&str>) -> Vec<(&'a Doc, Hit)> {
@@ -38,18 +98,27 @@ fn core(overview: &str) -> Option<Vec<&str>> {
     Some(names.split(", ").map(|n| n.trim_matches('`')).collect())
 }
 
-/// A module's members that have a page of their own, by kind, one line each
-/// of names: what `og api show <module>` lists after the overview. With a
-/// core tier, only the core ones unless `all`.
+/// A module's members by kind (subpages for fn/record/type, and row entries on
+/// the module page for value/const/column), one line each: what `og api show
+/// <module>` lists after the overview. With a core tier, only the core ones
+/// unless `all`.
 fn members(ix: &SearchIndex, module: &str, overview: &str, all: bool) -> String {
     let core = core(overview).filter(|_| !all);
     let mut out = String::new();
     let mut hidden = 0;
-    for kind in ["fn", "record", "interface", "type"] {
+    for kind in ["fn", "record", "type", "value", "const", "column"] {
+        let on_module_page = matches!(kind, "value" | "const" | "column");
         let mut names: Vec<&str> = ix
             .docs
             .iter()
-            .filter(|d| d.kind == kind && d.page.split_once('/').is_some_and(|(m, _)| m == module))
+            .filter(|d| {
+                d.kind == kind
+                    && if on_module_page {
+                        d.page == module
+                    } else {
+                        d.page.split_once('/').is_some_and(|(m, _)| m == module)
+                    }
+            })
             .map(|d| d.name.as_str())
             .collect();
         names.dedup();
@@ -59,7 +128,7 @@ fn members(ix: &SearchIndex, module: &str, overview: &str, all: bool) -> String 
             hidden += before - names.len();
         }
         if !names.is_empty() {
-            out.push_str(&format!("{kind}: {}\n", names.join(", ")));
+            let _ = writeln!(out, "{kind}: {}", names.join(", "));
         }
     }
     if !out.is_empty() {
@@ -73,9 +142,10 @@ fn members(ix: &SearchIndex, module: &str, overview: &str, all: bool) -> String 
         );
     }
     if hidden > 0 {
-        out.push_str(&format!(
-            "… {hidden} advanced; `og api show {module} --all` lists them.\n"
-        ));
+        let _ = writeln!(
+            out,
+            "… {hidden} advanced; `og api show {module} --all` lists them."
+        );
     }
     out
 }
@@ -85,13 +155,20 @@ fn module_of(page: &str) -> &str {
     page.split('/').next().unwrap_or(page)
 }
 
+/// Whether `d` is a guide overview (as opposed to one of its `§N` sections).
+fn is_guide_overview(d: &Doc) -> bool {
+    d.kind == "guide" && !d.name.contains(" §")
+}
+
 /// The entries named `name` (with or without `og.`, any case); a module's
 /// or guide's own name as written (`input`, not `Input` or `og.Input`) is its
 /// overview. A guide named like a module (`physics`) is shown with `guide`.
+#[allow(dead_code)]
 pub fn show<'a>(all: &'a [Entry], name: &str, guide: bool) -> Vec<&'a Entry> {
+    let trimmed = name.trim();
     let whole = |kind: &str| -> Vec<&'a Entry> {
         all.iter()
-            .filter(|e| e.kind == kind && e.name == name.trim())
+            .filter(|e| e.kind == kind && e.name == trimmed)
             .collect()
     };
     for kind in if guide {
@@ -105,11 +182,11 @@ pub fn show<'a>(all: &'a [Entry], name: &str, guide: bool) -> Vec<&'a Entry> {
         }
     }
     let want = bare(name);
-    let all: Vec<&Entry> = all
+    let items: Vec<&Entry> = all
         .iter()
         .filter(|e| e.kind != "module" && !(e.kind == "guide" && !e.name.contains(" §")))
         .collect();
-    let exact: Vec<&Entry> = all
+    let exact: Vec<&Entry> = items
         .iter()
         .copied()
         .filter(|e| bare(&e.name) == want)
@@ -118,17 +195,82 @@ pub fn show<'a>(all: &'a [Entry], name: &str, guide: bool) -> Vec<&'a Entry> {
         return exact;
     }
     // `CharacterController` names `og.CharacterController`; `castRay` names `og.physics.castRay`.
-    all.into_iter()
+    let leaf: Vec<&Entry> = items
+        .iter()
+        .copied()
         .filter(|e| bare(&e.name).rsplit('.').next() == Some(want.as_str()))
+        .collect();
+    if !leaf.is_empty() {
+        return leaf;
+    }
+    // A guide section's heading title (`Button`, `StatBar`, `mount`, `createSignal`).
+    items
+        .into_iter()
+        .filter(|e| e.kind == "guide" && entry_title(e).is_some_and(|t| bare(t) == want))
         .collect()
 }
 
-/// An entry as `show` prints it: the page text without the IDL source block
-/// and the binding line, which only the engine's own tools read.
-pub fn render(e: &Entry) -> String {
+/// Match `name` against the already-loaded `SearchIndex` and load only the
+/// matched page file(s) from disk.
+fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> {
+    let trimmed = name.trim();
+    let whole = |kind: &str| -> Vec<&'a Doc> {
+        ix.docs
+            .iter()
+            .filter(|d| d.kind == kind && d.name == trimmed)
+            .collect()
+    };
+    for kind in if guide {
+        ["guide", "module"]
+    } else {
+        ["module", "guide"]
+    } {
+        let found = whole(kind);
+        if !found.is_empty() {
+            return found;
+        }
+    }
+    let want = bare(name);
+    let items: Vec<&Doc> = ix
+        .docs
+        .iter()
+        .filter(|d| d.kind != "module" && !is_guide_overview(d))
+        .collect();
+    let exact: Vec<&Doc> = items
+        .iter()
+        .copied()
+        .filter(|d| bare(&d.name) == want)
+        .collect();
+    if !exact.is_empty() {
+        return exact;
+    }
+    let leaf: Vec<&Doc> = items
+        .iter()
+        .copied()
+        .filter(|d| bare(&d.name).rsplit('.').next() == Some(want.as_str()))
+        .collect();
+    if !leaf.is_empty() {
+        return leaf;
+    }
+    items
+        .into_iter()
+        .filter(|d| section_title(d).is_some_and(|t| bare(t) == want))
+        .collect()
+}
+
+fn load_page(dir: &Path, page: &str) -> std::io::Result<(String, Vec<Entry>)> {
+    let path = dir.join(format!("{page}.md"));
+    let text = std::fs::read_to_string(&path)?;
+    let parsed = entries(page, &text);
+    Ok((text, parsed))
+}
+
+/// An entry's body without the IDL source block and the binding line, which
+/// only the engine's own tools read.
+fn clean_body(body: &str) -> String {
     let mut out = String::new();
     let mut skip = false;
-    for line in e.body.lines() {
+    for line in body.lines() {
         if line.starts_with("```ogt") {
             skip = true;
             continue;
@@ -139,14 +281,222 @@ pub fn render(e: &Entry) -> String {
             }
             continue;
         }
-        if line.starts_with("Binding symbol ") {
+        if line.starts_with("Binding symbol ") || line.starts_with("<a id=\"") {
             continue;
         }
         out.push_str(line);
         out.push('\n');
     }
-    let text = out.trim_end().to_string();
+    out.trim_end().to_string()
+}
+
+/// An entry as `show` prints it.
+pub fn render(e: &Entry) -> String {
+    let text = clean_body(&e.body);
     format!("{text}\n\n({} · {}; page {}.md)\n", e.name, e.kind, e.page)
+}
+
+/// Render a guide overview: inline all sections when the page fits in
+/// [`GUIDE_INLINE_MAX_BYTES`] or `every` is set; otherwise print the overview
+/// and a compact section table so a huge catalogue guide stays readable.
+fn render_guide_overview(
+    overview: &Entry,
+    page_text: &str,
+    page_entries: &[Entry],
+    every: bool,
+) -> (String, Option<Vec<serde_json::Value>>) {
+    let sections: Vec<&Entry> = page_entries
+        .iter()
+        .filter(|e| e.kind == "guide" && e.name.contains(" §"))
+        .collect();
+    if sections.is_empty() || every || page_text.len() <= GUIDE_INLINE_MAX_BYTES {
+        let mut body = clean_body(&overview.body);
+        for s in &sections {
+            body.push_str("\n\n");
+            body.push_str(&clean_body(&s.body));
+        }
+        let text = format!(
+            "{body}\n\n({} · {}; page {}.md)\n",
+            overview.name, overview.kind, overview.page
+        );
+        return (text, None);
+    }
+    let mut body = clean_body(&overview.body);
+    let _ = writeln!(
+        body,
+        "\n\nSections ({} total, {} KB full page; `og api show \"{} §N\"`, `og api show <Title>`, or `--all`):\n",
+        sections.len(),
+        page_text.len().div_ceil(1024),
+        overview.name
+    );
+    let mut toc = Vec::with_capacity(sections.len());
+    for s in &sections {
+        let title = entry_title(s).unwrap_or("");
+        if title.is_empty() {
+            let _ = writeln!(body, "- `{}`", s.name);
+        } else {
+            let _ = writeln!(body, "- `{}` — {title}", s.name);
+        }
+        toc.push(serde_json::json!({
+            "name": s.name,
+            "title": title,
+            "summary": s.summary,
+        }));
+    }
+    let text = format!(
+        "{}\n\n({} · {}; page {}.md)\n",
+        body.trim_end(),
+        overview.name,
+        overview.kind,
+        overview.page
+    );
+    (text, Some(toc))
+}
+
+fn show_formatted(
+    dir: &Path,
+    ix: &SearchIndex,
+    query: &str,
+    kind: Option<&str>,
+    guide: bool,
+    every: bool,
+    json: bool,
+) -> Result<String, String> {
+    let matched = match_docs(ix, query, guide);
+    if matched.is_empty() {
+        let near = find(ix, query, kind);
+        let mut msg = format!("og api show: no entry named `{query}`.");
+        if !near.is_empty() {
+            msg.push_str("\nClose matches:");
+            for (d, _) in near.iter().take(8) {
+                let _ = write!(msg, "\n  {}  ({}, {})", d.name, d.kind, module_of(&d.page));
+            }
+        }
+        return Err(msg);
+    }
+    // Load each distinct referenced page once.
+    let pages: BTreeSet<&str> = matched.iter().map(|d| d.page.as_str()).collect();
+    let mut loaded: Vec<(&str, String, Vec<Entry>)> = Vec::with_capacity(pages.len());
+    for p in pages {
+        let (raw, parsed) =
+            load_page(dir, p).map_err(|e| format!("cannot read {}/{p}.md: {e}", dir.display()))?;
+        loaded.push((p, raw, parsed));
+    }
+    let mut text_out = String::new();
+    let mut json_entries = Vec::new();
+    for (i, doc) in matched.iter().enumerate() {
+        let Some((_, page_text, page_entries)) = loaded.iter().find(|(p, _, _)| *p == doc.page)
+        else {
+            continue;
+        };
+        let Some(entry) = page_entries
+            .iter()
+            .find(|e| e.kind == doc.kind && e.name == doc.name)
+        else {
+            continue;
+        };
+        let (rendered, sections_toc) = if is_guide_overview(doc) {
+            render_guide_overview(entry, page_text, page_entries, every)
+        } else {
+            (render(entry), None)
+        };
+        let module_members = if entry.kind == "module" {
+            Some(members(ix, &entry.page, &entry.body, every))
+        } else {
+            None
+        };
+        let has_guide = entry.kind == "module"
+            && ix
+                .docs
+                .iter()
+                .any(|g| is_guide_overview(g) && g.name == entry.name);
+        if json {
+            let mut row = serde_json::json!({
+                "name": entry.name,
+                "kind": entry.kind,
+                "page": format!("{}.md", entry.page),
+                "summary": entry.summary,
+                "text": rendered,
+            });
+            if let Some(m) = &module_members
+                && !m.is_empty()
+            {
+                row["members"] = serde_json::json!(m);
+            }
+            if let Some(toc) = sections_toc {
+                row["sections"] = serde_json::json!(toc);
+            }
+            if has_guide {
+                row["guide"] = serde_json::json!(entry.name);
+            }
+            json_entries.push(row);
+        } else {
+            if i > 0 {
+                text_out.push_str("\n---\n\n");
+            }
+            text_out.push_str(&rendered);
+            if let Some(m) = &module_members {
+                text_out.push_str(m);
+            }
+            if has_guide {
+                let _ = writeln!(
+                    text_out,
+                    "The `{0}` guide (how to use it): `og api show {0} --guide`.",
+                    entry.name
+                );
+            }
+        }
+    }
+    if json {
+        Ok(format!(
+            "{}\n",
+            serde_json::json!({ "query": query, "entries": json_entries })
+        ))
+    } else {
+        Ok(text_out)
+    }
+}
+
+fn list_value(ix: &SearchIndex, kind: Option<&str>) -> serde_json::Value {
+    let want_modules = kind.is_none() || kind == Some("module");
+    let want_guides = kind.is_none() || kind == Some("guide");
+    let modules: Vec<serde_json::Value> = if want_modules {
+        ix.docs
+            .iter()
+            .filter(|d| d.kind == "module")
+            .map(|d| {
+                serde_json::json!({
+                    "name": d.name,
+                    "page": format!("{}.md", d.page),
+                    "summary": d.summary,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let guides: Vec<serde_json::Value> = if want_guides {
+        ix.docs
+            .iter()
+            .filter(|d| is_guide_overview(d))
+            .map(|d| {
+                let sections = ix
+                    .docs
+                    .iter()
+                    .filter(|s| s.kind == "guide" && s.page == d.page && s.name.contains(" §"))
+                    .count();
+                serde_json::json!({
+                    "name": d.name,
+                    "page": format!("{}.md", d.page),
+                    "sections": sections,
+                    "summary": d.summary,
+                })
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    serde_json::json!({ "modules": modules, "guides": guides })
 }
 
 /// The wiki directory: `OG_WIKI_DIR`, the engine package's `knowledge/wiki`,
@@ -220,7 +570,9 @@ const KINDS: [&str; 9] = [
     "module", "fn", "record", "type", "member", "const", "value", "column", "guide",
 ];
 
-/// `og api find <words> [--kind K] [--limit N]` or `og api show <name>`.
+/// `og api find <words> [--kind K] [--limit N] [--json]`,
+/// `og api show <name> [--all] [--guide] [--json]`, or
+/// `og api list [--kind module|guide] [--json]`.
 pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     let Some(dir) = wiki_dir() else {
         eprintln!(
@@ -239,9 +591,18 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     while let Some(a) = it.next() {
         match *a {
             "--kind" => match it.next() {
-                Some(k) if KINDS.contains(k) => kind = Some(*k),
+                Some(k)
+                    if (cmd == "list" && matches!(*k, "module" | "guide"))
+                        || (cmd != "list" && KINDS.contains(k)) =>
+                {
+                    kind = Some(*k);
+                }
                 _ => {
-                    eprintln!("og api {cmd}: --kind is one of {}", KINDS.join(", "));
+                    if cmd == "list" {
+                        eprintln!("og api list: --kind is module or guide");
+                    } else {
+                        eprintln!("og api {cmd}: --kind is one of {}", KINDS.join(", "));
+                    }
                     return ExitCode::from(2);
                 }
             },
@@ -258,6 +619,54 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             w => rest.push(w),
         }
     }
+    let unreadable = |e: std::io::Error| {
+        eprintln!("og api {cmd}: cannot read {}: {e}", dir.display());
+        ExitCode::FAILURE
+    };
+    let ix = match index(&dir) {
+        Ok(ix) => ix,
+        Err(e) => return unreadable(e),
+    };
+    if cmd == "list" {
+        if !rest.is_empty() {
+            eprintln!("og api list: unexpected arguments `{}`", rest.join(" "));
+            return ExitCode::from(2);
+        }
+        let val = list_value(&ix, kind);
+        if json {
+            println!("{val}");
+            return ExitCode::SUCCESS;
+        }
+        if let Some(mods) = val["modules"].as_array()
+            && !mods.is_empty()
+        {
+            println!("Modules ({}):", mods.len());
+            for m in mods {
+                println!(
+                    "  {} — {}",
+                    m["name"].as_str().unwrap_or(""),
+                    m["summary"].as_str().unwrap_or("")
+                );
+            }
+        }
+        if let Some(guides) = val["guides"].as_array()
+            && !guides.is_empty()
+        {
+            if kind.is_none() {
+                println!();
+            }
+            println!("Guides ({}):", guides.len());
+            for g in guides {
+                println!(
+                    "  {} ({} §) — {}",
+                    g["name"].as_str().unwrap_or(""),
+                    g["sections"].as_u64().unwrap_or(0),
+                    g["summary"].as_str().unwrap_or("")
+                );
+            }
+        }
+        return ExitCode::SUCCESS;
+    }
     let query = rest.join(" ");
     if query.trim().is_empty() {
         eprintln!(
@@ -270,47 +679,17 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
         );
         return ExitCode::from(2);
     }
-    let unreadable = |e: std::io::Error| {
-        eprintln!("og api {cmd}: cannot read {}: {e}", dir.display());
-        ExitCode::FAILURE
-    };
-    let ix = match index(&dir) {
-        Ok(ix) => ix,
-        Err(e) => return unreadable(e),
-    };
     if cmd == "show" {
-        let all = match load(&dir) {
-            Ok(all) => all,
-            Err(e) => return unreadable(e),
+        return match show_formatted(&dir, &ix, &query, kind, guide, every, json) {
+            Ok(out) => {
+                print!("{out}");
+                ExitCode::SUCCESS
+            }
+            Err(err) => {
+                eprintln!("{err}");
+                ExitCode::FAILURE
+            }
         };
-        let hits = show(&all, &query, guide);
-        if hits.is_empty() {
-            let near = find(&ix, &query, kind);
-            eprintln!("og api show: no entry named `{query}`.");
-            if !near.is_empty() {
-                eprintln!("Close matches:");
-                for (d, _) in near.iter().take(8) {
-                    eprintln!("  {}  ({}, {})", d.name, d.kind, module_of(&d.page));
-                }
-            }
-            return ExitCode::FAILURE;
-        }
-        for (i, e) in hits.iter().enumerate() {
-            if i > 0 {
-                println!("\n---\n");
-            }
-            print!("{}", render(e));
-            if e.kind == "module" {
-                print!("{}", members(&ix, &e.page, &e.body, every));
-                if all.iter().any(|g| g.kind == "guide" && g.name == e.name) {
-                    println!(
-                        "The `{0}` guide (how to use it): `og api show {0} --guide`.",
-                        e.name
-                    );
-                }
-            }
-        }
-        return ExitCode::SUCCESS;
     }
     let hits = find(&ix, &query, kind);
     if json {

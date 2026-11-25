@@ -3191,7 +3191,7 @@
         },
         {
           "name": "UiSetupFn",
-          "doc": "Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR.",
+          "doc": "Register named presentation stores and mount TSX screens (`mount` from `@origingame/engine/ui`). Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed.",
           "params": [
             {
               "name": "world",
@@ -7267,7 +7267,7 @@
         },
         {
           "name": "vector",
-          "doc": "A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path.",
+          "doc": "A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -7288,7 +7288,7 @@
         },
         {
           "name": "uiMaterial",
-          "doc": "A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path.",
+          "doc": "A custom UI material resource from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>` and up to four `param <name> float|vec2|vec3|vec4|color <default...>` lines. The cook compiles it for every back end. Loaded once per path (ui-materials §2).\nSee `ui-materials §2`.",
           "params": [
             {
               "name": "world",
@@ -7300,7 +7300,7 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The asset id, such as `ui/duotone.ogt`."
+              "doc": "The asset id, such as `materials/materials/rarity.ogt`."
             }
           ],
           "returns": "Result<UiMaterial>",
@@ -7350,7 +7350,7 @@
         },
         {
           "name": "style",
-          "doc": "Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3 is the CSS dialect every built-in style uses; versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.\nSee `loading §6`.",
+          "doc": "Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path.\nSee `loading §6`.",
           "params": [
             {
               "name": "world",
@@ -7362,11 +7362,11 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
+              "doc": "The style directory or built-in slug, such as `styles/main` or `tactical-dark`."
             }
           ],
           "returns": "Result<Style>",
-          "returnsDoc": "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load.",
+          "returnsDoc": "Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse.",
           "publish": true
         },
         {
@@ -14120,7 +14120,7 @@
             },
             {
               "name": "dump",
-              "doc": "A world, entity or UI dump, as the command channel's dump actions write.",
+              "doc": "A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`).",
               "params": [
                 {
                   "name": "desc",
@@ -14130,8 +14130,8 @@
                   "doc": "What to dump."
                 }
               ],
-              "returns": "Option<DumpResult>",
-              "returnsDoc": "Null for an unknown entity.",
+              "returns": "Option<OneOf<DumpResult,Json>>",
+              "returnsDoc": "Null for an unknown entity or an inactive optional dump.",
               "publish": false
             },
             {
@@ -50615,12 +50615,12 @@
     "TextSpan": {
       "x-og-kind": "struct",
       "x-og-module": "ui",
-      "description": "A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup.",
+      "description": "A named attribute range in plain text for presentation stores and rich text. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Text is never reinterpreted as markup.",
       "type": "object",
       "properties": {
         "name": {
           "type": "string",
-          "description": "The style part name, for example emphasis or character."
+          "description": "The span kind or role name, for example emphasis or character."
         },
         "position": {
           "type": "integer",
@@ -50685,7 +50685,7 @@
     "ColorVision": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
-      "description": "A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)).",
+      "description": "A colour vision deficiency filter (UiDesc.colorVision).",
       "type": "string",
       "enum": [
         "none",
@@ -51173,14 +51173,14 @@
     "VectorArt": {
       "x-og-kind": "handle",
       "x-og-module": "ui",
-      "description": "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.",
+      "description": "A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector.",
       "type": "integer",
       "minimum": 0
     },
     "UiMaterial": {
       "x-og-kind": "handle",
       "x-og-module": "ui",
-      "description": "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through.",
+      "description": "A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial.",
       "type": "integer",
       "minimum": 0
     },
@@ -51517,7 +51517,7 @@
               "type": "null"
             }
           ],
-          "description": "The document line that built it (`ui/shop.ogt:42`); null for code-built UI."
+          "description": "The document line that built it (`ui/shop.tsx:42`); null for code-built UI."
         },
         "part": {
           "anyOf": [
@@ -51728,7 +51728,7 @@
           "items": {
             "$ref": "#/$defs/ProbeEntityRef"
           },
-          "description": "The named entities."
+          "description": "All live entities (named first, then unnamed as `#<index>.<generation>`)."
         },
         "facts": {
           "description": "What GameDesc.facts returned, or null."
@@ -52396,7 +52396,7 @@
               "type": "null"
             }
           ],
-          "description": "Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
+          "description": "Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build."
         },
         "part": {
           "anyOf": [
@@ -53067,9 +53067,23 @@
       "type": "object",
       "properties": {
         "what": {
-          "$ref": "#/$defs/DumpKind",
-          "description": "The kind of dump.",
-          "default": "world"
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/DumpKind"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`.",
+          "default": null
         },
         "id": {
           "type": "string",
@@ -53108,7 +53122,7 @@
     "SystemDump": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
-      "description": "One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time).",
+      "description": "One system: declared access, matched count, and timing (ms, totalMs, runs) when the host supplies a clock.",
       "type": "object",
       "properties": {
         "name": {
@@ -53167,6 +53181,24 @@
           ],
           "description": "Time it took on the last tick; null when not measured.",
           "x-og-unit": "ms"
+        },
+        "totalMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Cumulative milliseconds across timed runs; null when not measured.",
+          "x-og-unit": "ms"
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Number of timed runs accumulated in totalMs."
         },
         "neverMatched": {
           "anyOf": [
@@ -53271,6 +53303,9 @@
           "type": "object",
           "additionalProperties": {},
           "description": "Each component's field values, by component name."
+        },
+        "render": {
+          "description": "Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer."
         },
         "prefab": {
           "$ref": "#/$defs/EntityPrefab",
@@ -53670,6 +53705,9 @@
           ],
           "description": "The surface the bounds are on; null without a UI module."
         },
+        "style": {
+          "description": "Active UI style pack and theme summary; null without a UI module."
+        },
         "elements": {
           "type": "array",
           "items": {
@@ -53817,6 +53855,9 @@
               "additionalProperties": {},
               "description": "Each component's field values, by component name."
             },
+            "render": {
+              "description": "Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer."
+            },
             "prefab": {
               "$ref": "#/$defs/EntityPrefab",
               "description": "Where it came from, for an entity placed from a prefab; absent otherwise."
@@ -53858,6 +53899,9 @@
                 }
               ],
               "description": "The surface the bounds are on; null without a UI module."
+            },
+            "style": {
+              "description": "Active UI style pack and theme summary; null without a UI module."
             },
             "elements": {
               "type": "array",

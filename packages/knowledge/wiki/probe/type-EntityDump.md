@@ -13,6 +13,7 @@ One entity.
 | `id` | `string` | `""` | — | — | — | Its probe id. |
 | `name` | `string \| null` | `null` | — | — | — | Its name. |
 | `components` | `Readonly<Record<string, unknown>>` | `{}` | — | — | — | Each component's field values, by component name. |
+| `render` | `unknown` | `null` | — | — | optional | Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer. |
 | `prefab` | `EntityPrefab` | `{ prefab: "", node: "", root: "", overrides: [] }` | — | — | optional | Where it came from, for an entity placed from a prefab; absent otherwise. |
 | `visible` | `Visibility` | `{ visible: null, reason: "drawn", drawn: 0, culled: 0 }` | — | — | optional | Whether the main camera draws it at this tick, and why; absent from a host without a scene view. |
 
@@ -22,6 +23,9 @@ struct EntityDump {
   field id String "Its probe id."
   field name Option.String "Its name."
   field components Map.Json "Each component's field values, by component name."
+  field render Json "Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer." {
+    optional true
+  }
   field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
     optional true
   }
@@ -31,4 +35,4 @@ struct EntityDump {
 }
 ```
 
-<sub>Module `probe` line 455</sub>
+<sub>Module `probe` line 462</sub>

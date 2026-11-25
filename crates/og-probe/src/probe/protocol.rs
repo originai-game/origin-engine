@@ -936,24 +936,71 @@ impl Probe {
         match kind {
             DumpKind::World => Some(self.dump_world(world)),
             DumpKind::Ui => Some(self.dump_ui(world)),
-            DumpKind::Desync => match self
-                .commands
-                .registered
-                .get("dump_desync")
-                .map(|r| &r.handler)
-            {
-                Some(Handler::Dump(handler, _)) => {
-                    let mut v = handler.clone()(world, &[]).ok()?;
-                    v["kind"] = json!("desync");
-                    Some(v)
-                }
-                _ => None,
-            },
+            DumpKind::Desync => self.dump_registered(world, "desync"),
             DumpKind::Entity => {
                 let e = self.names.resolve(world, id)?;
                 Some(self.dump_entity(world, e))
             }
             DumpKind::Drawn => Some(self.dump_drawn(world)),
+        }
+    }
+
+    /// `dump` by name: built-in dumps (`world`, `entity`, `ui`, `ui:layers`,
+    /// `ui:motion`, `drawn`, `desync`) plus every registered subsystem
+    /// `dump_<name>` handler (`physics`, `render`, `audio`, `ai`, `nav`, ...).
+    pub fn dump_named(&self, world: &World, what: &str, id: &str) -> Result<Option<Value>, String> {
+        match what {
+            "world" => Ok(Some(self.dump_world(world))),
+            "entity" => Ok(self
+                .names
+                .resolve(world, id)
+                .map(|e| self.dump_entity(world, e))),
+            "ui" => Ok(Some(self.dump_ui(world))),
+            "ui:layers" | "ui_layers" => Ok(Some(self.dump_layers(world))),
+            "ui:motion" | "ui_motion" => Ok(Some(self.dump_motion(world))),
+            "drawn" => Ok(Some(self.dump_drawn(world))),
+            "desync" => Ok(self.dump_registered(world, "desync")),
+            other => {
+                if let Some(v) = self.dump_registered(world, other) {
+                    return Ok(Some(v));
+                }
+                let mut available = vec![
+                    "world",
+                    "entity",
+                    "ui",
+                    "ui:layers",
+                    "ui:motion",
+                    "drawn",
+                    "desync",
+                ];
+                let registered: Vec<&str> = self
+                    .commands
+                    .registered
+                    .iter()
+                    .filter_map(|(k, r)| {
+                        matches!(r.handler, Handler::Dump(_, _))
+                            .then(|| k.strip_prefix("dump_"))
+                            .flatten()
+                    })
+                    .filter(|k| !available.contains(k))
+                    .collect();
+                available.extend(registered);
+                Err(format!("what must be one of {}", available.join(", ")))
+            }
+        }
+    }
+
+    fn dump_registered(&self, world: &World, name: &str) -> Option<Value> {
+        let key = format!("dump_{name}");
+        match self.commands.registered.get(&key).map(|r| &r.handler) {
+            Some(Handler::Dump(handler, _)) => {
+                let mut v = handler.clone()(world, &[]).ok()?;
+                if v.is_object() {
+                    v["kind"] = json!(name);
+                }
+                Some(v)
+            }
+            _ => None,
         }
     }
 

@@ -4,7 +4,7 @@ Pixel-art 2D effects (explosions, slashes, spells, portals, beams, auras, sparks
 
 The sheet it cooks into is an ordinary flipbook: `og api show anim`
 (og.load.flipbook, og.Flipbook, og.FlipbookEvent) and `og api show
-sprite` draw and play it. A 3D or mixed effect is a `type vfx` composed
+og.Sprite` draw and play it. A 3D or mixed effect is a `type vfx` composed
 effect (`og api show vfx`).
 
 ## 1. The file

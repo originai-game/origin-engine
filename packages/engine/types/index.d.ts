@@ -345,12 +345,10 @@ export interface ColumnKinds {
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
   Behaviour: { readonly array: Uint32Array; readonly stride: 2; readonly value: Behaviour };
-  /**
-   * A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill.
-   */
+  /** A VectorArt handle field (0 is none): a vector handle og.load.vector answered. */
   VectorArt: { readonly array: Uint32Array; readonly stride: 2; readonly value: VectorArt };
   /**
-   * A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint.
+   * A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered.
    */
   UiMaterial: { readonly array: Uint32Array; readonly stride: 2; readonly value: UiMaterial };
   /** A TerrainData handle field. */
@@ -2286,7 +2284,7 @@ export type FactsFn = (world: World) => unknown;
 export type StartFn = (world: World) => void;
 
 /**
- * Register named presentation stores. Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed. Document mounts await the Svelte parser IR.
+ * Register named presentation stores and mount TSX screens (`mount` from `@origingame/engine/ui`). Called after start and after hot-reload restore, never per tick. World reads may choose initial values; world writes and gameplay side effects are refused. Existing IDs keep values, kept callbacks are replaced, and removed IDs are disposed.
  *
  * @param world The world, read only during registration.
  */
@@ -28619,10 +28617,10 @@ export interface UiTheme {
 
 
 /**
- * A named attribute range in plain text for a store and the Svelte text spans binding. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Names select text::part(name) styles; text is never reinterpreted as markup.
+ * A named attribute range in plain text for presentation stores and rich text. Offsets count Unicode scalar values, not UTF-8 bytes, JavaScript UTF-16 code units or grapheme clusters. Unknown names and properties remain game data. A character span may cover the complete Speaker: prefix, including its separator. Text is never reinterpreted as markup.
  */
 export interface TextSpan {
-  /** The style part name, for example emphasis or character. */
+  /** The span kind or role name, for example emphasis or character. */
   readonly name: string;
   /** Start in Unicode scalar values; an astral character counts once. */
   readonly position: number;
@@ -28644,7 +28642,7 @@ export interface TextSpan {
 export type Breakpoint = "desktop" | "tablet" | "phoneLandscape" | "phonePortrait";
 
 /**
- * A colour vision deficiency (UiDesc.colorVision; CSS @media (-og-color-vision: <name>)).
+ * A colour vision deficiency filter (UiDesc.colorVision).
  * - `"none"`: Typical colour vision: no filter.
  * - `"protanopia"`: No red-sensitive cones: reds dark, red and green confused.
  * - `"deuteranopia"`: No green-sensitive cones: red and green confused.
@@ -28984,21 +28982,21 @@ export interface NumberFormatDesc {
 
 
 /**
- * A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill.
+ * A cooked vector asset (an `.ogt` of `type vector`: an SVG subset) from og.load.vector.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type VectorArt = number & { readonly [handleType]: "VectorArt" };
 
 /**
- * A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through.
+ * A custom UI material resource (an `.ogt` of `type ui-material`) from og.load.uiMaterial.
  *
  * A generational handle: a number the engine hands out. A dead handle is an error value, never a crash.
  */
 export type UiMaterial = number & { readonly [handleType]: "UiMaterial" };
 
 /**
- * A VectorArt handle field (0 is none): a vector og.load.vector answered, kept for a VectorFill.
+ * A VectorArt handle field (0 is none): a vector handle og.load.vector answered.
  *
  * A `VectorArt` field: stored in a `Uint32Array` with stride 2.
  * @param value The field's default; omitted, the column's zero value.
@@ -29007,7 +29005,7 @@ export type UiMaterial = number & { readonly [handleType]: "UiMaterial" };
 export declare function VectorArt(value?: VectorArt, options?: FieldOptions): FieldSpec<"VectorArt">;
 
 /**
- * A UiMaterial handle field (0 is none): a UI material og.load.uiMaterial answered, kept for a LayerDesc or a custom paint.
+ * A UiMaterial handle field (0 is none): a UI material handle og.load.uiMaterial answered.
  *
  * A `UiMaterial` field: stored in a `Uint32Array` with stride 2.
  * @param value The field's default; omitted, the column's zero value.
@@ -29269,7 +29267,7 @@ export interface UiPickElement {
   readonly rect: UiRect;
   /** The screen whose layer it is in; null for code-built UI outside one. */
   readonly layer: string | null;
-  /** The document line that built it (`ui/shop.ogt:42`); null for code-built UI. */
+  /** The document line that built it (`ui/shop.tsx:42`); null for code-built UI. */
   readonly source: string | null;
   /**
    * The style part it is drawn as, with its variant and state flags (`Button.base[primary][hover]`); null for one no style dresses.
@@ -29361,7 +29359,7 @@ export interface ProbeState {
   readonly seed: number;
   /** The last tick's timings. */
   readonly timings: ProbeTimings;
-  /** The named entities. */
+  /** All live entities (named first, then unnamed as `#<index>.<generation>`). */
   readonly entities: readonly ProbeEntityRef[];
   /** What GameDesc.facts returned, or null. */
   readonly facts: unknown;
@@ -29597,7 +29595,7 @@ export interface Mark {
    */
   readonly point: ScreenPoint;
   /**
-   * Where a person would change it: the document line that built the element (`ui/shop.ogt:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build.
+   * Where a person would change it: the document line that built the element (`ui/shop.tsx:42`), the scene line that declares the entity (`scenes/main.ogt:12`), or the TypeScript line that spawned it (SpawnDesc.source); null for code-built UI, and for spawned entities in a publish build.
    */
   readonly source: string | null;
   /**
@@ -29933,11 +29931,11 @@ export type DumpKind = "world" | "entity" | "ui" | "desync" | "drawn";
  */
 export interface DumpDesc {
   /**
-   * The kind of dump.
+   * A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`.
    *
-   * @default "world"
+   * @default null
    */
-  readonly what?: DumpKind;
+  readonly what?: DumpKind | string | null;
   /**
    * The probe id, for an entity dump.
    *
@@ -29955,7 +29953,7 @@ export interface ArchetypeDump {
 }
 
 /**
- * One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time).
+ * One system: declared access, matched count, and timing (ms, totalMs, runs) when the host supplies a clock.
  */
 export interface SystemDump {
   /** Its name. */
@@ -29974,6 +29972,14 @@ export interface SystemDump {
    * @unit ms (milliseconds)
    */
   readonly ms: number | null;
+  /**
+   * Cumulative milliseconds across timed runs; null when not measured.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly totalMs?: number | null;
+  /** Number of timed runs accumulated in totalMs. */
+  readonly runs?: number;
   /**
    * For a system that ran but never matched an entity: the smallest set of its required components no entity ever had together (empty when each set existed but its without or timing missed it). Null otherwise. og run and og test warn about each game system with one.
    */
@@ -30004,6 +30010,10 @@ export interface EntityDump {
   readonly name: string | null;
   /** Each component's field values, by component name. */
   readonly components: Readonly<Record<string, unknown>>;
+  /**
+   * Renderer-owned state for this entity (mesh/sprite bounds, LOD, active clip); absent without a renderer.
+   */
+  readonly render?: unknown;
   /** Where it came from, for an entity placed from a prefab; absent otherwise. */
   readonly prefab?: EntityPrefab;
   /**
@@ -30196,6 +30206,8 @@ export interface UiDump {
   readonly tick: number;
   /** The surface the bounds are on; null without a UI module. */
   readonly surface: UiSurface | null;
+  /** Active UI style pack and theme summary; null without a UI module. */
+  readonly style?: unknown;
   /** The elements. */
   readonly elements: readonly UiElement[];
 }
@@ -30714,12 +30726,12 @@ export interface EngineProbe extends RuntimeProbe {
    */
   restore(id: string): boolean;
   /**
-   * A world, entity or UI dump, as the command channel's dump actions write.
+   * A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`).
    *
    * @param desc What to dump.
-   * @returns Null for an unknown entity.
+   * @returns Null for an unknown entity or an inactive optional dump.
    */
-  dump(desc?: DumpDesc): DumpResult | null;
+  dump(desc?: DumpDesc): DumpResult | unknown | null;
   /**
    * Schedule a command script on simulation time, as `og run --commands`.
    *
@@ -39082,7 +39094,7 @@ export declare namespace og {
      */
     function post(world: World, path: string): Result<Post>;
     /**
-     * A cooked vector for og.ui's VectorFill, from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges the UI pass antialiases at any size; anything outside the subset is refused by name. Loaded once per path.
+     * A cooked vector asset from an `.ogt` of `type vector`: `source` an SVG (or `svg` inline) of paths, basic shapes, groups and transforms, filled and stroked with colours or linear and radial gradients, and `tolerance` (curves flattened to within it, view-box units). The cook cuts it into triangles whose edges antialias at any size; anything outside the subset is refused by name. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `ui/emblem.ogt`.
@@ -39090,10 +39102,11 @@ export declare namespace og {
      */
     function vector(world: World, path: string): Result<VectorArt>;
     /**
-     * A custom UI material for og.ui's LayerDesc, from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>`, which returns the composite's straight-alpha linear colour at m.uv (0 to 1 over the layer; m.pixel, m.size in CSS px, m.time the UI clock), reading the layer with layer(uv) and layer_texel(), and `param <name> float|vec2|vec3|vec4|color <default...>` lines (at most four). The cook compiles it for every back end. Loaded once per path.
+     * A custom UI material resource from a cooked `.ogt` of `type ui-material`: `code` or `source` (a `.wgsl`) defining `fn material(m: MaterialInput, p: Params) -> vec4<f32>` and up to four `param <name> float|vec2|vec3|vec4|color <default...>` lines. The cook compiles it for every back end. Loaded once per path (ui-materials §2).
+     * See `ui-materials §2`.
      *
      * @param world The world whose renderer owns it.
-     * @param path The asset id, such as `ui/duotone.ogt`.
+     * @param path The asset id, such as `materials/materials/rarity.ogt`.
      * @returns Refused for a path not in the bundle or not a UI material.
      */
     function uiMaterial(world: World, path: string): Result<UiMaterial>;
@@ -39116,12 +39129,12 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3 is the CSS dialect every built-in style uses; versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
+     * Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path.
      * See `loading §6`.
      *
      * @param world The world whose UI uses it.
-     * @param path The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`.
-     * @returns Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load.
+     * @param path The style directory or built-in slug, such as `styles/main` or `tactical-dark`.
+     * @returns Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse.
      */
     function style(world: World, path: string): Result<Style>;
     /**

@@ -714,8 +714,8 @@ impl<'a> Gen<'a, '_> {
                 let one = arg(0);
                 format!("[{}]", vec![one; n].join(", "))
             }
-            "ComponentType" | "ResourceType" | "ScreenProps" | "ScreenValues"
-            | "ComponentProps" | "UiReadable" | "UiWritable" | "UiStart" | "UiCollection" => {
+            "ComponentType" | "ResourceType" | "UiReadable" | "UiWritable" | "UiStart"
+            | "UiCollection" => {
                 format!("{name}<{}>", arg(0))
             }
             "EventType" => format!("EventType<FieldValues<{}>>", arg(0)),

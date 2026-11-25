@@ -169,14 +169,12 @@ is honored symmetrically when QueryFilter.exclude identifies the querying
 entity; compound self-exclusion excludes its whole body.
 
 Between ticks queries also read that last stepped state, not pending ECS
-edits. Before the first step, the first query initializes the same simulation
-from the world without advancing time or consuming queued impulses.
-og.physics.queries establishes this initial boundary before gameplay; once
-the simulation exists it does no collider gathering or synchronization.
+edits. Before the first step, the first query (`castRay`, `castShape`,
+`overlap`, `projectPoint`) initializes the same simulation from the world
+without advancing time or consuming queued impulses; once the simulation
+exists it does no collider gathering or synchronization.
 A restore immediately replaces the queried simulation with the saved one,
 without resynchronizing poses or consuming kinematic velocity inference.
-The Rust PhysicsSystem.query(world) returns a cheap live handle after this
-one-time initialization; handles follow steps and restores, not frozen views.
 A hit's `entity` is
 the collider's entity; `body` is the body it belongs to, which differs for a
 compound child: damage the body, play the hit effect on the collider.
