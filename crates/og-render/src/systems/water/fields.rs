@@ -176,7 +176,7 @@ impl WaterRenderer {
                 module: self.module.module(),
                 entry_point: Some("probe_sea"),
                 compilation_options: Default::default(),
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
         );
         let input: Vec<[f32; 2]> = points.iter().map(|p| p.to_array()).collect();

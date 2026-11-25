@@ -171,7 +171,7 @@ pub(super) fn glow_add(device: &wgpu::Device) -> GlowAdd {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
         )
     };

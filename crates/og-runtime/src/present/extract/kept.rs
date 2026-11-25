@@ -25,20 +25,33 @@
 use super::*;
 use crate::present::hlod::PlaceIn;
 
+/// Camera parameters that affect LOD distance selection (excludes rotation/target/up/exposure).
+#[derive(Clone, Copy, PartialEq)]
+struct CameraLod {
+    position: [u32; 3],
+    projection: og_render::Projection,
+}
+
+/// View state that never changes with camera motion alone.
+#[derive(Clone, Copy, PartialEq)]
+struct StaticView {
+    projection: og_render::Projection,
+    view_height: u32,
+    bias: u32,
+    debug: bool,
+    baked: bool,
+    meshlets: bool,
+    meshlet_serial: u64,
+    lightmaps: u64,
+    hlod_changes: u64,
+}
+
 /// What the rows of a frame's models are built from besides their own
 /// inputs.
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct ModelsView {
-    /// The camera, without its exposure (it picks no level).
-    pub camera: og_render::Camera,
-    pub view_height: u32,
-    pub bias: u32,
-    pub debug: bool,
-    pub baked: bool,
-    pub meshlets: bool,
-    pub meshlet_serial: u64,
-    pub lightmaps: u64,
-    pub hlod_changes: u64,
+    static_view: StaticView,
+    camera_lod: CameraLod,
 }
 
 impl ModelsView {
@@ -49,20 +62,24 @@ impl ModelsView {
         debug: bool,
         baked: bool,
     ) -> Self {
-        let camera = og_render::Camera {
-            exposure: Default::default(),
-            ..rs.scene.frame.camera
-        };
+        let cam = &rs.scene.frame.camera;
+        let projection = cam.projection;
         ModelsView {
-            camera,
-            view_height: view_height.to_bits(),
-            bias: bias.to_bits(),
-            debug,
-            baked,
-            meshlets: rs.scene.objects.meshlets,
-            meshlet_serial: rs.scene.meshlet_serial(),
-            lightmaps: rs.baked.serial,
-            hlod_changes: rs.hlod.changes,
+            static_view: StaticView {
+                projection,
+                view_height: view_height.to_bits(),
+                bias: bias.to_bits(),
+                debug,
+                baked,
+                meshlets: rs.scene.objects.meshlets,
+                meshlet_serial: rs.scene.meshlet_serial(),
+                lightmaps: rs.baked.serial,
+                hlod_changes: rs.hlod.changes,
+            },
+            camera_lod: CameraLod {
+                position: cam.position.to_array().map(f32::to_bits),
+                projection,
+            },
         }
     }
 }
@@ -119,6 +136,8 @@ struct Drew {
     replaced: bool,
     /// The level it drew (the next frame's hysteresis).
     level: u8,
+    /// Whether the asset has multiple LODs (position-dependent).
+    has_lod: bool,
     /// Whether the next frame may copy it: settled, not posed, no crowd.
     copyable: bool,
 }
@@ -168,10 +187,14 @@ pub(crate) struct KeptModels {
 pub(crate) struct Build {
     kept: KeptModels,
     view: ModelsView,
-    /// Whether the last frame is there to copy from.
-    reusable: bool,
+    /// Whether static view state matches (allows copying non-LOD rows and
+    /// LOD-matched rows even while the camera translates).
+    static_reusable: bool,
+    /// Whether camera position and projection also match (rotation-only
+    /// camera movement keeps this true for 100% cache hit without LOD math).
+    camera_same: bool,
     /// Per row of this frame, whether its inputs are the last frame's
-    /// (copied only when `reusable`).
+    /// (copied only when `static_reusable`).
     same: Vec<bool>,
     copied: usize,
     fresh: usize,
@@ -210,7 +233,16 @@ impl KeptModels {
 
     /// Starts this frame's models under `view` with `rows`.
     pub(crate) fn begin(mut self, view: ModelsView, rows: Vec<RowIn>) -> Build {
-        let reusable = self.last.stored && self.last.view == Some(view);
+        let static_reusable = self.last.stored
+            && self
+                .last
+                .view
+                .is_some_and(|v| v.static_view == view.static_view);
+        let camera_same = static_reusable
+            && self
+                .last
+                .view
+                .is_some_and(|v| v.camera_lod == view.camera_lod);
         let same = rows
             .iter()
             .enumerate()
@@ -228,7 +260,8 @@ impl KeptModels {
         Build {
             kept: self,
             view,
-            reusable,
+            static_reusable,
+            camera_same,
             same,
             copied: 0,
             fresh: 0,
@@ -253,7 +286,7 @@ impl Build {
         settled: bool,
     ) -> bool {
         let last = &self.kept.last;
-        let copy = self.reusable
+        let copy = self.camera_same
             && settled
             && self.same.len() == last.rows.len()
             && self.same.iter().all(|&s| s)
@@ -292,9 +325,9 @@ impl Build {
         });
     }
 
-    /// Copies row `i`'s output from the last frame when its inputs and its
-    /// proxy's are the last frame's and it may be copied: the level it
-    /// drew (none for a replaced row).
+    /// Copies row `i`'s output from the last frame without re-running LOD
+    /// selection when its inputs match and either the camera didn't translate
+    /// or the row has no LODs (or is replaced).
     pub(crate) fn copy_row(
         &mut self,
         i: usize,
@@ -303,11 +336,11 @@ impl Build {
         keys: &mut Vec<(u64, u32)>,
     ) -> Option<Option<u8>> {
         let last = &self.kept.last;
-        if !self.reusable || !self.same[i] {
+        if !self.static_reusable || !self.same[i] {
             return None;
         }
         let d = last.drew[i];
-        if d.replaced != replaced || !d.copyable {
+        if d.replaced != replaced || !d.copyable || (!self.camera_same && d.has_lod && !replaced) {
             return None;
         }
         append(last, scene, keys, last.at[i], last.at[i + 1]);
@@ -316,12 +349,36 @@ impl Build {
         Some((!replaced).then_some(d.level))
     }
 
+    /// Copies row `i`'s output from the last frame after LOD selection confirms
+    /// the row stayed on the exact same settled level while the camera moved.
+    pub(crate) fn copy_row_at_level(
+        &mut self,
+        i: usize,
+        level: u8,
+        scene: &mut og_render::RenderScene,
+        keys: &mut Vec<(u64, u32)>,
+    ) -> bool {
+        let last = &self.kept.last;
+        if !self.static_reusable || !self.same[i] {
+            return false;
+        }
+        let d = last.drew[i];
+        if d.replaced || !d.copyable || d.level != level {
+            return false;
+        }
+        append(last, scene, keys, last.at[i], last.at[i + 1]);
+        self.kept.next.drew.push(d);
+        self.copied += 1;
+        true
+    }
+
     /// Row `i` was built: replaced by a proxy or drawn at `level`;
     /// `copyable` when the next frame may copy it.
-    pub(crate) fn built(&mut self, replaced: bool, level: u8, copyable: bool) {
+    pub(crate) fn built(&mut self, replaced: bool, level: u8, has_lod: bool, copyable: bool) {
         self.kept.next.drew.push(Drew {
             replaced,
             level,
+            has_lod,
             copyable,
         });
         self.fresh += 1;
@@ -329,8 +386,8 @@ impl Build {
 
     /// Ends the frame: keeps what it drew for the next. A frame that
     /// copied everything keeps the last frame's lists as they are; one
-    /// whose view moved since the last frame, or where most rows changed,
-    /// keeps only their inputs (the next frame would copy little of it).
+    /// where most rows matched keeps its output so even while the camera
+    /// moves, unchanged rows reuse their instances.
     pub(crate) fn finish(
         self,
         scene: &og_render::RenderScene,
@@ -340,7 +397,8 @@ impl Build {
         let Build {
             mut kept,
             view,
-            reusable,
+            static_reusable,
+            camera_same: _,
             same,
             copied,
             fresh,
@@ -356,8 +414,11 @@ impl Build {
             impostors: scene.objects.impostors.len(),
         });
         let hlod_same = hlod_copied || (kept.last.hlod.is_none() && next.hlod.is_none());
-        let whole =
-            reusable && fresh == 0 && !fractured && hlod_same && same.len() == kept.last.rows.len();
+        let whole = static_reusable
+            && fresh == 0
+            && !fractured
+            && hlod_same
+            && same.len() == kept.last.rows.len();
         // Every model copied, from the start of both lists: the models'
         // instances are the last list's.
         kept.repeats = (whole && next.start == 0 && kept.last.start == 0)
@@ -366,9 +427,12 @@ impl Build {
             return kept;
         }
         let matched = same.iter().filter(|&&s| s).count();
-        let still = kept.last.view == Some(view);
+        let static_still = kept
+            .last
+            .view
+            .is_some_and(|v| v.static_view == view.static_view);
         next.view = Some(view);
-        next.stored = still && 2 * matched >= same.len();
+        next.stored = static_still && 2 * matched >= same.len();
         if next.stored {
             let objects = &scene.objects;
             next.instances.extend_from_slice(&objects.instances);

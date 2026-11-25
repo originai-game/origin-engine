@@ -273,7 +273,7 @@ impl GridProjector {
                         module: &module,
                         entry_point: Some("cs_project"),
                         compilation_options: Default::default(),
-                        cache: None,
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
                     },
                 )
             }

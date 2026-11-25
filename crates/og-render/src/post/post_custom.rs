@@ -229,7 +229,7 @@ impl CustomPosts {
                     })],
                 }),
                 multiview_mask: None,
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
         );
         let mut pending = Box::pin(scope.pop());

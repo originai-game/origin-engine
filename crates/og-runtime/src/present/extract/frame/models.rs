@@ -384,28 +384,39 @@ pub(super) fn models(
             continue;
         }
         if is_replaced {
-            build.built(true, u8::MAX, true);
+            build.built(true, u8::MAX, false, true);
             continue;
         }
-        let (level, settled) = match model_lods.get(&asset) {
-            Some(l) => {
-                let scale = m.to_scale_rotation_translation().0.abs().max_element();
-                let per_unit = og_render::lod::pixels_per_unit(
-                    &rs.scene.frame.camera,
-                    m.transform_point3(l.center),
-                    l.radius * scale,
-                    view_height,
-                );
-                let previous = last_drawn.get(&e).map(|&x| x as usize);
-                let level = og_render::lod::select(
-                    &l.errors(),
-                    per_unit * scale,
-                    bias * settings_bias,
-                    previous,
-                );
-                (level, previous == Some(level))
+        let has_lod = model_lods.contains_key(&asset);
+        let (level, settled) = if r.crowd {
+            (0, true)
+        } else {
+            match model_lods.get(&asset) {
+                Some(l) => {
+                    let scale = m
+                        .x_axis
+                        .truncate()
+                        .length_squared()
+                        .max(m.y_axis.truncate().length_squared())
+                        .max(m.z_axis.truncate().length_squared())
+                        .sqrt();
+                    let per_unit = og_render::lod::pixels_per_unit(
+                        &rs.scene.frame.camera,
+                        m.transform_point3(l.center),
+                        l.radius * scale,
+                        view_height,
+                    );
+                    let previous = last_drawn.get(&e).map(|&x| x as usize);
+                    let level = og_render::lod::select(
+                        &l.errors(),
+                        per_unit * scale,
+                        bias * settings_bias,
+                        previous,
+                    );
+                    (level, previous == Some(level))
+                }
+                None => (0, true),
             }
-            None => (0, true),
         };
         // Where its level turns, the level it leaves and the one it takes
         // are both drawn for a fade's length, dithered against each other
@@ -445,7 +456,11 @@ pub(super) fn models(
         // hysteresis then keeps it), nothing animates it and it is not
         // cross-fading.
         let copyable = settled && !r.posed && !r.crowd && crossed.is_none() && fading.is_none();
-        build.built(false, level as u8, copyable);
+        if copyable && build.copy_row_at_level(i, level as u8, &mut rs.scene, keys) {
+            drawn.insert(e, level as u8);
+            continue;
+        }
+        build.built(false, level as u8, has_lod, copyable);
         drawn.insert(e, level as u8);
         if debug_lod {
             look.fx.flash = 0.8;

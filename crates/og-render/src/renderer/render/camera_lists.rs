@@ -100,7 +100,7 @@ impl Renderer {
                 *v = c;
             }
         };
-        let (main_list, mut culled) = if gpu_cull {
+        let (mut main_list, mut culled) = if gpu_cull {
             let g = vis.gpu_pass(cull_gpu::PassKind::Main, view_frustum, None, None);
             if occlusion {
                 vis.gpu_pass(cull_gpu::PassKind::Occluders, view_frustum, None, None);
@@ -141,6 +141,25 @@ impl Renderer {
             }
             culled
         };
+        // Sort opaque batches by (pipeline state, reflection probe, material, mesh)
+        // so consecutive draws minimize pipeline, bind group, and buffer switches.
+        main_list.ranges.sort_unstable_by_key(|&(b, _, _)| {
+            let batch = &batches[b as usize];
+            (
+                batch.physical,
+                batch.shader,
+                batch.faces,
+                batch.effects,
+                batch.lean,
+                batch.dissolve,
+                batch.compact,
+                batch.array,
+                batch.probe,
+                batch.material,
+                batch.mesh,
+                b,
+            )
+        });
         for b in batches
             .iter()
             .filter(|b| b.transparent && b.layers & mask == 0)

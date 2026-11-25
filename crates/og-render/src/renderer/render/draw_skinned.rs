@@ -50,6 +50,10 @@ impl Renderer {
         };
         let mut draws = 0;
         let mut physical_bound = false;
+        let mut palette_bound = false;
+        let mut pipe_ptr: Option<*const wgpu::RenderPipeline> = None;
+        let mut mat_bound: Option<(usize, bool)> = None;
+        let mut mesh_bound: Option<usize> = None;
         // Each batch's reflection probe (probe_select.rs), in its pose's
         // bounds as the instance batches.
         let mut binder = probe_select::Binder::new(probes);
@@ -72,31 +76,45 @@ impl Renderer {
             };
             let physical = batch.physical && physical_fx.is_some();
             binder.bind(pass, batch.probe);
-            pass.set_pipeline(pipeline);
+            let p_ptr = pipeline as *const wgpu::RenderPipeline;
+            if pipe_ptr != Some(p_ptr) {
+                pass.set_pipeline(pipeline);
+                pipe_ptr = Some(p_ptr);
+            }
             if let Some((fx, pfx)) = physical_fx
                 && physical != physical_bound
             {
                 pass.set_bind_group(2, if physical { pfx } else { fx }, &[]);
                 physical_bound = physical;
             }
-            let m = &self.cache.materials[batch.material];
-            pass.set_bind_group(
-                material_group,
-                match (&m.physical, &m.array) {
-                    (Some(g), _) if physical => g,
-                    (_, Some(g)) if !shadow => g,
-                    _ => &m.bind_group,
-                },
-                &[],
-            );
-            pass.set_bind_group(palette_at, palette, &[]);
+            let mat_key = (batch.material, physical);
+            if mat_bound != Some(mat_key) {
+                let m = &self.cache.materials[batch.material];
+                pass.set_bind_group(
+                    material_group,
+                    match (&m.physical, &m.array) {
+                        (Some(g), _) if physical => g,
+                        (_, Some(g)) if !shadow => g,
+                        _ => &m.bind_group,
+                    },
+                    &[],
+                );
+                mat_bound = Some(mat_key);
+            }
+            if !palette_bound {
+                pass.set_bind_group(palette_at, palette, &[]);
+                palette_bound = true;
+            }
             let mesh = &self.cache.meshes[batch.mesh];
-            let skin = self.cache.skins[batch.mesh]
-                .as_ref()
-                .expect("a skinned mesh");
-            pass.set_vertex_buffer(0, mesh.vertex_slice(false));
-            pass.set_vertex_buffer(2, skin.slice(..));
-            pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            if mesh_bound != Some(batch.mesh) {
+                let skin = self.cache.skins[batch.mesh]
+                    .as_ref()
+                    .expect("a skinned mesh");
+                pass.set_vertex_buffer(0, mesh.vertex_slice(false));
+                pass.set_vertex_buffer(2, skin.slice(..));
+                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                mesh_bound = Some(batch.mesh);
+            }
             match (batch.crowd, crowds) {
                 // A crowd's draw: the row's records from its start, the
                 // level's members from the first instance the cull wrote.

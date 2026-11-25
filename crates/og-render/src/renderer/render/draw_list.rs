@@ -50,6 +50,12 @@ impl Renderer {
         // The lightmap pages bound at group 3 (lightmap.rs: one
         // group per baked scene).
         let mut pages_bound: Option<usize> = None;
+        // Deduplicate redundant per-batch state binds across sorted batches.
+        let mut lightmap_pipe_ptr: Option<*const wgpu::RenderPipeline> = None;
+        let mut material_bound: Option<(usize, bool, bool)> = None;
+        let mut vb0_bound: Option<(usize, bool)> = None;
+        let mut ib_bound: Option<usize> = None;
+        let mut vb2_bound: Option<usize> = None;
         for &(b, first, count) in &list.ranges {
             let batch = &batches[b as usize];
             // Drawn with its lightmap's pipeline (lit passes only).
@@ -86,7 +92,11 @@ impl Renderer {
                 if let Some((p, (pages, group))) = lightmap {
                     // Lightmapped (lightmap.rs): its pipeline, its
                     // scene's pages at group 3, its uvs below.
-                    pass.set_pipeline(p);
+                    let ptr = p as *const wgpu::RenderPipeline;
+                    if lightmap_pipe_ptr != Some(ptr) {
+                        pass.set_pipeline(p);
+                        lightmap_pipe_ptr = Some(ptr);
+                    }
                     if pages_bound != Some(pages) {
                         pass.set_bind_group(3, group, &[]);
                         pages_bound = Some(pages);
@@ -103,6 +113,7 @@ impl Renderer {
                     };
                     pass.set_pipeline(pipeline);
                     *current = Some(key);
+                    lightmap_pipe_ptr = None;
                 }
                 match (lightmapped && !physical, lean, fx) {
                     (true, Some(l), _) if !lean_bound => {
@@ -123,16 +134,20 @@ impl Renderer {
                     physical_bound = physical;
                     lean_bound = false;
                 }
-                let m = &self.cache.materials[batch.material];
-                pass.set_bind_group(
-                    1,
-                    match (&m.physical, &m.array) {
-                        (Some(g), _) if physical => g,
-                        (_, Some(g)) => g,
-                        _ => &m.bind_group,
-                    },
-                    &[],
-                );
+                let mat_key = (batch.material, physical, batch.array);
+                if material_bound != Some(mat_key) {
+                    let m = &self.cache.materials[batch.material];
+                    pass.set_bind_group(
+                        1,
+                        match (&m.physical, &m.array) {
+                            (Some(g), _) if physical => g,
+                            (_, Some(g)) => g,
+                            _ => &m.bind_group,
+                        },
+                        &[],
+                    );
+                    material_bound = Some(mat_key);
+                }
             } else {
                 let key = (
                     (batch.faces, false, batch.dissolve),
@@ -159,17 +174,25 @@ impl Renderer {
                     shadow_key = Some(key);
                 }
                 if batch.dissolve || batch.shader.is_some() {
-                    let m = &self.cache.materials[batch.material];
-                    let bg = if batch.array {
-                        m.array.as_ref().unwrap_or(&m.bind_group)
-                    } else {
-                        &m.bind_group
-                    };
-                    pass.set_bind_group(1, bg, &[]);
+                    let mat_key = (batch.material, false, batch.array);
+                    if material_bound != Some(mat_key) {
+                        let m = &self.cache.materials[batch.material];
+                        let bg = if batch.array {
+                            m.array.as_ref().unwrap_or(&m.bind_group)
+                        } else {
+                            &m.bind_group
+                        };
+                        pass.set_bind_group(1, bg, &[]);
+                        material_bound = Some(mat_key);
+                    }
                 }
             }
             let mesh = &self.cache.meshes[batch.mesh];
-            pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
+            let vb0_key = (batch.mesh, batch.compact);
+            if vb0_bound != Some(vb0_key) {
+                pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
+                vb0_bound = Some(vb0_key);
+            }
             // The batch's instances as a buffer slice from its first.
             let start = first as u64 * INSTANCE_STRIDE;
             let instances = match (list.indirect, culled_gpu) {
@@ -187,10 +210,17 @@ impl Renderer {
                     instances.slice(start..start + count as u64 * INSTANCE_STRIDE)
                 },
             );
-            if lightmapped && let Some(uvs) = self.lights.lightmaps.uvs(batch.mesh) {
+            if lightmapped
+                && vb2_bound != Some(batch.mesh)
+                && let Some(uvs) = self.lights.lightmaps.uvs(batch.mesh)
+            {
                 pass.set_vertex_buffer(2, uvs.slice(..));
+                vb2_bound = Some(batch.mesh);
             }
-            pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            if ib_bound != Some(batch.mesh) {
+                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+                ib_bound = Some(batch.mesh);
+            }
             #[cfg(not(feature = "publish"))]
             let direct = crate::renderer::settings::DEBUG_CULL_DIRECT
                 .load(std::sync::atomic::Ordering::Relaxed);

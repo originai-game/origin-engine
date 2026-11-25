@@ -127,7 +127,7 @@ impl CausticsPass {
                 module: &module,
                 entry_point: Some("main"),
                 compilation_options: Default::default(),
-                cache: None,
+                cache: crate::pipeline_cache::of(device).as_ref(),
             },
         );
         let uniform = crate::traffic::create_buffer(

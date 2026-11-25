@@ -93,8 +93,18 @@ pub(crate) struct Draws {
     offsets: Vec<wgpu::DynamicOffset>,
 }
 
+impl Draws {
+    fn clear(&mut self) {
+        self.commands.clear();
+        self.offsets.clear();
+    }
+}
+
 impl Encode for Draws {
     fn set_pipeline(&mut self, pipeline: &wgpu::RenderPipeline) {
+        if matches!(self.commands.last(), Some(Command::Pipeline(p)) if p == pipeline) {
+            return;
+        }
         self.commands.push(Command::Pipeline(pipeline.clone()));
     }
     fn set_bind_group<'g>(
@@ -103,29 +113,41 @@ impl Encode for Draws {
         group: impl Into<Option<&'g wgpu::BindGroup>>,
         offsets: &[wgpu::DynamicOffset],
     ) {
+        let g = group.into();
+        if offsets.is_empty()
+            && matches!(
+                self.commands.last(),
+                Some(Command::Group(i, prev, range)) if *i == index && range.is_empty() && prev.as_ref() == g
+            )
+        {
+            return;
+        }
         let at = self.offsets.len();
         self.offsets.extend_from_slice(offsets);
-        self.commands.push(Command::Group(
-            index,
-            group.into().cloned(),
-            at..self.offsets.len(),
-        ));
+        self.commands
+            .push(Command::Group(index, g.cloned(), at..self.offsets.len()));
     }
     fn set_vertex_buffer(&mut self, slot: u32, slice: wgpu::BufferSlice<'_>) {
-        self.commands.push(Command::Vertex(
-            slot,
-            slice.buffer().clone(),
-            slice.offset(),
-            slice.size(),
-        ));
+        let (buf, off, size) = (slice.buffer(), slice.offset(), slice.size());
+        if matches!(
+            self.commands.last(),
+            Some(Command::Vertex(s, b, o, sz)) if *s == slot && b == buf && *o == off && *sz == size
+        ) {
+            return;
+        }
+        self.commands
+            .push(Command::Vertex(slot, buf.clone(), off, size));
     }
     fn set_index_buffer(&mut self, slice: wgpu::BufferSlice<'_>, format: wgpu::IndexFormat) {
-        self.commands.push(Command::Index(
-            slice.buffer().clone(),
-            format,
-            slice.offset(),
-            slice.size(),
-        ));
+        let (buf, off, size) = (slice.buffer(), slice.offset(), slice.size());
+        if matches!(
+            self.commands.last(),
+            Some(Command::Index(b, f, o, sz)) if b == buf && *f == format && *o == off && *sz == size
+        ) {
+            return;
+        }
+        self.commands
+            .push(Command::Index(buf.clone(), format, off, size));
     }
     fn draw(&mut self, vertices: Range<u32>, instances: Range<u32>) {
         self.commands.push(Command::Draw(vertices, instances));
@@ -248,11 +270,11 @@ impl Played {
 /// layer's) and an index among parts of that name.
 pub(crate) type PartName = (&'static str, u32);
 
-/// Each pass part's last frame and bundle, and the frame they were last
-/// pruned on.
+/// Each pass part's last frame and bundle, a reusable scratch buffer, and the
+/// frame they were last pruned on.
 #[derive(Default)]
 pub(crate) struct Bundles {
-    parts: Mutex<(u64, HashMap<PartName, Part>)>,
+    parts: Mutex<(u64, Draws, HashMap<PartName, Part>)>,
 }
 
 /// Frames a part is kept after it was last played: the shadow cache
@@ -273,21 +295,30 @@ impl Bundles {
         frame: u64,
         draw: impl FnOnce(&mut Draws) -> R,
     ) -> (R, Played) {
-        let mut draws = Draws::default();
+        let mut draws = {
+            let mut guard = self.parts.lock().expect("bundles");
+            let mut d = std::mem::take(&mut guard.1);
+            d.clear();
+            d
+        };
         let out = draw(&mut draws);
-        let mut parts = self.parts.lock().expect("bundles");
-        let (last, parts) = &mut *parts;
+        let mut guard = self.parts.lock().expect("bundles");
+        let (last, scratch, parts) = &mut *guard;
         if *last != frame {
             *last = frame;
             parts.retain(|_, p| p.played + KEEP_FRAMES >= frame);
         }
         if draws.commands.is_empty() {
             parts.remove(&part);
+            draws.clear();
+            *scratch = draws;
             return (out, Played::Empty);
         }
         if let Some(p) = parts.get_mut(&part)
-            && p.draws == draws
             && p.target == *target
+            && p.draws.commands.len() == draws.commands.len()
+            && p.draws.offsets.len() == draws.offsets.len()
+            && p.draws == draws
         {
             p.played = frame;
             let played = if p.bundle.is_some() {
@@ -299,10 +330,12 @@ impl Bundles {
                 .bundle
                 .get_or_insert_with(|| record(device, &p.draws, target, part.0));
             pass.execute_bundles([&*bundle]);
+            draws.clear();
+            *scratch = draws;
             return (out, played);
         }
         replay!(&draws, &mut *pass);
-        parts.insert(
+        if let Some(prev) = parts.insert(
             part,
             Part {
                 target: target.clone(),
@@ -310,7 +343,11 @@ impl Bundles {
                 bundle: None,
                 played: frame,
             },
-        );
+        ) {
+            let mut recycled = prev.draws;
+            recycled.clear();
+            *scratch = recycled;
+        }
         (out, Played::Direct)
     }
 }
