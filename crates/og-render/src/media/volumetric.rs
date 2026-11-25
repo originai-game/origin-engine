@@ -262,7 +262,7 @@ pub(crate) enum Medium {
 /// about 0.9, Petzold's measurements in Mobley, Light and Water, 1994,
 /// ch. 3), but the share the volume draws stands for the sun's light
 /// after every order of scattering, each of which spreads it.
-const WATER_ANISOTROPY: f32 = 0.35;
+const WATER_ANISOTROPY: f32 = 0.85;
 /// How far the water's volume reaches, in the water's extinction lengths
 /// (what lies past it reaches the eye at under 5 %).
 const WATER_REACH: f32 = 3.0;
@@ -333,6 +333,11 @@ struct VolUniform {
     /// rgb: what a depth of the scene's fog lit by nothing else tends to
     /// ([`VolumetricFog::ambient`]); w: the global fog's maximum opacity.
     own: [f32; 4],
+    /// Previous frame unjittered view-projection relative to current origin.
+    prev_view_proj: [[f32; 4]; 4],
+    /// x: temporal EMA weight (0 when invalid), y: previous max distance,
+    /// z: >0.5 when at least one spot light is active, w: unused.
+    temporal: [f32; 4],
     volumes: [[[f32; 4]; 4]; FOG_VOLUMES],
 }
 
@@ -359,10 +364,16 @@ struct Froxels {
     /// first frame with its medium.
     inject: [Option<wgpu::ComputePipeline>; 2],
     integrate: wgpu::ComputePipeline,
-    scatter: wgpu::TextureView,
+    /// Double-buffered scatter volumes for temporal reprojection EMA.
+    scatter: [wgpu::TextureView; 2],
     sum: wgpu::TextureView,
-    inject_group: wgpu::BindGroup,
-    integrate_group: wgpu::BindGroup,
+    inject_group: [wgpu::BindGroup; 2],
+    integrate_group: [wgpu::BindGroup; 2],
+    /// Active ping-pong index (0 or 1) written this frame.
+    phase: usize,
+    prev_distance: f32,
+    prev_water: bool,
+    prev_tick: Option<u64>,
     frame_cache: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<FroxelFrameKey>>,
     /// The volumes' slices deep ([`crate::RenderQuality::froxel_slices`]).
     slices: u32,
@@ -508,7 +519,16 @@ impl Froxels {
         });
         let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("volumetric inject"),
-            entries: &[entry(0, compute, uniform_ty()), storage_3d(1)],
+            entries: &[
+                entry(0, compute, uniform_ty()),
+                storage_3d(1),
+                entry(7, compute, texture_ty(wgpu::TextureViewDimension::D3, true)),
+                entry(
+                    8,
+                    compute,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ),
+            ],
         });
         let integrate_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("volumetric integrate"),
@@ -539,7 +559,16 @@ impl Froxels {
             "integrate",
             &[],
         );
-        let scatter = froxel_volume(device, "froxel scatter", FROXELS[2]);
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("froxels"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        let scatter = [
+            froxel_volume(device, "froxel scatter 0", FROXELS[2]),
+            froxel_volume(device, "froxel scatter 1", FROXELS[2]),
+        ];
         let sum = froxel_volume(device, "froxel sum", FROXELS[2]);
         let (inject_group, integrate_group) = Self::build_groups(
             device,
@@ -548,6 +577,7 @@ impl Froxels {
             uniform,
             &scatter,
             &sum,
+            &sampler,
         );
         Froxels {
             frame_layout: frame_layout_c,
@@ -560,14 +590,13 @@ impl Froxels {
             sum,
             inject_group,
             integrate_group,
+            phase: 0,
+            prev_distance: 0.0,
+            prev_water: false,
+            prev_tick: None,
             frame_cache: Default::default(),
             slices: FROXELS[2],
-            sampler: device.create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("froxels"),
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                ..Default::default()
-            }),
+            sampler,
         }
     }
 
@@ -576,28 +605,35 @@ impl Froxels {
         inject_layout: &wgpu::BindGroupLayout,
         integrate_layout: &wgpu::BindGroupLayout,
         uniform: &wgpu::Buffer,
-        scatter: &wgpu::TextureView,
+        scatter: &[wgpu::TextureView; 2],
         sum: &wgpu::TextureView,
-    ) -> (wgpu::BindGroup, wgpu::BindGroup) {
-        let inject = bind_at(
-            device,
-            "volumetric inject",
-            inject_layout,
-            &[
-                (0, uniform.as_entire_binding()),
-                (1, wgpu::BindingResource::TextureView(scatter)),
-            ],
-        );
-        let integrate = bind_at(
-            device,
-            "volumetric integrate",
-            integrate_layout,
-            &[
-                (0, uniform.as_entire_binding()),
-                (2, wgpu::BindingResource::TextureView(scatter)),
-                (3, wgpu::BindingResource::TextureView(sum)),
-            ],
-        );
+        sampler: &wgpu::Sampler,
+    ) -> ([wgpu::BindGroup; 2], [wgpu::BindGroup; 2]) {
+        let inject = std::array::from_fn(|p| {
+            bind_at(
+                device,
+                "volumetric inject",
+                inject_layout,
+                &[
+                    (0, uniform.as_entire_binding()),
+                    (1, wgpu::BindingResource::TextureView(&scatter[p])),
+                    (7, wgpu::BindingResource::TextureView(&scatter[1 - p])),
+                    (8, wgpu::BindingResource::Sampler(sampler)),
+                ],
+            )
+        });
+        let integrate = std::array::from_fn(|p| {
+            bind_at(
+                device,
+                "volumetric integrate",
+                integrate_layout,
+                &[
+                    (0, uniform.as_entire_binding()),
+                    (2, wgpu::BindingResource::TextureView(&scatter[p])),
+                    (3, wgpu::BindingResource::TextureView(sum)),
+                ],
+            )
+        });
         (inject, integrate)
     }
 }
@@ -738,7 +774,9 @@ impl Volumetric {
     /// GPU bytes of the froxel volumes, when made.
     pub(crate) fn bytes(&self) -> u64 {
         self.froxels.as_ref().map_or(0, |f| {
-            crate::gpu::texture::view_bytes(&f.scatter) + crate::gpu::texture::view_bytes(&f.sum)
+            crate::gpu::texture::view_bytes(&f.scatter[0])
+                + crate::gpu::texture::view_bytes(&f.scatter[1])
+                + crate::gpu::texture::view_bytes(&f.sum)
         })
     }
 }
@@ -880,29 +918,50 @@ impl Volumetric {
         samples: u32,
         tick: u64,
         quality: &crate::RenderQuality,
+        prev_view_proj: glam::Mat4,
+        temporal_ok: bool,
+        has_spots: bool,
     ) {
         self.water = matches!(medium, Medium::Water { .. });
         self.ensure(device, frame_layout, self.water, samples);
         let slices = quality.froxel_slices();
-        if let Some(f) = &mut self.froxels
-            && f.slices != slices
-        {
-            f.scatter = froxel_volume(device, "froxel scatter", slices);
-            f.sum = froxel_volume(device, "froxel sum", slices);
-            let (inject_group, integrate_group) = Froxels::build_groups(
-                device,
-                &f.inject_layout,
-                &f.integrate_layout,
-                &self.uniform,
-                &f.scatter,
-                &f.sum,
-            );
-            f.inject_group = inject_group;
-            f.integrate_group = integrate_group;
-            f.slices = slices;
-        }
         let (scatter, fog, distance, own) = medium.uniform();
         self.froxel_distance = distance;
+        let mut temporal_blend = 0.0f32;
+        let mut prev_distance = distance;
+        if let Some(f) = &mut self.froxels {
+            let mut reset = !temporal_ok
+                || f.prev_water != self.water
+                || f.prev_tick != Some(tick.wrapping_sub(1));
+            if f.slices != slices {
+                f.scatter = [
+                    froxel_volume(device, "froxel scatter 0", slices),
+                    froxel_volume(device, "froxel scatter 1", slices),
+                ];
+                f.sum = froxel_volume(device, "froxel sum", slices);
+                let (inject_group, integrate_group) = Froxels::build_groups(
+                    device,
+                    &f.inject_layout,
+                    &f.integrate_layout,
+                    &self.uniform,
+                    &f.scatter,
+                    &f.sum,
+                    &f.sampler,
+                );
+                f.inject_group = inject_group;
+                f.integrate_group = integrate_group;
+                f.slices = slices;
+                reset = true;
+            }
+            if !reset {
+                f.phase ^= 1;
+                temporal_blend = 0.90;
+                prev_distance = f.prev_distance;
+            }
+            f.prev_distance = distance;
+            f.prev_water = self.water;
+            f.prev_tick = Some(tick);
+        }
         // The water's medium is the water alone.
         let (near, dropped) = match medium {
             Medium::Fog(_) => nearest_volumes(local, eye, distance),
@@ -940,6 +999,13 @@ impl Volumetric {
             ],
             local: [near.len() as f32, sky.clamp(0.0, 1.0), start, end],
             own,
+            prev_view_proj: prev_view_proj.to_cols_array_2d(),
+            temporal: [
+                temporal_blend,
+                prev_distance,
+                if has_spots { 1.0 } else { 0.0 },
+                0.0,
+            ],
             volumes,
         };
         crate::traffic::write_buffer(queue, &self.uniform, 0, bytemuck::bytes_of(&u));
@@ -1003,10 +1069,10 @@ impl Volumetric {
         });
         pass.set_bind_group(0, frame_group, &[]);
         pass.set_pipeline(inject_pipeline);
-        pass.set_bind_group(1, &f.inject_group, &[]);
+        pass.set_bind_group(1, &f.inject_group[f.phase], &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), f.slices);
         pass.set_pipeline(&f.integrate);
-        pass.set_bind_group(1, &f.integrate_group, &[]);
+        pass.set_bind_group(1, &f.integrate_group[f.phase], &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), 1);
     }
 

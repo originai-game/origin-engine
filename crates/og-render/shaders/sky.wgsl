@@ -26,6 +26,8 @@ struct SkyParams {
 // it ends, b its optical depth. A texel of nothing until it is baked
 // (frame.clouds[11].z).
 @group(1) @binding(9) var cloud_light: texture_2d<f32>;
+// Hillaire 2020 192x108 Sky-View LUT (media/sky_lut.rs), read with ibl_sampler.
+@group(1) @binding(10) var sky_view_lut: texture_2d<f32>;
 
 struct SkyOut {
   @builtin(position) pos: vec4<f32>,
@@ -154,6 +156,29 @@ fn sky_moon_light() -> vec3<f32> {
   return frame.sky_moon_look.rgb * frame.sky_sun_dir.w;
 }
 
+// Hillaire 2020 §5.3 1-tap Sky-View LUT lookup matching sky_lut.wgsl's
+// non-linear horizon-focused mapping with exact horizon seam split.
+fn sky_view_lut_sample(d: vec3<f32>, h0: f32) -> vec3<f32> {
+  let dims = vec2<f32>(textureDimensions(sky_view_lut));
+  let phi = atan2(d.z, d.x);
+  let u = ((phi / (2.0 * PI) + 0.5) * (dims.x - 1.0) + 0.5) / dims.x;
+  let bottom = frame.sky_scatter[3].x;
+  let horizon = -acos(clamp(bottom / (bottom + h0), 0.0, 1.0));
+  let beta = asin(clamp(d.y, -1.0, 1.0));
+  let half_h = dims.y * 0.5;
+  let span = max(half_h - 1.0, 1.0);
+  var y: f32;
+  if (beta >= horizon) {
+    let adj = sqrt(clamp((beta - horizon) / max(0.5 * PI - horizon, 1e-4), 0.0, 1.0));
+    y = half_h + adj * span;
+  } else {
+    let adj = sqrt(clamp((horizon - beta) / max(0.5 * PI + horizon, 1e-4), 0.0, 1.0));
+    y = (half_h - 1.0) - adj * span;
+  }
+  let v = (y + 0.5) / dims.y;
+  return textureSampleLevel(sky_view_lut, ibl_sampler, vec2<f32>(u, v), 0.0).rgb;
+}
+
 // The look drawn by the physical sky (sky_scatter.wgsl): the scattered
 // sunlight and moonlight, the disc reddened by the air it crosses, the
 // night's floor, then the stars and the moon as sky_look draws them.
@@ -164,7 +189,13 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let light = frame.sky_glow.yzw;
   let moon_light = sky_moon_light();
   let moon_dir = select(sun, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
-  let sky = sky_rolloff((physical_sky_lit(d, sun, light, moon_dir, moon_light, h0, 24u) + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
+  var raw_sky: vec3<f32>;
+  if (sky_params.turn.w >= 0.0 && abs(h0 - sky_params.turn.w) < 0.05 && textureDimensions(sky_view_lut).x > 1u) {
+    raw_sky = sky_view_lut_sample(d, h0);
+  } else {
+    raw_sky = physical_sky_lit(d, sun, light, moon_dir, moon_light, h0, 24u);
+  }
+  let sky = sky_rolloff((raw_sky + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
   // Composite the solar radiance after atmospheric scattering, as in
   // Hillaire 2020 / UE SkyAtmosphere (third_party/hillaire-sky.md).
   // sun_intensity is radiance in the engine's scene-linear units, not a
@@ -244,9 +275,10 @@ fn cloud_phase(cos_t: f32, k: f32) -> f32 {
 
 // The phase function towards the eye of the sun's light scattered once,
 // twice, three and four times (cloud_sunlit), each per steradian: the same
-// along a ray.
+// along a ray. Higher multi-scatter eccentricity retention (0.78^n) preserves
+// luminous backlit silver linings without clipping energy.
 fn cloud_phases(cos_t: f32) -> vec4<f32> {
-  return vec4<f32>(cloud_phase(cos_t, 1.0), cloud_phase(cos_t, 0.5), cloud_phase(cos_t, 0.25), cloud_phase(cos_t, 0.125));
+  return vec4<f32>(cloud_phase(cos_t, 1.0), cloud_phase(cos_t, 0.78), cloud_phase(cos_t, 0.608), cloud_phase(cos_t, 0.475));
 }
 
 // The sun's light a point of cloud scatters towards the eye, per unit of
@@ -366,11 +398,10 @@ fn cloud_under() -> f32 {
 // along as the slab of even density with its moments, and the share of
 // that slab over the point. x: of the cloud as it is drawn; y: of its
 // envelope. `slant`: the sun's own ray's length over that ray's.
-fn cloud_light_depth(at: vec3<f32>, hf: f32, slant: f32, exact: bool) -> vec2<f32> {
+fn cloud_light_depth(at: vec3<f32>, hf: f32, slant: f32) -> vec2<f32> {
   let c = frame.clouds;
   let base = at.xz - c[10].zw * (hf * c[0].w);
-  var m = textureSampleLevel(cloud_light, cloud_sampler, base / (4.0 * c[1].w), 0.0);
-  if (exact) { m = cloud_cubic(cloud_light, base / (4.0 * c[1].w)); }
+  let m = textureSampleLevel(cloud_light, cloud_sampler, base / (4.0 * c[1].w), 0.0);
   if (m.r <= 1e-3) { return vec2<f32>(0.0); }
   let mean = m.g / m.r;
   // An even slab's half height is the square root of three times its
@@ -755,12 +786,12 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
     }
     // Keep fine step adaptive to current ray distance across deep cloud paths.
     dt0 = max(t * grow, least) / f32(CLOUD_FINE);
-    let behind = transmittance < CLOUD_BEHIND;
-    let m = cloud_map_at(at, !behind);
+    let near_w = smoothstep(0.25, 0.70, transmittance);
+    let m = cloud_map_at(at, near_w > 0.25);
     let col = cloud_column(m, hf);
     let profile = cloud_profile(col, hf);
     var cloud = vec3<f32>(0.0);
-    if (profile > 0.0) { cloud = cloud_density_from(at, col, hf, profile, t * spread, t * spread * 128.0 < c[1].w); }
+    if (profile > 0.0) { cloud = cloud_density_from(at, col, hf, profile, t * spread, true); }
     let sigma = cloud.x;
     if (sigma > 0.0 && lengthened) {
       recross = t;
@@ -779,23 +810,27 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
       var od = 0.0;
       var deep = 0.0;
       let reach_near = 3.0 * light_step;
-      if (behind) {
-        od = sigma * reach_near;
+      let approx_od = sigma * reach_near;
+      if (near_w <= 0.0) {
+        od = approx_od;
       } else {
         let q_near = p + to_light * ((0.25 + 0.5 * light_jitter) * reach_near);
         let qn_h = length(q_near) - radius;
         let qn_hf = (qn_h - c[0].z) / c[0].w;
         let qn_at = cloud_noise_at(q_near, qn_h);
-        let q_col = cloud_column(cloud_map_at(qn_at, true), qn_hf);
+        let q_col = cloud_column(cloud_map_at(qn_at, false), qn_hf);
         let q_profile = cloud_profile(q_col, qn_hf);
+        var q_od = 0.0;
         if (q_profile > 0.0) {
-          od = cloud_density_from(qn_at, q_col, qn_hf, q_profile, 1.5 * light_step, false).x * reach_near;
+          q_od = cloud_density_from(qn_at, q_col, qn_hf, q_profile, 1.5 * light_step, false).x * reach_near;
         }
+        od = mix(approx_od, q_od, near_w);
       }
       let near = od;
       let q = p + to_light * (3.0 * light_step);
       let q_hf = (length(q) - radius - c[0].z) / c[0].w;
-      let need_march = !mapped || (low_sun > 0.01 && !behind);
+      let low_w = low_sun * near_w;
+      let need_march = !mapped || low_w > 0.01;
       var march_od = od;
       if (need_march) {
         var reach = 4.0 * light_step;
@@ -810,13 +845,13 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
         var map_od = od;
         var map_deep = od;
         if (q_hf < 1.0) {
-          let far_od = cloud_light_depth(cloud_noise_at(q, length(q) - radius), max(q_hf, 0.0), slant, !behind);
+          let far_od = cloud_light_depth(cloud_noise_at(q, length(q) - radius), max(q_hf, 0.0), slant);
           map_deep = od + far_od.y;
           map_od = od + far_od.x;
         }
         if (need_march) {
-          od = mix(map_od, march_od, low_sun);
-          deep = mix(map_deep, march_od, low_sun);
+          od = mix(map_od, march_od, low_w);
+          deep = mix(map_deep, march_od, low_w);
         } else {
           od = map_od;
           deep = map_deep;
@@ -851,11 +886,11 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>, temporal_dither: bool) -> vec4<f
       depth += t * transmittance * (1.0 - seg);
       transmittance *= seg;
       if (transmittance < CLOUD_OPAQUE) { break; }
-      dt = dt0 * (1.0 + 6.0 * (1.0 - transmittance));
+      dt = dt0 * (1.0 + 2.5 * (1.0 - transmittance));
     } else {
       if (t >= recross) {
         let clear = min(cloud_clear(cloud.z), max(t * grow, least));
-        let fine_step = dt0 * (1.0 + 6.0 * (1.0 - transmittance));
+        let fine_step = dt0 * (1.0 + 2.5 * (1.0 - transmittance));
         lengthened = clear > fine_step * 1.2;
         dt = max(fine_step, clear);
       } else {
@@ -1168,7 +1203,8 @@ fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
 }
 
 // Temporal upsampling resolve (Schneider 2015) with finite-distance cloud shell,
-// wind/origin shift reprojection and foreground-silhouette exclusion.
+// wind/origin shift reprojection, valid-masked 2x2 bilinear disocclusion fallback,
+// variance-tightened history clamping, and foreground-silhouette exclusion.
 @fragment
 fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
   let at = vec2<i32>(in.pos.xy);
@@ -1176,15 +1212,46 @@ fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
   let q = min(at / 2, quarter);
   let fresh = textureLoad(clouds_quarter, q, 0);
   if (fresh.r < 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+
+  // 3x3 valid-neighbour min/max + first/second moments for variance clamping.
   var lo = fresh;
   var hi = fresh;
+  var m1 = vec4<f32>(0.0);
+  var m2 = vec4<f32>(0.0);
+  var count = 0.0;
   for (var k = 0; k < 9; k++) {
     let n = textureLoad(clouds_quarter, clamp(q + vec2<i32>(k % 3 - 1, k / 3 - 1), vec2<i32>(0), quarter), 0);
     if (n.r >= 0.0) {
       lo = min(lo, n);
       hi = max(hi, n);
+      m1 += n;
+      m2 += n * n;
+      count += 1.0;
     }
   }
+  let mean = m1 / max(count, 1.0);
+  let sigma = sqrt(max(m2 / max(count, 1.0) - mean * mean, vec4<f32>(0.0)));
+  let clamp_lo = max(lo, mean - 1.5 * sigma);
+  let clamp_hi = min(hi, mean + 1.5 * sigma);
+
+  // Valid-masked 2x2 bilinear spatial reconstruction for disoccluded/panning texels.
+  let q_pos = (in.pos.xy - 0.5 - clouds_temporal.size.zw) * 0.5;
+  let q0 = vec2<i32>(floor(q_pos));
+  let f = clamp(q_pos - vec2<f32>(q0), vec2<f32>(0.0), vec2<f32>(1.0));
+  var spatial = vec4<f32>(0.0);
+  var sw = 0.0;
+  for (var dy = 0; dy <= 1; dy++) {
+    for (var dx = 0; dx <= 1; dx++) {
+      let s = textureLoad(clouds_quarter, clamp(q0 + vec2<i32>(dx, dy), vec2<i32>(0), quarter), 0);
+      if (s.r >= 0.0) {
+        let w = select(1.0 - f.x, f.x, dx == 1) * select(1.0 - f.y, f.y, dy == 1);
+        spatial += s * w;
+        sw += w;
+      }
+    }
+  }
+  let fallback = select(fresh, spatial / max(sw, 1e-4), sw > 1e-4);
+
   let dir = pixel_ray(in.ndc);
   var prev = clouds_temporal.prev_view_proj * vec4<f32>(dir, 0.0);
   if (clouds_temporal.shift.w > 0.5 && frame.clouds[3].w > 0.5 && frame.clouds[0].w > 0.0) {
@@ -1201,11 +1268,13 @@ fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
     }
   }
   let uv = vec2<f32>(0.5, -0.5) * prev.xy / max(prev.w, 1e-6) + 0.5;
-  var out = fresh;
+  var out = fallback;
   if (prev.w > 0.0 && all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
-    let seen = clamp(textureSampleLevel(clouds_history, ibl_sampler, uv, 0.0), lo, hi);
+    let seen = clamp(textureSampleLevel(clouds_history, ibl_sampler, uv, 0.0), clamp_lo, clamp_hi);
     let marched = all((at & vec2<i32>(1)) == vec2<i32>(clouds_temporal.size.zw));
-    out = select(seen, mix(seen, fresh, 1.0 / 3.0), marched);
+    // Stabilize freshly marched samples lightly against their 3x3 mean to suppress 2x2 stipple.
+    let stabilized = mix(fresh, mean, 0.12);
+    out = select(seen, mix(seen, stabilized, 1.0 / 3.0), marched);
   }
   return out;
 }

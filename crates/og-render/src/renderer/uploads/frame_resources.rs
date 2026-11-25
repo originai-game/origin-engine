@@ -153,7 +153,9 @@ impl Renderer {
                 [levels(m.map.index()), blend.map_or(0, |(i, _)| levels(i))]
             },
         });
-        let params = SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
+        let mut params =
+            SkyParams::new(&scene.lighting.environment, crate::ibl::PREFILTER_MIPS, map);
+        params.turn[3] = self.sky.sky_lut.baked_altitude_km();
         crate::traffic::write_buffer(
             &self.queue,
             &self.sky.sky_params,
@@ -276,6 +278,21 @@ impl Renderer {
                 self.lights.environment = None;
             }
         }
+        if let Some(look) = &sky.look
+            && self.info.caps.contains(crate::Caps::COMPUTE)
+        {
+            let viewer_y = scene.frame.camera.position.y + scene.frame.origin.y;
+            if self.sky.sky_lut.update(
+                &self.device,
+                &self.queue,
+                look,
+                sky.sun_direction,
+                sky.sun_color,
+                viewer_y,
+            ) {
+                self.lights.environment = None;
+            }
+        }
         if !self.lights.environment_unbaked
             && self
                 .lights
@@ -380,6 +397,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(&self.sky.cloud_noise.detail),
                 wgpu::BindingResource::TextureView(&self.sky.cloud_noise.map),
                 wgpu::BindingResource::TextureView(&self.sky.cloud_shadow.light),
+                wgpu::BindingResource::TextureView(&self.sky.sky_lut.view),
             ],
         );
         self.lights.environment = Some((key, group, sky_group, reflection_group));

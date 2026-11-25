@@ -74,30 +74,32 @@ fn detail_wave(o: ptr<function, Detail>, d: vec2<f32>, k: f32, a: f32, phase: f3
   (*o).cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (0.5 * a * a * (1.0 - keep * keep));
 }
 
-// A lake's wind waves: sixteen plane waves from 0.9 to 4.9 times the detail's wavenumber (a geometric ladder, so no
-// two share a length), their directions within 75 degrees of one heading (0.8, 0.6 in local xz), spread by a
-// low-discrepancy sequence and wider for the shorter waves, as a wind sea's are (Mitsuyasu's spreading); a slope
-// amplitude as k^-1/2, so the longest waves carry the shape and the shortest the sparkle. Per wave: its unit
-// direction, its wavenumber over the detail's, and its slope amplitude at wave strength 1 (their variance together
-// 0.0542, as the four cosines this replaces had).
-//
-// That many waves with unrelated directions and lengths sum to a short-crested field with no period the eye finds
-// (Longuet-Higgins' random sea, "The statistical analysis of a random, moving surface", 1957). Fewer do not: two
-// trains always cross in a lattice of parallelograms, and the four cosines' two strongest crossed at a right angle,
-// which drew the lake as an egg crate with the sun's glints in its rows.
+// Directional pixel footprint along wave direction `d` for anisotropic filtering
+// of grazing lake waves without smearing cross-view ripples into parallel bands.
+fn wave_footprint_along(d: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> f32 {
+  let sx = abs(dot(d, gx));
+  let sy = abs(dot(d, gy));
+  return max(sx, sy);
+}
+
+// A lake's wind waves: sixteen plane waves from 0.9 to 4.9 times the detail's
+// wavenumber on a geometric ladder, directions distributed via golden-angle
+// quasi-random offsets across a JONSWAP-like directional sector around the
+// dominant wind heading so grazing views never align into parallel stripes.
 fn lake_wave(i: i32) -> vec4<f32> {
   var waves = array<vec4<f32>, 16>(
-    vec4<f32>(0.870, 0.494, 0.899, 0.1178), vec4<f32>(0.180, 0.984, 1.007, 0.1113), vec4<f32>(0.731, 0.682, 1.128, 0.1052),
-    vec4<f32>(0.968, 0.252, 1.263, 0.0994), vec4<f32>(0.380, 0.925, 1.415, 0.0939), vec4<f32>(0.820, 0.572, 1.584, 0.0887),
-    vec4<f32>(0.993, -0.120, 1.774, 0.0839), vec4<f32>(0.592, 0.806, 1.987, 0.0792), vec4<f32>(0.936, 0.353, 2.225, 0.0749),
-    vec4<f32>(0.048, 0.999, 2.491, 0.0708), vec4<f32>(0.765, 0.644, 2.790, 0.0669), vec4<f32>(1.000, -0.022, 3.124, 0.0632),
-    vec4<f32>(0.352, 0.936, 3.499, 0.0597), vec4<f32>(0.876, 0.482, 3.918, 0.0564), vec4<f32>(0.863, -0.505, 4.388, 0.0533),
-    vec4<f32>(0.630, 0.777, 4.914, 0.0504));
+    vec4<f32>(0.800, 0.600, 0.899, 0.1178), vec4<f32>(0.531, 0.847, 1.007, 0.1113), vec4<f32>(0.978, 0.208, 1.128, 0.1052),
+    vec4<f32>(0.214, 0.977, 1.263, 0.0994), vec4<f32>(0.996, -0.092, 1.415, 0.0939), vec4<f32>(0.680, 0.733, 1.584, 0.0887),
+    vec4<f32>(0.909, 0.417, 1.774, 0.0839), vec4<f32>(0.354, 0.935, 1.987, 0.0792), vec4<f32>(0.985, -0.175, 2.225, 0.0749),
+    vec4<f32>(-0.042, 0.999, 2.491, 0.0708), vec4<f32>(0.861, 0.508, 2.790, 0.0669), vec4<f32>(0.946, -0.324, 3.124, 0.0632),
+    vec4<f32>(0.443, 0.897, 3.499, 0.0597), vec4<f32>(0.992, 0.123, 3.918, 0.0564), vec4<f32>(0.768, -0.640, 4.388, 0.0533),
+    vec4<f32>(0.118, 0.993, 4.914, 0.0504));
   return waves[i];
 }
 
-// The detail from the lake's wind waves (`lake_wave`), in local xz, over a pixel of `w` metres (0: every wave kept).
-fn wave_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
+// The detail from the lake's wind waves (`lake_wave`), in local xz, filtered
+// anisotropically against pixel surface derivatives `gx, gy`.
+fn wave_slope(p: vec2<f32>, t: f32, gx: vec2<f32>, gy: vec2<f32>) -> Detail {
   let k = water.waves.x * 2.0 * PI;
   let s = water.waves.y;
   var o = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
@@ -105,7 +107,7 @@ fn wave_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
     let v = lake_wave(i);
     let kk = k * v.z;
     let phase = dot(v.xy, p) * kk + t * s * sqrt(kk) * 1.6 + f32(i) * 2.4;
-    detail_wave(&o, v.xy, kk, water.waves.z * v.w, phase, w);
+    detail_wave(&o, v.xy, kk, water.waves.z * v.w, phase, wave_footprint_along(v.xy, gx, gy));
   }
   return o;
 }

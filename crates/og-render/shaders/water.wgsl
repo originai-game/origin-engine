@@ -407,7 +407,8 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   } else if (OG_FLOW && flows()) {
     detail = flowed_slope(in.local, in.uv, t, reach);
   } else if (!is_sea() || water.fft.x < 0.5) {
-    detail = wave_slope(in.local, t, reach);
+    let z2 = vec2<f32>(0.0);
+    detail = wave_slope(in.local, t, select(dlx, z2, is_sea()), select(dly, z2, is_sea()));
   }
   var slope = detail.slope;
   let tangent_x = normalize((water.model * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz);
@@ -721,16 +722,13 @@ if (sea) {
     }
   }
   if (!three_water) {
-    // A ray reflected downwards meets the next wave, which shows its body and, dimly, the sky in turn (it never
-    // reaches the sky, nor the ground under the horizon the blurred environment holds there). The facets spread the
-    // reflection over about two of their slopes' deviations, so it turns down gradually. On a lake too: a ripple's
-    // face tilted from the eye (the rim of a floating body's funnel) reflected down into the bed, the bank and the
-    // body itself, through the screen's trace and the environment's ground, as a ring of brown grit.
-    let up_r = vec3<f32>(r.x, abs(r.y), r.z);
-    let up = overcast(surface_reflected(reflected_light(up_r, in.world, mip), at_n, up_r, rough, gi) * sky_mirror, up_r);
     let spread = select(sqrt(max(detail.cov.x + detail.cov.y, 0.0)), sig_v, sea);
     let w = 2.0 * spread + 0.05;
-    reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
+    if (r.y < w) {
+      let up_r = vec3<f32>(r.x, abs(r.y), r.z);
+      let up = overcast(surface_reflected(reflected_light(up_r, in.world, mip), at_n, up_r, rough, gi) * sky_mirror, up_r);
+      reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
+    }
   }
   let mirrored = reflected;
   reflected = water.extra.w + (1.0 - water.extra.w) * reflected;

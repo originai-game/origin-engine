@@ -116,9 +116,10 @@ impl Renderer {
                 }
                 Vec::new()
             }
-            // The aurora's footprint, before any pass reads the sky.
+            // The aurora's footprint and physical Sky-View LUT, before any pass reads the sky.
             FramePass::Aurora => {
                 self.sky.aurora_map.encode(encoder);
+                self.sky.sky_lut.encode(encoder);
                 Vec::new()
             }
             FramePass::CloudShadow => {

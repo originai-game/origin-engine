@@ -309,12 +309,12 @@ impl AtmosphereGpu {
                 // their own capture they converged several times too dark (an
                 // overcast noon drawn as night).
                 let row = crate::clouds::CLEAR_SKY_ROW;
-                for (i, e) in clear_sky_light(look, sun, color).iter().enumerate() {
+                let (sky_four, under) = clear_sky_light_cached(look, sun, color);
+                for (i, e) in sky_four.iter().enumerate() {
                     a.clouds[row + i] = e.extend(0.0).to_array();
                 }
                 // What lies under the horizon, in the w of the three
                 // horizontal rows (sky_look.wgsl `low_sky_light`).
-                let under = clear_sky_mean(look, sun, color, Vec3::NEG_Y);
                 for (i, e) in under.to_array().iter().enumerate() {
                     a.clouds[row + 1 + i][3] = *e;
                 }
@@ -652,6 +652,50 @@ pub(crate) fn clear_sky_light(look: &SkyLook, sun: Vec3, color: Vec3) -> [Vec3; 
     let toward = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::Z);
     let across = Vec3::new(-toward.z, 0.0, toward.x);
     [Vec3::Y, toward, -toward, across].map(|n| clear_sky_mean(look, sun, color, n))
+}
+
+/// Cached `(clear_sky_light, clear_sky_mean(NEG_Y))` keyed by exact `(SkyLook, sun, color)`.
+/// Eliminates 120 CPU atmosphere raymarches per frame when the sky and sun are steady.
+fn clear_sky_light_cached(look: &SkyLook, sun: Vec3, color: Vec3) -> ([Vec3; 4], Vec3) {
+    const CAP: usize = 8;
+    type Entry = ((SkyLook, [u32; 6]), ([Vec3; 4], Vec3));
+    static CACHE: std::sync::Mutex<Vec<Entry>> = std::sync::Mutex::new(Vec::new());
+    let key = (
+        *look,
+        [
+            sun.x.to_bits(),
+            sun.y.to_bits(),
+            sun.z.to_bits(),
+            color.x.to_bits(),
+            color.y.to_bits(),
+            color.z.to_bits(),
+        ],
+    );
+    {
+        let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(i) = cache.iter().position(|(k, _)| *k == key) {
+            let entry = cache.remove(i);
+            let out = entry.1;
+            cache.push(entry);
+            return out;
+        }
+    }
+    let out = (
+        clear_sky_light(look, sun, color),
+        clear_sky_mean(look, sun, color, Vec3::NEG_Y),
+    );
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(i) = cache.iter().position(|(k, _)| *k == key) {
+        let entry = cache.remove(i);
+        let existing = entry.1;
+        cache.push(entry);
+        return existing;
+    }
+    if cache.len() >= CAP {
+        cache.remove(0);
+    }
+    cache.push((key, out));
+    out
 }
 
 /// The cosine weighted mean of [`clear_sky`] over the hemisphere about unit

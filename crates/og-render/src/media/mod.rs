@@ -8,6 +8,7 @@ pub(crate) mod aurora;
 pub(crate) mod clouds;
 pub(crate) mod sky;
 pub(crate) mod sky_capture;
+pub(crate) mod sky_lut;
 pub(crate) mod sky_physical;
 pub(crate) mod volumetric;
 pub(crate) mod weather;
@@ -17,6 +18,7 @@ pub(crate) mod weather;
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("sky", crate::sky_source());
     add("sky ground", crate::sky_ground_source());
+    add("sky view lut", sky_lut::source());
     add("ground open", crate::ground_heights::open_source());
     add(
         "aurora footprint",

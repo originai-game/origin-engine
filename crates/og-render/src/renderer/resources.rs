@@ -863,6 +863,8 @@ pub(crate) struct SkyState {
     pub(crate) cloud_shadow: clouds::CloudShadow,
     /// The aurora's footprint and table, bound in the sky group (`aurora.rs`).
     pub(crate) aurora_map: aurora::AuroraMap,
+    /// Hillaire 2020 Sky-View LUT (`media/sky_lut.rs`), bound in the sky group.
+    pub(crate) sky_lut: crate::media::sky_lut::SkyLut,
     pub(crate) sky_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     pub(crate) sky_look_pipeline: Sampled<wgpu::RenderPipeline>,

@@ -165,7 +165,7 @@ impl SkyState {
         (clouds_low, ground): (clouds::CloudsLow, ground_heights::GroundCatcher),
         (cloud_noise, cloud_shadow): (clouds::CloudNoise, clouds::CloudShadow),
         sky_params: wgpu::Buffer,
-        aurora_map: aurora::AuroraMap,
+        (aurora_map, sky_lut): (aurora::AuroraMap, crate::media::sky_lut::SkyLut),
     ) -> SkyState {
         SkyState {
             sky_layout,
@@ -173,6 +173,7 @@ impl SkyState {
             cloud_shadow,
             sky_params,
             aurora_map,
+            sky_lut,
             sky_pipeline,
             sky_look_pipeline,
             clouds_low,

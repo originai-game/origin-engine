@@ -14,8 +14,13 @@ impl Pass for VolumetricPass {
     type State = crate::volumetric::Volumetric;
     /// Whether the froxel pass runs.
     type Frame = bool;
-    /// The frame's medium and its scene.
-    type PlanIn<'a> = (Option<&'a crate::volumetric::Medium>, &'a RenderScene);
+    /// The frame's medium, scene, previous view-projection, and perspective flag.
+    type PlanIn<'a> = (
+        Option<&'a crate::volumetric::Medium>,
+        &'a RenderScene,
+        Mat4,
+        bool,
+    );
     type UploadIn<'a> = ();
     type BindIn<'f> = ();
     type Plan<'f> = ();
@@ -26,10 +31,19 @@ impl Pass for VolumetricPass {
 
     /// The frame's medium (both methods: the main pass applies the
     /// raymarched one itself), and whether the froxel pass runs.
-    fn plan(r: &mut Renderer, (medium, scene): Self::PlanIn<'_>) -> bool {
+    fn plan(
+        r: &mut Renderer,
+        (medium, scene, prev_view_proj, perspective): Self::PlanIn<'_>,
+    ) -> bool {
         let Some(medium) = medium else {
             return false;
         };
+        let has_spots = r
+            .lights
+            .clusters
+            .kept
+            .iter()
+            .any(|&i| matches!(scene.lighting.lights[i].kind, LightKind::Spot { .. }));
         r.volumetric.prepare(
             &r.device,
             &r.queue,
@@ -41,6 +55,9 @@ impl Pass for VolumetricPass {
             r.samples,
             scene.frame.tick,
             &scene.frame.quality,
+            prev_view_proj,
+            perspective && !scene.frame.camera_cut,
+            has_spots,
         );
         r.volumetric.method == VolumetricMethod::Froxel
     }

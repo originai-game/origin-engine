@@ -511,6 +511,7 @@ impl Renderer {
             cloud_shadow,
             sky_params,
             aurora_map,
+            sky_lut,
         } = Self::sky_resources(SkyResourcesInputs {
             frame_layout: &frame_layout,
             sky_layout: &sky_layout,
@@ -774,7 +775,7 @@ impl Renderer {
                 (clouds_low, ground_catcher),
                 (cloud_noise, cloud_shadow),
                 sky_params,
-                aurora_map,
+                (aurora_map, sky_lut),
             ),
             material_layout,
             lights: Lights::new(

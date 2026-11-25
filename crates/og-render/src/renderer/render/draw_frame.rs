@@ -702,7 +702,16 @@ impl Renderer {
             g.write_params(&self.queue, self.lights.clusters.kept.len());
         }
         // The volumetric fog's plan step (pass_volumetric.rs).
-        frames.volumetric = VolumetricPass::plan(self, (volumetric_fog.as_ref(), scene));
+        let perspective = !matches!(camera.projection, Projection::Orthographic { .. });
+        frames.volumetric = VolumetricPass::plan(
+            self,
+            (
+                volumetric_fog.as_ref(),
+                scene,
+                world_frame.prev_view_proj,
+                perspective,
+            ),
+        );
         plans.volumetric = VolumetricPass::bind(self, &mut frames.volumetric, ());
         self.particles.gpu.effects.set_froxel(
             &self.device,
@@ -1313,7 +1322,6 @@ impl Renderer {
                 lit_skinned_standard: &lit_skinned_standard,
                 terrain_draws: &world_frame.terrain_draws,
                 scatter_batches: &world_frame.scatter_batches,
-                grass_frame: &world_frame.grass_frame,
             },
         );
         plans.probes = ProbesPass::bind(

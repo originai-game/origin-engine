@@ -25,6 +25,7 @@ pub(super) struct SkyResourcesOutputs {
     pub cloud_shadow: clouds::CloudShadow,
     pub sky_params: wgpu::Buffer,
     pub aurora_map: aurora::AuroraMap,
+    pub sky_lut: crate::media::sky_lut::SkyLut,
 }
 
 impl Renderer {
@@ -167,6 +168,7 @@ impl Renderer {
             },
         );
         let aurora_map = aurora::AuroraMap::placeholder(device, queue);
+        let sky_lut = crate::media::sky_lut::SkyLut::placeholder(device);
         SkyResourcesOutputs {
             sky_pipeline,
             sky_look_pipeline,
@@ -177,6 +179,7 @@ impl Renderer {
             cloud_shadow,
             sky_params,
             aurora_map,
+            sky_lut,
         }
     }
 }

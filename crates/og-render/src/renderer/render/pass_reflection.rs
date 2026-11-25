@@ -27,7 +27,6 @@ pub(super) struct ReflectionPlan<'f> {
     pub(super) reflections: &'f [(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))],
     pub(super) terrain_draws: &'f [terrain::TerrainDraw],
     pub(super) scatter_batches: &'f scatter::ScatterBatches,
-    pub(super) grass_frame: &'f grass::GrassFrame,
     pub(super) reflection_blended: &'f [DrawList],
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
@@ -54,7 +53,6 @@ impl Renderer {
             reflections,
             terrain_draws,
             scatter_batches,
-            grass_frame,
             reflection_blended,
             meshlet_views,
             batches,
@@ -177,15 +175,6 @@ impl Renderer {
                 // The copies' group 2 is theirs: the effects' back for what follows.
                 pass.set_bind_group(2, fx, &[]);
             }
-            let n = n + self.world.grass.get().map_or(Default::default(), |x| {
-                x.draw(
-                    &mut pass,
-                    grass::GrassPass::Lit,
-                    grass_frame,
-                    Some(fx),
-                    f32::INFINITY,
-                )
-            });
             stats.draw_calls += n;
             stats.reflection_draws += n;
         }
@@ -254,7 +243,6 @@ pub(super) struct ReflectionBindIn<'f> {
     pub lit_skinned_standard: &'f [Option<&'f wgpu::RenderPipeline>],
     pub terrain_draws: &'f [terrain::TerrainDraw],
     pub scatter_batches: &'f scatter::ScatterBatches,
-    pub grass_frame: &'f grass::GrassFrame,
 }
 
 impl Pass for ReflectionPass {
@@ -382,7 +370,6 @@ impl Pass for ReflectionPass {
             lit_skinned_standard,
             terrain_draws,
             scatter_batches,
-            grass_frame,
         }: ReflectionBindIn<'f>,
     ) -> Option<ReflectionPlan<'f>> {
         // The planar reflection's effect group: its decals, no AO.
@@ -443,7 +430,6 @@ impl Pass for ReflectionPass {
             reflections,
             terrain_draws,
             scatter_batches,
-            grass_frame,
             reflection_blended: &frame.blended,
         })
     }

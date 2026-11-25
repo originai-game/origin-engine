@@ -23,7 +23,7 @@
 // and the box-averaged mips of both 3D volumes. Prepended by `wgsl_library!`
 // (hash.wgsl, common.wgsl, color.wgsl, noise.wgsl).
 
-@group(0) @binding(0) var volume_out: texture_storage_3d<rgba16float, write>;
+@group(0) @binding(0) var volume_out: texture_storage_3d<rgba8unorm, write>;
 @group(0) @binding(1) var map_out: texture_storage_2d<rgba16float, write>;
 @group(0) @binding(2) var mip_src: texture_3d<f32>;
 @group(0) @binding(3) var<uniform> noise_params: vec4<u32>;

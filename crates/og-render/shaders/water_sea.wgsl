@@ -273,46 +273,64 @@ fn sea_foam(p: vec2<f32>, at: vec2<f32>, jac: f32, sh: Shoal) -> SeaFoam {
   // of a pixel the lace's own where the pixel spans the web.
   // Only past force 7 (13.9 m/s), where Beaufort's sea first has foam blown in streaks, and well marked by force 8.
   let lace_amount = clamp(fwl.a - fwl.r, 0.0, 1.0) * water.sea_wind.w * smoothstep(12.0, 18.0, water.sea_wind.z);
-  // The lace's pattern: threads along the wind some 3.5 m apart, meandering with the streak noise sampled slowly both
-  // ways (so each thread holds its line), their edges broken by the finer lace's bubbles, cut where they cover the
-  // share of the surface the lace holds. The threads' triangle wave is uniform on [0, 1], so the cut at 1 - share
-  // covers about that share (a mix of the noise channels, bunched about its mean, was all but never cut).
-  let wl = textureSample(heights, ripple_sampler, ws * vec2<f32>(0.12, 0.014), first + 2u).a;
-  let wm = textureSample(heights, ripple_sampler, ws * vec2<f32>(0.3, 0.11) + 0.37, first + 2u).a;
-  let across_m = dot(p, vec2<f32>(-wd.y, wd.x));
-  let along_m = dot(p, wd);
-  // (An irregular spacing too: a warp across the wind, its slope under the threads' own so each stays one line.)
-  let wi = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.002, across_m * 0.0125) + 0.71, first + 2u).a;
-  // And bent: a wander across the wind some 12 m long along it, so a streak winds as drifting foam does instead of
-  // running ruler-straight (its slope across the wind still under the threads').
-  let wb = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.02, across_m * 0.003) + 0.13, first + 2u).a;
-  let x = across_m / 3.5 + wl * 2.2 + wm * 0.45 + (wi - 0.5) * 0.5 + (wb - 0.5) * 3.0;
-  let web = textureSample(heights, ripple_sampler, p * 0.53 + water.foam_uv[0].zw, first + 2u).g;
-  let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.08;
-  // Each thread its own: some strong, some faint, and broken along the wind into lengths of some tens of metres (the
-  // threads' centres at whole x).
-  let r = hash_unit(pcg(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
-  let seg = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.004 + r * 7.0, r * 3.1), first + 2u).a;
-  let lw = fwidthFine(x) * 2.0 + 0.05;
-  // (Old foam, the whitecaps' residue, lies over two to three times the whitecaps' share: some 20 to 30 % of a gale's
-  // sea against their 10 %, Monahan and O'Muircheartaigh's stage B; the threads' weights and lengths keep 0.3 of it.)
-  let lace_cover = clamp(lace_amount * 3.0, 0.0, 1.0);
-  // (A thread 0.4 of the spacing at most: the streaks are narrow, a metre or so.)
-  let share = 0.4 * lace_cover * clamp(r * 1.6, 0.0, 1.0) * smoothstep(0.48, 0.62, seg);
-  // Soft-edged: a streak is drifting foam thinning to its sides, not a line.
-  let lsoft = lw + 0.12;
-  var lace = smoothstep(1.0 - share - lsoft, 1.0 - share + lsoft, threads);
-  // Where a pixel spans the threads, the mean of their shares.
-  lace = mix(lace, lace_cover * 0.12, smoothstep(0.15, 0.4, lw));
-  // Thinner and thicker along its length, over some metres (holes cut in a thin thread read as beads, and the
-  // foam sheets' finer pattern drew pores along it).
-  let thick = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.03, across_m * 0.08) + 0.29, first + 2u).a;
-  lace *= mix(0.3, 1.0, smoothstep(0.3, 0.7, thick));
-  // (None where the lace holds none: the bubbles lift the threads' top past 1, which the cut at 1 would draw.)
-  lace *= smoothstep(0.0, 0.05, lace_cover);
-  // Faint: the old foam's film over the dark sea, well under a whitecap's cover.
-  o.lace = lace * 0.2 * (1.0 - o.mask);
-  o.mask = max(o.mask, lace * 0.2);
+  o.lace = 0.0;
+  if (water.sea_wind.z > 12.0 && water.sea_wind.w > 0.0) {
+    let across_m = dot(p, vec2<f32>(-wd.y, wd.x));
+    let along_m = dot(p, wd);
+    // Compute gradients uniformly before branching on per-pixel `lace_amount`.
+    let dws_x = dpdxFine(ws);
+    let dws_y = dpdyFine(ws);
+    let dp_x = dpdxFine(p);
+    let dp_y = dpdyFine(p);
+    let dalong_x = dpdxFine(along_m);
+    let dalong_y = dpdyFine(along_m);
+    let dacross_x = dpdxFine(across_m);
+    let dacross_y = dpdyFine(across_m);
+    if (lace_amount > 1e-3) {
+      let s0 = vec2<f32>(0.12, 0.014);
+      let s1 = vec2<f32>(0.3, 0.11);
+      let wl = textureSampleGrad(heights, ripple_sampler, ws * s0, first + 2u, dws_x * s0, dws_y * s0).a;
+      let wm = textureSampleGrad(heights, ripple_sampler, ws * s1 + 0.37, first + 2u, dws_x * s1, dws_y * s1).a;
+      let wi = textureSampleGrad(
+        heights, ripple_sampler,
+        vec2<f32>(along_m * 0.002, across_m * 0.0125) + 0.71, first + 2u,
+        vec2<f32>(dalong_x * 0.002, dacross_x * 0.0125),
+        vec2<f32>(dalong_y * 0.002, dacross_y * 0.0125),
+      ).a;
+      let wb = textureSampleGrad(
+        heights, ripple_sampler,
+        vec2<f32>(along_m * 0.02, across_m * 0.003) + 0.13, first + 2u,
+        vec2<f32>(dalong_x * 0.02, dacross_x * 0.003),
+        vec2<f32>(dalong_y * 0.02, dacross_y * 0.003),
+      ).a;
+      let x = across_m / 3.5 + wl * 2.2 + wm * 0.45 + (wi - 0.5) * 0.5 + (wb - 0.5) * 3.0;
+      let web = textureSampleGrad(heights, ripple_sampler, p * 0.53 + water.foam_uv[0].zw, first + 2u, dp_x * 0.53, dp_y * 0.53).g;
+      let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.08;
+      let r = hash_unit(pcg(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
+      let seg = textureSampleGrad(
+        heights, ripple_sampler,
+        vec2<f32>(along_m * 0.004 + r * 7.0, r * 3.1), first + 2u,
+        vec2<f32>(dalong_x * 0.004, 0.0),
+        vec2<f32>(dalong_y * 0.004, 0.0),
+      ).a;
+      let lw = (abs(dacross_x) + abs(dacross_y)) / 3.5 * 2.0 + 0.05;
+      let lace_cover = clamp(lace_amount * 3.0, 0.0, 1.0);
+      let share = 0.4 * lace_cover * clamp(r * 1.6, 0.0, 1.0) * smoothstep(0.48, 0.62, seg);
+      let lsoft = lw + 0.12;
+      var lace = smoothstep(1.0 - share - lsoft, 1.0 - share + lsoft, threads);
+      lace = mix(lace, lace_cover * 0.12, smoothstep(0.15, 0.4, lw));
+      let thick = textureSampleGrad(
+        heights, ripple_sampler,
+        vec2<f32>(along_m * 0.03, across_m * 0.08) + 0.29, first + 2u,
+        vec2<f32>(dalong_x * 0.03, dacross_x * 0.08),
+        vec2<f32>(dalong_y * 0.03, dacross_y * 0.08),
+      ).a;
+      lace *= mix(0.3, 1.0, smoothstep(0.3, 0.7, thick));
+      lace *= smoothstep(0.0, 0.05, lace_cover);
+      o.lace = lace * 0.2 * (1.0 - o.mask);
+      o.mask = max(o.mask, lace * 0.2);
+    }
+  }
   o.young = fwl.g;
   return o;
 }

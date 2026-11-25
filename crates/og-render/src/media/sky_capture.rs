@@ -29,8 +29,9 @@ use std::ops::Range;
 
 /// The face size of the capture (the prefiltered cube's, which it fills).
 pub(crate) const CAPTURE_SIZE: u32 = PREFILTER_SIZE;
-/// The frames one capture is spread over.
-pub(crate) const STEPS: usize = 8;
+/// The frames one capture is spread over (6 single-face capture frames from
+/// one frozen snapshot + 6 filter frames + 1 copy frame).
+pub(crate) const STEPS: usize = 13;
 
 /// What one step draws: capture faces, the filter's passes, and whether
 /// it copies the filtered cubes into the bound ones.
@@ -55,19 +56,20 @@ pub(crate) fn step(k: Option<usize>, mips: u32) -> Step {
     };
     match k {
         None => s(0..6, 0..all, true),
-        // Capture all six faces in the same frame snapshot so moving sun,
-        // clouds and lightning flashes never leave seams across cube edges.
-        Some(0) => s(0..6, 0..0, false),
+        // Capture 1 face per frame using the single snapshot written into
+        // `self.uniforms` at step 0, avoiding both 6-face GPU spikes and
+        // temporal seams across cube edges.
+        Some(f @ 0..=5) => s(f as u32..f as u32 + 1, 0..0, false),
         // Mip chain (6 copies + downsamples).
-        Some(1) => s(0..0, 0..6 * mips as usize, false),
+        Some(6) => s(0..0, 0..6 * mips as usize, false),
         // Irradiance convolution (6 faces).
-        Some(2) => s(0..0, 6 * mips as usize..p, false),
+        Some(7) => s(0..0, 6 * mips as usize..p, false),
         // The sharpest prefiltered level over two frames, the next alone,
         // the three smallest together (each a quarter of the one above).
-        Some(3) => s(0..0, p..p + 3, false),
-        Some(4) => s(0..0, p + 3..p + 6, false),
-        Some(5) => s(0..0, p + 6..p + 12, false),
-        Some(6) => s(0..0, p + 12..all, false),
+        Some(8) => s(0..0, p..p + 3, false),
+        Some(9) => s(0..0, p + 3..p + 6, false),
+        Some(10) => s(0..0, p + 6..p + 12, false),
+        Some(11) => s(0..0, p + 12..all, false),
         Some(_) => s(0..0, 0..0, true),
     }
 }
@@ -243,17 +245,17 @@ impl SkyCapture {
         step(self.next.get(), self.mips)
     }
 
-    /// Writes the faces' frame uniforms, from the frame's own `base`, for
-    /// a capture from `camera`'s position (when this frame draws faces).
+    /// Writes all six faces' frame uniforms as one coherent temporal snapshot
+    /// when starting a capture cycle (`None` or `Some(0)`), so amortized
+    /// single-face steps `0..=5` share the exact same sun, cloud and flash state.
     pub fn write(&self, queue: &wgpu::Queue, base: &FrameUniform, camera: &Camera) {
-        let faces = self.due().faces;
-        if faces.is_empty() {
+        if !matches!(self.next.get(), None | Some(0)) {
             return;
         }
         let frames = crate::probes::face_frames(camera, camera.position, camera.far);
         let mut bytes = vec![0u8; (self.stride * 6) as usize];
         let size = std::mem::size_of::<FrameUniform>();
-        for face in faces {
+        for face in 0u32..6u32 {
             let mut u = crate::probes::face_uniform(base, &frames[face as usize], camera.position);
             // No stars: they would only add noise to the light. The sky
             // as drawn: it is the environment the intensity then scales.

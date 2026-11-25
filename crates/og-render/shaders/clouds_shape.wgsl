@@ -191,7 +191,7 @@ fn cloud_up(col: CloudColumn, hf: f32) -> f32 {
 }
 
 fn cloud_detail_share() -> f32 {
-  return 0.32 + 0.32 * clamp((frame.clouds[2].w - 0.35) / 0.65, 0.0, 1.0);
+  return 0.38 + 0.24 * clamp((frame.clouds[2].w - 0.35) / 0.65, 0.0, 1.0);
 }
 
 // The cloud at the field's point `at`, `hf` of the way up the layer in the
@@ -243,7 +243,7 @@ fn cloud_clear(under: f32) -> f32 {
 
 fn cloud_density_in(at: vec3<f32>, hf: f32, texel: f32, fine: bool) -> f32 {
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
-  let col = cloud_column(cloud_map_at(at, true), hf);
+  let col = cloud_column(cloud_map_at(at, false), hf);
   let profile = cloud_profile(col, hf);
   if (profile <= 0.0) { return 0.0; }
   return cloud_density_from(at, col, hf, profile, texel, fine).x;

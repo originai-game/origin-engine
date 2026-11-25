@@ -793,9 +793,9 @@ impl CloudsTemporal {
     }
 }
 
-/// 16-bit float 3D noise volumes eliminate 8-bit quantization banding in
-/// cloud erosion profiles while staying filterable and WebGPU-compatible.
-const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+/// 8-bit unorm 3D noise volumes cover the normalized [0, 1] erosion profiles
+/// while halving 3D volume VRAM (20.6 -> 10.3 MiB) and doubling 3D cache hit rate.
+const FIELD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 /// The map's: half floats, for a cloud's top follows it.
 const MAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 

@@ -1,18 +1,13 @@
 // The froxel grid of volumetric.wgsl (VolumetricMethod::Froxel): inject, integrate, apply.
 
 @group(1) @binding(1) var froxel_out: texture_storage_3d<rgba16float, write>;
+@group(1) @binding(7) var froxel_history: texture_3d<f32>;
+@group(1) @binding(8) var froxel_hist_sampler: sampler;
 
-// Depth samples a froxel's light is the mean of. A slice is up to a few
-// metres deep (quadratic slices to `distance`) and the sun's shadow can
-// change inside it many times (a shaft through a slot, the slots' shadows
-// beside it): a single sample at the slice's middle lands in or out of a
-// shaft depending on the column, which the front-to-back sum turns into
-// vertical streaks. INJECT_TAPS stratified samples over the slice's depth,
-// each jittered within its stratum per froxel and per frame, integrate the
-// slice instead. Spots are resolved on the pixel ray (`spots_in`): their
-// cones can be narrower than a cell, so neither a centre ray nor a cell
-// average can reconstruct their silhouette.
-const INJECT_TAPS: u32 = 8u;
+// Temporal froxel injection (Wronski 2014 / Hillaire 2015): 2 stratified
+// jittered depth samples per froxel blended via 90% temporal reprojection EMA
+// cuts shadow & cluster lookups 4x while converging smoothly across frames.
+const INJECT_TAPS: u32 = 2u;
 
 // Interleaved gradient noise (Jimenez 2014) at a froxel, moved by the
 // frame's seed (vol.grid.w) so successive frames take other strata.
@@ -29,30 +24,45 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let dir = view_ray(uv);
   let stretch = 1.0 / max(dot(dir, frame.view_forward.xyz), 1e-3);
   let jitter = froxel_noise(id);
-  // What a sample holds (the water's light is a pattern: `water_in`): the froxel's width there, and its share of
-  // the slice's depth.
+  // Lateral froxel width for caustic focus filtering (never clamped by ray-axis
+  // slice thickness `deep`, which previously blurred underwater light shafts away).
   let across = length(view_ray(uv + vec2<f32>(1.0 / vol.grid.x, 0.0)) - dir);
   let deep = (slice_depth(f32(id.z + 1u) / vol.grid.z) - slice_depth(f32(id.z) / vol.grid.z)) * stretch / f32(INJECT_TAPS);
   var sigma_sum = 0.0;
   var light_sum = vec3<f32>(0.0);
+  var own_sum = vec3<f32>(0.0);
   // The fog volumes' share of what the slice scatters, for the environment's light: that changes slowly, so the
   // froxel takes it once, at its middle.
   var local_sum = vec3<f32>(0.0);
   for (var t = 0u; t < INJECT_TAPS; t++) {
     let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
-    let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
     let along = slice_depth(f) * stretch;
+    let p = frame.view_pos.xyz + dir * along;
     let edges = (vec2<f32>(f32(id.z)) + vec2<f32>(f32(t), f32(t + 1u)) / f32(INJECT_TAPS)) / vol.grid.z;
     let span = vec2<f32>(slice_depth(edges.x), slice_depth(edges.y)) * stretch;
     let m = vol_medium(p, dir, vec3<f32>(span, deep));
     sigma_sum += m.sigma;
     if (m.sigma > 0.0) {
       local_sum += m.local;
-      light_sum += m.own + medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep), m, vec3<f32>(0.0), false);
+      own_sum += m.own;
+      light_sum += medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, along * across, m, vec3<f32>(0.0), false);
+    }
+  }
+  let mid_depth = slice_depth((f32(id.z) + 0.5) / vol.grid.z);
+  let middle = frame.view_pos.xyz + dir * (mid_depth * stretch);
+  // Modulate global fog ambient (`own`) by Probe GI sky visibility when active
+  // so indoor / under-canopy volumetric fog does not self-glow.
+  if (own_sum.x + own_sum.y + own_sum.z > 0.0) {
+    if (!VOL_WATER && OG_GI && probe_data.v[GI_HEADER_AT].x >= 0.5) {
+      let env = env_in(middle);
+      let amb = ambient_in(middle, env);
+      let sky_vis = clamp(luma(amb) / max(luma(env), 1e-4), 0.15, 1.0);
+      light_sum += own_sum * sky_vis;
+    } else {
+      light_sum += own_sum;
     }
   }
   if (local_sum.x + local_sum.y + local_sum.z > 0.0) {
-    let middle = frame.view_pos.xyz + dir * slice_depth((f32(id.z) + 0.5) / vol.grid.z) * stretch;
     light_sum += local_sum * ambient_in(middle, env_in(middle));
   }
   let n = f32(INJECT_TAPS);
@@ -61,6 +71,19 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     // A finite-distance clear ramp has unbounded extinction at its end.
     // Store the finite column, not extinction per metre, in the half-float grid.
     sample *= deep * n;
+  }
+  // Temporal reprojection EMA against previous frame's froxel scatter volume.
+  if (vol.temporal.x > 0.0) {
+    let prev_clip = vol.prev_view_proj * vec4<f32>(middle, 1.0);
+    if (prev_clip.w > 1e-4) {
+      let prev_ndc = prev_clip.xy / prev_clip.w;
+      let prev_uv = vec2<f32>(0.5 + 0.5 * prev_ndc.x, 0.5 - 0.5 * prev_ndc.y);
+      let prev_z = sqrt(clamp(prev_clip.w / max(vol.temporal.y, 1e-3), 0.0, 1.0));
+      if (all(prev_uv >= vec2<f32>(0.0)) && all(prev_uv <= vec2<f32>(1.0)) && prev_z > 0.0 && prev_z < 1.0) {
+        let hist = textureSampleLevel(froxel_history, froxel_hist_sampler, vec3<f32>(prev_uv, prev_z), 0.0);
+        sample = mix(sample, hist, vol.temporal.x);
+      }
+    }
   }
   textureStore(froxel_out, id, sample);
 }
@@ -124,7 +147,7 @@ const SPOT_TAPS: u32 = 8u;
 // stratified in angle, jittered per pixel and per frame.
 fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
   var sum = vec3<f32>(0.0);
-  if (VOL_WATER || frame.params.z < 0.5) { return sum; }
+  if (VOL_WATER || frame.params.z < 0.5 || vol.temporal.z < 0.5) { return sum; }
   let dir = view_ray(uv);
   let forward = max(dot(dir, frame.view_forward.xyz), 1e-3);
   let jitter = ign(uv * vol.extent.zw + vec2<f32>(47.0, 17.0) * vol.grid.w);

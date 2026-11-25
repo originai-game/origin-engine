@@ -109,6 +109,8 @@ pub struct FftOcean {
     /// The frame's fields, planned ([`FftOcean::advance`]) and not yet
     /// recorded ([`FftOcean::encode`]).
     pending: Option<Pending>,
+    /// Clock seconds at which the FFT ripple cascades were last computed.
+    last_seconds: Option<f64>,
 }
 
 /// What [`FftOcean::encode`] records of a frame [`FftOcean::advance`]
@@ -120,6 +122,10 @@ struct Pending {
     foam: wgpu::BindGroup,
     /// The foam's micro-structure is made first.
     detail: bool,
+    /// Whether the FFT ripple cascades need recomputation (time or spectrum changed).
+    run_fft: bool,
+    /// Clock seconds to commit to `last_seconds` once encoded.
+    next_seconds: f64,
     /// The foam state to commit only once [`FftOcean::encode`] records the pass.
     next_last: Option<(i64, [[i32; 2]; 2])>,
 }
@@ -389,6 +395,7 @@ impl FftOcean {
             lambda: 0.0,
             foam,
             pending: None,
+            last_seconds: None,
         }
     }
 
@@ -420,8 +427,9 @@ impl FftOcean {
         }
         self.lambda = spectrum.choppiness as f32;
         crate::traffic::write_buffer(queue, &self.spectrum, 0, bytemuck::cast_slice(&data));
-        // A new sea's foam starts over.
+        // A new sea's foam and FFT start over.
         self.foam.last = None;
+        self.last_seconds = None;
     }
 
     /// Plans the frame's fields and writes their uniforms: the foam's steps
@@ -448,8 +456,12 @@ impl FftOcean {
         let mut tracked_last = if restart { None } else { self.foam.last };
         let snaps = foam::snaps(eye);
         let detail = !self.foam.detail_made || self.pending.as_ref().is_some_and(|p| p.detail);
+        let run_fft =
+            self.last_seconds != Some(seconds) || self.pending.as_ref().is_some_and(|p| p.run_fft);
+        if !run_fft && !detail && steps.is_empty() {
+            return 0;
+        }
         let foam_stride = ring_stride::<foam::FoamGpu>();
-        let mut fft_ring = vec![0u8; ring_stride::<FftGpu>() as usize];
         let mut foam_ring = vec![0u8; (foam_stride as usize) * steps.len().max(1)];
         for (i, &(k, span)) in steps.iter().enumerate() {
             let at = k as f64 * foam::STEP;
@@ -468,8 +480,11 @@ impl FftOcean {
                 .copy_from_slice(bytemuck::bytes_of(&u));
             tracked_last = Some((k, snaps));
         }
-        self.fields_at(&mut fft_ring, 0, seconds);
-        crate::traffic::write_buffer(queue, &self.uniform, 0, &fft_ring);
+        if run_fft {
+            let mut fft_ring = vec![0u8; ring_stride::<FftGpu>() as usize];
+            self.fields_at(&mut fft_ring, 0, seconds);
+            crate::traffic::write_buffer(queue, &self.uniform, 0, &fft_ring);
+        }
         if !steps.is_empty() {
             crate::traffic::write_buffer(queue, &self.foam.uniform, 0, &foam_ring);
         }
@@ -477,6 +492,8 @@ impl FftOcean {
             steps: steps.len(),
             foam: group,
             detail,
+            run_fft,
+            next_seconds: seconds,
             next_last: tracked_last,
         });
         steps.len()
@@ -531,8 +548,20 @@ impl FftOcean {
             self.copy_foam(encoder, &self.foam.out, first, 2);
         }
         self.foam.last = planned.next_last;
-        // Run the FFT and full mip chain (covering both ripple cascades and foam layers) once.
-        self.encode_fields(encoder, 0);
+        if planned.run_fft {
+            self.last_seconds = Some(planned.next_seconds);
+        }
+        // Only run FFT when time/spectrum changed, and only include the static
+        // foam micro-detail layer (`foam_layer + 2`) in the mip dispatch on the
+        // frame it was generated.
+        let mip_layers = if planned.detail {
+            LAYERS * self.cascades + FOAM_LAYERS
+        } else {
+            LAYERS * self.cascades + 2
+        };
+        if planned.run_fft || planned.steps > 0 || planned.detail {
+            self.encode_fields(encoder, 0, planned.run_fft, mip_layers);
+        }
     }
 
     /// `layers` layers of a foam pass's own texture `from` into the fields'
@@ -576,29 +605,33 @@ impl FftOcean {
         ring[o..o + std::mem::size_of::<FftGpu>()].copy_from_slice(bytemuck::bytes_of(&u));
     }
 
-    /// Records the fields of the uniform ring's slot `slot`: rows, columns,
-    /// then the mips (of every layer, the foam's too).
-    fn encode_fields(&self, encoder: &mut crate::Encoder, slot: usize) {
+    /// Records the fields of the uniform ring's slot `slot`: optional FFT rows
+    /// and columns, then mips for the first `mip_layers` array layers.
+    fn encode_fields(
+        &self,
+        encoder: &mut crate::Encoder,
+        slot: usize,
+        run_fft: bool,
+        mip_layers: u32,
+    ) {
         let o = (slot as u64 * ring_stride::<FftGpu>()) as u32;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ocean fft"),
             timestamp_writes: None,
         });
-        pass.set_pipeline(&self.rows);
-        pass.set_bind_group(0, &self.rows_group, &[o]);
-        pass.dispatch_workgroups(N, 1, self.cascades);
-        pass.set_pipeline(&self.columns);
-        pass.set_bind_group(0, &self.columns_group, &[o]);
-        pass.dispatch_workgroups(N, 1, self.cascades);
+        if run_fft {
+            pass.set_pipeline(&self.rows);
+            pass.set_bind_group(0, &self.rows_group, &[o]);
+            pass.dispatch_workgroups(N, 1, self.cascades);
+            pass.set_pipeline(&self.columns);
+            pass.set_bind_group(0, &self.columns_group, &[o]);
+            pass.dispatch_workgroups(N, 1, self.cascades);
+        }
         pass.set_pipeline(&self.mips);
         for (m, group) in self.mip_groups.iter().enumerate() {
             let size = (N >> (m + 1)).max(1);
             pass.set_bind_group(0, group, &[]);
-            pass.dispatch_workgroups(
-                size.div_ceil(8),
-                size.div_ceil(8),
-                LAYERS * self.cascades + FOAM_LAYERS,
-            );
+            pass.dispatch_workgroups(size.div_ceil(8), size.div_ceil(8), mip_layers);
         }
     }
 }

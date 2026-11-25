@@ -48,6 +48,8 @@ struct Vol {
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
   local: vec4<f32>,    // x: how many of `volumes` are set, y: far-air sky coverage, zw: distance fog start/end
   own: vec4<f32>,      // rgb: the scene fog's ambient (VolumetricFog::ambient), w: its maximum opacity
+  prev_view_proj: mat4x4<f32>, // previous frame unjittered view-projection (relative to current frame origin)
+  temporal: vec4<f32>, // x: history EMA weight (0 when invalid), y: prev distance, z: >0.5 when spots present
   volumes: array<FogVolume, FOG_VOLUMES>,
 };
 
@@ -142,8 +144,9 @@ fn water_in(p: vec3<f32>, dir: vec3<f32>, width: f32) -> vec3<f32> {
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow_lookup(p, l, 1.0, false); }
   let up_light = -refract(-l, vec3<f32>(0.0, 1.0, 0.0), 1.0 / 1.33);
   let phase = 4.0 * PI * hg_phase(dot(dir, up_light), vol.scatter.w);
+  let sun_tint = max(frame.light_color.rgb, vec3<f32>(0.25)) / max(luma(frame.light_color.rgb), 0.25);
   let light = underwater_sun() * exp(-frame.fog_height.y * depth) * phase * shadow * max(1.0 + water_focus(p, width), 0.0);
-  return frame.fog_color.rgb * light;
+  return frame.fog_color.rgb * sun_tint * light;
 }
 
 // The light scattered towards the eye at p (frag: its pixel; `most`: as `locals_in`), a sample `width` metres

@@ -110,6 +110,8 @@ impl Renderer {
                 texture_entry(7, true, wgpu::TextureViewDimension::D3),
                 texture_entry(8, true, wgpu::TextureViewDimension::D2),
                 texture_entry(9, true, wgpu::TextureViewDimension::D2),
+                // Hillaire 2020 Sky-View LUT (media/sky_lut.rs).
+                texture_entry(10, true, wgpu::TextureViewDimension::D2),
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
