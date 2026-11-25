@@ -288,6 +288,7 @@ impl WorldRenderers {
         let WorldSimsOutputs {
             surfaces,
             garments,
+            pre_skin,
             visual,
             visual_fluids,
             water,
@@ -316,6 +317,7 @@ impl WorldRenderers {
             visual_fluids,
             surfaces,
             garments,
+            pre_skin,
             visual,
             crowd_indirect,
             crowd_gpu: None,

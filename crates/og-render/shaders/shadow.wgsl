@@ -134,21 +134,35 @@ fn vs_hooked(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut 
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
-  mv.position = m.position;
-  var o = shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  if (i.morph0.z > 0.5) {
+    mv.position = preskinned_pos(u32(i.morph0.z) - 1u, vi);
+  } else {
+    let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
+    mv.position = m.position;
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+  }
+  var o = shadow_vertex(model, mv);
   o.hidden = look_hidden(i.look);
   return o;
 }
 
 @vertex
 fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
-  mv.position = m.position;
-  mv.normal = m.normal;
-  var o = shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  if (i.morph0.z > 0.5) {
+    let ps = preskinned_vertex(u32(i.morph0.z) - 1u, vi);
+    mv.position = ps.position;
+    mv.normal = ps.normal;
+  } else {
+    let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
+    mv.position = m.position;
+    mv.normal = m.normal;
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+  }
+  var o = shadow_vertex_hooked(model, mv);
   o.hidden = look_hidden(i.look);
   return o;
 }

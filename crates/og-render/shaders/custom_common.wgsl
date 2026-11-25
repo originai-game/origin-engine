@@ -191,8 +191,18 @@ fn custom_plain(v: CustomVertexIn, i: CustomInstanceIn) -> CustomOut {
 }
 
 fn custom_skinned(vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  var o = custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0), model);
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  var cv = custom_input(v);
+  if (i.morph0.z > 0.5) {
+    let ps = preskinned_vertex(u32(i.morph0.z) - 1u, vi);
+    cv.position = ps.position;
+    cv.normal = ps.normal;
+    cv.tangent = ps.tangent;
+  } else {
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+    cv = custom_morph(cv, vi, i.palette, i.morph0);
+  }
+  var o = custom_place(cv, model);
   o.moves = 1u;
   return o;
 }

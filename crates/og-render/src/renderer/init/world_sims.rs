@@ -16,6 +16,7 @@ pub(super) struct WorldSimsInputs<'a> {
 pub(super) struct WorldSimsOutputs {
     pub surfaces: Option<surface::SurfacePipelines>,
     pub garments: Option<garment_gpu::Pipelines>,
+    pub pre_skin: Option<crate::mesh::pre_skin::PreSkinPipelines>,
     pub visual: Option<visual_sim::VisualPipelines>,
     pub visual_fluids: Option<visual_fluid::VisualFluids>,
     pub water: OnDemand<water::WaterRenderer>,
@@ -44,6 +45,9 @@ impl Renderer {
         let garments = surfaces
             .as_ref()
             .map(|_| crate::garment_gpu::Pipelines::new(device));
+        let pre_skin = surfaces
+            .as_ref()
+            .map(|_| crate::mesh::pre_skin::PreSkinPipelines::new(device));
         let visual = surfaces
             .as_ref()
             .map(|_| crate::visual_sim::VisualPipelines::new(device));
@@ -84,6 +88,7 @@ impl Renderer {
         WorldSimsOutputs {
             surfaces,
             garments,
+            pre_skin,
             visual,
             visual_fluids,
             water,

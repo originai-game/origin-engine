@@ -969,10 +969,13 @@ pub(crate) fn cook_primitive(
         // cards' thinned ones).
         for r in &given[1..] {
             if r.len() >= 3 {
-                levels.push((
-                    meshopt::optimize_vertex_cache(&welded[r.clone()], q.len()),
-                    0.0,
-                ));
+                let mut indices = meshopt::optimize_vertex_cache(&welded[r.clone()], q.len());
+                meshopt::optimize_overdraw_in_place(
+                    &mut indices,
+                    &adapter,
+                    opts.overdraw_threshold,
+                );
+                levels.push((indices, 0.0));
             }
         }
     } else {
@@ -1187,6 +1190,12 @@ pub(crate) fn cook_primitive(
         ]
     };
     let pos_all: Vec<[f32; 3]> = q.iter().map(deq).collect();
+    if given.len() <= 1 && levels.len() > 1 {
+        let adapter_all = positions_adapter(&pos_all);
+        for l in levels.iter_mut().skip(1) {
+            meshopt::optimize_overdraw_in_place(&mut l.0, &adapter_all, opts.overdraw_threshold);
+        }
+    }
     // A thinned level's is how far its leaves moved: the leaves it drops
     // are covered by the larger ones beside them, not by a nearby surface.
     for (k, l) in levels.iter_mut().enumerate().skip(1) {

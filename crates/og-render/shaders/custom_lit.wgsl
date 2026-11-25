@@ -170,28 +170,41 @@ fn vs_prepass(v: CustomVertexIn, i: CustomInstanceIn, prev: CustomPrevIn) -> Cus
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomPrepassOut {
   let o = custom_skinned(vi, v, i, s);
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  let now_pos = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y).position;
-  var prev_model = model;
-  var prev_pos = now_pos;
   let section = fx.decal_info.w;
-  if (i.palette.w < -0.5) {
-    if (i.morph1.x > 0.5) {
-      let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
-      prev_model = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
+  var now_w: vec3<f32>;
+  var prev_w: vec3<f32>;
+  if (i.morph0.z > 0.5) {
+    let slot = u32(i.morph0.z) - 1u;
+    let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+    now_w = (model * vec4<f32>(preskinned_pos(slot, vi), 1.0)).xyz;
+    if (section > 0.5) {
+      prev_w = preskinned_pos(slot + u32(section), vi);
+    } else {
+      prev_w = now_w;
     }
-  } else if (section > 0.5) {
-    if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
-      prev_model = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
+  } else {
+    let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
+    let now_pos = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y).position;
+    var prev_model = model;
+    var prev_pos = now_pos;
+    if (i.palette.w < -0.5) {
+      if (i.morph1.x > 0.5) {
+        let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
+        prev_model = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
+      }
+    } else if (section > 0.5) {
+      if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
+        prev_model = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
+      }
+      if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
+        let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);
+        let deformed = select(0.0, i.morph0.y + section, i.morph0.y > 0.5);
+        prev_pos = morphed(v.position, v.normal, vi, i.palette, weights, deformed).position;
+      }
     }
-    if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
-      let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);
-      let deformed = select(0.0, i.morph0.y + section, i.morph0.y > 0.5);
-      prev_pos = morphed(v.position, v.normal, vi, i.palette, weights, deformed).position;
-    }
+    now_w = (model * vec4<f32>(now_pos, 1.0)).xyz;
+    prev_w = (prev_model * vec4<f32>(prev_pos, 1.0)).xyz;
   }
-  let now_w = (model * vec4<f32>(now_pos, 1.0)).xyz;
-  let prev_w = (prev_model * vec4<f32>(prev_pos, 1.0)).xyz;
   return custom_prepass(o, o.world + prev_w - now_w);
 }
 

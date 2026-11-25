@@ -555,7 +555,7 @@ impl BakeCache {
         &mut self,
         clips: &[BakedClip],
         used: &std::collections::BTreeSet<u32>,
-    ) -> Option<Vec<Mat4>> {
+    ) -> Option<Vec<[[f32; 4]; 3]>> {
         if self.clips.len() == used.len()
             && self
                 .clips
@@ -571,7 +571,16 @@ impl BakeCache {
         for &id in used {
             let clip = &clips[id as usize];
             self.offsets.insert(id, matrices.len());
-            matrices.extend_from_slice(&clip.frames);
+            // Pack affine 4x4 joint matrices as 3 transposed rows (48 B vs 64 B),
+            // cutting baked clip VRAM and crowd vertex texture loads by 25%.
+            matrices.extend(clip.frames.iter().map(|m| {
+                let c = m.to_cols_array_2d();
+                [
+                    [c[0][0], c[1][0], c[2][0], c[3][0]],
+                    [c[0][1], c[1][1], c[2][1], c[3][1]],
+                    [c[0][2], c[1][2], c[2][2], c[3][2]],
+                ]
+            }));
             self.clips.push((id, clip.clone()));
         }
         self.len = matrices.len();
@@ -589,7 +598,7 @@ pub(crate) struct GpuPalette {
 }
 
 impl GpuPalette {
-    /// The joint palette's texture, which the garments' compute writes.
+    /// The joint palette's texture, which the garments' and pre-skinning compute writes.
     pub(crate) fn view(&self) -> &wgpu::TextureView {
         &self
             .palette
@@ -597,6 +606,11 @@ impl GpuPalette {
             .as_ref()
             .expect("palette uploaded")
             .view
+    }
+
+    /// The morph deltas' texture, read by pre-skinning compute.
+    pub(crate) fn morphs_view(&self) -> &wgpu::TextureView {
+        &self.morphs.texture.as_ref().expect("morphs uploaded").view
     }
 
     pub fn new() -> GpuPalette {
@@ -619,7 +633,7 @@ impl GpuPalette {
         used: &std::collections::BTreeSet<u32>,
     ) {
         if let Some(matrices) = self.bakes.update(clips, used) {
-            if self.baked.reserve(device, matrices.len() * 4) {
+            if self.baked.reserve(device, matrices.len() * 3) {
                 self.bind_group = None;
             }
             self.baked

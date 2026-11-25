@@ -378,7 +378,9 @@ impl Renderer {
                 && !(b.array && !is_skinned)
                 && !(b.lean && !is_skinned && b.compact);
             if uses_standard_shadow {
-                let key = (b.faces, is_skinned, b.dissolve);
+                let surface_shadow =
+                    !is_skinned && b.simulated && self.cache.meshes[b.mesh].surface.is_some();
+                let key = (b.faces, is_skinned, b.dissolve || surface_shadow);
                 add_job!(
                     jobs,
                     Slot::Shadow(key),

@@ -222,7 +222,8 @@ impl Renderer {
         }
         let skinned_data = std::mem::take(&mut skinned.data);
         let mut joint_matrices = std::mem::take(&mut skinned.matrices);
-        let joints_drawn = (joint_matrices.len() + self.instances.palette.baked_len()) as u32;
+        let skinned_section = joint_matrices.len() as u32;
+        let joints_drawn = skinned_section + self.instances.palette.baked_len() as u32;
         // TAA's skinned motion vectors: the previous frame's joints and
         // blendshape weights in a second section of the palette (skin.rs,
         // its layout), read by the skinned prepass at `Fx::decal_info.w`.
@@ -884,7 +885,7 @@ impl Renderer {
             prev_view_proj: world_frame.prev_view_proj,
             motion_read: effects.motion_read,
             skinned_motion,
-            joints_drawn,
+            skinned_section,
             ao_target: effects.ao_target,
             ao: effects.ao,
             gi: effects.gi.is_some(),
@@ -1166,7 +1167,8 @@ impl Renderer {
             gpu_cull: cull.gpu_cull,
             skinned: &skinned,
             skinned_motion,
-            joints_drawn,
+            skinned_section,
+            joint_matrices: &joint_matrices,
             terrain_draws: &world_frame.terrain_draws,
             grass_frame: &world_frame.grass_frame,
         };

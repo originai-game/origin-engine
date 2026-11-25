@@ -28,7 +28,7 @@ impl GpuCulling {
                                 Some(if compact {
                                     crate::compact::POSITION_LAYOUT
                                 } else {
-                                    crate::VERTEX_LAYOUT
+                                    crate::POSITION_LAYOUT
                                 }),
                                 Some(crate::INSTANCE_LAYOUT),
                             ],
@@ -519,6 +519,8 @@ impl GpuCulling {
                         // An occluder out of the camera's view has none of
                         // its instances kept: its draw would draw nothing.
                         if skinned_batch(i)
+                            || x.simulated
+                            || meshes[x.mesh].surface.is_some()
                             || !materials[x.material].occluder
                             || x.reveal
                             || !x.reaches(seen)
@@ -533,7 +535,7 @@ impl GpuCulling {
                         }
                         let mesh = &meshes[x.mesh];
                         let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;
-                        pass.set_vertex_buffer(0, mesh.vertex_slice(x.compact));
+                        pass.set_vertex_buffer(0, mesh.position_slice(x.compact));
                         pass.set_vertex_buffer(
                             1,
                             self.instances

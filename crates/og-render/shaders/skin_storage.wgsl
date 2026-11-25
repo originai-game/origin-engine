@@ -16,12 +16,15 @@ fn joint_matrix(i: u32) -> mat4x4<f32> {
 }
 
 fn baked_matrix(i: u32) -> mat4x4<f32> {
-  let b = i * 4u;
+  let b = i * 3u;
+  let r0 = textureLoad(baked_palette, data_at(b), 0);
+  let r1 = textureLoad(baked_palette, data_at(b + 1u), 0);
+  let r2 = textureLoad(baked_palette, data_at(b + 2u), 0);
   return mat4x4<f32>(
-    textureLoad(baked_palette, data_at(b), 0),
-    textureLoad(baked_palette, data_at(b + 1u), 0),
-    textureLoad(baked_palette, data_at(b + 2u), 0),
-    textureLoad(baked_palette, data_at(b + 3u), 0),
+    vec4<f32>(r0.x, r1.x, r2.x, 0.0),
+    vec4<f32>(r0.y, r1.y, r2.y, 0.0),
+    vec4<f32>(r0.z, r1.z, r2.z, 0.0),
+    vec4<f32>(r0.w, r1.w, r2.w, 1.0),
   );
 }
 
@@ -72,6 +75,29 @@ struct Morphed {
   position: vec3<f32>,
   normal: vec3<f32>,
 };
+
+struct PreSkinned {
+  position: vec3<f32>,
+  normal: vec3<f32>,
+  tangent: vec4<f32>,
+};
+
+// Single-load position reader for compute-pre-skinned vertices (`pre_skin.wgsl`),
+// used by shadow passes and TAA previous-frame velocity lookups.
+fn preskinned_pos(slot: u32, vi: u32) -> vec3<f32> {
+  let b = (slot + vi / 2u) * 4u + (vi % 2u) * 2u;
+  return textureLoad(joint_palette, data_at(b), 0).xyz;
+}
+
+// Two-load position, normal and octahedral tangent reader for compute-pre-skinned
+// vertices (`pre_skin.wgsl`), replacing 4-bone LBS and morph loops in lit/prepass VS.
+fn preskinned_vertex(slot: u32, vi: u32) -> PreSkinned {
+  let b = (slot + vi / 2u) * 4u + (vi % 2u) * 2u;
+  let c0 = textureLoad(joint_palette, data_at(b), 0);
+  let c1 = textureLoad(joint_palette, data_at(b + 1u), 0);
+  let tan_xyz = select(vec3<f32>(0.0), oct_decode(unpack2x16snorm(bitcast<u32>(c0.w))), c1.w != 0.0);
+  return PreSkinned(c0.xyz, c1.xyz, vec4<f32>(tan_xyz, c1.w));
+}
 
 // Blendshapes: vertex `vi`'s position and normal with its morph deltas
 // added at their weights. palette.z: the mesh's first morph header,

@@ -32,6 +32,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     let mut add = |label: &str, wgsl: String| out.push(ShaderSource::plain(label, wgsl));
     crate::sprites::shader_sources(&mut add);
     crate::media::shader_sources(&mut add);
+    add("pre-skin", crate::mesh::pre_skin::source());
     crate::systems::shader_sources(&mut add);
     drop(add);
     crate::systems::vegetation::vertex_storage_shader_sources(&mut out);

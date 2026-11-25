@@ -276,8 +276,18 @@ fn morph_vertex(v: VertexIn, vi: u32, i: SkinnedInstanceIn) -> VertexIn {
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VertexOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  var o = lit_vertex(model, morph_vertex(v, vi, i));
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  var mv = v;
+  if (i.morph0.z > 0.5) {
+    let ps = preskinned_vertex(u32(i.morph0.z) - 1u, vi);
+    mv.position = ps.position;
+    mv.normal = ps.normal;
+    mv.tangent = ps.tangent;
+  } else {
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+    mv = morph_vertex(v, vi, i);
+  }
+  var o = lit_vertex(model, mv);
   o.look = i.look;
   o.moves = 1u;
   return o;
@@ -342,32 +352,48 @@ fn vs_prepass_surface(v: VertexIn, i: InstanceIn, prev: PrevIn, k: InstanceFxIn,
 
 @vertex
 fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PrepassOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  // The previous frame's pose (skin.rs `append_previous`): the same
-  // joints in the palette's second section, already in the world. A
-  // vertex without weights (morph targets alone) moves with the camera.
-  // Its blendshapes move it too: the previous weights sit at the same
-  // offset in that section, so a morphing face has motion vectors; and a
-  // garment's own positions (morph0.y), the previous frame's there too.
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   var prev = model;
   let section = fx.decal_info.w;
-  let now = morph_vertex(v, vi, i);
-  var before = now.position;
-  if (i.palette.w < -0.5) {
-    // A baked clip: its previous transform and frame in the current
-    // section (morph1), so it needs no previous palette.
-    if (i.morph1.x > 0.5) {
-      let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
-      prev = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
+  var now = v;
+  var before = v.position;
+  if (i.morph0.z > 0.5) {
+    let slot = u32(i.morph0.z) - 1u;
+    let ps = preskinned_vertex(slot, vi);
+    now.position = ps.position;
+    now.normal = ps.normal;
+    now.tangent = ps.tangent;
+    before = ps.position;
+    if (section > 0.5) {
+      prev = mat4x4<f32>(
+        vec4<f32>(1.0, 0.0, 0.0, 0.0),
+        vec4<f32>(0.0, 1.0, 0.0, 0.0),
+        vec4<f32>(0.0, 0.0, 1.0, 0.0),
+        vec4<f32>(0.0, 0.0, 0.0, 1.0),
+      );
+      before = preskinned_pos(slot + u32(section), vi);
     }
-  } else if (section > 0.5) {
-    if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
-      prev = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
-    }
-    if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
-      let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);
-      let deformed = select(0.0, i.morph0.y + section, i.morph0.y > 0.5);
-      before = morphed(v.position, v.normal, vi, i.palette, weights, deformed).position;
+  } else {
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+    prev = model;
+    now = morph_vertex(v, vi, i);
+    before = now.position;
+    if (i.palette.w < -0.5) {
+      // A baked clip: its previous transform and frame in the current
+      // section (morph1), so it needs no previous palette.
+      if (i.morph1.x > 0.5) {
+        let then = vec4<f32>(i.morph1.y, i.palette.y, 0.0, -1.0 - i.morph1.z);
+        prev = joint_matrix(u32(i.morph1.x) - 1u) * skin_matrix(s.joints, s.weights, then);
+      }
+    } else if (section > 0.5) {
+      if (dot(s.weights, vec4<f32>(1.0)) >= 1e-6) {
+        prev = skin_matrix(s.joints, s.weights, vec4<f32>(i.palette.x + section, i.palette.yzw));
+      }
+      if (i.morph0.x > 0.5 || i.morph0.y > 0.5) {
+        let weights = select(0.0, i.morph0.x + section, i.morph0.x > 0.5);
+        let deformed = select(0.0, i.morph0.y + section, i.morph0.y > 0.5);
+        before = morphed(v.position, v.normal, vi, i.palette, weights, deformed).position;
+      }
     }
   }
   var p = prepass_vertex_from(model, prev, now, before);

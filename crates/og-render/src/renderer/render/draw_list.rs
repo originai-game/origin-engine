@@ -53,13 +53,14 @@ impl Renderer {
         // Deduplicate redundant per-batch state binds across sorted batches.
         let mut lightmap_pipe_ptr: Option<*const wgpu::RenderPipeline> = None;
         let mut material_bound: Option<(usize, bool, bool)> = None;
-        let mut vb0_bound: Option<(usize, bool)> = None;
+        let mut vb0_bound: Option<(usize, bool, bool)> = None;
         let mut ib_bound: Option<usize> = None;
         let mut vb2_bound: Option<usize> = None;
         for &(b, first, count) in &list.ranges {
             let batch = &batches[b as usize];
             // Drawn with its lightmap's pipeline (lit passes only).
             let mut lightmapped = false;
+            let mut pos_only = false;
             binder.bind(pass, batch.probe);
             if lit {
                 let physical = batch.physical && physical_fx.is_some();
@@ -149,8 +150,12 @@ impl Renderer {
                     material_bound = Some(mat_key);
                 }
             } else {
+                let surface_shadow =
+                    batch.simulated && self.cache.meshes[batch.mesh].surface.is_some();
+                let shadow_dissolve = batch.dissolve || surface_shadow;
+                pos_only = batch.shader.is_none() && !batch.array && !shadow_dissolve;
                 let key = (
-                    (batch.faces, false, batch.dissolve),
+                    (batch.faces, false, shadow_dissolve),
                     batch.shader,
                     batch.compact,
                     batch.array,
@@ -173,7 +178,7 @@ impl Renderer {
                     pass.set_pipeline(set);
                     shadow_key = Some(key);
                 }
-                if batch.dissolve || batch.shader.is_some() {
+                if shadow_dissolve || batch.shader.is_some() {
                     let mat_key = (batch.material, false, batch.array);
                     if material_bound != Some(mat_key) {
                         let m = &self.cache.materials[batch.material];
@@ -188,9 +193,16 @@ impl Renderer {
                 }
             }
             let mesh = &self.cache.meshes[batch.mesh];
-            let vb0_key = (batch.mesh, batch.compact);
+            let vb0_key = (batch.mesh, batch.compact, pos_only);
             if vb0_bound != Some(vb0_key) {
-                pass.set_vertex_buffer(0, mesh.vertex_slice(batch.compact));
+                pass.set_vertex_buffer(
+                    0,
+                    if pos_only {
+                        mesh.position_slice(batch.compact)
+                    } else {
+                        mesh.vertex_slice(batch.compact)
+                    },
+                );
                 vb0_bound = Some(vb0_key);
             }
             // The batch's instances as a buffer slice from its first.

@@ -293,7 +293,7 @@ impl Renderer {
                         &wgpu::util::BufferInitDescriptor {
                             label: Some("skin"),
                             contents: &bytes,
-                            usage: wgpu::BufferUsages::VERTEX,
+                            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE,
                         },
                     ))
                 }

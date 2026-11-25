@@ -176,6 +176,9 @@ impl Renderer {
         // Each (mesh, baked clip)'s box over every frame, once a frame.
         let mut clip_boxes: std::collections::HashMap<(usize, u32), Option<(Vec3, Vec3)>> =
             Default::default();
+        let mut pre_skin: Vec<crate::mesh::pre_skin::PreSkinJob> = Vec::new();
+        let mut pre_skin_cache: std::collections::HashMap<(usize, u32, u32, [u32; 16]), u32> =
+            Default::default();
         let mut previous_slots = Vec::new();
         let mut baked_moved = false;
         let taa = self.info.antialias.temporal() || scene.look.post.motion_blur.is_some();
@@ -321,6 +324,7 @@ impl Renderer {
             }
             // Its own vertices (a garment), after its weights.
             let mut deformed_at = 0.0;
+            let mut preskinned_at = 0.0;
             if let Some(d) = s.deformed {
                 let Some(now) = scene.objects.deformed_vertices.get(d as usize) else {
                     return Err(RenderError::InvalidData(format!(
@@ -356,6 +360,42 @@ impl Renderer {
                     matrices.extend(skin::deformed_slots(now));
                     previous_slots.extend(skin::deformed_slots(before));
                 }
+            } else if self.world.pre_skin.is_some()
+                && self.cache.meshes[mesh].full
+                && (count > 0 || weights_at > 0.0)
+            {
+                let n = scene.mesh(s.mesh).map_or(0, |m| m.vertices.len());
+                let slots_needed = n.div_ceil(2);
+                if n > 0 {
+                    let key = (
+                        mesh,
+                        s.palette,
+                        weights_at as u32,
+                        s.transform.to_cols_array().map(f32::to_bits),
+                    );
+                    if let Some(&slot) = pre_skin_cache.get(&key) {
+                        preskinned_at = (slot + 1) as f32;
+                    } else if (matrices.len() + slots_needed) * 2 <= MAX_JOINTS
+                        && matrices.len() + slots_needed + baked_joints <= MAX_JOINTS
+                    {
+                        let out_slot = matrices.len() as u32;
+                        pre_skin_cache.insert(key, out_slot);
+                        pre_skin.push(crate::mesh::pre_skin::PreSkinJob {
+                            mesh,
+                            vertex_count: n as u32,
+                            palette_first: first,
+                            palette_count: count,
+                            morph_first,
+                            morph_targets: targets,
+                            weights_slot: weights_at as u32,
+                            out_slot,
+                            transform: s.transform,
+                        });
+                        matrices.resize(matrices.len() + slots_needed, [[0.0; 4]; 4]);
+                        previous_slots.resize(previous_slots.len() + slots_needed, [[0.0; 4]; 4]);
+                        preskinned_at = (out_slot + 1) as f32;
+                    }
+                }
             }
             data.push(skin::SkinnedInstanceGpu {
                 transform: instances::gpu_columns(&s.transform),
@@ -365,7 +405,12 @@ impl Renderer {
                     morph_first as f32,
                     targets as f32,
                 ],
-                morph0: [weights_at, deformed_at, 0.0, (data.len() + 1) as f32],
+                morph0: [
+                    weights_at,
+                    deformed_at,
+                    preskinned_at,
+                    (data.len() + 1) as f32,
+                ],
                 morph1: [0.0; 4],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);
@@ -387,6 +432,7 @@ impl Renderer {
         Ok(SkinnedFrame {
             batches,
             garments,
+            pre_skin,
             data,
             boxes,
             origins,

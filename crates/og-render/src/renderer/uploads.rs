@@ -41,6 +41,22 @@ impl Renderer {
         )
     }
 
+    /// Tightly-packed 12-byte `[f32; 3]` position buffer for lean shadow and
+    /// occluder depth passes; 16-byte placeholder for an empty mesh.
+    fn upload_positions(&self, mesh: &MeshData) -> wgpu::Buffer {
+        let pos: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| v.position).collect();
+        let bytes: &[u8] = bytemuck::cast_slice(&pos);
+        crate::buffer_init(
+            &self.device,
+            &self.queue,
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("positions"),
+                contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            },
+        )
+    }
+
     /// `mesh` on the GPU; `compact`: as [`VertexEncoding::Compact`], whose
     /// f32 vertices wait for a pipeline that reads them; `pooled`: the
     /// meshlet vertex pool holds its f32 vertices, written there from the
@@ -68,6 +84,11 @@ impl Renderer {
         } else {
             self.upload_vertices(&MeshData::default())
         };
+        let positions = if compact.is_none() {
+            self.upload_positions(mesh)
+        } else {
+            self.upload_positions(&MeshData::default())
+        };
         let indices = crate::buffer_init(
             &self.device,
             &self.queue,
@@ -86,6 +107,7 @@ impl Renderer {
             .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5));
         GpuMesh {
             vertices,
+            positions,
             pooled: None,
             full,
             compact,
@@ -128,6 +150,7 @@ impl Renderer {
                 mapped_at_creation: false,
             },
         );
+        let positions = self.upload_positions(&MeshData::default());
         let indices: Vec<u32> = (0..count as u32).collect();
         let indices = crate::buffer_init(
             &self.device,
@@ -141,6 +164,7 @@ impl Renderer {
         let surface = pipelines.mesh(&self.device, &self.queue, mesh, &vertices, level);
         GpuMesh {
             vertices,
+            positions,
             pooled: None,
             indices,
             index_count: count as u32,
@@ -390,12 +414,19 @@ impl Renderer {
                 source
             };
             let vb: &[u8] = bytemuck::cast_slice(&mesh.vertices);
+            let positions: Vec<[f32; 3]> = mesh.vertices.iter().map(|v| v.position).collect();
+            let pb: &[u8] = bytemuck::cast_slice(&positions);
             let ib: &[u8] = bytemuck::cast_slice(&mesh.indices);
             // A pooled mesh is written where the pool holds it, for its
             // draws and the meshlet passes at once.
             let (at, held) = gpu.pooled.unwrap_or((0, gpu.vertices.size()));
-            if !vb.is_empty() && vb.len() as u64 == held && ib.len() as u64 == gpu.indices.size() {
+            if !vb.is_empty()
+                && vb.len() as u64 == held
+                && pb.len() as u64 == gpu.positions.size()
+                && ib.len() as u64 == gpu.indices.size()
+            {
                 crate::traffic::write_buffer(&self.queue, &gpu.vertices, at, vb);
+                crate::traffic::write_buffer(&self.queue, &gpu.positions, 0, pb);
                 crate::traffic::write_buffer(&self.queue, &gpu.indices, 0, ib);
                 let bounds = mesh
                     .bounds()
@@ -411,16 +442,18 @@ impl Renderer {
         }
     }
 
-    /// Uploads a compact mesh's f32 vertices, for a pipeline that reads
-    /// [`Vertex`] (a material that is not plain, a scatter, a skinned
-    /// instance); nothing for a mesh that has them.
+    /// Uploads a compact mesh's f32 vertices and lean positions, for a pipeline
+    /// that reads [`Vertex`] or [`POSITION_LAYOUT`] (a material that is not
+    /// plain, a scatter, a skinned instance); nothing for a mesh that has them.
     pub(crate) fn ensure_full(&mut self, scene: &RenderScene, mesh: usize) {
         if self.cache.meshes.get(mesh).is_none_or(|m| m.full) {
             return;
         }
         let vertices = self.upload_vertices(&scene.meshes()[mesh]);
+        let positions = self.upload_positions(&scene.meshes()[mesh]);
         let gpu = &mut self.cache.meshes[mesh];
         gpu.vertices = vertices;
+        gpu.positions = positions;
         gpu.full = true;
     }
 

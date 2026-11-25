@@ -19,7 +19,8 @@ pub(super) struct PreGraphInputs<'a> {
     pub gpu_cull: bool,
     pub skinned: &'a SkinnedFrame,
     pub skinned_motion: Option<bool>,
-    pub joints_drawn: u32,
+    pub skinned_section: u32,
+    pub joint_matrices: &'a [[[f32; 4]; 4]],
     pub terrain_draws: &'a [terrain::TerrainDraw],
     pub grass_frame: &'a grass::GrassFrame,
 }
@@ -62,7 +63,8 @@ impl Renderer {
             gpu_cull,
             skinned,
             skinned_motion,
-            joints_drawn,
+            skinned_section,
+            joint_matrices,
             terrain_draws,
             grass_frame,
         }: &PreGraphInputs<'_>,
@@ -164,12 +166,29 @@ impl Renderer {
                             scene,
                             &skinned.garments,
                             self.instances.palette.view(),
-                            skinned_motion.map(|_| joints_drawn),
+                            skinned_motion.map(|_| skinned_section),
                             self.world.visual.as_ref(),
                         );
                     } else {
                         self.cache.garments.clear();
                     }
+                }
+                if let Some(pre_skin) = &mut self.world.pre_skin
+                    && !skinned.pre_skin.is_empty()
+                {
+                    let meshes = &self.cache.meshes;
+                    pre_skin.encode(
+                        &self.device,
+                        &self.queue,
+                        encoder,
+                        &skinned.pre_skin,
+                        joint_matrices,
+                        |m| (&meshes[m].vertices, meshes[m].pooled),
+                        &self.cache.skins,
+                        self.instances.palette.morphs_view(),
+                        self.instances.palette.view(),
+                        skinned_motion.map(|_| skinned_section),
+                    );
                 }
                 Vec::new()
             }

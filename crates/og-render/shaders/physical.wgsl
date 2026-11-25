@@ -63,8 +63,18 @@ fn vs_physical(@builtin(instance_index) instance: u32, v: VertexIn, i: InstanceI
 
 @vertex
 fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> PhysicalOut {
-  let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  var p = physical_vertex(model, morph_vertex(v, vi, i));
+  var model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
+  var mv = v;
+  if (i.morph0.z > 0.5) {
+    let ps = preskinned_vertex(u32(i.morph0.z) - 1u, vi);
+    mv.position = ps.position;
+    mv.normal = ps.normal;
+    mv.tangent = ps.tangent;
+  } else {
+    model = model * skin_matrix(s.joints, s.weights, i.palette);
+    mv = morph_vertex(v, vi, i);
+  }
+  var p = physical_vertex(model, mv);
   p.look = i.look;
   p.volume_id = u32(i.morph0.w) * 2u;
   p.moves = 1u;

@@ -97,17 +97,21 @@ pub(crate) const POSITION_NORMAL_UV_LAYOUT: wgpu::VertexBufferLayout<'static> =
         ],
     };
 
-/// As the lean shadow caster reads it (`shadow.wgsl` `vs_lean`): position.
+/// Tightly-packed 12-byte position-only vertex stream (`shadow.wgsl` `vs_lean`
+/// and `cull_gpu` occluder depth): 5.3x less vertex bandwidth than 64-byte `Vertex`.
 pub(crate) const POSITION_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
-    array_stride: std::mem::size_of::<Vertex>() as u64,
+    array_stride: std::mem::size_of::<[f32; 3]>() as u64,
     step_mode: wgpu::VertexStepMode::Vertex,
-    attributes: &[POSITION_ATTRIBUTE],
+    attributes: &wgpu::vertex_attr_array![0 => Float32x3],
 };
 
 pub(crate) struct GpuMesh {
     /// The f32 vertices ([`Vertex`]); a 16-byte placeholder while `full`
     /// is false.
     pub(crate) vertices: wgpu::Buffer,
+    /// Tightly-packed `[f32; 3]` position stream (12 B/vertex) for lean shadow
+    /// and occluder depth passes; 16-byte placeholder when compact or simulated.
+    pub(crate) positions: wgpu::Buffer,
     /// Where in `vertices` the mesh is, (byte offset, bytes), when
     /// `vertices` is the meshlet path's vertex pool (meshlet_gpu setup.rs):
     /// a clustered mesh's one copy of its f32 vertices, which its draws
@@ -162,6 +166,15 @@ impl GpuMesh {
                     None => self.vertices.slice(..),
                 }
             }
+        }
+    }
+
+    /// Position-only stream for lean shadow and occluder passes: compact buffer
+    /// when `compact`, else tightly-packed 12 B/vertex `positions`.
+    pub(crate) fn position_slice(&self, compact: bool) -> wgpu::BufferSlice<'_> {
+        match &self.compact {
+            Some((buffer, _)) if compact => buffer.slice(..),
+            _ => self.positions.slice(..),
         }
     }
 
@@ -455,6 +468,9 @@ pub(crate) struct SkinnedFrame {
     pub(crate) batches: Vec<Batch>,
     /// Deferred garment index and its first deformation palette slot.
     pub(crate) garments: Vec<(u32, u32)>,
+    /// Single-pass compute pre-skinning jobs (`mesh/pre_skin.rs`) writing into
+    /// reserved slots of the joint palette before shadow/prepass/main draws.
+    pub(crate) pre_skin: Vec<crate::mesh::pre_skin::PreSkinJob>,
     pub(crate) data: Vec<skin::SkinnedInstanceGpu>,
     /// Per entry of `data` its world box (min, max) in its pose
     /// ([`skin::skinned_box`]), which both culling paths test.
@@ -1009,6 +1025,7 @@ pub(crate) struct WorldRenderers {
     pub(crate) visual_fluids: Option<visual_fluid::VisualFluids>,
     pub(crate) surfaces: Option<surface::SurfacePipelines>,
     pub(crate) garments: Option<garment_gpu::Pipelines>,
+    pub(crate) pre_skin: Option<crate::mesh::pre_skin::PreSkinPipelines>,
     /// The GPU solver of visual bodies ([`VisualBody`]), with `surfaces`.
     pub(crate) visual: Option<visual_sim::VisualPipelines>,
     /// Whether crowds can be culled and drawn on the GPU (indirect draws

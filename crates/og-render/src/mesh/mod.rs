@@ -6,4 +6,5 @@ pub mod foliage;
 pub mod gltf;
 pub(crate) mod lines;
 pub(crate) mod points;
+pub(crate) mod pre_skin;
 pub(crate) mod skin;

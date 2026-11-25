@@ -12,7 +12,7 @@ pub(super) struct WriteFxUniformsInputs<'a> {
     pub prev_view_proj: Mat4,
     pub motion_read: bool,
     pub skinned_motion: Option<bool>,
-    pub joints_drawn: u32,
+    pub skinned_section: u32,
     pub ao_target: bool,
     pub ao: Option<AmbientOcclusion>,
     pub gi: bool,
@@ -40,7 +40,7 @@ impl Renderer {
             prev_view_proj,
             motion_read,
             skinned_motion,
-            joints_drawn,
+            skinned_section,
             ao_target,
             ao,
             gi,
@@ -78,7 +78,7 @@ impl Renderer {
         );
         // The previous joints' section (`skin::append_previous`).
         if skinned_motion.is_some() {
-            fx_uniform.decal_info[3] = joints_drawn as f32;
+            fx_uniform.decal_info[3] = skinned_section as f32;
         }
         fx_uniform.decal_info[0] = decals as f32;
         fx_uniform.decal_info[1] = match scene.effects.decal_atlas {
