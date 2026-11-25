@@ -20935,9 +20935,9 @@ export interface Water {
    */
   foam: Color;
   /**
-   * The water depth over which foam rings geometry (0: none).
+   * The water depth over which moving water foams against geometry: waves, ripples, wakes and a current, none on still water and none at the contact line (0: none).
    *
-   * @default 0.35
+   * @default 0
    * @range 0..
    * @unit m (metres)
    * @tunable

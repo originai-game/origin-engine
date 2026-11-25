@@ -5754,7 +5754,7 @@
         {
           "name": "foamWidth",
           "column": "f32",
-          "default": 0.35,
+          "default": 0,
           "tunable": true
         },
         {

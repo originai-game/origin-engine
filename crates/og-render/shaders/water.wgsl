@@ -781,11 +781,24 @@ if (sea) {
     color += glint / (1.0 + gl / cap);
   }
 
-  // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
-  let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
+  // Foam: a band where moving water meets geometry, broken up by noise, and on steep crests. The band is measured in
+  // the water's own depth over what lies below (the view ray's path to it, dropped along the surface's normal), not
+  // in view depth, which on a post or a buoy closed over a few pixels; it is none at the very contact and most a third
+  // of the band out, where the water piles against the object (peaked at the contact, every pier drew one hard white
+  // line); and it is as much as the water there moves: the surface's own waves, the ripples and wakes bodies raise
+  // (a flowing stream's by its current, below). Still water touching a post does not foam.
+  let wet = min(thickness / max(dot(-v, frame.view_forward.xyz), 0.05), 1e4) * max(dot(v, in.normal), 0.0);
+  let d = clamp(wet / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
   let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
-  var band = edge * edge * (0.55 + 0.6 * noise);
+  let piled = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d));
+  let stir = max(smoothstep(0.02, 0.25, in.slope), clamp(ripple_foam * 2.0, 0.0, 1.0));
+  // As lace, its cover growing with the band and the stir, never a closed sheet (a band scaled by noise alone drew a
+  // solid white collar round every post in waves).
+  let lace_cover = piled * stir * 0.55;
+  let lace = foam_noise(in.local * 3.1 + vec2<f32>(t * 0.25, -t * 0.15)) * 0.6
+    + foam_noise(in.local * 9.7 - vec2<f32>(0.0, t * 0.3)) * 0.4;
+  var band = smoothstep(1.0 - lace_cover, 1.1 - lace_cover, lace) * (0.5 + 0.5 * lace_cover);
   let flowing = flows() && water.normals.w < 0.5 && !is_sea();
   if (OG_FLOW) {
 if (flowing) {
@@ -804,10 +817,7 @@ if (flowing) {
     let pa = bank_patches(in.local - f * (ph0 * period) + vec2<f32>(0.0, 0.0));
     let pb = bank_patches(in.local - f * (ph1 * period) + vec2<f32>(17.3, 9.1));
     let patches = mix(pa, pb, abs(ph0 - 0.5) * 2.0);
-    // Faded by depth: none at the bank's very contact (a band peaked there read as one bright line along the whole
-    // bank), most a third of the band out where the water piles against it.
-    let d = 1.0 - edge;
-    band = smoothstep(0.02, 0.3, d) * (1.0 - smoothstep(0.3, 1.0, d)) * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
+    band = piled * (0.3 + 0.8 * noise) * patches * smoothstep(0.05, 0.6, speed);
   }
   }
   // The ripples' foam: lumps with gaps between them, its cover growing with how much of it there is (a soft disc of

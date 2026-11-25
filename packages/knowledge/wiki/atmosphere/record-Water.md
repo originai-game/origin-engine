@@ -40,7 +40,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `foam` | `Color` | `{ r: 0.95, g: 0.97, b: 1 }` | — | — | — | The foam's colour. |
-| `foamWidth` | `number` | `0.35` | ≥ 0 | `m` | tunable | The water depth over which foam rings geometry (0: none). |
+| `foamWidth` | `number` | `0` | ≥ 0 | `m` | tunable | The water depth over which moving water foams against geometry: waves, ripples, wakes and a current, none on still water and none at the contact line (0: none). |
 
 #### Detail waves
 
@@ -185,8 +185,8 @@ component Water {
   field foam Color "The foam's colour." {
     default 0.95 0.97 1
   }
-  field foamWidth f32 "The water depth over which foam rings geometry (0: none)." {
-    default 0.35
+  field foamWidth f32 "The water depth over which moving water foams against geometry: waves, ripples, wakes and a current, none on still water and none at the contact line (0: none)." {
+    default 0
     min 0
     unit m
     tunable true

@@ -25879,7 +25879,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "foamWidth",
                 column: "f32",
-                default: "0.35",
+                default: "0",
                 readonly: false,
                 weak: false,
                 tunable: true,
@@ -25889,7 +25889,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "m",
                 worldspace: "",
                 label: "",
-                doc: doc!("The water depth over which foam rings geometry (0: none)."),
+                doc: doc!("The water depth over which moving water foams against geometry: waves, ripples, wakes and a current, none on still water and none at the contact line (0: none)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

@@ -35487,7 +35487,7 @@ pub mod record {
                 scattering: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
                 opacity: 0.92_f32,
                 foam: Color { r: 0.95_f32, g: 0.97_f32, b: 1.0_f32 },
-                foam_width: 0.35_f32,
+                foam_width: 0.0_f32,
                 wave_scale: 0.6_f32,
                 wave_speed: 1.0_f32,
                 wave_strength: 0.35_f32,

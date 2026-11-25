@@ -40669,8 +40669,8 @@
         },
         "foamWidth": {
           "type": "number",
-          "description": "The water depth over which foam rings geometry (0: none).",
-          "default": 0.35,
+          "description": "The water depth over which moving water foams against geometry: waves, ripples, wakes and a current, none on still water and none at the contact line (0: none).",
+          "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true

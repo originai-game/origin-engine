@@ -272,6 +272,7 @@ pub fn water_scene() -> RenderScene {
         size: Vec2::new(40.0, 90.0),
         segments: 96,
         heights: Some(ripples(64, 22.0)),
+        foam_width: 0.35,
         ..Default::default()
     });
     scene.frame.camera = Camera {

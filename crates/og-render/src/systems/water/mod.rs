@@ -133,8 +133,9 @@ pub struct Water {
     pub opacity: f32,
     /// Linear foam colour.
     pub foam: Vec3,
-    /// The width (m of water depth) of the foam band where the water meets
-    /// geometry (0: no foam).
+    /// The width (m of water depth) of the band where moving water (its
+    /// waves, ripples, wakes or current) foams against geometry; still
+    /// water does not foam (0: no foam).
     pub foam_width: f32,
     /// Detail waves per metre.
     pub wave_scale: f32,
@@ -267,7 +268,7 @@ impl Default for Water {
             depth_fade: 2.5,
             opacity: 0.92,
             foam: Vec3::new(0.95, 0.97, 1.0),
-            foam_width: 0.35,
+            foam_width: 0.0,
             wave_scale: 0.6,
             wave_speed: 1.0,
             wave_strength: 0.35,
