@@ -12,17 +12,6 @@ pub(crate) struct MipGenerator {
     /// textures started on the compile workers with the renderer
     /// ([`UPLOAD_FORMATS`]).
     pipelines: HashMap<wgpu::TextureFormat, Deferred<wgpu::RenderPipeline>>,
-    /// The compute downsample of HDR chains, on a device with compute and
-    /// storage textures ([`crate::Caps::COMPUTE`]); render passes otherwise.
-    spd: Option<Spd>,
-}
-
-/// [`MipGenerator`]'s single-pass downsample: four levels a dispatch.
-struct Spd {
-    layout: wgpu::BindGroupLayout,
-    pipeline: Deferred<wgpu::ComputePipeline>,
-    dummy: wgpu::TextureView,
-    params: [wgpu::Buffer; 4],
 }
 
 /// The formats of the textures the renderer uploads with generated levels
@@ -58,40 +47,8 @@ pub(crate) fn level_views(texture: &wgpu::Texture, label: &str) -> Vec<wgpu::Tex
         .collect()
 }
 
-fn storage_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
-    wgpu::BindGroupLayoutEntry {
-        binding,
-        visibility: wgpu::ShaderStages::COMPUTE,
-        ty: wgpu::BindingType::StorageTexture {
-            access: wgpu::StorageTextureAccess::WriteOnly,
-            format: wgpu::TextureFormat::Rgba16Float,
-            view_dimension: wgpu::TextureViewDimension::D2,
-        },
-        count: None,
-    }
-}
-
-fn static_u32x4(device: &wgpu::Device, label: &str, value: [u32; 4]) -> wgpu::Buffer {
-    let buffer = crate::traffic::create_buffer(
-        device,
-        &wgpu::BufferDescriptor {
-            label: Some(label),
-            size: 16,
-            usage: wgpu::BufferUsages::UNIFORM,
-            mapped_at_creation: true,
-        },
-    );
-    buffer
-        .slice(..)
-        .get_mapped_range_mut()
-        .expect("mapped at creation")
-        .copy_from_slice(bytemuck::bytes_of(&value));
-    buffer.unmap();
-    buffer
-}
-
 impl MipGenerator {
-    pub(crate) fn new(device: &wgpu::Device, compute: bool) -> Self {
+    pub(crate) fn new(device: &wgpu::Device) -> Self {
         let shader = crate::gpu::shader_module(
             device,
             wgpu::ShaderModuleDescriptor {
@@ -133,104 +90,12 @@ impl MipGenerator {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
-        let spd = compute.then(|| {
-            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("mipmap spd"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
-                    },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
-                    },
-                    storage_entry(2),
-                    storage_entry(3),
-                    storage_entry(4),
-                    storage_entry(5),
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 6,
-                        visibility: wgpu::ShaderStages::COMPUTE,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    },
-                ],
-            });
-            let pipeline = {
-                let device = device.clone();
-                let layout = layout.clone();
-                Deferred::anywhere(move || {
-                    let module = crate::gpu::shader_module(
-                        &device,
-                        wgpu::ShaderModuleDescriptor {
-                            label: Some("mipmap spd"),
-                            source: wgpu::ShaderSource::Wgsl(MIP_SPD_WGSL.into()),
-                        },
-                    );
-                    let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some("mipmap spd"),
-                        bind_group_layouts: &[Some(&layout)],
-                        immediate_size: 0,
-                    });
-                    crate::traffic::create_compute_pipeline(
-                        &device,
-                        &wgpu::ComputePipelineDescriptor {
-                            label: Some("mipmap spd"),
-                            layout: Some(&pl),
-                            module: &module,
-                            entry_point: Some("cs_mip_spd"),
-                            compilation_options: Default::default(),
-                            cache: crate::pipeline_cache::of(&device).as_ref(),
-                        },
-                    )
-                })
-            };
-            let dummy = device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some("mipmap spd dummy"),
-                    size: wgpu::Extent3d {
-                        width: 1,
-                        height: 1,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba16Float,
-                    usage: wgpu::TextureUsages::STORAGE_BINDING,
-                    view_formats: &[],
-                    texture_binding_view_dimension: None,
-                })
-                .create_view(&Default::default());
-            let params =
-                [1u32, 2, 3, 4].map(|n| static_u32x4(device, "mipmap spd params", [n, 0, 0, 0]));
-            Spd {
-                layout,
-                pipeline,
-                dummy,
-                params,
-            }
-        });
         let mut mips = MipGenerator {
             shader,
             layout,
             pipeline_layout,
             sampler,
             pipelines: HashMap::new(),
-            spd,
         };
         for format in UPLOAD_FORMATS {
             mips.prepare(device, format);
@@ -254,11 +119,6 @@ impl MipGenerator {
     /// it): made when a chain of the format is first recorded, and waited
     /// for there if it was started.
     pub(crate) fn prepare(&mut self, device: &wgpu::Device, format: wgpu::TextureFormat) {
-        if let Some(spd) = &self.spd
-            && format == wgpu::TextureFormat::Rgba16Float
-        {
-            crate::deferred::Start::start(&spd.pipeline);
-        }
         if self.pipelines.contains_key(&format) {
             return;
         }
@@ -287,117 +147,39 @@ impl MipGenerator {
     /// for a texture whose levels are filled every frame
     /// ([`MipGenerator::record_chain`]). Making them each frame was 20
     /// views and 10 bind groups a frame for a 1280 x 720 copy, and a view
-    /// of a texture the GPU is still reading waited for it on lavapipe.
+    /// of a texture the GPU is still reading waited for it on lavapipe
+    /// (the former test sample
     pub(crate) fn chain(&self, device: &wgpu::Device, texture: &wgpu::Texture) -> MipChain {
         let levels = level_views(texture, "mip");
-        let spd = self.spd.as_ref().filter(|_| {
-            texture.format() == wgpu::TextureFormat::Rgba16Float
-                && texture
-                    .usage()
-                    .contains(wgpu::TextureUsages::STORAGE_BINDING)
-                && levels.len() > 1
-        });
-        let spd = spd.map(|spd| {
-            let mut dispatches = Vec::new();
-            let mut base = 0usize;
-            while base + 1 < levels.len() {
-                let count = (levels.len() - 1 - base).min(4);
-                let dst0_w = (texture.width() >> (base + 1)).max(1);
-                let dst0_h = (texture.height() >> (base + 1)).max(1);
-                let dst0 = &levels[base + 1];
-                let dst1 = levels.get(base + 2).unwrap_or(&spd.dummy);
-                let dst2 = levels.get(base + 3).unwrap_or(&spd.dummy);
-                let dst3 = levels.get(base + 4).unwrap_or(&spd.dummy);
-                let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("mipmap spd"),
-                    layout: &spd.layout,
+        let groups = levels
+            .iter()
+            .take(levels.len().saturating_sub(1))
+            .map(|source| {
+                device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("mipmap"),
+                    layout: &self.layout,
                     entries: &[
                         wgpu::BindGroupEntry {
                             binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&levels[base]),
+                            resource: wgpu::BindingResource::TextureView(source),
                         },
                         wgpu::BindGroupEntry {
                             binding: 1,
                             resource: wgpu::BindingResource::Sampler(&self.sampler),
                         },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::TextureView(dst0),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 3,
-                            resource: wgpu::BindingResource::TextureView(dst1),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 4,
-                            resource: wgpu::BindingResource::TextureView(dst2),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 5,
-                            resource: wgpu::BindingResource::TextureView(dst3),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 6,
-                            resource: spd.params[count - 1].as_entire_binding(),
-                        },
                     ],
-                });
-                dispatches.push(SpdDispatch {
-                    group,
-                    groups_x: dst0_w.div_ceil(8),
-                    groups_y: dst0_h.div_ceil(8),
-                });
-                base += count;
-            }
-            dispatches
-        });
-        let groups = if spd.is_some() {
-            Vec::new()
-        } else {
-            levels
-                .iter()
-                .take(levels.len().saturating_sub(1))
-                .map(|source| {
-                    device.create_bind_group(&wgpu::BindGroupDescriptor {
-                        label: Some("mipmap"),
-                        layout: &self.layout,
-                        entries: &[
-                            wgpu::BindGroupEntry {
-                                binding: 0,
-                                resource: wgpu::BindingResource::TextureView(source),
-                            },
-                            wgpu::BindGroupEntry {
-                                binding: 1,
-                                resource: wgpu::BindingResource::Sampler(&self.sampler),
-                            },
-                        ],
-                    })
                 })
-                .collect()
-        };
+            })
+            .collect();
         MipChain {
             format: texture.format(),
             levels,
             groups,
-            spd,
         }
     }
 
     /// Records passes filling levels 1.. of `chain`'s texture from level 0.
     pub(crate) fn record_chain(&self, encoder: &mut crate::Encoder, chain: &MipChain) {
-        if let (Some(dispatches), Some(spd)) = (&chain.spd, &self.spd) {
-            let pipeline = spd.pipeline.wait();
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("mipmap spd"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(pipeline);
-            for d in dispatches {
-                pass.set_bind_group(0, &d.group, &[]);
-                pass.dispatch_workgroups(d.groups_x, d.groups_y, 1);
-            }
-            return;
-        }
         let pipeline = self.pipelines[&chain.format].wait();
         for (target, bind_group) in chain.levels.iter().skip(1).zip(&chain.groups) {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -423,19 +205,12 @@ impl MipGenerator {
     }
 }
 
-struct SpdDispatch {
-    group: wgpu::BindGroup,
-    groups_x: u32,
-    groups_y: u32,
-}
-
 /// A texture's levels as views, and the bind group that reads each level
 /// but the last ([`MipGenerator::chain`]).
 pub(crate) struct MipChain {
     format: wgpu::TextureFormat,
     levels: Vec<wgpu::TextureView>,
     groups: Vec<wgpu::BindGroup>,
-    spd: Option<Vec<SpdDispatch>>,
 }
 
 impl MipChain {
@@ -489,5 +264,3 @@ fn pipeline(
 
 /// The mip generator's module (`crate::shaders` validates it).
 pub(crate) const MIPMAP_WGSL: &str = wgsl_library!("fullscreen.wgsl", "mipmap.wgsl");
-/// The compute SPD mip generator's module (`crate::shaders` validates it).
-pub(crate) const MIP_SPD_WGSL: &str = wgsl!("mip_spd.wgsl");

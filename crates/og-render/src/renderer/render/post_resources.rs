@@ -60,15 +60,12 @@ impl Renderer {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: HDR_FORMAT,
-                    // Storage only where the mip chain's compute downsample can run.
+                    // No storage: its levels fill inside the main pass,
+                    // which declares no compute (schedule.rs), so by
+                    // render passes.
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                         | wgpu::TextureUsages::TEXTURE_BINDING
-                        | wgpu::TextureUsages::COPY_DST
-                        | if self.info.caps.contains(crate::Caps::COMPUTE) {
-                            wgpu::TextureUsages::STORAGE_BINDING
-                        } else {
-                            wgpu::TextureUsages::empty()
-                        },
+                        | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
                     texture_binding_view_dimension: None,
                 });

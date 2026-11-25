@@ -21,6 +21,7 @@
     "Terrain roughness in the depth prepass matches the lit pass (height blending, wetness); scattered plants out of view keep casting long low-sun and shadow-box shadows.",
     "Visibility-buffer surfaces keep puddles off curved crowns; the stylised (quantize, pixel) chain is undithered; depth of field's foreground blur reaches in-focus pixels without a hard edge; froxel fog keeps its history while the game is paused; screen-space reflections apply only where the surface was the one drawn.",
     "Motion vectors and other half-float packs round to nearest instead of toward zero; the pipeline cache is written after the first frame and at exit, not mid-play.",
-    "2D lights' shadows draw on devices that cannot render to Rg32Float (the browser's Compat tier): their pipeline was invalid there and every frame with them failed."
+    "2D lights' shadows draw on devices that cannot render to Rg32Float (the browser's Compat tier): their pipeline was invalid there and every frame with them failed.",
+    "Scenes with transmissive (glass) materials no longer stop on a capability assertion: the transmission copy's levels fill by render passes inside the main pass again, which needs no compute."
   ]
 }

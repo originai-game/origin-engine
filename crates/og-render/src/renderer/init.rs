@@ -624,7 +624,7 @@ impl Renderer {
             },
             display.as_ref().map_or([0.0; 4], |d| d.curve),
         );
-        let mips = mips::MipGenerator::new(&device, caps.contains(Caps::COMPUTE));
+        let mips = mips::MipGenerator::new(&device);
         let default_white = solid_texture(&device, &queue, [255; 4]);
         let conformed = {
             let (size, bytes) = crate::stylise::conformed_table(&[]);
