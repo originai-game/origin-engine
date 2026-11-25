@@ -31,12 +31,7 @@
     "template/gitignore",
     "template/gitattributes",
     "film",
-    "looks",
-    "README.md",
-    "previews",
-    "styles",
-    "fonts",
-    "locales"
+    "README.md"
   ],
   "scripts": {
     "prepack": "bun scripts/pack-template.ts",

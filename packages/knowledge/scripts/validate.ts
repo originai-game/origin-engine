@@ -12,7 +12,6 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, posix, relative } from "node:path";
 import {
   defaultRoots,
-  frontMatter,
   isText,
   ogtTopLevel,
   packName,
@@ -26,6 +25,7 @@ import {
   type Roots,
 } from "./lib.ts";
 import { ART_KINDS, MOODS } from "./brief.ts";
+import { CREATION_CHOICES, LOOK_ZH, VARIANT_ZH } from "./creation.ts";
 
 export interface Rules {
   payload: { roots: string[] };
@@ -514,8 +514,8 @@ export const SUPPORT = ["full", "partial", "planned", "content"] as const;
 export const PROFILES = ["2d", "3d"] as const;
 /** What `look.layers` may name (docs/art.md §2.6): the look's render resources, the cook's asset conformance, the runtime pieces, authored art. */
 export const LAYERS = ["frame", "conform", "runtime", "authored"] as const;
-/** What `look.views` may name: the creation choice's views (create's choices.ts, held equal by its tests); a `-2d` view needs the 2d profile, the rest 3d. */
-export const VIEWS = ["side-2d", "top-down-2d", "isometric-2.5d", "third-person-3d", "first-person-3d"] as const;
+/** What `look.views` may name: the creation choice's views (scripts/creation.ts); a `-2d` view needs the 2d profile, the rest 3d. */
+export const VIEWS = CREATION_CHOICES.view;
 /** The placeholders the art-bible template may use. */
 export const BIBLE_FIELDS = ["title", "premise", "camera", "platform", "name", "descriptor", "direction", "palette", "assets", "ui", "avoid", "game", "slug", "checks"] as const;
 const PREMISE = ["genre", "mood", "era", "audience"];
@@ -550,9 +550,22 @@ function looks(roots: Roots, problems: string[]): void {
   if (cat.schemaVersion !== 3) problems.push(`${at}: schemaVersion ${cat.schemaVersion}, expected 3`);
   const categories = Object.keys(cat.categories ?? {});
   const packs = cat.ui ?? [];
+  const choiceUi: readonly string[] = CREATION_CHOICES.ui;
   for (const p of packs) {
+    if (!choiceUi.includes(p)) problems.push(`${at}: ui names ${p}, which scripts/creation.ts CREATION_CHOICES.ui / CHOICE_LABELS.ui lacks`);
     const templates = join(roots.pkg, "..", "..", "templates");
     if (p !== "default" && existsSync(templates) && !existsSync(join(templates, "themes", p, "theme.json")) && !existsSync(join(templates, "styles", p, "pack.json"))) problems.push(`${at}: ui names ${p}, which is no engine theme (templates/themes/${p}/theme.json) or built-in style (templates/styles/${p}/)`);
+  }
+  for (const p of choiceUi) {
+    if (!packs.includes(p)) problems.push(`scripts/creation.ts: CREATION_CHOICES.ui names ${p}, which ${at} ui does not list`);
+  }
+  const themesDir = join(roots.pkg, "..", "..", "templates", "themes");
+  if (existsSync(themesDir)) {
+    for (const e of readdirSync(themesDir, { withFileTypes: true })) {
+      if (e.isDirectory() && existsSync(join(themesDir, e.name, "theme.json")) && !packs.includes(e.name)) {
+        problems.push(`${at}: templates/themes/${e.name}/theme.json is missing from ui`);
+      }
+    }
   }
   for (const m of (cat.artBibleTemplate ?? "").matchAll(/\{(\w+)\}/g)) {
     if (!(BIBLE_FIELDS as readonly string[]).includes(m[1]!)) problems.push(`${at}: artBibleTemplate uses {${m[1]}}, which is none of ${BIBLE_FIELDS.join(", ")}`);
@@ -620,6 +633,7 @@ function looks(roots: Roots, problems: string[]): void {
     }
     const preset = join(repo, look.preset);
     if (look.presetReady) {
+      if (!LOOK_ZH[s.slug]) problems.push(`${id}: scripts/creation.ts LOOK_ZH lacks Chinese copy for ${s.slug}`);
       if (existsSync(join(repo, "templates")) && !existsSync(preset)) problems.push(`${id}: presetReady, but ${look.preset} does not exist`);
       else if (existsSync(preset)) {
         const body = readFileSync(preset, "utf8");
@@ -638,6 +652,7 @@ function looks(roots: Roots, problems: string[]): void {
       if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(v.name ?? "")) problems.push(`${vid}: name is not lowercase-hyphen`);
       if (names.has(v.name)) problems.push(`${vid}: a second variant with this name`);
       names.add(v.name);
+      if (look.presetReady && !VARIANT_ZH[`${s.slug}.${v.name}`]) problems.push(`${vid}: scripts/creation.ts VARIANT_ZH lacks Chinese copy for ${s.slug}.${v.name}`);
       for (const k of ["title", "descriptor"] as const) if (!text(v[k])) problems.push(`${vid}: no ${k}`);
       if (!Array.isArray(v.checks) || v.checks.length !== 3 || !v.checks.every(text)) problems.push(`${vid}: needs exactly three checks a critic can judge on a frame`);
       if (!text(v.intended) || !/ (is|are) the style\b/.test(v.intended)) problems.push(`${vid}: needs intended, one sentence naming the traits that look like defects but are the style`);

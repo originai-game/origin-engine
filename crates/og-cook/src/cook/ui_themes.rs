@@ -55,6 +55,25 @@ pub fn builtin_recipe(name: &str) -> Option<PathBuf> {
     p.is_file().then_some(p)
 }
 
+/// Sorted slugs of all built-in engine themes (`templates/themes/<name>/theme.json`).
+pub fn builtin_slugs() -> Vec<String> {
+    let Some(dir) = themes_dir() else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|e| {
+            let p = e.path();
+            (p.is_dir() && p.join(RECIPE).is_file())
+                .then(|| e.file_name().to_string_lossy().into_owned())
+        })
+        .collect();
+    out.sort();
+    out
+}
+
 /// Reads a recipe source from the engine's themes.
 fn read_engine(src: &Source) -> Result<String, String> {
     let dir = themes_dir().ok_or("the engine's themes (templates/themes) were not found")?;

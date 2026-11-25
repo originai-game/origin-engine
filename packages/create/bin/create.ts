@@ -60,20 +60,20 @@ export interface Style {
   readonly variants?: readonly { readonly name: string; readonly title: string; readonly descriptor: string; readonly mood: string }[];
 }
 
-/** The font packs: templates/fonts in a checkout, the package's fonts/ once packed. */
+/** The font packs: templates/fonts in a checkout, the engine package's fonts/ beside create/ once packed. */
 export function fontPacksDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  for (const candidate of [join(here, "..", "..", "..", "templates", "fonts"), join(here, "..", "fonts")]) {
+  for (const candidate of [join(here, "..", "..", "..", "templates", "fonts"), join(here, "..", "..", "engine", "fonts")]) {
     if (existsSync(candidate)) return candidate;
   }
-  throw new Error(`no font packs next to ${here}; reinstall the engine distribution`);
+  throw new Error(`no font packs next to ${here}; expected templates/fonts or ../engine/fonts (reinstall the engine distribution)`);
 }
 
 /**
  * In an engine checkout, the files `templates/og-assets.json` pins under
  * `area` (such as `fonts/latin`) that are not installed: they live in the
  * asset store until `bun scripts/assets.ts ensure templates` fetches them. A
- * packed create (fonts/ beside bin/) has no manifest and misses nothing.
+ * packed distribution (`../engine/fonts`) has no manifest and misses nothing.
  */
 export function missingPins(packs: string, area: string): string[] {
   const manifest = join(packs, "..", "og-assets.json");
@@ -84,10 +84,10 @@ export function missingPins(packs: string, area: string): string[] {
 
 export function catalogueFile(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  for (const candidate of [join(here, "..", "..", "knowledge", "looks", "catalogue.json"), join(here, "..", "looks", "catalogue.json")]) {
+  for (const candidate of [join(here, "..", "..", "knowledge", "looks", "catalogue.json"), join(here, "..", "..", "engine", "knowledge", "looks", "catalogue.json")]) {
     if (existsSync(candidate)) return candidate;
   }
-  throw new Error(`no style catalogue next to ${here}; reinstall the engine distribution`);
+  throw new Error(`no style catalogue next to ${here}; expected ../knowledge/looks/catalogue.json or ../engine/knowledge/looks/catalogue.json (reinstall the engine distribution)`);
 }
 
 export function readCatalogue(file = catalogueFile()): Style[] {
@@ -203,7 +203,7 @@ function readPacks(packs: string): ({ dir: string } & FontPackLanguages)[] {
 export function create(options: CreateOptions): Created {
   const choices = resolveCreationChoices(options.premise ?? "", {
     ...options.choices, ...(options.look === undefined ? {} : { look: options.look }),
-  }, undefined, options.catalogue);
+  }, options.catalogue);
   const dir = resolve(options.dir);
   const id = options.id ?? slug(options.name ?? basename(dir));
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) throw new Error(`'${id}' is not a game id: use lowercase letters, digits and single hyphens`);
