@@ -46,11 +46,17 @@ pub struct TargetDesc {
 impl TargetDesc {
     /// Whether two texture descriptions can share the same physical allocation
     /// by unioning their usage flags.
+    ///
+    /// `STORAGE_BINDING` is never merged onto a non-storage target: on Vulkan
+    /// drivers, `VK_IMAGE_USAGE_STORAGE_BIT` disables delta color compression
+    /// (DCC) across every pass that aliases the physical texture.
     pub(crate) fn compatible_with(self, other: TargetDesc) -> bool {
         self.width == other.width
             && self.height == other.height
             && self.format == other.format
             && self.samples == other.samples
+            && self.usage.contains(wgpu::TextureUsages::STORAGE_BINDING)
+                == other.usage.contains(wgpu::TextureUsages::STORAGE_BINDING)
     }
 }
 

@@ -359,7 +359,7 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
         if has(pass) {
             let (tw, th) = if pass.after_taa() { (pw, ph) } else { (w, h) };
             // FSR 3.1's RCAS writes the sharpening's target from compute.
-            let usage = if pass == FramePass::TaaSharpen {
+            let usage = if pass == FramePass::TaaSharpen && cfg.fsr {
                 ATTACH_BIND | wgpu::TextureUsages::STORAGE_BINDING
             } else {
                 ATTACH_BIND
@@ -378,9 +378,15 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
     }
     if has(FramePass::MotionBlur) {
         let (mw, mh) = (pw.div_ceil(cfg.motion_tile), ph.div_ceil(cfg.motion_tile));
-        g.transient("motion.x", desc(mw, ph, HDR_FORMAT, 1, ATTACH_BIND))
-            .transient("motion.tile", desc(mw, mh, HDR_FORMAT, 1, ATTACH_BIND))
-            .transient("motion.neighbor", desc(mw, mh, HDR_FORMAT, 1, ATTACH_BIND));
+        g.transient("motion.x", desc(mw, ph, MOTION_TILE_FORMAT, 1, ATTACH_BIND))
+            .transient(
+                "motion.tile",
+                desc(mw, mh, MOTION_TILE_FORMAT, 1, ATTACH_BIND),
+            )
+            .transient(
+                "motion.neighbor",
+                desc(mw, mh, MOTION_TILE_FORMAT, 1, ATTACH_BIND),
+            );
     }
     let customs = passes
         .iter()

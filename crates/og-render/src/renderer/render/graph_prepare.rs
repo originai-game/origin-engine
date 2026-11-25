@@ -129,8 +129,13 @@ impl Renderer {
                     object_space,
                     ui_depth: ui_depth && prepass,
                     oit: oit_mode.map(|m| m == oit::Oit::List),
-                    lindepth_storage: self.info.caps.contains(Caps::RG32_STORAGE),
+                    lindepth_storage: self.info.caps.contains(Caps::RG32_STORAGE)
+                        && self.samples == 1
+                        && (!scene.world.scatters.is_empty()
+                            || !scene.objects.impostors.is_empty()
+                            || !scene.objects.crowds.is_empty()),
                     fx_half,
+                    fsr: self.will_use_fsr(scene, taa),
                 },
                 &self.post,
                 &self.persistent,

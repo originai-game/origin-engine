@@ -448,7 +448,10 @@ impl Renderer {
         }
         part!("main: scatter");
         // The cards take the surface the prepass found (scatter draw.rs).
-        let card_depth = shared_depth
+        let has_scatter_cards = !scatter_batches.scatters.is_empty()
+            || !scatter_batches.impostors.is_empty()
+            || !scatter_batches.cards.is_empty();
+        let card_depth = (shared_depth && has_scatter_cards)
             .then(|| self.graph.try_view("lindepth"))
             .flatten()
             .and_then(|v| {

@@ -85,6 +85,8 @@ pub(crate) const MOTION_DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat:
 /// The outline jump flood's field (fxpost.wgsl `fs_outline_seed`): the
 /// nearest seed's packed offset, its line, its depth and the pixel's own.
 pub(crate) const JFA_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
+/// Motion blur's TileMax / NeighborMax velocity targets (xy screen-space sweep).
+pub(crate) const MOTION_TILE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16Float;
 pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 /// The AO texture with contact shadows (contact.wgsl `cs_contact_compose`):
 /// the AO in r, the contact lights' masks in gba.
@@ -631,9 +633,9 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_dof_coc", HDR_FORMAT),
     ("fs_dof_blur", HDR_FORMAT),
     ("fs_dof_composite", HDR_FORMAT),
-    ("fs_motion_tile_x", HDR_FORMAT),
-    ("fs_motion_tile_y", HDR_FORMAT),
-    ("fs_motion_neighbor", HDR_FORMAT),
+    ("fs_motion_tile_x", MOTION_TILE_FORMAT),
+    ("fs_motion_tile_y", MOTION_TILE_FORMAT),
+    ("fs_motion_neighbor", MOTION_TILE_FORMAT),
     ("fs_motion_blur", HDR_FORMAT),
     ("fs_screen_blur", HDR_FORMAT),
     ("fs_zoom_fine", HDR_FORMAT),
