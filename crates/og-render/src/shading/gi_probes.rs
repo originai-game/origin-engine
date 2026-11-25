@@ -167,7 +167,7 @@ pub(crate) fn plan(
             spacing,
             first: region + c * per * STRIDE,
         });
-        let period = if reset { 1 } else { 2u32 << c };
+        let period = if reset { 1 } else { 1u32 << c };
         let phase = (frame % period as u64) as u32;
         let probes = (per as u32 - phase).div_ceil(period);
         slices.push(Slice {

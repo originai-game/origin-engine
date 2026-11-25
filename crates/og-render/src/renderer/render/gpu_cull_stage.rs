@@ -126,7 +126,7 @@ impl Renderer {
             &self.cache.materials,
             &vis.cull_passes,
             cam.jittered_view_proj,
-            (self.width, self.height, self.samples),
+            (self.width, self.height),
             self.frame_index,
             lagged.unwrap_or_default(),
             copy_counts,

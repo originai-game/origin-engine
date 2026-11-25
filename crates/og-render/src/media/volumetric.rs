@@ -262,7 +262,7 @@ pub(crate) enum Medium {
 /// about 0.9, Petzold's measurements in Mobley, Light and Water, 1994,
 /// ch. 3), but the share the volume draws stands for the sun's light
 /// after every order of scattering, each of which spreads it.
-const WATER_ANISOTROPY: f32 = 0.85;
+const WATER_ANISOTROPY: f32 = 0.35;
 /// How far the water's volume reaches, in the water's extinction lengths
 /// (what lies past it reaches the eye at under 5 %).
 const WATER_REACH: f32 = 3.0;
@@ -373,7 +373,7 @@ struct Froxels {
     phase: usize,
     prev_distance: f32,
     prev_water: bool,
-    prev_tick: Option<u64>,
+    prev_frame: Option<u64>,
     frame_cache: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<FroxelFrameKey>>,
     /// The volumes' slices deep ([`crate::RenderQuality::froxel_slices`]).
     slices: u32,
@@ -593,7 +593,7 @@ impl Froxels {
             phase: 0,
             prev_distance: 0.0,
             prev_water: false,
-            prev_tick: None,
+            prev_frame: None,
             frame_cache: Default::default(),
             slices: FROXELS[2],
             sampler,
@@ -916,7 +916,7 @@ impl Volumetric {
         sky: f32,
         size: (u32, u32),
         samples: u32,
-        tick: u64,
+        frame: u64,
         quality: &crate::RenderQuality,
         prev_view_proj: glam::Mat4,
         temporal_ok: bool,
@@ -932,7 +932,7 @@ impl Volumetric {
         if let Some(f) = &mut self.froxels {
             let mut reset = !temporal_ok
                 || f.prev_water != self.water
-                || f.prev_tick != Some(tick.wrapping_sub(1));
+                || f.prev_frame != Some(frame.wrapping_sub(1));
             if f.slices != slices {
                 f.scatter = [
                     froxel_volume(device, "froxel scatter 0", slices),
@@ -960,7 +960,7 @@ impl Volumetric {
             }
             f.prev_distance = distance;
             f.prev_water = self.water;
-            f.prev_tick = Some(tick);
+            f.prev_frame = Some(frame);
         }
         // The water's medium is the water alone.
         let (near, dropped) = match medium {
@@ -995,7 +995,7 @@ impl Volumetric {
                 FROXELS[0] as f32,
                 FROXELS[1] as f32,
                 slices as f32,
-                (tick % 64) as f32,
+                (frame % 64) as f32,
             ],
             local: [near.len() as f32, sky.clamp(0.0, 1.0), start, end],
             own,

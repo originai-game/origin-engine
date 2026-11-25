@@ -130,12 +130,12 @@ fn dilate_reactive_masks(p: vec2<i32>) -> f32 {
 }
 
 // Largest |difference * sign| over the shading-change pyramid's three levels,
-// sampled directly at this render pixel's unjittered UV (fused from the
-// standalone shading-change pass to remove an extra dispatch and double blur).
+// at this render pixel's own UV: the pyramid is built per render pixel, so
+// no jitter applies (the standalone pass's +jitter and this pass's -jitter
+// cancelled before they were fused).
 fn sample_shading_change(uv: vec2<f32>) -> f32 {
   let sc_size = shading_change_render_size();
-  let uv_u = uv - jitter() / vec2<f32>(render_size());
-  let mip_uv = clamp_uv(uv_u, sc_size, vec2<i32>(textureDimensions(spd_mips, 0)));
+  let mip_uv = clamp_uv(uv, sc_size, vec2<i32>(textureDimensions(spd_mips, 0)));
   let s0 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 0.0).xy;
   let s1 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 1.0).xy;
   let s2 = textureSampleLevel(spd_mips, linear_clamp, mip_uv, 2.0).xy;

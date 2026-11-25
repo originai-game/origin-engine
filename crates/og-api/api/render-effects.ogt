@@ -667,7 +667,7 @@
       max 1
       tunable true
     }
-    field resolution AoResolution "Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full." {
+    field resolution AoResolution "Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's; QualityPreset.high sets that to full." {
       default half
     }
     field probeSpacing f32 "With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors." {

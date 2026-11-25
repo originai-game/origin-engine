@@ -136,7 +136,10 @@ fn cs_pre_skin(@builtin(global_invocation_id) id: vec3<u32>) {
     posed_tan_w = tan.w * hand;
   }
 
-  let packed_tan = bitcast<f32>(pack2x16snorm(oct_encode(posed_tan)));
+  // Two 12-bit octahedral halves as one integer below 2^24, which an f32
+  // holds exactly: raw bits could be a subnormal or NaN a backend flushes.
+  let tan_q = vec2<u32>(round(clamp(oct_encode(posed_tan) * 0.5 + 0.5, vec2<f32>(0.0), vec2<f32>(1.0)) * 4095.0));
+  let packed_tan = f32(tan_q.x | (tan_q.y << 12u));
   let tex_base = (params.head.w + vi / 2u) * 4u + (vi % 2u) * 2u;
   textureStore(palette_out, vec2<i32>(data_at(tex_base)), vec4<f32>(posed_pos, packed_tan));
   textureStore(palette_out, vec2<i32>(data_at(tex_base + 1u)), vec4<f32>(posed_norm, posed_tan_w));

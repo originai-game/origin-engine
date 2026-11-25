@@ -87,6 +87,16 @@ fn toon_edges(n_dot_l: f32) {
   }
 }
 
+// The analytic path's weather footprint and bend (weather_surface_at's,
+// from the visibility buffer's derivatives): its position's change across
+// the pixel as fwidth takes it, and its geometric normal's over that, per
+// metre; 0 where water does not stand (`standing` above 1.5).
+fn analytic_weather_grad(dpx: vec3<f32>, dpy: vec3<f32>, standing: f32) -> vec2<f32> {
+  let footprint = length(abs(dpx) + abs(dpy));
+  let bend = length(abs(analytic_dnx) + abs(analytic_dny)) / max(footprint, 1e-5);
+  return vec2<f32>(footprint, select(bend, 0.0, standing > 1.5));
+}
+
 fn world_dx(p: vec3<f32>) -> vec3<f32> {
   if (ANALYTIC) { return analytic_dx; }
   return dpdxFine(p);
@@ -401,7 +411,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // from the AO map, whose crevices hold water and dust first.
   var weathered: Weathered;
   if (ANALYTIC) {
-    weathered = weather_surface_grad(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u), length(dpx) + length(dpy), length(analytic_dnx) + length(analytic_dny));
+    let standing = select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u);
+    let grad = analytic_weather_grad(dpx, dpy, standing);
+    weathered = weather_surface_grad(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, standing, grad.x, grad.y);
   } else {
     weathered = weather_surface_at(s, n, geo_n, in.world_pos, weather_cavity(uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   }

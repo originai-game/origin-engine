@@ -11,11 +11,5 @@
       "change": "Defaults to half instead of full, tracing screen-space GI at half resolution with a normal- and depth-aware bilateral upsample. QualityPreset.high keeps full.",
       "fix": "Set resolution: \"full\" on GlobalIllumination or RenderSettings.aoResolution: \"full\" if full-resolution SSGI is required on medium quality."
     }
-  ],
-  "added": [
-    {
-      "member": "RenderSettings.shadowMapScale",
-      "summary": "Caps local shadow map layers at 768 texels per side (down from 1024 on QualityPreset.high) to prevent a 768 MiB VRAM cliff when 96 local shadow faces are allocated."
-    }
   ]
 }

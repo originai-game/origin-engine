@@ -9625,7 +9625,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full."),
+                doc: doc!("Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's; QualityPreset.high sets that to full."),
                 variants: &["full", "half"],
                 capacity: 0,
                 list: 0,

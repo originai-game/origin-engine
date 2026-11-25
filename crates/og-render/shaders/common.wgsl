@@ -149,13 +149,15 @@ fn face_dir(face: u32, uv: vec2<f32>) -> vec3<f32> {
 
 // Pure-integer IEEE-754 float32 <-> float16 bit packing for core WebGPU
 // without SHADER_FLOAT16_IN_FLOAT32. Subnormals flush cleanly to signed zero
-// and values clamp to [-65000, 65000].
+// and values clamp to [-65000, 65000]; the mantissa rounds to nearest even,
+// as pack2x16float does (truncating biased every value toward zero).
 fn f32_to_f16_bits(x: f32) -> u32 {
   let b = bitcast<u32>(clamp(x, -65000.0, 65000.0));
   let sign = (b >> 16u) & 0x8000u;
   let mag = b & 0x7fffffffu;
   if (mag < 0x38800000u) { return sign; }
-  return sign | (((mag - 0x38000000u) >> 13u) & 0x7fffu);
+  let rebased = mag - 0x38000000u;
+  return sign | (((rebased + 0x0fffu + ((rebased >> 13u) & 1u)) >> 13u) & 0x7fffu);
 }
 
 fn f16_bits_to_f32(h: u32) -> f32 {

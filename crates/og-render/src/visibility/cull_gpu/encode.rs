@@ -104,7 +104,7 @@ impl GpuCulling {
         materials: &[GpuMaterial],
         passes: &[CullPass],
         view_proj: Mat4,
-        (width, height, samples): (u32, u32, u32),
+        (width, height): (u32, u32),
         frame: u64,
         stats_given: GpuCounts,
         copy_counts: bool,
@@ -150,7 +150,7 @@ impl GpuCulling {
         self.skinned_base = base;
         self.skinned_base_batch = batches.iter().take_while(|x| x.first < base).count() as u32;
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
-        let _ = samples;
+        // Occluders draw single-sampled whatever the frame's MSAA.
         let occluder_samples = 1u32;
         if occlusion {
             self.ensure_pyramid(device, width, height, occluder_samples);

@@ -203,8 +203,10 @@ fn params_moved(stamp: u32) -> bool {
 // (`frame.ssr.x` 0).
 fn ssr_reflected(prefiltered: vec3<f32>, p: vec3<f32>, clip: vec2<f32>) -> vec3<f32> {
   if (frame.ssr.x < 0.5) { return prefiltered; }
-  let _unused_p = p;
   let size = vec2<i32>(textureDimensions(ssr_tex));
+  let c = frame.view_proj * vec4<f32>(p, 1.0);
+  let px = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5) * vec2<f32>(size);
+  if (c.w <= 0.0 || any(abs(px - clip) > vec2<f32>(1.5))) { return prefiltered; }
   let s = textureLoad(ssr_tex, clamp(vec2<i32>(clip), vec2<i32>(0), size - 1));
   let k = frame.ssr.y;
   return prefiltered * (1.0 - s.a * k) + s.rgb * k;

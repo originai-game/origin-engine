@@ -60,10 +60,15 @@ impl Renderer {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: HDR_FORMAT,
+                    // Storage only where the mip chain's compute downsample can run.
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                         | wgpu::TextureUsages::TEXTURE_BINDING
-                        | wgpu::TextureUsages::STORAGE_BINDING
-                        | wgpu::TextureUsages::COPY_DST,
+                        | wgpu::TextureUsages::COPY_DST
+                        | if self.info.caps.contains(crate::Caps::COMPUTE) {
+                            wgpu::TextureUsages::STORAGE_BINDING
+                        } else {
+                            wgpu::TextureUsages::empty()
+                        },
                     view_formats: &[],
                     texture_binding_view_dimension: None,
                 });

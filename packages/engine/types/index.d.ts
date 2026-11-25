@@ -7479,8 +7479,8 @@ export type TaaHistory = "bilinear" | "catmullRom";
 /**
  * The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly.
  * See `render §2`.
- * - `"taau"`: The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen.
- * - `"fsr3"`: AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, thin-geometry locks, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength); transparent surfaces feed its reactive mask.
+ * - `"taau"`: The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then the tonemap's sharpening at RenderOptions.taaSharpen.
+ * - `"fsr3"`: AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, thin-geometry locks, luma instability, Lanczos upsampling, then the tonemap's sharpening at taaSharpen's strength; transparent surfaces feed its reactive mask.
  * - `"auto"`: fsr3 while the scene is drawn smaller than the output (render scale below 1, automatic quality's included), where it keeps the thin and moving detail taau loses; taau at the output's size, which costs less. A device without fsr3 (RenderCapabilities.upscalers) draws taau.
  */
 export type Upscaler = "taau" | "fsr3" | "auto";
@@ -7556,7 +7556,7 @@ export interface RenderOptions {
    */
   readonly taaHistory?: TaaHistory;
   /**
-   * With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range.
+   * With TAA: contrast-adaptive sharpening in the tonemap, after depth of field and motion blur, 0 (none) to 1; the stronger of it and the post effects' sharpen applies. It never pushes a pixel past its neighbours' range.
    *
    * @default 0
    * @range 0..1
@@ -10037,7 +10037,7 @@ export interface GlobalIllumination {
    */
   occlusion: number;
   /**
-   * Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full.
+   * Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's; QualityPreset.high sets that to full.
    *
    * @default "half"
    */

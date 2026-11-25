@@ -18,7 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing method; left out, tier (4x MSAA in a 2D project, TAA in a 3D one). |
 | `taaHistory` | `TaaHistory` | `"bilinear"` | — | — | — | With TAA: how the history is resampled. |
-| `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range. |
+| `taaSharpen` | `number` | `0` | 0 … 1 | `ratio` | — | With TAA: contrast-adaptive sharpening in the tonemap, after depth of field and motion blur, 0 (none) to 1; the stronger of it and the post effects' sharpen applies. It never pushes a pixel past its neighbours' range. |
 
 #### Display
 
@@ -58,7 +58,7 @@ struct RenderOptions {
   group "Antialiasing"
   field antialias Antialias "The antialiasing method; left out, tier (4x MSAA in a 2D project, TAA in a 3D one)."
   field taaHistory TaaHistory "With TAA: how the history is resampled."
-  field taaSharpen f32 "With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range." {
+  field taaSharpen f32 "With TAA: contrast-adaptive sharpening in the tonemap, after depth of field and motion blur, 0 (none) to 1; the stronger of it and the post effects' sharpen applies. It never pushes a pixel past its neighbours' range." {
     min 0
     max 1
     unit ratio

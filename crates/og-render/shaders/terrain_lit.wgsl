@@ -379,26 +379,21 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, lay: Lay, face: vec3<f32>, lift:
 }
 
 // The roughness `terrain_look` gives a fragment (x) and its height in
-// the layers' relief (y). The depth prepass skips expensive layer albedo
-// hex-tiling fetches unless puddles, snow or dust need height-map cavity;
-// otherwise it blends layer roughness directly from control weights.
+// the layers' relief (y), with the lit pass's weights: the layers' heights
+// are sampled only where height blending or weather reads them.
 fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, lay: Lay, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec2<f32> {
   let pick = pick_layers(p, n_geo, control);
-  let need_cavity = OG_WEATHER && max(max(frame.weather.y, frame.weather.z), frame.weather_dust.w) > 0.0;
-  if (need_cavity) {
-    var heights_of = vec4<f32>(1.0);
+  var heights_of = vec4<f32>(1.0);
+  if ((terrain.params.x > 0.0 && !pick.fallback) || weather_active()) {
     for (var k = 0u; k < 4u; k++) {
-      if (k < pick.n && (pick.w[k] > 0.05 || k == 0u)) {
+      if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
         heights_of[k] = sample_layer_albedo(pick.ids[k], p, lay, dpx, dpy).a;
       }
     }
-    let w = blend_weights(pick, heights_of);
-    let height = select(0.5, layers_height(pick, w, heights_of), u32(terrain.origin.w) > 0u);
-    return vec2<f32>(blended_roughness(pick, w), height);
   }
-  let sum = pick.w.x + pick.w.y + pick.w.z + pick.w.w;
-  let w = select(vec4<f32>(1.0, 0.0, 0.0, 0.0), pick.w / sum, sum >= 1e-4);
-  return vec2<f32>(blended_roughness(pick, w), 0.5);
+  let w = blend_weights(pick, heights_of);
+  let height = select(0.5, layers_height(pick, w, heights_of), u32(terrain.origin.w) > 0u);
+  return vec2<f32>(blended_roughness(pick, w), height);
 }
 
 // The share of layer `layer` at a point (world `p`, normal `n`, control

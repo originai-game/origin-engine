@@ -66,7 +66,12 @@ impl<'a> Casters<'a> {
         let mut unbounded_overlay = cards_cast;
         let mut skinned_boxes = Vec::new();
         for b in skinned_batches {
-            if !b.cast || b.transparent || b.count == 0 {
+            if !b.cast || b.transparent {
+                continue;
+            }
+            // A GPU crowd's count lives on the GPU (`count` is 0): it has
+            // no boxes to test, so it reaches every layer.
+            if b.crowd.is_none() && b.count == 0 {
                 continue;
             }
             if b.crowd.is_some()

@@ -862,41 +862,8 @@ fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
   let c0 = center.a;
   let taps = u32(fxp.dof2.x);
   let max_r = fxp.dof.z * 0.5;
-  // Fast-path early-out on in-focus pixels with no nearby foreground bleed:
-  // probe 4 cardinal taps at half max radius (plus 4 outer diagonals at High
-  // quality) before executing the full 16..48 tap bokeh disc.
-  if (abs(c0) < 0.25 && max_r > 0.0) {
-    let r_half = max_r * 0.5 * inv_size;
-    var min_near = min(
-      min(
-        textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_half.x, 0.0), 0.0).a,
-        textureSampleLevel(tex_a, fx_linear, in.uv - vec2<f32>(r_half.x, 0.0), 0.0).a,
-      ),
-      min(
-        textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(0.0, r_half.y), 0.0).a,
-        textureSampleLevel(tex_a, fx_linear, in.uv - vec2<f32>(0.0, r_half.y), 0.0).a,
-      ),
-    );
-    if (taps > 16u && min_near >= -0.25) {
-      let r_diag = max_r * 0.65 * inv_size;
-      min_near = min(
-        min_near,
-        min(
-          min(
-            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_diag.x, r_diag.y), 0.0).a,
-            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(-r_diag.x, r_diag.y), 0.0).a,
-          ),
-          min(
-            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_diag.x, -r_diag.y), 0.0).a,
-            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(-r_diag.x, -r_diag.y), 0.0).a,
-          ),
-        ),
-      );
-    }
-    if (min_near >= -0.25) {
-      return vec4<f32>(center.rgb, 0.0);
-    }
-  }
+  // Every pixel gathers: a foreground's blur reaches an in-focus pixel from
+  // anywhere within max_r, which no handful of probes can rule out.
   var sum = center.rgb;
   var weight = 1.0;
   var near = 0.0;

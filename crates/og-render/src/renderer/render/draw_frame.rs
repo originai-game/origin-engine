@@ -1324,6 +1324,7 @@ impl Renderer {
                 lit_skinned_standard: &lit_skinned_standard,
                 terrain_draws: &world_frame.terrain_draws,
                 scatter_batches: &world_frame.scatter_batches,
+                grass_frame: &world_frame.grass_frame,
             },
         );
         plans.probes = ProbesPass::bind(

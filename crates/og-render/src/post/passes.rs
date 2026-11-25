@@ -570,16 +570,13 @@ impl PostPasses {
             return;
         }
         if self.tonemap_ldr.is_none() {
-            let entry = if self.chain_format.is_srgb() {
-                "fs_srgb_dither"
-            } else {
-                "fs"
-            };
+            // Undithered: the stylise passes after it (quantize, pixel,
+            // lines) would carry the noise into palette flips and blocks.
             self.tonemap_ldr = Some(fullscreen_pipeline(
                 device,
                 "tonemap (ldr)",
                 &self.post_shader,
-                entry,
+                "fs",
                 &self.post_pl,
                 self.chain_format,
                 None,

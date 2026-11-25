@@ -53,7 +53,7 @@ impl Pass for VolumetricPass {
             scene.atmosphere.fog.map_or(1.0, |f| f.sky),
             (r.width, r.height),
             r.samples,
-            scene.frame.tick,
+            r.frame_index,
             &scene.frame.quality,
             prev_view_proj,
             perspective && !scene.frame.camera_cut,

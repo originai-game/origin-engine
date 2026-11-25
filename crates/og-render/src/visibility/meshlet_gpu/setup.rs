@@ -403,6 +403,27 @@ impl MeshletGpu {
         for &(i, _, _, to, bytes) in &copies {
             let gpu = &mut meshes[i];
             if gpu.surface.is_none() {
+                // A compact mesh came with a placeholder for its lean
+                // positions, which `full` now stops `ensure_full` from
+                // filling: shadows and occluder depth read them.
+                if gpu.compact.is_some() {
+                    let pos: Vec<[f32; 3]> = scene.meshes()[i]
+                        .vertices
+                        .iter()
+                        .map(|v| v.position)
+                        .collect();
+                    if !pos.is_empty() {
+                        gpu.positions = crate::buffer_init(
+                            device,
+                            queue,
+                            &wgpu::util::BufferInitDescriptor {
+                                label: Some("positions"),
+                                contents: bytemuck::cast_slice(&pos),
+                                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                            },
+                        );
+                    }
+                }
                 gpu.vertices = pool.clone();
                 gpu.pooled = Some((to, bytes));
                 gpu.full = true;

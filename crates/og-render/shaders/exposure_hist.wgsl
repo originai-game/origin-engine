@@ -16,10 +16,13 @@ struct HistParams {
 @group(0) @binding(2) var<storage, read_write> histogram: array<atomic<u32>, 256>;
 @group(0) @binding(3) var metered_out: texture_storage_2d<rgba16float, write>;
 
-const MIN_LOG_LUM: f32 = -10.0;
-const MAX_LOG_LUM: f32 = 12.0;
-const LOG_RANGE: f32 = 22.0;
-const INV_LOG_RANGE: f32 = 1.0 / 22.0;
+// The fragment meter's floor (luminance.wgsl: log2 of 1e-5) and a ceiling
+// past any lit scene's: both meters take the same mean, so a scene exposes
+// alike on a host with compute and one without.
+const MIN_LOG_LUM: f32 = -16.609640474;
+const MAX_LOG_LUM: f32 = 16.0;
+const LOG_RANGE: f32 = MAX_LOG_LUM - MIN_LOG_LUM;
+const INV_LOG_RANGE: f32 = 1.0 / LOG_RANGE;
 
 var<workgroup> local_hist: array<atomic<u32>, 256>;
 var<workgroup> avg_bins: array<u32, 256>;
@@ -63,9 +66,10 @@ fn cs_histogram(
   if (c1 > 0u) { atomicAdd(&histogram[li + 128u], c1); }
 }
 
-// Single-workgroup reduction: trims darkest 10% and brightest 5% outliers,
-// writes (avg_log2_luma, 1.0, 0.0, 1.0) matching `metered_log` in
-// fullscreen.wgsl, and zeros `histogram` in place for the next frame.
+// Single-workgroup reduction: the weighted mean log2 luminance over every
+// bin, as the fragment meter's (no trimming, which only this path could do),
+// written as (mean, 1, 0, 1) for `metered_log` in fullscreen.wgsl; zeros
+// `histogram` in place for the next frame.
 @compute @workgroup_size(128, 1, 1)
 fn cs_average(@builtin(local_invocation_index) li: u32) {
   let b0 = atomicExchange(&histogram[li], 0u);
@@ -83,25 +87,10 @@ fn cs_average(@builtin(local_invocation_index) li: u32) {
     textureStore(metered_out, vec2<i32>(0, 0), vec4<f32>(MIN_LOG_LUM, 1.0, 0.0, 1.0));
     return;
   }
-  let total_f = f32(total);
-  let low_cut = total_f * 0.10;
-  let high_cut = total_f * 0.95;
-  var accum = 0.0;
   var weighted = 0.0;
-  var weight_sum = 0.0;
   for (var i = 0u; i < 256u; i++) {
-    let c = f32(avg_bins[i]);
-    let next = accum + c;
-    let lo = max(accum, low_cut);
-    let hi = min(next, high_cut);
-    let take = max(hi - lo, 0.0);
-    if (take > 0.0) {
-      let log_lum = MIN_LOG_LUM + (f32(i) / 255.0) * LOG_RANGE;
-      weighted += take * log_lum;
-      weight_sum += take;
-    }
-    accum = next;
+    weighted += f32(avg_bins[i]) * (MIN_LOG_LUM + (f32(i) / 255.0) * LOG_RANGE);
   }
-  let avg_log = select(MIN_LOG_LUM, weighted / max(weight_sum, 1e-6), weight_sum > 0.0);
+  let avg_log = weighted / f32(total);
   textureStore(metered_out, vec2<i32>(0, 0), vec4<f32>(avg_log, 1.0, 0.0, 1.0));
 }

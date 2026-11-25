@@ -2,7 +2,7 @@
 // every lit surface (the screen AO, the decals and their clusters, the
 // planar reflection's plane), bound at the group the module's layout puts
 // it (`fx_wgsl(group)` in og-render-data's shader_source.rs; decals.wgsl
-// declares `DecalGpu`).
+// reads its records).
 // `FxUniform` in fx.rs: per-frame effect inputs of the lit passes.
 struct Fx {
   view_proj_unjittered: mat4x4<f32>,

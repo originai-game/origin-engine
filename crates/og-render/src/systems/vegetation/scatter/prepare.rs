@@ -299,10 +299,21 @@ impl ScatterRenderer {
         let has_other_views = !scene.world.water.is_empty()
             || !scene.lighting.reflection_probes.is_empty()
             || !scene.frame.views.is_empty();
-        let dir_shadow_reach = if scene.lighting.light.intensity > 0.0 {
-            scene.lighting.light.max_shadow_distance.max(0.0)
+        // How far from the camera a caster's shadow can land in view: the
+        // cascades' reach, widened by how far a caster's own height throws
+        // its shadow under this sun (applied per chunk below); a shadow box
+        // follows its focus, not the camera, so it keeps every caster.
+        let sun = &scene.lighting.light;
+        let (dir_shadow_reach, dir_shadow_throw) = if sun.intensity <= 0.0 {
+            (0.0, 0.0)
+        } else if sun.shadow_box > 0.0 {
+            (f32::INFINITY, 0.0)
         } else {
-            0.0
+            let up = sun.direction_to_light.normalize_or_zero().y.max(0.05);
+            (
+                sun.max_shadow_distance.max(0.0),
+                (1.0 - up * up).sqrt() / up,
+            )
         };
         let local_shadow_lights: Vec<(Vec3, f32)> = scene
             .lighting
@@ -840,7 +851,8 @@ impl ScatterRenderer {
                         }
                         if !has_other_views {
                             let in_dir = dir_shadow_reach > 0.0
-                                && (center - camera).length() <= dir_shadow_reach + bound_r;
+                                && (center - camera).length()
+                                    <= dir_shadow_reach + bound_r * (1.0 + 2.0 * dir_shadow_throw);
                             let in_local = local_shadow_lights.iter().any(|&(pos, range)| {
                                 (center - pos).length_squared() <= (range + bound_r).powi(2)
                             });

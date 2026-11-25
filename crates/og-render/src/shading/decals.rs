@@ -61,7 +61,7 @@ pub(crate) fn pack_decals(
     }
 }
 
-// decals.wgsl `decal_at` reads a record as ten vec4s.
+// decals.wgsl reads a record as ten vec4s (`DECAL_VEC4S`).
 const _: () = assert!(size_of::<DecalGpu>() == 10 * 16);
 
 /// The fx group's entry for the decals' buffer (binding 5).

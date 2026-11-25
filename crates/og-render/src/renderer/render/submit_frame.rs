@@ -178,10 +178,11 @@ impl Renderer {
         self.instances.sway_serial = Some(serial);
         self.history.previous_wind = Some((wind, scene.frame.tick, scene.frame.tick_rate));
         self.frame_index += 1;
-        // Persist compiled pipelines after frame 1 and periodically every 120
-        // frames once deferred background pipelines have completed (`save` is a
-        // zero-I/O no-op when the binary cache size has not grown).
-        if (self.frame_index == 1 || self.frame_index.is_multiple_of(120))
+        // The first frame made the scene's pipelines: keep them now, not
+        // only when the renderer is dropped (a killed process never is).
+        // Later saves would copy the whole cache and write it on the render
+        // thread mid-play, a hitch; the drop keeps what compiled since.
+        if self.frame_index == 1
             && let Some(cache) = &mut self.pipeline_disk
         {
             cache.save();

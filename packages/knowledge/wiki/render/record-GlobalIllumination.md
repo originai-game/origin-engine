@@ -24,7 +24,7 @@ Token `og.GlobalIllumination`, registered under the schema name `og.GlobalIllumi
 | `steps` | `number` | `16` | 4 … 64 | — | — | Steps along each ray: more finds thinner things and gives a smoother still frame. |
 | `rays` | `number` | `2` | 1 … 16 | — | — | Rays per pixel each frame, two to a line across the pixel (an odd count is the next even one); each gathers every surface along it, so two give the whole bounce. More is smoother and costlier (TAA adds the frames' rays together). |
 | `occlusion` | `number` | `1` | 0 … 1 | — | tunable | How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes. |
-| `resolution` | `AoResolution` | `"half"` | — | — | — | Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full. |
+| `resolution` | `AoResolution` | `"half"` | — | — | — | Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's; QualityPreset.high sets that to full. |
 | `probeSpacing` | `number` | `1` | ≥ 0.05 | `m` | — | With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors. |
 | `probeCascades` | `number` | `3` | 1 … 4 | — | — | With probes: how many cascades, each doubling the reach of the one before (the first is updated every frame, the next every second frame, then every fourth). |
 | `probeRays` | `number` | `64` | 32 … 256 | — | — | With probes: rays each probe casts when it is updated; more is smoother and costlier. |
@@ -70,7 +70,7 @@ resource GlobalIllumination {
     max 1
     tunable true
   }
-  field resolution AoResolution "Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full." {
+  field resolution AoResolution "Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's; QualityPreset.high sets that to full." {
     default half
   }
   field probeSpacing f32 "With probes: the distance between neighbouring probes of the finest cascade (16 × 8 × 16 probes around the camera); each next cascade's probes are twice as far apart, reaching twice as far. About a third of a room's size indoors, a few metres outdoors." {

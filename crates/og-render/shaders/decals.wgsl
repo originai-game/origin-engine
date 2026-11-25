@@ -1,33 +1,11 @@
 // Shared projected decals. The receiving pass declares fx.decal_info,
 // decal_atlas, fx_sampler and decal_data at its own group.
-struct DecalGpu {
-  inv: mat4x4<f32>,
-  axis: vec4<f32>,
-  uv_rect: vec4<f32>,
-  color: vec4<f32>,
-  emissive: vec4<f32>,
-  normal_rect: vec4<f32>,
-  normal: vec4<f32>,
-};
-
 const DECAL_VEC4S: u32 = 10u;
 
 // Word `i` of the decals' clusters and references.
 fn decal_cell(i: u32) -> u32 {
   let w = i + 4u;
   return decal_data[w >> 2u][w & 3u];
-}
-
-fn decal_at(i: u32) -> DecalGpu {
-  let b = decal_data[0].x + i * DECAL_VEC4S;
-  let f = array<vec4<f32>, 10>(
-    bitcast<vec4<f32>>(decal_data[b]), bitcast<vec4<f32>>(decal_data[b + 1u]),
-    bitcast<vec4<f32>>(decal_data[b + 2u]), bitcast<vec4<f32>>(decal_data[b + 3u]),
-    bitcast<vec4<f32>>(decal_data[b + 4u]), bitcast<vec4<f32>>(decal_data[b + 5u]),
-    bitcast<vec4<f32>>(decal_data[b + 6u]), bitcast<vec4<f32>>(decal_data[b + 7u]),
-    bitcast<vec4<f32>>(decal_data[b + 8u]), bitcast<vec4<f32>>(decal_data[b + 9u]),
-  );
-  return DecalGpu(mat4x4<f32>(f[0], f[1], f[2], f[3]), f[4], f[5], f[6], f[7], f[8], f[9]);
 }
 
 struct DecalResult {

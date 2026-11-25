@@ -95,7 +95,7 @@ fn preskinned_vertex(slot: u32, vi: u32) -> PreSkinned {
   let b = (slot + vi / 2u) * 4u + (vi % 2u) * 2u;
   let c0 = textureLoad(joint_palette, data_at(b), 0);
   let c1 = textureLoad(joint_palette, data_at(b + 1u), 0);
-  let tan_xyz = select(vec3<f32>(0.0), oct_decode(unpack2x16snorm(bitcast<u32>(c0.w))), c1.w != 0.0);
+  let tan_xyz = select(vec3<f32>(0.0), oct_decode(vec2<f32>(vec2<u32>(u32(c0.w), u32(c0.w) >> 12u) & vec2<u32>(4095u)) / 4095.0 * 2.0 - 1.0), c1.w != 0.0);
   return PreSkinned(c0.xyz, c1.xyz, vec4<f32>(tan_xyz, c1.w));
 }
 
