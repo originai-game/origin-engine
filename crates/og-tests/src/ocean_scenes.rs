@@ -261,11 +261,23 @@ fn river_height(wide: &og_env::river::River, fall: f64, p: Vec2) -> f32 {
     };
     let d = at.across.abs() * wide.width * 0.5;
     let half = RIVER_WIDTH * 0.5;
-    let below = (at.along - fall) as f32;
+    // How far below the fall's lip, along the fall's own direction: a
+    // plane across the valley. The course's `along` jumps where the nearest
+    // place on it does (inside every bend, out to the wide course's 400 m),
+    // and each jump drew a straight crease or cliff across the land.
+    let _ = fall;
+    let (lip, foot) = (RIVER_COURSE[5], RIVER_COURSE[6]);
+    let down = Vec2::new(foot.x - lip.x, foot.z - lip.z).normalize();
+    let below = (p - Vec2::new(lip.x, lip.z)).dot(down);
     // 1 at the fall's lip and above, 0 from 40 m below it.
     let gorge = 1.0 - smooth(0.0, 40.0, below);
     let upland = 4.0 * gorge;
-    let rise = smooth(half - 1.5, half + 2.5, d);
+    // The bed rises through the water's level some 0.85 m inside the
+    // ribbon's edge and on to 0.5 m over it: the water ends where it meets
+    // its banks. Rising later (the ribbon's edge 0.8 m over the ground),
+    // every edge of the river was the ribbon's own straight cut, its sheet
+    // standing in the air over the grass.
+    let rise = smooth(half - 2.5, half, d);
     let scour = 1.6 * (-(p - RIVER_FOOT).length_squared() / 25.0).exp();
     let channel = at.level - 1.4 + 1.9 * rise - scour;
     let hills = 2.5 * (noise2(p.x / 60.0 + 3.0, p.y / 60.0 + 7.0, 0x91) - 0.5)
@@ -274,7 +286,16 @@ fn river_height(wide: &og_env::river::River, fall: f64, p: Vec2) -> f32 {
     // The band of rock the river cuts through at the fall: 6 m over the
     // upland at its crest, just above the lip, across some 50 m of
     // the valley (an outcrop, not a step across it).
-    let band = 6.0 * (-((below + 3.0) / 12.0).powi(2)).exp() * (1.0 - smooth(25.0, 60.0, d));
+    let raw = 6.0 * (-((below + 3.0) / 12.0).powi(2)).exp() * (1.0 - smooth(25.0, 60.0, d));
+    // Bedded rock: the outcrop's flanks climb in strata some 2 m high,
+    // each a steep riser (rock) under a near-level tread (turf), their
+    // edges wandering. A smooth hump of rock had one even 35° flank, too
+    // steep for the drawn relief (none past some 45°) and, under a flat
+    // rock texture, one broad slab of dirt.
+    let strata = 2.0;
+    let q = raw * (1.0 + 0.25 * (noise2(p.x / 9.0, p.y / 9.0, 0x95) - 0.5)) / strata;
+    let k = q.floor();
+    let band = ((k + smooth(0.0, 0.4, q - k)) * strata).min(raw + 0.5);
     let land = upland
         + band
         + 0.6
@@ -282,10 +303,33 @@ fn river_height(wide: &og_env::river::River, fall: f64, p: Vec2) -> f32 {
         + 14.0 * side
         + 30.0 * smooth(150.0, 450.0, d);
     // Sheer (the gorge's rock walls) through the band, wide banks after.
-    let sheer = band / 6.0;
+    let sheer = raw / 6.0;
     let banks = 2.0 + (1.0 - gorge) * 12.0;
-    let reach = half + 2.5 + banks + (1.2 - banks) * sheer;
-    let m = smooth(half + 2.5, reach, d);
+    // A wall's foot wanders back from the water by up to 3.6 m along the
+    // gorge and its face climbs some 8 m out from foot to rim: a face 1.2 m
+    // across stood on one or two of the field's metre cells, a smooth slab
+    // with a straight rim from end to end.
+    let wander = 2.4 * (noise2(p.x / 7.0, p.y / 7.0, 0x93) - 0.5)
+        + 1.2 * (noise2(p.x / 2.5, p.y / 2.5, 0x94) - 0.5);
+    // At the fall the walls close in over the sheet's edges (from just above
+    // the lip to its foot): the water pours through a notch in the rock,
+    // not across a gap wider than itself.
+    let notch = smooth(-2.5, -0.5, below) * (1.0 - smooth(4.0, 7.0, below));
+    let foot = half + 2.5 + (wander + 1.8) * sheer;
+    let foot = foot + (half - 0.6 + 0.3 * wander - foot) * notch;
+    // The banks widen with what they climb (some 2 m out for each metre up,
+    // under 35° at their steepest: turf holds); through the band they are
+    // its rock walls, a ledge every 3.5 m of their width at most (a ledge
+    // narrower than the field's metre cells blurs into one smooth slab).
+    let rise_h = (land - channel).max(0.0);
+    let gentle = foot + banks.max(2.0 * rise_h);
+    let reach = gentle + (foot + 8.0 - gentle) * sheer;
+    let t = ((d - foot) / (reach - foot).max(1e-3)).clamp(0.0, 1.0);
+    let steps = (rise_h / 1.6).min((reach - foot) / 3.5).round().max(1.0);
+    let k = (t * steps).floor();
+    let edge = 0.45 + 0.25 * (noise2(p.x / 5.0, p.y / 5.0, 0x96) - 0.5);
+    let ledged = ((k + smooth(0.0, edge, t * steps - k)) / steps).min(1.0);
+    let m = t * t * (3.0 - 2.0 * t) * (1.0 - sheer) + ledged * sheer;
     channel + (land - channel) * m
 }
 
@@ -324,16 +368,46 @@ fn river(scene: &mut RenderScene) {
             ))
         })
         .collect();
+    // Grass (red) on the land, stones (blue) on the bed under the water,
+    // rock (green) left to its slope rule. Grass all over, the bed grew
+    // turf under the river, its blades standing through the water.
+    let control: Vec<u8> = heights
+        .iter()
+        .enumerate()
+        .flat_map(|(i, &y)| {
+            let p = Vec2::new(
+                -size * 0.5 + (i as u32 % n) as f32 * cell,
+                -size * 0.5 + (i as u32 / n) as f32 * cell,
+            );
+            let bed = wide.at(p).map_or(0.0, |at| {
+                let d = at.across.abs() * wide.width * 0.5;
+                crate::fx_scenes::smooth(at.level + 0.25, at.level - 0.15, y)
+                    * (1.0
+                        - crate::fx_scenes::smooth(
+                            RIVER_WIDTH * 0.5 + 1.0,
+                            RIVER_WIDTH * 0.5 + 3.0,
+                            d,
+                        ))
+            });
+            let b = (bed * 255.0).round() as u8;
+            [255 - b, 255, b, 0]
+        })
+        .collect();
     let handle = scene.add_terrain(TerrainData {
         size: Vec2::splat(size),
         columns: n,
         rows: n,
         heights: Arc::from(heights),
-        control: None,
+        control: Some(og_render::TerrainControl {
+            width: n,
+            height: n,
+            rgba: Arc::from(control),
+        }),
         holes: None,
     });
     let (grass, grass_n) = crate::kit::layer_maps(scene, "grass");
     let (rock, rock_n) = crate::kit::layer_maps(scene, "rock");
+    let (stone, stone_n) = crate::kit::layer_maps(scene, "stone");
     scene.world.terrains.push(Terrain {
         layers: vec![
             TerrainLayer {
@@ -367,6 +441,20 @@ fn river(scene: &mut RenderScene) {
                 macro_variation: 0.4,
                 ..Default::default()
             },
+            TerrainLayer {
+                albedo: Some(stone),
+                normal: Some(stone_n),
+                // The bed's stones, darkened and greened by the water.
+                color: Vec3::new(0.62, 0.66, 0.58),
+                roughness: 0.6,
+                tile: 2.0,
+                slope: [0.0, 90.0],
+                slope_fade: 6.0,
+                altitude: [-1.0e6, 1.0e6],
+                anti_tiling: 1.0,
+                macro_variation: 0.6,
+                ..Default::default()
+            },
         ],
         height_blend: 0.6,
         ..Terrain::new(handle)
@@ -392,8 +480,20 @@ fn river(scene: &mut RenderScene) {
         lods: [None; 2],
     });
     // Pines in the meadows, clear of the banks and of the view of the
-    // fall; boulders on the banks, in the pool, along the gorge's walls
+    // fall; boulders on the banks, in the pool, at the foot of the gorge's walls
     // and in a ledge across the lip, the water pouring over it.
+    // A boulder's foot at the lowest ground under its base (some 0.6 of its
+    // height out): its flat base then lies in the ground all round, buried
+    // on the uphill side. Seated at the ground under its middle, a boulder on
+    // the gorge's walls hung its downhill half out over the slope, a black
+    // cave under a straight edge.
+    let seat = |p: Vec2, size: f32| {
+        let r = 0.6 * size;
+        (0..8).fold(h(p), |low, i| {
+            let a = i as f32 * std::f32::consts::FRAC_PI_4;
+            low.min(h(p + Vec2::new(a.cos(), a.sin()) * r))
+        })
+    };
     let pine = crate::kit::prop(scene, "pine");
     let boulder = crate::kit::prop(scene, "boulder");
     let (eye, target) = (Vec2::new(26.0, 10.0), Vec2::new(-8.0, -18.0));
@@ -416,7 +516,13 @@ fn river(scene: &mut RenderScene) {
                     8.0 + n * 14.0,
                 );
             } else if d > RIVER_WIDTH * 0.5 - 0.5 && d < RIVER_WIDTH * 0.5 + 2.0 && n < 0.18 {
-                boulder.place(scene, Vec3::new(p.x, y - 0.3, p.y), n * 30.0, 1.0 + n * 6.0);
+                let size = 1.0 + n * 6.0;
+                boulder.place(
+                    scene,
+                    Vec3::new(p.x, seat(p, size) - 0.3, p.y),
+                    n * 30.0,
+                    size,
+                );
             }
         }
     }
@@ -431,15 +537,23 @@ fn river(scene: &mut RenderScene) {
         let tall = if k.abs() == 2 { 2.8 } else { 1.7 };
         boulder.place(scene, Vec3::new(p.x, 2.2, p.y), yaw + k as f32, tall);
     }
+    // Fallen rock at the foot of the gorge's walls, on the strip of bank
+    // between the water and the wall. On the walls themselves (half way up
+    // their faces and on their rims) they hung out over the drop, black
+    // hollows under them.
     for k in 0..12 {
         let along = -8.0 + (k / 2) as f32 * 3.6;
+        // None in the notch, where the wall itself holds the sheet.
+        if (-3.0..7.5).contains(&along) {
+            continue;
+        }
         let side = if k % 2 == 0 { 1.0 } else { -1.0 };
-        let out = if (k / 2) % 2 == 0 { 2.8 } else { 5.0 };
+        let out = if (k / 2) % 2 == 0 { 1.2 } else { 1.9 };
         let p = lip + down * along + across * side * (RIVER_WIDTH * 0.5 + out);
-        let s = 2.2 + (k % 3) as f32 * 0.6 + out * 0.2;
+        let s = 1.6 + (k % 3) as f32 * 0.5;
         boulder.place(
             scene,
-            Vec3::new(p.x, h(p) - s * 0.45, p.y),
+            Vec3::new(p.x, seat(p, s) - s * 0.15, p.y),
             k as f32 * 1.3,
             s,
         );
@@ -453,14 +567,14 @@ fn river(scene: &mut RenderScene) {
         (1.4, 5.8, 3.4),
         (13.3, 1.5, 3.0),
     ] {
-        boulder.place(scene, Vec3::new(x, h(Vec2::new(x, z)) - 0.4, z), x, s);
+        boulder.place(scene, Vec3::new(x, seat(Vec2::new(x, z), s) - 0.4, z), x, s);
     }
     // A clear upland river: green-brown over its bed, dark where deep.
     scene.world.water.push(Water {
         size: Vec2::splat(400.0),
         shallow: Vec3::new(0.22, 0.32, 0.24),
         deep: Vec3::new(0.03, 0.08, 0.07),
-        foam_width: 0.6,
+        foam_width: 0.25,
         depth_fade: 2.5,
         river: Some(Arc::new(course)),
         ..Default::default()
@@ -527,7 +641,8 @@ pub fn ocean_scene(name: &str) -> RenderScene {
     match name {
         // A fresh breeze (9 m/s, waves about 65 m long, 1.7 m significant
         // height) running away from the camera and to the left, the
-        // afternoon sun behind the right shoulder.
+        // afternoon sun ahead to the left (some 47° off the view, 40° up):
+        // its glitter lies on the frame's lower left.
         "water-ocean" => {
             physical_light(&mut scene, 15.0, earth);
             scene.world.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
