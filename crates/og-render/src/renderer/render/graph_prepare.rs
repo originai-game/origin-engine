@@ -100,6 +100,7 @@ impl Renderer {
                     height: self.height,
                     post: self.history_size(),
                     chain_format: self.post.chain_format,
+                    rgb_hdr_format: self.post.rgb_hdr_format,
                     samples: self.samples,
                     taa,
                     lightmap: lightmap_size,

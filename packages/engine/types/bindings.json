@@ -12135,7 +12135,7 @@
         {
           "name": "aoResolution",
           "column": "AoResolution",
-          "default": "full"
+          "default": "half"
         },
         {
           "name": "aoDirect",
@@ -12717,7 +12717,7 @@
         {
           "name": "resolution",
           "column": "AoResolution",
-          "default": "full"
+          "default": "half"
         },
         {
           "name": "probeSpacing",

@@ -6,8 +6,10 @@
 //! site adds its module here. Material shaders a game declares are game
 //! content: the cook validates them (`lit_module_source`).
 
-/// One module: a label, its WGSL and the pipeline-overridable constants a
-/// pipeline sets on it.
+/// One module: a label, its WGSL, the pipeline-overridable constants a
+/// pipeline sets on it, and the capabilities the renderer requires before
+/// compiling it (so `tests/wgsl_rules.rs` validates `Tier::Full` extensions
+/// by capability bit while keeping `Tier::Compat` strictly checked).
 #[derive(Clone, Debug)]
 pub struct ShaderSource {
     pub label: String,
@@ -15,15 +17,31 @@ pub struct ShaderSource {
     /// Overrides set for this variant (the rest keep their defaults): the
     /// lean lit pipelines' `DISCARD` false, which drops the fragment discard.
     pub constants: Vec<(String, f64)>,
+    /// Capabilities required to compile this module (`Caps::NONE` = runs on
+    /// every tier including `Tier::Compat`).
+    pub needs: crate::Caps,
 }
 
 impl ShaderSource {
-    /// A module with no overrides set.
+    /// A module with no overrides set and no extra capability requirements.
     pub(crate) fn plain(label: &str, wgsl: String) -> ShaderSource {
         ShaderSource {
             label: label.to_string(),
             wgsl,
             constants: Vec::new(),
+            needs: crate::Caps::NONE,
+        }
+    }
+
+    /// A module gated on `needs` (validated under those capabilities rather
+    /// than the `Tier::Compat` ceiling).
+    #[allow(dead_code)]
+    pub(crate) fn with_caps(label: &str, wgsl: String, needs: crate::Caps) -> ShaderSource {
+        ShaderSource {
+            label: label.to_string(),
+            wgsl,
+            constants: Vec::new(),
+            needs,
         }
     }
 }
@@ -174,6 +192,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
             label: format!("pbr lean{planars}"),
             wgsl: crate::lit_source_with(&hooks, planar),
             constants: vec![("DISCARD".to_string(), 0.0)],
+            needs: crate::Caps::NONE,
         });
     }
     // The volumetric pass's pipelines under water (volumetric.rs
@@ -183,6 +202,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
             label: format!("{label} (water)"),
             wgsl: crate::volumetric::source(froxel),
             constants: vec![("VOL_WATER".to_string(), 1.0)],
+            needs: crate::Caps::NONE,
         });
     }
     // Visibility-buffer resolve pipelines (meshlet_gpu/vis.rs): analytic
@@ -191,6 +211,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         label: "meshlet resolve".to_string(),
         wgsl: crate::meshlet_gpu::lit_source(false),
         constants: vec![("ANALYTIC".to_string(), 1.0), ("DISCARD".to_string(), 0.0)],
+        needs: crate::Caps::VERTEX_STORAGE,
     });
 }
 
@@ -218,6 +239,7 @@ pub(crate) fn with_variants(mut out: Vec<ShaderSource>) -> Vec<ShaderSource> {
                             .map(|(k, v)| (k.to_string(), v)),
                     )
                     .collect(),
+                needs: s.needs,
             })
         })
         .collect();
@@ -238,6 +260,7 @@ pub(crate) fn with_variants(mut out: Vec<ShaderSource>) -> Vec<ShaderSource> {
             label: format!("{} (left out)", s.label),
             wgsl: every.leave_out(s.wgsl.clone()),
             constants: s.constants.clone(),
+            needs: s.needs,
         })
         .collect();
     out.extend(off);

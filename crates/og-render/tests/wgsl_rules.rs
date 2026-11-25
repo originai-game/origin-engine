@@ -846,9 +846,16 @@ mod compat {
         }
     }
 
-    pub fn refused(label: &str, module: &Module, info: &ModuleInfo) -> Vec<String> {
+    pub fn refused(
+        label: &str,
+        needs: og_render::Caps,
+        module: &Module,
+        info: &ModuleInfo,
+    ) -> Vec<String> {
         let mut out = Vec::new();
-        let rg32 = RG32_MODULES.iter().any(|m| label.starts_with(m));
+        let compat_reachable = og_render::Tier::Compat.ceiling().contains(needs);
+        let rg32 = needs.contains(og_render::Caps::RG32_STORAGE)
+            || RG32_MODULES.iter().any(|m| label.starts_with(m));
         for (_, v) in module.global_variables.iter().filter(|_| !rg32) {
             if let TypeInner::Image {
                 class: ImageClass::Storage { format, .. },
@@ -869,13 +876,17 @@ mod compat {
             let at = f.name.as_deref().unwrap_or("?");
             images(module, f, &info[h], at, &mut out);
         }
+        let vertex_storage = needs.contains(og_render::Caps::VERTEX_STORAGE)
+            || VERTEX_STORAGE_MODULES.iter().any(|m| label.starts_with(m));
+        let max_wg = if compat_reachable { 128 } else { 256 };
         for (i, ep) in module.entry_points.iter().enumerate() {
             let at = ep.name.as_str();
             images(module, &ep.function, info.get_entry_point(i), at, &mut out);
             // Storage a stage reaches, its callees' included: none in a
-            // vertex stage, four buffers and four textures in a fragment one.
+            // vertex stage (unless gated by Caps::VERTEX_STORAGE), four buffers
+            // and four textures in a fragment one on Compat (eight on Full).
             if matches!(ep.stage, ShaderStage::Vertex | ShaderStage::Fragment)
-                && !VERTEX_STORAGE_MODULES.iter().any(|m| label.starts_with(m))
+                && !(ep.stage == ShaderStage::Vertex && vertex_storage)
             {
                 let ei = info.get_entry_point(i);
                 let (mut buffers, mut textures) = (Vec::new(), Vec::new());
@@ -896,6 +907,8 @@ mod compat {
                 }
                 let most = if ep.stage == ShaderStage::Vertex {
                     0
+                } else if !compat_reachable || vertex_storage {
+                    8
                 } else {
                     4
                 };
@@ -912,8 +925,9 @@ mod compat {
                 }
             }
             let [x, y, z] = ep.workgroup_size;
-            if ep.stage == ShaderStage::Compute && (x * y * z > 128 || x > 128 || y > 128) {
-                out.push(format!("{at}: workgroup {x}×{y}×{z} (128 at most)"));
+            if ep.stage == ShaderStage::Compute && (x * y * z > max_wg || x > max_wg || y > max_wg)
+            {
+                out.push(format!("{at}: workgroup {x}×{y}×{z} ({max_wg} at most)"));
             }
             // The inter-stage values (a vertex stage's results, a fragment
             // stage's arguments), and every builtin the stage reads or writes.
@@ -974,9 +988,9 @@ mod compat {
 
 /// [`compat`] over every module and variant: what a WebGPU compatibility
 /// adapter (Chrome 146+'s default on GLES and D3D11 devices) refuses.
-/// Broken by a `@interpolate(flat)` without `either`, a 256-wide
-/// workgroup, a `textureLoad` of a depth texture, a storage buffer read
-/// in a vertex stage or a fine derivative the rewrite misses.
+/// Modules gated by `Tier::Full`-only capabilities (`ShaderSource::needs`)
+/// are checked against their capability limits while `Tier::Compat`-reachable
+/// modules keep every compatibility rule.
 #[test]
 fn every_module_keeps_the_compatibility_rules() {
     let mut failures = Vec::new();
@@ -986,12 +1000,12 @@ fn every_module_keeps_the_compatibility_rules() {
             &s.label,
             &og_render::compat_wgsl(&s.wgsl),
             &s.constants,
-            crate::shaders::full_capabilities(),
+            crate::shaders::capabilities_for(s.needs),
         )
         .unwrap_or_else(|e| panic!("{e}"));
         checked += 1;
         failures.extend(
-            compat::refused(&s.label, &module, &info)
+            compat::refused(&s.label, s.needs, &module, &info)
                 .into_iter()
                 .map(|e| format!("{}: {e}", s.label)),
         );

@@ -22,7 +22,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `aoRadius` | `number` | `0.6` | ≥ 0 | `m` | tunable | The world-space radius searched for occluders. |
 | `aoIntensity` | `number` | `1` | ≥ 0 | — | tunable | 0 none, 1 full; above 1 exaggerates. |
 | `aoMethod` | `AoMethod` | `"auto"` | — | — | — | The algorithm. |
-| `aoResolution` | `AoResolution` | `"full"` | — | — | — | Full resolution, or half for a fraction of the GPU time at softer detail. |
+| `aoResolution` | `AoResolution` | `"half"` | — | — | — | Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full. |
 | `aoDirect` | `number` | `0` | 0 … 1 | — | tunable | How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it. |
 | `aoRadiusScale` | `number` | `0` | ≥ 0 | — | tunable | Above 0 the radius grows with the distance, min(aoRadius, aoRadiusScale × distance), a fixed share of the screen up close as three.js SSAO passes size theirs; 0 keeps aoRadius everywhere. See `render §5`. |
 
@@ -195,7 +195,9 @@ resource PostEffects {
     tunable true
   }
   field aoMethod AoMethod "The algorithm."
-  field aoResolution AoResolution "Full resolution, or half for a fraction of the GPU time at softer detail."
+  field aoResolution AoResolution "Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full." {
+    default half
+  }
   field aoDirect f32 "How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it." {
     default 0
     min 0

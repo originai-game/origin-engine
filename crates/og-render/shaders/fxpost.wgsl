@@ -1049,19 +1049,18 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(sum * (4.0 / f32(max(n, 1u))) * fxp.god_tint.rgb * fxp.god2.z, 1.0);
 }
 
-// Each 4x4 window contains all sixteen ray phases, replacing coherent
-// radial tap rings with their integral even with AA off (GPU Gems 3 §13.8).
+// Each centred 3x3 window contains all nine ray phases (ao_noise), replacing
+// coherent radial tap rings with their integral even with AA off (GPU Gems 3 §13.8).
 @fragment
 fn fs_godrays_resolve(in: VsOut) -> @location(0) vec4<f32> {
-  let texel = 1.0 / vec2<f32>(textureDimensions(tex_b));
-  let px = floor(in.pos.xy);
+  let size = vec2<i32>(textureDimensions(tex_b));
+  let px = vec2<i32>(in.pos.xy);
   var sum = vec3<f32>(0.0);
-  for (var y = -1; y <= 2; y++) {
-    for (var x = -1; x <= 2; x++) {
-      // Bilinear taps centre the even window without shifting the shafts.
-      let uv = (px + vec2<f32>(f32(x), f32(y))) * texel;
-      sum += textureSampleLevel(tex_b, fx_linear, uv, 0.0).rgb;
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
+      let q = clamp(px + vec2<i32>(x, y), vec2<i32>(0), size - 1);
+      sum += textureLoad(tex_b, q, 0).rgb;
     }
   }
-  return vec4<f32>(sum / 16.0, 1.0);
+  return vec4<f32>(sum / 9.0, 1.0);
 }

@@ -142,7 +142,7 @@ impl Renderer {
             self.shadows.full_shadow_size,
             max.min(self.shadows.full_shadow_size.max(4096)),
         );
-        let local = q.shadow_side(LOCAL_SHADOW_SIZE, max);
+        let local = q.shadow_side(LOCAL_SHADOW_SIZE, max.min(768));
         if (cascade, local) != (self.info.shadow_map_size, self.shadows.local_shadow_size) {
             self.info.shadow_map_size = cascade;
             self.shadows.local_shadow_size = local;

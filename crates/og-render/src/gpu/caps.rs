@@ -17,7 +17,7 @@ use std::fmt;
 
 /// A set of device capabilities. See the module documentation.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct Caps(u16);
+pub struct Caps(u32);
 
 impl Caps {
     /// No capability.
@@ -57,10 +57,20 @@ impl Caps {
     /// and `max_storage_buffers_per_shader_stage >= 8`), allowing unpacked
     /// screen-space AO/contact/SSGI/bent-normal channels on `Tier::Full`.
     pub const HIGH_BINDING_SLOTS: Caps = Caps(1 << 11);
+    /// Render-attachment support for packed 32-bit HDR RGB (`rg11b10ufloat`),
+    /// halving VRAM and bandwidth for alpha-free HDR post targets.
+    pub const RG11B10_RENDERABLE: Caps = Caps(1 << 12);
+    /// Unclipped depth (`Features::DEPTH_CLIP_CONTROL`), preventing near-plane
+    /// shadow pancaking clips on shadow cascades.
+    pub const DEPTH_CLIP_CONTROL: Caps = Caps(1 << 13);
+    /// Native 16-bit floating-point WGSL arithmetic (`Features::SHADER_F16`).
+    pub const SHADER_F16: Caps = Caps(1 << 14);
+    /// Subgroup / warp wave intrinsics (`Features::SUBGROUP`).
+    pub const SUBGROUP: Caps = Caps(1 << 15);
     /// Every capability above: the full tier.
-    pub const FULL: Caps = Caps((1 << 12) - 1);
+    pub const FULL: Caps = Caps((1 << 16) - 1);
 
-    const NAMES: [(Caps, &'static str); 12] = [
+    const NAMES: [(Caps, &'static str); 16] = [
         (Caps::COMPUTE, "compute"),
         (Caps::MRT, "mrt"),
         (Caps::ASYNC_PIPELINES, "asyncPipelines"),
@@ -73,6 +83,10 @@ impl Caps {
         (Caps::RG32_STORAGE, "rg32Storage"),
         (Caps::RG32_RENDERABLE, "rg32Renderable"),
         (Caps::HIGH_BINDING_SLOTS, "highBindingSlots"),
+        (Caps::RG11B10_RENDERABLE, "rg11b10Renderable"),
+        (Caps::DEPTH_CLIP_CONTROL, "depthClipControl"),
+        (Caps::SHADER_F16, "shaderF16"),
+        (Caps::SUBGROUP, "subgroup"),
     ];
 
     /// What an adapter with `features` (already less the caller's
@@ -108,6 +122,13 @@ impl Caps {
             wgpu::Features::INDIRECT_FIRST_INSTANCE,
             Caps::INDIRECT_FIRST_INSTANCE,
         );
+        caps |= feature(
+            wgpu::Features::RG11B10UFLOAT_RENDERABLE,
+            Caps::RG11B10_RENDERABLE,
+        );
+        caps |= feature(wgpu::Features::DEPTH_CLIP_CONTROL, Caps::DEPTH_CLIP_CONTROL);
+        caps |= feature(wgpu::Features::SHADER_F16, Caps::SHADER_F16);
+        caps |= feature(wgpu::Features::SUBGROUP, Caps::SUBGROUP);
         if limits.max_color_attachments > 1 {
             caps |= Caps::MRT;
         }
@@ -180,6 +201,13 @@ impl Caps {
                 Caps::INDIRECT_FIRST_INSTANCE,
                 wgpu::Features::INDIRECT_FIRST_INSTANCE,
             ),
+            (
+                Caps::RG11B10_RENDERABLE,
+                wgpu::Features::RG11B10UFLOAT_RENDERABLE,
+            ),
+            (Caps::DEPTH_CLIP_CONTROL, wgpu::Features::DEPTH_CLIP_CONTROL),
+            (Caps::SHADER_F16, wgpu::Features::SHADER_F16),
+            (Caps::SUBGROUP, wgpu::Features::SUBGROUP),
         ] {
             if !self.contains(c) {
                 features.remove(f);
@@ -268,8 +296,13 @@ impl Tier {
 
     /// The capabilities a device may have on this tier.
     pub const fn ceiling(self) -> Caps {
+        let full_only = Caps::HIGH_BINDING_SLOTS.0
+            | Caps::RG11B10_RENDERABLE.0
+            | Caps::DEPTH_CLIP_CONTROL.0
+            | Caps::SHADER_F16.0
+            | Caps::SUBGROUP.0;
         let mini_game = Caps::FULL.without(Caps(
-            Caps::MRT.0 | Caps::ASYNC_PIPELINES.0 | Caps::TIMESTAMPS.0 | Caps::HIGH_BINDING_SLOTS.0,
+            Caps::MRT.0 | Caps::ASYNC_PIPELINES.0 | Caps::TIMESTAMPS.0 | full_only,
         ));
         match self {
             Tier::Full => Caps::FULL,
@@ -289,7 +322,7 @@ impl Tier {
                     | Caps::INDEPENDENT_BLEND.0
                     | Caps::RG32_STORAGE.0
                     | Caps::RG32_RENDERABLE.0
-                    | Caps::HIGH_BINDING_SLOTS.0,
+                    | full_only,
             )),
         }
     }

@@ -606,10 +606,16 @@ impl Renderer {
                     adapter_info.backend,
                 )
             });
+        let rgb_hdr_format = if caps.contains(Caps::RG11B10_RENDERABLE) {
+            wgpu::TextureFormat::Rg11b10Ufloat
+        } else {
+            HDR_FORMAT
+        };
         let post = post::PostPasses::new(
             &device,
             &queue,
             output_format,
+            rgb_hdr_format,
             antialias,
             post::AaOptions {
                 taa_history: desc.taa_history,

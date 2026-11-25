@@ -65,6 +65,7 @@ impl PostPasses {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         output_format: wgpu::TextureFormat,
+        rgb_hdr_format: wgpu::TextureFormat,
         antialias: Antialias,
         aa: AaOptions,
         hdr: [f32; 4],
@@ -296,7 +297,7 @@ impl PostPasses {
             &post_shader,
             "fs_bloom_prefilter",
             &post_pl,
-            HDR_FORMAT,
+            rgb_hdr_format,
             None,
         );
         let down = deferred_fullscreen(
@@ -305,7 +306,7 @@ impl PostPasses {
             &post_shader,
             "fs_bloom_down",
             &post_pl,
-            HDR_FORMAT,
+            rgb_hdr_format,
             None,
         );
         let additive = wgpu::BlendState {
@@ -322,7 +323,7 @@ impl PostPasses {
             &post_shader,
             "fs_bloom_up",
             &post_pl,
-            HDR_FORMAT,
+            rgb_hdr_format,
             Some(additive),
         );
         // Hardware sRGB 8-bit outputs get perceptual 1-LSB IGN dithering in
@@ -453,9 +454,25 @@ impl PostPasses {
         let mut fx: HashMap<&'static str, Deferred<wgpu::RenderPipeline>> = FX_PASSES
             .iter()
             .map(|&(entry, format)| {
+                let target_format = if matches!(
+                    entry,
+                    "fs_godrays_mask" | "fs_godrays_blur" | "fs_godrays_resolve"
+                ) {
+                    rgb_hdr_format
+                } else {
+                    format
+                };
                 (
                     entry,
-                    deferred_fullscreen(device, entry, &fx_shader, entry, &fx_pl, format, None),
+                    deferred_fullscreen(
+                        device,
+                        entry,
+                        &fx_shader,
+                        entry,
+                        &fx_pl,
+                        target_format,
+                        None,
+                    ),
                 )
             })
             .collect();
@@ -546,6 +563,7 @@ impl PostPasses {
             fxaa_shader: None,
             output_format,
             chain_format,
+            rgb_hdr_format,
             stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
             repeat_sampler,
             sampler,

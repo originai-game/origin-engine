@@ -10,6 +10,8 @@ pub(crate) struct GraphConfig {
     /// resolved up to the output by TAA), else the scene's.
     pub post: (u32, u32),
     pub chain_format: wgpu::TextureFormat,
+    /// Alpha-free HDR post target format (`Rg11b10Ufloat` on Full, else `HDR_FORMAT`).
+    pub rgb_hdr_format: wgpu::TextureFormat,
     pub samples: u32,
     pub taa: bool,
     /// The 2D light map's size.

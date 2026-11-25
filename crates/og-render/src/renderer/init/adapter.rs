@@ -120,12 +120,20 @@ impl Renderer {
             .min(per_stage.max_storage_textures_in_fragment_stage);
         let limits = tier.compat_limits(limits);
 
+        let rg11b10_usages = adapter
+            .get_texture_format_features(wgpu::TextureFormat::Rg11b10Ufloat)
+            .allowed_usages;
         let mut caps = Caps::of(adapter_features, adapter_flags, &limits);
         if !rg32_usages.contains(wgpu::TextureUsages::STORAGE_BINDING) {
             caps = caps.without(Caps::RG32_STORAGE);
         }
         if !rg32_usages.contains(wgpu::TextureUsages::RENDER_ATTACHMENT) {
             caps = caps.without(Caps::RG32_RENDERABLE);
+        }
+        if !rg11b10_usages
+            .contains(wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING)
+        {
+            caps = caps.without(Caps::RG11B10_RENDERABLE);
         }
         let caps = caps & tier.ceiling();
         let adapter_features = caps.features(adapter_features);
@@ -175,6 +183,19 @@ impl Renderer {
             caps.contains(Caps::COMPUTE | Caps::INDIRECT | Caps::INDIRECT_FIRST_INSTANCE);
         if crowd_indirect {
             features |= wgpu::Features::INDIRECT_FIRST_INSTANCE;
+        }
+        for (cap, feat) in [
+            (
+                Caps::RG11B10_RENDERABLE,
+                wgpu::Features::RG11B10UFLOAT_RENDERABLE,
+            ),
+            (Caps::DEPTH_CLIP_CONTROL, wgpu::Features::DEPTH_CLIP_CONTROL),
+            (Caps::SHADER_F16, wgpu::Features::SHADER_F16),
+            (Caps::SUBGROUP, wgpu::Features::SUBGROUP),
+        ] {
+            if caps.contains(cap) {
+                features |= feat;
+            }
         }
         let mut info = RenderInfo {
             adapter: adapter_info.name.clone(),

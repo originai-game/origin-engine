@@ -473,6 +473,9 @@ pub(crate) struct PostPasses {
     smaa: Option<smaa::Smaa>,
     output_format: wgpu::TextureFormat,
     pub chain_format: wgpu::TextureFormat,
+    /// Format for alpha-free HDR post targets (bloom chain, god rays):
+    /// `Rg11b10Ufloat` when `Caps::RG11B10_RENDERABLE`, else `HDR_FORMAT`.
+    pub rgb_hdr_format: wgpu::TextureFormat,
     /// `struct Stylise` (stylise.wgsl), written per frame.
     pub stylise_buffer: wgpu::Buffer,
     /// Repeats: the paint pass's canvas texture.

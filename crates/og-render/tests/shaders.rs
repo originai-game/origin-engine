@@ -19,6 +19,18 @@ pub(crate) fn full_capabilities() -> Capabilities {
         | Capabilities::SHADER_FLOAT32_ATOMIC
 }
 
+/// Naga validation capabilities for a module requiring `needs`.
+pub(crate) fn capabilities_for(needs: og_render::Caps) -> Capabilities {
+    let mut caps = full_capabilities();
+    if needs.contains(og_render::Caps::SHADER_F16) {
+        caps |= Capabilities::SHADER_FLOAT16;
+    }
+    if needs.contains(og_render::Caps::SUBGROUP) {
+        caps |= Capabilities::SUBGROUP;
+    }
+    caps
+}
+
 /// Parses, validates and resolves the overrides of one module.
 pub(crate) fn checked(
     label: &str,
@@ -51,7 +63,7 @@ pub(crate) fn checked(
 
 fn failures(s: &og_render::ShaderSource) -> Vec<String> {
     let label = &s.label;
-    let (module, info) = match checked(label, &s.wgsl, &s.constants, full_capabilities()) {
+    let (module, info) = match checked(label, &s.wgsl, &s.constants, capabilities_for(s.needs)) {
         Ok(m) => m,
         Err(e) => return vec![e],
     };
@@ -106,6 +118,7 @@ fn every_module_validates_and_translates_to_msl_spirv_and_hlsl() {
 "#
         ),
         constants: Vec::new(),
+        needs: og_render::Caps::NONE,
     });
     assert!(sources.len() >= 30, "{} modules", sources.len());
     let failures: Vec<String> = sources.iter().flat_map(failures).collect();

@@ -25,4 +25,4 @@ enum HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1769</sub>
+<sub>Module `render` line 1773</sub>

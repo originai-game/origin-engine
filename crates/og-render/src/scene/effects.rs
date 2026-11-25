@@ -75,7 +75,7 @@ impl Default for AmbientOcclusion {
             radius: 0.6,
             intensity: 1.0,
             method: AoMethod::Auto,
-            resolution: AoResolution::Full,
+            resolution: AoResolution::Half,
             direct: 0.0,
             radius_scale: 0.0,
         }

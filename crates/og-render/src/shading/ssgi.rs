@@ -78,7 +78,7 @@ impl Default for ScreenSpaceGlobalIllumination {
             steps: 16,
             rays: 2,
             occlusion: 1.0,
-            resolution: crate::AoResolution::Full,
+            resolution: crate::AoResolution::Half,
         }
     }
 }

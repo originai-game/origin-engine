@@ -27539,8 +27539,8 @@
         },
         "aoResolution": {
           "$ref": "#/$defs/AoResolution",
-          "description": "Full resolution, or half for a fraction of the GPU time at softer detail.",
-          "default": "full"
+          "description": "Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full.",
+          "default": "half"
         },
         "aoDirect": {
           "type": "number",
@@ -28278,8 +28278,8 @@
         },
         "resolution": {
           "$ref": "#/$defs/AoResolution",
-          "description": "Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.",
-          "default": "full"
+          "description": "Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full.",
+          "default": "half"
         },
         "probeSpacing": {
           "type": "number",

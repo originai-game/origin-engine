@@ -9307,7 +9307,11 @@ export interface PostEffects {
   aoIntensity: number;
   /** The algorithm. */
   aoMethod: AoMethod;
-  /** Full resolution, or half for a fraction of the GPU time at softer detail. */
+  /**
+   * Half (the default) searches and blurs at half resolution with a normal- and depth-aware upsample; full searches every pixel. QualityPreset.high sets RenderSettings.aoResolution to full.
+   *
+   * @default "half"
+   */
   aoResolution: AoResolution;
   /**
    * How much the occlusion also darkens direct and local light (0 only the ambient light, 1 a fully occluded pixel keeps 35 % of it). Above 0 the AO sees and darkens water surfaces too; at 0 water is outside it.
@@ -10005,7 +10009,9 @@ export interface GlobalIllumination {
    */
   occlusion: number;
   /**
-   * Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.
+   * Half (the default) traces a quarter of the rays with a normal- and depth-aware upsample; full traces every pixel. With PostEffects.ao on, the AO is drawn at this resolution too. QualityPreset.high sets RenderSettings.aoResolution to full.
+   *
+   * @default "half"
    */
   resolution: AoResolution;
   /**

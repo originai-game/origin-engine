@@ -396,9 +396,18 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
         g.transient(name, desc(pw, ph, HDR_FORMAT, 1, ATTACH_BIND));
     }
     if has(FramePass::GodRaysMask) {
-        g.transient("god.mask", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND))
-            .transient("god.blur", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND))
-            .transient("god.resolve", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND));
+        g.transient(
+            "god.mask",
+            desc(phw, phh, cfg.rgb_hdr_format, 1, ATTACH_BIND),
+        )
+        .transient(
+            "god.blur",
+            desc(phw, phh, cfg.rgb_hdr_format, 1, ATTACH_BIND),
+        )
+        .transient(
+            "god.resolve",
+            desc(phw, phh, cfg.rgb_hdr_format, 1, ATTACH_BIND),
+        );
     }
     let mut size = METER_SIZE;
     for i in 0..meter_levels() {
@@ -414,7 +423,7 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
             desc(
                 (phw >> i).max(1),
                 (phh >> i).max(1),
-                HDR_FORMAT,
+                cfg.rgb_hdr_format,
                 1,
                 ATTACH_BIND,
             ),
