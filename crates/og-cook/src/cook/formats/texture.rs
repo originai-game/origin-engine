@@ -133,13 +133,14 @@ pub fn longest_side(bytes: &[u8]) -> Option<u32> {
 /// for `execute`'s order and threads (`Job::cost`): its texels, by its
 /// header, times what its encoder takes a texel. UASTC at level 3 with RDO
 /// takes about 8 times ETC1S's time (a 1024x1024 map with its mips: 27 to
-/// 36 s against 3.8 s, one thread of an x86-64 orb); pixel art is not
-/// encoded. 0 when the header does not say its size.
+/// 36 s against 3.8 s, one thread of an x86-64 orb); at level 1 without RDO
+/// (the default) about ETC1S's own (2.3 s for a 1024x1024 map); pixel art is
+/// not encoded. 0 when the header does not say its size.
 pub(crate) fn encode_cost(bytes: &[u8], k: u32, opts: &TextureOptions) -> u64 {
     let Some((w, h)) = size(bytes) else { return 0 };
     let texel = match k {
         kind::PIXEL => 0,
-        _ if opts.uastc(k) => 8,
+        _ if opts.uastc(k) && (opts.uastc_rdo.is_some() || opts.uastc_level >= 3) => 8,
         _ => 1,
     };
     u64::from(w) * u64::from(h) * texel

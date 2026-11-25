@@ -293,8 +293,10 @@ impl Default for TextureOptions {
     fn default() -> Self {
         TextureOptions {
             etc1s_quality: 128,
-            uastc_level: 3,
-            uastc_rdo: Some(1.0),
+            // Level 1 without RDO: a 2048² normal map in 8.9 s instead of 129 s
+            // (level 3, RDO 1.0) at 39.1 dB against 38.5, about 10 % larger.
+            uastc_level: 1,
+            uastc_rdo: None,
             zstd: true,
             mipmaps: true,
             force_toktx: false,

@@ -1,8 +1,9 @@
 {
+  "simulation": "unchanged",
   "fixed": [
     {
       "member": "og cook: normal and linear textures",
-      "summary": "UASTC textures (normal maps, metallic-roughness, occlusion, masks, and colour under `cook { color_textures uastc }`) encode at the level the options set: the basis-universal binding ORed the level over its default. The default explicitly remains level 3, the previous effective level, preserving texture detail and avoiding fragmented shading on impostor trunks. RDO remains 1.0. Explicit lower levels now work as requested. Every UASTC texture recooks once."
+      "summary": "UASTC textures (normal maps, metallic-roughness, occlusion, masks, and colour under `cook { color_textures uastc }`) encode at level 1 without rate-distortion optimisation instead of level 3 with RDO 1.0: about 14 times faster to cook (a 2048² normal map 8.9 s instead of 129 s on one thread) at equal or higher PSNR and about 10 % more bytes. Every UASTC texture cooks again once."
     }
   ]
 }
