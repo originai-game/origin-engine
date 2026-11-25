@@ -1,0 +1,219 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+# The `provider` guide: Platform provider contract (`@origingame/engine/provider`)
+
+The host-side provider contract that plugs into a web or packaged game page to answer `og.platform`, rooms, content catalogs, and `og.shared` sessions. Game code stays identical across providers.
+
+<a id="guide-provider-1"></a>
+### `provider §1` Contract version and vocabulary
+
+- **`PROVIDER_VERSION`** (`number (1)`)
+  The contract's version. It moves only with a break of this module: a member removed or renamed, a type narrowed, an answer's or room event's shape changed, or a rule above changed. Adding a method to the vocabulary, an error code, or an optional member is additive and keeps the version. A provider built against version N works with every engine whose PROVIDER_VERSION is N; the engine's changelog names each bump as a break.
+- **`CORE_ONLY_METHODS`** (`re-export`)
+  The methods any host answers from its own storage: the store, the leaderboards, telemetry and the catalog.
+- **`SERVICE_METHODS`** (`re-export`)
+  Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #19).
+- **`CORE_METHODS`** (`value`)
+  The methods any store or portal can answer: the core vocabulary — the core-only methods plus the service methods.
+- **`HOST_EXTENSIONS`** (`re-export`)
+  Methods one host defines: `point` (Origin Point) and `ai.mark` are OriginGame's.
+- **`ONE_WAY_METHODS`** (`readonly PlatformMethod[]`)
+  The one-way method: never answered.
+- **`ERROR_CODES`** (`re-export`)
+  Every error code an answer may carry (crates/og-api/api/platform.ogt).
+- **`RETRYABLE_CODES`** (`re-export`)
+  The codes whose call may succeed later (retryable set to true).
+- **`SAMPLE_ARGS`** (`Readonly<Record<PlatformMethod, Record<string, unknown>>>`)
+  Arguments og.platform sends for each method, as the conformance check calls it.
+- **`type CoreMethod`** = `(typeof CORE_METHODS)[number]`
+- **`type HostExtension`** = `(typeof HOST_EXTENSIONS)[number]`
+- **`type PlatformMethod`** = `CoreMethod | HostExtension`
+  Every method og.platform calls (og.platform.info's capabilities name these).
+- **`type ErrorCode`** = `(typeof ERROR_CODES)[number]`
+- **`retryable`** (`(code: string): boolean`)
+  Whether an error with `code` is retryable.
+- **`ok`** (`(data: unknown): PlatformAnswer`)
+  A successful answer.
+- **`failure`** (`(code: string, message: string): PlatformAnswer`)
+  A failed answer with `code`; `retryable` follows the code.
+- **`unavailable`** (`(method: string, host = "this host"): PlatformAnswer`)
+  The answer to a method this provider does not answer.
+
+<a id="guide-provider-2"></a>
+### `provider §2` Platform and shell providers
+
+### `PlatformProvider`
+
+What answers an engine's platform calls.
+
+| Field | Type | What |
+|---|---|---|
+| `host` | `string` | og.platform.info's `host`: `player`, `local`, `none`, or the provider's own name. |
+| `capabilities` | `readonly string[]` | The methods it answers (og.platform.supports); any other is answered `unavailable`. |
+| `time?` | `number \| undefined` | The provider's UTC milliseconds, sampled when it attaches (og.platform.info's clock reads `player` then). |
+| `handle` | `(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void, link?: PlatformLink): void` | Handle calls in order; answer every one but `telemetry` exactly once, now or later. |
+| `poll?` | `?(link: PlatformLink): void` | Called on every pump, with calls or without: a provider that answers later or sends notices on its own. |
+| `content?` | `{ base(): string }` | Where og.load.data reads the game's content catalogs: `base()` is an https directory (http only on localhost) holding `<catalog>/…`, one for every catalog of the game, read once when the engine starts. Absent: the page's own content base (`og build --content`); absent there too, data loads fail `unavailable`. |
+
+### `PlatformCall`
+
+One platform call, as the host platform take queue lists it.
+
+| Field | Type | What |
+|---|---|---|
+| `request` | `number` |  |
+| `method` | `string` |  |
+| `args` | `Record<string, unknown>` |  |
+| `tick` | `number` |  |
+
+- **`type PlatformAnswer`** = `( | { readonly ok: true; readonly data: unknown } | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly retryable: boolean; readonly revision?: number } } ) & { /** The answering host's clock, UTC ms (a Player that sends its time); the engine's host clock fills it in otherwise. */ readonly time?: number; }`
+  An answer, as the host platform answer hook takes it.
+### `PlatformNotice`
+
+Unasked host input (the host platform notify hook): applied at the next tick's start as og.PlatformNotice.
+
+| Field | Type | What |
+|---|---|---|
+| `kind` | `"purchase" \| "entitlements" \| "invite" \| "catalog" \| "host"` | `host`: a message from the page around the game (a named host payload object), whose meaning the game and that page agree. `catalog`: a content catalog may have a new version (catalog, version, and manifest fields). Best effort: games poll `catalog.head`, so a provider that cannot push (a top-level page) never sends it. |
+| `data` | `unknown` |  |
+| `time?` | `number` |  |
+
+### `PlatformLink`
+
+What a platform provider may do to the engine it answers, besides answering.
+
+| Field | Type | What |
+|---|---|---|
+| `tick` | `number` | The engine's tick now (read between ticks). |
+| `answer` | `(request: number, result: PlatformAnswer): void` | Answer one call (as `handle`'s `answer`). |
+| `notify` | `(notice: PlatformNotice): void` | Send a notice. |
+| `pause` | `(): void` | Pause the game through the host's lifecycle (no ticks, no audio), as while an ad shows. |
+| `resume` | `(): void` | Resume it. |
+
+### `ShellNative`
+
+The provider library, as the factory calls it.
+
+| Field | Type | What |
+|---|---|---|
+| `call` | `(method: string, args?: unknown): unknown` | Calls the native provider call bridge; its answer parsed, `null` for none. |
+
+### `ShellProviderContext`
+
+What the shell hands a bundled provider.
+
+| Field | Type | What |
+|---|---|---|
+| `native` | `ShellNative \| null` | The provider library, `null` when the package has none. |
+| `game` | `string` | The package's title (OG_TITLE). |
+| `env` | `Readonly<Record<string, string \| undefined>>` | shell.env's pairs: a provider reads its own keys (a store's app id, say). |
+| `local` | `PlatformProvider` | The local document's provider, for what the store does not answer. |
+
+- **`type ShellProviderFactory`** = `(context: ShellProviderContext) => PlatformProvider`
+  A store provider module's default export.
+### `Providers`
+
+The page's providers (`play({ provider })`, or `window.__OG_PROVIDER` before play.js loads): each one named replaces the default for its part. `rooms` may be an `og relay` URL (`wss://relay.example/`), carried by relayRooms; `sessions` may be a world server's URL, a staticSession without a token.
+
+| Field | Type | What |
+|---|---|---|
+| `platform?` | `PlatformProvider` |  |
+| `rooms?` | `RoomProvider \| string` |  |
+| `sessions?` | `SessionProvider \| string` |  |
+
+<a id="guide-provider-3"></a>
+### `provider §3` Content catalogs
+
+### `CatalogHead`
+
+`catalog.head`'s answer data: a catalog's current version and its manifest's integrity (crates/og-api/guides/saves.md §11).
+
+| Field | Type | What |
+|---|---|---|
+| `catalog` | `string` |  |
+| `version` | `string` |  |
+| `manifest` | `string` | The version manifest's integrity, `sha384-<base64>`. |
+| `published` | `number` | When it was published, UTC ms. |
+
+- **`type CatalogRead`** = `(url: string) => string | null | Promise<string | null>`
+  Reads `<base>/<catalog>/head.json`: its text, or null when there is none (404). Throws for a network failure.
+- **`catalogHeadProblem(catalog: string, data: unknown): string | null`**
+  What is wrong with a `catalog.head` answer's data for `catalog`, or null when it has the contract's shape.
+- **`catalogHeadAnswer(catalog: string, text: string | null): PlatformAnswer`**
+  `catalog.head`'s answer from a `<base>/<catalog>/head.json` file's text, as the static layout serves it: null text is `"not_found"`, a file without the answer's shape `failed`.
+- **`fetchCatalog`** (`CatalogRead`)
+  The browser's read of a head file: never cached, a 404 is none.
+- **`staticCatalog(base: string, options: { readonly inner?: PlatformProvider; readonly read?: CatalogRead } = {}): PlatformProvider`**
+  A provider over the static catalog layout (`<base>/<catalog>/head.json` and the files beside it): it answers `catalog.head` by reading the head file, never cached, names `base` as the content base, and hands every other call to `inner` (none: `unavailable`). For a self-hosted page and for tests; a platform may serve the same layout.
+
+<a id="guide-provider-4"></a>
+### `provider §4` Rooms and shared-world sessions
+
+### `RoomProvider`
+
+What carries og.platform's rooms (docs/design.md §2.8): the engine's ops in, its events out, in order. Per sender, messages arrive in the order sent and a peer left (`"peer_left"`) after the last of them (lockstep rests on it); a `send` marked `unreliable` may be dropped or overtake others. A refused op is an `error` event naming it.
+
+| Field | Type | What |
+|---|---|---|
+| `host` | `string` | og.platform.roomInfo's `host`: `player` for the Player's rooms, `relay` for an `og relay`'s. |
+| `handle` | `(ops: readonly Record<string, unknown>[], deliver: (events: unknown[]) => void): void` | Carry `ops` in order; `deliver` takes events, now or later (the latest `deliver` given). |
+| `attach?` | `?(deliver: (events: unknown[]) => void): void` | Called when the page makes this the rooms' provider: events it hears before any op (a room joined at connect) go to `deliver`. |
+
+- **`type RoomOp`** = `| { readonly op: "create"; readonly name?: string; readonly capacity?: number } | { readonly op: "join"; readonly room: string; readonly name?: string } | { readonly op: "quick"; readonly mode?: string; readonly players?: number; readonly timeoutMs?: number; readonly name?: string } | { readonly op: "leave" } | { readonly op: "send"; readonly to?: number; readonly channel?: string; readonly data?: unknown; readonly bytes?: string; readonly unreliable?: boolean }`
+  An op, from the engine to its room provider (crates/og-net/src/protocol.rs).
+- **`type RoomEvent`** = `| { readonly type: "joined"; readonly room: string; readonly peer: number; readonly peers: ReadonlyArray<{ readonly peer: number; readonly name: string }> } | { readonly type: "peer_joined"; readonly peer: number; readonly name: string } | { readonly type: "peer_left"; readonly peer: number } | { readonly type: "message"; readonly from: number; readonly channel?: string; readonly data?: unknown; readonly bytes?: string } | { readonly type: "left"; readonly reason?: string } | { readonly type: "error"; readonly op: string; readonly code: string; readonly message: string }`
+  An event, from the room provider to the engine, in order.
+- **`ROOM_MAX_MESSAGE`** (`number (64 * 1024)`)
+  The largest message a game sends, encoded (its JSON, or its bytes): og-net's MAX_MESSAGE.
+- **`ROOM_MAX_ENGINE_MESSAGE`** (`number (16 << 20)`)
+  The largest message on an engine channel (`og.`, a world snapshot for a late joiner): og-net's MAX_ENGINE_MESSAGE.
+- **`relayRooms`** (`re-exported from `./web/relay-rooms.ts``)
+### `SessionProvider`
+
+What hosts og.shared's sessions (docs/design.md §2.12): asked once per connection, it names the world server and a token for it. The engine opens the connection itself (a WebSocket from its Worker) and speaks the world server's protocol over it; the provider owns every URL and credential, so game code is the same under a self-hosted server and a platform's.
+
+| Field | Type | What |
+|---|---|---|
+| `host` | `string` | og.shared.status's `host`: `static` for a fixed endpoint, `endpoint` for a token endpoint's, a platform's own name. |
+| `connect` | `(request: SessionRequest): Promise<SessionAnswer>` |  |
+
+### `SessionRequest`
+
+What og.shared.join (or a reconnect) asks the session provider for: a connection to this world.
+
+| Field | Type | What |
+|---|---|---|
+| `world` | `string` | SharedJoinDesc.world. |
+| `reconnect` | `boolean` | Whether this is a lost session's reconnect (a token endpoint signs a new token for it). |
+
+### `SessionWebTransport`
+
+The same world server over WebTransport (`og world-server --wt-listen`): its `https://` URL and, for a self-signed certificate (`og world-server cert`), the SHA-256 hashes the browser checks it against (64 hex digits each; such a certificate lasts 14 days at most). Snapshots then cross as datagrams, which a lost packet does not hold up.
+
+| Field | Type | What |
+|---|---|---|
+| `url` | `string` |  |
+| `certHashes?` | `readonly string[]` |  |
+
+- **`type SessionAnswer`** = `| { readonly ok: true; readonly url: string; readonly token?: string; readonly webtransport?: SessionWebTransport } | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }`
+  A provider's answer: where the world server is (`ws://` or `wss://`) and the token the engine sends it as it is and never reads (none for a server started `--auth none --dev`), or why not. With `webtransport`, a browser that has WebTransport tries it first and falls back to `url` when it fails to open. A failure with a retryable code (`offline`, `unavailable`, `"rate_limited"`, `timeout`) is tried again on the reconnect schedule; any other ends the session (og.SharedLeft).
+- **`staticSession(grant: { readonly url: string; readonly token?: string; readonly webtransport?: SessionWebTransport }): SessionProvider`**
+  A fixed world server and token (a self-hosted `og world-server`, a test): what `og run --shared` is natively.
+- **`tokenEndpoint(url: string, init: { readonly headers?: Readonly<Record<string, string>> } = {}): SessionProvider`**
+  A game's own token endpoint (self-hosting, docs/web-export.md §Providers): each connection POSTs the request as JSON to `url` with the page's cookies and takes URL and token JSON back (and `webtransport`, as SessionAnswer's, when the server serves it). The endpoint signs a short-lived token for its own player with the world server's secret (`og world-server --auth hs256`); a 401 or 403 ends the session as `unauthorized`, a network failure or a 5xx is tried again.
+
+<a id="guide-provider-5"></a>
+### `provider §5` Provider conformance
+
+- **`checkPlatformProvider(provider: PlatformProvider, options: { wait?: number; settle?: number } = {}): Promise<ConformanceReport>`**
+  Checks a platform provider against this contract, for its author's tests: it lists methods og.platform calls, without duplicates; every method is called once in one batch (each listed one, each unlisted one, and one no provider knows); each listed method but `telemetry` is answered exactly once, `telemetry` never; each unlisted one and the unknown one are answered `unavailable`; every answer has the contract's shape; and a pause is resumed. The calls are real: give it a provider over a throwaway store. `wait` is how long answers may take (ms).
+### `ConformanceReport`
+
+What checkPlatformProvider found: `problems` is empty for a provider that keeps the contract.
+
+| Field | Type | What |
+|---|---|---|
+| `ok` | `boolean` |  |
+| `problems` | `readonly string[]` |  |
+| `answers` | `Readonly<Record<string, readonly PlatformAnswer[]>>` | Every answer, by method. |
+

@@ -27,6 +27,7 @@ mod publish;
 mod relay;
 mod style_check;
 mod trace;
+mod ui_api_docs;
 mod ui_components;
 mod ui_data;
 mod ui_grounds;

@@ -110,9 +110,12 @@ centre. A piece's centre is the ground the text reads on (§5).
   `og check` reports text that then misses its ratio (OG9107).
 
 <a id="guide-themes-6"></a>
-### `themes §6` Review
+### `themes §6` Review and authoring tools
 
-Capture the game's screens with `og ui preview` at the platform's
-breakpoints in both schemes and look at every frame (screens guide §5).
-The theme is chosen when the game is made and stays: a game switches its
-scheme and contrast at run time, not its theme.
+- Use `og style init <name> [--from <theme>]` to scaffold a derived `theme.json`, `og style validate <dir>` to verify its schema and contrast, and `og ui literals` to check for hardcoded copy outside string tables.
+- Read `og api show theme-tokens` for the full list of colour roles, theme scales, `packClass` slots, pack sounds/images, and built-in icon names, and `og api show ui-tsx` for `@origingame/engine/ui` TSX primitives, hooks, and signals.
+- Capture the game's screens with `og ui preview` at the platform's
+  breakpoints in both schemes and look at every frame (screens guide §5).
+  The theme is chosen when the game is made and stays: a game switches its
+  scheme and contrast at run time, not its theme.
+
