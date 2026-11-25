@@ -796,17 +796,27 @@ pub(crate) fn diagnose(
                     .and_then(|t| t.segment())
             })
     };
+    // A video's length and keyframe interval, asked of ffprobe once a
+    // video: every node that plays it asks, and a probe is a process.
+    let probed: std::cell::RefCell<BTreeMap<String, Option<(f64, f64)>>> = Default::default();
     let video_info = |id: &str| -> Option<(f64, f64)> {
-        let s = sources
+        if let Some(known) = probed.borrow().get(id) {
+            return *known;
+        }
+        let info = sources
             .iter()
-            .find(|s| s.rel == id && s.kind == &video::VIDEO)?;
-        let text = std::str::from_utf8(&s.bytes).ok()?;
-        let root = crate::cook::assets_root(s);
-        let decl = video::parse(&s.rel, text, &|p| root.join(p).is_file()).ok()?;
-        let probe = video::probe(&root.join(&decl.source)).ok()?;
-        let seconds = probe.duration.min(decl.max_seconds);
-        let keyframe = if decl.stream { decl.keyframe } else { 0.0 };
-        Some((seconds, keyframe))
+            .find(|s| s.rel == id && s.kind == &video::VIDEO)
+            .and_then(|s| {
+                let text = std::str::from_utf8(&s.bytes).ok()?;
+                let root = crate::cook::assets_root(s);
+                let decl = video::parse(&s.rel, text, &|p| root.join(p).is_file()).ok()?;
+                let probe = video::probe(&root.join(&decl.source)).ok()?;
+                let seconds = probe.duration.min(decl.max_seconds);
+                let keyframe = if decl.stream { decl.keyframe } else { 0.0 };
+                Some((seconds, keyframe))
+            });
+        probed.borrow_mut().insert(id.to_string(), info);
+        info
     };
     let (flow_errors, flow_warnings) =
         story::check_flows(&stories, &segment, &video_info, story_functions);
