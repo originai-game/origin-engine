@@ -80,6 +80,8 @@ enum Compiled {
     Ready {
         pipeline: wgpu::RenderPipeline,
         uniform: wgpu::Buffer,
+        group_cache:
+            std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<[wgpu::TextureView; 4]>>,
         /// Its error scope, while the device has not answered (the web).
         pending: Option<std::pin::Pin<Box<dyn std::future::Future<Output = Option<wgpu::Error>>>>>,
     },
@@ -252,6 +254,7 @@ impl CustomPosts {
         Compiled::Ready {
             pipeline,
             uniform,
+            group_cache: Default::default(),
             pending,
         }
     }
@@ -289,7 +292,10 @@ impl CustomPosts {
         let Some((
             _,
             Compiled::Ready {
-                pipeline, uniform, ..
+                pipeline,
+                uniform,
+                group_cache,
+                ..
             },
         )) = self.compiled.get(&(scene.id(), post))
         else {
@@ -309,18 +315,29 @@ impl CustomPosts {
         };
         crate::traffic::write_buffer(queue, uniform, 0, bytemuck::bytes_of(&u));
         let [read, scene_color, depth, gbuffer, write] = views;
-        let group = crate::bind_group(
-            device,
-            "custom post",
-            group_layout,
-            &[
-                wgpu::BindingResource::TextureView(read),
-                wgpu::BindingResource::TextureView(scene_color),
-                wgpu::BindingResource::TextureView(depth),
-                wgpu::BindingResource::TextureView(gbuffer),
-                wgpu::BindingResource::Sampler(sampler),
-                uniform.as_entire_binding(),
+        let mut cache = group_cache.borrow_mut();
+        let group = cache.get_or_insert_with(
+            [
+                read.clone(),
+                scene_color.clone(),
+                depth.clone(),
+                gbuffer.clone(),
             ],
+            || {
+                crate::bind_group(
+                    device,
+                    "custom post",
+                    group_layout,
+                    &[
+                        wgpu::BindingResource::TextureView(read),
+                        wgpu::BindingResource::TextureView(scene_color),
+                        wgpu::BindingResource::TextureView(depth),
+                        wgpu::BindingResource::TextureView(gbuffer),
+                        wgpu::BindingResource::Sampler(sampler),
+                        uniform.as_entire_binding(),
+                    ],
+                )
+            },
         );
         crate::post::fullscreen_pass(
             encoder,
@@ -328,7 +345,7 @@ impl CustomPosts {
             write,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             Some(pipeline),
-            &group,
+            group,
         );
         1
     }

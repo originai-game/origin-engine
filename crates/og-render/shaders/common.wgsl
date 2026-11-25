@@ -81,7 +81,7 @@ fn ign(px: vec2<f32>) -> f32 {
 // Call of Duty: Advanced Warfare", 2014) over the pass's pixels, turned
 // each drawn frame by `turn` (the frames drawn since the last capture, the
 // TAA jitter's clock: frame.wgsl `frame.drawn.w`, shadow_pass.wgsl
-// `shadow_pass.dither.x`), so the frames (and a temporal resolve) average
+// `shadow_dither_turn()`), so the frames (and a temporal resolve) average
 // to the share drawn. A negative `hidden` fades out against one fading
 // in: it keeps exactly the pixels that one cuts, the noise under
 // 1 - |hidden|, so a cross-fade draws each pixel once. The lit pass and

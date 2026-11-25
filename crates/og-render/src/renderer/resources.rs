@@ -10,15 +10,15 @@ pub(crate) struct ShadowPassUniform {
     /// x: the scene clock in seconds (a material shader's `h.time`), yzw:
     /// the scene's origin (`h.origin`, `origin.rs`).
     pub(crate) time: [f32; 4],
-    /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
-    /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).
+    /// x: 0 for flat projection, +1 for paraboloid hemisphere below the light,
+    /// -1 above; y: the dither turn (`turn % 64` as f32); z: the map's side;
+    /// w: the projection's scale (shadow_pass.wgsl).
     pub(crate) paraboloid: [f32; 4],
-    /// x: the frames drawn since the last capture, the dither's turn
-    /// (common.wgsl `dither_cut`, the frame's `drawn.w`); yzw unused.
-    pub(crate) dither: [u32; 4],
     /// Shadows draw only the current deformation; motion history lives in Frame.
     pub(crate) foliage_wind: crate::foliage::FoliageWind,
 }
+
+const _: () = assert!(std::mem::size_of::<ShadowPassUniform>() == 256);
 
 /// An instance in the instance buffers: its columns' xyz, its
 /// texture-array layer and its look ([`instances::GpuTransform`]).

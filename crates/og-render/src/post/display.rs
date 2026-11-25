@@ -183,6 +183,8 @@ pub(crate) struct Output {
     pipeline: wgpu::RenderPipeline,
     sampler: wgpu::Sampler,
     uniform: wgpu::Buffer,
+    last_peak: std::cell::Cell<f32>,
+    group_cache: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<wgpu::TextureView>>,
 }
 
 impl Output {
@@ -258,6 +260,8 @@ impl Output {
             pipeline,
             uniform,
             sampler: device.create_sampler(&wgpu::SamplerDescriptor::default()),
+            last_peak: std::cell::Cell::new(headroom),
+            group_cache: Default::default(),
         }
     }
 
@@ -287,29 +291,31 @@ impl Output {
         limit: og_draw::RangeLimit,
     ) {
         // The uniform's z: the headroom, or less under `limit`.
-        crate::traffic::write_buffer(
-            queue,
-            &self.uniform,
-            8,
-            bytemuck::bytes_of(&self.peak(limit)),
-        );
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("display output"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(source),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.uniform.as_entire_binding(),
-                },
-            ],
+        let peak = self.peak(limit);
+        if peak.to_bits() != self.last_peak.get().to_bits() {
+            crate::traffic::write_buffer(queue, &self.uniform, 8, bytemuck::bytes_of(&peak));
+            self.last_peak.set(peak);
+        }
+        let mut cache = self.group_cache.borrow_mut();
+        let group = cache.get_or_insert_with(source.clone(), || {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("display output"),
+                layout: &self.layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(source),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sampler),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: self.uniform.as_entire_binding(),
+                    },
+                ],
+            })
         });
         post::fullscreen_pass(
             encoder,
@@ -317,7 +323,7 @@ impl Output {
             output,
             wgpu::LoadOp::Clear(wgpu::Color::BLACK),
             Some(&self.pipeline),
-            &group,
+            group,
         );
     }
 }

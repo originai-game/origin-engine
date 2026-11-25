@@ -189,6 +189,16 @@ const TEMPORAL: usize = 5;
 const UPSAMPLE: usize = 6;
 const PREFILTER_WIDE: usize = 7;
 
+struct TargetGroups {
+    base: wgpu::BindGroup,
+    reduce: wgpu::BindGroup,
+    resolve: wgpu::BindGroup,
+    prefilter: wgpu::BindGroup,
+    prefilter_wide: wgpu::BindGroup,
+    temporal: [wgpu::BindGroup; 2],
+    upsample: [wgpu::BindGroup; 2],
+}
+
 struct Targets {
     size: (u32, u32),
     divisor: u32,
@@ -216,6 +226,8 @@ struct Targets {
     upsampled: Option<(wgpu::TextureView, wgpu::Texture)>,
     /// The denoiser's guide: normal, depth and roughness in one texel.
     guide: wgpu::TextureView,
+    /// Static bind groups over these targets' views, built once per target size.
+    groups: Option<TargetGroups>,
 }
 
 fn texture(
@@ -297,7 +309,99 @@ impl Targets {
                 (t.create_view(&Default::default()), t)
             }),
             guide: view("ssr guide", ray_size, FORMAT),
+            groups: None,
         }
+    }
+
+    fn ensure_groups(&mut self, device: &wgpu::Device, p: &Pipelines) {
+        if self.groups.is_some() {
+            return;
+        }
+        let tex = wgpu::BindingResource::TextureView;
+        let group = |pass: usize, resources: &[(u32, wgpu::BindingResource)]| {
+            crate::volumetric::bind_at(device, "ssr pass", &p.layouts[pass], resources)
+        };
+        let outs = |first: usize| -> [(u32, wgpu::BindingResource); 4] {
+            let at = [0u32, 19, 20, 21];
+            std::array::from_fn(|k| (at[k], tex(&self.hiz_levels[first + k])))
+        };
+        let base = group(HIZ_BASE, &outs(0));
+        let mut reduce_entries = outs(4).to_vec();
+        reduce_entries.push((1, tex(&self.hiz_levels[3])));
+        let reduce = group(HIZ_REDUCE, &reduce_entries);
+        let resolve = group(
+            RESOLVE,
+            &[
+                (6, tex(&self.ray_radiance)),
+                (7, tex(&self.ray_hit)),
+                (8, tex(&self.resolved)),
+                (23, tex(&self.guide)),
+            ],
+        );
+        let prefilter = group(
+            PREFILTER,
+            &[
+                (9, tex(&self.resolved)),
+                (15, tex(&self.filtered)),
+                (23, tex(&self.guide)),
+            ],
+        );
+        // At half resolution the wide pass filters the prefilter's output
+        // into the ray radiance, which nothing reads after the resolve.
+        let wide = self.divisor > 1;
+        let prefilter_wide = group(
+            PREFILTER_WIDE,
+            &[
+                (9, tex(&self.filtered)),
+                (15, tex(&self.ray_radiance)),
+                (23, tex(&self.guide)),
+            ],
+        );
+        let temporal = [0usize, 1].map(|slot| {
+            group(
+                TEMPORAL,
+                &[
+                    (7, tex(&self.ray_hit)),
+                    (
+                        9,
+                        tex(if wide {
+                            &self.ray_radiance
+                        } else {
+                            &self.filtered
+                        }),
+                    ),
+                    (16, tex(&self.resolved)),
+                    (10, tex(&self.history[1 - slot])),
+                    (11, tex(&self.meta[1 - slot])),
+                    (12, tex(&self.history[slot])),
+                    (13, tex(&self.meta[slot])),
+                    (17, tex(&self.spread[1 - slot])),
+                    (18, tex(&self.spread[slot])),
+                    (14, tex(&self.fast[slot])),
+                    (24, tex(&self.fast[1 - slot])),
+                ],
+            )
+        });
+        let upsample_dst = self.upsampled.as_ref().map_or(&self.lit, |u| &u.0);
+        let upsample = [0usize, 1].map(|slot| {
+            group(
+                UPSAMPLE,
+                &[
+                    (10, tex(&self.history[slot])),
+                    (23, tex(&self.guide)),
+                    (25, tex(upsample_dst)),
+                ],
+            )
+        });
+        self.groups = Some(TargetGroups {
+            base,
+            reduce,
+            resolve,
+            prefilter,
+            prefilter_wide,
+            temporal,
+            upsample,
+        });
     }
 }
 
@@ -321,6 +425,12 @@ pub(crate) struct SsrRenderer {
     pipelines: Option<Pipelines>,
     targets: Option<Targets>,
     uniform: wgpu::Buffer,
+    common_cache: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(wgpu::TextureView, wgpu::TextureView)>,
+    >,
+    trace_cache: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(wgpu::TextureView, wgpu::TextureView)>,
+    >,
     /// What the lit shaders read in a frame without reflections: one
     /// texel of nothing.
     off: wgpu::TextureView,
@@ -344,6 +454,8 @@ impl SsrRenderer {
                     mapped_at_creation: false,
                 },
             ),
+            common_cache: Default::default(),
+            trace_cache: Default::default(),
             off: texture(device, "ssr off", (1, 1), FORMAT, 1).create_view(&Default::default()),
             history: None,
             generation: 0,
@@ -381,6 +493,8 @@ impl SsrRenderer {
             return false;
         }
         self.targets = Some(Targets::new(device, size, divisor));
+        self.common_cache.get_mut().clear();
+        self.trace_cache.get_mut().clear();
         self.history = None;
         self.generation += 1;
         true
@@ -461,7 +575,9 @@ impl SsrRenderer {
         if self.pipelines.is_none() {
             self.pipelines = Some(Pipelines::new(device));
         }
-        let t = self.targets.as_ref().expect("ensure_targets");
+        let p = self.pipelines.as_ref().expect("initialized above");
+        let t = self.targets.as_mut().expect("ensure_targets");
+        t.ensure_groups(device, p);
         // The history is the previous frame's, or none.
         let previous = self.history.filter(|(f, _)| f + 1 == frame);
         let proj = camera.view_proj * camera.view.inverse();
@@ -528,100 +644,47 @@ impl SsrRenderer {
         let (Some(p), Some(t)) = (&self.pipelines, &self.targets) else {
             return;
         };
+        let Some(g) = &t.groups else {
+            return;
+        };
         let tex = wgpu::BindingResource::TextureView;
-        let common = crate::volumetric::bind_at(
-            device,
-            "ssr",
-            &p.common,
-            &[
-                (0, self.uniform.as_entire_binding()),
-                (1, tex(depth)),
-                (2, tex(gbuffer)),
-                (3, wgpu::BindingResource::Sampler(&p.sampler)),
-            ],
-        );
+        let mut common_cache = self.common_cache.borrow_mut();
+        let common = common_cache.get_or_insert_with((depth.clone(), gbuffer.clone()), || {
+            crate::volumetric::bind_at(
+                device,
+                "ssr",
+                &p.common,
+                &[
+                    (0, self.uniform.as_entire_binding()),
+                    (1, tex(depth)),
+                    (2, tex(gbuffer)),
+                    (3, wgpu::BindingResource::Sampler(&p.sampler)),
+                ],
+            )
+        });
+        let mut trace_cache = self.trace_cache.borrow_mut();
+        let trace = trace_cache.get_or_insert_with((t.hiz.clone(), prev_lit.clone()), || {
+            crate::volumetric::bind_at(
+                device,
+                "ssr pass",
+                &p.layouts[TRACE],
+                &[
+                    (2, tex(&t.hiz)),
+                    (3, tex(prev_lit)),
+                    (4, tex(&t.ray_radiance)),
+                    (5, tex(&t.ray_hit)),
+                    (22, tex(&t.guide)),
+                ],
+            )
+        });
         let slot = (frame % 2) as usize;
-        let group = |pass: usize, resources: &[(u32, wgpu::BindingResource)]| {
-            crate::volumetric::bind_at(device, "ssr pass", &p.layouts[pass], resources)
-        };
-        // The four levels a pyramid dispatch writes from `first` (ssr.wgsl
-        // hiz_out0 to hiz_out3).
-        let outs = |first: usize| -> [(u32, wgpu::BindingResource); 4] {
-            let at = [0u32, 19, 20, 21];
-            std::array::from_fn(|k| (at[k], tex(&t.hiz_levels[first + k])))
-        };
-        let base = group(HIZ_BASE, &outs(0));
-        let mut reduce_entries = outs(4).to_vec();
-        reduce_entries.push((1, tex(&t.hiz_levels[3])));
-        let reduce = group(HIZ_REDUCE, &reduce_entries);
-        let trace = group(
-            TRACE,
-            &[
-                (2, tex(&t.hiz)),
-                (3, tex(prev_lit)),
-                (4, tex(&t.ray_radiance)),
-                (5, tex(&t.ray_hit)),
-                (22, tex(&t.guide)),
-            ],
-        );
-        let resolve = group(
-            RESOLVE,
-            &[
-                (6, tex(&t.ray_radiance)),
-                (7, tex(&t.ray_hit)),
-                (8, tex(&t.resolved)),
-                (23, tex(&t.guide)),
-            ],
-        );
-        let prefilter = group(
-            PREFILTER,
-            &[
-                (9, tex(&t.resolved)),
-                (15, tex(&t.filtered)),
-                (23, tex(&t.guide)),
-            ],
-        );
-        // At half resolution the wide pass filters the prefilter's output
-        // into the ray radiance, which nothing reads after the resolve.
         let wide = t.divisor > 1;
-        let prefilter_wide = group(
-            PREFILTER_WIDE,
-            &[
-                (9, tex(&t.filtered)),
-                (15, tex(&t.ray_radiance)),
-                (23, tex(&t.guide)),
-            ],
-        );
-        let temporal = group(
-            TEMPORAL,
-            &[
-                (7, tex(&t.ray_hit)),
-                (9, tex(if wide { &t.ray_radiance } else { &t.filtered })),
-                (16, tex(&t.resolved)),
-                (10, tex(&t.history[1 - slot])),
-                (11, tex(&t.meta[1 - slot])),
-                (12, tex(&t.history[slot])),
-                (13, tex(&t.meta[slot])),
-                (17, tex(&t.spread[1 - slot])),
-                (18, tex(&t.spread[slot])),
-                (14, tex(&t.fast[slot])),
-                (24, tex(&t.fast[1 - slot])),
-            ],
-        );
-        let upsample = group(
-            UPSAMPLE,
-            &[
-                (10, tex(&t.history[slot])),
-                (23, tex(&t.guide)),
-                (25, tex(t.upsampled.as_ref().map_or(&t.lit, |u| &u.0))),
-            ],
-        );
         let groups = |(w, h): (u32, u32)| (w.div_ceil(8), h.div_ceil(8));
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ssr"),
             timestamp_writes: None,
         });
-        pass.set_bind_group(0, &common, &[]);
+        pass.set_bind_group(0, common, &[]);
         let mut dispatch = |pipeline: usize, group: &wgpu::BindGroup, size: (u32, u32)| {
             pass.set_pipeline(&p.passes[pipeline]);
             pass.set_bind_group(1, group, &[]);
@@ -630,17 +693,17 @@ impl SsrRenderer {
         };
         // A group of 8x8 writes 8x8 texels of its first level.
         let (w, h) = pyramid_size(t.size.0, t.size.1);
-        dispatch(HIZ_BASE, &base, (w, h));
-        dispatch(HIZ_REDUCE, &reduce, (w >> 4, h >> 4));
-        dispatch(TRACE, &trace, t.ray_size);
-        dispatch(RESOLVE, &resolve, t.ray_size);
-        dispatch(PREFILTER, &prefilter, t.ray_size);
+        dispatch(HIZ_BASE, &g.base, (w, h));
+        dispatch(HIZ_REDUCE, &g.reduce, (w >> 4, h >> 4));
+        dispatch(TRACE, trace, t.ray_size);
+        dispatch(RESOLVE, &g.resolve, t.ray_size);
+        dispatch(PREFILTER, &g.prefilter, t.ray_size);
         if wide {
-            dispatch(PREFILTER_WIDE, &prefilter_wide, t.ray_size);
+            dispatch(PREFILTER_WIDE, &g.prefilter_wide, t.ray_size);
         }
-        dispatch(TEMPORAL, &temporal, t.ray_size);
+        dispatch(TEMPORAL, &g.temporal[slot], t.ray_size);
         if t.upsampled.is_some() {
-            dispatch(UPSAMPLE, &upsample, t.size);
+            dispatch(UPSAMPLE, &g.upsample[slot], t.size);
         }
         drop(pass);
         // The lit shaders read a view that is the same every frame, and

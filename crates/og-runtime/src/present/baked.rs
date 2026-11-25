@@ -15,7 +15,7 @@
 //! when its static models are all despawned.
 
 use crate::present::extract::Parts;
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use og_bundle::runtime::SceneDesc;
 use og_core::IdMap;
 use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
@@ -98,24 +98,6 @@ impl BakedState {
         }
         self.lighting = lighting;
     }
-}
-
-/// og.RectLight at world transform `m`: width and height along its local
-/// x and y, emitting along its local -Z (`og_render::LightDesc::rect`).
-pub(crate) fn rect_light(
-    m: Mat4,
-    v: &crate::host::wire::record::RectLight,
-) -> og_render::LightDesc {
-    og_render::LightDesc::rect(
-        m.transform_point3(Vec3::ZERO),
-        m.transform_vector3(Vec3::X) * v.width.max(0.0) * 0.5,
-        m.transform_vector3(Vec3::Y) * v.height.max(0.0) * 0.5,
-        v.two_sided,
-        Vec3::new(v.color.r, v.color.g, v.color.b),
-        v.intensity,
-        v.cast_shadow,
-        mobility(v.mobility),
-    )
 }
 
 /// A light record's mobility as the renderer's.

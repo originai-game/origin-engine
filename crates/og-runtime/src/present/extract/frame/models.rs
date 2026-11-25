@@ -452,13 +452,15 @@ pub(super) fn models(
             look.fx.flash_color = og_render::lod::debug_color(level);
         }
         // The levels drawn: its own, and the one it fades out from.
-        let mut levels = vec![(level, look)];
+        let mut levels = [(level, look); 2];
+        let mut level_count = 1usize;
         if let Some((from, t)) = fading {
             levels[0].1.fx.reveal = t;
             let mut out = look;
             out.fx.reveal = 1.0 - t;
             out.fx.fade_out = true;
-            levels.push((from, out));
+            levels[1] = (from, out);
+            level_count = 2;
         }
         // A swaying model's parts draw with their materials' wind copies.
         if sway > 0.0
@@ -468,7 +470,7 @@ pub(super) fn models(
                 p.1 = rs.wind.material(&mut rs.scene, p.1, sway, top);
             }
         }
-        for (level, look) in levels {
+        for &(level, look) in &levels[..level_count] {
             // At its impostor's level a model at rest is one card
             // (og-render's `impostor`), drawn with the scattered copies'
             // passes.
@@ -589,15 +591,18 @@ pub(super) fn meshes(
     h: &mut Hierarchy,
     keys: &mut Vec<(u64, u32)>,
 ) {
-    let layouts = &rs.draw;
-    let (geometries, materials) = (&rs.geometries, &rs.materials);
-    let mesh_rows = layouts
+    let mesh_rows = rs
+        .draw
         .mesh
         .as_ref()
         .map(|m| mesh_rows(world, m))
         .unwrap_or_default();
-    let (geometries, materials) = (geometries.clone(), materials.clone());
-    let scene = &mut rs.scene;
+    let RenderState {
+        geometries,
+        materials,
+        scene,
+        ..
+    } = rs;
     // Meshes.
     {
         scene.objects.instances.reserve(mesh_rows.len());

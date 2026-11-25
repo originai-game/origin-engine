@@ -256,9 +256,24 @@ pub(crate) fn build(
         .iter()
         .map(|t| (t.text, t))
         .collect();
-    // (layer, key, source, untonemapped, instance), in submission order.
-    let mut keyed: Vec<(i32, f32, RunSource, bool, SpriteInstance)> =
+    #[inline]
+    fn map_get<V>(map: &HashMap<u32, V>, key: u32) -> Option<&V> {
+        if map.is_empty() { None } else { map.get(&key) }
+    }
+
+    #[derive(Clone, Copy)]
+    struct SpriteKey {
+        layer: i32,
+        order: f32,
+        source: RunSource,
+        untonemapped: bool,
+        instance: u32,
+    }
+
+    let mut raw_instances: Vec<SpriteInstance> =
         Vec::with_capacity(scene.sprite.sprites.len() + extra.len());
+    // Compact sort keys referencing `raw_instances`, in submission order.
+    let mut keyed: Vec<SpriteKey> = Vec::with_capacity(scene.sprite.sprites.len() + extra.len());
     let mut glowing: Vec<(RunSource, SpriteInstance)> = Vec::new();
     // Billboards (depth, layer, source, instance) and their drop shadows.
     let mut boards: Vec<(f32, i32, RunSource, SpriteInstance)> = Vec::new();
@@ -276,18 +291,16 @@ pub(crate) fn build(
             verdict(i, crate::Culled::Layer);
             continue;
         }
+        let non_empty = s.size.x != 0.0 && s.size.y != 0.0;
         verdict(
             i,
-            match s.size.x != 0.0 && s.size.y != 0.0 {
+            match non_empty {
                 true => crate::Culled::Drawn,
                 false => crate::Culled::Empty,
             },
         );
-        let found = if fx.is_empty() {
-            None
-        } else {
-            fx.get(&(i as u32))
-        };
+        let idx = i as u32;
+        let found = map_get(&fx, idx);
         let (flash, glow, blend, tone_mapped) = match found {
             Some(f) => (
                 f.flash,
@@ -308,7 +321,7 @@ pub(crate) fn build(
             ),
             false,
         );
-        if let Some(o) = lines.get(&(i as u32)) {
+        if let Some(o) = map_get(&lines, idx) {
             outline(&mut inst, o, s.texture.and_then(|t| scene.texture_size(t)));
         }
         let facing = facing_of(&scene.sprite.sprite_facing, i);
@@ -317,22 +330,24 @@ pub(crate) fn build(
         // A billboard of its own depth sorts with the transparent meshes
         // (`billboards`); with a key, or untonemapped (its cover pass is
         // the sprite order's), it keeps the layer order.
-        let shaded = shading.get(&(i as u32)).copied();
-        let board = faced && tone_mapped && shaded.is_none() && !order.contains_key(&(i as u32));
+        let shaded = map_get(&shading, idx).copied();
+        let explicit_order = map_get(&order, idx).copied();
+        let board = faced && tone_mapped && shaded.is_none() && explicit_order.is_none();
         // Its texture, with the material's hooks when it has one.
         let plain = |blend| match shaded {
             Some(m) => RunSource::Shaded(blend, s.texture, m),
             None => RunSource::Sprite(blend, s.texture),
         };
         // A billboard sorts back to front from the eye within its layer.
-        let key = match order.get(&(i as u32)) {
-            Some(&k) => k,
+        let key = match explicit_order {
+            Some(k) => k,
             None if faced => -eye.depth(s.position),
             None => 0.0,
         };
+        let array_entry = map_get(&arrays, idx).copied();
         // Its drop shadow: the same quad and texel alpha in black, projected
         // onto the ground, before every sprite of the layer.
-        if let (Some(g), Some(&(opacity, on))) = (ground, shadows.get(&(i as u32)))
+        if let (Some(g), Some(&(opacity, on))) = (ground, map_get(&shadows, idx))
             && opacity > 0.0
         {
             let mut shadow = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
@@ -348,8 +363,8 @@ pub(crate) fn build(
             if faced {
                 shadow.facing = FACING_SUN;
             }
-            let source = match arrays.get(&(i as u32)) {
-                Some(&(array, layer)) => {
+            let source = match array_entry {
+                Some((array, layer)) => {
                     shadow.layer = layer;
                     RunSource::Array(SpriteBlend::Alpha, array)
                 }
@@ -364,20 +379,35 @@ pub(crate) fn build(
                 if board {
                     board_shadows.push((source, cell));
                 } else {
-                    keyed.push((s.layer, f32::MIN, source, false, cell));
+                    let slot = raw_instances.len() as u32;
+                    raw_instances.push(cell);
+                    keyed.push(SpriteKey {
+                        layer: s.layer,
+                        order: f32::MIN,
+                        source,
+                        untonemapped: false,
+                        instance: slot,
+                    });
                     shadow_count += 1;
                 }
             }
         }
-        if faced
-            && let Some(frustum) = eye.frustum
-            && !frustum.intersects_sphere(s.position, sprite_radius(s))
-        {
-            verdict(i, crate::Culled::OutsideView);
-            culled += 1;
-            continue;
+        if non_empty && let Some(frustum) = eye.frustum {
+            let mut radius = sprite_radius(s);
+            if inst.outline[2] > 0.0 {
+                let du = (s.uv_rect[2] - s.uv_rect[0]).abs().max(1e-4);
+                let dv = (s.uv_rect[3] - s.uv_rect[1]).abs().max(1e-4);
+                radius += (s.size.x.abs() / du * inst.outline[0])
+                    .max(s.size.y.abs() / dv * inst.outline[1])
+                    * inst.outline[2];
+            }
+            if !frustum.intersects_sphere(s.position, radius) {
+                verdict(i, crate::Culled::OutsideView);
+                culled += 1;
+                continue;
+            }
         }
-        if let Some(&(array, layer)) = arrays.get(&(i as u32)) {
+        if let Some((array, layer)) = array_entry {
             inst.layer = layer;
             if glow > 0.0 {
                 glowing.push((RunSource::Array(SpriteBlend::Additive, array), inst));
@@ -391,13 +421,15 @@ pub(crate) fn build(
                 ));
                 continue;
             }
-            keyed.push((
-                s.layer,
-                key,
-                RunSource::Array(blend, array),
-                !tone_mapped,
-                inst,
-            ));
+            let slot = raw_instances.len() as u32;
+            raw_instances.push(inst);
+            keyed.push(SpriteKey {
+                layer: s.layer,
+                order: key,
+                source: RunSource::Array(blend, array),
+                untonemapped: !tone_mapped,
+                instance: slot,
+            });
             continue;
         }
         if glow > 0.0 {
@@ -412,7 +444,15 @@ pub(crate) fn build(
             ));
             continue;
         }
-        keyed.push((s.layer, key, plain(blend), !tone_mapped, inst));
+        let slot = raw_instances.len() as u32;
+        raw_instances.push(inst);
+        keyed.push(SpriteKey {
+            layer: s.layer,
+            order: key,
+            source: plain(blend),
+            untonemapped: !tone_mapped,
+            instance: slot,
+        });
     }
     let sprite_boards = boards.len() as u32;
     for e in extra.iter().filter(|e| e.layers & mask != 0) {
@@ -443,14 +483,21 @@ pub(crate) fn build(
         if e.glow > 0.0 {
             glowing.push((run(SpriteBlend::Additive), inst));
         }
-        keyed.push((s.layer, 0.0, run(e.blend), false, inst));
+        let slot = raw_instances.len() as u32;
+        raw_instances.push(inst);
+        keyed.push(SpriteKey {
+            layer: s.layer,
+            order: 0.0,
+            source: run(e.blend),
+            untonemapped: false,
+            instance: slot,
+        });
     }
     // The 2D particles simulated in compute: a run of their range each
     // (`GpuSprites`), sorted as the CPU's particles are, after the layer's
     // sprites.
     let (gpu_systems, gpu_sprites) = gpu;
     let mut gpu_glow: Vec<u32> = Vec::new();
-    let placeholder = sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
     let mut gpu_count = 0u32;
     for (i, g) in gpu_systems.iter().enumerate() {
         if g.layers & mask == 0 {
@@ -462,7 +509,13 @@ pub(crate) fn build(
                 RenderError::InvalidHandle(format!("a 2D particle's texture array {}", a.index()))
             })?;
         }
-        keyed.push((g.layer, 0.0, RunSource::Particles(k), false, placeholder));
+        keyed.push(SpriteKey {
+            layer: g.layer,
+            order: 0.0,
+            source: RunSource::Particles(k),
+            untonemapped: false,
+            instance: u32::MAX,
+        });
         gpu_count += 1;
         if g.glow > 0.0 {
             gpu_glow.push(k);
@@ -474,9 +527,13 @@ pub(crate) fn build(
     let mesh_count = scene.sprite.sprite_meshes.len() as u32;
     for (i, m) in scene.sprite.sprite_meshes.iter().enumerate() {
         let key = if m.key.is_finite() { m.key } else { 0.0 };
-        let placeholder =
-            sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
-        keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
+        keyed.push(SpriteKey {
+            layer: m.layer,
+            order: key,
+            source: RunSource::Mesh(i as u32),
+            untonemapped: false,
+            instance: u32::MAX,
+        });
     }
     let sprites = keyed.len() as u32 - shadow_count - mesh_count - gpu_count + sprite_boards;
     let after_sprites = keyed.len() as u32;
@@ -486,9 +543,10 @@ pub(crate) fn build(
         GlyphTier::ALL.map(|t| atlas.pages(t).1.max(1) as f32)
     };
     for (i, text) in scene.sprite.texts.iter().enumerate() {
+        let idx = i as u32;
         // An outline rides on the glyph's flash colour and glow strength
         // (which plain glyphs leave unused).
-        let (outline_color, outline) = match outlines.get(&(i as u32)) {
+        let (outline_color, outline) = match map_get(&outlines, idx) {
             Some(o) if o.width > 0.0 => (
                 o.color.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8),
                 o.width.min(1.0),
@@ -501,9 +559,7 @@ pub(crate) fn build(
         // Faced text (`text_facing`) turns as one panel about its pivot:
         // every glyph anchored there, its corner the anchor's offset; a
         // billboard sorting with the transparent meshes.
-        let facing = text_facing
-            .get(&(i as u32))
-            .map_or(SpriteFacing::None, |t| t.facing);
+        let facing = map_get(&text_facing, idx).map_or(SpriteFacing::None, |t| t.facing);
         let depth = eye.depth(text.position);
         for g in &text.glyphs {
             let [l, b, r, t] = g.rect;
@@ -548,7 +604,15 @@ pub(crate) fn build(
                 outline_color: [0; 4],
             };
             if facing == SpriteFacing::None {
-                keyed.push((text.layer, 0.0, source, false, inst));
+                let slot = raw_instances.len() as u32;
+                raw_instances.push(inst);
+                keyed.push(SpriteKey {
+                    layer: text.layer,
+                    order: 0.0,
+                    source,
+                    untonemapped: false,
+                    instance: slot,
+                });
             } else if size[0].abs() > 1e-6 && size[1].abs() > 1e-6 {
                 inst.position_rotation[0] = origin.x;
                 inst.position_rotation[1] = origin.y;
@@ -560,13 +624,17 @@ pub(crate) fn build(
         }
     }
     let glyphs = keyed.len() as u32 - after_sprites + boards.len() as u32 - sprite_boards;
-    // Stable: within a (layer, key, source, tone) run, submission order is kept.
-    og_core::sort::sort_by(&mut keyed, |a, b| {
-        a.0.cmp(&b.0)
-            .then(a.1.total_cmp(&b.1))
-            .then(a.2.cmp(&b.2))
-            .then(a.3.cmp(&b.3))
-    });
+    // Stable: within a (layer, order, source, tone) run, submission order is kept.
+    let cmp_key = |a: &SpriteKey, b: &SpriteKey| {
+        a.layer
+            .cmp(&b.layer)
+            .then(a.order.total_cmp(&b.order))
+            .then(a.source.cmp(&b.source))
+            .then(a.untonemapped.cmp(&b.untonemapped))
+    };
+    if !keyed.is_sorted_by(|a, b| cmp_key(a, b).is_le()) {
+        og_core::sort::sort_by(&mut keyed, cmp_key);
+    }
     // Tile layers and layered strips, each before the sprites of its layer
     // (tiles first), in submission order within a layer.
     let mut under: Vec<(i32, u8, usize)> = Vec::new();
@@ -584,7 +652,9 @@ pub(crate) fn build(
     }
     og_core::sort::sort_by_key(&mut under, |u| (u.0, u.1));
     let mut runs: Vec<SpriteRun> = Vec::new();
-    let mut instances: Vec<SpriteInstance> = Vec::with_capacity(keyed.len());
+    let mut instances: Vec<SpriteInstance> = Vec::with_capacity(
+        raw_instances.len() + board_shadows.len() + boards.len() + glowing.len(),
+    );
     let push = |runs: &mut Vec<SpriteRun>,
                 source: RunSource,
                 tone_mapped: bool,
@@ -662,21 +732,21 @@ pub(crate) fn build(
             *next_under += 1;
         }
     };
-    for (layer, _, source, untonemapped, inst) in keyed {
-        place_under(layer, &mut instances, &mut runs, &mut next_under);
-        if let RunSource::Mesh(i) = source {
+    for k in keyed {
+        place_under(k.layer, &mut instances, &mut runs, &mut next_under);
+        if let RunSource::Mesh(i) = k.source {
             let (first, count) = mesh_ranges[i as usize];
-            push(&mut runs, source, true, first, count);
+            push(&mut runs, k.source, true, first, count);
             continue;
         }
-        if let RunSource::Particles(k) = source {
-            let r = &gpu_sprites.ranges[k as usize];
-            push(&mut runs, source, true, r.first, r.count);
+        if let RunSource::Particles(p) = k.source {
+            let r = &gpu_sprites.ranges[p as usize];
+            push(&mut runs, k.source, true, r.first, r.count);
             continue;
         }
         let index = instances.len() as u32;
-        instances.push(inst);
-        push(&mut runs, source, !untonemapped, index, 1);
+        instances.push(raw_instances[k.instance as usize]);
+        push(&mut runs, k.source, !k.untonemapped, index, 1);
     }
     place_under(i32::MAX, &mut instances, &mut runs, &mut next_under);
     // The billboards' shadows, then the billboards far to near (ties by
@@ -687,7 +757,13 @@ pub(crate) fn build(
         instances.push(inst);
         push(&mut billboard_shadows, source, true, index, 1);
     }
-    og_core::sort::sort_by(&mut boards, |a, b| b.0.total_cmp(&a.0).then(a.1.cmp(&b.1)));
+    let cmp_board = |a: &(f32, i32, RunSource, SpriteInstance),
+                     b: &(f32, i32, RunSource, SpriteInstance)| {
+        b.0.total_cmp(&a.0).then(a.1.cmp(&b.1))
+    };
+    if !boards.is_sorted_by(|a, b| cmp_board(a, b).is_le()) {
+        og_core::sort::sort_by(&mut boards, cmp_board);
+    }
     let mut billboards: Vec<(f32, SpriteRun)> = Vec::with_capacity(boards.len());
     for (depth, _, source, inst) in boards {
         billboards.push((
@@ -703,7 +779,9 @@ pub(crate) fn build(
     }
     // The glow pass: by texture or array (additive, so order does not
     // matter; a stable sort keeps the plain textures' order as before).
-    og_core::sort::sort_by_key(&mut glowing, |(source, _)| *source);
+    if !glowing.is_sorted_by_key(|(source, _)| *source) {
+        og_core::sort::sort_by_key(&mut glowing, |(source, _)| *source);
+    }
     let mut glow_runs: Vec<SpriteRun> = Vec::new();
     for (source, inst) in glowing {
         let index = instances.len() as u32;

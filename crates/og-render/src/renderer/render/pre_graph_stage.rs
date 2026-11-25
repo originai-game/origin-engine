@@ -30,7 +30,7 @@ impl Renderer {
     /// around every pass.
     pub(super) fn open_frame_encoder(&mut self) -> Encoder {
         let gpu_set = match (&mut self.gpu_timer, self.clock) {
-            (Some(t), Some(_)) => t.begin(&self.device, &self.queue),
+            (Some(t), Some(_)) => t.begin(&self.device),
             _ => None,
         };
         let mut encoder = Encoder::new(

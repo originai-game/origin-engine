@@ -2,82 +2,85 @@
 
 use super::*;
 
-/// Makes the skinned copies of a model's primitives the first time it is
-/// drawn posed (both og.load.gltf and og.load.animation of it are needed).
-fn skinned_meshes(
+/// Ensures the skinned copies of a model's primitives exist the first time it
+/// is drawn posed (both og.load.gltf and og.load.animation of it are needed),
+/// returning borrowed slices of its full meshes and coarser LOD levels.
+fn ensure_skinned_meshes<'a>(
     scene: &mut og_render::RenderScene,
     info: &ModelInfo,
-    skin: &mut SkinnedModel,
+    skin: &'a mut SkinnedModel,
     prims: usize,
-) -> Vec<Option<MeshHandle>> {
-    if let Some(m) = &skin.meshes {
-        return m.clone();
-    }
-    let mut out = vec![None; prims];
-    let mut levels = vec![Vec::new(); prims];
-    for (p, slot) in out.iter_mut().enumerate() {
-        let stream = skin.streams.iter().find(|s| s.primitive == p);
-        let morph = skin.morphs.iter().find(|m| m.primitive == p);
-        if stream.is_none() && morph.is_none() {
-            continue;
-        }
-        // Its coarser levels' skinned copies: each vertex skinned as the
-        // full mesh's vertex it is (no blendshapes: only crowds draw them).
-        for (level, sources) in info.lod_sources.get(p).into_iter().flatten() {
-            let Some(mesh) = scene.mesh(*level).cloned() else {
-                break;
-            };
-            let full = info.meshes.get(p).and_then(|h| scene.mesh(*h));
-            let data = match stream {
-                Some(s)
-                    if sources.len() == mesh.vertices.len()
-                        && full.is_some_and(|f| f.vertices.len() == s.joints.len()) =>
-                {
-                    SkinData {
-                        joints: sources.iter().map(|&v| s.joints[v as usize]).collect(),
-                        weights: sources.iter().map(|&v| s.weights[v as usize]).collect(),
+) -> (&'a [Option<MeshHandle>], &'a [Vec<MeshHandle>]) {
+    if skin.meshes.is_none() {
+        let mut out = vec![None; prims];
+        let mut levels = vec![Vec::new(); prims];
+        for (p, slot) in out.iter_mut().enumerate() {
+            let stream = skin.streams.iter().find(|s| s.primitive == p);
+            let morph = skin.morphs.iter().find(|m| m.primitive == p);
+            if stream.is_none() && morph.is_none() {
+                continue;
+            }
+            // Its coarser levels' skinned copies: each vertex skinned as the
+            // full mesh's vertex it is (no blendshapes: only crowds draw them).
+            for (level, sources) in info.lod_sources.get(p).into_iter().flatten() {
+                let Some(mesh) = scene.mesh(*level).cloned() else {
+                    break;
+                };
+                let full = info.meshes.get(p).and_then(|h| scene.mesh(*h));
+                let data = match stream {
+                    Some(s)
+                        if sources.len() == mesh.vertices.len()
+                            && full.is_some_and(|f| f.vertices.len() == s.joints.len()) =>
+                    {
+                        SkinData {
+                            joints: sources.iter().map(|&v| s.joints[v as usize]).collect(),
+                            weights: sources.iter().map(|&v| s.weights[v as usize]).collect(),
+                        }
                     }
-                }
-                Some(_) => break,
-                None => SkinData {
-                    joints: vec![[0; 4]; mesh.vertices.len()],
-                    weights: vec![[1.0, 0.0, 0.0, 0.0]; mesh.vertices.len()],
+                    Some(_) => break,
+                    None => SkinData {
+                        joints: vec![[0; 4]; mesh.vertices.len()],
+                        weights: vec![[1.0, 0.0, 0.0, 0.0]; mesh.vertices.len()],
+                    },
+                };
+                levels[p].push(scene.add_skinned_mesh(mesh, data));
+            }
+            let Some(mesh) = info.meshes.get(p).and_then(|h| scene.mesh(*h)).cloned() else {
+                continue;
+            };
+            let n = mesh.vertices.len();
+            let data = match stream {
+                Some(s) if s.joints.len() == n => SkinData {
+                    joints: s.joints.clone(),
+                    weights: s.weights.clone(),
+                },
+                // Morph targets alone: every vertex on joint 0 with full weight
+                // (an identity palette keeps the bind pose).
+                _ => SkinData {
+                    joints: vec![[0; 4]; n],
+                    weights: vec![[1.0, 0.0, 0.0, 0.0]; n],
                 },
             };
-            levels[p].push(scene.add_skinned_mesh(mesh, data));
+            let h = scene.add_skinned_mesh(mesh, data);
+            if let Some(m) = morph {
+                let take = m.positions.len().min(og_render::MAX_MORPH_TARGETS);
+                scene.set_morph_targets(
+                    h,
+                    MorphTargets {
+                        positions: m.positions[..take].to_vec(),
+                        normals: m.normals.as_ref().map(|n| n[..take].to_vec()),
+                    },
+                );
+            }
+            *slot = Some(h);
         }
-        let Some(mesh) = info.meshes.get(p).and_then(|h| scene.mesh(*h)).cloned() else {
-            continue;
-        };
-        let n = mesh.vertices.len();
-        let data = match stream {
-            Some(s) if s.joints.len() == n => SkinData {
-                joints: s.joints.clone(),
-                weights: s.weights.clone(),
-            },
-            // Morph targets alone: every vertex on joint 0 with full weight
-            // (an identity palette keeps the bind pose).
-            _ => SkinData {
-                joints: vec![[0; 4]; n],
-                weights: vec![[1.0, 0.0, 0.0, 0.0]; n],
-            },
-        };
-        let h = scene.add_skinned_mesh(mesh, data);
-        if let Some(m) = morph {
-            let take = m.positions.len().min(og_render::MAX_MORPH_TARGETS);
-            scene.set_morph_targets(
-                h,
-                MorphTargets {
-                    positions: m.positions[..take].to_vec(),
-                    normals: m.normals.as_ref().map(|n| n[..take].to_vec()),
-                },
-            );
-        }
-        *slot = Some(h);
+        skin.meshes = Some(out);
+        skin.levels = levels;
     }
-    skin.meshes = Some(out.clone());
-    skin.levels = levels;
-    out
+    (
+        skin.meshes.as_deref().expect("populated above"),
+        &skin.levels,
+    )
 }
 
 /// The entities with og.Skeleton (to draw their models posed).
@@ -86,12 +89,19 @@ pub(crate) fn skeletons(
     layout: Option<&Layout>,
     fx: &mut FxState,
 ) -> std::collections::BTreeSet<u64> {
+    use crate::host::codec::{Rec, Slot};
     fx.pose_issues.clear();
-    fx.pose_sources = rows(world, layout)
-        .into_iter()
-        .filter_map(|(e, v)| Some((e, record::Skeleton::from_json(&v).ok()?.asset)))
-        .collect();
-    fx.pose_sources.keys().copied().collect()
+    fx.pose_sources.clear();
+    let Some(layout) = layout else {
+        return std::collections::BTreeSet::new();
+    };
+    let asset = Slot::of(layout, "asset");
+    let mut entities = std::collections::BTreeSet::new();
+    for (e, v) in crate::present::extract::column_rows(world, layout).iter() {
+        fx.pose_sources.insert(e, v.uint(&asset).unwrap_or(0));
+        entities.insert(e);
+    }
+    entities
 }
 
 /// One og.Model's own look and shadow flags, carried by each of its
@@ -184,7 +194,7 @@ pub(crate) fn posed_model(
     let Some(skin) = fx.skins.get_mut(&info.id) else {
         return false;
     };
-    let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
+    let _ = ensure_skinned_meshes(scene, &info, skin, info.prim_mesh.len());
     let palette = scene.objects.joint_palettes.len() as u32;
     atmo.palettes.insert(entity, palette);
     // og.Garment: its primitives drawn at the simulated points, posed by
@@ -200,6 +210,11 @@ pub(crate) fn posed_model(
         out.skin,
     );
     scene.objects.joint_palettes.push(JointPalette { matrices });
+    let meshes = fx
+        .skins
+        .get(&info.id)
+        .and_then(|s| s.meshes.as_deref())
+        .unwrap_or(&[]);
     // Parts and nodes line up unless the parts are not the model's own
     // (a bake's lightmapped parts): then every part is drawn.
     let nodes = (info.part_nodes.len() == parts.len()).then_some(&info.part_nodes);
@@ -348,6 +363,50 @@ fn baked_clip(
     Some(b)
 }
 
+fn crowd_parts_match(
+    existing: &[og_render::CrowdPart],
+    parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
+    info: &ModelInfo,
+    meshes: &[Option<MeshHandle>],
+    skin_levels: &[Vec<MeshHandle>],
+    lods: Option<&crate::present::extract::ModelLods>,
+) -> bool {
+    let most = og_render::MAX_CROWD_LEVELS;
+    let mut ei = 0usize;
+    for (part, &(mesh, material, _)) in parts.iter().enumerate() {
+        let p = info.primitive(mesh);
+        let Some(m) = meshes.get(p).copied().flatten() else {
+            continue;
+        };
+        let Some(ep) = existing.get(ei) else {
+            return false;
+        };
+        ei += 1;
+        if ep.material != material {
+            return false;
+        }
+        let coarser = skin_levels.get(p).map_or(&[][..], |l| l.as_slice());
+        let count = if lods.is_some() {
+            (1 + coarser.len()).min(most)
+        } else {
+            1
+        };
+        if ep.levels.len() != count || ep.level_materials.len() != count {
+            return false;
+        }
+        if ep.levels[0] != m || ep.levels[1..] != coarser[..count - 1] {
+            return false;
+        }
+        for k in 0..count {
+            let expected_mat = lods.map_or(material, |l| l.material(part, k, material));
+            if ep.level_materials[k] != expected_mat {
+                return false;
+            }
+        }
+    }
+    ei == existing.len()
+}
+
 /// Draws a model played by og.CrowdAnimation (`crowd`) on the GPU: its
 /// skinned primitives as skinned instances posed by the shared baked clip
 /// at the frame of `seconds` (the world's time, between ticks on a frame
@@ -369,9 +428,9 @@ pub(crate) fn crowd_model(
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
     let RenderState { scene, fx, .. } = rs;
-    let Some(info) = fx.models.get(&asset).cloned() else {
+    if !fx.models.contains_key(&asset) {
         return false;
-    };
+    }
     let Some(Baked {
         index: clip,
         frames: count,
@@ -380,10 +439,13 @@ pub(crate) fn crowd_model(
     else {
         return false;
     };
+    let Some(info) = fx.models.get(&asset) else {
+        return false;
+    };
     let Some(skin) = fx.skins.get_mut(&info.id) else {
         return false;
     };
-    let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
+    let (meshes, skin_levels) = ensure_skinned_meshes(scene, info, skin, info.prim_mesh.len());
     // The clip's time, then its frame (in f64: a world hours old keeps
     // its sub-frame precision).
     let t = f64::from(crowd.offset) + f64::from(crowd.speed) * seconds;
@@ -417,43 +479,53 @@ pub(crate) fn crowd_model(
     // parts (og-render's crowd.rs: culled, compacted and drawn on the GPU),
     // each with the model's coarser levels, drawn where their error shows
     // under a pixel; its rigid parts as instances.
-    let most = og_render::MAX_CROWD_LEVELS;
-    let skinned: Vec<og_render::CrowdPart> = parts
-        .iter()
-        .enumerate()
-        .filter_map(|(part, &(mesh, material, _))| {
-            let p = info.primitive(mesh);
-            let coarser = skin.levels.get(p).map_or(&[][..], |l| l.as_slice());
-            meshes
-                .get(p)
-                .copied()
-                .flatten()
-                .map(|m| og_render::CrowdPart {
-                    levels: std::iter::once(m)
-                        .chain(coarser.iter().copied())
-                        .take(if lods.is_some() { most } else { 1 })
-                        .collect(),
-                    material,
-                    level_materials: (0..=coarser.len())
-                        .take(if lods.is_some() { most } else { 1 })
-                        .map(|k| lods.map_or(material, |l| l.material(part, k, material)))
-                        .collect(),
-                })
-        })
-        .collect();
-    if !skinned.is_empty() {
+    let has_skinned = parts.iter().any(|&(mesh, ..)| {
+        meshes
+            .get(info.primitive(mesh))
+            .copied()
+            .flatten()
+            .is_some()
+    });
+    if has_skinned {
         let mut member = og_render::CrowdMember::new(world_matrix, clip, frame);
         member.pose = pose;
         member.fx = look.fx;
         member.receive_shadows = look.receive;
+        let mirrored = og_render::mirrors(&world_matrix);
         let at = scene.objects.crowds.iter().position(|c| {
             c.cast_shadows == look.cast
-                && c.parts == skinned
-                && c.mirrored() == og_render::mirrors(&world_matrix)
+                && c.mirrored() == mirrored
+                && crowd_parts_match(&c.parts, parts, info, meshes, skin_levels, lods)
         });
         let row = match at {
             Some(i) => &mut scene.objects.crowds[i],
             None => {
+                let most = og_render::MAX_CROWD_LEVELS;
+                let skinned: Vec<og_render::CrowdPart> = parts
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(part, &(mesh, material, _))| {
+                        let p = info.primitive(mesh);
+                        let coarser = skin_levels.get(p).map_or(&[][..], |l| l.as_slice());
+                        meshes
+                            .get(p)
+                            .copied()
+                            .flatten()
+                            .map(|m| og_render::CrowdPart {
+                                levels: std::iter::once(m)
+                                    .chain(coarser.iter().copied())
+                                    .take(if lods.is_some() { most } else { 1 })
+                                    .collect(),
+                                material,
+                                level_materials: (0..=coarser.len())
+                                    .take(if lods.is_some() { most } else { 1 })
+                                    .map(|k| {
+                                        lods.map_or(material, |l| l.material(part, k, material))
+                                    })
+                                    .collect(),
+                            })
+                    })
+                    .collect();
                 // The levels' errors and the sphere they are measured
                 // from: the model's, as its unposed instances draw by.
                 let levels = skinned.iter().map(|p| p.levels.len()).max().unwrap_or(1);

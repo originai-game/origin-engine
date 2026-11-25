@@ -11,11 +11,14 @@ struct ShadowPass {
   view_proj: mat4x4<f32>,
   light: vec4<f32>,       // xyz: light position, w: range (0: directional, write depth)
   time: vec4<f32>,        // x: the scene clock in seconds (the hooks' h.time), yzw: the scene's origin (h.origin)
-  paraboloid: vec4<f32>,  // x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1 above, z: the map's side, w: the projection's scale
-  dither: vec4<u32>,      // x: the frames drawn since the last capture (common.wgsl `dither_cut`'s turn), yzw unused
+  paraboloid: vec4<f32>,  // x: 0 flat, +1 paraboloid below light, -1 above; y: dither turn (turn % 64); z: map side; w: projection scale
   foliage_wind: array<vec4f, 9>, // current deformation only; FoliageWind
 };
 @group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;
+
+fn shadow_dither_turn() -> u32 {
+  return u32(shadow_pass.paraboloid.y);
+}
 
 // A caster draws no motion: `previous_shader_params()` (hooks.rs) reads the current parameters (frame.wgsl's
 // `params_moved` in the modules that draw motion).
@@ -45,8 +48,8 @@ fn shadow_clip(world: vec4<f32>) -> vec4<f32> {
 // `flat` (a point an instance's matrix moved is projected with
 // `mul_point`, instance.wgsl).
 fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
-  if (shadow_pass.paraboloid.x < 0.5) { return flat; }
-  let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.y);
+  if (abs(shadow_pass.paraboloid.x) < 0.5) { return flat; }
+  let l = paraboloid_local(world.xyz - shadow_pass.light.xyz, shadow_pass.paraboloid.x);
   let d = max(length(l), 1e-6);
   let q = l / d;
   let xy = vec2<f32>(-q.x, q.y) * (shadow_pass.paraboloid.w / max(1.0 + q.z, 0.05));
@@ -56,10 +59,10 @@ fn shadow_project(world: vec4<f32>, flat: vec4<f32>) -> vec4<f32> {
 // Whether `world` lies behind the active paraboloid hemisphere and should be
 // cut. Folded into each shadow fragment entry's single discard for Metal.
 fn shadow_paraboloid_cut(world: vec3<f32>) -> bool {
-  if (shadow_pass.light.w <= 0.0 || shadow_pass.paraboloid.x <= 0.5) { return false; }
+  if (shadow_pass.light.w <= 0.0 || abs(shadow_pass.paraboloid.x) <= 0.5) { return false; }
   let to = world - shadow_pass.light.xyz;
   let dist = length(to);
-  return paraboloid_local(to, shadow_pass.paraboloid.y).z < -PARABOLOID_MARGIN * dist;
+  return paraboloid_local(to, shadow_pass.paraboloid.x).z < -PARABOLOID_MARGIN * dist;
 }
 
 // What a local light's pass stores: distance / range. In a paraboloid
@@ -71,8 +74,8 @@ fn shadow_paraboloid_cut(world: vec3<f32>) -> bool {
 fn local_distance(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>) -> f32 {
   let to = world - shadow_pass.light.xyz;
   var dist = length(to);
-  if (shadow_pass.paraboloid.x > 0.5) {
-    let sigma = shadow_pass.paraboloid.y;
+  if (abs(shadow_pass.paraboloid.x) > 0.5) {
+    let sigma = shadow_pass.paraboloid.x;
     let size = shadow_pass.paraboloid.z;
     let ndc = vec2<f32>(1.0 - frag.x / size * 2.0, 1.0 - frag.y / size * 2.0) / shadow_pass.paraboloid.w;
     let r2 = dot(ndc, ndc);
@@ -125,7 +128,7 @@ struct CardShadow {
 fn shadow_card_cut(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool, cut: bool) -> CardShadow {
   if (cut || shadow_paraboloid_cut(surface)) { discard; }
   var o: CardShadow;
-  if (shadow_pass.paraboloid.x > 0.5) {
+  if (abs(shadow_pass.paraboloid.x) > 0.5) {
     o.depth = clamp(length(surface - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 1.0);
   } else {
     o.depth = clamp(flat.z / flat.w, 0.0, 1.0);

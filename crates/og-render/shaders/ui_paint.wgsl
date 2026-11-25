@@ -111,32 +111,38 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var corners = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0));
-  let q = paint_quad(ii);
+  // Load only the texels the vertex stage needs (3 for most quads, 4 for
+  // outer shadows) instead of all 9 texels of PaintGpu.
+  let base = ii * 9u;
+  let rect = bitcast<vec4<f32>>(textureLoad(quads, data_at(base), 0));
+  let uv = bitcast<vec4<f32>>(textureLoad(quads, data_at(base + 3u), 0));
+  let k = textureLoad(quads, data_at(base + 6u), 0);
   let c = corners[vi];
   // What the quad covers around the box's centre: a box and a device pixel
   // for its antialiased edge; a glyph's quad, which holds its field's reach;
   // a shadow's moved, grown box and its blur's reach (three deviations).
   var m = vec4<f32>(1.0, 0.0, 0.0, 1.0);
   var t = vec2<f32>(0.0);
-  if (q.k.w != 0u) {
-    m = textureLoad(transforms, data_at(2u * q.k.w), 0);
-    t = textureLoad(transforms, data_at(2u * q.k.w + 1u), 0).xy;
+  if (k.w != 0u) {
+    m = textureLoad(transforms, data_at(2u * k.w), 0);
+    t = textureLoad(transforms, data_at(2u * k.w + 1u), 0).xy;
   }
   let aa = frame.output.z * sqrt(max(abs(m.x * m.w - m.y * m.z), 1e-6));
   let px = 1.0 / max(aa, 1e-3);
-  let half = 0.5 * q.rect.zw;
+  let half = 0.5 * rect.zw;
   var lo = -half - vec2<f32>(px);
   var hi = half + vec2<f32>(px);
-  if (q.k.x == 7u || q.k.x == 9u || (q.k.x == 10u && (q.k.z & 1u) == 0u)) {
+  if (k.x == 7u || k.x == 9u || (k.x == 10u && (k.z & 1u) == 0u)) {
     lo = -half;
     hi = half;
-  } else if (q.k.x == 5u) {
-    let reach = max(half + vec2<f32>(q.p.w + 1.5 * q.p.z + px), vec2<f32>(0.0));
-    lo = q.p.xy - reach;
-    hi = q.p.xy + reach;
+  } else if (k.x == 5u) {
+    let p = bitcast<vec4<f32>>(textureLoad(quads, data_at(base + 5u), 0));
+    let reach = max(half + vec2<f32>(p.w + 1.5 * p.z + px), vec2<f32>(0.0));
+    lo = p.xy - reach;
+    hi = p.xy + reach;
   }
   let local = mix(lo, hi, c);
-  let at = q.rect.xy + half + local;
+  let at = rect.xy + half + local;
   // The transform moves the quad; the box's distances stay its own.
   let css = vec2<f32>(m.x * at.x + m.z * at.y, m.y * at.x + m.w * at.y) + t;
   // On the output, then on the target, which may be a layer of it.
@@ -145,11 +151,11 @@ fn vs_paint(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   var o: PaintOut;
   o.position = vec4<f32>(device.x / frame.output.x * 2.0 - 1.0, 1.0 - device.y / frame.output.y * 2.0, 0.0, 1.0);
   o.local = local;
-  o.uv = vec2<f32>(mix(q.uv.x, q.uv.z, c.x), mix(q.uv.y, q.uv.w, c.y));
-  if (q.k.x == 10u) {
+  o.uv = vec2<f32>(mix(uv.x, uv.z, c.x), mix(uv.y, uv.w, c.y));
+  if (k.x == 10u) {
     // A group's result where this corner lands on the output: a pixel's
     // centre reads its texel's centre.
-    o.uv = (screen - q.uv.xy) / q.uv.zw;
+    o.uv = (screen - uv.xy) / uv.zw;
   }
   o.index = ii;
   o.aa = aa;

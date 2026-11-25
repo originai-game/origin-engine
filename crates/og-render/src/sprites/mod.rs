@@ -140,8 +140,8 @@ impl SpriteEye<'_> {
 /// corner, whatever way it is turned.
 pub(crate) fn sprite_radius(s: &Sprite) -> f32 {
     let far = glam::Vec2::new(
-        s.anchor.x.max(1.0 - s.anchor.x),
-        s.anchor.y.max(1.0 - s.anchor.y),
+        s.anchor.x.abs().max((1.0 - s.anchor.x).abs()),
+        s.anchor.y.abs().max((1.0 - s.anchor.y).abs()),
     );
     (far * s.size).length()
 }

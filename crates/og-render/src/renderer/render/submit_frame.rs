@@ -80,6 +80,9 @@ impl Renderer {
                     cull_commands.into_iter().collect::<Vec<_>>(),
                 )
             };
+        if let (Some(t), Some(_)) = (self.gpu_timer.as_mut(), self.clock) {
+            t.encode_resolves(&mut encoder);
+        }
         let _submission = self.queue.submit(
             debris_commands
                 .into_iter()

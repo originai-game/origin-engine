@@ -51,33 +51,31 @@ impl Pass for CloudsPass {
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
         let t = &st.temporal;
-        let step = wgpu::BindGroupEntry {
-            binding: 2,
-            resource: t.uniform.as_entire_binding(),
-        };
         // The prepass's view depth (or opaque depth MIP chain when available):
         // the march skips what surfaces cover (sky.wgsl `clouds_covered`).
         let depth = r
             .graph
             .opaque_depth_mips()
             .or_else(|| r.graph.try_view("lindepth"));
-        let march_group = match depth {
-            Some(depth) => r.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("clouds low depth"),
-                layout: &t.depth,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::TextureView(depth),
-                    },
-                    step.clone(),
-                ],
+        let mut depth_cache = t.depth_cache.borrow_mut();
+        let march_group: &wgpu::BindGroup = match depth {
+            Some(depth) => depth_cache.get_or_insert_with(depth.clone(), || {
+                r.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("clouds low depth"),
+                    layout: &t.depth,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::TextureView(depth),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 2,
+                            resource: t.uniform.as_entire_binding(),
+                        },
+                    ],
+                })
             }),
-            None => r.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("clouds low march"),
-                layout: &t.march,
-                entries: std::slice::from_ref(&step),
-            }),
+            None => &t.march_group,
         };
         let target = r.graph.view("clouds");
         let quarter = r.graph.view("clouds.quarter");
@@ -124,25 +122,32 @@ impl Pass for CloudsPass {
         };
         if t.reproject {
             // One texel of each two by two marched, then the history reprojected round it.
-            draw(cx, quarter, march, &march_group, "clouds");
-            let resolve_group = r.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("clouds low resolve"),
-                layout: &t.resolve,
-                entries: &[
-                    step,
-                    wgpu::BindGroupEntry {
-                        binding: 3,
-                        resource: wgpu::BindingResource::TextureView(quarter),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 4,
-                        resource: wgpu::BindingResource::TextureView(history_view),
-                    },
-                ],
-            });
-            draw(cx, target, resolve, &resolve_group, "clouds resolve");
+            draw(cx, quarter, march, march_group, "clouds");
+            let mut resolve_cache = t.resolve_cache.borrow_mut();
+            let resolve_group =
+                resolve_cache.get_or_insert_with((quarter.clone(), history_view.clone()), || {
+                    r.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("clouds low resolve"),
+                        layout: &t.resolve,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 2,
+                                resource: t.uniform.as_entire_binding(),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 3,
+                                resource: wgpu::BindingResource::TextureView(quarter),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 4,
+                                resource: wgpu::BindingResource::TextureView(history_view),
+                            },
+                        ],
+                    })
+                });
+            draw(cx, target, resolve, resolve_group, "clouds resolve");
         } else {
-            draw(cx, target, march, &march_group, "clouds");
+            draw(cx, target, march, march_group, "clouds");
         }
         // The next frame's history.
         cx.encoder.copy_texture_to_texture(

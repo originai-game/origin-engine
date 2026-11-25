@@ -483,6 +483,18 @@ struct Slot {
 }
 
 #[cfg(not(feature = "publish"))]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ResolveState {
+    /// Waiting for the frame's GPU work (`on_submitted_work_done`) to finish.
+    Running,
+    /// `resolve_query_set` + `copy_buffer_to_buffer` encoded into the current
+    /// frame's command encoder; ready to call `map_async` after submit.
+    Encoded,
+    /// `map_async` queued; waiting for the readback callback.
+    Mapped,
+}
+
+#[cfg(not(feature = "publish"))]
 struct Pending {
     frame: u64,
     /// Each render-graph pass and the queries the passes it opened wrote.
@@ -490,20 +502,21 @@ struct Pending {
     /// Queries written, to resolve into the readback.
     queries: u32,
     submitted: f64,
-    /// Whether the resolve and the copy to the readback were submitted.
-    resolved: bool,
+    /// Lifecycle of resolving and mapping this slot's timestamps.
+    state: ResolveState,
 }
 
 #[cfg(not(feature = "publish"))]
 /// The GPU side of the frame's timing: a ring of query sets with their
 /// readbacks ([`SLOTS`]).
 ///
-/// A frame's timestamps are resolved in a command buffer of their own,
-/// submitted once the queue reports the frame's work done: Metal's
-/// counter samples are not complete until the command buffer that took
-/// them has, so a resolve encoded at the end of the frame read zeros and
-/// the previous frame's values on Apple silicon (Apple's counter-sampling
-/// sample resolves from the completion handler for the same reason).
+/// A frame's timestamps are resolved only once the queue reports that frame's
+/// work done (Metal's counter samples are not complete until the command buffer
+/// that took them has, so a resolve encoded at the end of the same frame read
+/// zeros and the previous frame's values on Apple silicon). During steady-state
+/// rendering those resolves are folded into a subsequent frame's main command
+/// encoder ([`GpuTimer::encode_resolves`]) so timing adds zero extra
+/// `queue.submit` calls per frame.
 pub(crate) struct GpuTimer {
     /// Nanoseconds per timestamp tick (`Queue::get_timestamp_period`).
     period_ns: f64,
@@ -564,8 +577,8 @@ impl GpuTimer {
 
     /// Starts a frame: the marks its passes write, or `None` when every
     /// readback is still in flight.
-    pub fn begin(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Option<FrameMarks> {
-        self.collect(device, queue);
+    pub fn begin(&mut self, device: &wgpu::Device) -> Option<FrameMarks> {
+        self.harvest();
         let free = |slots: &[Slot]| slots.iter().position(|s| s.pending.is_none());
         let mut i = free(&self.slots);
         if i.is_none() {
@@ -574,7 +587,7 @@ impl GpuTimer {
             // its slot.
             #[cfg(not(target_arch = "wasm32"))]
             let _ = crate::traffic::poll(device, wgpu::PollType::Poll);
-            self.collect(device, queue);
+            self.harvest();
             i = free(&self.slots);
         }
         let i = match i {
@@ -593,12 +606,36 @@ impl GpuTimer {
         })
     }
 
+    /// Encodes `resolve_query_set` and the readback copy for every earlier
+    /// frame whose GPU work has already finished into the current frame's main
+    /// command encoder, avoiding a separate `queue.submit` per frame.
+    pub fn encode_resolves(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        for s in &mut self.slots {
+            let Some(p) = s
+                .pending
+                .as_mut()
+                .filter(|p| p.state == ResolveState::Running)
+            else {
+                continue;
+            };
+            if !*s.done.lock().unwrap_or_else(|e| e.into_inner()) {
+                continue;
+            }
+            p.state = ResolveState::Encoded;
+            let n = p.queries;
+            let bytes = u64::from(n) * u64::from(wgpu::QUERY_SIZE);
+            encoder.resolve_query_set(&s.set, 0..n, &s.resolve, 0);
+            encoder.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
+        }
+    }
+
     /// After the submit of frame `frame`, whose render-graph passes were
     /// `passes` (each with the queries it wrote; `queries` in all, the
     /// encoder's [`Encoder::used`]), at `submitted` on the renderer's
-    /// clock: asks the queue to say when the frame's work is done, so its
-    /// timestamps can be resolved. A frame that failed before its submit
-    /// never gets here, and its slot stays free.
+    /// clock: maps any readbacks resolved in this submission and asks the
+    /// queue to say when this frame's work is done, so its timestamps can be
+    /// resolved. A frame that failed before its submit never gets here, and
+    /// its slot stays free.
     pub fn after_submit(
         &mut self,
         queue: &wgpu::Queue,
@@ -607,6 +644,21 @@ impl GpuTimer {
         queries: u32,
         submitted: f64,
     ) {
+        for s in &mut self.slots {
+            let Some(p) = s
+                .pending
+                .as_mut()
+                .filter(|p| p.state == ResolveState::Encoded)
+            else {
+                continue;
+            };
+            p.state = ResolveState::Mapped;
+            let bytes = u64::from(p.queries) * u64::from(wgpu::QUERY_SIZE);
+            let mapped = s.mapped.clone();
+            crate::traffic::map_async(&s.read.slice(..bytes), wgpu::MapMode::Read, move |result| {
+                *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
+            });
+        }
         let Some(i) = self.current.take() else {
             return;
         };
@@ -619,7 +671,7 @@ impl GpuTimer {
             passes,
             queries,
             submitted,
-            resolved: false,
+            state: ResolveState::Running,
         });
         *s.done.lock().unwrap_or_else(|e| e.into_inner()) = false;
         let done = s.done.clone();
@@ -628,31 +680,8 @@ impl GpuTimer {
         });
     }
 
-    /// Resolves the timestamps of every frame whose work the queue
-    /// reported done and maps the readback, then reads every readback
-    /// that has landed into [`GpuTimer::done`].
-    fn collect(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        for s in &mut self.slots {
-            let Some(p) = s.pending.as_mut().filter(|p| !p.resolved) else {
-                continue;
-            };
-            if !*s.done.lock().unwrap_or_else(|e| e.into_inner()) {
-                continue;
-            }
-            p.resolved = true;
-            let n = p.queries;
-            let bytes = u64::from(n) * u64::from(wgpu::QUERY_SIZE);
-            let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("pass timestamps resolve"),
-            });
-            encoder.resolve_query_set(&s.set, 0..n, &s.resolve, 0);
-            encoder.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
-            queue.submit(Some(encoder.finish()));
-            let mapped = s.mapped.clone();
-            crate::traffic::map_async(&s.read.slice(..bytes), wgpu::MapMode::Read, move |result| {
-                *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
-            });
-        }
+    /// Reads every readback that has landed into [`GpuTimer::done`].
+    fn harvest(&mut self) {
         for s in &mut self.slots {
             let landed = s.mapped.lock().unwrap_or_else(|e| e.into_inner()).take();
             let Some(ok) = landed else {
@@ -681,6 +710,56 @@ impl GpuTimer {
         }
     }
 
+    /// Standalone fallback for [`GpuTimer::take`] when draining outside a frame:
+    /// batches all completed slots into a single command encoder and submit.
+    fn flush_ready(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut encoder: Option<wgpu::CommandEncoder> = None;
+        for s in &mut self.slots {
+            let Some(p) = s
+                .pending
+                .as_mut()
+                .filter(|p| p.state == ResolveState::Running)
+            else {
+                continue;
+            };
+            if !*s.done.lock().unwrap_or_else(|e| e.into_inner()) {
+                continue;
+            }
+            p.state = ResolveState::Encoded;
+            let n = p.queries;
+            let bytes = u64::from(n) * u64::from(wgpu::QUERY_SIZE);
+            let enc = encoder.get_or_insert_with(|| {
+                device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("pass timestamps resolve"),
+                })
+            });
+            enc.resolve_query_set(&s.set, 0..n, &s.resolve, 0);
+            enc.copy_buffer_to_buffer(&s.resolve, 0, &s.read, 0, bytes);
+        }
+        if let Some(enc) = encoder {
+            queue.submit(Some(enc.finish()));
+            for s in &mut self.slots {
+                let Some(p) = s
+                    .pending
+                    .as_mut()
+                    .filter(|p| p.state == ResolveState::Encoded)
+                else {
+                    continue;
+                };
+                p.state = ResolveState::Mapped;
+                let bytes = u64::from(p.queries) * u64::from(wgpu::QUERY_SIZE);
+                let mapped = s.mapped.clone();
+                crate::traffic::map_async(
+                    &s.read.slice(..bytes),
+                    wgpu::MapMode::Read,
+                    move |result| {
+                        *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
+                    },
+                );
+            }
+        }
+    }
+
     /// The frames read back since the last take, oldest first. With `wait`
     /// (native), every frame in flight is waited for first: once for its
     /// work, once for the resolve of its timestamps. On the web nothing
@@ -706,10 +785,12 @@ impl GpuTimer {
                 );
             };
             poll(wait && in_flight(&self.slots));
-            self.collect(device, queue);
+            self.harvest();
+            self.flush_ready(device, queue);
             poll(wait && in_flight(&self.slots));
         }
-        self.collect(device, queue);
+        self.flush_ready(device, queue);
+        self.harvest();
         std::mem::take(&mut self.done)
     }
 }
@@ -725,7 +806,11 @@ impl GpuTimer {
         None
     }
 
-    pub fn begin(&mut self, _device: &wgpu::Device, _queue: &wgpu::Queue) -> Option<FrameMarks> {
+    pub fn begin(&mut self, _device: &wgpu::Device) -> Option<FrameMarks> {
+        match *self {}
+    }
+
+    pub fn encode_resolves(&mut self, _encoder: &mut wgpu::CommandEncoder) {
         match *self {}
     }
 

@@ -78,6 +78,20 @@ pub(crate) struct CrowdCulling {
     /// Each (row, draw)'s args copied after the cull, which draws read
     /// instead of `args` on WebKit (`indirect_own.rs`); `None` elsewhere.
     per_draw: Option<crate::indirect_own::OwnArgs>,
+    group_cache: crate::gpu::bind_cache::SingleBindCache<CrowdBindKey>,
+}
+
+#[derive(Clone, PartialEq)]
+struct CrowdBindKey {
+    members: wgpu::Buffer,
+    crowds: wgpu::Buffer,
+    clips: wgpu::Buffer,
+    draws: wgpu::Buffer,
+    rows: wgpu::Buffer,
+    pyramid: wgpu::TextureView,
+    scan: wgpu::Buffer,
+    records: wgpu::Buffer,
+    args: wgpu::Buffer,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -211,6 +225,7 @@ impl CrowdCulling {
             d: 0,
             rows_of: Vec::new(),
             per_draw: per_draw.then(Default::default),
+            group_cache: Default::default(),
         }
     }
 
@@ -365,61 +380,84 @@ impl CrowdCulling {
             view_proj: view.view_proj.to_cols_array_2d(),
         };
         crate::traffic::write_buffer(queue, &self.params, 0, bytemuck::bytes_of(&params));
-        // The pyramid's view changes with the frame's size: bound fresh.
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("crowd cull"),
-            layout: &self.layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.params.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.members.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.crowds.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: self.clips.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.draws.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: self.rows.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: wgpu::BindingResource::TextureView(
-                        view.pyramid.map_or(&self.no_pyramid, |p| p.0),
-                    ),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 7,
-                    resource: self.scan.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 8,
-                    resource: self.records.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 9,
-                    resource: self.args.as_entire_binding(),
-                },
-            ],
+        // Cache the cull bind group across frames until any buffer grows or the
+        // depth pyramid view changes.
+        let pyramid = view.pyramid.map_or(&self.no_pyramid, |p| p.0);
+        let key = CrowdBindKey {
+            members: self.members.clone(),
+            crowds: self.crowds.clone(),
+            clips: self.clips.clone(),
+            draws: self.draws.clone(),
+            rows: self.rows.clone(),
+            pyramid: pyramid.clone(),
+            scan: self.scan.clone(),
+            records: self.records.clone(),
+            args: self.args.clone(),
+        };
+        let layout = &self.layout;
+        let params_buf = &self.params;
+        let members_buf = &self.members;
+        let crowds_buf = &self.crowds;
+        let clips_buf = &self.clips;
+        let draws_buf = &self.draws;
+        let rows_buf = &self.rows;
+        let scan_buf = &self.scan;
+        let records_buf = &self.records;
+        let args_buf = &self.args;
+        let group = self.group_cache.get_or_insert_with(key, || {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("crowd cull"),
+                layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: params_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: members_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: crowds_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: clips_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: draws_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 5,
+                        resource: rows_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: wgpu::BindingResource::TextureView(pyramid),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 7,
+                        resource: scan_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 8,
+                        resource: records_buf.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 9,
+                        resource: args_buf.as_entire_binding(),
+                    },
+                ],
+            })
         });
         if n > 0 && r > 0 {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("cull: crowds"),
                 timestamp_writes: None,
             });
-            pass.set_bind_group(0, &group, &[]);
+            pass.set_bind_group(0, group, &[]);
             self.stages.run(&mut pass, blocks, r);
             pass.set_pipeline(&self.totals);
             pass.dispatch_workgroups(1, 1, 1);

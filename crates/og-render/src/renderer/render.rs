@@ -194,17 +194,19 @@ fn shadow_target<'e>(
 }
 
 /// A local shadow face's projection words (`ShadowPassUniform::paraboloid`):
-/// for a paraboloid hemisphere, 0 below the light and 1 above (frame.rs).
-fn local_paraboloid(paraboloid: bool, face: usize, side: u32) -> [f32; 4] {
+/// x is 0 for flat projection, +1 for the hemisphere below the light and -1
+/// above; y carries the dither turn (`turn % 64`).
+fn local_paraboloid(paraboloid: bool, face: usize, side: u32, dither: u32) -> [f32; 4] {
+    let turn = (dither % 64) as f32;
     if paraboloid {
         [
-            1.0,
             if face == 0 { 1.0 } else { -1.0 },
+            turn,
             side as f32,
             shadows::PARABOLOID_SCALE,
         ]
     } else {
-        [0.0; 4]
+        [0.0, turn, 0.0, 0.0]
     }
 }
 

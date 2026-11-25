@@ -229,6 +229,23 @@ pub(crate) struct Fluid3dFrame {
     composite: wgpu::BindGroup,
 }
 
+#[derive(Clone, PartialEq)]
+struct FluidBindKey {
+    depth: wgpu::TextureView,
+    blur: wgpu::TextureView,
+    smooth: wgpu::TextureView,
+    thick: wgpu::TextureView,
+    scene_color: wgpu::TextureView,
+    scene_depth: wgpu::TextureView,
+}
+
+#[derive(Clone)]
+struct Fluid3dGroups {
+    spheres: wgpu::BindGroup,
+    blur: [wgpu::BindGroup; 5],
+    composite: wgpu::BindGroup,
+}
+
 pub(crate) struct Fluid3dRenderer {
     sphere_layout: wgpu::BindGroupLayout,
     blur_layout: wgpu::BindGroupLayout,
@@ -248,6 +265,8 @@ pub(crate) struct Fluid3dRenderer {
     /// Its targets for the cameras outside the frame graph, by their
     /// square size ([`Fluid3dRenderer::keep_faces`]).
     faces: Vec<(u32, Fluid3dTargets)>,
+    /// Cached main-camera bind groups (rebuilt only when graph target views change).
+    main_groups_cache: Option<(FluidBindKey, Fluid3dGroups)>,
 }
 
 fn uniform_entry(binding: u32) -> wgpu::BindGroupLayoutEntry {
@@ -507,6 +526,7 @@ impl Fluid3dRenderer {
             scratch: Vec::new(),
             visual: Vec::new(),
             faces: Vec::new(),
+            main_groups_cache: None,
         }
     }
 
@@ -595,8 +615,38 @@ impl Fluid3dRenderer {
         for (buffer, b) in self.blur_uniforms.iter().zip(&blur) {
             crate::traffic::write_buffer(queue, buffer, 0, bytemuck::bytes_of(b));
         }
-        let [x, y, square] = &self.blur_uniforms;
-        Some(self.frame(device, &self.uniform, [x, y, square], views, count as u32))
+        let key = FluidBindKey {
+            depth: views.depth.clone(),
+            blur: views.blur.clone(),
+            smooth: views.smooth.clone(),
+            thick: views.thick.clone(),
+            scene_color: views.scene_color.clone(),
+            scene_depth: views.scene_depth.clone(),
+        };
+        let hit = self
+            .main_groups_cache
+            .as_ref()
+            .is_some_and(|(k, _)| *k == key);
+        if !hit {
+            let [x, y, square] = &self.blur_uniforms;
+            let built = self.frame(device, &self.uniform, [x, y, square], views, count as u32);
+            self.main_groups_cache = Some((
+                key,
+                Fluid3dGroups {
+                    spheres: built.spheres.clone(),
+                    blur: built.blur.clone(),
+                    composite: built.composite.clone(),
+                },
+            ));
+            return Some(built);
+        }
+        let (_, cached) = self.main_groups_cache.as_ref().expect("checked above");
+        Some(Fluid3dFrame {
+            instances: count as u32,
+            spheres: cached.spheres.clone(),
+            blur: cached.blur.clone(),
+            composite: cached.composite.clone(),
+        })
     }
 
     /// The frame's fluid as another camera draws it (a reflection probe's

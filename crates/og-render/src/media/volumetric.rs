@@ -336,6 +336,20 @@ struct VolUniform {
     volumes: [[[f32; 4]; 4]; FOG_VOLUMES],
 }
 
+#[derive(Clone, PartialEq)]
+struct FroxelFrameKey {
+    frame: wgpu::Buffer,
+    cascades: wgpu::TextureView,
+    locals: wgpu::TextureView,
+    irradiance: wgpu::TextureView,
+    prefiltered: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+    tables: wgpu::Buffer,
+    probes: wgpu::Buffer,
+    caustics: wgpu::Buffer,
+    cloud_shadow: wgpu::TextureView,
+}
+
 struct Froxels {
     frame_layout: wgpu::BindGroupLayout,
     inject_layout: wgpu::BindGroupLayout,
@@ -347,6 +361,9 @@ struct Froxels {
     integrate: wgpu::ComputePipeline,
     scatter: wgpu::TextureView,
     sum: wgpu::TextureView,
+    inject_group: wgpu::BindGroup,
+    integrate_group: wgpu::BindGroup,
+    frame_cache: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<FroxelFrameKey>>,
     /// The volumes' slices deep ([`crate::RenderQuality::froxel_slices`]).
     slices: u32,
     sampler: wgpu::Sampler,
@@ -446,7 +463,7 @@ fn compute_pipeline(
 impl Froxels {
     /// The grid's layouts, volumes and the integrate pipeline (the inject
     /// pipelines are each medium's: [`Volumetric::ensure`]).
-    fn new(device: &wgpu::Device, module: &wgpu::ShaderModule) -> Froxels {
+    fn new(device: &wgpu::Device, module: &wgpu::ShaderModule, uniform: &wgpu::Buffer) -> Froxels {
         let compute = wgpu::ShaderStages::COMPUTE;
         let table_ty = wgpu::BindingType::Buffer {
             ty: wgpu::BufferBindingType::Storage { read_only: true },
@@ -522,6 +539,16 @@ impl Froxels {
             "integrate",
             &[],
         );
+        let scatter = froxel_volume(device, "froxel scatter", FROXELS[2]);
+        let sum = froxel_volume(device, "froxel sum", FROXELS[2]);
+        let (inject_group, integrate_group) = Self::build_groups(
+            device,
+            &inject_layout,
+            &integrate_layout,
+            uniform,
+            &scatter,
+            &sum,
+        );
         Froxels {
             frame_layout: frame_layout_c,
             inject_layout,
@@ -529,8 +556,11 @@ impl Froxels {
             inject_pipeline,
             inject: [None, None],
             integrate,
-            scatter: froxel_volume(device, "froxel scatter", FROXELS[2]),
-            sum: froxel_volume(device, "froxel sum", FROXELS[2]),
+            scatter,
+            sum,
+            inject_group,
+            integrate_group,
+            frame_cache: Default::default(),
             slices: FROXELS[2],
             sampler: device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("froxels"),
@@ -539,6 +569,36 @@ impl Froxels {
                 ..Default::default()
             }),
         }
+    }
+
+    fn build_groups(
+        device: &wgpu::Device,
+        inject_layout: &wgpu::BindGroupLayout,
+        integrate_layout: &wgpu::BindGroupLayout,
+        uniform: &wgpu::Buffer,
+        scatter: &wgpu::TextureView,
+        sum: &wgpu::TextureView,
+    ) -> (wgpu::BindGroup, wgpu::BindGroup) {
+        let inject = bind_at(
+            device,
+            "volumetric inject",
+            inject_layout,
+            &[
+                (0, uniform.as_entire_binding()),
+                (1, wgpu::BindingResource::TextureView(scatter)),
+            ],
+        );
+        let integrate = bind_at(
+            device,
+            "volumetric integrate",
+            integrate_layout,
+            &[
+                (0, uniform.as_entire_binding()),
+                (2, wgpu::BindingResource::TextureView(scatter)),
+                (3, wgpu::BindingResource::TextureView(sum)),
+            ],
+        );
+        (inject, integrate)
     }
 }
 
@@ -569,6 +629,9 @@ pub(crate) struct Volumetric {
     uniform: wgpu::Buffer,
     froxels: Option<Froxels>,
     apply_layout: wgpu::BindGroupLayout,
+    apply_cache: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(wgpu::TextureView, Option<wgpu::TextureView>)>,
+    >,
     /// The module and the apply pipeline's layout, made on first use.
     module: Option<(wgpu::ShaderModule, wgpu::PipelineLayout)>,
     /// The apply pipeline of the fog and of the water, each made on the
@@ -727,6 +790,7 @@ impl Volumetric {
             ),
             froxels: None,
             apply_layout,
+            apply_cache: Default::default(),
             module: None,
             apply: [None, None],
             apply_samples: 1,
@@ -767,7 +831,7 @@ impl Volumetric {
                 immediate_size: 0,
             });
             if froxel {
-                self.froxels = Some(Froxels::new(device, &module));
+                self.froxels = Some(Froxels::new(device, &module, &self.uniform));
             }
             self.module = Some((module, layout));
         }
@@ -825,6 +889,16 @@ impl Volumetric {
         {
             f.scatter = froxel_volume(device, "froxel scatter", slices);
             f.sum = froxel_volume(device, "froxel sum", slices);
+            let (inject_group, integrate_group) = Froxels::build_groups(
+                device,
+                &f.inject_layout,
+                &f.integrate_layout,
+                &self.uniform,
+                &f.scatter,
+                &f.sum,
+            );
+            f.inject_group = inject_group;
+            f.integrate_group = integrate_group;
             f.slices = slices;
         }
         let (scatter, fog, distance, own) = medium.uniform();
@@ -891,52 +965,48 @@ impl Volumetric {
         let Some(inject_pipeline) = &f.inject[self.water as usize] else {
             return;
         };
-        let frame_group = bind_at(
-            device,
-            "volumetric frame",
-            &f.frame_layout,
-            &[
-                (0, frame.as_entire_binding()),
-                (1, wgpu::BindingResource::TextureView(cascades)),
-                (2, wgpu::BindingResource::TextureView(locals)),
-                (3, wgpu::BindingResource::TextureView(ambient.irradiance)),
-                (4, wgpu::BindingResource::TextureView(ambient.prefiltered)),
-                (6, wgpu::BindingResource::Sampler(ambient.sampler)),
-                (7, tables.as_entire_binding()),
-                (8, ambient.probes.as_entire_binding()),
-                (10, caustics.as_entire_binding()),
-                (12, wgpu::BindingResource::TextureView(cloud_shadow)),
-            ],
-        );
-        let inject = bind_at(
-            device,
-            "volumetric inject",
-            &f.inject_layout,
-            &[
-                (0, self.uniform.as_entire_binding()),
-                (1, wgpu::BindingResource::TextureView(&f.scatter)),
-            ],
-        );
-        let integrate = bind_at(
-            device,
-            "volumetric integrate",
-            &f.integrate_layout,
-            &[
-                (0, self.uniform.as_entire_binding()),
-                (2, wgpu::BindingResource::TextureView(&f.scatter)),
-                (3, wgpu::BindingResource::TextureView(&f.sum)),
-            ],
-        );
+        let key = FroxelFrameKey {
+            frame: frame.clone(),
+            cascades: cascades.clone(),
+            locals: locals.clone(),
+            irradiance: ambient.irradiance.clone(),
+            prefiltered: ambient.prefiltered.clone(),
+            sampler: ambient.sampler.clone(),
+            tables: tables.clone(),
+            probes: ambient.probes.clone(),
+            caustics: caustics.clone(),
+            cloud_shadow: cloud_shadow.clone(),
+        };
+        let mut frame_cache = f.frame_cache.borrow_mut();
+        let frame_group = frame_cache.get_or_insert_with(key, || {
+            bind_at(
+                device,
+                "volumetric frame",
+                &f.frame_layout,
+                &[
+                    (0, frame.as_entire_binding()),
+                    (1, wgpu::BindingResource::TextureView(cascades)),
+                    (2, wgpu::BindingResource::TextureView(locals)),
+                    (3, wgpu::BindingResource::TextureView(ambient.irradiance)),
+                    (4, wgpu::BindingResource::TextureView(ambient.prefiltered)),
+                    (6, wgpu::BindingResource::Sampler(ambient.sampler)),
+                    (7, tables.as_entire_binding()),
+                    (8, ambient.probes.as_entire_binding()),
+                    (10, caustics.as_entire_binding()),
+                    (12, wgpu::BindingResource::TextureView(cloud_shadow)),
+                ],
+            )
+        });
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("volumetric"),
             timestamp_writes: None,
         });
-        pass.set_bind_group(0, &frame_group, &[]);
+        pass.set_bind_group(0, frame_group, &[]);
         pass.set_pipeline(inject_pipeline);
-        pass.set_bind_group(1, &inject, &[]);
+        pass.set_bind_group(1, &f.inject_group, &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), f.slices);
         pass.set_pipeline(&f.integrate);
-        pass.set_bind_group(1, &integrate, &[]);
+        pass.set_bind_group(1, &f.integrate_group, &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), 1);
     }
 
@@ -952,18 +1022,22 @@ impl Volumetric {
         let Some(pipeline) = &self.apply[self.water as usize] else {
             return;
         };
-        let mut resources = vec![
-            (0, self.uniform.as_entire_binding()),
-            (4, wgpu::BindingResource::TextureView(depth)),
-        ];
-        if let Some(f) = &self.froxels {
-            resources.push((5, wgpu::BindingResource::TextureView(&f.sum)));
-            resources.push((6, wgpu::BindingResource::Sampler(&f.sampler)));
-        }
-        let group = bind_at(device, "volumetric apply", &self.apply_layout, &resources);
+        let key = (depth.clone(), self.froxels.as_ref().map(|f| f.sum.clone()));
+        let mut cache = self.apply_cache.borrow_mut();
+        let group = cache.get_or_insert_with(key, || {
+            let mut resources = vec![
+                (0, self.uniform.as_entire_binding()),
+                (4, wgpu::BindingResource::TextureView(depth)),
+            ];
+            if let Some(f) = &self.froxels {
+                resources.push((5, wgpu::BindingResource::TextureView(&f.sum)));
+                resources.push((6, wgpu::BindingResource::Sampler(&f.sampler)));
+            }
+            bind_at(device, "volumetric apply", &self.apply_layout, &resources)
+        });
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, frame_group, &[]);
-        pass.set_bind_group(1, &group, &[]);
+        pass.set_bind_group(1, group, &[]);
         pass.draw(0..3, 0..1);
     }
 }

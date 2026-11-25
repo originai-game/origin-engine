@@ -737,7 +737,7 @@ impl Pass for LocalFacePass {
                 let key = crate::shadow_cache::view_key(
                     &vp.to_cols_array_2d(),
                     ls.position.extend(ls.range).to_array(),
-                    local_paraboloid(ls.paraboloid, face, r.shadows.local_shadow_size),
+                    local_paraboloid(ls.paraboloid, face, r.shadows.local_shadow_size, 0),
                     scene.frame.origin,
                     r.shadows.local_shadow_size,
                 );

@@ -597,11 +597,15 @@ struct DrawnTemporal {
 /// frame's resolved clouds, the unjittered view-projection and world state that frame marched with, and the uniform
 /// that tells this frame's march and resolve which texel of each two by two it marches.
 pub(crate) struct CloudsTemporal {
-    /// Group 2 of the march without a prepass, of the march with one (its view depth at 1), and of the resolve.
-    pub march: wgpu::BindGroupLayout,
+    /// Group 2 of the march with a prepass (its view depth at 1) and of the resolve.
     pub depth: wgpu::BindGroupLayout,
     pub resolve: wgpu::BindGroupLayout,
     pub uniform: wgpu::Buffer,
+    pub march_group: wgpu::BindGroup,
+    pub depth_cache: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<wgpu::TextureView>>,
+    pub resolve_cache: std::cell::RefCell<
+        crate::gpu::bind_cache::SingleBindCache<(wgpu::TextureView, wgpu::TextureView)>,
+    >,
     history: Option<(wgpu::Texture, wgpu::TextureView)>,
     drawn: Option<DrawnTemporal>,
     /// This frame marches one texel in four and resolves ([`CloudsTemporal::prepare`]).
@@ -627,19 +631,30 @@ impl CloudsTemporal {
         depth: wgpu::BindGroupLayout,
         resolve: wgpu::BindGroupLayout,
     ) -> CloudsTemporal {
+        let uniform = crate::traffic::create_buffer(
+            device,
+            &wgpu::BufferDescriptor {
+                label: Some("clouds temporal"),
+                size: std::mem::size_of::<TemporalUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            },
+        );
+        let march_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("clouds low march"),
+            layout: &march,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 2,
+                resource: uniform.as_entire_binding(),
+            }],
+        });
         CloudsTemporal {
-            march,
             depth,
             resolve,
-            uniform: crate::traffic::create_buffer(
-                device,
-                &wgpu::BufferDescriptor {
-                    label: Some("clouds temporal"),
-                    size: std::mem::size_of::<TemporalUniform>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                },
-            ),
+            uniform,
+            march_group,
+            depth_cache: Default::default(),
+            resolve_cache: Default::default(),
             history: None,
             drawn: None,
             reproject: false,

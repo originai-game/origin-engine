@@ -98,10 +98,10 @@ fn fs_impostor_shadow(in: ImpostorShadowOut, @builtin(front_facing) front: bool)
     if (translucency > 0.0) {
       let p = in.local_pos + in.local_toward * step;
       let leaf = crown_cell_leaf(scatter.card_leaves[0], p, in.root_pos + scatter_origin(), scatter.leaf_year);
-      leaf_cut = dither_cut(1.0 - leaf.leaf.kept, in.clip.xy, shadow_pass.dither.x);
+      leaf_cut = dither_cut(1.0 - leaf.leaf.kept, in.clip.xy, shadow_dither_turn());
     }
   }
-  let cut = cover.alpha < imp_cutoff() || dither_cut(in.fade_extent.x, in.clip.xy, shadow_pass.dither.x) || leaf_cut;
+  let cut = cover.alpha < imp_cutoff() || dither_cut(in.fade_extent.x, in.clip.xy, shadow_dither_turn()) || leaf_cut;
   let c = shadow_card_cut(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front, cut);
   var o: ImpostorShadowFrag;
   o.depth = c.depth;

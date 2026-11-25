@@ -233,6 +233,7 @@ impl Renderer {
             scene.frame.origin.y,
             scene.frame.origin.z,
         ];
+        let flat_paraboloid = [0.0, (dither % 64) as f32, 0.0, 0.0];
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         uniform.cascade_anchor = cascade_anchor.extend(0.0).to_array();
         for (i, c) in cascades.iter().enumerate() {
@@ -244,8 +245,7 @@ impl Renderer {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
                 time: shadow_time,
-                paraboloid: [0.0; 4],
-                dither: [dither, 0, 0, 0],
+                paraboloid: flat_paraboloid,
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
@@ -261,8 +261,8 @@ impl Renderer {
                         ls.paraboloid,
                         face,
                         self.shadows.local_shadow_size,
+                        dither,
                     ),
-                    dither: [dither, 0, 0, 0],
                     foliage_wind: uniform.foliage_wind[0],
                 };
             }
@@ -302,8 +302,7 @@ impl Renderer {
                 view_proj: view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
                 time: shadow_time,
-                paraboloid: [0.0; 4],
-                dither: [dither, 0, 0, 0],
+                paraboloid: flat_paraboloid,
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
@@ -318,8 +317,7 @@ impl Renderer {
                 view_proj: view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
                 time: shadow_time,
-                paraboloid: [0.0; 4],
-                dither: [dither, 0, 0, 0],
+                paraboloid: flat_paraboloid,
                 foliage_wind: uniform.foliage_wind[0],
             };
         }
