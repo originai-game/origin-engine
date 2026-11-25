@@ -38,4 +38,4 @@ struct DestructibleInfo {
 }
 ```
 
-<sub>Module `destruction` line 227</sub>
+<sub>Module `destruction` line 231</sub>

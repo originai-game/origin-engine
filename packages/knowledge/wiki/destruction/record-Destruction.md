@@ -22,6 +22,7 @@ Token `og.Destruction`, registered under the schema name `og.Destruction`; its v
 ```ogt
 resource Destruction {
   doc "The world's destruction budgets."
+  split destruction3d physics
   field maxChunks u32 "The most loose chunks alive at once, over every destructible: past it the oldest loose islands (the smallest first among those that broke in the same tick) despawn, each with every chunk it carries." {
     default 256
     min 1
@@ -59,4 +60,4 @@ resource Destruction {
 }
 ```
 
-<sub>Module `destruction` line 133</sub>
+<sub>Module `destruction` line 136</sub>

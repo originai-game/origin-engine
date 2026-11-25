@@ -43,6 +43,7 @@ component PixelTerrain {
   doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
   doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
   guide "physics §9"
+  split destruction2d physics
   aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
   field width u32 "Its cells across. Changing it starts the terrain over, filled again." {
     default 256
@@ -120,4 +121,4 @@ component PixelTerrain {
 }
 ```
 
-<sub>Module `destruction` line 314</sub>
+<sub>Module `destruction` line 318</sub>

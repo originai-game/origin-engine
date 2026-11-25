@@ -19,6 +19,7 @@ import { toPage } from "./platform.ts";
 import type { Glue, Run } from "./run.ts";
 
 declare const self: WorkerScope;
+declare const __OG_PUBLISH__: boolean | undefined;
 
 /** This Worker's bundle's map, served beside it in a dev build, for the spawns' lines; nothing when it is not there. */
 async function loadOwnSourceMap(): Promise<void> {
@@ -68,7 +69,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     let glue: Glue | null = null;
     // A split engine's referenced modules start downloading with the
     // primary; the rest load on their first call (docs/web-export.md §Modules).
-    const moduleHost = (m: EngineModules | undefined) => (m ? fetchModuleHost(m.base, m.files, m.referenced) : undefined);
+    const moduleHost = (m: EngineModules | undefined) => (m ? fetchModuleHost(m.base, m.files, m.referenced, m.hashes) : undefined);
     let referenced: readonly string[] = [];
     if (data.lanes) {
       // The bar's total counts the lanes wasm in place of the
@@ -161,7 +162,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     // Field telemetry's frames are the performance record's (author/perf.rs), binned by the `telemetry` call.
     if (data.telemetry) boundHost()?.abi.og_engine_perf(engine.id, true);
     // A dev build serves its bundle's map beside it: the game's spawns name their lines with it (spawn-site.ts).
-    const sourceMap = isPublishBuild() === true ? null : loadOwnSourceMap();
+    const sourceMap = (typeof __OG_PUBLISH__ !== "undefined" && __OG_PUBLISH__) || isPublishBuild() === true ? null : loadOwnSourceMap();
     if (data.trace) {
       run.trace.turn(engine, true);
       boundHost()?.abi.og_engine_trace(TRACE_BEFORE_ENGINE, false);

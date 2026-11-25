@@ -127,13 +127,26 @@ function generic(name: string): boolean {
   return first !== null && CARRIERS.has(first[1]!);
 }
 
+/** Shared math/geometry crates assigned to a module that primary code may also call directly. */
+const SHARED_MATH = new Set(["nalgebra", "simba", "robust", "spade", "rstar", "i_overlay"]);
+
+function sharedMath(name: string): boolean {
+  for (const m of name.matchAll(CRATE)) {
+    if (CARRIERS.has(m[1]!)) continue;
+    return SHARED_MATH.has(m[1]!);
+  }
+  return false;
+}
+
 /**
  * Moves out of `assigned` (function → module) each generic function
  * ([`generic`]) that a function outside its module calls: the linker folds
  * identical instances under one name, so spade's `RawVec::grow` can be the
  * body story's or the engine's code calls too, and leaving it in nav would
- * load nav there. Repeated until nothing moves (a moved function's own
- * generic callees then have a caller in the primary).
+ * load nav there. Also moves back any shared math/geometry crate helper
+ * called directly by the primary (`c === undefined`). Repeated until nothing
+ * moves (a moved function's own generic callees then have a caller in the
+ * primary).
  */
 export function keepShared(assigned: Map<string, string>, calls: Map<string, string[]>, siblings: Record<string, readonly string[]> = {}): void {
   const callers = new Map<string, string[]>();
@@ -149,7 +162,7 @@ export function keepShared(assigned: Map<string, string>, calls: Map<string, str
     moved = false;
     for (const [f, m] of assigned) {
       const outside = (callers.get(f) ?? []).map((c) => assigned.get(c)).filter((c) => c !== m);
-      if (generic(f) && outside.length) {
+      if ((generic(f) && outside.length) || (sharedMath(f) && outside.some((c) => c === undefined))) {
         assigned.delete(f);
         moved = true;
       } else if (parent.has(m) && outside.some((c) => c !== undefined && parent.get(c) === parent.get(m))) {

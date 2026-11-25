@@ -23,6 +23,7 @@ Token `og.Fractured`, registered under the schema name `og.Fractured`; its value
 ```ogt
 event Fractured {
   doc "An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. Sent in the order the islands broke."
+  split destruction3d physics
   field entity Entity "The og.Destructible."
   field body Entity "The island's body: the entity with its og.RigidBody."
   field chunks u32 "Its chunks."
@@ -40,4 +41,4 @@ event Fractured {
 }
 ```
 
-<sub>Module `destruction` line 115</sub>
+<sub>Module `destruction` line 117</sub>

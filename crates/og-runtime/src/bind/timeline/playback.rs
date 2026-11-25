@@ -633,13 +633,36 @@ fn timeline_system(
     state: &Mutex<Shared>,
     r: &Rec,
 ) -> og_core::Result<()> {
-    let time = ctx.time();
-    let rate = i64::from(time.rate);
-    let den = rate * STEPS;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
         rows.extend_from_slice(a.entities());
     }
+    if rows.is_empty() {
+        let st = lock(state);
+        if st.ops.is_empty()
+            && st.runs.is_empty()
+            && st.captions.is_empty()
+            && st.prerolled.is_empty()
+            && st.preparing.is_empty()
+        {
+            return Ok(());
+        }
+    }
+    step(ctx, engine_id, state, r, rows)
+}
+
+// A guarded entry into the engine's `timeline` module (wasm-modules.json).
+#[inline(never)]
+fn step(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    state: &Mutex<Shared>,
+    r: &Rec,
+    rows: Vec<Entity>,
+) -> og_core::Result<()> {
+    let time = ctx.time();
+    let rate = i64::from(time.rate);
+    let den = rate * STEPS;
     let ops = std::mem::take(&mut lock(state).ops);
     // A play or seek a system queued without reading the entity's
     // og.Timeline (`timeline_in_system`): said here when it has none.

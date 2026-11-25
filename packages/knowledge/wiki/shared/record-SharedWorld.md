@@ -54,4 +54,4 @@ resource SharedWorld {
 }
 ```
 
-<sub>Module `shared` line 23</sub>
+<sub>Module `shared` line 24</sub>

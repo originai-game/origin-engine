@@ -73,7 +73,7 @@ column CloudKind {
 }
 ```
 
-<sub>Module `atmosphere` line 358</sub>
+<sub>Module `atmosphere` line 359</sub>
 
 ```ogt
 column WindMotorKind {
@@ -84,7 +84,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 755</sub>
+<sub>Module `atmosphere` line 757</sub>
 
 ## Constants
 

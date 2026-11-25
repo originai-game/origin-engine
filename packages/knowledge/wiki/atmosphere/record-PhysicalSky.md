@@ -60,4 +60,4 @@ resource PhysicalSky {
 }
 ```
 
-<sub>Module `atmosphere` line 314</sub>
+<sub>Module `atmosphere` line 315</sub>

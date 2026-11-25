@@ -43,4 +43,4 @@ component RemoteAvatar {
 }
 ```
 
-<sub>Module `shared` line 60</sub>
+<sub>Module `shared` line 61</sub>

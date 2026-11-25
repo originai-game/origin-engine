@@ -40,6 +40,12 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
     if !with(engine, |n| n.ls.me().is_some()) {
         return true;
     }
+    gate_active(engine, world)
+}
+
+// A guarded entry into the engine's `net` module (wasm-modules.json).
+#[inline(never)]
+fn gate_active(engine: u32, world: &mut World) -> bool {
     let Ok(eng) = engine_of(engine) else {
         return true;
     };
@@ -134,6 +140,12 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
     if !with(engine, |n| n.ls.running()) {
         return;
     }
+    after_tick_active(engine, world);
+}
+
+// A guarded entry into the engine's `net` module (wasm-modules.json).
+#[inline(never)]
+fn after_tick_active(engine: u32, world: &mut World) {
     let tick = world.time().tick;
     with(engine, |n| {
         let ran = crate::author::probe::now_ms();

@@ -93,4 +93,81 @@ test("brief and creation vocabularies stay in lockstep with Rust cook/synth cons
   expect(() => resolveCreationChoices("", { form: "3d", look: "toy-3d" }, customCat)).toThrow(/no look preset 'toy-3d'/);
 });
 
+test("IDL splits match wasm-modules.json, SW never precaches unused split modules, and referencedModules resolves destruction by profile", async () => {
+  const { mkdirSync } = await import("node:fs");
+  const bindings = JSON.parse(readFileSync(join(real.engine, "types/bindings.json"), "utf8")) as {
+    splits: Record<string, string[]>;
+    components: Array<{ name: string; split?: string[] }>;
+    resources: Array<{ name: string; split?: string[] }>;
+    events: Array<{ name: string; split?: string[] }>;
+  };
+  const wasmModules = JSON.parse(readFileSync(join(real.engine, "scripts/wasm-modules.json"), "utf8")) as {
+    modules: Record<string, string[]>;
+  };
+  const defined = new Set(Object.keys(wasmModules.modules));
+  const declared = new Set<string>();
+  for (const ms of Object.values(bindings.splits)) for (const m of ms) declared.add(m);
+  for (const r of [...bindings.components, ...bindings.resources, ...bindings.events]) {
+    for (const m of r.split ?? []) declared.add(m);
+  }
+  for (const m of declared) {
+    if (m === "destruction") {
+      expect(defined.has("destruction2d")).toBe(true);
+      expect(defined.has("destruction3d")).toBe(true);
+    } else {
+      expect(defined.has(m), `IDL split module '${m}' must exist in wasm-modules.json`).toBe(true);
+    }
+  }
+
+  const { serviceWorkerLists } = await import("../../engine/src/node/web-build.ts");
+  const sw = serviceWorkerLists(
+    [
+      "index.html",
+      "game.abc123456789.js",
+      "origin-engine.abc123456789.js",
+      "origin-engine_bg.abc123456789.wasm",
+      "origin-engine-lanes.abc123456789.js",
+      "origin-engine-lanes_bg.abc123456789.wasm",
+      "modules/physics.111111111111.wasm",
+      "modules/physics2d.222222222222.wasm",
+      "modules/world3d.333333333333.wasm",
+      "modules-lanes/physics.444444444444.wasm",
+      "modules-lanes/world3d.555555555555.wasm",
+    ],
+    new Set(),
+    new Set(),
+    {
+      single: new Set(["modules/physics.111111111111.wasm", "modules/physics2d.222222222222.wasm"]),
+      lanes: new Set(["modules-lanes/physics.444444444444.wasm"]),
+    },
+  );
+  expect(sw.files.some((f) => f.startsWith("modules"))).toBe(false);
+  expect(sw.single).toContain("modules/physics.111111111111.wasm");
+  expect(sw.single).toContain("modules/physics2d.222222222222.wasm");
+  expect(sw.single).not.toContain("modules/world3d.333333333333.wasm");
+  expect(sw.lanes).toContain("modules-lanes/physics.444444444444.wasm");
+  expect(sw.lazy).toContain("modules/world3d.333333333333.wasm");
+  expect(sw.lazy).toContain("modules-lanes/world3d.555555555555.wasm");
+
+  const { referencedModules } = await import("../../engine/src/node/modules.ts");
+  const proj = mkdtempSync(join(tmpdir(), "og-mods-"));
+  temps.push(proj);
+  mkdirSync(join(proj, "cooked"), { recursive: true });
+  mkdirSync(join(proj, "src"), { recursive: true });
+  writeFileSync(join(proj, "cooked/.cook.ogt"), 'type cook\nversion 1\n---\nprofile "2d"\n');
+  const mainTs = join(proj, "src/main.ts");
+  const unusedTs = join(proj, "src/unused.ts");
+  writeFileSync(
+    mainTs,
+    '// og.terrain.load(world, "t")\n/* og.video.play(world, e) */\nog.destruction.explode2d(world, {});\nog.render.extrudeGeometry(world, {});\n',
+  );
+  writeFileSync(unusedTs, "og.story.start(world, {});\n");
+  const mods = referencedModules(proj, bindings, [mainTs]);
+  expect(mods).toEqual(["destruction2d", "physics", "physics2d", "shape"]);
+  expect(mods).not.toContain("destruction");
+  expect(mods).not.toContain("world3d");
+  expect(mods).not.toContain("video");
+  expect(mods).not.toContain("story");
+});
+
 

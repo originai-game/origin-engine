@@ -24,6 +24,7 @@ component RealtimeLightVolume {
   doc "Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce each sweep. Shiny surfaces inside reflect the probes' light, not the sky."
   doc "Until every probe is relit, and while GlobalIllumination.allowed is false, the box takes its LightVolume's baked probes, else the sky's. Realtime probes win over baked ones; static models keep their lightmaps. Up to eight volumes are drawn. Presentation only; a world that never names it keeps its type table, saves and hash."
   guide "render §4"
+  split render3d
   field updatesPerFrame u32 "Probes relit a frame once every one has been (at most 8 a frame over every volume; the first sweep takes 8). 0 relights them once and keeps them: a bake at run time." {
     default 2
     max 8
@@ -36,4 +37,4 @@ component RealtimeLightVolume {
 }
 ```
 
-<sub>Module `render` line 4423</sub>
+<sub>Module `render` line 4424</sub>

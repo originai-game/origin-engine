@@ -22,6 +22,7 @@ module destruction {
     doc "Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). A standing prop (no og.RigidBody, or a static one) is its chunks from the first tick: each a static og.Collider (its piece's hull) on an og.Chunk, replacing the entity's own Collider and RigidBody. A moving prop (a dynamic or kinematic body) collides as itself until its first break, when its chunks replace its Collider, RigidBody and Velocity, moving as it moved. Then each chunk draws its piece of the hidden model (its tint, variant, shadows)."
     doc "Chunks' colliders and mass follow og.Transform.scale's mean."
     guide "physics §9"
+    split destruction3d physics
     aliases "breakable, destructable, destructible prop, fracture, Unreal Geometry Collection"
     field toughness f32 "How much damage a square metre of bond takes before it breaks: an impulse of that many newton-seconds through 1 m² (a hit spreads over impactRadius). Glass about 50, wood 300, brick 800, concrete 2000." {
       default 800
@@ -94,6 +95,7 @@ module destruction {
 
   component Chunk {
     doc "One chunk of an og.Destructible, written by og.destruction when the prop fractures. A loose chunk is a dynamic body (with og.RigidBody and og.Velocity, or a child collider of its island's body); an anchored one a static collider. Drawn with its part of the destructible's model. Despawn it to clear it away."
+    split destruction3d physics
     field destructible Entity "The og.Destructible it belongs to." {
       readonly true
     }
@@ -114,6 +116,7 @@ module destruction {
 
   event Fractured {
     doc "An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. Sent in the order the islands broke."
+    split destruction3d physics
     field entity Entity "The og.Destructible."
     field body Entity "The island's body: the entity with its og.RigidBody."
     field chunks u32 "Its chunks."
@@ -132,6 +135,7 @@ module destruction {
 
   resource Destruction {
     doc "The world's destruction budgets."
+    split destruction3d physics
     field maxChunks u32 "The most loose chunks alive at once, over every destructible: past it the oldest loose islands (the smallest first among those that broke in the same tick) despawn, each with every chunk it carries." {
       default 256
       min 1
@@ -315,6 +319,7 @@ module destruction {
     doc "Destructible 2D ground of square cells: ground, bedrock or empty. Its og.Transform's position is cell (0, 0)'s bottom-left corner, x right, y up (rotation and scale unused). Filled the first tick it is seen; carve2d, fill2d, explode2d and fracture2d change it in the tick (og.destruction2d, before og.physics)."
     doc "Each `chunk` × `chunk` block with a solid cell is an entity with a static native polyline og.Collider of its outline smoothed within `tolerance`, rebuilt only when a change touches it. Ground no longer joined through cell sides to bedrock or the bottom row falls as og.PixelPiece entities."
     guide "physics §9"
+    split destruction2d physics
     aliases "destructible terrain, pixel terrain, worms terrain, noita, carve ground, deformable terrain, 2D destruction"
     field width u32 "Its cells across. Changing it starts the terrain over, filled again." {
       default 256
@@ -393,6 +398,7 @@ module destruction {
 
   component PixelPiece {
     doc "A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody with compound convex colliders preserving its cells' concavities and holes, drawn as its cells at its og.Transform (the bottom-left corner of its cell (0, 0), turning with the body). Its cells are world state; despawn it to clear it away."
+    split destruction2d physics
     field terrain Entity "The og.PixelTerrain it was part of." {
       readonly true
     }
@@ -412,6 +418,7 @@ module destruction {
 
   event PixelDetached {
     doc "Cells of an og.PixelTerrain (or of an og.PixelPiece fracture2d broke) broke loose during the tick, read the tick after: one for each piece, in the order they were cut, for its sound, its dust, its score."
+    split destruction2d physics
     field terrain Entity "The og.PixelTerrain."
     field piece Entity "The og.PixelPiece it became; 0 for an island under minPiece, which vanished."
     field cells u32 "Its cells."

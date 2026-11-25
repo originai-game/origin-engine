@@ -68,6 +68,18 @@ pub(crate) fn present(world: &World, rs: &mut crate::present::extract::RenderSta
     if runs.is_empty() && lock(&reg).material_base.is_empty() {
         return;
     }
+    apply(world, rs, engine_id, reg, runs);
+}
+
+// A guarded entry into the engine's `timeline` module (wasm-modules.json).
+#[inline(never)]
+fn apply(
+    world: &World,
+    rs: &mut crate::present::extract::RenderState,
+    engine_id: u32,
+    reg: Arc<Mutex<Registry>>,
+    runs: Vec<(u64, i64)>,
+) {
     let rate = i64::from(world.time().rate);
     let den = (rate * STEPS) as f64;
     let mut driven = Driven::new();

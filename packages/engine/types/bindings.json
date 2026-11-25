@@ -3,8 +3,14 @@
   "package": "@origingame/engine",
   "api": 1,
   "splits": {
+    "procgen": [
+      "shape"
+    ],
     "physics": [
       "physics"
+    ],
+    "tilemap": [
+      "tilemap"
     ],
     "nav": [
       "nav"
@@ -21,6 +27,15 @@
     "video": [
       "video"
     ],
+    "timeline": [
+      "timeline"
+    ],
+    "net": [
+      "net"
+    ],
+    "shared": [
+      "shared"
+    ],
     "motion": [
       "motion"
     ],
@@ -33,7 +48,8 @@
     ],
     "flow": [
       "story",
-      "video"
+      "video",
+      "timeline"
     ]
   },
   "columns": [
@@ -2858,6 +2874,9 @@
       "name": "RealtimeLightVolume",
       "schema": "og.RealtimeLightVolume",
       "module": "render",
+      "split": [
+        "render3d"
+      ],
       "fields": [
         {
           "name": "updatesPerFrame",
@@ -5135,7 +5154,8 @@
       "schema": "og.Fluid3D",
       "module": "physics",
       "split": [
-        "physics"
+        "physics",
+        "world3d"
       ],
       "fields": [
         {
@@ -5597,6 +5617,9 @@
       "name": "FogVolume",
       "schema": "og.FogVolume",
       "module": "atmosphere",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "color",
@@ -5626,6 +5649,9 @@
       "name": "WindMotor",
       "schema": "og.WindMotor",
       "module": "atmosphere",
+      "split": [
+        "render3d"
+      ],
       "fields": [
         {
           "name": "kind",
@@ -5651,6 +5677,9 @@
       "name": "Water",
       "schema": "og.Water",
       "module": "atmosphere",
+      "split": [
+        "world3d"
+      ],
       "fields": [
         {
           "name": "size",
@@ -6073,6 +6102,9 @@
       "name": "CrowdAnimation",
       "schema": "og.CrowdAnimation",
       "module": "anim",
+      "split": [
+        "render3d"
+      ],
       "fields": [
         {
           "name": "skeleton",
@@ -7014,6 +7046,9 @@
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
+      "split": [
+        "tilemap"
+      ],
       "fields": [
         {
           "name": "map",
@@ -8684,7 +8719,8 @@
       "schema": "og.GrassPusher",
       "module": "terrain",
       "split": [
-        "world3d"
+        "world3d",
+        "render3d"
       ],
       "fields": [
         {
@@ -8922,6 +8958,9 @@
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
+      "split": [
+        "timeline"
+      ],
       "fields": [
         {
           "name": "asset",
@@ -8961,6 +9000,9 @@
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "player",
@@ -9005,6 +9047,9 @@
       "name": "SharedAvatar",
       "schema": "og.SharedAvatar",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "kind",
@@ -9018,6 +9063,9 @@
       "name": "RemoteAvatar",
       "schema": "og.RemoteAvatar",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "id",
@@ -9050,6 +9098,9 @@
       "name": "SharedObject",
       "schema": "og.SharedObject",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "version",
@@ -9098,7 +9149,7 @@
       "schema": "og.Destructible",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction3d",
         "physics"
       ],
       "fields": [
@@ -9200,7 +9251,7 @@
       "schema": "og.Chunk",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction3d",
         "physics"
       ],
       "fields": [
@@ -9242,7 +9293,7 @@
       "schema": "og.PixelTerrain",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction2d",
         "physics"
       ],
       "fields": [
@@ -9358,7 +9409,7 @@
       "schema": "og.PixelPiece",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction2d",
         "physics"
       ],
       "fields": [
@@ -9549,7 +9600,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {
@@ -9646,7 +9698,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {
@@ -12669,6 +12722,9 @@
       "name": "GlobalIllumination",
       "schema": "og.GlobalIllumination",
       "module": "render",
+      "split": [
+        "render3d"
+      ],
       "fields": [
         {
           "name": "enabled",
@@ -14228,6 +14284,9 @@
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
+      "split": [
+        "render3d"
+      ],
       "fields": [
         {
           "name": "direction",
@@ -14422,6 +14481,9 @@
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "enabled",
@@ -14482,6 +14544,9 @@
       "name": "SharedWorld",
       "schema": "og.SharedWorld",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "sendRateHz",
@@ -14775,7 +14840,7 @@
       "schema": "og.Destruction",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction3d",
         "physics"
       ],
       "fields": [
@@ -16379,6 +16444,9 @@
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
+      "split": [
+        "timeline"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16397,6 +16465,9 @@
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
+      "split": [
+        "timeline"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16425,6 +16496,9 @@
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
+      "split": [
+        "timeline"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16443,6 +16517,9 @@
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "tick",
@@ -16466,6 +16543,9 @@
       "name": "SeatDropped",
       "schema": "og.SeatDropped",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "seat",
@@ -16494,6 +16574,9 @@
       "name": "SeatRejoined",
       "schema": "og.SeatRejoined",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "seat",
@@ -16517,6 +16600,9 @@
       "name": "PeerStalled",
       "schema": "og.PeerStalled",
       "module": "net",
+      "split": [
+        "net"
+      ],
       "fields": [
         {
           "name": "peer",
@@ -16540,6 +16626,9 @@
       "name": "SharedJoined",
       "schema": "og.SharedJoined",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "player",
@@ -16563,6 +16652,9 @@
       "name": "SharedLeft",
       "schema": "og.SharedLeft",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "reason",
@@ -16576,6 +16668,9 @@
       "name": "PresenceEntered",
       "schema": "og.PresenceEntered",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16604,6 +16699,9 @@
       "name": "PresenceLeft",
       "schema": "og.PresenceLeft",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16622,6 +16720,9 @@
       "name": "SharedCorrected",
       "schema": "og.SharedCorrected",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "sequence",
@@ -16635,6 +16736,9 @@
       "name": "SharedObjectChanged",
       "schema": "og.SharedObjectChanged",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16658,6 +16762,9 @@
       "name": "SharedObjectGone",
       "schema": "og.SharedObjectGone",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "entity",
@@ -16676,6 +16783,9 @@
       "name": "SharedOpAnswered",
       "schema": "og.SharedOpAnswered",
       "module": "shared",
+      "split": [
+        "shared"
+      ],
       "fields": [
         {
           "name": "op",
@@ -16700,7 +16810,7 @@
       "schema": "og.Fractured",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction3d",
         "physics"
       ],
       "fields": [
@@ -16751,7 +16861,7 @@
       "schema": "og.PixelDetached",
       "module": "destruction",
       "split": [
-        "destruction",
+        "destruction2d",
         "physics"
       ],
       "fields": [
@@ -16821,7 +16931,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {
@@ -16848,7 +16959,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {
@@ -16880,7 +16992,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {
@@ -16907,7 +17020,8 @@
       "module": "flow",
       "split": [
         "story",
-        "video"
+        "video",
+        "timeline"
       ],
       "fields": [
         {

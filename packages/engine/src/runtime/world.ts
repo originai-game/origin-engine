@@ -19,9 +19,11 @@ function structural<T>(answer: T): T {
   return answer;
 }
 
+declare const __OG_PUBLISH__: boolean | undefined;
+
 /** The game's line that called `world` (spawn-site.ts), outside a publish build. */
 function siteOf(world: World): string | null {
-  return rt.publishBuild === true ? null : spawnSite(engineRoots.get(world.id) ?? rt.creatingRoot);
+  return (typeof __OG_PUBLISH__ !== "undefined" && __OG_PUBLISH__) || rt.publishBuild === true ? null : spawnSite(engineRoots.get(world.id) ?? rt.creatingRoot);
 }
 
 /** A borrow conflict's refusal with the game's line that made the call. */

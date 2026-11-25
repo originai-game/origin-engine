@@ -34,4 +34,4 @@ fn noise {
 }
 ```
 
-<sub>Module `procgen` line 85</sub>
+<sub>Module `procgen` line 86</sub>
