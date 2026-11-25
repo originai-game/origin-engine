@@ -73,7 +73,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `caustics` | `number` | `0` | 0 … 4 | — | tunable | Caustics of the sunlight on everything below the surface (0: none): the bright net the surface's waves focus, a sea's by its own waves, a lake's by its ripples, its cells growing with depth. One surface a frame, the first that has them. |
-| `causticsScale` | `number` | `0.6` | 0.01 … 10 | — | tunable | How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves). |
+| `causticsScale` | `number` | `0.6` | 0.01 … 10 | — | tunable | How fine the caustics are: the short waves that focus them, in cells per metre (on a sea, bent and moved by its longer waves). |
 
 #### Normal maps and flow
 
@@ -262,7 +262,7 @@ component Water {
     max 4
     tunable true
   }
-  field causticsScale f32 "How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves)." {
+  field causticsScale f32 "How fine the caustics are: the short waves that focus them, in cells per metre (on a sea, bent and moved by its longer waves)." {
     default 0.6
     min 0.01
     max 10

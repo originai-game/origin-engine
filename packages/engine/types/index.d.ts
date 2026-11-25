@@ -21043,7 +21043,7 @@ export interface Water {
    */
   caustics: number;
   /**
-   * How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves).
+   * How fine the caustics are: the short waves that focus them, in cells per metre (on a sea, bent and moved by its longer waves).
    *
    * @default 0.6
    * @range 0.01..10

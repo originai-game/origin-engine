@@ -101,7 +101,7 @@ struct Frame {
   // Water (`water.rs`): caustics on what lies below the first surface that has them.
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
-  caustics_cells: array<vec4<f32>, 2>,  // [0].xy: the frame's origin in the ripples' tile (cells); a sea: its grid, [1].w 1
+  caustics_cells: array<vec4<f32>, 2>,  // [0].xy: the frame's origin in the ripples' tile (cells); a sea: [0] its grid, [1].xy that origin, [1].w 1
   // W1: the shore a sea's surf wets (water.rs caustics; weather_surface.wgsl shore_wetness).
   shore_wet: vec4<f32>,       // x: the sea's rest level, y: how high above it the surf wets (m), z: how wet (0: none)
   shore_area: vec4<f32>,      // its seabed's xz rectangle: xy min, zw max

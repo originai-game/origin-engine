@@ -2,7 +2,7 @@ use super::*;
 use crate::fields::window;
 
 /// W2: a sea's caustics grid (`shaders/water_caustics.wgsl`, caustics.wgsl
-/// `wave_caustics`): [`CAUSTIC_RES`]² texels of [`CAUSTIC_TEXEL`] metres
+/// `wave_hessian`): [`CAUSTIC_RES`]² texels of [`CAUSTIC_TEXEL`] metres
 /// about the camera, each the drawn surface's Hessian in one word.
 /// (16 KB, the downlevel limit of a uniform binding the renderer asks for.)
 pub(crate) const CAUSTIC_RES: u32 = 64;
@@ -218,7 +218,7 @@ const RIPPLE_TILE: f64 = 512.0;
 /// `FrameUniform::caustics` (height, strength, scale, fade; then the xz
 /// rectangle; then where the scene's `origin` lies in the ripples' tile,
 /// in cells, so the pattern stays put when it moves: `origin.rs`; under a
-/// sea its curvature grid and a 1 in the last row's w); zero without one.
+/// sea its curvature grid, then that place and a 1); zero without one.
 /// Then the wet shore ([`shore_wet`]).
 pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 6] {
     let mut rows = [[0.0; 4]; 6];
@@ -226,7 +226,11 @@ pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 
     let Some(w) = waters.iter().find(|w| w.caustics > 0.0) else {
         return rows;
     };
-    // W2: under a sea its waves' own, from the caustics grid.
+    let scale = w.caustics_scale.max(1e-3);
+    // caustics.wgsl `ripple_caustics`: the ripples repeat over their tile,
+    // so the origin's place within it is all the pattern needs of it.
+    let within = |o: f32| (f64::from(o) * f64::from(scale)).rem_euclid(RIPPLE_TILE) as f32;
+    // W2: under a sea its short waves' lines, bent by its long waves' curvature from the caustics grid.
     if ocean(w).is_some() {
         let (_, at) = plane(w);
         let h = w.size * 0.5;
@@ -240,10 +244,10 @@ pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 
             )
         };
         rows[..4].copy_from_slice(&[
-            [at.y, w.caustics, 0.0, 0.05],
+            [at.y, w.caustics, scale, 0.05],
             [lo.x, lo.y, hi.x, hi.y],
             caustic_grid(eye, origin),
-            [0.0, 0.0, 0.0, 1.0],
+            [within(origin.x), within(origin.z), 0.0, 1.0],
         ]);
         return rows;
     }
@@ -257,10 +261,6 @@ pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 
         lo = lo.min(Vec2::new(p.x, p.z));
         hi = hi.max(Vec2::new(p.x, p.z));
     }
-    let scale = w.caustics_scale.max(1e-3);
-    // caustics.wgsl `ripple_caustics`: the ripples repeat over their tile,
-    // so the origin's place within it is all the pattern needs of it.
-    let within = |o: f32| (f64::from(o) * f64::from(scale)).rem_euclid(RIPPLE_TILE) as f32;
     rows[..4].copy_from_slice(&[
         [at.y, w.caustics, scale, 0.15],
         [lo.x, lo.y, hi.x, hi.y],
