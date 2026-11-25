@@ -69,13 +69,22 @@ export const environmentSunRotation = (
   return { ok: true, value: { rotation, direction, elevation: math.atan2(sun.direction.y, flat) } };
 };
 
+/**
+ * The frame's theme and viewport, parsed only when their text changes: the
+ * same object while the frame's style and surface stay the same (components
+ * read them many times a tick), and a fresh one the tick they change.
+ */
+const lastParsed = new Map<string, { text: string; value: unknown }>();
+function parsedOnce<T>(key: string, text: string): T {
+  const last = lastParsed.get(key);
+  if (last && last.text === text) return last.value as T;
+  const value = parse<T>(text);
+  lastParsed.set(key, { text, value });
+  return value;
+}
+
 export const ui = Object.freeze({
   scope: (world: W, id: string): Api.UiScope => uiReactor(world).scope(id),
-  configure: (world: W, desc?: unknown) => parse(abi().og_ui_configure(world.id, json(desc))),
-  viewport: (world: W) => parse(abi().og_ui_viewport(world.id)),
-  theme: (world: W) => parse(abi().og_ui_theme(world.id)),
-  frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
-  frameCursor: (): Api.Cursor => abi().og_ui_frame_cursor() as Api.Cursor,
-  feedback: (event: string, rise: number) => abi().og_ui_feedback(event, rise),
-  setHaptics: (intensity: number) => abi().og_ui_set_haptics(intensity),
+  frameViewport: (): Api.Viewport => parsedOnce("viewport", abi().og_ui_frame_viewport()),
+  frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
 });

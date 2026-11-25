@@ -229,3 +229,13 @@ og.AudioSource in step with the picture.
   and `renditions none` leaves them out. Every rendition has the stream's
   frames and key frames, so a player is at the same frame whichever codec
   it plays; an executor always decodes the AV1.
+
+## 9. Synthesised SFX (`og sfx` and `type sfx`)
+
+Short sound effects can be authored directly as `type sfx` `.ogt` files without external audio editors: `og cook` renders them at 48 kHz mono and encodes them like any other sound asset (loaded with `og.load.sound` and played on `og.AudioSource` or `og.AudioEvent`).
+
+- **CLI**: `og sfx list` lists the built-in presets; `og sfx render <preset|file.ogt> <out.wav>` previews or renders to WAV.
+- **Built-in presets** (18): `coin`, `pickup`, `powerup`, `jump`, `land`, `footstep`, `hit`, `hurt`, `explosion`, `laser`, `whoosh`, `door`, `death`, `click`, `select`, `back`, `error`, `levelup`.
+- **`.ogt` file**: start from `preset "<name>"` and override or layer oscillators, noise, envelopes, pitch slides, arpeggios, filters, and punch (`og api show assets` covers the `type sfx` grammar).
+- **Audio brief**: `audioBrief` and `readAudioChoices` from `@origingame/create-game` (or `packages/knowledge/scripts/brief.ts`) derive music cues and SFX preset suggestions from the project's `create` block and look mood.
+

@@ -1,0 +1,19 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og api show",
+      "summary": "Generates and indexes `ui-tsx` (`@origingame/engine/ui` primitives, hooks, signals, `HostProps`, `UiEvent`), `theme-tokens` (default pack colour roles, theme scales, `packClass` slots, sounds, images, and built-in icons), `playtest` (`@origingame/engine/playtest`), and `provider` (`@origingame/engine/provider`) guides from source in `og api gen`/`og api check`."
+    },
+    {
+      "member": "og api find",
+      "summary": "Documents `og sfx` and `type sfx` presets (`audio §9`), `type rig2d` 2D auto-rigging templates (`animation §14`), built-in `@canvas/*` and `@palettes/*` look assets (`looks §20`), and theme authoring commands (`themes §6`)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "Composes `og.ui` directly over generated `calls.ui` plus `scope`, memoized `frameViewport`/`frameTheme`, and `formatNumber`, removing the redundant `src/ui-kit/` wrapper layer."
+    }
+  ]
+}

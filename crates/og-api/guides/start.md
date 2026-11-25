@@ -147,9 +147,9 @@ most; `--all` lists every member.
 | begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
 | write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
 | read a unit, an angle, a row or a name the right way round | `conventions`, `facing` | `og.transform.face`, `og.transform.face2d` |
-| test the loop, capture & measure frames | `testing`, `captures`, `perf` | `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
+| test the loop, capture & measure frames | `testing`, `playtest`, `captures`, `perf` | `runPlaytest` (`@origingame/engine/playtest`), `og.assert.always`, `og.assert.sometimes` |
 | save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
-| call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |
+| call or integrate platform services | saves §7, `provider` | `og.platform.storeGet`, `og.platform.result`, `@origingame/engine/provider` |
 | read the player's input | `input` | `og.Input`, `og.input.action`, `og.Gamepad` |
 | move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
 | break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |
@@ -167,7 +167,7 @@ most; `--all` lists every member.
 | animate characters and props | `animation` | `og.AnimationPlayer`, `og.anim.clip`, `og.MotionAgent`, `og.tween` |
 | build terrain, tilemaps, districts, paths, AI | `world`, `districts` | `og.Terrain`, `og.Tilemap`, `og.tilemap.setTile`, `og.nav` |
 | add effects | `effects`, `effect-files`, `effect-packs`, `pixel-vfx` | `og.vfx.spawn`, `og.ParticleSystem` |
-| write screens, themes and HUDs | `screens`, `themes`, `components`, `ui-materials` | `og.ui.configure`, `og.ui.scope`, `mount` from `@origingame/engine/ui` |
+| write screens, themes, tokens and HUDs | `screens`, `ui-tsx`, `theme-tokens`, `themes`, `components`, `ui-materials` | `og.ui.configure`, `og.ui.scope`, `mount` from `@origingame/engine/ui` |
 | translate text | `localization`, screens §6 | `og.i18n.t` |
 | write dialogue, quests and interactive video | `yarn`, `flow`, `video-to-game` | `og.story`, `og.flow`, `og video study` |
 | port three.js code | `three-to-og` | `og migrate three` |
