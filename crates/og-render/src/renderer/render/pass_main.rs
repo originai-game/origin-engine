@@ -330,7 +330,7 @@ impl Renderer {
         let mut pass = begin(
             encoder,
             true,
-            serial || split || vol_froxel_early || vol_raymarch_late || oit.is_some() || distort,
+            serial || split || oit.is_some() || distort,
             if serial { "main: opaque" } else { "main" },
         );
         pass.set_bind_group(0, frame_bind_group, &[]);
@@ -588,7 +588,7 @@ impl Renderer {
             pass = begin(
                 encoder,
                 false,
-                serial || vol_froxel_early || vol_raymarch_late || oit.is_some() || distort,
+                serial || oit.is_some() || distort,
                 if serial {
                     "main: water"
                 } else {
@@ -614,29 +614,19 @@ impl Renderer {
             }
         }
         // Forward volumetric fog: when 3D froxels are active, apply the volume
-        // to opaque surfaces, sky and water/fluids here so particles, effect
-        // meshes and ribbons sample the 3D froxel volume at their own true
-        // world depth and 2D sprites are never fogged by 3D scene depth.
+        // to opaque surfaces, sky and water/fluids directly inside the open
+        // Main pass (no MSAA HDR/depth spill) so particles, effect meshes and
+        // ribbons sample the 3D froxel volume at their own true world depth
+        // and 2D sprites are never fogged by 3D scene depth.
         if vol_froxel_early {
-            drop(pass);
             let depth = self.graph.try_view("front-depth");
-            self.volumetric.encode_apply(
+            self.volumetric.draw_apply(
                 &self.device,
-                encoder,
+                &mut pass,
                 frame_bind_group,
-                if msaa {
-                    self.graph.view("hdr-msaa")
-                } else {
-                    hdr
-                },
                 depth.unwrap_or(self.graph.view("lindepth")),
             );
-            pass = begin(
-                encoder,
-                false,
-                serial || oit.is_some() || distort,
-                "main (after volumetric)",
-            );
+            stats.draw_calls += 1;
             pass.set_bind_group(0, frame_bind_group, &[]);
             pass.set_bind_group(2, fx_group, &[]);
         }
@@ -832,38 +822,16 @@ impl Renderer {
                 if let Some(a) = arena.filter(|_| mode == oit::Oit::List) {
                     a.copy_count(encoder, self.frame_index);
                 }
-                stats.draw_calls += self.encode_oit_resolve(encoder, mode);
-                // After OIT resolve has consumed exact OIT revealage, multiply
-                // half-res additive/soft FX reactivity into `oit.reveal` so
-                // TAA and FSR 3.1 suppress ghosting on half-res fireballs too.
-                if taa
-                    && half_ready
-                    && let (Some(full_depth), Some(half_depth), Some(half_view), Some(reveal)) = (
-                        self.graph.try_view("lindepth"),
-                        self.graph.try_view("fx.half_depth"),
-                        self.graph.try_view("fx.half"),
-                        self.graph.try_view("oit.reveal"),
-                    )
-                {
-                    stats.draw_calls += self.particles.gpu.half_res.encode_reactive(
-                        &self.device,
-                        encoder,
-                        full_depth,
-                        half_view,
-                        half_depth,
-                        reveal,
-                        false,
-                    );
+                if mode == oit::Oit::List {
+                    stats.draw_calls += self.encode_oit_resolve(encoder, mode);
                 }
                 // Over the resolved scene: the billboards the OIT pass
                 // cannot take, back to front, then half-res soft clouds,
                 // then what adds light (never weighted down).
-                pass = begin(
-                    encoder,
-                    false,
-                    vol_raymarch_late || distort,
-                    "main (after oit)",
-                );
+                pass = begin(encoder, false, distort, "main (after oit)");
+                if mode != oit::Oit::List {
+                    stats.draw_calls += self.draw_oit_resolve(&mut pass, mode);
+                }
                 pass.set_bind_group(0, frame_bind_group, &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls += ctx.draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
@@ -905,7 +873,7 @@ impl Renderer {
                     },
                 );
             }
-            pass = begin(encoder, false, vol_raymarch_late, "main (distortion)");
+            pass = begin(encoder, false, false, "main (distortion)");
             pass.set_bind_group(0, frame_bind_group, &[]);
             pass.set_bind_group(2, fx_group, &[]);
             stats.draw_calls +=
@@ -922,22 +890,17 @@ impl Renderer {
             pass.set_bind_group(0, frame_bind_group, &[]);
         }
         // Raymarched volumetric fog fallback (when 3D froxels are unavailable):
-        // apply before 2D sprites so 2D sprites and text are never fogged.
+        // apply directly inside the open Main pass before 2D sprites so 2D
+        // sprites and text are never fogged and no MSAA HDR spill occurs.
         if vol_raymarch_late {
-            drop(pass);
             let depth = self.graph.try_view("front-depth");
-            self.volumetric.encode_apply(
+            self.volumetric.draw_apply(
                 &self.device,
-                encoder,
+                &mut pass,
                 frame_bind_group,
-                if msaa {
-                    self.graph.view("hdr-msaa")
-                } else {
-                    hdr
-                },
                 depth.unwrap_or(self.graph.view("lindepth")),
             );
-            pass = begin(encoder, false, false, "main (sprites)");
+            stats.draw_calls += 1;
             pass.set_bind_group(0, frame_bind_group, &[]);
             pass.set_bind_group(2, fx_group, &[]);
         }
@@ -950,6 +913,29 @@ impl Renderer {
             false,
         );
         drop(pass);
+        // After Main (including fused OIT resolve) has consumed exact OIT
+        // revealage, multiply half-res additive/soft FX reactivity into
+        // `oit.reveal` so TAA and FSR 3.1 suppress ghosting on half-res FX too.
+        if oit.is_some()
+            && taa
+            && half_ready
+            && let (Some(full_depth), Some(half_depth), Some(half_view), Some(reveal)) = (
+                self.graph.try_view("lindepth"),
+                self.graph.try_view("fx.half_depth"),
+                self.graph.try_view("fx.half"),
+                self.graph.try_view("oit.reveal"),
+            )
+        {
+            stats.draw_calls += self.particles.gpu.half_res.encode_reactive(
+                &self.device,
+                encoder,
+                full_depth,
+                half_view,
+                half_depth,
+                reveal,
+                false,
+            );
+        }
         // The lit image for the next frame's GI (`gi-write`).
         if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
             encoder.copy_texture_to_texture(

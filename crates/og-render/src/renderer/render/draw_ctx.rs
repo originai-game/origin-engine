@@ -426,7 +426,7 @@ impl<'f> DrawCtx<'f> {
             scatter_batches,
             ..
         } = self;
-        let attachment = |view, clear: f64| {
+        let attachment = |view, clear: f64, store| {
             Some(wgpu::RenderPassColorAttachment {
                 view,
                 depth_slice: None,
@@ -438,17 +438,17 @@ impl<'f> DrawCtx<'f> {
                         b: 0.0,
                         a: 0.0,
                     }),
-                    store: wgpu::StoreOp::Store,
+                    store,
                 },
             })
         };
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(label),
             color_attachments: &[
-                attachment(&pre.gbuffer, 0.0),
-                attachment(&pre.lindepth, post::FAR_DEPTH as f64),
-                attachment(&pre.outline, 0.0),
-                attachment(&pre.motion_depth, 0.0),
+                attachment(&pre.gbuffer, 0.0, wgpu::StoreOp::Discard),
+                attachment(&pre.lindepth, post::FAR_DEPTH as f64, wgpu::StoreOp::Store),
+                attachment(&pre.outline, 0.0, wgpu::StoreOp::Discard),
+                attachment(&pre.motion_depth, 0.0, wgpu::StoreOp::Discard),
             ],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &pre.depth,

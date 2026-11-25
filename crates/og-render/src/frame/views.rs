@@ -180,7 +180,7 @@ impl Views {
                 view: &slot.depth,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(crate::frame::projection::DEPTH_CLEAR),
-                    store: wgpu::StoreOp::Store,
+                    store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,
             }),

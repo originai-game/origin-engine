@@ -540,8 +540,30 @@ impl Renderer {
         draws
     }
 
-    /// The resolve of the OIT pass over the HDR target (per sample under
-    /// MSAA, into `hdr-msaa`): its own pass, which reads the depth the
+    /// Draws Weighted/Front OIT resolve directly inside the open Main render
+    /// pass (avoiding a separate MSAA HDR load/store spill).
+    pub(super) fn draw_oit_resolve(&self, pass: &mut wgpu::RenderPass<'_>, mode: Oit) -> u32 {
+        debug_assert!(
+            mode != Oit::List,
+            "Oit::List binds depth and uses encode_oit_resolve"
+        );
+        let Some((layout, pipeline)) = self.oit.resolver.get(self.samples, false) else {
+            return 0;
+        };
+        let resources = [
+            wgpu::BindingResource::TextureView(self.graph.view("oit.accum")),
+            wgpu::BindingResource::TextureView(self.graph.view("oit.reveal")),
+            wgpu::BindingResource::TextureView(self.graph.view("oit.front")),
+        ];
+        let group = bind_group(&self.device, "oit resolve", layout, &resources);
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &group, &[]);
+        pass.draw(0..3, 0..1);
+        1
+    }
+
+    /// The resolve of the linked-list OIT pass over the HDR target (per sample
+    /// under MSAA, into `hdr-msaa`): its own pass, which reads the depth the
     /// linked lists test their nodes against.
     pub(super) fn encode_oit_resolve(&self, encoder: &mut crate::Encoder, mode: Oit) -> u32 {
         let list = mode == Oit::List;

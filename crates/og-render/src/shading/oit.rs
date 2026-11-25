@@ -822,7 +822,16 @@ impl Resolver {
                         buffers: &[],
                     },
                     primitive: Default::default(),
-                    depth_stencil: None,
+                    // Weighted/Front resolve never binds `depth` as a sampled
+                    // texture, so it draws directly inside `main (after oit)`
+                    // instead of spilling and reloading the MSAA HDR target.
+                    depth_stencil: (!list).then_some(wgpu::DepthStencilState {
+                        format: crate::DEPTH_FORMAT,
+                        depth_write_enabled: Some(false),
+                        depth_compare: Some(wgpu::CompareFunction::Always),
+                        stencil: wgpu::StencilState::default(),
+                        bias: wgpu::DepthBiasState::default(),
+                    }),
                     multisample: wgpu::MultisampleState {
                         count: samples,
                         ..Default::default()

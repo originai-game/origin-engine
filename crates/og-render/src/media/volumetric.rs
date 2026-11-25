@@ -374,7 +374,15 @@ fn apply_pipeline(
                 buffers: &[],
             },
             primitive: Default::default(),
-            depth_stencil: None,
+            // Runs directly inside the open Main render pass (which binds
+            // DEPTH_FORMAT) without ending and reopening the MSAA HDR pass.
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: samples,
                 ..Default::default()
@@ -932,14 +940,13 @@ impl Volumetric {
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), 1);
     }
 
-    /// Blends the volume over `hdr` at the depths of `depth` (the prepass's
-    /// view depth).
-    pub fn encode_apply(
+    /// Blends the volume over the open Main pass's HDR attachment at the
+    /// depths of `depth` (the prepass's view depth) without splitting the pass.
+    pub fn draw_apply(
         &self,
         device: &wgpu::Device,
-        encoder: &mut crate::Encoder,
+        pass: &mut wgpu::RenderPass<'_>,
         frame_group: &wgpu::BindGroup,
-        hdr: &wgpu::TextureView,
         depth: &wgpu::TextureView,
     ) {
         let Some(pipeline) = &self.apply[self.water as usize] else {
@@ -954,22 +961,6 @@ impl Volumetric {
             resources.push((6, wgpu::BindingResource::Sampler(&f.sampler)));
         }
         let group = bind_at(device, "volumetric apply", &self.apply_layout, &resources);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("volumetric apply"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: hdr,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, frame_group, &[]);
         pass.set_bind_group(1, &group, &[]);
