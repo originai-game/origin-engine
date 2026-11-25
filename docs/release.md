@@ -100,7 +100,7 @@ the creation document and every preview the document references, so the
 platform reads them from `latest/manifest.json` without installing the
 package. The previews are never the checkout's files: `scripts/release.sh
 previews` draws each slot of the packed create-game's `previewSlots()` with
-the version's own linux-x64 og and addon on the GPU host (`gcp-l4`,
+the version's own linux-x64 og and addon on the GPU host (Colab,
 `templates/looks/preview/render.ts --gpu`: a software or absent adapter
 fails the step) and records the run in `looks-render.json`. A look or
 variant is its preset scene; a UI pack is the components sheet's
@@ -345,7 +345,7 @@ does the rest, so the key never leaves it.
    scripts/release.sh pack`. It packs the darwin-arm64 and linux-x64
    tarballs, create-game and design into `dist/release/<v>/` and ends by
    naming the missing win32-x64 tarball.
-2a. On the GPU host (the `gcp-l4` orb, a checkout at the same commit with
+2a. On the GPU host (Colab through `colab-gpu`, docs/ci.md §The GPU host, a checkout at the same commit with
    the Mac's `dist/release/<v>/` tarballs copied in): `scripts/release.sh
    previews <v>`, which writes `dist/release/<v>/previews/` and
    `looks-render.json`; both go to the orb with the tarballs.

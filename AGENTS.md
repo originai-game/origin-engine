@@ -71,8 +71,14 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   replaces in the same stack: no second path, legacy field, alias, shim,
   save or schema migration, or version fallback. A change a game sees is a
   breaking changelog fragment saying what to write instead.
-- **Size cuts never cost features.** Data only some games need is loaded or
-  packed on demand.
+- **Size and speed cuts never cost features.** Data only some games need
+  is loaded or packed on demand; an optimisation never removes what a frame
+  shows. A cost worth cutting goes behind a quality tier or a setting the
+  game chooses.
+- **A value whose doc records its reason changes with a new reason.** A
+  constant or default whose comment cites a measurement, a paper or a fixed
+  bug changes only with a new measurement or source, and its doc changes in
+  the same commit.
 - **Frames are judged on quality, never on their difference.** Any change
   may move frames. A frame is reviewed for what it shows (against commercial
   games: no black, broken, clipped or lost detail), never by its pixel
