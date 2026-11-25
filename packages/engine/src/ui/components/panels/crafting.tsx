@@ -49,9 +49,7 @@ export interface RpgCraftingProps {
  * and Craft. The game decides every requirement; the panel reports choose,
  * increase, decrease and craft, each with the recipe's key.
  *
- * Dropped from the .svelte: the hero's radial glow of the rarity (the
- * record draws linear gradients only; a linear wash of the rarity stands
- * in).
+ * The hero wears a linear wash of the rarity's colour.
  */
 export function RpgCrafting(props: RpgCraftingProps) {
   return (

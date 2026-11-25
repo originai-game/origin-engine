@@ -7350,7 +7350,7 @@
         },
         {
           "name": "style",
-          "doc": "Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path.\nSee `loading §6`.",
+          "doc": "Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.\nSee `loading §6`.",
           "params": [
             {
               "name": "world",
@@ -7362,11 +7362,11 @@
               "name": "path",
               "type": "String",
               "optional": false,
-              "doc": "The style directory or built-in slug, such as `styles/main` or `tactical-dark`."
+              "doc": "The style directory, such as `styles/main` or `@themes/tactical`."
             }
           ],
           "returns": "Result<Style>",
-          "returnsDoc": "Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse.",
+          "returnsDoc": "Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse.",
           "publish": true
         },
         {
@@ -13715,6 +13715,9 @@
         "UiSurface",
         "UiDump",
         "DesyncDump",
+        "LayersDump",
+        "MotionDump",
+        "SubsystemDump",
         "DumpResult",
         "ScreenBox",
         "ScreenPoint",
@@ -14130,8 +14133,8 @@
                   "doc": "What to dump."
                 }
               ],
-              "returns": "Option<OneOf<DumpResult,Json>>",
-              "returnsDoc": "Null for an unknown entity or an inactive optional dump.",
+              "returns": "Option<DumpResult>",
+              "returnsDoc": "Null for an unknown entity, or a desync dump without a lockstep session. An unknown name, or a subsystem dump that fails, is an error naming why.",
               "publish": false
             },
             {
@@ -51728,7 +51731,7 @@
           "items": {
             "$ref": "#/$defs/ProbeEntityRef"
           },
-          "description": "All live entities (named first, then unnamed as `#<index>.<generation>`)."
+          "description": "The named entities."
         },
         "facts": {
           "description": "What GameDesc.facts returned, or null."
@@ -53082,7 +53085,7 @@
               "type": "null"
             }
           ],
-          "description": "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`.",
+          "description": "A DumpKind, `ui:layers`, `ui:motion`, or a registered subsystem dump's name (`physics`, `render`, …; an unknown name's error lists them), answered as a `subsystem` DumpResult. Required: a dump without one is refused.",
           "default": null
         },
         "id": {
@@ -53765,6 +53768,70 @@
       ],
       "additionalProperties": false
     },
+    "LayersDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The UI layer stack alone (docs/ui.md §6).",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "layers": {
+          "description": "The layer stack; empty without a UI module."
+        }
+      },
+      "required": [
+        "tick",
+        "layers"
+      ],
+      "additionalProperties": false
+    },
+    "MotionDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The UI motion alone (docs/ui.md §6): each element in a visual state or animating, with its states, what is moving, what plays and whether it is leaving.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "motion": {
+          "description": "The moving elements; empty without a UI module."
+        }
+      },
+      "required": [
+        "tick",
+        "motion"
+      ],
+      "additionalProperties": false
+    },
+    "SubsystemDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A dump a subsystem registered (`physics`, `render`, `audio`, ...), as its `dump_<name>` command writes it.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The dump's name, as DumpDesc.what named it."
+        },
+        "data": {
+          "description": "What the subsystem reported; its shape is the subsystem's."
+        }
+      },
+      "required": [
+        "name",
+        "data"
+      ],
+      "additionalProperties": false
+    },
     "DumpResult": {
       "x-og-kind": "union",
       "x-og-module": "probe",
@@ -54007,6 +54074,79 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "DrawnDump"
+        },
+        {
+          "description": "The UI layer stack (`ui:layers`).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "layers"
+            },
+            "tick": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "The tick."
+            },
+            "layers": {
+              "description": "The layer stack; empty without a UI module."
+            }
+          },
+          "required": [
+            "kind",
+            "tick",
+            "layers"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "LayersDump"
+        },
+        {
+          "description": "The UI motion (`ui:motion`).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "motion"
+            },
+            "tick": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "The tick."
+            },
+            "motion": {
+              "description": "The moving elements; empty without a UI module."
+            }
+          },
+          "required": [
+            "kind",
+            "tick",
+            "motion"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "MotionDump"
+        },
+        {
+          "description": "A registered subsystem dump, by its name.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "subsystem"
+            },
+            "name": {
+              "type": "string",
+              "description": "The dump's name, as DumpDesc.what named it."
+            },
+            "data": {
+              "description": "What the subsystem reported; its shape is the subsystem's."
+            }
+          },
+          "required": [
+            "kind",
+            "name",
+            "data"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "SubsystemDump"
         }
       ]
     },

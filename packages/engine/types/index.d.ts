@@ -29359,7 +29359,7 @@ export interface ProbeState {
   readonly seed: number;
   /** The last tick's timings. */
   readonly timings: ProbeTimings;
-  /** All live entities (named first, then unnamed as `#<index>.<generation>`). */
+  /** The named entities. */
   readonly entities: readonly ProbeEntityRef[];
   /** What GameDesc.facts returned, or null. */
   readonly facts: unknown;
@@ -29931,7 +29931,7 @@ export type DumpKind = "world" | "entity" | "ui" | "desync" | "drawn";
  */
 export interface DumpDesc {
   /**
-   * A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`.
+   * A DumpKind, `ui:layers`, `ui:motion`, or a registered subsystem dump's name (`physics`, `render`, …; an unknown name's error lists them), answered as a `subsystem` DumpResult. Required: a dump without one is refused.
    *
    * @default null
    */
@@ -30228,6 +30228,34 @@ export interface DesyncDump {
   readonly diff: unknown;
 }
 
+/** The UI layer stack alone (docs/ui.md §6). */
+export interface LayersDump {
+  /** The tick. */
+  readonly tick: number;
+  /** The layer stack; empty without a UI module. */
+  readonly layers: unknown;
+}
+
+/**
+ * The UI motion alone (docs/ui.md §6): each element in a visual state or animating, with its states, what is moving, what plays and whether it is leaving.
+ */
+export interface MotionDump {
+  /** The tick. */
+  readonly tick: number;
+  /** The moving elements; empty without a UI module. */
+  readonly motion: unknown;
+}
+
+/**
+ * A dump a subsystem registered (`physics`, `render`, `audio`, ...), as its `dump_<name>` command writes it.
+ */
+export interface SubsystemDump {
+  /** The dump's name, as DumpDesc.what named it. */
+  readonly name: string;
+  /** What the subsystem reported; its shape is the subsystem's. */
+  readonly data: unknown;
+}
+
 /** A dump, tagged by its kind. */
 export type DumpResult =
   /** The world dump. */
@@ -30239,7 +30267,13 @@ export type DumpResult =
   /** The desync dump. */
   | ({ readonly kind: "desync" } & DesyncDump)
   /** The cull record. */
-  | ({ readonly kind: "drawn" } & DrawnDump);
+  | ({ readonly kind: "drawn" } & DrawnDump)
+  /** The UI layer stack (`ui:layers`). */
+  | ({ readonly kind: "layers" } & LayersDump)
+  /** The UI motion (`ui:motion`). */
+  | ({ readonly kind: "motion" } & MotionDump)
+  /** A registered subsystem dump, by its name. */
+  | ({ readonly kind: "subsystem" } & SubsystemDump);
 
 /** A box on the play surface. */
 export interface ScreenBox {
@@ -30729,9 +30763,9 @@ export interface EngineProbe extends RuntimeProbe {
    * A world, entity, UI (`ui`, `ui:layers`, `ui:motion`), drawn, desync, or registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`).
    *
    * @param desc What to dump.
-   * @returns Null for an unknown entity or an inactive optional dump.
+   * @returns Null for an unknown entity, or a desync dump without a lockstep session. An unknown name, or a subsystem dump that fails, is an error naming why.
    */
-  dump(desc?: DumpDesc): DumpResult | unknown | null;
+  dump(desc?: DumpDesc): DumpResult | null;
   /**
    * Schedule a command script on simulation time, as `og run --commands`.
    *
@@ -39129,12 +39163,12 @@ export declare namespace og {
      */
     function textureArray(world: World, path: string): Result<TextureArrayInfo>;
     /**
-     * Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path.
+     * Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.
      * See `loading §6`.
      *
      * @param world The world whose UI uses it.
-     * @param path The style directory or built-in slug, such as `styles/main` or `tactical-dark`.
-     * @returns Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse.
+     * @param path The style directory, such as `styles/main` or `@themes/tactical`.
+     * @returns Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse.
      */
     function style(world: World, path: string): Result<Style>;
     /**

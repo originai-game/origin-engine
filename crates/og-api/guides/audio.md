@@ -234,8 +234,47 @@ og.AudioSource in step with the picture.
 
 Short sound effects can be authored directly as `type sfx` `.ogt` files without external audio editors: `og cook` renders them at 48 kHz mono and encodes them like any other sound asset (loaded with `og.load.sound` and played on `og.AudioSource` or `og.AudioEvent`).
 
-- **CLI**: `og sfx list` lists the built-in presets; `og sfx render <preset|file.ogt> <out.wav>` previews or renders to WAV.
-- **Built-in presets** (18): `coin`, `pickup`, `powerup`, `jump`, `land`, `footstep`, `hit`, `hurt`, `explosion`, `laser`, `whoosh`, `door`, `death`, `click`, `select`, `back`, `error`, `levelup`.
-- **`.ogt` file**: start from `preset "<name>"` and override or layer oscillators, noise, envelopes, pitch slides, arpeggios, filters, and punch (`og api show assets` covers the `type sfx` grammar).
-- **Audio brief**: `audioBrief` and `readAudioChoices` from `@origingame/create-game` (or `packages/knowledge/scripts/brief.ts`) derive music cues and SFX preset suggestions from the project's `create` block and look mood.
+- `og sfx` lists the built-in presets, each with a line on how it sounds.
+- `og sfx <preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file>`
+  writes the preset with those settings: `--out sfx/coin.ogt` as an asset
+  `og cook` synthesises, `--out coin.wav` rendered to a 16-bit WAV to
+  listen to. `--out` is required.
+- `og sfx library <dir>` writes every preset's `.ogt` into `dir`.
 
+A `type sfx` file names a preset, adds layers, or both (the preset's
+layers first, then its own):
+
+```text
+type sfx
+version 1
+---
+preset "coin"   # one of the names `og sfx` lists
+seed 3          # a variation; 0 is the preset as designed
+pitch 1.2       # frequency multiplier
+length 1        # duration multiplier
+volume 0.8
+layer {
+  wave sine
+  freq 440
+  freq_end 110
+  attack 0.002
+  sustain 0.04
+  decay 0.2
+  lowpass 2400
+  gain 0.7
+}
+```
+
+- Top-level entries: `preset`, `seed`, `pitch`, `length`, `volume`, and
+  any number of `layer` blocks (`synth` is the same). A file needs a
+  `preset` or at least one `layer`; a sound lasts at most 30 seconds.
+- A layer's entries: `wave` (`sine`, `square`, `saw`, `triangle`,
+  `noise`), `freq` and `freq_end` in Hz (or `slide`, octaves per second),
+  `arp` (a frequency multiplier applied `arp_at` seconds in),
+  `vib_depth` and `vib_rate`, the envelope `attack`, `sustain`, `decay`,
+  `sustain_level` (0 to 1) and `release` in seconds, `punch` (extra level
+  in the sustain, 0 to 1), `duty` (a square's, 0.01 to 0.99), `lowpass`
+  with `lp_slide` and `q`, `highpass` in Hz, FM with `fm_freq` (Hz) and
+  `fm_index` (radians), `drive` (soft clipping), `gain`, and `delay` (its
+  start, in seconds). An entry it does not know is refused, naming the
+  ones it takes.

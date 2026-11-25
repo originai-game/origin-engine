@@ -30,9 +30,6 @@ export interface RpgConversationBacklogProps {
  * earlier lines over them and Replay or Stop replay under a replayable
  * one. Reports close, older, replay and stop (an entry's key). Answers
  * the back action.
- *
- * Dropped from the .svelte: the rows' lit gradient (a cut shape takes one
- * bg colour).
  */
 export function RpgConversationBacklog(props: RpgConversationBacklogProps) {
   return (

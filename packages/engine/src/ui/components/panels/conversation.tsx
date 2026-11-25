@@ -48,10 +48,8 @@ export interface RpgConversationProps {
  * the world's tick (always whole to a screen reader) and reports revealed
  * once it is whole; the game decides what a press before that does.
  *
- * Dropped from the .svelte: the whole line at once under reduced motion
- * (the TSX UI cannot read the setting yet), the name plate's two-tone gold gradient, the row
- * entries' lit gradient (a cut shape takes one bg colour), and the auto
- * key's inset gold keyline when on (its gold bar and text stay).
+ * The line types out under reduced motion too: the TSX UI cannot read the
+ * setting yet.
  */
 export function RpgConversation(props: RpgConversationProps) {
   const clock = useClock();

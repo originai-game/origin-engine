@@ -28099,7 +28099,7 @@
           "flatten": true
         }
       ],
-      "returns": "Option<OneOf<DumpResult,Json>>",
+      "returns": "Option<DumpResult>",
       "publish": false
     },
     {

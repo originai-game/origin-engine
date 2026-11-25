@@ -20,10 +20,8 @@ export interface CarouselProps {
  * its neighbours set back; the place is a row of leaning pips between
  * cut arrow keys. Reports prev and next.
  *
- * Dropped from the .svelte: the pages' scroll-snap (the strip scrolls
- * without snapping to a page), the pips' lean (skew is not a class the
- * record draws), and the plate's rolled corner rims (the cut shape
- * carries no border here); the lit pip keeps its place by the index.
+ * The strip scrolls without snapping to a page; the lit pip follows the
+ * index.
  */
 export function Carousel(props: CarouselProps) {
   const active = () => {

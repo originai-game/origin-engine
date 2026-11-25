@@ -2,12 +2,12 @@
 
 # The `theme-tokens` guide: UI theme tokens, pack slots and built-in icons
 
-Every design token, `packClass` slot, pack sound/image key, and built-in icon shipped in the engine's default UI style pack. Use these tokens in Tailwind utility classes (`bg-<role>`, `text-<role>`, `border-<role>`, `rounded-<radius>`, `shadow-<shadow>`, `duration-<duration>`) so screens restyle cleanly across all built-in themes (`og api show themes`).
+Every design token, `packClass` slot, pack sound/image key, and built-in icon shipped in the engine's default UI style pack. Use these tokens in Tailwind utility classes so screens restyle cleanly across all built-in themes (`og api show themes`).
 
 <a id="guide-theme-tokens-1"></a>
 ### `theme-tokens §1` Colour roles
 
-Use with `bg-<role>`, `text-<role>`, `border-<role>`, `ring-<role>`, `inset-ring-<role>`, or `stroke-<role>`.
+Use with `bg-<role>`, `text-<role>`, `border-<role>`, `outline-<role>`, `ring-<role>`, `inset-ring-<role>`, `fill-<role>`, `stroke-<role>`, `decoration-<role>`, `caret-<role>`, `accent-<role>`, `from-<role>`, `via-<role>`, `to-<role>`, `shadow-<role>`, `inset-shadow-<role>`, `text-shadow-<role>`.
 
 Total: 159 semantic colour tokens.
 
@@ -82,26 +82,26 @@ Total: 159 semantic colour tokens.
 <a id="guide-theme-tokens-2"></a>
 ### `theme-tokens §2` Theme scales
 
-Scale tokens under `theme` in `pack.json`, matched by Tailwind utilities (`rounded-*`, `text-*`, `font-*`, `leading-*`, `tracking-*`, `shadow-*`, `inset-shadow-*`, `text-shadow-*`, `blur-*`, `duration-*`, `ease-*`, `opacity-*`, `stroke-*`, `scale-*`, `@<container>`).
+Scale tokens under `theme` in `pack.json`, with the utility classes that read each.
 
-| Category | Keys |
-|---|---|
-| `blur` | `lens`, `regular`, `thick`, `thin` |
-| `container` | `3xl`, `lg`, `md`, `sm`, `xl`, `xs`, `xxl` |
-| `duration` | `arc`, `base`, `bounce`, `breathe`, `control`, `damage`, `damage-stagger`, `drift`, `fanfare`, `fast`, `flare`, `flash`, `hit`, `instant`, `orbit`, `ping`, `pulse`, `ready-pulse`, `sheen`, `slow`, `spring`, `sweep`, `trail`, `trail-hold`, `turn` |
-| `ease` | `exit`, `in-out`, `out` |
-| `fontFamily` | `display`, `mono`, `rounded`, `sans` |
-| `fontSize` | `2xl`, `2xs`, `3xl`, `4xl`, `5xl`, `6xl`, `7xl`, `8xl`, `base`, `body`, `caption`, `display-2xl`, `display-lg`, `display-md`, `display-sm`, `display-xl`, `lg`, `meta`, `reading`, `sm`, `title`, `xl`, `xs` |
-| `fontWeight` | `body`, `bold`, `medium`, `regular`, `semibold` |
-| `insetShadow` | `bar`, `glow`, `lip`, `lit`, `overline`, `sunk`, `underline`, `vignette` |
-| `leading` | `flat`, `loose`, `normal`, `snug`, `tight` |
-| `opacity` | `dim`, `faint`, `flash`, `muted`, `quiet`, `soft`, `sweep`, `veil`, `wash` |
-| `radius` | `block`, `button`, `capsule`, `card`, `control`, `field`, `panel`, `sheet` |
-| `scale` | `breathe`, `combo-pop`, `damage-pop`, `enter`, `lift`, `nudge`, `pop`, `press`, `ready-pulse`, `shrink`, `swell` |
-| `shadow` | `edge`, `float`, `focus-tile`, `glow`, `glow-lg`, `glow-sm`, `held`, `key`, `lens`, `lift`, `minimap`, `overlay`, `panel`, `plate`, `raise`, `raise-hover`, `raised`, `rim`, `slot-selected`, `sunk`, `tab-selected` |
-| `stroke` | `ability`, `arc`, `arc-lg`, `beacon`, `dial`, `edge`, `focus`, `hairline`, `heavy`, `marker`, `pointer`, `pointer-side`, `regular`, `thick`, `thin` |
-| `textShadow` | `tag` |
-| `tracking` | `2xl`, `3xl`, `4xl`, `5xl`, `6xl`, `7xl`, `8xl`, `display-2xl`, `display-lg`, `display-md`, `display-sm`, `display-xl`, `kicker`, `label`, `lg`, `md`, `sm`, `tight`, `wide`, `xl`, `xs` |
+| Scale | Utilities | Keys |
+|---|---|---|
+| `blur` | `blur-<key>` | `lens`, `regular`, `thick`, `thin` |
+| `container` | `max-w-<key>` | `3xl`, `lg`, `md`, `sm`, `xl`, `xs`, `xxl` |
+| `duration` | `duration-<key>` | `arc`, `base`, `bounce`, `breathe`, `control`, `damage`, `damage-stagger`, `drift`, `fanfare`, `fast`, `flare`, `flash`, `hit`, `instant`, `orbit`, `ping`, `pulse`, `ready-pulse`, `sheen`, `slow`, `spring`, `sweep`, `trail`, `trail-hold`, `turn` |
+| `ease` | `ease-<key>` | `exit`, `in-out`, `out` |
+| `fontFamily` | `font-<key>` | `display`, `mono`, `rounded`, `sans` |
+| `fontSize` | `text-<key>` | `2xl`, `2xs`, `3xl`, `4xl`, `5xl`, `6xl`, `7xl`, `8xl`, `base`, `body`, `caption`, `display-2xl`, `display-lg`, `display-md`, `display-sm`, `display-xl`, `lg`, `meta`, `reading`, `sm`, `title`, `xl`, `xs` |
+| `fontWeight` | `font-<key>` | `body`, `bold`, `medium`, `regular`, `semibold` |
+| `insetShadow` | `inset-shadow-<key>` | `bar`, `glow`, `lip`, `lit`, `overline`, `sunk`, `underline`, `vignette` |
+| `leading` | `leading-<key>` | `flat`, `loose`, `normal`, `snug`, `tight` |
+| `opacity` | `opacity-<key>` | `dim`, `faint`, `flash`, `muted`, `quiet`, `soft`, `sweep`, `veil`, `wash` |
+| `radius` | `rounded-<key>` | `block`, `button`, `capsule`, `card`, `control`, `field`, `panel`, `sheet` |
+| `scale` | `scale-<key>` | `breathe`, `combo-pop`, `damage-pop`, `enter`, `lift`, `nudge`, `pop`, `press`, `ready-pulse`, `shrink`, `swell` |
+| `shadow` | `shadow-<key>` | `edge`, `float`, `focus-tile`, `glow`, `glow-lg`, `glow-sm`, `held`, `key`, `lens`, `lift`, `minimap`, `overlay`, `panel`, `plate`, `raise`, `raise-hover`, `raised`, `rim`, `slot-selected`, `sunk`, `tab-selected` |
+| `stroke` | `border-<key>`, `outline-<key>`, `ring-<key>`, `inset-ring-<key>`, `stroke-<key>` | `ability`, `arc`, `arc-lg`, `beacon`, `dial`, `edge`, `focus`, `hairline`, `heavy`, `marker`, `pointer`, `pointer-side`, `regular`, `thick`, `thin` |
+| `textShadow` | `text-shadow-<key>` | `tag` |
+| `tracking` | `tracking-<key>` | `2xl`, `3xl`, `4xl`, `5xl`, `6xl`, `7xl`, `8xl`, `display-2xl`, `display-lg`, `display-md`, `display-sm`, `display-xl`, `kicker`, `label`, `lg`, `md`, `sm`, `tight`, `wide`, `xl`, `xs` |
 
 <a id="guide-theme-tokens-3"></a>
 ### `theme-tokens §3` Pack slot classes
@@ -189,4 +189,3 @@ Use with `<Icon name="..." />` from `@origingame/engine/ui`. Check availability 
 - **Default UI pack icons** (195): `key.altleft`, `key.altright`, `key.arrowdown`, `key.arrowleft`, `key.arrowright`, `key.arrows`, `key.arrowup`, `key.backquote`, `key.backslash`, `key.backspace`, `key.bracketleft`, `key.bracketright`, `key.capslock`, `key.comma`, `key.command`, `key.contextmenu`, `key.controlleft`, `key.controlright`, `key.delete`, `key.digit0`, `key.digit1`, `key.digit2`, `key.digit3`, `key.digit4`, `key.digit5`, `key.digit6`, `key.digit7`, `key.digit8`, `key.digit9`, `key.end`, `key.enter`, `key.equal`, `key.escape`, `key.f1`, `key.f10`, `key.f11`, `key.f12`, `key.f2`, `key.f3`, `key.f4`, `key.f5`, `key.f6`, `key.f7`, `key.f8`, `key.f9`, `key.home`, `key.insert`, `key.intlbackslash`, `key.keya`, `key.keyb`, `key.keyc`, `key.keyd`, `key.keye`, `key.keyf`, `key.keyg`, `key.keyh`, `key.keyi`, `key.keyj`, `key.keyk`, `key.keyl`, `key.keym`, `key.keyn`, `key.keyo`, `key.keyp`, `key.keyq`, `key.keyr`, `key.keys`, `key.keyt`, `key.keyu`, `key.keyv`, `key.keyw`, `key.keyx`, `key.keyy`, `key.keyz`, `key.metaleft`, `key.metaright`, `key.minus`, `key.numlock`, `key.numpad0`, `key.numpad1`, `key.numpad2`, `key.numpad3`, `key.numpad4`, `key.numpad5`, `key.numpad6`, `key.numpad7`, `key.numpad8`, `key.numpad9`, `key.numpadadd`, `key.numpaddecimal`, `key.numpaddivide`, `key.numpadenter`, `key.numpadequal`, `key.numpadmultiply`, `key.numpadsubtract`, `key.pagedown`, `key.pageup`, `key.pause`, `key.period`, `key.printscreen`, `key.quote`, `key.scrolllock`, `key.semicolon`, `key.shiftleft`, `key.shiftright`, `key.slash`, `key.space`, `key.tab`, `key.wasd`, `mouse.left`, `mouse.middle`, `mouse.move`, `mouse.right`, `mouse.wheel`, `pad.dpad`, `pad.dpadDown`, `pad.dpadLeft`, `pad.dpadRight`, `pad.dpadUp`, `pad.east`, `pad.home`, `pad.l1`, `pad.l2`, `pad.ls`, `pad.north`, `pad.r1`, `pad.r2`, `pad.rs`, `pad.select`, `pad.south`, `pad.start`, `pad.stickL`, `pad.stickR`, `pad.west`, `ps.circle`, `ps.create`, `ps.cross`, `ps.dpad`, `ps.dpadDown`, `ps.dpadLeft`, `ps.dpadRight`, `ps.dpadUp`, `ps.home`, `ps.l1`, `ps.l2`, `ps.ls`, `ps.options`, `ps.r1`, `ps.r2`, `ps.rs`, `ps.square`, `ps.stickL`, `ps.stickR`, `ps.triangle`, `switch.a`, `switch.b`, `switch.dpad`, `switch.dpadDown`, `switch.dpadLeft`, `switch.dpadRight`, `switch.dpadUp`, `switch.home`, `switch.l`, `switch.ls`, `switch.minus`, `switch.plus`, `switch.r`, `switch.rs`, `switch.stickL`, `switch.stickR`, `switch.x`, `switch.y`, `switch.zl`, `switch.zr`, `touch.tap`, `xbox.a`, `xbox.b`, `xbox.dpad`, `xbox.dpadDown`, `xbox.dpadLeft`, `xbox.dpadRight`, `xbox.dpadUp`, `xbox.home`, `xbox.lb`, `xbox.ls`, `xbox.lt`, `xbox.menu`, `xbox.rb`, `xbox.rs`, `xbox.rt`, `xbox.stickL`, `xbox.stickR`, `xbox.view`, `xbox.x`, `xbox.y`
 
 - **Shared game icon set (`@styles/shared/icons/game.ogt`)** (123): `coin`, `gem`, `star`, `heart`, `shield`, `energy`, `ammo`, `lock`, `key`, `chest`, `gift`, `crown`, `potion`, `ticket`, `xp`, `alert`, `new`, `rarity`, `trophy`, `hourglass`, `attack`, `sword`, `axe`, `bow`, `staff`, `magic`, `armor`, `speed`, `crit`, `accuracy`, `strength`, `intellect`, `luck`, `levelUp`, `bomb`, `skull`, `flame`, `barrier`, `home`, `shop`, `bag`, `hero`, `team`, `friends`, `quest`, `map`, `mail`, `chat`, `leaderboard`, `calendar`, `event`, `castle`, `banner`, `compass`, `book`, `search`, `cards`, `dice`, `rocket`, `inventory`, `skillTree`, `rank`, `sound`, `soundOff`, `music`, `bell`, `vibrate`, `language`, `gamepad`, `save`, `exit`, `power`, `info`, `account`, `phone`, `unlock`, `settings`, `refresh`, `like`, `dislike`, `handshake`, `share`, `megaphone`, `trade`, `cart`, `sale`, `wallet`, `crate`, `piggyBank`, `coins`, `cash`, `bank`, `video`, `vip`, `pass`, `ad`, `chestOpen`, `medal`, `laurels`, `ribbon`, `lootBag`, `missions`, `target`, `sparkles`, `claimAll`, `stamina`, `burn`, `freeze`, `poison`, `bleed`, `stun`, `sleep`, `silence`, `slow`, `haste`, `regen`, `curse`, `blind`, `shock`, `ghost`, `root`, `weak`, `charm`
-

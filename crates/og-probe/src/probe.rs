@@ -134,18 +134,6 @@ pub const BUILD: &str = if cfg!(feature = "publish") {
     "release"
 };
 
-/// What `dump` reports.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DumpKind {
-    World,
-    Entity,
-    Ui,
-    /// The host's `dump_desync` (og.net's lockstep), when it registered one.
-    Desync,
-    /// What the main camera's cull keeps (`dump_drawn`).
-    Drawn,
-}
-
 /// A parameter sweep (IDL `SweepDesc`): for each value, restore the snapshot
 /// taken at the call, patch, advance and capture.
 #[derive(Clone, Debug, Default, PartialEq)]

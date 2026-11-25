@@ -89,6 +89,9 @@ module probe {
 | [`UiSurface`](probe/type-UiSurface.md) | struct |  | The surface UI bounds are laid out on. |
 | [`UiDump`](probe/type-UiDump.md) | struct |  | The UI tree, flattened in draw order. |
 | [`DesyncDump`](probe/type-DesyncDump.md) | struct |  | The first desync of this peer's lockstep session (og.net), as `dump_desync` writes it. |
+| [`LayersDump`](probe/type-LayersDump.md) | struct |  | The UI layer stack alone (docs/ui.md §6). |
+| [`MotionDump`](probe/type-MotionDump.md) | struct |  | The UI motion alone (docs/ui.md §6): each element in a visual state or animating, with its states, what is moving, what plays and whether it is leaving. |
+| [`SubsystemDump`](probe/type-SubsystemDump.md) | struct |  | A dump a subsystem registered (`physics`, `render`, `audio`, ...), as its `dump_<name>` command writes it. |
 | [`DumpResult`](probe/type-DumpResult.md) | union |  | A dump, tagged by its kind. |
 | [`ScreenBox`](probe/type-ScreenBox.md) | struct |  | A box on the play surface. |
 | [`ScreenPoint`](probe/type-ScreenPoint.md) | struct |  | A point on the play surface. |

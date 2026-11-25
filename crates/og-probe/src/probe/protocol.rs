@@ -931,23 +931,12 @@ impl Probe {
         ok
     }
 
-    /// `dump`: a world, entity or UI dump; `None` for an unknown entity.
-    pub fn dump(&self, world: &World, kind: DumpKind, id: &str) -> Option<Value> {
-        match kind {
-            DumpKind::World => Some(self.dump_world(world)),
-            DumpKind::Ui => Some(self.dump_ui(world)),
-            DumpKind::Desync => self.dump_registered(world, "desync"),
-            DumpKind::Entity => {
-                let e = self.names.resolve(world, id)?;
-                Some(self.dump_entity(world, e))
-            }
-            DumpKind::Drawn => Some(self.dump_drawn(world)),
-        }
-    }
-
-    /// `dump` by name: built-in dumps (`world`, `entity`, `ui`, `ui:layers`,
-    /// `ui:motion`, `drawn`, `desync`) plus every registered subsystem
-    /// `dump_<name>` handler (`physics`, `render`, `audio`, `ai`, `nav`, ...).
+    /// `dump` by name (IDL `probe.DumpResult`): the built-in dumps
+    /// (`world`, `entity`, `ui`, `ui:layers`, `ui:motion`, `drawn`,
+    /// `desync`) and every registered subsystem `dump_<name>` handler
+    /// (`physics`, `render`, `audio`, ...) as a `subsystem` dump. `None` for
+    /// an unknown entity or a desync without a lockstep session; an unknown
+    /// name, or a handler's failure, is the error.
     pub fn dump_named(&self, world: &World, what: &str, id: &str) -> Result<Option<Value>, String> {
         match what {
             "world" => Ok(Some(self.dump_world(world))),
@@ -956,13 +945,25 @@ impl Probe {
                 .resolve(world, id)
                 .map(|e| self.dump_entity(world, e))),
             "ui" => Ok(Some(self.dump_ui(world))),
-            "ui:layers" | "ui_layers" => Ok(Some(self.dump_layers(world))),
-            "ui:motion" | "ui_motion" => Ok(Some(self.dump_motion(world))),
+            "ui:layers" => Ok(Some(self.dump_layers(world))),
+            "ui:motion" => Ok(Some(self.dump_motion(world))),
             "drawn" => Ok(Some(self.dump_drawn(world))),
-            "desync" => Ok(self.dump_registered(world, "desync")),
+            "desync" => match self.dump_handler("desync") {
+                Some(handler) => {
+                    let mut v = handler(world, &[])?;
+                    if let Value::Object(o) = &mut v {
+                        o.insert("kind".into(), json!("desync"));
+                    }
+                    Ok(Some(v))
+                }
+                None => Ok(None),
+            },
             other => {
-                if let Some(v) = self.dump_registered(world, other) {
-                    return Ok(Some(v));
+                if let Some(handler) = self.dump_handler(other) {
+                    let data = handler(world, &[])?;
+                    return Ok(Some(
+                        json!({"kind": "subsystem", "name": other, "data": data}),
+                    ));
                 }
                 let mut available = vec![
                     "world",
@@ -990,16 +991,15 @@ impl Probe {
         }
     }
 
-    fn dump_registered(&self, world: &World, name: &str) -> Option<Value> {
-        let key = format!("dump_{name}");
-        match self.commands.registered.get(&key).map(|r| &r.handler) {
-            Some(Handler::Dump(handler, _)) => {
-                let mut v = handler.clone()(world, &[]).ok()?;
-                if v.is_object() {
-                    v["kind"] = json!(name);
-                }
-                Some(v)
-            }
+    /// The registered `dump_<name>` handler, if any.
+    fn dump_handler(&self, name: &str) -> Option<crate::command::DumpHandler> {
+        match self
+            .commands
+            .registered
+            .get(&format!("dump_{name}"))
+            .map(|r| &r.handler)
+        {
+            Some(Handler::Dump(handler, _)) => Some(handler.clone()),
             _ => None,
         }
     }

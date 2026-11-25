@@ -12,14 +12,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `what` | `DumpKind \| string \| null` | `null` | — | — | — | A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`. |
+| `what` | `DumpKind \| string \| null` | `null` | — | — | — | A DumpKind, `ui:layers`, `ui:motion`, or a registered subsystem dump's name (`physics`, `render`, …; an unknown name's error lists them), answered as a `subsystem` DumpResult. Required: a dump without one is refused. |
 | `id` | `string` | `""` | — | — | — | The probe id, for an entity dump. |
 
 ```ogt
 struct DumpDesc {
   doc "What to dump."
   desc true
-  field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`."
+  field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or a registered subsystem dump's name (`physics`, `render`, …; an unknown name's error lists them), answered as a `subsystem` DumpResult. Required: a dump without one is refused."
   field id String "The probe id, for an entity dump."
 }
 ```

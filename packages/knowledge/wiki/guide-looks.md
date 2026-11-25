@@ -537,11 +537,12 @@ keep the player in the strip. A fixed dofFocusDistance belongs to a game
 that knows its camera, not to a look.
 
 <a id="guide-looks-20"></a>
-### `looks §20` Built-in look canvases, palettes and authored art
+### `looks §20` Built-in look canvases and palettes
 
-Looks and runtime loaders can reference built-in canvas textures and colour palettes compiled into `og cook`; any named built-in is cooked automatically into the bundle and readable via `og.load.texture` or `og.load.palette`:
-
-- **Built-in canvases (`Stylise.paintCanvas`, 3)**: `@canvas/linen`, `@canvas/paper`, `@canvas/watercolor` (with or without `.png`).
-- **Built-in palettes (`Stylise.palette`, 15)**: `@palettes/1bit`, `@palettes/1bit-bright`, `@palettes/1bit-cold`, `@palettes/1bit-dark`, `@palettes/1bit-soft`, `@palettes/1bit-warm`, `@palettes/bright32`, `@palettes/dusk16`, `@palettes/handheld4`, `@palettes/handheld4-bright`, `@palettes/handheld4-cold`, `@palettes/handheld4-dark`, `@palettes/handheld4-high-contrast`, `@palettes/handheld4-warm`, `@palettes/lcd2` (with or without `.hex`).
-- **Authored-art requirements**: styles with `look.support: "content"` rely on authored assets rather than post-process alone. Call `authoredArt(slug, variant?)` (from `@origingame/create-game` / `packages/knowledge/scripts/brief.ts`) to list the exact art requirements beside `artBrief`.
-
+A look's `Stylise.paintCanvas` and `Stylise.palette` may name one of the
+engine's built-in assets instead of a file under `assets/`:
+`"@canvas/<name>"` for a canvas texture, `"@palettes/<name>"` for a
+palette, with or without the extension. The cook adds each built-in a
+look names to the bundle under that id, where `og.load.texture` and
+`og.load.palette` find it too. A name that is none of them fails the
+cook, and the message lists the built-ins of that kind.

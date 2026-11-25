@@ -17,6 +17,9 @@ Tagged by `kind`.
 | `kind: "ui"` | [`UiDump`](../probe/type-UiDump.md#type-UiDump) | The UI dump. |
 | `kind: "desync"` | [`DesyncDump`](../probe/type-DesyncDump.md#type-DesyncDump) | The desync dump. |
 | `kind: "drawn"` | [`DrawnDump`](../probe/type-DrawnDump.md#type-DrawnDump) | The cull record. |
+| `kind: "layers"` | [`LayersDump`](../probe/type-LayersDump.md#type-LayersDump) | The UI layer stack (`ui:layers`). |
+| `kind: "motion"` | [`MotionDump`](../probe/type-MotionDump.md#type-MotionDump) | The UI motion (`ui:motion`). |
+| `kind: "subsystem"` | [`SubsystemDump`](../probe/type-SubsystemDump.md#type-SubsystemDump) | A registered subsystem dump, by its name. |
 
 ```ogt
 union DumpResult {
@@ -27,7 +30,10 @@ union DumpResult {
   case ui UiDump "The UI dump."
   case desync DesyncDump "The desync dump."
   case drawn DrawnDump "The cull record."
+  case layers LayersDump "The UI layer stack (`ui:layers`)."
+  case motion MotionDump "The UI motion (`ui:motion`)."
+  case subsystem SubsystemDump "A registered subsystem dump, by its name."
 }
 ```
 
-<sub>Module `probe` line 598</sub>
+<sub>Module `probe` line 616</sub>

@@ -35,9 +35,7 @@ export interface DataGridProps {
  * first column and the last on one line, the rest as a caption under.
  * Reports choose (a row's key) and retry.
  *
- * Dropped from the .svelte: the plate's rolled corner rims (the cut shape
- * carries no border here), and the rows' hairline separators (each row is
- * its own plate). The chosen row's wash is one flat colour.
+ * Each row is its own plate; the chosen row's wash is one flat colour.
  */
 export function DataGrid(props: DataGridProps) {
   return (

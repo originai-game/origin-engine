@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.style`
 
-Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path.
+Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path.
 
 See `loading §6`.
 
@@ -17,19 +17,19 @@ og.load.style(world: World, path: string): Result<Style>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world whose UI uses it. |
-| `path` | `string` | no | The style directory or built-in slug, such as `styles/main` or `tactical-dark`. |
+| `path` | `string` | no | The style directory, such as `styles/main` or `@themes/tactical`. |
 
-**Returns** `Result<Style>`: Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse.
+**Returns** `Result<Style>`: Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse.
 
 Binding symbol `og_load_style` · publish builds: kept
 
 ```ogt
 fn style {
-  doc "Load a cooked UI style from a style directory (`styles/<name>`, containing `theme.json`, `pack.json`, or both) or a built-in theme slug (`minimal`, `tactical-dark`, `fantasy-parchment`, etc.) for UiDesc.style. Legacy `style.ogt` CSS packs are removed and refused. Loaded once per path."
+  doc "Load a cooked UI style for UiDesc.style: the directory whose `pack.json` it reads. A game's style is `styles/<name>` (a `pack.json`, or a `theme.json` the cook compiles into one beside it); an engine theme is `@themes/<name>` (`minimal`, `tactical`, `tactical-arctic`, `fantasy`, `scifi`, `anime`, `cartoon`, `candy`, `ink`, `pixel`, `storybook`), in the bundle only when a look's `ui` line names it. A `style.ogt` path is refused. Loaded once per path."
   guide "loading §6"
   param world World "The world whose UI uses it."
-  param path String "The style directory or built-in slug, such as `styles/main` or `tactical-dark`."
-  returns Result.Style "Refused for a path not in the bundle, a legacy `style.ogt` path, or a theme/pack that fails to parse."
+  param path String "The style directory, such as `styles/main` or `@themes/tactical`."
+  returns Result.Style "Refused for a directory without a `pack.json` in the bundle (run og cook; an engine theme no look names), a `style.ogt` path, or a pack that fails to parse."
 }
 ```
 

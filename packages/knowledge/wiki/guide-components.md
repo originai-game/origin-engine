@@ -1062,6 +1062,11 @@ The gameplay HUD laid out from the regions a player saved in the HudEditorScreen
 
 Pack slots: `HudLayout.region`.
 
+Functions beside it, imported by name from `@origingame/engine/ui/components`:
+
+- `deserializeHudLayout(text: string, defaults: ReadonlyArray<HudRegion>): HudRegion[]`: Regions read back from `serializeHudLayout` text, merged over `defaults`: a saved region whose id is no longer in `defaults` is dropped, and a default the save lacks keeps its default placement. Malformed text returns `defaults`.
+- `serializeHudLayout(regions: ReadonlyArray<HudRegion>): string`: The regions as text for a save or a settings file: a JSON array of the fields that matter.
+
 <a id="guide-components-42"></a>
 ### `components §42` HudPlace
 
@@ -2176,6 +2181,8 @@ Actions: `choose` (Go back).
 
 Pages of art on the HUD plate: the current one ringed in the accent, its neighbours set back; the place is a row of leaning pips between cut arrow keys. Reports prev and next.
 
+The strip scrolls without snapping to a page; the lit pip follows the index.
+
 `import { Carousel } from "@origingame/engine/ui/components"` (kit `panels`, `packages/engine/src/ui/components/panels/carousel.tsx`).
 
 | Prop | Type | What |
@@ -2242,6 +2249,8 @@ Actions: `back` (Close history).
 
 A conversation across the foot of the screen: the speaker's portrait, name and line, and the player's numbered replies. Reports reply (a reply's key) and next (the Continue button, or confirm, while there are no replies). With a rate the line shows a few characters at a time by the world's tick (always whole to a screen reader) and reports revealed once it is whole; the game decides what a press before that does.
 
+The line types out under reduced motion too: the TSX UI cannot read the setting yet.
+
 `import { RpgConversation } from "@origingame/engine/ui/components"` (kit `panels`, `packages/engine/src/ui/components/panels/conversation.tsx`).
 
 | Prop | Type | What |
@@ -2275,6 +2284,8 @@ Actions: `confirm` (Continue).
 
 A crafting station: a band with the station's name, the recipes as rows (the result's icon in a socket, its rarity on the row's edge and in its name, why it cannot be made in words), and beside them (under them when narrow) the selected recipe: its art large over a glow of its rarity, what it does and how many the player holds, the ingredients as have / need with a short one marked in words, the batch stepper with the cost, and Craft. The game decides every requirement; the panel reports choose, increase, decrease and craft, each with the recipe's key.
 
+The hero wears a linear wash of the rarity's colour.
+
 `import { RpgCrafting } from "@origingame/engine/ui/components"` (kit `panels`, `packages/engine/src/ui/components/panels/crafting.tsx`).
 
 | Prop | Type | What |
@@ -2303,6 +2314,8 @@ Fixtures: `default`, `empty`, `loading`, `busy`, `missing`.
 ### `components §94` DataGrid
 
 The HUD's smoked-glass plate: headings in small tracked capitals over a faint rule, rows dense and plain so the data reads first, figures condensed and tabular. The chosen row is washed in the accent from its leading edge. In a narrow shell each row becomes a two-line card: the first column and the last on one line, the rest as a caption under. Reports choose (a row's key) and retry.
+
+Each row is its own plate; the chosen row's wash is one flat colour.
 
 `import { DataGrid } from "@origingame/engine/ui/components"` (kit `panels`, `packages/engine/src/ui/components/panels/data-grid.tsx`).
 

@@ -19,10 +19,20 @@ use std::process::ExitCode;
 /// a model's context budget.
 const GUIDE_INLINE_MAX_BYTES: usize = 28_000;
 
-/// Cached wiki directory and search index, kept in process by `og mcp`.
+/// Cached wiki directory and search index, kept in process by `og mcp`
+/// until [`WikiCache::is_current`] says the wiki changed.
 pub struct WikiCache {
     dir: PathBuf,
     index: SearchIndex,
+    /// When the index file (or, for a wiki without one, its `index.md`)
+    /// was last written.
+    stamp: Option<std::time::SystemTime>,
+}
+
+/// When `dir`'s search index, or its `index.md` without one, was written.
+fn wiki_stamp(dir: &Path) -> Option<std::time::SystemTime> {
+    let at = |p: PathBuf| std::fs::metadata(p).and_then(|m| m.modified()).ok();
+    at(dir.join(og_idl::search::INDEX_FILE)).or_else(|| at(dir.join("index.md")))
 }
 
 impl WikiCache {
@@ -33,8 +43,16 @@ impl WikiCache {
                 crate::project::NO_ENGINE
             )
         })?;
+        let stamp = wiki_stamp(&dir);
         let index = index(&dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
-        Ok(Self { dir, index })
+        Ok(Self { dir, index, stamp })
+    }
+
+    /// Whether this is still the wiki `og api` would read: the same
+    /// directory, its index unchanged since it was loaded (an `og api gen`
+    /// or an engine upgrade writes a new one).
+    pub fn is_current(&self) -> bool {
+        wiki_dir().as_deref() == Some(self.dir.as_path()) && wiki_stamp(&self.dir) == self.stamp
     }
 
     pub fn find_json(
@@ -160,58 +178,13 @@ fn is_guide_overview(d: &Doc) -> bool {
     d.kind == "guide" && !d.name.contains(" §")
 }
 
-/// The entries named `name` (with or without `og.`, any case); a module's
-/// or guide's own name as written (`input`, not `Input` or `og.Input`) is its
-/// overview. A guide named like a module (`physics`) is shown with `guide`.
-#[allow(dead_code)]
-pub fn show<'a>(all: &'a [Entry], name: &str, guide: bool) -> Vec<&'a Entry> {
-    let trimmed = name.trim();
-    let whole = |kind: &str| -> Vec<&'a Entry> {
-        all.iter()
-            .filter(|e| e.kind == kind && e.name == trimmed)
-            .collect()
-    };
-    for kind in if guide {
-        ["guide", "module"]
-    } else {
-        ["module", "guide"]
-    } {
-        let found = whole(kind);
-        if !found.is_empty() {
-            return found;
-        }
-    }
-    let want = bare(name);
-    let items: Vec<&Entry> = all
-        .iter()
-        .filter(|e| e.kind != "module" && !(e.kind == "guide" && !e.name.contains(" §")))
-        .collect();
-    let exact: Vec<&Entry> = items
-        .iter()
-        .copied()
-        .filter(|e| bare(&e.name) == want)
-        .collect();
-    if !exact.is_empty() {
-        return exact;
-    }
-    // `CharacterController` names `og.CharacterController`; `castRay` names `og.physics.castRay`.
-    let leaf: Vec<&Entry> = items
-        .iter()
-        .copied()
-        .filter(|e| bare(&e.name).rsplit('.').next() == Some(want.as_str()))
-        .collect();
-    if !leaf.is_empty() {
-        return leaf;
-    }
-    // A guide section's heading title (`Button`, `StatBar`, `mount`, `createSignal`).
-    items
-        .into_iter()
-        .filter(|e| e.kind == "guide" && entry_title(e).is_some_and(|t| bare(t) == want))
-        .collect()
-}
-
-/// Match `name` against the already-loaded `SearchIndex` and load only the
-/// matched page file(s) from disk.
+/// The entries named `name` (with or without `og.`, any case), matched
+/// against the already-loaded `SearchIndex`: a module's or guide's own name
+/// as written (`input`, not `Input` or `og.Input`) is its overview (a guide
+/// named like a module, `physics`, with `guide`); else the entries named
+/// exactly, else by their last part (`castRay` for `og.physics.castRay`),
+/// each followed by the guide sections titled `name` (`Toggle`,
+/// `LoadingScreen`); else those sections alone.
 fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> {
     let trimmed = name.trim();
     let whole = |kind: &str| -> Vec<&'a Doc> {
@@ -236,13 +209,26 @@ fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> 
         .iter()
         .filter(|d| d.kind != "module" && !is_guide_overview(d))
         .collect();
+    let titled: Vec<&Doc> = items
+        .iter()
+        .copied()
+        .filter(|d| section_title(d).is_some_and(|t| bare(t) == want))
+        .collect();
+    let named = |mut found: Vec<&'a Doc>| {
+        for d in &titled {
+            if !found.iter().any(|f| std::ptr::eq(*f, *d)) {
+                found.push(d);
+            }
+        }
+        found
+    };
     let exact: Vec<&Doc> = items
         .iter()
         .copied()
         .filter(|d| bare(&d.name) == want)
         .collect();
     if !exact.is_empty() {
-        return exact;
+        return named(exact);
     }
     let leaf: Vec<&Doc> = items
         .iter()
@@ -250,12 +236,9 @@ fn match_docs<'a>(ix: &'a SearchIndex, name: &str, guide: bool) -> Vec<&'a Doc> 
         .filter(|d| bare(&d.name).rsplit('.').next() == Some(want.as_str()))
         .collect();
     if !leaf.is_empty() {
-        return leaf;
+        return named(leaf);
     }
-    items
-        .into_iter()
-        .filter(|d| section_title(d).is_some_and(|t| bare(t) == want))
-        .collect()
+    titled
 }
 
 fn load_page(dir: &Path, page: &str) -> std::io::Result<(String, Vec<Entry>)> {
@@ -566,7 +549,8 @@ pub fn index(dir: &Path) -> std::io::Result<SearchIndex> {
     }
 }
 
-const KINDS: [&str; 9] = [
+/// The entry kinds `og api find --kind` takes.
+pub const KINDS: [&str; 9] = [
     "module", "fn", "record", "type", "member", "const", "value", "column", "guide",
 ];
 

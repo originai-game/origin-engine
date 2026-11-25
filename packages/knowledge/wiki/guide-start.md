@@ -154,9 +154,9 @@ most; `--all` lists every member.
 | begin a game, find the API | `start` | `og.game`, `defineComponent`, `defineSystem` (`og api show system`) |
 | write systems that replay and save | determinism §1 | `World`, `og.Time`, `og.Rng` |
 | read a unit, an angle, a row or a name the right way round | `conventions`, `facing` | `og.transform.face`, `og.transform.face2d` |
-| test the loop, capture & measure frames | `testing`, `playtest`, `captures`, `perf` | `runPlaytest` (`@origingame/engine/playtest`), `og.assert.always`, `og.assert.sometimes` |
+| test the loop, capture & measure frames | `testing`, `playtest`, `captures`, `perf` | `runPlaytest` (`@origingame/engine/playtest`), `og.assert.always`, `og.assert.sometimes`, `og.assert.reachable` |
 | save and load progress | `saves` | `World.snapshot`, `World.restore`, `og.platform.saveSlot`, `og.platform.loadSlot` |
-| call or integrate platform services | saves §7, `provider` | `og.platform.storeGet`, `og.platform.result`, `@origingame/engine/provider` |
+| call the platform (store, scores, purchases) | saves §7 | `og.platform.storeGet`, `og.platform.result` |
 | read the player's input | `input` | `og.Input`, `og.input.action`, `og.Gamepad` |
 | move bodies, cast rays, control a character | `physics` | `og.RigidBody`, `og.Collider`, `og.CharacterController`, `og.physics.castRay` |
 | break things | physics §9, determinism §4 | `og.Destructible`, `og.destruction.explode` |

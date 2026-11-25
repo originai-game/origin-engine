@@ -342,13 +342,10 @@ fn title(e: &Entry) -> Option<&str> {
     entry_title(e)
 }
 
-/// A guide section's heading title, as stored in [`Doc::summary`] (`<title> — …`).
+/// A guide section's heading title ([`Doc::title`]); none for any other
+/// entry or an untitled section.
 pub fn section_title(doc: &Doc) -> Option<&str> {
-    if doc.kind == "guide" && doc.name.contains(" §") {
-        doc.summary.split(" — ").next().filter(|t| !t.is_empty())
-    } else {
-        None
-    }
+    Some(doc.title.as_str()).filter(|t| !t.is_empty())
 }
 
 /// One entry of the index: what `find` prints, and its fields' lengths.
@@ -358,6 +355,9 @@ pub struct Doc {
     pub kind: String,
     pub page: String,
     pub summary: String,
+    /// A guide section's heading title (`Button` for `components §12`
+    /// Button), from [`entry_title`]; empty for any other entry.
+    pub title: String,
     pub len: [u32; NF],
     /// The entry's embedding (crate::embed), int8 with its scale.
     pub vec: Vec<i8>,
@@ -477,6 +477,11 @@ impl SearchIndex {
                 kind: e.kind.clone(),
                 page: e.page.clone(),
                 summary: e.summary.clone(),
+                title: (e.kind == "guide" && e.name.contains(" §"))
+                    .then(|| entry_title(e))
+                    .flatten()
+                    .unwrap_or("")
+                    .to_string(),
                 len: std::array::from_fn(|k| f[k].len() as u32),
                 vec,
                 vscale,
@@ -489,7 +494,7 @@ impl SearchIndex {
     /// refers to another row: inserting a document leaves other rows unchanged.
     pub fn to_text(&self) -> String {
         let mut out = String::from(
-            "# og api find index 4: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8)\n",
+            "# og api find index 5: BM25F over name, summary, members, body, aliases; embeddings (scale:base64 int8); section title\n",
         );
         let mut words = vec![Vec::new(); self.docs.len()];
         for (word, posts) in &self.terms {
@@ -502,13 +507,14 @@ impl SearchIndex {
         }
         for (d, words) in self.docs.iter().zip(words) {
             out.push_str(&format!(
-                "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\n",
+                "doc\t{}\t{}\t{}\t{}\t{}:{}\t{}\t{}\n",
                 d.name,
                 d.kind,
                 d.page,
                 d.len.map(|n| n.to_string()).join(","),
                 d.vscale,
                 og_core::base64::encode(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
+                d.title.replace(['\t', '\n'], " "),
                 d.summary.replace(['\t', '\n'], " ")
             ));
             out.push_str("words\t");
@@ -521,7 +527,7 @@ impl SearchIndex {
     pub fn from_text(text: &str) -> Option<SearchIndex> {
         let mut ix = SearchIndex::default();
         let mut lines = text.lines();
-        if lines.next()?.split(':').next()? != "# og api find index 4" {
+        if lines.next()?.split(':').next()? != "# og api find index 5" {
             return None;
         }
         for line in lines {
@@ -541,12 +547,14 @@ impl SearchIndex {
                         .into_iter()
                         .map(|x| x as i8)
                         .collect();
+                    let title = cols.next()?.to_string();
                     let summary = cols.next().unwrap_or("").to_string();
                     ix.docs.push(Doc {
                         name,
                         kind,
                         page,
                         summary,
+                        title,
                         len,
                         vec,
                         vscale,
@@ -661,9 +669,17 @@ impl SearchIndex {
                 || (!spelled.is_empty()
                     && tokens(doc.name.rsplit('.').next().unwrap_or("")).concat() == spelled)
         };
+        // A guide section titled as the query leads only when no other
+        // section shares its title: `Button` names one section, `Pitfalls`
+        // or `Recipes` heads one in many guides and names none of them.
+        let mut titles: BTreeMap<String, usize> = BTreeMap::new();
+        for t in self.docs.iter().filter_map(section_title) {
+            *titles.entry(bare(t)).or_default() += 1;
+        }
         let title_exact = |doc: &Doc| {
             section_title(doc).is_some_and(|t| {
-                bare(t) == want || (!spelled.is_empty() && tokens(t).concat() == spelled)
+                titles.get(&bare(t)) == Some(&1)
+                    && (bare(t) == want || (!spelled.is_empty() && tokens(t).concat() == spelled))
             })
         };
         let mut out: Vec<(usize, f64)> = score
@@ -782,7 +798,8 @@ impl SearchIndex {
                 .total_cmp(&a.score)
                 .then_with(|| self.docs[a.doc].name.cmp(&self.docs[b.doc].name))
         });
-        // Past the cap, a guide section (not one named exactly) waits until
+        // Past the cap, a guide section (not one named or titled exactly:
+        // only a title one section holds scores 0.8) waits until
         // the window is full; the order is otherwise the score's.
         let mut kept = Vec::with_capacity(out.len());
         let mut later = Vec::new();

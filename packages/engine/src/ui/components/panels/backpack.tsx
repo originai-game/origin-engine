@@ -51,10 +51,6 @@ export interface RpgBackpackProps {
  * words for a screen reader, Broken also on the tile. The selected tile
  * wears corner brackets. The grid fills the height it is given and
  * scrolls inside it.
- *
- * Dropped from the .svelte: the load bar's lean (skew is not a class the record
- * draws), and the tile's light rising from its foot (a cut shape takes
- * one bg colour).
  */
 export function RpgBackpack(props: RpgBackpackProps) {
   return (

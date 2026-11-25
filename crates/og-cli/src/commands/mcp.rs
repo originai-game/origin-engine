@@ -92,13 +92,15 @@ impl BackgroundGame {
 struct Server {
     /// Games `run` started in the background.
     games: Vec<BackgroundGame>,
-    /// Cached API wiki index, loaded lazily on first `api_*` call.
+    /// Cached API wiki index, loaded on the first `api_*` call and again
+    /// when the wiki changed.
     wiki: Option<crate::api_lookup::WikiCache>,
 }
 
 impl Server {
     fn wiki(&mut self) -> Result<&crate::api_lookup::WikiCache, String> {
-        if self.wiki.is_none() {
+        if !self.wiki.as_ref().is_some_and(|w| w.is_current()) {
+            self.wiki = None;
             self.wiki = Some(crate::api_lookup::WikiCache::open()?);
         }
         Ok(self.wiki.as_ref().expect("initialized"))
@@ -178,6 +180,14 @@ impl Server {
                     .and_then(Value::as_str)
                     .ok_or("api_find: words is the text to look for")?;
                 let kind = a.get("kind").and_then(Value::as_str);
+                if let Some(k) = kind
+                    && !crate::api_lookup::KINDS.contains(&k)
+                {
+                    return Err(format!(
+                        "api_find: kind must be one of {}",
+                        crate::api_lookup::KINDS.join(", ")
+                    ));
+                }
                 let limit = a
                     .get("limit")
                     .and_then(Value::as_u64)

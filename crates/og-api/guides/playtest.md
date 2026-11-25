@@ -6,19 +6,19 @@ TypeScript API imported by `tests/*.og.ts` playtests run via `og test`. See `tes
 ## 1. Entry points and helpers
 
 - **`runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun>`**
-  Plays `desc` headless, in fresh processes of the game `og test` built, and resolves to what the first run wrote (its `runs`, `then` steps and room peers beside it). The script's expect steps, `invariants`, `require` and every og.assert violation make one assertion: it rejects with each failure. A run that does not finish rejects too. Call it inside a test of a `tests/*.og.ts` file that `og test` runs; each call is new processes, never a reused world.
+  Plays `desc` headless, in fresh processes of the game `og test` built, and resolves to what the first run wrote (its `runs`, `then` steps and room peers beside it). The script's `expect:` steps, `invariants`, `require` and every og.assert violation make one assertion: it rejects with each failure. A run that does not finish rejects too. Call it inside a test of a `tests/*.og.ts` file that `og test` runs; each call is new processes, never a reused world.
 - **`recordReference(screenshot: string, reference: string): void`**
   Records a reference frame: the screenshot a run wrote (the probe's fast PNG, large) decoded and written to `reference` at maximum compression (`encodePngBest`: the same pixels in a file 3 to 8 times smaller, about a second for a 1280×720 frame), its directory made. Every recorder of a `references/` frame uses it instead of copying the screenshot.
-- **`PLAYTEST_CLOCK`** (`number (1767225600000)`)
+- **`const PLAYTEST_CLOCK = 1767225600000`**
   The clock a playtest's processes start at when it names none: 2026-01-01T00:00:00Z.
-### `class FrameUnchecked`
+
+### `class FrameUnchecked` (extends `Error`)
 
 What reading a screenshot the run took without a renderer throws: the test fails, naming the frame. Put frame checks inside `run.frame`, which reports them unchecked instead.
 
 | Field | Type | What |
 |---|---|---|
 | `file` | `string` |  |
-
 
 ## 2. PlaytestDesc and PlaytestStep
 
@@ -28,20 +28,20 @@ What `runPlaytest` plays: the script and the processes it runs in.
 
 | Field | Type | What |
 |---|---|---|
-| `commands` | `string` | timed command script, as `og run --commands`. End it with `quit`. |
+| `commands` | `string` | `t:action[:args];...`, as `og run --commands`. End it with `quit`. |
 | `seed?` | `number` | The replay seed; omitted is GameDesc.seed. |
 | `size?` | `string` | The render target, `WIDTHxHEIGHT` (default 1280x720). |
-| `setup?` | `string` | setup action list run once through the command channel after `start`, before the first tick (`og run --setup`), in every process of the playtest: the stand-ins for what a host does around the game, such as `cover:12,12,40,40`, the published page's Back over the play surface (`Viewport.covered`), so the frames lay out as the page's. Not part of `commands`: the published page plays a script without it and covers itself. |
+| `setup?` | `string` | `action[:args];...` run once through the command channel after `start`, before the first tick (`og run --setup`), in every process of the playtest: the stand-ins for what a host does around the game, such as `cover:12,12,40,40`, the published page's Back over the play surface (`Viewport.covered`), so the frames lay out as the page's. Not part of `commands`: the published page plays a script without it and covers itself. |
 | `runs?` | `number` | Run the script this many times with fresh game state (default 1) and report every end hash in `run.hashes`: a determinism check. A resident host may reuse its process, never its world. The files are the first run's. |
 | `clock?` | `number` | The host's clock at tick 0, UTC milliseconds (`og run --clock`): og.platform.now and the answers' times start there and move with the ticks, so a playtest is reproducible. Omitted is 1767225600000 (2026-01-01T00:00:00Z). |
 | `store?` | `"keep"` | `keep`: every process of this playtest (the script, its `runs` and its `then` steps) answers og.platform from one local store, `<out>/.store/platform.json` (a dot name, which no step's output may take), empty when the playtest starts, so a later process sees what an earlier one saved (a relaunch). Omitted: each process has its own store in memory. |
-| `platform?` | `LocalFake` | How the platform services are faked in every process of the playtest (`og run --platform-fake`): the products, each method's outcomes in order (per-method outcome lists), the player, friends, invites, notices sent at a tick, and the methods the host lacks. Omitted: every purchase, ad, achievement, identity and share call succeeds. |
+| `platform?` | `LocalFake` | How the platform services are faked in every process of the playtest (`og run --platform-fake`): the products, each method's outcomes in order (`{ "purchase.buy": ["cancelled", "ok"] }`), the player, friends, invites, notices sent at a tick, and the methods the host lacks. Omitted: every purchase, ad, achievement, identity and share call succeeds. |
 | `content?` | `string` | The content base og.load.data reads catalogs from in every process of the playtest (`og run --content`): a directory, relative to the project's root. Omitted: a data load fails `unavailable`. |
-| `room?` | `PlaytestRoom` | Play the script in a room (docs/design.md §2.8, §2.10): the playtest starts a relay (`og relay`, in its own process) and runs `players` processes at once, each `og run --room ws://127.0.0.1:P/<name>` with its own script (`room.commands[i]`, else `commands`) and its own files. The first is the run; the others are `run.peers`. Every process stops at `room.ticks`, or at its script's `quit`, which lands on one tick of the room for all. `runs` is refused with it; each `then` step relaunches every process at once into a room of its own (`<name>.then-<n>`), each running the step's script, its runs in `run.then[n].peers`; `store` set to `"keep"` keeps one store per place across them. |
-| `budget?` | `PlaytestBudget` | Ceilings on the run's timings (`run.timings`), stated by the game: `frameMs` p95 ceiling (for example 16.7 ms). Over one fails the playtest; one the run could not measure is unchecked, never passed. |
-| `restart?` | `{ readonly at: number; /** * The progress the game deliberately carries across a restart, each a field of a component or a * resource the world declares (`Run.best`, `Wallet.coins`): left out of the comparison and * reported in `run.restart.kept` with both values. A name the world does not declare fails the * playtest. The clock is the engine's own and needs no entry. */ readonly keep?: readonly string[]; }` | A restart check: the script restarts the game (presses its Play again, sends its command) so that the restart runs in the tick at `at` seconds, and the world after that tick must be a fresh start's after its first tick (the restart's tick is the new game's first: both sides ran exactly one tick), the clock left out (og.Time, TimeScale.elapsed). The comparison is structural: entities paired by name, then in spawn order within their component set, every handle field read through that pairing, every module's state (og.physics bodies, colliders and joints, og.anim layers and foot locks, ...) by its paired entity, the entity allocator left out, so despawning everything and spawning it again is a restart. A different world, or an extra or missing entity, fails the playtest, naming the first difference by entity path. |
+| `room?` | `PlaytestRoom` | Play the script in a room (docs/design.md §2.8, §2.10): the playtest starts a relay (`og relay`, in its own process) and runs `players` processes at once, each `og run --room ws://127.0.0.1:P/<name>` with its own script (`room.commands[i]`, else `commands`) and its own files. The first is the run; the others are `run.peers`. Every process stops at `room.ticks`, or at its script's `quit`, which lands on one tick of the room for all. `runs` is refused with it; each `then` step relaunches every process at once into a room of its own (`<name>.then-<n>`), each running the step's script, its runs in `run.then[n].peers`; with `store` set to `"keep"`, each place keeps one store across them. |
+| `budget?` | `PlaytestBudget` | Ceilings on the run's timings (`run.timings`), stated by the game: `{ frameMs: { p95: 16.7 } }`. Over one fails the playtest; one the run could not measure is unchecked, never passed. |
+| `restart?` | `{ readonly at: number; readonly keep?: readonly string[]; }` | A restart check: the script restarts the game (presses its Play again, sends its command) so that the restart runs in the tick at `at` seconds, and the world after that tick must be a fresh start's after its first tick (the restart's tick is the new game's first: both sides ran exactly one tick), the clock left out (og.Time and the time scale's elapsed time). The comparison is structural: entities paired by name, then in spawn order within their component set, every handle field read through that pairing, every module's state (og.physics bodies, colliders and joints, og.anim layers and foot locks, ...) by its paired entity, the entity allocator left out, so despawning everything and spawning it again is a restart. A different world, or an extra or missing entity, fails the playtest, naming the first difference by entity path. |
 | `then?` | `readonly PlaytestStep[]` | More fresh runs after the script, in order (a relaunch): their runs are `run.then`. With `room`, every place of the room relaunches at once. |
-| `invariants?` | `readonly string[]` | Properties checked after every tick of every process of the playtest, written first: each is an expect form but `region` and `frame` (state expression, entity property expression), run as an invariant step from tick 0. The first tick one fails is a failure naming the tick and the observed value. The engine's default invariants (no NaN, every field inside its min..max, no dangling Entity, og.WorldBounds) and the game's og.assert.always run beside them. |
+| `invariants?` | `readonly string[]` | Properties checked after every tick of every process of the playtest, written first: each is an `expect:` form but `region` and `frame` (`state:lives>=0`, `entity:hero:og.Transform.position.y>-5`), run as an `invariant:` step from tick 0. The first tick one fails is a failure naming the tick and the observed value. The engine's default invariants (no NaN, every field inside its min..max, no dangling Entity, og.WorldBounds) and the game's og.assert.always run beside them. |
 | `require?` | `readonly string[]` | The og.assert.sometimes, reachable and each sites (by name) the playtest must see fire, in any of its processes (the script, its `then` steps, a room's peers): one that never fired in any fails the playtest. Every other site that never fired is listed as uncovered, never a failure. `each` names a site, all of whose buckets the run saw must hold; `name[key]` names one bucket. |
 
 ### `PlaytestStep`
@@ -100,11 +100,11 @@ What one headless run produced.
 | `unchecked` | `readonly string[]` | The screenshots the run took without a renderer, by the file each would have written: frames unchecked. |
 | `files` | `readonly string[]` | Every file the commands wrote, by its `Output::file_name()` (`smoke.png`, `dump_world-000132.json`). |
 | `warnings` | `readonly string[]` | Warnings the command channel and the probe logged, each naming the fix. |
-| `json` | `<T = unknown>(file: string): T` | A written JSON output, parsed. Throws when the run wrote no such file. |
-| `png` | `(file: string): { width: number; height: number; bytes: number }` | A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `frame`). |
-| `pixels` | `(file: string): { width: number; height: number; rgba: Uint8Array }` | A written PNG decoded: its RGBA8 rows, for checks that read pixels (contrast, a colour at a point). Throws as `png` does. |
-| `text` | `(file: string): string` | A written text output. |
-| `wav` | `(file: string): { rate: number; frames: number; peak: number; rms: number }` | A written WAV (`listen`): its rate, frames, peak and RMS (16-bit PCM read back, both channels). |
+| `json` | `<T = unknown>(file: string) => T` | A written JSON output, parsed. Throws when the run wrote no such file. |
+| `png` | `(file: string) => { width: number; height: number; bytes: number }` | A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `frame`). |
+| `pixels` | `(file: string) => { width: number; height: number; rgba: Uint8Array }` | A written PNG decoded: its RGBA8 rows, for checks that read pixels (contrast, a colour at a point). Throws as `png` does. |
+| `text` | `(file: string) => string` | A written text output. |
+| `wav` | `(file: string) => { rate: number; frames: number; peak: number; rms: number }` | A written WAV (`listen`): its rate, frames, peak and RMS (16-bit PCM read back, both channels). |
 | `then` | `readonly PlaytestRun[]` | The runs of PlaytestDesc.then, in order, each with its own files (empty without `then`). |
 | `assertions` | `PlaytestAssertions` | The run's assertions (the probe's `assertions`): violations, sites, buckets and what never fired. |
 | `timings` | `PlaytestTimings` | The run's frame and GPU pass timings, which PlaytestDesc.budget is held to. |
@@ -112,7 +112,7 @@ What one headless run produced.
 | `netHash` | `string` | og.net's shared hash at the end (og.net.hash): the world without this process's session, what lockstep peers compare. |
 | `lockstep` | `PlaytestLockstep \| null` | With PlaytestDesc.room: og.net.status at the end (running, the start tick, the seats, the first divergent tick); null outside a room. |
 | `peers` | `readonly PlaytestRun[]` | With PlaytestDesc.room: the room's other processes (peer scripts 1, 2, ...), each with its own files; empty outside a room. |
-| `frame` | `(files: string \| readonly string[], check: () => void): void` | The checks that read frames (`png`, `pixels`, a comparison with references/): `check` runs when the run had a renderer. Without one it does not run, each of `files` is reported "no renderer, frame unchecked" (never passed), and the test goes on to the checks after it. Every check outside `frame` runs either way. |
+| `frame` | `(files: string \| readonly string[], check: () => void) => void` | The checks that read frames (`png`, `pixels`, a comparison with references/): `check` runs when the run had a renderer. Without one it does not run, each of `files` is reported "no renderer, frame unchecked" (never passed), and the test goes on to the checks after it. Every check outside `frame` runs either way. |
 
 ### `PlaytestTimings`
 
@@ -145,7 +145,7 @@ PlaytestDesc.restart's result: the world after the restart against a fresh start
 | `hash` | `string` | Its structural hash (entities by their spawn-order place, handles through it; ids, the allocator, module state and the clock left out), and the start world's. |
 | `startHash` | `string` |  |
 | `first` | `string \| null` | The first difference by entity path, such as `level/hero Health.value is 3, a fresh start's 10` or `entity #7.0 is not in a fresh start`; null when equal. |
-| `unchecked` | `readonly string[]` | Module state blocks that could not be read by entity (block name and reason): not compared, listed in the playtest's `unchecked`, never passed. |
+| `unchecked` | `readonly string[]` | Module state blocks that could not be read by entity (`<block>: <why>`): not compared, listed in the playtest's `unchecked`, never passed. |
 | `kept` | `ReadonlyArray<{ readonly name: string; readonly entity?: string; readonly start: unknown; readonly now: unknown }>` | Each field of PlaytestDesc.restart.keep, with its value at the fresh start and after the restart (per paired entity for a component, its path in `entity`): what the game carried across it. |
 | `diff` | `unknown` | og-net's whole restart diff: `{ differs, components, names, entities: { missing, extra }, resources, events, blocks, records, unchecked }`; `records` are the modules' per-entity state that differs (`{ block, entity, record, fields }`, `{ block, global }`). |
 
@@ -192,4 +192,3 @@ og.net.status of a playtest process in a room, at its end.
 | `players` | `number \| null` |  |
 | `waits` | `number` |  |
 | `desync` | `number \| null` | The first divergent tick, once og.Desync was sent. |
-

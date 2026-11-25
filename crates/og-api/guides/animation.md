@@ -616,7 +616,7 @@ filter nearest
 ```
 
 - **`parts`**: path to a layered `.psd` file or a folder of `.png` files (`"knight/"`). Each layer or PNG is named for a template part and drawn where it sits in the setup pose, overlapping its parent where they join.
-- **`template`**: one of the four built-in rig templates — `humanoid-side`, `humanoid-front`, `quadruped`, or `creature`. Call `rigParts(template)` (from `@origingame/create-game` / `packages/knowledge/scripts/brief.ts`) to inspect required and optional part names, parent-child joints, and layer rules before drawing art.
+- **`template`**: one of the four built-in rig templates — `humanoid-side`, `humanoid-front`, `quadruped`, or `creature`. The cook holds the parts to it: a layer or PNG named for no part of the template (one whose name starts with `_` is left out), a required part missing, two layers of one part, a part with no pixels, or a PNG not at the canvas size is refused, and the message names the parts the template expects and the fix.
 - **`pivot <part> <x> <y>`**: optional manual joint override in canvas pixels.
 - **`unit <px>`**: pixels per world unit; **`filter nearest`**: crisp pixel-art sampling.
 - Load the cooked rig with `og.load.rig2d` and play its generated clips on `og.Skeleton2D` like any other 2D skeleton (§9).

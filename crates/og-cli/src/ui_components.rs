@@ -53,6 +53,9 @@ struct Component {
     panel: bool,
     fixtures: Vec<String>,
     actions: Vec<(String, String)>,
+    /// The functions its file exports beside it (`serializeHudLayout`):
+    /// each name, its signature after the name and its doc comment.
+    helpers: Vec<(String, String, String)>,
 }
 
 /// A doc comment's text: `/** … */` without its delimiters and leading
@@ -74,7 +77,7 @@ fn doc_text(raw: &str) -> String {
         }
         p.push_str(line);
     }
-    paras.retain(|p| !p.is_empty() && !p.starts_with("Dropped from the .svelte:"));
+    paras.retain(|p| !p.is_empty());
     paras.join("\n\n")
 }
 
@@ -166,13 +169,42 @@ fn exported_const<'p, 'a>(program: &'p Program<'a>, name: &str) -> Option<&'p Ex
     })
 }
 
-fn read(root: &Path, name: &str, local: &str, rel: &str) -> Result<Option<Component>, String> {
-    if !name.starts_with(|c: char| c.is_ascii_uppercase()) {
-        return Ok(None);
-    }
-    let file = format!("{DIR}/{rel}.tsx")
+/// An export's file, from the repository root.
+fn file_of(rel: &str) -> String {
+    format!("{DIR}/{rel}.tsx")
         .replace("/./", "/")
-        .replace("components/../", "");
+        .replace("components/../", "")
+}
+
+/// An exported function that is not a component (its name is not
+/// capitalized): its signature after the name (`(text: string): T[]`) and
+/// its doc comment; none when the file exports no function `local`.
+fn helper(root: &Path, local: &str, rel: &str) -> Result<Option<(String, String)>, String> {
+    let file = file_of(rel);
+    let src = std::fs::read_to_string(root.join(&file)).map_err(|e| format!("{file}: {e}"))?;
+    let alloc = Allocator::default();
+    let parsed = Parser::new(&alloc, &src, SourceType::tsx()).parse();
+    if parsed.diagnostics.has_errors() {
+        return Err(format!("{file}: does not parse"));
+    }
+    let program = &parsed.program;
+    Ok(program.body.iter().find_map(|s| {
+        let Statement::ExportDeclaration(e) = s else {
+            return None;
+        };
+        let Declaration::FunctionDeclaration(f) = &e.declaration else {
+            return None;
+        };
+        let id = f.id.as_ref().filter(|i| i.name == local)?;
+        let end = f.body.as_ref().map_or(f.span.end, |b| b.span.start);
+        let sig = squash(Span::new(id.span.end, end).source_text(&src));
+        let doc = doc_at(&program.comments[..], &src, e.span.start);
+        Some((sig, doc))
+    }))
+}
+
+fn read(root: &Path, name: &str, local: &str, rel: &str) -> Result<Option<Component>, String> {
+    let file = file_of(rel);
     let src = std::fs::read_to_string(root.join(&file)).map_err(|e| format!("{file}: {e}"))?;
     let alloc = Allocator::default();
     let parsed = Parser::new(&alloc, &src, SourceType::tsx()).parse();
@@ -283,6 +315,7 @@ fn read(root: &Path, name: &str, local: &str, rel: &str) -> Result<Option<Compon
         panel,
         fixtures: keys("fixtures").into_iter().map(|(k, _)| k).collect(),
         actions: keys("actions"),
+        helpers: Vec::new(),
     }))
 }
 
@@ -335,12 +368,25 @@ A component marked as a piece of a panel is drawn on a panel's ground (inside a 
         }
     };
     let mut comps: Vec<Component> = Vec::new();
+    let mut helpers = Vec::new();
     for (name, local, rel) in &list {
-        match read(root, name, local, rel) {
-            Ok(Some(c)) => comps.push(c),
-            Ok(None) => {}
-            Err(e) => {
-                let _ = writeln!(out, "\n{name}: {e}");
+        // A component is capitalized; a function beside one (a layout's
+        // save and restore) is listed on its file's component.
+        let got = if name.starts_with(|c: char| c.is_ascii_uppercase()) {
+            read(root, name, local, rel).map(|c| c.map(|c| comps.push(c)))
+        } else {
+            helper(root, local, rel)
+                .map(|h| h.map(|(sig, doc)| helpers.push((name, file_of(rel), sig, doc))))
+        };
+        if let Err(e) = got {
+            let _ = writeln!(out, "\n{name}: {e}");
+        }
+    }
+    for (name, file, sig, doc) in helpers {
+        match comps.iter_mut().find(|c| c.file == file) {
+            Some(c) => c.helpers.push((name.clone(), sig, doc)),
+            None => {
+                let _ = writeln!(out, "\n{name}: {file} exports no component to list it on");
             }
         }
     }
@@ -423,6 +469,15 @@ A component marked as a piece of a panel is drawn on a panel's ground (inside a 
                 })
                 .collect();
             let _ = writeln!(out, "\nActions: {}.", s.join(", "));
+        }
+        if !c.helpers.is_empty() {
+            let _ = writeln!(
+                out,
+                "\nFunctions beside it, imported by name from `{IMPORT}`:\n"
+            );
+            for (name, sig, doc) in &c.helpers {
+                let _ = writeln!(out, "- `{name}{sig}`: {}", doc.replace('\n', " "));
+            }
         }
     }
     out

@@ -22635,6 +22635,120 @@ pub mod probe {
         }
     }
 
+    /// `LayersDump`: packages/knowledge/wiki/probe.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LayersDump {
+        pub tick: u32,
+        pub layers: Value,
+    }
+
+    impl Default for LayersDump {
+        fn default() -> Self {
+            Self {
+                tick: Default::default(),
+                layers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for LayersDump {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tick: field(o, "tick", d.tick)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    impl ToJson for LayersDump {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("tick".into(), self.tick.to_json());
+            o.insert("layers".into(), self.layers.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `MotionDump`: packages/knowledge/wiki/probe.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MotionDump {
+        pub tick: u32,
+        pub motion: Value,
+    }
+
+    impl Default for MotionDump {
+        fn default() -> Self {
+            Self {
+                tick: Default::default(),
+                motion: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for MotionDump {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tick: field(o, "tick", d.tick)?,
+                motion: field(o, "motion", d.motion)?,
+            })
+        }
+    }
+
+    impl ToJson for MotionDump {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("tick".into(), self.tick.to_json());
+            o.insert("motion".into(), self.motion.to_json());
+            Value::Object(o)
+        }
+    }
+
+    /// `SubsystemDump`: packages/knowledge/wiki/probe.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SubsystemDump {
+        pub name: String,
+        pub data: Value,
+    }
+
+    impl Default for SubsystemDump {
+        fn default() -> Self {
+            Self {
+                name: Default::default(),
+                data: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SubsystemDump {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                name: field(o, "name", d.name)?,
+                data: field(o, "data", d.data)?,
+            })
+        }
+    }
+
+    impl ToJson for SubsystemDump {
+        fn to_json(&self) -> Value {
+            let mut o = Map::new();
+            o.insert("name".into(), self.name.to_json());
+            o.insert("data".into(), self.data.to_json());
+            Value::Object(o)
+        }
+    }
+
     /// `DumpResult`: packages/knowledge/wiki/probe.md.
     #[derive(Clone, Debug, PartialEq)]
     pub enum DumpResult {
@@ -22643,6 +22757,9 @@ pub mod probe {
         Ui(UiDump),
         Desync(DesyncDump),
         Drawn(DrawnDump),
+        Layers(LayersDump),
+        Motion(MotionDump),
+        Subsystem(SubsystemDump),
     }
 
     impl Default for DumpResult {
@@ -22654,7 +22771,7 @@ pub mod probe {
     impl DumpResult {
         /// The tag key and the cases' tags, in order.
         pub const TAG: &'static str = "kind";
-        pub const TAGS: &'static [&'static str] = &["world", "entity", "ui", "desync", "drawn"];
+        pub const TAGS: &'static [&'static str] = &["world", "entity", "ui", "desync", "drawn", "layers", "motion", "subsystem"];
         /// This case's tag.
         pub fn tag(&self) -> &'static str {
             match self {
@@ -22663,6 +22780,9 @@ pub mod probe {
                 Self::Ui(_) => "ui",
                 Self::Desync(_) => "desync",
                 Self::Drawn(_) => "drawn",
+                Self::Layers(_) => "layers",
+                Self::Motion(_) => "motion",
+                Self::Subsystem(_) => "subsystem",
             }
         }
     }
@@ -22680,6 +22800,9 @@ pub mod probe {
                 "ui" => Self::Ui(UiDump::from_json(v)?),
                 "desync" => Self::Desync(DesyncDump::from_json(v)?),
                 "drawn" => Self::Drawn(DrawnDump::from_json(v)?),
+                "layers" => Self::Layers(LayersDump::from_json(v)?),
+                "motion" => Self::Motion(MotionDump::from_json(v)?),
+                "subsystem" => Self::Subsystem(SubsystemDump::from_json(v)?),
                 t => return Err(at(Self::TAG, unknown_variant("DumpResult", t, Self::TAGS))),
             })
         }
@@ -22693,6 +22816,9 @@ pub mod probe {
                 Self::Ui(p) => p.to_json(),
                 Self::Desync(p) => p.to_json(),
                 Self::Drawn(p) => p.to_json(),
+                Self::Layers(p) => p.to_json(),
+                Self::Motion(p) => p.to_json(),
+                Self::Subsystem(p) => p.to_json(),
             };
             if let Value::Object(o) = &mut v {
                 o.insert(Self::TAG.into(), Value::String(self.tag().into()));

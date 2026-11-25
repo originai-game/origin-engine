@@ -107,7 +107,14 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
     }
     // The written guides (the component catalogue from the components' TSX,
     // the effect packs from their manifests, the cook grammar); the wiki reads them with the others.
-    for (path, text) in written_guides(root) {
+    let guides = match written_guides(root) {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("og api gen: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    for (path, text) in guides {
         let file = root.join(path);
         if std::fs::read_to_string(&file).ok().as_deref() != Some(text.as_str()) {
             if let Err(e) = std::fs::write(&file, &text) {
@@ -243,34 +250,30 @@ fn presets(root: &Path) -> Result<Presets, String> {
 }
 
 /// The guides `og api gen` writes from other sources than the IDL, as (path, text).
-fn written_guides(root: &Path) -> [(&'static str, String); 7] {
-    [
+fn written_guides(root: &Path) -> Result<[(&'static str, String); 6], String> {
+    Ok([
         (
             crate::ui_components::PATH,
             crate::ui_components::markdown(root),
         ),
         (
             crate::ui_api_docs::UI_TSX_PATH,
-            crate::ui_api_docs::ui_tsx_markdown(root),
+            crate::ui_api_docs::ui_tsx_markdown(root)?,
         ),
         (
             crate::ui_api_docs::THEME_TOKENS_PATH,
-            crate::ui_api_docs::theme_tokens_markdown(root),
+            crate::ui_api_docs::theme_tokens_markdown(root)?,
         ),
         (
             crate::ui_api_docs::PLAYTEST_PATH,
-            crate::ui_api_docs::playtest_markdown(root),
-        ),
-        (
-            crate::ui_api_docs::PROVIDER_PATH,
-            crate::ui_api_docs::provider_markdown(root),
+            crate::ui_api_docs::playtest_markdown(root)?,
         ),
         (
             crate::vfx_catalogue::PATH,
             crate::vfx_catalogue::markdown(root),
         ),
         (og_cook::grammar::PATH, og_cook::grammar::markdown()),
-    ]
+    ])
 }
 
 /// The description budget (`og_idl::budget`): a summary, or with `--budget`
@@ -318,7 +321,14 @@ fn api_check(root: &Path) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let written = written_guides(root)
+    let guides = match written_guides(root) {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let written = guides
         .into_iter()
         .map(|(path, text)| (path.to_string(), text))
         .chain(presets.files);

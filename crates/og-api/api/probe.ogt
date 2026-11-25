@@ -97,7 +97,7 @@ module probe {
     field paused bool "Whether the clock is held."
     field seed u32 "The seed the world was assembled from."
     field timings ProbeTimings "The last tick's timings."
-    field entities List.ProbeEntityRef "All live entities (named first, then unnamed as `#<index>.<generation>`)."
+    field entities List.ProbeEntityRef "The named entities."
     field facts Json "What GameDesc.facts returned, or null."
   }
 
@@ -418,7 +418,7 @@ module probe {
   struct DumpDesc {
     doc "What to dump."
     desc true
-    field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or any registered subsystem dump (`physics`, `render`, `audio`, `ai`, `nav`, `flow`, `story`, `motion`, `stream`, `platform`, `pulse`, `lanes`, `room`, `memory`, `determinism`, `inspector`). Omitted defaults to `world`."
+    field what Option.OneOf.DumpKind.String "A DumpKind, `ui:layers`, `ui:motion`, or a registered subsystem dump's name (`physics`, `render`, …; an unknown name's error lists them), answered as a `subsystem` DumpResult. Required: a dump without one is refused."
     field id String "The probe id, for an entity dump."
   }
 
@@ -595,6 +595,24 @@ module probe {
     field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order; `{ pending }` until the other peer's snapshot arrived."
   }
 
+  struct LayersDump {
+    doc "The UI layer stack alone (docs/ui.md §6)."
+    field tick u32 "The tick."
+    field layers Json "The layer stack; empty without a UI module."
+  }
+
+  struct MotionDump {
+    doc "The UI motion alone (docs/ui.md §6): each element in a visual state or animating, with its states, what is moving, what plays and whether it is leaving."
+    field tick u32 "The tick."
+    field motion Json "The moving elements; empty without a UI module."
+  }
+
+  struct SubsystemDump {
+    doc "A dump a subsystem registered (`physics`, `render`, `audio`, ...), as its `dump_<name>` command writes it."
+    field name String "The dump's name, as DumpDesc.what named it."
+    field data Json "What the subsystem reported; its shape is the subsystem's."
+  }
+
   union DumpResult {
     doc "A dump, tagged by its kind."
     tag kind
@@ -603,6 +621,9 @@ module probe {
     case ui UiDump "The UI dump."
     case desync DesyncDump "The desync dump."
     case drawn DrawnDump "The cull record."
+    case layers LayersDump "The UI layer stack (`ui:layers`)."
+    case motion MotionDump "The UI motion (`ui:motion`)."
+    case subsystem SubsystemDump "A registered subsystem dump, by its name."
   }
 
   struct ScreenBox {
@@ -977,7 +998,7 @@ module probe {
       param desc DumpDesc "What to dump." {
         flatten true
       }
-      returns Option.OneOf.DumpResult.Json "Null for an unknown entity or an inactive optional dump."
+      returns Option.DumpResult "Null for an unknown entity, or a desync dump without a lockstep session. An unknown name, or a subsystem dump that fails, is an error naming why."
     }
     fn commands {
       doc "Schedule a command script on simulation time, as `og run --commands`."

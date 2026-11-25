@@ -15,8 +15,6 @@ export interface BreadcrumbsProps {
  * lit underline. The trail wraps between crumbs, and a long current page
  * takes a line of its own and wraps between its words. Reports choose (a
  * crumb's key).
- *
- * Dropped from the .svelte: nothing (the separator's svg path is a `Line`).
  */
 export function Breadcrumbs(props: BreadcrumbsProps) {
   return (

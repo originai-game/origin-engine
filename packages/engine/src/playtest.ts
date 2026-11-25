@@ -143,7 +143,7 @@ export interface PlaytestRestart {
   /** Its structural hash (entities by their spawn-order place, handles through it; ids, the allocator, module state and the clock left out), and the start world's. */
   readonly hash: string;
   readonly startHash: string;
-  /** The first difference by entity path, such as `level/hero Health.hp is 3, a fresh start's 10` or `entity #7.0 is not in a fresh start`; null when equal. */
+  /** The first difference by entity path, such as `level/hero Health.value is 3, a fresh start's 10` or `entity #7.0 is not in a fresh start`; null when equal. */
   readonly first: string | null;
   /** Module state blocks that could not be read by entity (`<block>: <why>`): not compared, listed in the playtest's `unchecked`, never passed. */
   readonly unchecked: readonly string[];
@@ -277,7 +277,7 @@ export interface PlaytestDesc {
    * at `room.ticks`, or at its script's `quit`, which lands on one tick of the room for all.
    * `runs` is refused with it; each `then` step relaunches every process at once into a room of
    * its own (`<name>.then-<n>`), each running the step's script, its runs in `run.then[n].peers`;
-   * `store: "keep"` keeps one store per place across them.
+   * with `store` set to `"keep"`, each place keeps one store across them.
    */
   readonly room?: PlaytestRoom;
   /**
@@ -289,7 +289,7 @@ export interface PlaytestDesc {
    * A restart check: the script restarts the game (presses its Play again, sends its command) so
    * that the restart runs in the tick at `at` seconds, and the world after that tick must be a fresh
    * start's after its first tick (the restart's tick is the new game's first: both sides ran
-   * exactly one tick), the clock left out (og.Time, og.TimeScale.elapsed). The comparison is
+   * exactly one tick), the clock left out (og.Time and the time scale's elapsed time). The comparison is
    * structural: entities paired by name, then in spawn order within their component set, every
    * handle field read through that pairing, every module's state (og.physics bodies, colliders
    * and joints, og.anim layers and foot locks, ...) by its paired entity, the entity allocator
