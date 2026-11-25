@@ -152,6 +152,12 @@ pub(crate) fn views<'a>(
     })
 }
 
+struct FaceSlot {
+    uniform: wgpu::Buffer,
+    blur_uniforms: [wgpu::Buffer; 3],
+    groups: Option<(FluidBindKey, Fluid3dGroups)>,
+}
+
 /// The fluid's targets for a camera outside the frame graph (a reflection
 /// probe's faces: probes.rs), of one square size.
 pub(crate) struct Fluid3dTargets {
@@ -160,6 +166,7 @@ pub(crate) struct Fluid3dTargets {
     thick: wgpu::TextureView,
     blur: wgpu::TextureView,
     smooth: wgpu::TextureView,
+    slots: std::sync::Mutex<Vec<FaceSlot>>,
 }
 
 impl Fluid3dTargets {
@@ -192,6 +199,7 @@ impl Fluid3dTargets {
             thick: make("fluid 3d thickness (face)", crate::HDR_FORMAT, both),
             blur: make("fluid 3d blur (face)", lindepth, both),
             smooth: make("fluid 3d smooth (face)", lindepth, both),
+            slots: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -685,26 +693,68 @@ impl Fluid3dRenderer {
         main: &Fluid3dFrame,
         camera: &Fluid3dCamera,
         screen: (u32, u32),
+        targets: &Fluid3dTargets,
+        slot_idx: usize,
         views: &Fluid3dViews,
     ) -> Option<Fluid3dFrame> {
         let first = fluids
             .iter()
             .find(|f| !f.particles.is_empty() || f.visual.is_some())?;
         let (gpu, blur) = camera_uniforms(first, camera, screen);
-        let buffer = |label, contents: &[u8]| {
-            crate::buffer_init(
-                device,
-                queue,
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some(label),
-                    contents,
-                    usage: wgpu::BufferUsages::UNIFORM,
-                },
-            )
+        let mut slots = targets.slots.lock().expect("fluid 3d face slots");
+        while slots.len() <= slot_idx {
+            let make_buf = |label, size| {
+                crate::traffic::create_buffer(
+                    device,
+                    &wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    },
+                )
+            };
+            slots.push(FaceSlot {
+                uniform: make_buf("fluid 3d (camera)", size_of::<FluidGpu>() as u64),
+                blur_uniforms: std::array::from_fn(|_| {
+                    make_buf("fluid 3d blur (camera)", size_of::<BlurGpu>() as u64)
+                }),
+                groups: None,
+            });
+        }
+        let slot = &mut slots[slot_idx];
+        crate::traffic::write_buffer(queue, &slot.uniform, 0, bytemuck::bytes_of(&gpu));
+        for (buf, data) in slot.blur_uniforms.iter().zip(&blur) {
+            crate::traffic::write_buffer(queue, buf, 0, bytemuck::bytes_of(data));
+        }
+        let key = FluidBindKey {
+            depth: views.depth.clone(),
+            blur: views.blur.clone(),
+            smooth: views.smooth.clone(),
+            thick: views.thick.clone(),
+            scene_color: views.scene_color.clone(),
+            scene_depth: views.scene_depth.clone(),
         };
-        let uniform = buffer("fluid 3d (camera)", bytemuck::bytes_of(&gpu));
-        let [x, y, square] = blur.map(|b| buffer("fluid 3d blur (camera)", bytemuck::bytes_of(&b)));
-        Some(self.frame(device, &uniform, [&x, &y, &square], views, main.instances))
+        if slot.groups.as_ref().is_none_or(|(k, _)| *k != key) {
+            let [x, y, square] = &slot.blur_uniforms;
+            let built = self.frame(device, &slot.uniform, [x, y, square], views, main.instances);
+            slot.groups = Some((
+                key,
+                Fluid3dGroups {
+                    spheres: built.spheres.clone(),
+                    blur: built.blur.clone(),
+                    composite: built.composite.clone(),
+                },
+            ));
+            return Some(built);
+        }
+        let (_, cached) = slot.groups.as_ref().expect("checked above");
+        Some(Fluid3dFrame {
+            instances: main.instances,
+            spheres: cached.spheres.clone(),
+            blur: cached.blur.clone(),
+            composite: cached.composite.clone(),
+        })
     }
 
     /// The bind groups of a camera's fluid over its uniforms and targets.
@@ -831,6 +881,7 @@ impl Fluid3dRenderer {
             pass.draw(0..6, 0..frame.instances);
         }
         let [x_depth, y, x, square_smooth, square_blur] = &frame.blur;
+        let dont_care = wgpu::LoadOp::DontCare(unsafe { wgpu::LoadOpDontCare::enabled() });
         for (target, group) in [
             (views.blur, x_depth),
             (views.smooth, y),
@@ -843,7 +894,7 @@ impl Fluid3dRenderer {
                 encoder,
                 "fluid 3d smoothing",
                 target,
-                wgpu::LoadOp::Clear(far),
+                dont_care,
                 Some(blur),
                 group,
             );

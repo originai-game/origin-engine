@@ -894,6 +894,7 @@ impl Job for TextureJob<'_> {
                 match *k {
                     format::kind::NORMAL => "normal (UASTC)",
                     format::kind::LINEAR => "linear (UASTC)",
+                    format::kind::SINGLE => "single-channel (UASTC)",
                     format::kind::PIXEL => "pixel art (RGBA8, no mips)",
                     _ => "colour (ETC1S)",
                 }

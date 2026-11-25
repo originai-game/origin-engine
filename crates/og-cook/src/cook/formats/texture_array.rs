@@ -60,10 +60,11 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Arr
                     "color" => format::kind::COLOR,
                     "normal" => format::kind::NORMAL,
                     "linear" => format::kind::LINEAR,
+                    "single" => format::kind::SINGLE,
                     "pixel" => format::kind::PIXEL,
                     w => {
                         return Err(format!(
-                            "line {}: kind '{w}' (color, normal, linear or pixel)",
+                            "line {}: kind '{w}' (color, normal, linear, single or pixel)",
                             e.line
                         ));
                     }

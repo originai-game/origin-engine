@@ -62,6 +62,7 @@ impl Renderer {
                     format: HDR_FORMAT,
                     usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                         | wgpu::TextureUsages::TEXTURE_BINDING
+                        | wgpu::TextureUsages::STORAGE_BINDING
                         | wgpu::TextureUsages::COPY_DST,
                     view_formats: &[],
                     texture_binding_view_dimension: None,

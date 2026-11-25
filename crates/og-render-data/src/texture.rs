@@ -16,39 +16,56 @@ pub enum TextureFormat {
     /// Uncompressed 8-bit RGBA: every backend.
     Rgba8,
     /// BC7 RGBA (desktop: Metal on macOS, Vulkan, D3D, WebGPU with
-    /// `texture-compression-bc`).
+    /// `texture-compression-bc`). 8 bpp.
     Bc7,
-    /// BC5: two channels (normal map x and y; z is reconstructed). Linear only.
+    /// BC1 RGB opaque (desktop `texture-compression-bc`). 4 bpp.
+    Bc1,
+    /// BC4 single-channel R linear (AO, height, masks; desktop
+    /// `texture-compression-bc`). 4 bpp.
+    Bc4,
+    /// BC5: two channels (normal map x and y; z is reconstructed). Linear only. 8 bpp.
     Bc5,
-    /// ASTC LDR with 4x4 blocks (mobile GPUs, Apple silicon).
+    /// ASTC LDR with 4x4 blocks (mobile GPUs, Apple silicon). 8 bpp.
     Astc4x4,
     /// ETC2 RGBA8 (EAC alpha): the mobile baseline (WebGPU's
-    /// `texture-compression-etc2`).
+    /// `texture-compression-etc2`). 8 bpp.
     Etc2Rgba8,
-    /// EAC RG11: two channels (normal maps on the ETC2 tier). Linear only.
+    /// ETC2 RGB8 opaque (WebGPU's `texture-compression-etc2`). 4 bpp.
+    Etc2Rgb8,
+    /// EAC R11 single-channel linear (AO, height, masks on ETC2 tier). 4 bpp.
+    EacR11,
+    /// EAC RG11: two channels (normal maps on the ETC2 tier). Linear only. 8 bpp.
     EacRg11,
 }
 
 impl TextureFormat {
     /// Every format, in declaration order.
-    pub const ALL: [TextureFormat; 6] = [
+    pub const ALL: [TextureFormat; 10] = [
         TextureFormat::Rgba8,
         TextureFormat::Bc7,
+        TextureFormat::Bc1,
+        TextureFormat::Bc4,
         TextureFormat::Bc5,
         TextureFormat::Astc4x4,
         TextureFormat::Etc2Rgba8,
+        TextureFormat::Etc2Rgb8,
+        TextureFormat::EacR11,
         TextureFormat::EacRg11,
     ];
 
     /// The format's short name, as hosts and transcoders name it: `rgba8`,
-    /// `bc7`, `bc5`, `astc4x4`, `etc2`, `eacrg11`.
+    /// `bc7`, `bc1`, `bc4`, `bc5`, `astc4x4`, `etc2`, `etc2rgb`, `eacr11`, `eacrg11`.
     pub fn name(self) -> &'static str {
         match self {
             TextureFormat::Rgba8 => "rgba8",
             TextureFormat::Bc7 => "bc7",
+            TextureFormat::Bc1 => "bc1",
+            TextureFormat::Bc4 => "bc4",
             TextureFormat::Bc5 => "bc5",
             TextureFormat::Astc4x4 => "astc4x4",
             TextureFormat::Etc2Rgba8 => "etc2",
+            TextureFormat::Etc2Rgb8 => "etc2rgb",
+            TextureFormat::EacR11 => "eacr11",
             TextureFormat::EacRg11 => "eacrg11",
         }
     }
@@ -66,10 +83,14 @@ impl TextureFormat {
         }
     }
 
-    /// Bytes per block (per texel for RGBA8).
+    /// Bytes per block (per texel for RGBA8; 8 for 4 bpp blocks, 16 for 8 bpp blocks).
     pub fn block_bytes(self) -> u32 {
         match self {
             TextureFormat::Rgba8 => 4,
+            TextureFormat::Bc1
+            | TextureFormat::Bc4
+            | TextureFormat::Etc2Rgb8
+            | TextureFormat::EacR11 => 8,
             _ => 16,
         }
     }
@@ -77,6 +98,11 @@ impl TextureFormat {
     /// Whether the format holds only red and green (normal maps' x and y).
     pub fn two_channel(self) -> bool {
         matches!(self, TextureFormat::Bc5 | TextureFormat::EacRg11)
+    }
+
+    /// Whether the format holds only a single linear red channel (AO, height, masks).
+    pub fn single_channel(self) -> bool {
+        matches!(self, TextureFormat::Bc4 | TextureFormat::EacR11)
     }
 
     /// The bytes of mip `level` of a `width` x `height` texture.
@@ -108,12 +134,16 @@ pub enum TextureCompression {
 /// The encoding each kind of texture should be uploaded in on this device.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextureFormats {
-    /// Base colour, emissive (sRGB) and other RGBA textures.
+    /// Base colour with alpha, emissive (sRGB) and other RGBA textures.
     pub color: TextureFormat,
+    /// Opaque ETC1S colour textures (4 bpp BC1 / ETC2 RGB8 where available).
+    pub color_opaque: TextureFormat,
     /// Normal maps (linear; two-channel formats reconstruct z).
     pub normal: TextureFormat,
-    /// Linear data: metallic-roughness, occlusion.
+    /// Multi-channel linear data: metallic-roughness, ORM.
     pub data: TextureFormat,
+    /// Single-channel linear masks (AO, height, dissolve; 4 bpp BC4 / EAC R11).
+    pub single: TextureFormat,
     /// Every format this device accepts, [`TextureFormat::Rgba8`] first.
     pub supported: Vec<TextureFormat>,
 }
@@ -127,8 +157,8 @@ pub struct TextureDesc {
     /// Mip levels supplied, from level 0 (1 = no mips). A full chain is
     /// `32 - max(width, height).leading_zeros()`.
     pub mip_levels: u32,
-    /// sRGB (decoded when sampled) or linear data. The two-channel formats
-    /// are linear only.
+    /// sRGB (decoded when sampled) or linear data. Single- and two-channel
+    /// formats are linear only.
     pub color_space: ColorSpace,
 }
 
@@ -178,7 +208,9 @@ impl TextureDesc {
                 ));
             }
         }
-        if self.format.two_channel() && self.color_space == ColorSpace::Srgb {
+        if (self.format.two_channel() || self.format.single_channel())
+            && self.color_space == ColorSpace::Srgb
+        {
             return Err(format!("{:?} has no sRGB variant", self.format));
         }
         Ok(())

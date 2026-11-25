@@ -272,7 +272,10 @@ pub fn measure(
                 continue;
             }
             let t = bundle.load_texture(&o.id).map_err(|e| e.to_string())?;
-            if matches!(t.meta.kind, kind::NORMAL | kind::LINEAR | kind::MSDF) {
+            if matches!(
+                t.meta.kind,
+                kind::NORMAL | kind::LINEAR | kind::SINGLE | kind::MSDF
+            ) {
                 continue;
             }
             let data = t.to_texture_data().map_err(|e| e.to_string())?;

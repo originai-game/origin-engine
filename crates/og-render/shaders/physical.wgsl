@@ -504,7 +504,7 @@ fn transmission_hit(origin: vec3<f32>, direction: vec3<f32>, seed: vec3<f32>, vo
   let projected = transmission_uv(point);
   if (!transmission_on_screen(projected)) { return hit; }
   var surface = transmission_surface(projected.xy, volume);
-  for (var i = 0u; i < 6u; i++) {
+  for (var i = 0u; i < 4u; i++) {
     if (surface.confidence == 0.0) { return hit; }
     let normal = surface.normal;
     let denominator = dot(normal, direction);
@@ -571,12 +571,67 @@ fn fs_oit_front(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> O
   return oit_hybrid(c, in.clip);
 }
 
+// Lightweight alpha-only evaluation for `Oit::Mark` passes: skips the 14
+// physical maps, Newton refraction, lighting, IBL, SSR, decals, and fog.
+fn physical_alpha_mark(in: PhysicalOut) -> f32 {
+  let uv = stylised_uv(in.uv, in.affine);
+  let mode = u32(material.flags.w);
+  let dpx = dpdxFine(in.world_pos);
+  let dpy = dpdyFine(in.world_pos);
+  var n = normalize(in.normal);
+  if ((mode & 1u) != 0u) {
+    n = -normalize(cross(dpx, dpy)) * hook_front;
+  }
+  let v = toward_eye(in.world_pos);
+  let n_vertex = n;
+  let geo_n = normalize(n_vertex * material_face(hook_front));
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    let base_uv_ref = material_uv(UV_MAP, uv);
+    let base_dx = dpdxFine(base_uv_ref);
+    let base_dy = dpdyFine(base_uv_ref);
+    var base_at = uv;
+    if (physical.layers2.y > 0.0) {
+      var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);
+      let framed = dot(t, t) > 1e-12;
+      t = select(normalize(cross(select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(n_vertex.y) > 0.9), n_vertex)), normalize(t), framed);
+      let bt = cross(n_vertex, t) * select(1.0, -1.0, in.tangent.w < 0.0);
+      base_at = iris_uv(uv, t, bt, geo_n, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
+    }
+    let base_uv = material_uv(UV_MAP, base_at);
+    base_sample = base_texel(base_uv, base_dx, base_dy);
+  }
+  var hook: Hook;
+  hook.world = in.world_pos;
+  hook.local = in.local_pos;
+  hook.normal = in.normal;
+  hook.uv = uv;
+  hook.color = in.color;
+  hook.time = frame.time.x;
+  hook.origin = frame.origin.xyz;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = hook_front;
+  hook.wind = frame.foliage_wind[0][0];
+  let params = shader_params();
+  let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
+  var dissolve = vec4<f32>(0.0);
+  if (DISCARD && EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
+  let a2c = DISCARD && (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  var coverage = 1.0;
+  if (DISCARD) {
+    coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+    if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) {
+      discard;
+    }
+  }
+  return select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
+}
+
 @fragment
 fn fs_oit_mark(in: PhysicalOut, @builtin(front_facing) front_facing: bool) {
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
-  let c = physical_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  oit_front_mark(in.clip, physical_alpha_mark(in));
 }
 
 // False for opaque physical batches without alpha-test, dissolve, or reveal fade,

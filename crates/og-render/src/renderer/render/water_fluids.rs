@@ -182,34 +182,43 @@ impl Renderer {
         // over its depth and through its copy (fluid3d.rs `camera_frame`).
         let face_fluids: Vec<Option<fluid3d::Fluid3dFrame>> =
             match (&fluid_frame, self.world.fluid3d.get()) {
-                (Some(main), Some(fluid3d)) if face_fluid => probe_frame
-                    .due
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(d, &(slot, _))| {
-                        let t = self.probes.targets_of(slot);
-                        probe_faces[d].iter().map(move |f| (t, f))
-                    })
-                    .map(|(t, f)| {
-                        let views = fluid3d.face(t.size).views(
-                            &t.prepass.lindepth,
-                            t.copy.as_ref().expect("made with the fluids"),
-                        );
-                        fluid3d.camera_frame(
-                            &self.device,
-                            &self.queue,
-                            &scene.world.fluids_3d,
-                            main,
-                            &fluid3d::Fluid3dCamera {
-                                view: f.view,
-                                proj: f.proj,
-                                orthographic: f.orthographic,
-                            },
-                            (t.size, t.size),
-                            &views,
-                        )
-                    })
-                    .collect(),
+                (Some(main), Some(fluid3d)) if face_fluid => {
+                    let mut per_size: std::collections::HashMap<u32, usize> =
+                        std::collections::HashMap::new();
+                    probe_frame
+                        .due
+                        .iter()
+                        .enumerate()
+                        .flat_map(|(d, &(slot, _))| {
+                            let t = self.probes.targets_of(slot);
+                            probe_faces[d].iter().map(move |f| (t, f))
+                        })
+                        .map(|(t, f)| {
+                            let slot_idx =
+                                *per_size.entry(t.size).and_modify(|n| *n += 1).or_insert(0);
+                            let targets = fluid3d.face(t.size);
+                            let views = targets.views(
+                                &t.prepass.lindepth,
+                                t.copy.as_ref().expect("made with the fluids"),
+                            );
+                            fluid3d.camera_frame(
+                                &self.device,
+                                &self.queue,
+                                &scene.world.fluids_3d,
+                                main,
+                                &fluid3d::Fluid3dCamera {
+                                    view: f.view,
+                                    proj: f.proj,
+                                    orthographic: f.orthographic,
+                                },
+                                (t.size, t.size),
+                                targets,
+                                slot_idx,
+                                &views,
+                            )
+                        })
+                        .collect()
+                }
                 _ => Vec::new(),
             };
         PrepareWaterAndFluidsOutputs {

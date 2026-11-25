@@ -126,9 +126,10 @@ impl DecalBuffers {
         cells: &[u32],
     ) {
         let first = (4 + cells.len()).div_ceil(4) as u32;
+        let wet_count = records.iter().filter(|r| r.normal[1] > 0.5).count() as u32;
         self.bytes.clear();
         self.bytes
-            .extend_from_slice(bytemuck::bytes_of(&[first, 0, 0, 0]));
+            .extend_from_slice(bytemuck::bytes_of(&[first, wet_count, 0, 0]));
         self.bytes.extend_from_slice(bytemuck::cast_slice(cells));
         self.bytes.resize(first as usize * 16, 0);
         self.bytes.extend_from_slice(bytemuck::cast_slice(records));

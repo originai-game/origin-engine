@@ -208,7 +208,10 @@ pub fn cook(
     );
     let pass = is_identity(o, s)
         && takes
-        && (kind == format::kind::COLOR || kind == format::kind::LINEAR)
+        && matches!(
+            kind,
+            format::kind::COLOR | format::kind::LINEAR | format::kind::SINGLE
+        )
         && wants_srgb == (color_space == 0);
     if pass {
         let meta = TextureMeta {
@@ -256,6 +259,7 @@ pub fn cook(
             match kind {
                 format::kind::NORMAL => "normal",
                 format::kind::LINEAR => "linear",
+                format::kind::SINGLE => "single-channel",
                 format::kind::PIXEL => "pixel",
                 _ => "colour",
             }

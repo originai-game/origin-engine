@@ -633,6 +633,7 @@ impl ParticleRenderer {
                         prev_transform: None,
                         clock: Default::default(),
                         children: Vec::new(),
+                        was_empty: false,
                     }
                 });
                 // Sync GPU child slab allocations with the emitter's sub_emitters.
@@ -679,9 +680,23 @@ impl ParticleRenderer {
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
                 let live = crate::particles::live_spawns(e, sys, tick_rate, &g.clock);
+                let slots = drawn(e.max_particles, Some(live));
+                let slots_empty = slots.iter().all(|r| r.is_empty());
+                let dormant_empty = !reset
+                    && existed
+                    && !children_reset
+                    && g.children.is_empty()
+                    && g.was_empty
+                    && slots_empty
+                    && steps.iter().all(|s| s.count == 0);
+                g.was_empty = slots_empty && !reset;
                 let bound = swept_bound(e, sys, tick_rate, &g.clock, &mut state.path, pull);
                 let n_points = (shape_len / 2) as u32;
                 let local = e.space == SimulationSpace::Local;
+
+                if dormant_empty {
+                    continue;
+                }
 
                 // Queue origin shifts (skipped when the system is being cleared).
                 if !reset && existed && moved != Vec3::ZERO {
@@ -850,43 +865,44 @@ impl ParticleRenderer {
                 out.ticks += steps.len() as u32;
                 out.any_gpu = true;
 
-                // Parent draw & compaction (skip if invisible zero-size parent).
-                let slots = drawn(e.max_particles, Some(live));
+                // Parent draw & compaction (skip if invisible zero-size parent or empty live window).
                 if let Some((layer, array)) = sprite {
-                    let draw_entry = draw_entries.len() as u32;
-                    let mut draw = emitter_draw_gpu(
-                        e,
-                        sys.transform,
-                        sys.tint,
-                        sys.hue,
-                        seed,
-                        textured,
-                        soft,
-                        FULL_UV,
-                        false,
-                    );
-                    newest_sample(&mut draw, interval, g.time);
-                    draw_entries.push(draw);
-                    out.sprite_systems.push(SpriteSystem {
-                        draw_entry,
-                        particle_base: g.particle_base,
-                        layer,
-                        layers,
-                        blend: match e.blend() {
-                            ParticleBlend::Additive => crate::SpriteBlend::Additive,
-                            _ => crate::SpriteBlend::Alpha,
-                        },
-                        glow: e.glow,
-                        soft: e.round || (e.texture.is_none() && array.is_none()),
-                        texture: if array.is_some() { None } else { e.texture },
-                        array: array.map(|(a, _)| a),
-                        frames: array.map_or_else(|| sheet_frames(&e.sheet), |(_, n)| n),
-                        columns: e.sheet.columns.max(1),
-                        rows: e.sheet.rows.max(1),
-                        max: e.max_particles,
-                        z: sys.transform.w_axis.z,
-                    });
-                } else if !invisible_parent {
+                    if !slots_empty {
+                        let draw_entry = draw_entries.len() as u32;
+                        let mut draw = emitter_draw_gpu(
+                            e,
+                            sys.transform,
+                            sys.tint,
+                            sys.hue,
+                            seed,
+                            textured,
+                            soft,
+                            FULL_UV,
+                            false,
+                        );
+                        newest_sample(&mut draw, interval, g.time);
+                        draw_entries.push(draw);
+                        out.sprite_systems.push(SpriteSystem {
+                            draw_entry,
+                            particle_base: g.particle_base,
+                            layer,
+                            layers,
+                            blend: match e.blend() {
+                                ParticleBlend::Additive => crate::SpriteBlend::Additive,
+                                _ => crate::SpriteBlend::Alpha,
+                            },
+                            glow: e.glow,
+                            soft: e.round || (e.texture.is_none() && array.is_none()),
+                            texture: if array.is_some() { None } else { e.texture },
+                            array: array.map(|(a, _)| a),
+                            frames: array.map_or_else(|| sheet_frames(&e.sheet), |(_, n)| n),
+                            columns: e.sheet.columns.max(1),
+                            rows: e.sheet.rows.max(1),
+                            max: e.max_particles,
+                            z: sys.transform.w_axis.z,
+                        });
+                    }
+                } else if !invisible_parent && !slots_empty {
                     let draw_entry = draw_entries.len() as u32;
                     let mut draw = emitter_draw_gpu(
                         e,

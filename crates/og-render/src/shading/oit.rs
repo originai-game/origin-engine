@@ -270,10 +270,10 @@ pub(crate) fn arena_budget(limits: &wgpu::Limits) -> u64 {
 }
 
 /// `oit_arena.wgsl`'s layout: four header words, a fragment count per
-/// pixel, then each pixel's nodes of seven words.
+/// pixel, then each pixel's nodes of five words (20 bytes).
 const HEADER_BYTES: u64 = 16;
 const COUNT_BYTES: u64 = 4;
-const NODE_BYTES: u64 = 28;
+const NODE_BYTES: u64 = 20;
 
 /// An arena's shape: the pass's size and the nodes each pixel keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -697,9 +697,10 @@ impl OitState {
 }
 
 /// The resolve's module: the full-screen triangle, the targets it reads
-/// (multisampled with `msaa`, per sample) and, with `list`, the arena and
-/// the depth, then `oit_resolve.wgsl` (and `oit_list.wgsl`).
-pub(crate) fn resolve_source(msaa: bool, list: bool) -> String {
+/// (multisampled with `msaa`, per sample) and, with `list_limit`, the arena
+/// and the depth, then `oit_resolve.wgsl` (and `oit_list.wgsl` specialized to
+/// `OIT_SORT_LIMIT = limit` so the per-pixel sort array stays in registers).
+pub(crate) fn resolve_source(msaa: bool, list_limit: Option<u32>) -> String {
     let fullscreen = crate::post::FULLSCREEN_WGSL;
     let (texture, sample) = if msaa {
         ("texture_multisampled_2d<f32>", "i32(s)")
@@ -716,7 +717,12 @@ fn oit_reveal_at(p: vec2<i32>, s: u32) -> vec2<f32> {{ return textureLoad(oit_re
 fn oit_front_at(p: vec2<i32>, s: u32) -> vec4<f32> {{ return textureLoad(oit_front, p, {sample}); }}
 "
     );
-    if list {
+    if let Some(limit) = list_limit {
+        let limit = limit.clamp(1, MAX_TRANSPARENCY_LAYERS);
+        let list_wgsl = LIST_WGSL.replace(
+            "const OIT_SORT_LIMIT: u32 = 32u;",
+            &format!("const OIT_SORT_LIMIT: u32 = {limit}u;"),
+        );
         // The depth as an unfilterable float texture: compatibility mode
         // loads no texture_depth_2d.
         let depth = if msaa {
@@ -728,7 +734,7 @@ fn oit_front_at(p: vec2<i32>, s: u32) -> vec4<f32> {{ return textureLoad(oit_fro
             "@group(0) @binding(3) var oit_depth: {depth};
 @group(0) @binding(4) var<storage, read> oit_nodes: array<u32>;
 fn oit_depth_at(p: vec2<i32>, s: u32) -> f32 {{ return textureLoad(oit_depth, p, {sample}).r; }}
-{LIST_WGSL}"
+{list_wgsl}"
         ));
     } else {
         s.push_str("fn oit_exact(p: vec2<i32>, s: u32) -> vec4<f32> { return vec4<f32>(-1.0); }\n");
@@ -750,11 +756,13 @@ fn fs_resolve(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     s
 }
 
-/// The resolve's pipelines, by (samples, list), made at first use.
+/// The resolve's pipelines, by (samples, optional specialized list limit), made at first use.
 #[derive(Default)]
 pub(crate) struct Resolver {
-    pipelines:
-        std::collections::HashMap<(u32, bool), (wgpu::BindGroupLayout, wgpu::RenderPipeline)>,
+    pipelines: std::collections::HashMap<
+        (u32, Option<u32>),
+        (wgpu::BindGroupLayout, wgpu::RenderPipeline),
+    >,
 }
 
 impl Resolver {
@@ -763,24 +771,16 @@ impl Resolver {
         &mut self,
         device: &wgpu::Device,
         samples: u32,
-        list: bool,
+        list_limit: Option<u32>,
     ) -> &(wgpu::BindGroupLayout, wgpu::RenderPipeline) {
-        self.pipelines.entry((samples, list)).or_insert_with(|| {
-            let msaa = samples > 1;
-            let texture = |binding| wgpu::BindGroupLayoutEntry {
-                binding,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: msaa,
-                },
-                count: None,
-            };
-            let mut entries = vec![texture(0), texture(1), texture(2)];
-            if list {
-                entries.push(wgpu::BindGroupLayoutEntry {
-                    binding: 3,
+        let list_limit = list_limit.map(|n| n.clamp(1, MAX_TRANSPARENCY_LAYERS));
+        self.pipelines
+            .entry((samples, list_limit))
+            .or_insert_with(|| {
+                let msaa = samples > 1;
+                let list = list_limit.is_some();
+                let texture = |binding| wgpu::BindGroupLayoutEntry {
+                    binding,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -788,92 +788,105 @@ impl Resolver {
                         multisampled: msaa,
                     },
                     count: None,
-                });
-                entries.push(wgpu::BindGroupLayoutEntry {
-                    binding: 4,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: true },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                });
-            }
-            let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("oit resolve"),
-                entries: &entries,
-            });
-            let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("oit resolve"),
-                bind_group_layouts: &[Some(&layout)],
-                immediate_size: 0,
-            });
-            let module = crate::shader(device, "oit resolve", resolve_source(msaa, list));
-            let pipeline = crate::traffic::create_render_pipeline(
-                device,
-                &wgpu::RenderPipelineDescriptor {
+                };
+                let mut entries = vec![texture(0), texture(1), texture(2)];
+                if list {
+                    entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: msaa,
+                        },
+                        count: None,
+                    });
+                    entries.push(wgpu::BindGroupLayoutEntry {
+                        binding: 4,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: true },
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    });
+                }
+                let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: Some("oit resolve"),
-                    layout: Some(&pl),
-                    vertex: wgpu::VertexState {
-                        module: &module,
-                        entry_point: Some("vs"),
-                        compilation_options: Default::default(),
-                        buffers: &[],
+                    entries: &entries,
+                });
+                let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("oit resolve"),
+                    bind_group_layouts: &[Some(&layout)],
+                    immediate_size: 0,
+                });
+                let module = crate::shader(device, "oit resolve", resolve_source(msaa, list_limit));
+                let pipeline = crate::traffic::create_render_pipeline(
+                    device,
+                    &wgpu::RenderPipelineDescriptor {
+                        label: Some("oit resolve"),
+                        layout: Some(&pl),
+                        vertex: wgpu::VertexState {
+                            module: &module,
+                            entry_point: Some("vs"),
+                            compilation_options: Default::default(),
+                            buffers: &[],
+                        },
+                        primitive: Default::default(),
+                        // Weighted/Front resolve never binds `depth` as a sampled
+                        // texture, so it draws directly inside `main (after oit)`
+                        // instead of spilling and reloading the MSAA HDR target.
+                        depth_stencil: (!list).then_some(wgpu::DepthStencilState {
+                            format: crate::DEPTH_FORMAT,
+                            depth_write_enabled: Some(false),
+                            depth_compare: Some(wgpu::CompareFunction::Always),
+                            stencil: wgpu::StencilState::default(),
+                            bias: wgpu::DepthBiasState::default(),
+                        }),
+                        multisample: wgpu::MultisampleState {
+                            count: samples,
+                            ..Default::default()
+                        },
+                        fragment: Some(wgpu::FragmentState {
+                            module: &module,
+                            entry_point: Some("fs_resolve"),
+                            compilation_options: Default::default(),
+                            // Premultiplied over the scene; the HDR alpha (the
+                            // untonemapped sprites' cover) is left as it was.
+                            targets: &[Some(wgpu::ColorTargetState {
+                                format: crate::HDR_FORMAT,
+                                blend: Some(wgpu::BlendState {
+                                    color: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::One,
+                                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                    alpha: wgpu::BlendComponent {
+                                        src_factor: wgpu::BlendFactor::Zero,
+                                        dst_factor: wgpu::BlendFactor::One,
+                                        operation: wgpu::BlendOperation::Add,
+                                    },
+                                }),
+                                write_mask: wgpu::ColorWrites::ALL,
+                            })],
+                        }),
+                        multiview_mask: None,
+                        cache: crate::pipeline_cache::of(device).as_ref(),
                     },
-                    primitive: Default::default(),
-                    // Weighted/Front resolve never binds `depth` as a sampled
-                    // texture, so it draws directly inside `main (after oit)`
-                    // instead of spilling and reloading the MSAA HDR target.
-                    depth_stencil: (!list).then_some(wgpu::DepthStencilState {
-                        format: crate::DEPTH_FORMAT,
-                        depth_write_enabled: Some(false),
-                        depth_compare: Some(wgpu::CompareFunction::Always),
-                        stencil: wgpu::StencilState::default(),
-                        bias: wgpu::DepthBiasState::default(),
-                    }),
-                    multisample: wgpu::MultisampleState {
-                        count: samples,
-                        ..Default::default()
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module: &module,
-                        entry_point: Some("fs_resolve"),
-                        compilation_options: Default::default(),
-                        // Premultiplied over the scene; the HDR alpha (the
-                        // untonemapped sprites' cover) is left as it was.
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: crate::HDR_FORMAT,
-                            blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::Zero,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                            }),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                    }),
-                    multiview_mask: None,
-                    cache: crate::pipeline_cache::of(device).as_ref(),
-                },
-            );
-            (layout, pipeline)
-        })
+                );
+                (layout, pipeline)
+            })
     }
 
     /// The pipeline [`Resolver::ensure`] made.
     pub fn get(
         &self,
         samples: u32,
-        list: bool,
+        list_limit: Option<u32>,
     ) -> Option<&(wgpu::BindGroupLayout, wgpu::RenderPipeline)> {
-        self.pipelines.get(&(samples, list))
+        let list_limit = list_limit.map(|n| n.clamp(1, MAX_TRANSPARENCY_LAYERS));
+        self.pipelines.get(&(samples, list_limit))
     }
 }
 

@@ -7,10 +7,10 @@
 // drop fragments once a global pool is full; here a pixel past its own
 // nodes is resolved whole from the weighted sums instead.
 
-// The most nodes a pixel sorts; oit.rs caps the nodes per pixel at it.
+// The most nodes a pixel sorts; oit.rs specializes this to the arena's budget.
 const OIT_SORT_LIMIT: u32 = 32u;
 const OIT_HEADER_WORDS: u32 = 4u;
-const OIT_NODE_WORDS: u32 = 7u;
+const OIT_NODE_WORDS: u32 = 5u;
 
 struct OitNode {
   depth: f32,
@@ -46,13 +46,11 @@ fn oit_exact(p: vec2<i32>, sample: u32) -> vec4<f32> {
   for (var i = 0u; i < count; i++) {
     let at = base + i * OIT_NODE_WORDS;
     let depth = bitcast<f32>(oit_nodes[at]);
-    let key = vec2<u32>(oit_nodes[at + 5u], oit_nodes[at + 6u]);
+    let key = vec2<u32>(oit_nodes[at + 3u], oit_nodes[at + 4u]);
     if (!(depth > opaque) || ((key.y >> 28u) & (1u << sample)) == 0u) { continue; }
-    let node = OitNode(depth, vec4<f32>(
-      bitcast<f32>(oit_nodes[at + 1u]),
-      bitcast<f32>(oit_nodes[at + 2u]),
-      bitcast<f32>(oit_nodes[at + 3u]),
-      bitcast<f32>(oit_nodes[at + 4u])), key);
+    let rg = unpack_f16x2(oit_nodes[at + 1u]);
+    let ba = unpack_f16x2(oit_nodes[at + 2u]);
+    let node = OitNode(depth, vec4<f32>(rg, ba), key);
     var j = used;
     while (j > 0u) {
       if (!oit_before(node, sorted[j - 1u])) { break; }

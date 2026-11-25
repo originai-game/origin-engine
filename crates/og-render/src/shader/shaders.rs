@@ -152,6 +152,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         crate::color_vision::COLOR_FILTER_WGSL.to_string(),
     );
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
+    add("mipmap spd", crate::mips::MIP_SPD_WGSL.to_string());
     add("ibl", crate::ibl::ibl_source());
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
     add("cloud shadow", crate::clouds::bake_source());
@@ -182,7 +183,10 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     for (msaa, list) in [(false, false), (true, false), (false, true), (true, true)] {
         add(
             &format!("oit resolve (msaa {msaa}, lists {list})"),
-            crate::oit::resolve_source(msaa, list),
+            crate::oit::resolve_source(
+                msaa,
+                list.then_some(crate::oit::DEFAULT_TRANSPARENCY_LAYERS),
+            ),
         );
     }
     // The lean lit pipelines' variant of the standard lit module (plain

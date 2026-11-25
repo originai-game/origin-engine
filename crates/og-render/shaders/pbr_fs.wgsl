@@ -129,12 +129,58 @@ fn fs_oit_front(in: VertexOut, @builtin(front_facing) front_facing: bool) -> Oit
   return oit_hybrid(c, in.clip);
 }
 
+// Lightweight alpha-only evaluation for `Oit::Mark` passes: skips lighting,
+// shadows, local lights, IBL, GI, SSR, decals, weathering, and fog.
+fn lit_alpha_mark(in: VertexOut) -> f32 {
+  let mode = u32(material.flags.w);
+  let uv = stylised_uv(in.uv, in.affine);
+  let base_uv = material_uv(UV_MAP, uv);
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    if (ANALYTIC) {
+      let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
+      let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
+      base_sample = base_texel(base_uv, gx, gy);
+    } else {
+      base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
+    }
+  }
+  var hook: Hook;
+  hook.world = in.world_pos;
+  hook.local = in.local_pos;
+  hook.normal = in.normal;
+  hook.uv = uv;
+  hook.color = in.color;
+  hook.time = frame.time.x;
+  hook.origin = frame.origin.xyz;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = hook_front;
+  hook.wind = frame.foliage_wind[0][0];
+  let params = shader_params();
+  let base = surface_color(hook, params, look_tint(season_base(base_sample, in.color, in.season), in.look));
+  var dissolve = vec4<f32>(0.0);
+  if (DISCARD && EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
+  let a2c = DISCARD && (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  var coverage = 1.0;
+  if (DISCARD) {
+    if (!ANALYTIC) {
+      coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+    } else if (material.emissive.w >= 0.0) {
+      coverage = select(0.0, 1.0, base.a >= material.emissive.w);
+    }
+    let hidden = dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w);
+    if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || hidden) {
+      discard;
+    }
+  }
+  return select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
+}
+
 @fragment
 fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
-  let c = lit_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  oit_front_mark(in.clip, lit_alpha_mark(in));
 }
 
 // The lit shading of a fragment (`fs`, and `fs_lean`).

@@ -141,6 +141,31 @@ pub fn cook(
         let variation = &src.json["materials"][m.index().unwrap_or(0)]["extras"]["ogVariation"];
         let number = |k: &str| variation[k].as_f64().unwrap_or(0.0) as f32;
         let colour = |i: usize| variation["grimeColor"][i].as_f64().unwrap_or(0.0) as f32;
+        let orm_override = m
+            .index()
+            .and_then(|i| src.orm_overrides.get(i).copied().flatten());
+        let orm_tex = orm_override.filter(|_| !proxy).and_then(|img| {
+            src.textures
+                .iter()
+                .position(|u| u.image == img && u.kind == kind::LINEAR && u.cutout.is_none())
+                .map(|i| i as u32)
+        });
+        let mr_tex = orm_tex.unwrap_or_else(|| {
+            tex_of(
+                pbr.metallic_roughness_texture().map(|t| t.texture()),
+                kind::LINEAR,
+                None,
+            )
+        });
+        let occ_tex = orm_tex.unwrap_or_else(|| {
+            let occ = m.occlusion_texture().map(|t| t.texture());
+            let single = tex_of(occ.clone(), kind::SINGLE, None);
+            if single != NONE {
+                single
+            } else {
+                tex_of(occ, kind::LINEAR, None)
+            }
+        });
         materials.push(MaterialRow {
             grime: number("grime").clamp(0.0, 1.0),
             grime_r: colour(0),
@@ -206,18 +231,10 @@ pub fn cook(
                 m.index()
                     .and_then(|i| src.cutouts.get(i).copied().flatten()),
             ),
-            metallic_roughness_texture: tex_of(
-                pbr.metallic_roughness_texture().map(|t| t.texture()),
-                kind::LINEAR,
-                None,
-            ),
+            metallic_roughness_texture: mr_tex,
             normal_texture: tex_of(m.normal_texture().map(|t| t.texture()), kind::NORMAL, None),
             emissive_texture: tex_of(m.emissive_texture().map(|t| t.texture()), kind::COLOR, None),
-            occlusion_texture: tex_of(
-                m.occlusion_texture().map(|t| t.texture()),
-                kind::LINEAR,
-                None,
-            ),
+            occlusion_texture: occ_tex,
             name_offset,
             name_len,
             unlit: super::ext::unlit(&src.json, m.index().unwrap_or(usize::MAX)) as u32,

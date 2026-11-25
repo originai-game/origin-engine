@@ -236,6 +236,7 @@ fn kind_name(k: u32) -> &'static str {
         kind::COLOR => "color",
         kind::NORMAL => "normal",
         kind::LINEAR => "linear",
+        kind::SINGLE => "single",
         kind::MSDF => "msdf",
         kind::PIXEL => "pixel",
         _ => "unknown",

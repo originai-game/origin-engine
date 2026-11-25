@@ -379,7 +379,11 @@ fn fs_oit_front(in: SpriteOut) -> OitOutput {
 
 @fragment
 fn fs_oit_mark(in: SpriteOut) {
-  let c = sprite_fragment(in);
+  var c = sprite_color(in);
+  if (in.shadow > 0.5) {
+    c.a *= drop_shadow_visible(in.world);
+  }
+  if (c.a <= 0.0) { discard; }
   oit_front_mark(in.clip, c.a);
 }
 

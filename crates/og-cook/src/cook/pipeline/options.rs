@@ -432,9 +432,10 @@ pub(crate) fn texture_kind(s: &Source) -> Result<u32, String> {
             "color" => Ok(format::kind::COLOR),
             "normal" => Ok(format::kind::NORMAL),
             "linear" => Ok(format::kind::LINEAR),
+            "single" => Ok(format::kind::SINGLE),
             "pixel" => Ok(format::kind::PIXEL),
             w => Err(format!(
-                "line {}: texture kind '{w}' (expected color, normal, linear or pixel)",
+                "line {}: texture kind '{w}' (expected color, normal, linear, single or pixel)",
                 e.line
             )),
         },

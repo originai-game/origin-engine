@@ -79,9 +79,13 @@ impl Renderer {
         shaders: &[MaterialShader],
     ) {
         let samples = self.samples;
-        self.oit
-            .resolver
-            .ensure(&self.device, samples, mode == Oit::List);
+        let list_limit = (mode == Oit::List).then(|| {
+            self.oit
+                .arena
+                .as_ref()
+                .map_or(oit::DEFAULT_TRANSPARENCY_LAYERS, |a| a.size.nodes_per_pixel)
+        });
+        self.oit.resolver.ensure(&self.device, samples, list_limit);
         // The weighted mode's front layer is marked by a pass of its own.
         let modes: &[Oit] = if mode == Oit::Front {
             &[Oit::Front, Oit::Mark]
@@ -547,7 +551,7 @@ impl Renderer {
             mode != Oit::List,
             "Oit::List binds depth and uses encode_oit_resolve"
         );
-        let Some((layout, pipeline)) = self.oit.resolver.get(self.samples, false) else {
+        let Some((layout, pipeline)) = self.oit.resolver.get(self.samples, None) else {
             return 0;
         };
         let resources = [
@@ -567,7 +571,13 @@ impl Renderer {
     /// linked lists test their nodes against.
     pub(super) fn encode_oit_resolve(&self, encoder: &mut crate::Encoder, mode: Oit) -> u32 {
         let list = mode == Oit::List;
-        let Some((layout, pipeline)) = self.oit.resolver.get(self.samples, list) else {
+        let list_limit = list.then(|| {
+            self.oit
+                .arena
+                .as_ref()
+                .map_or(oit::DEFAULT_TRANSPARENCY_LAYERS, |a| a.size.nodes_per_pixel)
+        });
+        let Some((layout, pipeline)) = self.oit.resolver.get(self.samples, list_limit) else {
             return 0;
         };
         let mut resources = vec![

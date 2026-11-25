@@ -529,8 +529,14 @@ fn fs_mesh_oit_front(in: ParticleOut) -> OitOutput {
 
 @fragment
 fn fs_mesh_oit_mark(in: ParticleOut) {
-  let c = mesh_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  var a: f32;
+  if (effect_on()) {
+    a = particle_effect_color(in, 1.0, normalize(in.normal)).a * particle_soft(in);
+  } else {
+    a = in.color.a;
+  }
+  if (a <= 0.0) { discard; }
+  oit_front_mark(in.clip, a);
 }
 
 // Distortion: the scene copy behind the particle, shifted along the
@@ -618,8 +624,19 @@ fn fs_oit_front(in: ParticleOut) -> OitOutput {
 
 @fragment
 fn fs_oit_mark(in: ParticleOut) {
-  let c = particle_fragment(in, in.clip.xy);
-  oit_front_mark(in.clip, c.a);
+  let tex = particle_tex(in);
+  let dot_d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
+  var a = in.color.a;
+  if (effect_on()) {
+    a = particle_effect_color(in, dot_d * dot_d, ball_normal(in.facing)).a;
+  } else if (emitter.sheet2.y > 0.5) {
+    a *= tex.a;
+  } else {
+    a *= dot_d * dot_d;
+  }
+  a *= particle_soft(in);
+  if (a <= 0.0) { discard; }
+  oit_front_mark(in.clip, a);
 }
 
 fn particle_fragment(in: ParticleOut, light_frag: vec2<f32>) -> vec4<f32> {

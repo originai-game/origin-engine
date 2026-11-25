@@ -108,10 +108,23 @@ fn fs_lightmap_oit_front(in: LightmappedOut, @builtin(front_facing) front_facing
   return oit_hybrid(c, in.clip);
 }
 
+fn lightmapped_alpha_mark(in: LightmappedOut) -> f32 {
+  var o: VertexOut;
+  o.clip = in.clip;
+  o.world_pos = in.world_pos;
+  o.normal = in.normal;
+  o.uv = in.uv;
+  o.color = in.color;
+  o.local_pos = in.local_pos;
+  o.tangent = in.tangent;
+  o.affine = in.affine;
+  o.look = in.look;
+  return lit_alpha_mark(o);
+}
+
 @fragment
 fn fs_lightmap_oit_mark(in: LightmappedOut, @builtin(front_facing) front_facing: bool) {
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
-  let c = lightmapped_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  oit_front_mark(in.clip, lightmapped_alpha_mark(in));
 }

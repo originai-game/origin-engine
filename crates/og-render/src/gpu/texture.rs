@@ -19,6 +19,9 @@ impl TextureFormatGpu for TextureFormat {
             (TextureFormat::Rgba8, false) => F::Rgba8Unorm,
             (TextureFormat::Bc7, true) => F::Bc7RgbaUnormSrgb,
             (TextureFormat::Bc7, false) => F::Bc7RgbaUnorm,
+            (TextureFormat::Bc1, true) => F::Bc1RgbaUnormSrgb,
+            (TextureFormat::Bc1, false) => F::Bc1RgbaUnorm,
+            (TextureFormat::Bc4, false) => F::Bc4RUnorm,
             (TextureFormat::Astc4x4, s) => F::Astc {
                 block: AstcBlock::B4x4,
                 channel: if s {
@@ -29,20 +32,32 @@ impl TextureFormatGpu for TextureFormat {
             },
             (TextureFormat::Etc2Rgba8, true) => F::Etc2Rgba8UnormSrgb,
             (TextureFormat::Etc2Rgba8, false) => F::Etc2Rgba8Unorm,
+            (TextureFormat::Etc2Rgb8, true) => F::Etc2Rgb8UnormSrgb,
+            (TextureFormat::Etc2Rgb8, false) => F::Etc2Rgb8Unorm,
             (TextureFormat::Bc5, false) => F::Bc5RgUnorm,
+            (TextureFormat::EacR11, false) => F::EacR11Unorm,
             (TextureFormat::EacRg11, false) => F::EacRg11Unorm,
-            (TextureFormat::Bc5 | TextureFormat::EacRg11, true) => return None,
+            (
+                TextureFormat::Bc4
+                | TextureFormat::Bc5
+                | TextureFormat::EacR11
+                | TextureFormat::EacRg11,
+                true,
+            ) => return None,
         })
     }
 
     fn feature(self) -> wgpu::Features {
         match self {
             TextureFormat::Rgba8 => wgpu::Features::empty(),
-            TextureFormat::Bc7 | TextureFormat::Bc5 => wgpu::Features::TEXTURE_COMPRESSION_BC,
-            TextureFormat::Astc4x4 => wgpu::Features::TEXTURE_COMPRESSION_ASTC,
-            TextureFormat::Etc2Rgba8 | TextureFormat::EacRg11 => {
-                wgpu::Features::TEXTURE_COMPRESSION_ETC2
+            TextureFormat::Bc7 | TextureFormat::Bc1 | TextureFormat::Bc4 | TextureFormat::Bc5 => {
+                wgpu::Features::TEXTURE_COMPRESSION_BC
             }
+            TextureFormat::Astc4x4 => wgpu::Features::TEXTURE_COMPRESSION_ASTC,
+            TextureFormat::Etc2Rgba8
+            | TextureFormat::Etc2Rgb8
+            | TextureFormat::EacR11
+            | TextureFormat::EacRg11 => wgpu::Features::TEXTURE_COMPRESSION_ETC2,
         }
     }
 }
@@ -86,16 +101,41 @@ impl TextureFormatsChoice for TextureFormats {
             ],
             TextureCompression::Off => &[],
         };
-        let (color, normal) = match order.iter().find(|f| available.contains(**f)) {
-            Some(&f) if f == wgpu::Features::TEXTURE_COMPRESSION_BC => {
-                (TextureFormat::Bc7, TextureFormat::Bc5)
-            }
-            Some(&f) if f == wgpu::Features::TEXTURE_COMPRESSION_ASTC => {
-                (TextureFormat::Astc4x4, TextureFormat::Astc4x4)
-            }
-            Some(_) => (TextureFormat::Etc2Rgba8, TextureFormat::EacRg11),
-            None => (TextureFormat::Rgba8, TextureFormat::Rgba8),
-        };
+        let (color, color_opaque, normal, single) =
+            match order.iter().find(|f| available.contains(**f)) {
+                Some(&f) if f == wgpu::Features::TEXTURE_COMPRESSION_BC => (
+                    TextureFormat::Bc7,
+                    TextureFormat::Bc1,
+                    TextureFormat::Bc5,
+                    TextureFormat::Bc4,
+                ),
+                Some(&f) if f == wgpu::Features::TEXTURE_COMPRESSION_ASTC => (
+                    TextureFormat::Astc4x4,
+                    TextureFormat::Astc4x4,
+                    if available.contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2) {
+                        TextureFormat::EacRg11
+                    } else {
+                        TextureFormat::Astc4x4
+                    },
+                    if available.contains(wgpu::Features::TEXTURE_COMPRESSION_ETC2) {
+                        TextureFormat::EacR11
+                    } else {
+                        TextureFormat::Astc4x4
+                    },
+                ),
+                Some(_) => (
+                    TextureFormat::Etc2Rgba8,
+                    TextureFormat::Etc2Rgb8,
+                    TextureFormat::EacRg11,
+                    TextureFormat::EacR11,
+                ),
+                None => (
+                    TextureFormat::Rgba8,
+                    TextureFormat::Rgba8,
+                    TextureFormat::Rgba8,
+                    TextureFormat::Rgba8,
+                ),
+            };
         let supported = TextureFormat::ALL
             .into_iter()
             .filter(|f| available.contains(f.feature()))
@@ -104,8 +144,10 @@ impl TextureFormatsChoice for TextureFormats {
             available,
             TextureFormats {
                 color,
+                color_opaque,
                 normal,
                 data: color,
+                single,
                 supported,
             },
         )

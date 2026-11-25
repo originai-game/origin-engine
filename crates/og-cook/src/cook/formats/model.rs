@@ -114,6 +114,11 @@ pub struct GltfSource {
     /// Per material, its base colour use's [`TextureUse::cutout`]
     /// ([`cuts_out`]).
     pub cutouts: Vec<Option<u8>>,
+    /// Per material, the synthesized image index in [`Self::images`] when
+    /// separate `metallicRoughnessTexture` and `occlusionTexture` maps were
+    /// packed into one ORM (`R=AO, G=Roughness, B=Metallic`) texture at cook
+    /// time.
+    pub orm_overrides: Vec<Option<usize>>,
     pub warnings: Vec<String>,
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
@@ -448,6 +453,61 @@ pub(crate) fn pointer_visibility(json: &mut serde_json::Value) -> Result<Vec<Str
     Ok(warnings)
 }
 
+/// Samples channel `ch` of `img` bilinearly at normalized `(u, v)` in `[0, 1]`.
+fn sample_channel_bilinear(img: &texture::Image, u: f32, v: f32, ch: usize) -> u8 {
+    let w = img.width.max(1);
+    let h = img.height.max(1);
+    let x = (u * w as f32 - 0.5).clamp(0.0, (w - 1) as f32);
+    let y = (v * h as f32 - 0.5).clamp(0.0, (h - 1) as f32);
+    let x0 = x.floor() as u32;
+    let y0 = y.floor() as u32;
+    let x1 = (x0 + 1).min(w - 1);
+    let y1 = (y0 + 1).min(h - 1);
+    let fx = x - x0 as f32;
+    let fy = y - y0 as f32;
+    let at = |px: u32, py: u32| img.rgba[(py * w + px) as usize * 4 + ch] as f32;
+    let top = at(x0, y0) * (1.0 - fx) + at(x1, y0) * fx;
+    let bot = at(x0, y1) * (1.0 - fx) + at(x1, y1) * fx;
+    (top * (1.0 - fy) + bot * fy).round().clamp(0.0, 255.0) as u8
+}
+
+/// Packs separate occlusion (R) and metallic-roughness (G, B) images into a
+/// single RGBA PNG (`R = AO, G = Roughness, B = Metallic, A = 255`) at
+/// `max(mr.w, ao.w) x max(mr.h, ao.h)`.
+fn pack_orm_png(mr_bytes: &[u8], ao_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let mr = texture::decode(mr_bytes)?;
+    let ao = texture::decode(ao_bytes)?;
+    let w = mr.width.max(ao.width).max(1);
+    let h = mr.height.max(ao.height).max(1);
+    let mut rgba = vec![255u8; w as usize * h as usize * 4];
+    let same_mr = mr.width == w && mr.height == h;
+    let same_ao = ao.width == w && ao.height == h;
+    for y in 0..h {
+        let v = (y as f32 + 0.5) / h as f32;
+        for x in 0..w {
+            let u = (x as f32 + 0.5) / w as f32;
+            let dst = (y * w + x) as usize * 4;
+            rgba[dst] = if same_ao {
+                ao.rgba[dst]
+            } else {
+                sample_channel_bilinear(&ao, u, v, 0)
+            };
+            if same_mr {
+                rgba[dst + 1] = mr.rgba[dst + 1];
+                rgba[dst + 2] = mr.rgba[dst + 2];
+            } else {
+                rgba[dst + 1] = sample_channel_bilinear(&mr, u, v, 1);
+                rgba[dst + 2] = sample_channel_bilinear(&mr, u, v, 2);
+            }
+        }
+    }
+    let img = image::RgbaImage::from_raw(w, h, rgba).ok_or("ORM pack image dimensions")?;
+    let mut out = Vec::new();
+    img.write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+        .map_err(|e| format!("encoding packed ORM image: {e}"))?;
+    Ok(out)
+}
+
 pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
     let plain::Plain {
         json,
@@ -480,14 +540,88 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
             gltf::image::Source::Uri { uri, .. } => read_uri(uri, dir, &mut external)?,
         });
     }
+    // Track images used by any multi-channel slot so standalone occlusion maps
+    // only receive 4 bpp `kind::SINGLE` when the image isn't shared with colour,
+    // metallic-roughness, normal, emissive, or physical extension slots.
+    let mut multi_channel_images = std::collections::BTreeSet::new();
+    for m in doc.materials() {
+        let pbr = m.pbr_metallic_roughness();
+        if let Some(t) = pbr.base_color_texture() {
+            multi_channel_images.insert(t.texture().source().index());
+        }
+        if let Some(t) = pbr.metallic_roughness_texture() {
+            multi_channel_images.insert(t.texture().source().index());
+        }
+        if let Some(t) = m.normal_texture() {
+            multi_channel_images.insert(t.texture().source().index());
+        }
+        if let Some(t) = m.emissive_texture() {
+            multi_channel_images.insert(t.texture().source().index());
+        }
+        og_render_data::gltf::physical_extensions(&doc, &m, |t, _| {
+            multi_channel_images.insert(t.source().index());
+        });
+    }
+
     let mut textures: Vec<TextureUse> = Vec::new();
     let mut warnings = plain_warnings;
     let vertex_alpha = vertex_alphas(&doc, &json, &buffers);
     let mut cutouts = Vec::new();
+    let mut orm_overrides = Vec::new();
+    let mut orm_cache: std::collections::BTreeMap<(usize, usize), usize> =
+        std::collections::BTreeMap::new();
     for m in doc.materials() {
         let pbr = m.pbr_metallic_roughness();
+        let mat_idx = m.index().unwrap_or(0);
         let cutout = cuts_out(&m, m.index().is_some_and(|i| vertex_alpha[i]));
         cutouts.push(cutout);
+
+        // Auto-pack separate metallicRoughnessTexture + occlusionTexture into
+        // one ORM texture when both use TEXCOORD_0 and matching UV transforms.
+        let mr_info = pbr
+            .metallic_roughness_texture()
+            .map(|t| (t.texture(), t.tex_coord()));
+        let ao_info = m.occlusion_texture().map(|t| (t.texture(), t.tex_coord()));
+        let mut orm_packed: Option<usize> = None;
+        if let (Some((mr_tex, 0)), Some((ao_tex, 0))) = (&mr_info, &ao_info) {
+            let mr_img = mr_tex.source().index();
+            let ao_img = ao_tex.source().index();
+            if mr_img != ao_img {
+                let mat_json = &json["materials"][mat_idx];
+                let mr_tf =
+                    ext::transform(&mat_json["pbrMetallicRoughness"]["metallicRoughnessTexture"]).0;
+                let ao_tf = ext::transform(&mat_json["occlusionTexture"]).0;
+                if mr_tf == ao_tf {
+                    let packed = if let Some(&cached) = orm_cache.get(&(mr_img, ao_img)) {
+                        Some(cached)
+                    } else if let Ok(png) = pack_orm_png(&images[mr_img], &images[ao_img]) {
+                        let idx = images.len();
+                        images.push(png);
+                        orm_cache.insert((mr_img, ao_img), idx);
+                        Some(idx)
+                    } else {
+                        None
+                    };
+                    if let Some(idx) = packed {
+                        orm_packed = Some(idx);
+                        let u = TextureUse {
+                            image: idx,
+                            kind: kind::LINEAR,
+                            cutout: None,
+                        };
+                        if !textures.contains(&u) {
+                            textures.push(u);
+                        }
+                    }
+                }
+            }
+        }
+        orm_overrides.push(orm_packed);
+
+        let ao_kind = match &ao_info {
+            Some((t, _)) if !multi_channel_images.contains(&t.source().index()) => kind::SINGLE,
+            _ => kind::LINEAR,
+        };
         let slots = [
             (
                 pbr.base_color_texture()
@@ -496,8 +630,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                 cutout,
             ),
             (
-                pbr.metallic_roughness_texture()
-                    .map(|t| (t.texture(), t.tex_coord())),
+                if orm_packed.is_some() { None } else { mr_info },
                 kind::LINEAR,
                 None,
             ),
@@ -512,8 +645,8 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
                 None,
             ),
             (
-                m.occlusion_texture().map(|t| (t.texture(), t.tex_coord())),
-                kind::LINEAR,
+                if orm_packed.is_some() { None } else { ao_info },
+                ao_kind,
                 None,
             ),
         ];
@@ -555,6 +688,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         external,
         textures,
         cutouts,
+        orm_overrides,
         warnings,
         conform_plan: Default::default(),
         role: Default::default(),

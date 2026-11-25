@@ -126,6 +126,7 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
   r.normal = vec4<f32>(0.0);
   r.coverage = 0.0;
   if (!OG_DECALS || abs(fx.decal_info.x) < 0.5) { return r; }
+  if (wet_only && decal_data[0].y == 0u) { return r; }
   let range = frame_decals(frag, p);
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
   let base_off = decal_data[0].x;

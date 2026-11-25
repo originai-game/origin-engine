@@ -87,6 +87,8 @@ struct Entry {
     score: f32,
     /// Read, waiting for the host's transcode.
     pending: Option<CookedTexture>,
+    /// Resident transcoded mip tail retained for instant zero-I/O eviction.
+    tail_source: Option<TextureSource>,
     reason: String,
 }
 
@@ -209,6 +211,7 @@ fn register(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderSta
         let Some(chain) = tex.mips else {
             continue;
         };
+        let tail_source = rs.scene.cached_texture_source(h);
         rs.scene
             .set_texture_size(h, Some((chain.width, chain.height)));
         m.entries.push(Entry {
@@ -223,6 +226,7 @@ fn register(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderSta
             wanted_at: None,
             score: 0.0,
             pending: None,
+            tail_source,
             reason: String::new(),
         });
         added = true;
@@ -353,19 +357,26 @@ fn show_tail(
     i: usize,
     rs: &mut extract::RenderState,
 ) -> bool {
-    let formats = formats(rs);
-    let e = &m.entries[i];
-    let tex = a
-        .blob_from(&e.id, e.bundle)
-        .and_then(|(b, bundle)| bundle.texture(&e.id, b.bytes()).map_err(|x| x.to_string()));
-    let source = match tex.map(|t| transcode(rs, &t, formats.as_ref())) {
-        Ok(super::assets::Fetch::Ready(s)) => s,
-        Ok(super::assets::Fetch::Pending) => return false,
-        // A swap never discards the chain that is already bound while
-        // its replacement is unavailable, even if the decode failed.
-        Ok(super::assets::Fetch::Failed(_)) | Err(_) => return false,
+    let source = if let Some(cached) = m.entries[i].tail_source.clone() {
+        cached
+    } else {
+        let formats = formats(rs);
+        let e = &m.entries[i];
+        let tex = a
+            .blob_from(&e.id, e.bundle)
+            .and_then(|(b, bundle)| bundle.texture(&e.id, b.bytes()).map_err(|x| x.to_string()));
+        let decoded = match tex.map(|t| transcode(rs, &t, formats.as_ref())) {
+            Ok(super::assets::Fetch::Ready(s)) => s,
+            Ok(super::assets::Fetch::Pending) => return false,
+            // A swap never discards the chain that is already bound while
+            // its replacement is unavailable, even if the decode failed.
+            Ok(super::assets::Fetch::Failed(_)) | Err(_) => return false,
+        };
+        m.entries[i].tail_source = Some(decoded.clone());
+        decoded
     };
-    super::replace_texture(&mut rs.scene, e.handle, source);
+    let handle = m.entries[i].handle;
+    super::replace_texture(&mut rs.scene, handle, source);
     let e = &mut m.entries[i];
     e.state = State::Tail;
     e.pending = None;

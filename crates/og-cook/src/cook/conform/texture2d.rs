@@ -280,7 +280,11 @@ pub(super) fn texture_role(
         Some(_) => TextureRole::Sprite,
         None if used.iter().any(|u| matches!(u.kind, UseKind::Fixed(_))) => TextureRole::Fixed,
         None if !used.is_empty() => TextureRole::Sheet,
-        None if kind == crate::format::kind::NORMAL || kind == crate::format::kind::LINEAR => {
+        None if matches!(
+            kind,
+            crate::format::kind::NORMAL | crate::format::kind::LINEAR | crate::format::kind::SINGLE
+        ) =>
+        {
             TextureRole::Data
         }
         None if two_d || kind == crate::format::kind::PIXEL => TextureRole::Sprite,
@@ -366,7 +370,10 @@ pub(in crate::cook) fn conform(
             }
         };
         let kind = super::super::texture_kind(s).unwrap_or(crate::format::kind::COLOR);
-        let data = kind == crate::format::kind::NORMAL || kind == crate::format::kind::LINEAR;
+        let data = matches!(
+            kind,
+            crate::format::kind::NORMAL | crate::format::kind::LINEAR | crate::format::kind::SINGLE
+        );
         let role = match role {
             TextureRole::Fixed if own.as_ref().is_some_and(|c| c.role.is_some()) => {
                 Some(Role::Fixed("its import settings (conform ui)".into()))

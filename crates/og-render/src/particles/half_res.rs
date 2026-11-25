@@ -38,6 +38,7 @@ pub(crate) struct HalfResFx {
     downsample: Deferred<wgpu::RenderPipeline>,
     pub(crate) upsample: Sampled<wgpu::RenderPipeline>,
     reactive: Deferred<wgpu::RenderPipeline>,
+    reactive_overwrite: Deferred<wgpu::RenderPipeline>,
     downsample_cache: Mutex<Option<(DownsampleKey, wgpu::BindGroup)>>,
     upsample_cache: Mutex<Option<(UpsampleKey, wgpu::BindGroup)>>,
 }
@@ -132,13 +133,13 @@ impl HalfResFx {
                 )
             })
         };
-        let reactive = {
-            let (device, pl, module) = (device.clone(), upsample_pl, module);
+        let make_reactive = |label: &'static str, blend: Option<wgpu::BlendState>| {
+            let (device, pl, module) = (device.clone(), upsample_pl.clone(), module.clone());
             Deferred::anywhere(move || {
                 crate::traffic::create_render_pipeline(
                     &device,
                     &wgpu::RenderPipelineDescriptor {
-                        label: Some("fx half reactive"),
+                        label: Some(label),
                         layout: Some(&pl),
                         vertex: wgpu::VertexState {
                             module: module.get(),
@@ -155,14 +156,7 @@ impl HalfResFx {
                             compilation_options: Default::default(),
                             targets: &[Some(wgpu::ColorTargetState {
                                 format: crate::oit::REVEAL_FORMAT,
-                                blend: Some(wgpu::BlendState {
-                                    color: wgpu::BlendComponent {
-                                        src_factor: wgpu::BlendFactor::Zero,
-                                        dst_factor: wgpu::BlendFactor::Src,
-                                        operation: wgpu::BlendOperation::Add,
-                                    },
-                                    alpha: KEEP_ALPHA,
-                                }),
+                                blend,
                                 write_mask: wgpu::ColorWrites::ALL,
                             })],
                         }),
@@ -172,12 +166,25 @@ impl HalfResFx {
                 )
             })
         };
+        let reactive = make_reactive(
+            "fx half reactive",
+            Some(wgpu::BlendState {
+                color: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::Src,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha: KEEP_ALPHA,
+            }),
+        );
+        let reactive_overwrite = make_reactive("fx half reactive (overwrite)", None);
         HalfResFx {
             downsample_layout,
             upsample_layout,
             downsample,
             upsample,
             reactive,
+            reactive_overwrite,
             downsample_cache: Mutex::new(None),
             upsample_cache: Mutex::new(None),
         }
@@ -187,6 +194,7 @@ impl HalfResFx {
         crate::deferred::Start::start(&self.downsample);
         crate::deferred::Start::start(&self.upsample);
         crate::deferred::Start::start(&self.reactive);
+        crate::deferred::Start::start(&self.reactive_overwrite);
     }
 
     pub(crate) fn set_samples(&self, samples: u32) {
@@ -317,7 +325,11 @@ impl HalfResFx {
         target: &wgpu::TextureView,
         clear: bool,
     ) -> u32 {
-        let Some(pipeline) = self.reactive.get() else {
+        let Some(pipeline) = (if clear {
+            self.reactive_overwrite.get()
+        } else {
+            self.reactive.get()
+        }) else {
             return 0;
         };
         let group = self.upsample_group(device, full_depth, fx_half, half_depth);
@@ -329,7 +341,7 @@ impl HalfResFx {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: if clear {
-                        wgpu::LoadOp::Clear(wgpu::Color::WHITE)
+                        wgpu::LoadOp::DontCare(unsafe { wgpu::LoadOpDontCare::enabled() })
                     } else {
                         wgpu::LoadOp::Load
                     },

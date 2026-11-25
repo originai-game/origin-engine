@@ -20,7 +20,7 @@
  * `TextureFormat::name` names them: BC5 and EAC RG11 hold a normal map's x
  * and y (the renderer rebuilds z).
  */
-export const TEXTURE_FORMATS = ["rgba8", "bc7", "bc5", "astc4x4", "etc2", "eacrg11"] as const;
+export const TEXTURE_FORMATS = ["rgba8", "bc7", "bc1", "bc4", "bc5", "astc4x4", "etc2", "etc2rgb", "eacr11", "eacrg11"] as const;
 export type TextureFormat = (typeof TEXTURE_FORMATS)[number];
 
 /** GPU block compressions a device may support. */
@@ -68,9 +68,13 @@ type Factory = (module: { wasmBinary?: ArrayBuffer | Uint8Array; locateFile?: (p
 
 /** basisu `transcoder_texture_format` values, used when the module does not export the enum. */
 const TRANSCODER_FORMAT: Record<TextureFormat, { name: string; value: number }> = {
+  etc2rgb: { name: "cTFETC1_RGB", value: 0 },
   etc2: { name: "cTFETC2_RGBA", value: 1 },
+  bc1: { name: "cTFBC1_RGB", value: 2 },
+  bc4: { name: "cTFBC4_R", value: 4 },
   bc5: { name: "cTFBC5_RG", value: 5 },
   bc7: { name: "cTFBC7_RGBA", value: 6 },
+  eacr11: { name: "cTFETC2_EAC_R11", value: 20 },
   eacrg11: { name: "cTFETC2_EAC_RG11", value: 21 },
   astc4x4: { name: "cTFASTC_4x4_RGBA", value: 10 },
   rgba8: { name: "cTFRGBA32", value: 13 },
@@ -142,10 +146,19 @@ export function pickFormat(supported: ReadonlySet<Compression> | readonly Compre
 
 /** The WebGPU texture format of a transcoded texture. */
 export function wgpuFormatName(format: TextureFormat, srgb: boolean): string {
-  // The two-channel formats have no sRGB variant: normal maps are linear.
+  // Single- and two-channel formats have no sRGB variant: masks and normal maps are linear.
+  if (format === "bc4") return "bc4-r-unorm";
   if (format === "bc5") return "bc5-rg-unorm";
+  if (format === "eacr11") return "eac-r11unorm";
   if (format === "eacrg11") return "eac-rg11unorm";
-  const base = { rgba8: "rgba8unorm", bc7: "bc7-rgba-unorm", astc4x4: "astc-4x4-unorm", etc2: "etc2-rgba8unorm" }[format];
+  const base = {
+    rgba8: "rgba8unorm",
+    bc7: "bc7-rgba-unorm",
+    bc1: "bc1-rgba-unorm",
+    astc4x4: "astc-4x4-unorm",
+    etc2: "etc2-rgba8unorm",
+    etc2rgb: "etc2-rgb8unorm",
+  }[format];
   return srgb ? `${base}-srgb` : base;
 }
 

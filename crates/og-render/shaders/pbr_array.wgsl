@@ -109,8 +109,7 @@ fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
   array_layers(in.layer);
-  let c = lit_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  oit_front_mark(in.clip, lit_alpha_mark(in));
 }
 
 @fragment
@@ -145,6 +144,5 @@ fn fs_lightmap_array_oit_mark(in: LightmappedOut, @builtin(front_facing) front_f
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
   array_layers(u32(max(look_layer(in.look), 0.0) + 0.5));
-  let c = lightmapped_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  oit_front_mark(in.clip, lightmapped_alpha_mark(in));
 }

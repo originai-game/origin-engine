@@ -75,8 +75,19 @@ fn fs_physical_lightmap_oit_front(in: PhysicalLightmappedOut, @builtin(front_fac
 fn fs_physical_lightmap_oit_mark(in: PhysicalLightmappedOut, @builtin(front_facing) front_facing: bool) {
   hook_front = select(-1.0, 1.0, front_facing);
   oit_pass = true;
-  let c = physical_lightmapped_fragment(in);
-  oit_front_mark(in.clip, c.a);
+  var p: PhysicalOut;
+  p.clip = in.clip;
+  p.world_pos = in.world_pos;
+  p.normal = in.normal;
+  p.uv = in.uv;
+  p.color = in.color;
+  p.local_pos = in.local_pos;
+  p.tangent = in.tangent;
+  p.scale = in.scale;
+  p.affine = in.affine;
+  p.look = in.look;
+  p.volume_id = in.volume_id;
+  oit_front_mark(in.clip, physical_alpha_mark(p));
 }
 
 fn physical_lightmapped_fragment(in: PhysicalLightmappedOut) -> vec4<f32> {

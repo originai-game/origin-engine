@@ -7,17 +7,17 @@
 //
 // One arena of words: a header (the pass's width, height and nodes per
 // pixel, then the count of pixels that overflowed), one fragment count per
-// pixel, then each pixel's own nodes, seven words each: the window depth,
-// the straight RGBA colour (f32), and the fragment's key (oit.wgsl
-// `oit_key`) with its raster sample mask in the high four bits of the
-// second word. A pixel's nodes are its own, so the order the GPU runs
-// fragments in never decides which pixel keeps a fragment: a pixel keeps
+// pixel, then each pixel's own nodes, five words each (20 bytes): the window
+// depth, packed RGBA16F colour (2 words via pack2x16float), and the fragment's
+// key (oit.wgsl `oit_key`) with its raster sample mask in the high four bits
+// of the second key word. A pixel's nodes are its own, so the order the GPU
+// runs fragments in never decides which pixel keeps a fragment: a pixel keeps
 // its first nodes-per-pixel fragments, and one with more is counted once
 // in the header and resolved whole from the weighted targets.
 @group(0) @binding(13) var<storage, read_write> oit_arena: array<atomic<u32>>;
 
 const OIT_HEADER_WORDS: u32 = 4u;
-const OIT_NODE_WORDS: u32 = 7u;
+const OIT_NODE_WORDS: u32 = 5u;
 
 fn oit_store(position: vec4<f32>, color: vec4<f32>, mask: u32, key: vec2<u32>) {
   let alpha = clamp(color.a, 0.0, 1.0);
@@ -37,12 +37,10 @@ fn oit_store(position: vec4<f32>, color: vec4<f32>, mask: u32, key: vec2<u32>) {
   let node = OIT_HEADER_WORDS + width * height + (p * budget + slot) * OIT_NODE_WORDS;
   let rgb = clamp(color.rgb, vec3<f32>(0.0), vec3<f32>(65504.0));
   atomicStore(&oit_arena[node], bitcast<u32>(position.z));
-  atomicStore(&oit_arena[node + 1u], bitcast<u32>(rgb.r));
-  atomicStore(&oit_arena[node + 2u], bitcast<u32>(rgb.g));
-  atomicStore(&oit_arena[node + 3u], bitcast<u32>(rgb.b));
-  atomicStore(&oit_arena[node + 4u], bitcast<u32>(alpha));
-  atomicStore(&oit_arena[node + 5u], key.x);
-  atomicStore(&oit_arena[node + 6u], (key.y & 0x0fffffffu) | ((mask & 15u) << 28u));
+  atomicStore(&oit_arena[node + 1u], pack_f16x2(rgb.rg));
+  atomicStore(&oit_arena[node + 2u], pack_f16x2(vec2<f32>(rgb.b, alpha)));
+  atomicStore(&oit_arena[node + 3u], key.x);
+  atomicStore(&oit_arena[node + 4u], (key.y & 0x0fffffffu) | ((mask & 15u) << 28u));
 }
 
 // Hybrid transparency (Maule, Comba, Torchelsen and Bastos, I3D 2013),

@@ -768,6 +768,9 @@ pub mod kind {
     /// Pixel art (sprite sheets, tilesets): RGBA8, sRGB, lossless, no
     /// mips, sampled nearest by the runtime.
     pub const PIXEL: u32 = 4;
+    /// Single-channel linear data (AO, height, masks): UASTC, linear,
+    /// transcoded to 4 bpp BC4 / EAC R11 where supported.
+    pub const SINGLE: u32 = 5;
 }
 
 /// [`TextureMeta::codec`] values.

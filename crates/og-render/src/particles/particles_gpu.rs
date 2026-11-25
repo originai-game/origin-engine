@@ -136,6 +136,9 @@ struct GpuSystem {
     prev_transform: Option<Mat4>,
     clock: crate::particles::ParticleClock,
     children: Vec<GpuChild>,
+    /// True once a prior frame finished with zero live parent particles so
+    /// subsequent dormant frames skip GPU simulation waves and origin shifts.
+    was_empty: bool,
 }
 
 struct SystemState {

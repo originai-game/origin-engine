@@ -168,6 +168,22 @@ impl RenderScene {
         }
     }
 
+    /// Clones a texture's cached CPU upload source without pinning it against
+    /// [`Self::release_texture_source`]. Used by mip streaming to retain tiny
+    /// mip tails in memory for instant zero-I/O eviction.
+    pub fn cached_texture_source(&self, handle: TextureHandle) -> Option<TextureSource> {
+        if !self.contains_texture(handle) {
+            return None;
+        }
+        self.textures
+            .get(handle.index())?
+            .source
+            .get()?
+            .as_ref()
+            .ok()
+            .cloned()
+    }
+
     pub(crate) fn texture_source(
         &self,
         index: usize,

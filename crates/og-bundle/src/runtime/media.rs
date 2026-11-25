@@ -273,7 +273,13 @@ impl CookedTexture {
                 f.color
             }
             crate::format::kind::NORMAL => f.normal,
+            crate::format::kind::SINGLE => f.single,
             crate::format::kind::LINEAR => f.data,
+            crate::format::kind::COLOR
+                if self.meta.has_alpha == 0 && self.meta.codec == codec::ETC1S =>
+            {
+                f.color_opaque
+            }
             crate::format::kind::COLOR => f.color,
             _ => TextureFormat::Rgba8,
         }
@@ -281,8 +287,8 @@ impl CookedTexture {
 
     /// The texture for og-render on a device that takes `formats`
     /// (`RenderInfo::texture_formats`): every cooked mip level transcoded
-    /// to [`CookedTexture::target_format`] (BC7 and BC5 on desktop GPUs,
-    /// ASTC 4x4 on Apple and most Android, ETC2 and EAC elsewhere), or
+    /// to [`CookedTexture::target_format`] (BC7/BC1/BC4/BC5 on desktop GPUs,
+    /// ASTC 4x4 on Apple and most Android, ETC2/EAC elsewhere), or
     /// RGBA8 level 0 as [`CookedTexture::to_texture_data`] gives it when the
     /// target is RGBA8. Native transcoding needs the `transcode` feature.
     pub fn to_texture_source(
@@ -298,11 +304,12 @@ impl CookedTexture {
             reason,
         };
         let levels = self.transcode_levels(target).map_err(bad)?;
-        let color_space = if self.meta.color_space == 0 && !target.two_channel() {
-            ColorSpace::Srgb
-        } else {
-            ColorSpace::Linear
-        };
+        let color_space =
+            if self.meta.color_space == 0 && !target.two_channel() && !target.single_channel() {
+                ColorSpace::Srgb
+            } else {
+                ColorSpace::Linear
+            };
         let upload = TextureUpload {
             desc: TextureDesc {
                 width: self.meta.width,
@@ -323,9 +330,13 @@ impl CookedTexture {
         use basis_universal::{TranscodeParameters, Transcoder, TranscoderTextureFormat as T};
         let to = match format {
             TextureFormat::Bc7 => T::BC7_RGBA,
+            TextureFormat::Bc1 => T::BC1_RGB,
+            TextureFormat::Bc4 => T::BC4_R,
             TextureFormat::Bc5 => T::BC5_RG,
             TextureFormat::Astc4x4 => T::ASTC_4x4_RGBA,
             TextureFormat::Etc2Rgba8 => T::ETC2_RGBA,
+            TextureFormat::Etc2Rgb8 => T::ETC1_RGB,
+            TextureFormat::EacR11 => T::ETC2_EAC_R11,
             TextureFormat::EacRg11 => T::ETC2_EAC_RG11,
             TextureFormat::Rgba8 => T::RGBA32,
         };
