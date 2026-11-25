@@ -17,7 +17,7 @@ impl PostPasses {
         } else {
             &self.taa_fresh
         };
-        for p in [taa, &self.taa_sharpen_pipeline].into_iter().flatten() {
+        if let Some(p) = taa {
             p.start();
         }
     }
@@ -42,11 +42,6 @@ impl PostPasses {
                 .map(|p| p as &dyn crate::deferred::Warm),
         );
         items.extend(self.taa.iter().map(|p| p as &dyn crate::deferred::Warm));
-        items.extend(
-            self.taa_sharpen_pipeline
-                .iter()
-                .map(|p| p as &dyn crate::deferred::Warm),
-        );
         for entry in FX_PASSES.iter().map(|(e, _)| e).chain([&AO_BLUR_GATHER]) {
             if let Some(p) = self.fx.get(entry) {
                 items.push(p);
@@ -125,6 +120,9 @@ impl PostPasses {
                         min_binding_size: None,
                     },
                 ),
+                // Half..sixteenth filtered depth pyramid (depth_mips.wgsl);
+                // 1x1 far_depth placeholder when unused.
+                layout_entry(8, float_texture(false)),
             ],
         });
         let taa_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -378,21 +376,6 @@ impl PostPasses {
         } else {
             0.0
         };
-        let taa_sharpen_pipeline =
-            taa_shader
-                .as_ref()
-                .filter(|_| taa_sharpen > 0.0)
-                .map(|taa_shader| {
-                    deferred_fullscreen(
-                        device,
-                        "taa sharpen",
-                        taa_shader,
-                        "fs_sharpen",
-                        &taa_pl,
-                        HDR_FORMAT,
-                        None,
-                    )
-                });
         let repeat_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("stylise canvas"),
             address_mode_u: wgpu::AddressMode::Repeat,
@@ -533,6 +516,8 @@ impl PostPasses {
             contact: contact::ContactPasses::new(device),
             depth_mips: depth_mips::DepthMipsPass::new(device),
             color_mips: depth_mips::ColorMipsPass::new(device),
+            exposure_hist: exposure_hist::ExposureHistPass::new(device),
+            bloom_spd: bloom_spd::BloomSpdPass::new(device),
             source_layout,
             post_layout,
             taa_layout,
@@ -550,7 +535,6 @@ impl PostPasses {
             tonemap,
             taa,
             taa_fresh,
-            taa_sharpen_pipeline,
             taa_sharpen,
             tonemap_ldr: None,
             chain: HashMap::new(),

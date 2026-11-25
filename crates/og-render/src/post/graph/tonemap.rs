@@ -41,7 +41,11 @@ pub(super) struct Tonemap {
 
 impl Tonemap {
     pub fn bind(cx: &BindCx) -> Tonemap {
-        let bloom = cx.view_of(FramePass::BloomPrefilter, "bloom.0");
+        let bloom = match cx.graph.bloom_spd() {
+            Some(spd) if cx.has(FramePass::BloomUp(0)) => spd.output_view(),
+            Some(spd) => spd.prefilter_view(),
+            None => cx.view_of(FramePass::BloomPrefilter, "bloom.0"),
+        };
         let flare = cx.view_of(FramePass::FlareBlurY, "flare");
         Tonemap {
             groups: cx.pair(|slot| cx.post_group("post", cx.source(slot), bloom, slot, flare)),

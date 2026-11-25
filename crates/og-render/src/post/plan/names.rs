@@ -72,11 +72,7 @@ pub(in crate::post) fn lit_names(passes: &[FramePass]) -> LitNames {
     } else {
         lit
     };
-    let aa = if has(FramePass::TaaSharpen) {
-        Some("hdr.sharp")
-    } else {
-        (!has(FramePass::Taa)).then_some(main)
-    };
+    let aa = (!has(FramePass::Taa)).then_some(main);
     let after_dof = if has(FramePass::DofComposite) {
         Some("hdr.dof")
     } else {

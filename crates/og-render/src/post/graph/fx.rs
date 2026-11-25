@@ -6,13 +6,14 @@
 use super::*;
 
 impl BindCx<'_> {
-    /// An effect group: images `a` and `b`, the depth `d`, sized by
-    /// `uniform`.
+    /// An effect group: images `a` and `b`, full-res depth `d`, optional
+    /// half..sixteenth depth pyramid `d_mips`, sized by `uniform`.
     fn fx_in(
         &self,
         uniform: &wgpu::Buffer,
         a: &wgpu::TextureView,
         d: &wgpu::TextureView,
+        d_mips: &wgpu::TextureView,
         b: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         self.group(
@@ -27,8 +28,20 @@ impl BindCx<'_> {
                 tex(b),
                 wgpu::BindingResource::Sampler(&self.passes.nearest_sampler),
                 self.probes.as_entire_binding(),
+                tex(d_mips),
             ],
         )
+    }
+
+    /// An effect group with full-res depth `d` and half..sixteenth pyramid `d_mips`.
+    pub fn fx_ao(
+        &self,
+        a: &wgpu::TextureView,
+        d: &wgpu::TextureView,
+        d_mips: &wgpu::TextureView,
+        b: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        self.fx_in(&self.passes.fx_buffer, a, d, d_mips, b)
     }
 
     /// An effect group with `d` in the depth's slot.
@@ -38,7 +51,7 @@ impl BindCx<'_> {
         d: &wgpu::TextureView,
         b: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
-        self.fx_in(&self.passes.fx_buffer, a, d, b)
+        self.fx_in(&self.passes.fx_buffer, a, d, &self.passes.far_depth, b)
     }
 
     /// An effect group over the prepass's depth.
@@ -49,7 +62,13 @@ impl BindCx<'_> {
     /// An effect group after TAA: the frame it resolved (the output's
     /// size under TAAU), with its own uniform's screen.
     pub fn fx_after(&self, a: &wgpu::TextureView, b: &wgpu::TextureView) -> wgpu::BindGroup {
-        self.fx_in(&self.passes.fx_after_buffer, a, self.depth(), b)
+        self.fx_in(
+            &self.passes.fx_after_buffer,
+            a,
+            self.depth(),
+            &self.passes.far_depth,
+            b,
+        )
     }
 }
 

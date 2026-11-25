@@ -17,6 +17,7 @@ pub(super) struct WriteSunAndPostInputs<'a> {
     pub lens_flare: Option<crate::LensFlare>,
     pub flare_sources_on: bool,
     pub glow: bool,
+    pub taa: bool,
     pub sprite_frame: &'a sprites::SpriteFrame,
 }
 
@@ -46,6 +47,7 @@ impl Renderer {
             lens_flare,
             flare_sources_on,
             glow,
+            taa,
             sprite_frame,
         }: WriteSunAndPostInputs<'_>,
     ) -> WriteSunAndPostOutputs {
@@ -123,6 +125,7 @@ impl Renderer {
             sprite_frame.untonemapped
                 || self.plate_group(scene).is_some()
                 || self.authored_environment(scene),
+            taa,
             scene.frame.tick,
             self.history_size().0,
             lens_flare.as_ref().map(|f| (f, flare_turn)),

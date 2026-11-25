@@ -351,20 +351,13 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
     for (pass, name) in [
         (FramePass::Outline, "hdr.outline"),
         (FramePass::OutlineWide, "hdr.wide"),
-        (FramePass::TaaSharpen, "hdr.sharp"),
         (FramePass::DofComposite, "hdr.dof"),
         (FramePass::MotionBlur, "hdr.mb"),
         (FramePass::ScreenBlur, "hdr.blur"),
     ] {
         if has(pass) {
             let (tw, th) = if pass.after_taa() { (pw, ph) } else { (w, h) };
-            // FSR 3.1's RCAS writes the sharpening's target from compute.
-            let usage = if pass == FramePass::TaaSharpen && cfg.fsr {
-                ATTACH_BIND | wgpu::TextureUsages::STORAGE_BINDING
-            } else {
-                ATTACH_BIND
-            };
-            g.transient(name, desc(tw, th, HDR_FORMAT, 1, usage));
+            g.transient(name, desc(tw, th, HDR_FORMAT, 1, ATTACH_BIND));
         }
     }
     if has(FramePass::ScreenBlur) && cfg.zoom_blur {
@@ -409,25 +402,47 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
             desc(phw, phh, cfg.rgb_hdr_format, 1, ATTACH_BIND),
         );
     }
-    let mut size = METER_SIZE;
-    for i in 0..meter_levels() {
+    if has(FramePass::Reduce(0)) {
+        let mut size = METER_SIZE;
+        for i in 0..meter_levels() {
+            g.transient(
+                luminance_name(i),
+                desc(size, size, LUMINANCE_FORMAT, 1, ATTACH_BIND),
+            );
+            size /= 8;
+        }
+    } else if has(FramePass::Meter) {
         g.transient(
-            luminance_name(i),
-            desc(size, size, LUMINANCE_FORMAT, 1, ATTACH_BIND),
-        );
-        size /= 8;
-    }
-    for i in 0..bloom_levels(pw, ph) {
-        g.transient(
-            bloom_name(i),
+            luminance_name(0),
             desc(
-                (phw >> i).max(1),
-                (phh >> i).max(1),
-                cfg.rgb_hdr_format,
                 1,
-                ATTACH_BIND,
+                1,
+                crate::post::exposure_hist::HIST_METER_FORMAT,
+                1,
+                wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING,
             ),
         );
+    }
+    if cfg.compute_bloom {
+        if has(FramePass::BloomPrefilter) {
+            g.import(crate::post::bloom_spd::BLOOM_DOWN_TARGET);
+        }
+        if has(FramePass::BloomUp(0)) {
+            g.import(crate::post::bloom_spd::BLOOM_UP_TARGET);
+        }
+    } else {
+        for i in 0..bloom_levels(pw, ph) {
+            g.transient(
+                bloom_name(i),
+                desc(
+                    (phw >> i).max(1),
+                    (phh >> i).max(1),
+                    cfg.rgb_hdr_format,
+                    1,
+                    ATTACH_BIND,
+                ),
+            );
+        }
     }
     if has(FramePass::Flare) {
         let (fw, fh) = flare_size(cfg.post);

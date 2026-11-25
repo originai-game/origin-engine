@@ -126,6 +126,8 @@ pub(crate) struct FrameGraph {
     depth_mips: Option<depth_mips::DepthMips>,
     /// Prefiltered colour MIP pyramid of the previous frame's lit image for SSGI.
     color_mips: Option<depth_mips::ColorMips>,
+    /// Compute LDS SPD bloom pyramids (`bloom_spd.rs`).
+    bloom_spd: Option<bloom_spd::BloomSpd>,
     bindings: Option<Bindings>,
     /// The fog of war texture the bindings hold (`SightTexture::generation`).
     sight_key: u64,
@@ -220,7 +222,6 @@ impl FrameGraph {
         &'a wgpu::TextureView,
         &'a wgpu::TextureView,
         &'a wgpu::TextureView,
-        Option<&'a wgpu::TextureView>,
     )> {
         let history = persistent.history.as_ref()?;
         if !self.passes.contains(&FramePass::Taa) {
@@ -236,7 +237,6 @@ impl FrameGraph {
                 .unwrap_or(no_reactive),
             &history[slot],
             &history[1 - slot],
-            self.try_view("hdr.sharp"),
         ))
     }
 
@@ -249,6 +249,11 @@ impl FrameGraph {
     /// Prefiltered colour MIP pyramid of the previous frame's lit image for SSGI.
     pub fn color_mips(&self) -> Option<&depth_mips::ColorMips> {
         self.color_mips.as_ref()
+    }
+
+    /// Compute LDS SPD bloom pyramids when compute bloom is active.
+    pub fn bloom_spd(&self) -> Option<&bloom_spd::BloomSpd> {
+        self.bloom_spd.as_ref()
     }
 
     /// The view depth's MIP chain when it was built from opaque `lindepth`
@@ -350,7 +355,7 @@ impl FrameGraph {
         }
         let cutoff = epoch.saturating_sub(POOL_KEEP_FRAMES);
         self.pool.retain(|(_, last, _)| *last >= cutoff);
-        let size = (cfg.width.max(8), cfg.height.max(8));
+        let size = (cfg.width.max(16), cfg.height.max(16));
         self.depth_mips =
             passes
                 .contains(&FramePass::DepthMips)
@@ -373,6 +378,14 @@ impl FrameGraph {
                 _ => depth_mips::ColorMips::new(device, color_src),
             }
         });
+        self.bloom_spd =
+            (cfg.compute_bloom && passes.contains(&FramePass::BloomPrefilter)).then(|| match self
+                .bloom_spd
+                .take()
+            {
+                Some(b) if b.post_size() == cfg.post => b,
+                _ => bloom_spd::BloomSpd::new(device, cfg.post),
+            });
         self.views.clear();
         for (name, slot) in plan.transients() {
             self.views

@@ -50,49 +50,71 @@ fn to_ycocg(c: vec3<f32>) -> vec3<f32> {
 }
 
 fn from_ycocg(c: vec3<f32>) -> vec3<f32> {
-  return vec3<f32>(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z);
+  return max(vec3<f32>(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z), vec3<f32>(0.0));
 }
 
-fn catmull_rom_weights(f: vec2<f32>) -> array<vec2<f32>, 4> {
-  return array<vec2<f32>, 4>(
-    f * (-0.5 + f * (1.0 - 0.5 * f)),
-    1.0 + f * f * (-2.5 + 1.5 * f),
-    f * (0.5 + f * (2.0 - 1.5 * f)),
-    f * f * (-0.5 + 0.5 * f));
+// Reversible Karis tonemap in YCoCg so HDR fireflies do not inflate the
+// neighbourhood variance box during temporal clipping.
+fn tonemap_ycocg(c: vec3<f32>) -> vec3<f32> {
+  let yc = to_ycocg(max(c, vec3<f32>(0.0)));
+  return yc / (1.0 + max(yc.x, 0.0));
 }
 
-// Catmull-Rom over the 4x4 texels around uv in 9 bilinear taps (the
-// middle two of each row and column merged into one tap; Jimenez,
-// "Filmic SMAA", 2016). Negative lobes can ring: the caller clamps.
-fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
+fn untonemap_ycocg(yc: vec3<f32>) -> vec3<f32> {
+  let inv = 1.0 / max(1.0 - yc.x, 1e-4);
+  return from_ycocg(yc * inv);
+}
+
+// Ray-AABB clip from `hist` towards `center` onto `[lo, hi]` (Pedersen,
+// "Temporal Reprojection Anti-Aliasing in INSIDE", GDC 2016), avoiding the
+// corner-sliding hue shift of axis-aligned clamp.
+fn clip_aabb(lo: vec3<f32>, hi: vec3<f32>, center: vec3<f32>, hist: vec3<f32>) -> vec3<f32> {
+  let p = 0.5 * (hi + lo);
+  let e = 0.5 * (hi - lo) + vec3<f32>(1e-5);
+  let v = hist - p;
+  let u = abs(v / e);
+  let m = max(u.x, max(u.y, u.z));
+  if (m > 1.0) {
+    return p + v / m;
+  }
+  return hist;
+}
+
+// 5-tap Catmull-Rom over the 4x4 texels around `uv` (Jimenez, "Filmic SMAA",
+// 2016): drops the four outer corners (weight <= 1/64) and renormalises the
+// five cross bilinear taps, returning RGB and alpha together.
+fn history_catmull_rom(uv: vec2<f32>) -> vec4<f32> {
   let size = vec2<f32>(textureDimensions(history));
   let p = uv * size;
   let t1 = floor(p - 0.5) + 0.5;
   let f = p - t1;
-  let weights = catmull_rom_weights(f);
-  let w0 = weights[0];
-  let w1 = weights[1];
-  let w2 = weights[2];
-  let w3 = weights[3];
+  let f2 = f * f;
+  let f3 = f2 * f;
+  let w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+  let w1 = 1.0 + f2 * (-2.5 + 1.5 * f);
+  let w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+  let w3 = f2 * (-0.5 + 0.5 * f);
   let w12 = w1 + w2;
   let t0 = (t1 - 1.0) / size;
   let t3 = (t1 + 2.0) / size;
   let t12 = (t1 + w2 / w12) / size;
-  var c = vec3<f32>(0.0);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t0.y)).rgb * (w0.x * w0.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t0.y)).rgb * (w12.x * w0.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t0.y)).rgb * (w3.x * w0.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t12.y)).rgb * (w0.x * w12.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t12.y)).rgb * (w12.x * w12.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t12.y)).rgb * (w3.x * w12.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t3.y)).rgb * (w0.x * w3.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t3.y)).rgb * (w12.x * w3.y);
-  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t3.y)).rgb * (w3.x * w3.y);
-  return max(c, vec3<f32>(0.0));
+  let wt = w12.x * w0.y;
+  let wl = w0.x * w12.y;
+  let wc = w12.x * w12.y;
+  let wr = w3.x * w12.y;
+  let wb = w12.x * w3.y;
+  var c = sample_exact(history, linear_sampler, vec2<f32>(t12.x, t0.y)) * wt;
+  c += sample_exact(history, linear_sampler, vec2<f32>(t0.x, t12.y)) * wl;
+  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t12.y)) * wc;
+  c += sample_exact(history, linear_sampler, vec2<f32>(t3.x, t12.y)) * wr;
+  c += sample_exact(history, linear_sampler, vec2<f32>(t12.x, t3.y)) * wb;
+  let norm = 1.0 / (wt + wl + wc + wr + wb);
+  c *= norm;
+  return vec4<f32>(max(c.rgb, vec3<f32>(0.0)), clamp(c.a, 0.0, 1.0));
 }
 
 // Float32 roundoff in inverse/project matrix products, not a scene-depth
-// threshold. Shared by whole-footprint visibility and individual taps.
+// threshold.
 const DEPTH_ROUNDOFF: f32 = 32.0 * 1.1920929e-7;
 
 fn saved_depth(at: vec2<i32>) -> f32 {
@@ -101,51 +123,11 @@ fn saved_depth(at: vec2<i32>) -> f32 {
   return textureSampleLevel(previous_depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
 }
 
-// Interpolate only taps on the reprojected surface. The closest current
-// foreground supplies its depth even when jitter misses a thin feature
-// at the colour sample; accepting any closer history would also retain
-// an occluder that just moved away from that foreground.
-fn history_on_surface(uv: vec2<f32>, expected_uv: vec2<f32>, expected: f32,
-                      catmull_rom: bool, current_sample: vec4<f32>) -> vec4<f32> {
-  let size = vec2<f32>(textureDimensions(history));
-  let scene_size = vec2<f32>(textureDimensions(previous_depth));
-  let p = uv * size - 0.5;
-  let base = vec2<i32>(floor(p));
-  let f = fract(p);
-  let linear_weights = array<vec2<f32>, 4>(vec2<f32>(0.0), 1.0 - f, f, vec2<f32>(0.0));
-  var weights = linear_weights;
-  if (catmull_rom) { weights = catmull_rom_weights(f); }
-  var colour = vec3<f32>(0.0);
-  var total = 0.0;
-  var alpha = 0.0;
-  var alpha_total = 0.0;
-  for (var y = 0; y < 4; y++) {
-    for (var x = 0; x < 4; x++) {
-      let weight = weights[x].x * weights[y].y;
-      if (weight == 0.0) { continue; }
-      let q = clamp(base + vec2<i32>(x - 1, y - 1), vec2<i32>(0), vec2<i32>(size) - 1);
-      let at = vec2<i32>(floor((vec2<f32>(q) + 0.5) / size * scene_size + taa.previous_jitter.xy));
-      let d = saved_depth(at);
-      // A slanted surface changes depth across the footprint. Bound that
-      // change by its local slope and the actual distance from the
-      // reprojected scene sample. Opposite one-sided slopes mark an edge
-      // or extremum, not a plane spanning two different surfaces.
-      let left = vec2<f32>(d - saved_depth(at - vec2<i32>(1, 0)), d - saved_depth(at - vec2<i32>(0, 1)));
-      let right = vec2<f32>(saved_depth(at + vec2<i32>(1, 0)) - d, saved_depth(at + vec2<i32>(0, 1)) - d);
-      let slope = select(vec2<f32>(0.0), min(abs(left), abs(right)), left * right > vec2<f32>(0.0));
-      let distance = abs(vec2<f32>(at) + 0.5 - (expected_uv * scene_size + taa.previous_jitter.xy));
-      if (abs(d - expected) > dot(slope, distance) + DEPTH_ROUNDOFF) { continue; }
-      let c = textureLoad(history, q, 0);
-      colour += c.rgb * weight;
-      total += weight;
-      let a = linear_weights[x].x * linear_weights[y].y;
-      alpha += c.a * a;
-      alpha_total += a;
-    }
-  }
-  // Catmull-Rom's outer lobes alone cannot reconstruct this pixel.
-  if (total <= 0.0 || alpha_total <= 0.0) { return current_sample; }
-  return vec4<f32>(max(colour / total, vec3<f32>(0.0)), alpha / alpha_total);
+// Blackman-Harris spatial window weight for squared distance `d2` (in scene
+// pixels squared, support radius 1.5): smooth anti-aliased spatial fallback
+// on disocclusion under TAAU without ringing.
+fn blackman_harris(d2: f32) -> f32 {
+  return exp(-2.29 * d2);
 }
 
 // A new history takes only the current frame, with the same jittered
@@ -193,6 +175,7 @@ fn fs_smaa_srgb(in: VsOut) -> @location(0) vec4<f32> {
 fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   if (taa.params.x >= 1.0) { return fresh(in); }
   let size = vec2<i32>(taa.params.yz);
+  let inv_size = 1.0 / vec2<f32>(size);
   let out_size = taa.upscale.xy;
   let upscale = taa.upscale.z > 0.5;
   let jitter = taa.still.zw;
@@ -206,161 +189,142 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   if (upscale) {
     s = in.pos.xy / out_size * vec2<f32>(size);
     at = clamp(vec2<i32>(floor(s + jitter)), vec2<i32>(0), size - 1);
-    off = (s - (vec2<f32>(at) + 0.5 - jitter)) * out_size / vec2<f32>(size);
+    off = (s - (vec2<f32>(at) + 0.5 - jitter)) * out_size * inv_size;
   }
   let cur4 = textureLoad(current, at, 0);
   let cur = cur4.rgb;
+  let center_depth = textureSampleLevel(depth, depth_sampler, (vec2<f32>(at) + 0.5) * inv_size, 0.0).r;
 
-  // Neighbourhood colour box (YCoCg), and the alpha's range.
+  // Single 3x3 sweep computes:
+  // 1. Reversible-tonemapped YCoCg moments (m1, m2) and min/max bounds for
+  //    variance clipping (Salvi 2016) without HDR firefly inflation.
+  // 2. Closest-depth texel (`motion_at`) for universal 3x3 velocity dilation
+  //    in both 1x TAA and TAAU (reversed-Z: largest depth is closest).
+  // 3. Depth-aware Blackman-Harris spatial reconstruction for crisp
+  //    disocclusion fallback at zero extra texture fetch cost.
   var lo = vec3<f32>(1e9);
   var hi = vec3<f32>(-1e9);
+  var m1 = vec3<f32>(0.0);
+  var m2 = vec3<f32>(0.0);
   var a_lo = 1e9;
   var a_hi = -1e9;
-  // An output pixel can lie on foreground geometry while its nearest
-  // jittered scene sample falls beside it. Reproject that pixel with the
-  // closest surface in the footprint, not the background's motion. Keep
-  // colour sampling and its confidence at the original scene sample.
   var motion_at = at;
-  var closest_depth = 0.0;
-  if (upscale) {
-    closest_depth = textureSampleLevel(depth, depth_sampler, (vec2<f32>(at) + 0.5) / vec2<f32>(size), 0.0).r;
-  }
+  var closest_depth = center_depth;
+  var spatial = vec4<f32>(0.0);
+  var spatial_w = 0.0;
+  let bh_center = s + jitter;
   for (var y = -1; y <= 1; y++) {
     for (var x = -1; x <= 1; x++) {
       let q = clamp(at + vec2<i32>(x, y), vec2<i32>(0), size - 1);
       let t = textureLoad(current, q, 0);
-      let c = to_ycocg(t.rgb);
+      let c = tonemap_ycocg(t.rgb);
       lo = min(lo, c);
       hi = max(hi, c);
+      m1 += c;
+      m2 += c * c;
       a_lo = min(a_lo, t.a);
       a_hi = max(a_hi, t.a);
-      if (upscale) {
-        let d = textureSampleLevel(depth, depth_sampler, (vec2<f32>(q) + 0.5) / vec2<f32>(size), 0.0).r;
-        if (d > closest_depth) {
-          closest_depth = d;
-          motion_at = q;
-        }
+      let d = select(
+        textureSampleLevel(depth, depth_sampler, (vec2<f32>(q) + 0.5) * inv_size, 0.0).r,
+        center_depth,
+        x == 0 && y == 0,
+      );
+      if (d > closest_depth) {
+        closest_depth = d;
+        motion_at = q;
       }
+      // Same-surface Blackman-Harris weight for disocclusion reconstruction.
+      let delta = vec2<f32>(q) + 0.5 - bh_center;
+      let d_diff = abs(d - center_depth);
+      let surface_w = select(0.0, 1.0, d_diff <= max(center_depth * 0.05, DEPTH_ROUNDOFF * 4.0));
+      let bw = blackman_harris(dot(delta, delta)) * select(surface_w, 1.0, x == 0 && y == 0);
+      spatial += t * bw;
+      spatial_w += bw;
     }
   }
+  let fallback = select(cur4, spatial / max(spatial_w, 1e-5), upscale && spatial_w > 0.0);
 
-  // Motion: the camera's through the depth (none for a still camera: the
-  // CPU compared the view-projections), or the prepass's velocity where
-  // the prepass drew this sample (objects and skinned meshes move it).
+  // Motion: camera reprojection through depth, or prepass velocity where the
+  // prepass drew a moving/skinned surface. Check `at` first for visibility
+  // disocclusion before dilating to the closest foreground's velocity.
   let here = in.pos.xy / out_size;
-  let reprojected = camera_reprojection(at, size);
+  let reprojected = camera_reprojection(at, size, center_depth);
   var motion = reprojected.xy;
-  var history_depth = reprojected.z;
-  // Whether this sample moves otherwise than the camera moves it (an
-  // object or a skinned mesh on its motion vectors).
   var own_motion = false;
   if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, at, 0).r)) {
     let v = textureLoad(velocity_tex, at, 0).zw;
     own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
     motion = v;
-    if (own_motion) { history_depth = textureLoad(motion_depth, at, 0).r; }
   }
-  // Test the camera-reprojected background before borrowing a nearby
-  // foreground's motion. Moving surfaces are tested per tap below with
-  // the previous depth their prepass wrote beside that motion.
-  // A foreground surface that covered this point last frame invalidates
-  // its history even when that colour lies inside the current box.
-  // Test the colour sample before borrowing a neighbour's motion: a
-  // moving foreground in the footprint must not disable visibility
-  // rejection for the camera-reprojected background it just uncovered.
   let depth_valid = taa.previous_jitter.z > 0.5;
   if (!smaa && !own_motion && depth_valid && was_occluded(here - motion, reprojected.z)) {
-    // Seed with the surface whose visibility was tested. The first-frame
-    // bilinear upscale would mix neighbouring surfaces into this sample's
-    // new history, which later frames retain as if it belonged here.
-    return cur4;
+    return fallback;
   }
-  if (upscale && any(motion_at != at)) {
-    let foreground = camera_reprojection(motion_at, size);
-    motion = foreground.xy;
-    history_depth = foreground.z;
-    own_motion = false;
+  if (any(motion_at != at)) {
+    let foreground = camera_reprojection(motion_at, size, closest_depth);
+    var fg_motion = foreground.xy;
+    var fg_own = false;
     if (taa.still.y > 0.5 && !is_sky_depth(textureLoad(view_depth_tex, motion_at, 0).r)) {
       let v = textureLoad(velocity_tex, motion_at, 0).zw;
-      own_motion = any(abs(v - motion) * out_size > vec2<f32>(0.5));
-      motion = v;
-      if (own_motion) { history_depth = textureLoad(motion_depth, motion_at, 0).r; }
+      fg_own = any(abs(v - fg_motion) * out_size > vec2<f32>(0.5));
+      fg_motion = v;
+    }
+    if (upscale || fg_own || any(abs(fg_motion - motion) * out_size > vec2<f32>(0.25))) {
+      motion = fg_motion;
+      own_motion = own_motion || fg_own;
     }
   }
+
   var hist4: vec4<f32>;
-  if (all(abs(motion) * out_size < vec2<f32>(1e-3))) {
-    // Nothing moved under this pixel: its own history texel, unfiltered,
-    // so nothing about the sampler or a backend's coordinates can move
-    // the history from frame to frame.
+  let motion_px = abs(motion) * out_size;
+  if (all(motion_px < vec2<f32>(1e-3))) {
     hist4 = textureLoad(history, px, 0);
   } else {
     let prev_uv = here - motion;
     if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
-      // Disoccluded off the frame: no history.
-      return fresh(in);
+      return fallback;
     }
-    if (upscale && !smaa && depth_valid) {
-      let sample_uv = (vec2<f32>(motion_at) + 0.5 - jitter) / vec2<f32>(size);
-      hist4 = history_on_surface(prev_uv, sample_uv - motion, history_depth, catmull_rom, cur4);
-    } else if (catmull_rom) {
-      hist4 = vec4<f32>(history_catmull_rom(prev_uv), sample_exact(history, linear_sampler, prev_uv).a);
+    if (catmull_rom) {
+      hist4 = history_catmull_rom(prev_uv);
     } else {
       hist4 = sample_exact(history, linear_sampler, prev_uv);
     }
   }
+
   // Under TAAU a sample counts as much as it is near this pixel's centre
   // (a Gaussian of about half an output pixel).
   let near = select(1.0, exp(-2.0 * dot(off, off)), upscale);
-  // The clamp trusts the neighbourhood only as far as it saw this pixel:
-  // under TAAU a detail thinner than a scene pixel (a pole) can fall
-  // between this frame's samples, and a box of what lies beside it would
-  // erase it from the history. Far from a sample the clamped history is
-  // eased back towards the history itself; a sample near the centre comes
-  // round every few frames of the jitter and clamps it fully, so a stale
-  // colour lasts no longer than that. Where the sample moves on its own
-  // motion vectors (objects, skinned meshes) the clamp stays whole: their
-  // edges are where a ghost would trail.
-  // Nor where something moving on its own lies near: the background it
-  // has just uncovered holds its colour in the history, which only the
-  // whole clamp removes at once (eased, it showed through on alternate
-  // jitter phases as a checker in the moving sphere's wake).
-  var relax = select(0.0, 0.9 * (1.0 - near), upscale && !own_motion);
-  if (relax > 0.0 && taa.still.y > 0.5 && moving_nearby(at, size, out_size)) {
-    relax = 0.0;
-  }
-  let hist = from_ycocg(mix(clamp(to_ycocg(hist4.rgb), lo, hi), to_ycocg(hist4.rgb), relax));
+  // Variance-guided YCoCg clipping box intersected with min/max bounds:
+  // tighter (gamma = 1.0) under motion to suppress ghosting, slightly wider
+  // (gamma = 1.25) when still to preserve subpixel detail.
+  let mean = m1 * (1.0 / 9.0);
+  let sigma = sqrt(max(m2 * (1.0 / 9.0) - mean * mean, vec3<f32>(0.0)));
+  let speed = length(motion_px);
+  let gamma = select(mix(1.25, 0.95, clamp(speed * 0.25, 0.0, 1.0)), 0.95, own_motion);
+  let box_min = max(lo, mean - gamma * sigma);
+  let box_max = min(hi, mean + gamma * sigma);
+
+  let hist_tm = tonemap_ycocg(hist4.rgb);
+  let clipped_tm = clip_aabb(box_min, box_max, mean, hist_tm);
+  // Under static TAAU, ease clipping far from this frame's jitter sample so
+  // subpixel thin geometry survives between jitter hits; disable relaxation
+  // whenever the pixel or dilated foreground moves.
+  let relax = select(0.0, 0.85 * (1.0 - near) * (1.0 - clamp(speed * 0.5, 0.0, 1.0)), upscale && !own_motion);
+  let hist = untonemap_ycocg(mix(clipped_tm, hist_tm, relax));
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
-  // A history over twice as bright as the brightest sample about it is no
-  // detail the jitter moves but something gone (a bolt's last frame, a
-  // light switched off), so it is dropped rather than clamped. The clamp
-  // kept it at the level of the brightest neighbour, and where that was a
-  // thin bright line (rain under a vanished bolt) the box's top was the
-  // line's, leaving a bright band round each line for several frames.
-  // Rejection by the history's distance from the box: Pedersen, "Temporal
-  // Reprojection Anti-Aliasing in INSIDE", GDC 2016.
-  let top = hi.x;
+  // Drop stale bright transients (vanished flash/lightning/light off) whose
+  // history luminance exceeds 2x the brightest current neighbour.
+  let top = untonemap_ycocg(hi).r * 0.25 + untonemap_ycocg(hi).g * 0.5 + untonemap_ycocg(hi).b * 0.25;
   let gone = clamp((to_ycocg(hist4.rgb).x - top) / max(top, 1e-4) - 1.0, 0.0, 1.0);
 
   if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5 * (1.0 - gone)); }
-  // Without OIT the binding is a 1x1 white placeholder: the coordinate is
-  // clamped to it, never loaded out of bounds (which may answer zero and
-  // drop the history). With OIT `at` is the scene pixel, oit.reveal's size.
   let reactive_size = vec2<i32>(textureDimensions(reactive_tex));
   let reactive = textureLoad(reactive_tex, min(at, reactive_size - 1), 0);
-  // The tail's transmittance times the front layer's (oit.rs REVEAL_FORMAT).
   let reveal = clamp(reactive.r * reactive.g, 0.0, 1.0);
   let a = mix(1.0 - (1.0 - taa.params.x * near) * reveal, 1.0, gone);
-  // Compute anti-flicker weights after neighbourhood clipping, using
-  // compressed luminance. Raw HDR weights erase bright subpixel coverage
-  // against dark history; compression bounds that bias to 2:1. Blend the
-  // original HDR colours below, not compressed or display-mapped colours.
-  // The moving-sun regression's max/min energy falls from 1.665 to 1.226
-  // (TAA), 1.898 to 1.249 (TAAU); T2x stays 1.138. This trades strong
-  // firefly suppression for stable HDR energy: keep specular/taa-sharp
-  // coverage when changing it, rather than restoring raw-luma weights.
-  // See Tardif, Temporal Antialiasing Starter Pack, Resolve:
-  // https://alextardif.com/TAA.html. Formula here compresses luma directly.
+  // Compressed-luma anti-flicker weights (Tardif): preserve HDR specular
+  // energy while keeping bright subpixel flicker bounded to 2:1.
   let lc = max(dot(cur, LUMA), 0.0);
   let lh = max(dot(hist, LUMA), 0.0);
   let wc = a / (1.0 + lc / (1.0 + lc));
@@ -369,22 +333,15 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
 }
 
 // xy: camera motion (uv/frame); z: this surface's previous window depth.
-fn camera_reprojection(q: vec2<i32>, size: vec2<i32>) -> vec3<f32> {
-  // Scene pixel q shows the jittered frame's clip position at its centre.
-  let uv = (vec2<f32>(q) + 0.5) / vec2<f32>(size);
-  let d = textureSampleLevel(depth, depth_sampler, uv, 0.0).r;
+fn camera_reprojection(q: vec2<i32>, size: vec2<i32>, d: f32) -> vec3<f32> {
   if (taa.still.x > 0.5) { return vec3<f32>(0.0, 0.0, d); }
+  let uv = (vec2<f32>(q) + 0.5) / vec2<f32>(size);
   let w = taa.inv_view_proj * vec4<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0, d, 1.0);
   let world = w.xyz / w.w;
   let cur_clip = taa.cur_view_proj * vec4<f32>(world, 1.0);
   let prev_clip = taa.prev_view_proj * vec4<f32>(world, 1.0);
   let motion = (cur_clip.xy / cur_clip.w - prev_clip.xy / prev_clip.w) * vec2<f32>(0.5, -0.5);
   return vec3<f32>(motion, prev_clip.z / prev_clip.w);
-}
-
-fn camera_motion(q: vec2<i32>, size: vec2<i32>) -> vec2<f32> {
-  if (taa.still.x > 0.5) { return vec2<f32>(0.0); }
-  return camera_reprojection(q, size).xy;
 }
 
 fn was_occluded(uv: vec2<f32>, expected: f32) -> bool {
@@ -403,44 +360,3 @@ fn was_occluded(uv: vec2<f32>, expected: f32) -> bool {
   return expected < farthest - DEPTH_ROUNDOFF;
 }
 
-// Whether a sample moving on its own motion vectors (an object, a skinned
-// mesh) lies near scene pixel `at`: within reach of the background it
-// uncovered over the last jitter cycle (eight frames of its motion, and
-// two pixels more), searched in rings of 1, 3, 7 and 15 scene pixels.
-fn moving_nearby(at: vec2<i32>, size: vec2<i32>, out_size: vec2<f32>) -> bool {
-  let dirs = array<vec2<i32>, 8>(
-    vec2<i32>(1, 0), vec2<i32>(-1, 0), vec2<i32>(0, 1), vec2<i32>(0, -1),
-    vec2<i32>(1, 1), vec2<i32>(-1, 1), vec2<i32>(1, -1), vec2<i32>(-1, -1));
-  let rings = array<i32, 4>(1, 3, 7, 15);
-  for (var r = 0; r < 4; r++) {
-    for (var k = 0; k < 8; k++) {
-      let q = clamp(at + dirs[k] * rings[r], vec2<i32>(0), size - 1);
-      if (is_sky_depth(textureLoad(view_depth_tex, q, 0).r)) { continue; }
-      let own = textureLoad(velocity_tex, q, 0).zw - camera_motion(q, size);
-      let moving = any(abs(own) * out_size > vec2<f32>(0.5));
-      let reach = 2.0 + 8.0 * length(own * vec2<f32>(size));
-      if (moving && f32(rings[r]) <= reach) { return true; }
-    }
-  }
-  return false;
-}
-
-// The sharpening after TAA (`RenderDesc::taa_sharpen`, `current` bound to
-// what TAA just wrote): an unsharp mask over the 4 neighbours, its
-// strength params.w, clamped to their range so edges never overshoot. It
-// writes its own target; the history keeps the unsharpened image.
-@fragment
-fn fs_sharpen(in: VsOut) -> @location(0) vec4<f32> {
-  let size = vec2<i32>(taa.upscale.xy);
-  let px = vec2<i32>(in.pos.xy);
-  let c4 = textureLoad(current, px, 0);
-  let c = c4.rgb;
-  let n = textureLoad(current, clamp(px + vec2<i32>(0, -1), vec2<i32>(0), size - 1), 0).rgb;
-  let s = textureLoad(current, clamp(px + vec2<i32>(0, 1), vec2<i32>(0), size - 1), 0).rgb;
-  let e = textureLoad(current, clamp(px + vec2<i32>(1, 0), vec2<i32>(0), size - 1), 0).rgb;
-  let w = textureLoad(current, clamp(px + vec2<i32>(-1, 0), vec2<i32>(0), size - 1), 0).rgb;
-  let lo = min(c, min(min(n, s), min(e, w)));
-  let hi = max(c, max(max(n, s), max(e, w)));
-  let sharp = c + (c - (n + s + e + w) * 0.25) * taa.params.w;
-  return vec4<f32>(clamp(sharp, lo, hi), c4.a);
-}

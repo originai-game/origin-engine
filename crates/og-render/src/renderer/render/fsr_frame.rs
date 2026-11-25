@@ -48,9 +48,7 @@ impl Renderer {
         let fsr = self.will_use_fsr(scene, taa);
         let no_reactive = self.post.no_reactive.clone();
         match self.graph.fsr_views(&no_reactive, &self.persistent, slot) {
-            Some((color, depth, prepass_views, reveal, output, previous_output, sharpened))
-                if fsr =>
-            {
+            Some((color, depth, prepass_views, reveal, output, previous_output)) if fsr => {
                 let frame = post::fsr::FsrFrame {
                     render: (self.width, self.height),
                     upscale: post_size,
@@ -67,7 +65,6 @@ impl Renderer {
                         .is_none_or(|p| still_camera(&p, &cam.view_proj)),
                     tick: scene.frame.tick,
                     tick_rate: scene.frame.tick_rate,
-                    sharpness: self.post.taa_sharpen,
                     color,
                     depth,
                     prepass: prepass_views,
@@ -75,7 +72,6 @@ impl Renderer {
                     has_reactive: reveal != &no_reactive,
                     output,
                     previous_output,
-                    sharpened,
                 };
                 self.post.fsr.prepare(&self.queue, &frame);
             }

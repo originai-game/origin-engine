@@ -159,7 +159,7 @@ fn fs_ssgi(in: VsOut) -> @location(0) vec4<f32> {
   // World units a pixel spans at depth 1 (perspective) or at any depth.
   let unit_px = 1.0 / (fxp.proj[1][1] * 0.5 * fxp.screen.y);
   let dsize = vec2<i32>(textureDimensions(tex_depth));
-  let top = i32(textureNumLevels(tex_depth)) - 1;
+  let top = depth_mips_top();
   let color_top = f32(max(i32(textureNumLevels(tex_a)) - 1, 0));
   let gsize = vec2<i32>(textureDimensions(tex_gbuffer));
   let pos = vec2<f32>(px) + 0.5;

@@ -405,17 +405,17 @@ pub(crate) struct GiProbes {
     blend_bind: std::cell::RefCell<
         crate::gpu::bind_cache::SingleBindCache<(wgpu::Buffer, wgpu::Buffer, wgpu::Buffer)>,
     >,
-    frame_bind: std::cell::RefCell<
-        crate::gpu::bind_cache::SingleBindCache<(
-            wgpu::Buffer,
-            wgpu::TextureView,
-            wgpu::TextureView,
-            wgpu::TextureView,
-            wgpu::Buffer,
-            wgpu::Buffer,
-        )>,
-    >,
+    frame_bind: std::cell::RefCell<crate::gpu::bind_cache::SingleBindCache<GiFrameBindKey>>,
 }
+
+type GiFrameBindKey = (
+    wgpu::Buffer,
+    wgpu::TextureView,
+    wgpu::TextureView,
+    wgpu::TextureView,
+    wgpu::Buffer,
+    wgpu::Buffer,
+);
 
 impl GiProbes {
     // A guarded entry into the engine's `render3d` module (wasm-modules.json).

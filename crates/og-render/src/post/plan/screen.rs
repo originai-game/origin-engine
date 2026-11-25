@@ -72,18 +72,6 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             }
             g.pass(name, &reads, &["history-write", "history-depth-write"])
         }
-        FramePass::TaaSharpen if prepass => g.pass(
-            name,
-            &[
-                "history-write",
-                "depth",
-                "gbuffer",
-                "lindepth",
-                "motion-depth",
-            ],
-            &["hdr.sharp"],
-        ),
-        FramePass::TaaSharpen => g.pass(name, &["history-write", "depth"], &["hdr.sharp"]),
         // Every effect pass binds the prepass's lindepth and gbuffer
         // (`fx_group`), so each declares them: a target written here may
         // not alias a texture the pass still has bound.

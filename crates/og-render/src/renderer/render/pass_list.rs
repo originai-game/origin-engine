@@ -107,7 +107,6 @@ impl Renderer {
                     != crate::OutlinePlace::Inside,
                 outline_widest: effects.outline_widest,
                 taa,
-                taa_sharpen: self.post.taa_sharpen > 0.0,
                 dof: effects.dof.is_some(),
                 motion_blur: effects.motion_blur.is_some(),
                 screen_blur: effects.screen_blur.is_some(),
@@ -116,6 +115,8 @@ impl Renderer {
                 auto_exposure,
                 adapt: camera.exposure.adaptation().is_some(),
                 bloom,
+                compute_bloom: post_fx.bloom_unreal.is_none()
+                    && self.info.caps.contains(Caps::COMPUTE),
                 bloom_levels: {
                     let (pw, ph) = self.history_size();
                     post::bloom_levels(pw, ph)

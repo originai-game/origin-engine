@@ -103,9 +103,14 @@ impl<'a> BindCx<'a> {
         self.stage(self.names.last, slot)
     }
 
-    /// The metered luminance's last level (black without metering).
+    /// The metered luminance's final 1x1 texel (black without metering).
     pub fn metered(&self) -> &'a wgpu::TextureView {
-        self.view_of(FramePass::Meter, &luminance_name(meter_levels() - 1))
+        let name = if self.has(FramePass::Reduce(0)) {
+            luminance_name(meter_levels() - 1)
+        } else {
+            luminance_name(0)
+        };
+        self.view_of(FramePass::Meter, &name)
     }
 
     /// The exposure the passes of frame slot `slot` read: the adapted one

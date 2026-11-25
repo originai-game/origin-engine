@@ -201,7 +201,6 @@ pub(crate) struct PassDecisions<'a> {
     /// flood reaches (`post::jfa_first`).
     pub outline_widest: f32,
     pub taa: bool,
-    pub taa_sharpen: bool,
     pub dof: bool,
     pub motion_blur: bool,
     pub screen_blur: bool,
@@ -210,6 +209,8 @@ pub(crate) struct PassDecisions<'a> {
     pub auto_exposure: bool,
     pub adapt: bool,
     pub bloom: bool,
+    /// Compute LDS SPD bloom (`bloom_spd.rs`, when Caps::COMPUTE & !unreal).
+    pub compute_bloom: bool,
     /// The bloom chain's levels (`post::bloom_levels`).
     pub bloom_levels: u32,
     pub lens_flare: bool,
@@ -355,9 +356,6 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     if d.taa {
         push(FramePass::Taa);
-        if d.taa_sharpen {
-            push(FramePass::TaaSharpen);
-        }
     }
     if d.dof {
         push(FramePass::DofCoc);
@@ -380,8 +378,10 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     if d.auto_exposure {
         push(FramePass::Meter);
-        for i in 0..post::meter_levels() - 1 {
-            push(FramePass::Reduce(i));
+        if !caps.contains(Caps::COMPUTE) {
+            for i in 0..post::meter_levels() - 1 {
+                push(FramePass::Reduce(i));
+            }
         }
         if d.adapt {
             push(FramePass::Adapt);
@@ -401,11 +401,17 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
         push(FramePass::FlareBlurY);
     }
     if d.bloom {
-        for i in 0..d.bloom_levels - 1 {
-            push(FramePass::BloomDown(i));
-        }
-        for i in (0..d.bloom_levels - 1).rev() {
-            push(FramePass::BloomUp(i));
+        if d.compute_bloom && caps.contains(Caps::COMPUTE) {
+            if d.bloom_levels > 1 {
+                push(FramePass::BloomUp(0));
+            }
+        } else {
+            for i in 0..d.bloom_levels - 1 {
+                push(FramePass::BloomDown(i));
+            }
+            for i in (0..d.bloom_levels - 1).rev() {
+                push(FramePass::BloomUp(i));
+            }
         }
     }
     push(FramePass::Tonemap);

@@ -91,7 +91,6 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::OutlineJump(_)
             | FramePass::OutlineWide
             | FramePass::Taa
-            | FramePass::TaaSharpen
             | FramePass::DofCoc
             | FramePass::DofBlur
             | FramePass::DofComposite

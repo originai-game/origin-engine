@@ -36,16 +36,22 @@ impl LensFlare {
                 cx.pair(|slot| group(cx.source(slot), black, slot)),
             );
         }
+        let flare_src = cx
+            .graph
+            .bloom_spd()
+            .map(bloom_spd::BloomSpd::prefilter_view);
         for (p, src) in [
             (FramePass::Flare, "bloom.0"),
             (FramePass::FlareBlurX, "flare.raw"),
             (FramePass::FlareBlurY, "flare.x"),
         ] {
             if cx.has(p) {
-                let (src, vis) = (
-                    cx.view(src),
-                    cx.graph.try_view("flare.vis").unwrap_or(black),
-                );
+                let src = if p == FramePass::Flare {
+                    flare_src.unwrap_or_else(|| cx.view(src))
+                } else {
+                    cx.view(src)
+                };
+                let vis = cx.graph.try_view("flare.vis").unwrap_or(black);
                 groups.insert(p, cx.pair(|slot| group(src, vis, slot)));
             }
         }

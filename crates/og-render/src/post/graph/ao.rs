@@ -10,13 +10,13 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
         // The AO reads the depth with the water's surfaces in it when there is one.
         // The GI reads the lit image the previous frame left: the
         // TAA history it wrote, or the main pass's copy.
-        // GTAO reads the view depth's MIP chain in its place
-        // (depth_mips.rs): its level 0 is the same depth.
+        // Full-res depth stays in `tex_depth` (level 0); `depth_mips` holds
+        // half..sixteenth levels at binding 8 (`tex_depth_mips`).
         FramePass::Ao => {
-            let d = match cx.graph.depth_mips() {
-                Some(mips) => mips.view(),
-                None => cx.ao_depth(),
-            };
+            let d_mips = cx
+                .graph
+                .depth_mips()
+                .map_or(&cx.passes.far_depth, depth_mips::DepthMips::view);
             let previous = |slot: usize| match (
                 cx.cfg.gi,
                 cx.graph.color_mips(),
@@ -29,7 +29,7 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
                 (true, None, None, Some((_, g))) => &g[1 - slot],
                 (true, None, None, None) => black,
             };
-            cx.pair(|slot| cx.fx_depth(previous(slot), d, black))
+            cx.pair(|slot| cx.fx_ao(previous(slot), cx.ao_depth(), d_mips, black))
         }
         FramePass::AoBlur => cx.pair(|_| cx.fx(black, cx.view("ao.raw"))),
         FramePass::AoUpsample => cx.pair(|_| cx.fx(black, cx.view("ao.blur"))),

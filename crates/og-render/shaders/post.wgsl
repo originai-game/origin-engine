@@ -138,25 +138,27 @@ fn graded(uv: vec2<f32>) -> vec3<f32> {
   return c;
 }
 
-// Contrast-adaptive sharpening (PostEffects.sharpen, post.extra.w its
-// strength): evaluate graded(uv) once for the centre and measure local
-// contrast from the 4 cardinal neighbours of `source` in perceptual luma
-// space, avoiding 4x re-evaluation of bloom, flare, LUT, and vignette.
-fn cas_luma(uv: vec2<f32>, exp_gain: f32) -> f32 {
-  let l = max(luma(sample_exact(source, linear_sampler, uv).rgb) * exp_gain, 0.0);
+// Contrast-adaptive sharpening (PostEffects.sharpen and RenderDesc.taa_sharpen
+// fused into Tonemap, post.extra.w its strength): evaluate graded(uv) once for
+// the centre and measure local contrast from the 4 cardinal neighbours of
+// `source` in perceptual luma space via direct integer loads.
+fn cas_luma(px: vec2<i32>, last: vec2<i32>, exp_gain: f32) -> f32 {
+  let l = max(luma(textureLoad(source, clamp(px, vec2<i32>(0), last), 0).rgb) * exp_gain, 0.0);
   return sqrt(l / (1.0 + l));
 }
 
 fn sharpened(uv: vec2<f32>, sharpen: bool) -> vec3<f32> {
   let center = graded(uv);
   if (!sharpen) { return center; }
-  let t = 1.0 / vec2<f32>(textureDimensions(source));
+  let dims = vec2<i32>(textureDimensions(source));
+  let last = dims - 1;
+  let px = clamp(vec2<i32>(uv * vec2<f32>(dims)), vec2<i32>(0), last);
   let exp_gain = exposure();
-  let c_l = cas_luma(uv, exp_gain);
-  let n_l = cas_luma(uv + vec2<f32>(0.0, -t.y), exp_gain);
-  let w_l = cas_luma(uv + vec2<f32>(-t.x, 0.0), exp_gain);
-  let e_l = cas_luma(uv + vec2<f32>(t.x, 0.0), exp_gain);
-  let s_l = cas_luma(uv + vec2<f32>(0.0, t.y), exp_gain);
+  let c_l = cas_luma(px, last, exp_gain);
+  let n_l = cas_luma(px + vec2<i32>(0, -1), last, exp_gain);
+  let w_l = cas_luma(px + vec2<i32>(-1, 0), last, exp_gain);
+  let e_l = cas_luma(px + vec2<i32>(1, 0), last, exp_gain);
+  let s_l = cas_luma(px + vec2<i32>(0, 1), last, exp_gain);
   let mn = min(c_l, min(min(n_l, s_l), min(w_l, e_l)));
   let mx = max(c_l, max(max(n_l, s_l), max(w_l, e_l)));
   let amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, 1e-4), 0.0, 1.0));

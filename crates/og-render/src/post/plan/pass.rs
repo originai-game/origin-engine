@@ -103,8 +103,6 @@ pub(crate) enum FramePass {
     /// The lines outside the silhouettes from the flood (`fs_outline_wide`).
     OutlineWide,
     Taa,
-    /// The sharpening after TAA (into `hdr.sharp`; the history stays soft).
-    TaaSharpen,
     DofCoc,
     DofBlur,
     DofComposite,
@@ -289,8 +287,7 @@ impl FramePass {
     pub fn after_taa(self) -> bool {
         matches!(
             self,
-            FramePass::TaaSharpen
-                | FramePass::DofCoc
+            FramePass::DofCoc
                 | FramePass::DofBlur
                 | FramePass::DofComposite
                 | FramePass::MotionBlur
@@ -369,7 +366,6 @@ impl FramePass {
             FramePass::OutlineJump(i) => format!("outline-jump.{i}"),
             FramePass::OutlineWide => "outline-wide".into(),
             FramePass::Taa => "taa".into(),
-            FramePass::TaaSharpen => "taa-sharpen".into(),
             FramePass::DofCoc => "dof-coc".into(),
             FramePass::DofBlur => "dof-blur".into(),
             FramePass::DofComposite => "dof-composite".into(),

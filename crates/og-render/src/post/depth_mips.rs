@@ -34,25 +34,28 @@ pub(crate) fn source() -> String {
     WGSL.to_string()
 }
 
-/// The chain at one screen size: the texture with all its levels in one
-/// view (what a shader samples, `textureLoad(t, px >> level, level)`) and
-/// each level alone (what the pass stores to).
+/// The chain at one screen size: holds half, quarter, eighth and sixteenth
+/// resolution filtered depths (`1/2..1/16`), eliminating the full-res Mip 0
+/// copy (level 0 is read directly from `lindepth`).
 pub(crate) struct DepthMips {
-    size: (u32, u32),
+    source_size: (u32, u32),
     view: wgpu::TextureView,
     levels: Vec<wgpu::TextureView>,
 }
 
 impl DepthMips {
-    /// At least 8 x 8, so every level has a texel (a frame smaller than
-    /// that reads its edge pixels again past it).
+    /// Source size at least 16 x 16 so all four half..sixteenth levels exist.
     pub fn new(device: &wgpu::Device, (width, height): (u32, u32)) -> DepthMips {
-        let (width, height) = (width.max(8), height.max(8));
+        let source_size = (width.max(16), height.max(16));
+        let half = (
+            source_size.0.div_ceil(2).max(8),
+            source_size.1.div_ceil(2).max(8),
+        );
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("depth mips"),
             size: wgpu::Extent3d {
-                width,
-                height,
+                width: half.0,
+                height: half.1,
                 depth_or_array_layers: 1,
             },
             mip_level_count: DEPTH_MIP_LEVELS,
@@ -64,18 +67,18 @@ impl DepthMips {
             texture_binding_view_dimension: None,
         });
         DepthMips {
-            size: (width, height),
+            source_size,
             view: texture.create_view(&Default::default()),
             levels: crate::mips::level_views(&texture, "depth mips level"),
         }
     }
 
-    /// Its level 0's size: the frame's, at least 8 x 8.
+    /// Full-resolution source size the chain was allocated for.
     pub fn size(&self) -> (u32, u32) {
-        self.size
+        self.source_size
     }
 
-    /// Every level in one view, for reading.
+    /// Every level (half..sixteenth) in one view, for reading.
     pub fn view(&self) -> &wgpu::TextureView {
         &self.view
     }

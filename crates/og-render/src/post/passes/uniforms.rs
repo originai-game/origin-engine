@@ -61,6 +61,7 @@ impl PostPasses {
         glow: bool,
         god_rays: bool,
         untonemapped: bool,
+        taa: bool,
         tick: u64,
         width: u32,
         flare: Option<(&crate::LensFlare, f32)>,
@@ -69,6 +70,7 @@ impl PostPasses {
         let (exposure, compensation) = Self::exposure_rows(exposure);
         self.untonemapped
             .store(untonemapped, std::sync::atomic::Ordering::Relaxed);
+        self.exposure_hist.write_params(queue, untonemapped);
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
         let bloom = match (lit_bloom, post.glow.filter(|_| glow)) {
             // UnrealBloomPass: the mips are stored weighted, so the top
@@ -129,6 +131,10 @@ impl PostPasses {
             (None, Some(g)) if g.intensity > 0.0 => 1.0,
             _ => 0.0,
         };
+        // Fuse RenderDesc::taa_sharpen / FSR RCAS directly into Tonemap CAS
+        // to eliminate the standalone full-res `hdr.sharp` pass and target.
+        let taa_sharpen = if taa { self.taa_sharpen } else { 0.0 };
+        let sharpen = post.sharpen.unwrap_or(0.0).clamp(0.0, 1.0).max(taa_sharpen);
         let uniform = PostUniform {
             hdr,
             exposure,
@@ -152,8 +158,8 @@ impl PostPasses {
             extra: [
                 god_rays as u32 as f32,
                 untonemapped as u32 as f32,
-                post.sharpen.is_some() as u32 as f32,
-                post.sharpen.unwrap_or(0.0).clamp(0.0, 1.0),
+                (sharpen > 0.0) as u32 as f32,
+                sharpen,
             ],
             unreal: match (lit_bloom, post.bloom_unreal) {
                 (Some(_), Some(r)) => [

@@ -28,7 +28,6 @@ const SHADERS: [(&str, &str); 5] = [
     ),
     ("fsr accumulate", wgsl!("fsr_accumulate.wgsl")),
 ];
-const RCAS: (&str, &str) = ("fsr rcas", wgsl!("fsr_rcas.wgsl"));
 const COMMON: &str = wgsl!("fsr_common.wgsl");
 
 /// A pass's module: fullscreen.wgsl (for `sample_exact`), fsr_common.wgsl
@@ -41,7 +40,6 @@ fn source(body: &str) -> String {
 pub(crate) fn sources() -> Vec<(&'static str, String)> {
     SHADERS
         .iter()
-        .chain([&RCAS])
         .map(|(label, body)| (*label, source(body)))
         .collect()
 }
@@ -188,7 +186,6 @@ const ACCUMULATE: &[B] = &[
     B::Storage(F::R32Float),
     B::Storage(F::Rgba16Float),
 ];
-const RCAS_BINDINGS: &[B] = &[B::Uniform, B::Tex(false), B::Ro, B::Storage(F::Rgba16Float)];
 
 /// A compute pass: its layout and its pipeline (made at first use).
 struct Pass {
@@ -342,7 +339,6 @@ struct State {
         wgpu::TextureView,
         wgpu::TextureView,
     )>,
-    cache_rcas: crate::gpu::bind_cache::BindCache<(wgpu::TextureView, wgpu::TextureView)>,
 }
 
 /// The render pixels one workgroup of the luma and shading change
@@ -476,7 +472,6 @@ impl State {
             cache_prepare: Default::default(),
             cache_reactivity: Default::default(),
             cache_accumulate: crate::gpu::bind_cache::BindCache::new(4),
-            cache_rcas: crate::gpu::bind_cache::BindCache::new(4),
         }
     }
 
@@ -543,8 +538,6 @@ pub(crate) struct FsrFrame<'a> {
     /// never the wall clock, so captures repeat.
     pub tick: u64,
     pub tick_rate: f32,
-    /// RCAS's strength, 0 to 1 (`RenderDesc::taa_sharpen`).
-    pub sharpness: f32,
     pub color: &'a wgpu::TextureView,
     pub depth: &'a wgpu::TextureView,
     /// The prepass's gbuffer and view depth, when it drew.
@@ -555,14 +548,11 @@ pub(crate) struct FsrFrame<'a> {
     /// The engine's history this frame writes and the one it read.
     pub output: &'a wgpu::TextureView,
     pub previous_output: &'a wgpu::TextureView,
-    /// RCAS's target (`hdr.sharp`), with the sharpening pass.
-    pub sharpened: Option<&'a wgpu::TextureView>,
 }
 
 /// The frame's bind groups and dispatch sizes.
 struct Recorded {
     groups: [wgpu::BindGroup; 6],
-    rcas: Option<wgpu::BindGroup>,
     render: (u32, u32),
     upscale: (u32, u32),
     luma_groups: (u32, u32),
@@ -587,7 +577,6 @@ pub(crate) struct FsrPasses {
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
     passes: [Pass; 6],
-    rcas: Pass,
     state: Option<State>,
     /// Frames since the state was made: its ping-pong parity.
     index: u64,
@@ -628,7 +617,6 @@ impl FsrPasses {
                 pass(device, reactivity, PREPARE_REACTIVITY, "cs"),
                 pass(device, accumulate, ACCUMULATE, "cs"),
             ],
-            rcas: pass(device, RCAS, RCAS_BINDINGS, "cs"),
             state: None,
             index: 0,
             previous: None,
@@ -736,8 +724,6 @@ impl FsrPasses {
         let ip = f.proj.inverse().transpose();
         let device_to_view = [ip.z_axis.z, ip.z_axis.w, ip.w_axis.z, ip.w_axis.w];
         let luma_groups = (f.render.0.div_ceil(TILE.0), f.render.1.div_ceil(TILE.1));
-        // RCAS's sharpness in stops (FsrRcasCon of 2 - 2 s).
-        let sharp = (-(2.0 - 2.0 * f.sharpness.clamp(0.0, 1.0))).exp2();
         let i = |(x, y): (u32, u32)| [x as i32, y as i32];
         let u = FsrUniform {
             inv_view_proj: f.inv_view_proj.to_cols_array_2d(),
@@ -754,7 +740,7 @@ impl FsrPasses {
                 -1.0 / 3.0,
                 f32::from(u8::from(f.still)),
                 f32::from(u8::from(f.prepass.is_some())),
-                sharp,
+                0.0,
             ],
             misc: [
                 (luma_groups.0 * luma_groups.1) as f32,
@@ -767,7 +753,6 @@ impl FsrPasses {
 
         let s = self.state.as_mut().expect("made above");
         s.cache_accumulate.begin_frame();
-        s.cache_rcas.begin_frame();
         let (cur, prev) = ((self.index % 2) as usize, (1 - self.index % 2) as usize);
         let (velocity, view_depth) = f.prepass.unwrap_or((f.depth, f.depth));
         use wgpu::BindingResource as R;
@@ -869,22 +854,9 @@ impl FsrPasses {
                 },
             )
             .clone();
-        let rcas = f.sharpened.map(|target| {
-            s.cache_rcas
-                .get_or_insert_with((f.output.clone(), target.clone()), || {
-                    make_group(
-                        device,
-                        uniform,
-                        &self.rcas.layout,
-                        &[t(f.output), buf(&s.frame_info), t(target)],
-                    )
-                })
-                .clone()
-        });
         let reconstructed_depth = s.reconstructed_depth.clone();
         self.recorded = Some(Recorded {
             groups: [g0, g1, g2, g3, g4, g5],
-            rcas,
             render: f.render,
             upscale: f.upscale,
             luma_groups,
@@ -925,24 +897,5 @@ impl FsrPasses {
             pass.dispatch_workgroups(x, y, 1);
         }
         dispatches.len() as u32
-    }
-
-    /// Records RCAS (the frame graph's `taa-sharpen` pass).
-    pub fn encode_rcas(&self, encoder: &mut crate::Encoder) -> u32 {
-        let Some((r, g)) = self
-            .recorded
-            .as_ref()
-            .and_then(|r| r.rcas.as_ref().map(|g| (r, g)))
-        else {
-            return 0;
-        };
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("fsr rcas"),
-            timestamp_writes: None,
-        });
-        pass.set_pipeline(self.rcas.pipeline.wait());
-        pass.set_bind_group(0, g, &[]);
-        pass.dispatch_workgroups(r.upscale.0.div_ceil(8), r.upscale.1.div_ceil(8), 1);
-        1
     }
 }

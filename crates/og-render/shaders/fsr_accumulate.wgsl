@@ -218,9 +218,13 @@ fn update_lock_status(p: Params, d: ptr<function, Data>) {
   (*d).lock *= f32(!p.is_new_sample);
   let decrease = max(saturate(p.shading_change), max(p.reactive, p.disocclusion));
   (*d).lock = max(0.0, (*d).lock - decrease * LOCK_MAX);
-  (*d).lock_contribution = saturate(saturate((*d).lock - LOCK_THRESHOLD) * (LOCK_MAX - LOCK_THRESHOLD));
   let i = u32(p.hr_pos.y) * u32(upscale_size().x) + u32(p.hr_pos.x);
-  let new_lock = new_locks[i] * (1.0 - max(p.shading_change * 0.0, p.reactive));
+  let new_lock = new_locks[i] * (1.0 - p.reactive);
+  let is_static = p.velocity_4k < 0.05 && p.shading_change < 0.05 && p.disocclusion < 0.05;
+  // Static fine lines (wires, grilles, foliage twigs) gain lock protection on
+  // the very frame a new lock triggers rather than waiting one frame.
+  let effective_lock = select((*d).lock, max((*d).lock, new_lock), is_static);
+  (*d).lock_contribution = saturate(saturate(effective_lock - LOCK_THRESHOLD) * (LOCK_MAX - LOCK_THRESHOLD));
   (*d).lock = max(0.0, min((*d).lock + new_lock, LOCK_MAX));
   let lifetime_decrease = (0.1 / jitter_sequence_length()) * (1.0 - decrease);
   (*d).lock = max(0.0, (*d).lock - lifetime_decrease);
@@ -289,10 +293,14 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
   let flip_col = src_unjittered.x > src_output.x;
   let flip_row = src_unjittered.y > src_output.y;
 
-  // ComputeMaxKernelWeight.
+  // ComputeMaxKernelWeight: tighten Lanczos kernel bias slightly for static
+  // fine-line geometry to preserve subpixel crispness without ringing.
+  let is_static = p.velocity_4k < 0.05 && p.shading_change < 0.05 && p.disocclusion < 0.05;
   let kernel_bias_max = min(1.99, 1.0 + (1.0 / downscale_factor().x - 1.0));
   let kernel_bias_min = max(1.0, (1.0 + kernel_bias_max) * 0.3);
   let kernel_bias_weight = min(1.0 - p.disocclusion * 0.5, min(1.0 - p.shading_change, saturate((*d).history_weight * 5.0)));
+  let base_bias = mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight);
+  let kernel_bias = select(base_bias, min(2.15, max(base_bias, kernel_bias_max * 1.08)), is_static);
 
   let t = Taps(
     src_input,
@@ -301,7 +309,7 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
     flip_row,
     src_unjittered - src_output,
     p.accumulation == 0.0,
-    mix(kernel_bias_min, kernel_bias_max, kernel_bias_weight),
+    kernel_bias,
   );
   upsample_tap(t, d, 0, 0);
   upsample_tap(t, d, 1, 0);
@@ -329,8 +337,11 @@ fn compute_upsampled_color_and_weight(p: Params, d: ptr<function, Data>) {
 }
 
 fn rectify_history(p: Params, d: ptr<function, Data>) {
+  let static_pixel = p.velocity_4k < 0.05 && p.shading_change < 0.05 && p.disocclusion < 0.05 && p.reactive < 0.05;
   let velocity_factor_ = saturate(p.velocity_4k / 20.0);
-  let distance_factor = saturate(0.75 - p.farthest_depth_m / 20.0);
+  // Relax the 20m close-range clamping on genuinely static pixels so near
+  // thin features are not eroded across jitter phases.
+  let distance_factor = select(saturate(0.75 - p.farthest_depth_m / 20.0), 0.0, static_pixel);
   let accumulation_factor = 1.0 - p.accumulation;
   let reactive_factor = pow(p.reactive, 1.0 / 2.0);
   let t = max(velocity_factor_, max(distance_factor, max(accumulation_factor, max(reactive_factor, p.shading_change))));

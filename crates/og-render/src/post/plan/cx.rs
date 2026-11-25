@@ -45,7 +45,11 @@ impl<'a> PlanCx<'a> {
     pub(super) fn new(passes: &'a [FramePass], cfg: &'a GraphConfig) -> PlanCx<'a> {
         let has = |p| passes.contains(&p);
         let names = lit_names(passes);
-        let metered = luminance_name(meter_levels() - 1);
+        let metered = if has(FramePass::Reduce(0)) {
+            luminance_name(meter_levels() - 1)
+        } else {
+            luminance_name(0)
+        };
         let contact = has(FramePass::Contact);
         let prepass = has(FramePass::Prepass);
         PlanCx {

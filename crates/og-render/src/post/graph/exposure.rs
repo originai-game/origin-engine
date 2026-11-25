@@ -4,6 +4,7 @@
 use super::*;
 
 pub(super) struct Exposure {
+    hist: Option<(Pair, (u32, u32))>,
     meter: Option<Pair>,
     reduce: Vec<wgpu::BindGroup>,
     adapt: Option<Pair>,
@@ -13,11 +14,20 @@ impl Exposure {
     pub fn bind(cx: &BindCx) -> Exposure {
         let passes = cx.passes;
         let auto = cx.has(FramePass::Meter);
+        let fragment_reduce = cx.has(FramePass::Reduce(0));
         let source = |view: &wgpu::TextureView, label: &str| {
             cx.group(label, &passes.source_layout, &[tex(view), cx.sampler()])
         };
-        let meter = auto.then(|| cx.pair(|slot| source(cx.source(slot), "meter")));
-        let reduce = if auto {
+        let hist = (auto && !fragment_reduce).then(|| {
+            let out = cx.view("luminance.0");
+            (
+                cx.pair(|slot| passes.exposure_hist.bind(cx.device, cx.source(slot), out)),
+                cx.cfg.post,
+            )
+        });
+        let meter =
+            (auto && fragment_reduce).then(|| cx.pair(|slot| source(cx.source(slot), "meter")));
+        let reduce = if auto && fragment_reduce {
             (0..meter_levels() - 1)
                 .map(|i| source(cx.view(&luminance_name(i)), "reduce"))
                 .collect()
@@ -38,6 +48,7 @@ impl Exposure {
             })
         });
         Exposure {
+            hist,
             meter,
             reduce,
             adapt,
@@ -52,21 +63,30 @@ impl Exposure {
     ) -> Option<u32> {
         let passes = cx.passes;
         match pass {
-            FramePass::Meter => fullscreen_pass(
-                encoder,
-                "meter",
-                cx.graph.view("luminance.0"),
-                CLEAR,
-                if passes
-                    .untonemapped
-                    .load(std::sync::atomic::Ordering::Relaxed)
-                {
-                    passes.meter_tonemapped.get()
-                } else {
-                    passes.meter.get()
-                },
-                &self.meter.as_ref().expect("metering bound")[cx.slot],
-            ),
+            FramePass::Meter => {
+                if let Some((groups, size)) = &self.hist {
+                    return Some(
+                        passes
+                            .exposure_hist
+                            .encode(encoder, &groups[cx.slot], *size),
+                    );
+                }
+                fullscreen_pass(
+                    encoder,
+                    "meter",
+                    cx.graph.view("luminance.0"),
+                    CLEAR,
+                    if passes
+                        .untonemapped
+                        .load(std::sync::atomic::Ordering::Relaxed)
+                    {
+                        passes.meter_tonemapped.get()
+                    } else {
+                        passes.meter.get()
+                    },
+                    &self.meter.as_ref().expect("metering bound")[cx.slot],
+                );
+            }
             FramePass::Reduce(i) => fullscreen_pass(
                 encoder,
                 "meter reduce",

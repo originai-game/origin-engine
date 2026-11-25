@@ -46,7 +46,6 @@ impl BindCx<'_> {
 
 pub(super) struct Temporal {
     taa: Option<Pair>,
-    sharpen: Option<Pair>,
 }
 
 impl Temporal {
@@ -70,11 +69,7 @@ impl Temporal {
                 )
             })
         });
-        // The sharpening reads what TAA wrote this frame (as both images).
-        let sharpen = history.filter(|_| cx.has(FramePass::TaaSharpen)).map(|h| {
-            cx.pair(|slot| cx.temporal("taa sharpen", &h[slot], &h[slot], &cx.passes.no_reactive))
-        });
-        Temporal { taa, sharpen }
+        Temporal { taa }
     }
 
     pub fn encode(
@@ -85,7 +80,6 @@ impl Temporal {
     ) -> Option<u32> {
         let passes = cx.passes;
         Some(match pass {
-            FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),
             FramePass::Taa => {
                 let draws = if passes.fsr.active() {
                     passes.fsr.encode(encoder)
@@ -128,20 +122,6 @@ impl Temporal {
                 }
                 draws
             }
-            FramePass::TaaSharpen => match (&passes.taa_sharpen_pipeline, &self.sharpen) {
-                (Some(pipeline), Some(groups)) => {
-                    fullscreen_pass(
-                        encoder,
-                        "taa sharpen",
-                        cx.graph.view("hdr.sharp"),
-                        CLEAR,
-                        pipeline.get(),
-                        &groups[cx.slot],
-                    );
-                    1
-                }
-                _ => 0,
-            },
             _ => return None,
         })
     }

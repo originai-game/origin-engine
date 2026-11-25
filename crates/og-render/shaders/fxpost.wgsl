@@ -11,6 +11,7 @@
 @group(0) @binding(3) var tex_depth: texture_2d<f32>;  // the prepass view depth (R32Float)
 @group(0) @binding(4) var tex_gbuffer: texture_2d<f32>;  // oct normal, velocity
 @group(0) @binding(5) var tex_b: texture_2d<f32>;   // filterable: outline ids, AO, the blurred half
+@group(0) @binding(8) var tex_depth_mips: texture_2d<f32>; // half..sixteenth filtered depth pyramid (depth_mips.wgsl)
 
 // The prepass texel under pixel `px` of this pass's frame (`fxp.screen`):
 // the same pixel, or under TAAU, where the passes after TAA run at the
@@ -35,12 +36,22 @@ fn depth_tap(uv: vec2<f32>, size: vec2<i32>, size_f: vec2<f32>) -> f32 {
   return textureLoad(tex_depth, clamp(vec2<i32>(uv * size_f), vec2<i32>(0), size - 1), 0).r;
 }
 
-// The view depth at `uv` on MIP level `level` of the depth (the AO pass's
-// is the MIP chain, depth_mips.wgsl; elsewhere it has one level), `size`
-// its level 0's size.
+// Coarsest depth MIP level available (0 when only full-res `tex_depth` is
+// bound, 4 when the half..sixteenth `tex_depth_mips` chain is bound).
+fn depth_mips_top() -> i32 {
+  let dim = textureDimensions(tex_depth_mips);
+  return select(0, i32(textureNumLevels(tex_depth_mips)), dim.x > 1u || dim.y > 1u);
+}
+
+// The view depth at `uv` on MIP level `level`: level 0 reads full-res
+// `tex_depth` directly; levels 1..4 read half..sixteenth `tex_depth_mips`.
 fn depth_mip_tap(uv: vec2<f32>, size: vec2<i32>, level: i32) -> f32 {
-  let s = max(size >> vec2<u32>(u32(level)), vec2<i32>(1));
-  return textureLoad(tex_depth, clamp(vec2<i32>(uv * vec2<f32>(s)), vec2<i32>(0), s - 1), level).r;
+  if (level <= 0) {
+    return textureLoad(tex_depth, clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1), 0).r;
+  }
+  let mip = level - 1;
+  let s = vec2<i32>(textureDimensions(tex_depth_mips, mip));
+  return textureLoad(tex_depth_mips, clamp(vec2<i32>(uv * vec2<f32>(s)), vec2<i32>(0), s - 1), mip).r;
 }
 
 // The MIP level a tap `offset_px` pixels from its pixel reads (XeGTAO's
@@ -176,7 +187,7 @@ fn gtao_core(in: VsOut, want_bent: bool) -> vec4<f32> {
   // Loop invariants held outside the loops: the depth's size and its
   // coarsest level, and each slice's jitter.
   let dsize = vec2<i32>(textureDimensions(tex_depth));
-  let top = i32(textureNumLevels(tex_depth)) - 1;
+  let top = depth_mips_top();
   for (var s = 0u; s < slices; s++) {
     let jitter = fract(noise * 4.0 + f32(s) * 0.37);
     let phi = (f32(s) + noise) * PI / f32(slices);
@@ -808,18 +819,22 @@ fn band_color(a: vec3<f32>, b: vec3<f32>, t: f32) -> vec3<f32> {
   return max(oklab_decode(vec3<f32>(mix(la.x, lb.x, t), chroma * cos(h), chroma * sin(h))), vec3<f32>(0.0));
 }
 
-// The signed circle of confusion in half-resolution pixels (near < 0): by
-// the distance `d` from the focus range, or with a tilt-shift band
-// (dof2.y) by the image row `y` (0 at the top) from the strip across the
-// middle, the rows above it far and those below near.
+// The signed circle of confusion in half-resolution pixels (near < 0): uses
+// physical thin-lens scaling (`f / d`) outside the focus band so foreground
+// objects approaching the lens blur rapidly while far backgrounds saturate
+// naturally, or a screen-row band under tilt-shift (`dof2.y`).
 fn coc(d: f32, y: f32) -> f32 {
   var off = d - fxp.dof.x;
   var band = fxp.dof.y;
-  if (fxp.dof2.y > 0.0) {
+  let tilt_shift = fxp.dof2.y > 0.0;
+  if (tilt_shift) {
     off = 0.5 - y;
     band = fxp.dof2.y;
   }
-  let blur = clamp((abs(off) - band) / max(band * fxp.dof.w, 1e-3), 0.0, 1.0) * fxp.dof.z * 0.5;
+  let focal = max(fxp.dof.x, band);
+  let lens_scale = select(focal / max(d, 0.1), 1.0, tilt_shift);
+  let excess = max(abs(off) - band, 0.0) * lens_scale;
+  let blur = clamp(excess / max(band * fxp.dof.w, 1e-3), 0.0, 1.0) * fxp.dof.z * 0.5;
   return select(blur, -blur, off < 0.0);
 }
 
@@ -842,17 +857,58 @@ fn fs_dof_coc(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
   let size = vec2<f32>(textureDimensions(tex_a));
+  let inv_size = 1.0 / size;
   let center = sample_exact(tex_a, fx_linear, in.uv);
   let c0 = center.a;
   let taps = u32(fxp.dof2.x);
   let max_r = fxp.dof.z * 0.5;
+  // Fast-path early-out on in-focus pixels with no nearby foreground bleed:
+  // probe 4 cardinal taps at half max radius (plus 4 outer diagonals at High
+  // quality) before executing the full 16..48 tap bokeh disc.
+  if (abs(c0) < 0.25 && max_r > 0.0) {
+    let r_half = max_r * 0.5 * inv_size;
+    var min_near = min(
+      min(
+        textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_half.x, 0.0), 0.0).a,
+        textureSampleLevel(tex_a, fx_linear, in.uv - vec2<f32>(r_half.x, 0.0), 0.0).a,
+      ),
+      min(
+        textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(0.0, r_half.y), 0.0).a,
+        textureSampleLevel(tex_a, fx_linear, in.uv - vec2<f32>(0.0, r_half.y), 0.0).a,
+      ),
+    );
+    if (taps > 16u && min_near >= -0.25) {
+      let r_diag = max_r * 0.65 * inv_size;
+      min_near = min(
+        min_near,
+        min(
+          min(
+            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_diag.x, r_diag.y), 0.0).a,
+            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(-r_diag.x, r_diag.y), 0.0).a,
+          ),
+          min(
+            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(r_diag.x, -r_diag.y), 0.0).a,
+            textureSampleLevel(tex_a, fx_linear, in.uv + vec2<f32>(-r_diag.x, -r_diag.y), 0.0).a,
+          ),
+        ),
+      );
+    }
+    if (min_near >= -0.25) {
+      return vec4<f32>(center.rgb, 0.0);
+    }
+  }
   var sum = center.rgb;
   var weight = 1.0;
   var near = 0.0;
+  // Incremental golden-angle rotation avoids per-tap cos/sin transcendentals.
+  const GA_COS: f32 = -0.73736888;
+  const GA_SIN: f32 = 0.67549029;
+  var dir = vec2<f32>(1.0, 0.0);
+  let inv_taps = 1.0 / f32(max(taps, 1u));
   for (var k = 0u; k < taps; k++) {
-    let r = sqrt((f32(k) + 0.5) / f32(taps)) * max_r;
-    let th = f32(k) * 2.39996323;
-    let uv = in.uv + vec2<f32>(cos(th), sin(th)) * r / size;
+    let r = sqrt((f32(k) + 0.5) * inv_taps) * max_r;
+    let uv = in.uv + dir * (r * inv_size);
+    dir = vec2<f32>(dir.x * GA_COS - dir.y * GA_SIN, dir.x * GA_SIN + dir.y * GA_COS);
     let s = textureSampleLevel(tex_a, fx_linear, uv, 0.0);
     let cs = s.a;
     var reach = abs(cs);
@@ -865,7 +921,7 @@ fn fs_dof_blur(in: VsOut) -> @location(0) vec4<f32> {
     weight += w * boost;
     if (cs < 0.0) { near += w; }
   }
-  let near_cover = clamp(near / f32(max(taps, 1u)) * 3.0, 0.0, 1.0);
+  let near_cover = clamp(near * inv_taps * 3.0, 0.0, 1.0);
   let a = max(clamp(abs(c0) - 0.5, 0.0, 1.0), near_cover);
   return vec4<f32>(sum / weight, a);
 }

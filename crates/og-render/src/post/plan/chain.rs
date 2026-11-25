@@ -19,7 +19,15 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
                 reads.push(lum);
             }
             if bloom {
-                reads.push("bloom.0");
+                reads.push(if cfg.compute_bloom {
+                    if has(FramePass::BloomUp(0)) {
+                        crate::post::bloom_spd::BLOOM_UP_TARGET
+                    } else {
+                        crate::post::bloom_spd::BLOOM_DOWN_TARGET
+                    }
+                } else {
+                    "bloom.0"
+                });
             }
             if has(FramePass::GodRaysResolve) {
                 reads.push("god.resolve");

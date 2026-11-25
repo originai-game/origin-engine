@@ -106,7 +106,13 @@ impl Renderer {
                     pass.needs()
                         | plans.needs(pass)
                         | match pass {
-                            FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
+                            FramePass::Taa if fsr => Caps::COMPUTE,
+                            FramePass::Meter if caps.contains(Caps::COMPUTE) => Caps::COMPUTE,
+                            FramePass::BloomPrefilter | FramePass::BloomUp(_)
+                                if self.graph.bloom_spd().is_some() =>
+                            {
+                                Caps::COMPUTE
+                            }
                             _ => Caps::NONE,
                         },
                 ),

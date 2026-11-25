@@ -80,6 +80,6 @@ pub(crate) struct GraphConfig {
     /// Large soft-depth billboard particles run in a half-resolution HDR
     /// target (`fx.half` + `fx.half_depth`) and composite bilaterally onto `hdr`.
     pub fx_half: bool,
-    /// FSR 3.1 compute RCAS writes `hdr.sharp` via a storage binding.
-    pub fsr: bool,
+    /// Compute LDS SPD bloom + compute tent upsample (Caps::COMPUTE & !unreal).
+    pub compute_bloom: bool,
 }

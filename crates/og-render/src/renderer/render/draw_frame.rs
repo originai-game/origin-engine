@@ -863,6 +863,7 @@ impl Renderer {
             lens_flare: effects.lens_flare,
             flare_sources_on: effects.flare_sources_on,
             glow,
+            taa,
             sprite_frame: &arenas.sprite_frame,
         });
         // The effects frame_uniforms.uniform and the decals (fx_uniform.rs).

@@ -5,10 +5,12 @@
 //! depth-normal prepass. Also the size-dependent targets they and the main
 //! pass draw into, as render graph targets.
 
+pub(crate) mod bloom_spd;
 pub(crate) mod color_vision;
 pub(crate) mod contact;
 pub(crate) mod depth_mips;
 pub(crate) mod display;
+pub(crate) mod exposure_hist;
 mod flare;
 pub(crate) mod fsr;
 pub(crate) mod glass;
@@ -404,6 +406,15 @@ pub(crate) fn fullscreen_pass(
     pipeline: Option<&wgpu::RenderPipeline>,
     bind_group: &wgpu::BindGroup,
 ) {
+    // Fullscreen triangles overwrite every pixel when the pipeline is ready;
+    // avoid redundant framebuffer clears while preserving Clear fallback for
+    // deferred pipelines still compiling on frame 0.
+    let load = match load {
+        wgpu::LoadOp::Clear(_) if pipeline.is_some() => {
+            wgpu::LoadOp::DontCare(unsafe { wgpu::LoadOpDontCare::enabled() })
+        }
+        other => other,
+    };
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some(label),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -453,9 +464,7 @@ pub(crate) struct PostPasses {
     taa: Option<Deferred<wgpu::RenderPipeline>>,
     /// The current-frame-only resolve when no history is valid yet.
     taa_fresh: Option<Deferred<wgpu::RenderPipeline>>,
-    /// TAA's sharpening pass, when [`AaOptions::taa_sharpen`] is above 0.
-    taa_sharpen_pipeline: Option<Deferred<wgpu::RenderPipeline>>,
-    /// Its strength (`TaaUniform::params.w`).
+    /// TAA/FSR sharpening strength (`RenderDesc::taa_sharpen`), fused into Tonemap CAS.
     pub taa_sharpen: f32,
     /// The tonemap into [`LDR_FORMAT`], for a frame with passes after it
     /// (FXAA, the stylisation chain); made on first use.
@@ -524,6 +533,10 @@ pub(crate) struct PostPasses {
     pub depth_mips: depth_mips::DepthMipsPass,
     /// Prefiltered colour MIP pyramid compute pass for SSGI (`depth_mips.rs`).
     pub color_mips: depth_mips::ColorMipsPass,
+    /// Compute 256-bin trimmed luminance histogram auto-exposure (`exposure_hist.rs`).
+    pub exposure_hist: exposure_hist::ExposureHistPass,
+    /// Compute LDS SPD bloom downsample & tent upsample (`bloom_spd.rs`).
+    pub bloom_spd: bloom_spd::BloomSpdPass,
 }
 
 /// A 3D RGBA8 LUT texture from a 32³ table.
@@ -696,6 +709,8 @@ pub(crate) fn post_sources() -> Vec<(&'static str, String)> {
         ("contact", contact::source()),
         ("depth mips", depth_mips::source()),
         ("color mips", depth_mips::color_source()),
+        ("exposure hist", exposure_hist::source()),
+        ("bloom spd", bloom_spd::source()),
     ])
     .collect()
 }

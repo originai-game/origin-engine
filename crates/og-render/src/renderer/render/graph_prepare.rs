@@ -136,7 +136,8 @@ impl Renderer {
                             || !scene.objects.impostors.is_empty()
                             || !scene.objects.crowds.is_empty()),
                     fx_half,
-                    fsr: self.will_use_fsr(scene, taa),
+                    compute_bloom: scene.look.post.bloom_unreal.is_none()
+                        && self.info.caps.contains(Caps::COMPUTE),
                 },
                 &self.post,
                 &self.persistent,
