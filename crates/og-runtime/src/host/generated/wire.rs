@@ -4900,6 +4900,14 @@ pub struct RenderCaps {
     pub vertex_storage: bool,
     pub independent_blend: bool,
     pub rg32_storage: bool,
+    pub rg32_renderable: bool,
+    pub high_binding_slots: bool,
+    pub rg11b10_renderable: bool,
+    pub depth_clip_control: bool,
+    pub shader_f16: bool,
+    pub subgroup: bool,
+    pub multi_draw_indirect_count: bool,
+    pub bindless_textures: bool,
 }
 
 impl Default for RenderCaps {
@@ -4915,6 +4923,14 @@ impl Default for RenderCaps {
             vertex_storage: Default::default(),
             independent_blend: Default::default(),
             rg32_storage: Default::default(),
+            rg32_renderable: Default::default(),
+            high_binding_slots: Default::default(),
+            rg11b10_renderable: Default::default(),
+            depth_clip_control: Default::default(),
+            shader_f16: Default::default(),
+            subgroup: Default::default(),
+            multi_draw_indirect_count: Default::default(),
+            bindless_textures: Default::default(),
         }
     }
 }
@@ -4936,6 +4952,14 @@ impl FromJson for RenderCaps {
             vertex_storage: field(o, "vertexStorage", d.vertex_storage)?,
             independent_blend: field(o, "independentBlend", d.independent_blend)?,
             rg32_storage: field(o, "rg32Storage", d.rg32_storage)?,
+            rg32_renderable: field(o, "rg32Renderable", d.rg32_renderable)?,
+            high_binding_slots: field(o, "highBindingSlots", d.high_binding_slots)?,
+            rg11b10_renderable: field(o, "rg11b10Renderable", d.rg11b10_renderable)?,
+            depth_clip_control: field(o, "depthClipControl", d.depth_clip_control)?,
+            shader_f16: field(o, "shaderF16", d.shader_f16)?,
+            subgroup: field(o, "subgroup", d.subgroup)?,
+            multi_draw_indirect_count: field(o, "multiDrawIndirectCount", d.multi_draw_indirect_count)?,
+            bindless_textures: field(o, "bindlessTextures", d.bindless_textures)?,
         })
     }
 }
@@ -4953,6 +4977,14 @@ impl ToJson for RenderCaps {
         o.insert("vertexStorage".into(), self.vertex_storage.to_json());
         o.insert("independentBlend".into(), self.independent_blend.to_json());
         o.insert("rg32Storage".into(), self.rg32_storage.to_json());
+        o.insert("rg32Renderable".into(), self.rg32_renderable.to_json());
+        o.insert("highBindingSlots".into(), self.high_binding_slots.to_json());
+        o.insert("rg11b10Renderable".into(), self.rg11b10_renderable.to_json());
+        o.insert("depthClipControl".into(), self.depth_clip_control.to_json());
+        o.insert("shaderF16".into(), self.shader_f16.to_json());
+        o.insert("subgroup".into(), self.subgroup.to_json());
+        o.insert("multiDrawIndirectCount".into(), self.multi_draw_indirect_count.to_json());
+        o.insert("bindlessTextures".into(), self.bindless_textures.to_json());
         Value::Object(o)
     }
 }

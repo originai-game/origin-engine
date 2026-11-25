@@ -36,4 +36,4 @@ enum Antialias {
 }
 ```
 
-<sub>Module `render` line 62</sub>
+<sub>Module `render` line 70</sub>

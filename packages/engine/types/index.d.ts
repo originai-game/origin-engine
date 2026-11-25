@@ -7408,6 +7408,34 @@ export interface RenderCaps {
    * Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it.
    */
   readonly rg32Storage: boolean;
+  /**
+   * Render-attachment support for rg32float textures (2D shadow maps and dual-channel float targets); falls back to rgba16float without it.
+   */
+  readonly rg32Renderable: boolean;
+  /**
+   * Extended per-stage binding budgets (at least 24 sampled textures and 8 storage buffers per stage) beyond WebGPU compatibility limits.
+   */
+  readonly highBindingSlots: boolean;
+  /**
+   * Render-attachment support for packed 32-bit HDR RGB (rg11b10ufloat) post-processing targets.
+   */
+  readonly rg11b10Renderable: boolean;
+  /**
+   * Unclipped depth (depth-clip-control), preventing near-plane shadow pancaking clips on directional shadow cascades.
+   */
+  readonly depthClipControl: boolean;
+  /**
+   * Native 16-bit floating-point WGSL arithmetic (shader-f16) for half-precision post-processing passes.
+   */
+  readonly shaderF16: boolean;
+  /** Subgroup / warp wave intrinsics (subgroups) for 256-lane prefix scans and reductions. */
+  readonly subgroup: boolean;
+  /** Hardware multi-draw indirect coalescing across contiguous compatible draw batches. */
+  readonly multiDrawIndirectCount: boolean;
+  /**
+   * Native bindless sampled texture arrays with non-uniform indexing (1024-slot shared material table).
+   */
+  readonly bindlessTextures: boolean;
 }
 
 /**

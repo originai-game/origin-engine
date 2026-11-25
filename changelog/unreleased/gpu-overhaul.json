@@ -1,0 +1,27 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "RenderCaps",
+      "summary": "Exposed Tier::Full hardware capability flags: rg32Renderable, highBindingSlots, rg11b10Renderable, depthClipControl, shaderF16, subgroup, multiDrawIndirectCount, and bindlessTextures."
+    },
+    {
+      "member": "og cook",
+      "summary": "Added 4 bpp compressed texture formats (Bc1, Bc4, Etc2Rgb8, EacR11), automatic metallic/roughness/AO (ORM) texture packing, and resident mip-tail streaming support."
+    },
+    {
+      "member": "og.render",
+      "summary": "Added Tier::Full subgroup WG=256 scans and reductions, FP16 compute SPD bloom, single-pass conservative SPD Hi-Z, balanced 2-stage meshlet culling, tile-classified 8 B/px VisBuffer resolve, native multi-draw indirect coalescing, native 1024-slot bindless opaque material table, Hillaire Sky-View LUT, compute histogram auto-exposure, single-pass compute pre-skinning, and automatic native pipeline cache persistence."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.render",
+      "summary": "Replaced the 148 B/px VisBuffer attribute buffer with a direct-pull 8 B/px tile-classified VisBuffer (eliminating high-resolution overflow) and wired analytic normal derivatives into specular AA and weathering normal bend."
+    },
+    {
+      "member": "og.render",
+      "summary": "Fixed FSR 3.1 exposure reset, motion jitter alignment, native sRGB dithering, contact shadow UV alignment, motion blur soft-Z and bent-normal blur, grass shadow depth clipping, and restored opaque Early-Z / Hi-Z by disabling alpha-to-coverage on non-discarding pipelines."
+    }
+  ]
+}

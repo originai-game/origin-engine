@@ -25481,6 +25481,38 @@
         "rg32Storage": {
           "type": "boolean",
           "description": "Storage bindings of two-channel 32-bit textures: scattered impostor cards take the depth prepass's surface with it, and search their frames again without it."
+        },
+        "rg32Renderable": {
+          "type": "boolean",
+          "description": "Render-attachment support for rg32float textures (2D shadow maps and dual-channel float targets); falls back to rgba16float without it."
+        },
+        "highBindingSlots": {
+          "type": "boolean",
+          "description": "Extended per-stage binding budgets (at least 24 sampled textures and 8 storage buffers per stage) beyond WebGPU compatibility limits."
+        },
+        "rg11b10Renderable": {
+          "type": "boolean",
+          "description": "Render-attachment support for packed 32-bit HDR RGB (rg11b10ufloat) post-processing targets."
+        },
+        "depthClipControl": {
+          "type": "boolean",
+          "description": "Unclipped depth (depth-clip-control), preventing near-plane shadow pancaking clips on directional shadow cascades."
+        },
+        "shaderF16": {
+          "type": "boolean",
+          "description": "Native 16-bit floating-point WGSL arithmetic (shader-f16) for half-precision post-processing passes."
+        },
+        "subgroup": {
+          "type": "boolean",
+          "description": "Subgroup / warp wave intrinsics (subgroups) for 256-lane prefix scans and reductions."
+        },
+        "multiDrawIndirectCount": {
+          "type": "boolean",
+          "description": "Hardware multi-draw indirect coalescing across contiguous compatible draw batches."
+        },
+        "bindlessTextures": {
+          "type": "boolean",
+          "description": "Native bindless sampled texture arrays with non-uniform indexing (1024-slot shared material table)."
         }
       },
       "required": [
@@ -25493,7 +25525,15 @@
         "fragmentStorage",
         "vertexStorage",
         "independentBlend",
-        "rg32Storage"
+        "rg32Storage",
+        "rg32Renderable",
+        "highBindingSlots",
+        "rg11b10Renderable",
+        "depthClipControl",
+        "shaderF16",
+        "subgroup",
+        "multiDrawIndirectCount",
+        "bindlessTextures"
       ],
       "additionalProperties": false
     },

@@ -94,4 +94,4 @@ resource GlobalIllumination {
 }
 ```
 
-<sub>Module `render` line 1605</sub>
+<sub>Module `render` line 1613</sub>

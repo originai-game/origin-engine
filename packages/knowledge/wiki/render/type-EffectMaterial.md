@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle EffectMaterial "An effect material for og.Trail.effect and og.Beam.effect, from og.load.effect (an `.ogt` of `type effect`)."
 ```
 
-<sub>Module `render` line 980</sub>
+<sub>Module `render` line 988</sub>
