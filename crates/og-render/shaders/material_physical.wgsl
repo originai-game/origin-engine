@@ -28,15 +28,13 @@ struct PhysicalFactors {
 @group(1) @binding(6) var material_pack: texture_2d_array<f32>;
 @group(1) @binding(7) var<uniform> physical: PhysicalFactors;
 
-// One layer of the pack at `uv`, white where the material has none. The
-// pack is always sampled and the result selected: a sample after a
-// branch on an argument is not in uniform control flow.
-fn pack_sample(layer: f32, uv: vec2<f32>) -> vec4<f32> {
-  let texel = textureSample(material_pack, material_sampler, uv, i32(max(layer, 0.0)));
-  let gx = dpdxFine(uv);
-  let gy = dpdyFine(uv);
-  let amount = stochastic_amount(textureDimensions(material_pack), gx, gy);
+// One layer of the pack at `uv`, white where the material has none. Explicit
+// gradients let unused layers skip the texture fetch while remaining in
+// uniform control flow for derivatives.
+fn pack_sample(layer: f32, uv: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> vec4<f32> {
   if (layer < 0.0) { return vec4<f32>(1.0); }
+  let texel = textureSampleGrad(material_pack, material_sampler, uv, i32(layer), gx, gy);
+  let amount = stochastic_amount(textureDimensions(material_pack), gx, gy);
   if (amount <= 0.0) { return texel; }
   let grid = stochastic_grid(uv);
   let a = textureSampleGrad(material_pack, material_sampler, uv + grid.a, i32(layer), gx, gy);

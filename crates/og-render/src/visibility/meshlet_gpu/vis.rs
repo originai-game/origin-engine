@@ -401,9 +401,10 @@ impl VisBuffer {
                 module,
                 Side::Double.into(),
                 false,
+                false,
                 None,
                 Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),
-                &[("DISCARD", 0.0)],
+                &[],
             ));
         }
         self.checks.push(Box::pin(validation.pop()));

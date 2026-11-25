@@ -49,14 +49,14 @@ impl Renderer {
                         .array_maps
                         .as_ref()
                         .filter(|_| b.array)
-                        .and_then(|a| a.prepass.get(&(b.faces, true)));
+                        .and_then(|a| a.prepass.get(&(b.faces, true, b.dissolve)));
                     hooked
                         .or(array)
                         .map(|p| p.get())
                         .or_else(|| {
                             self.prepass
                                 .prepass_pipelines
-                                .get(&(b.faces, true))
+                                .get(&(b.faces, true, b.dissolve))
                                 .map(|p| p.get(self.frame_features))
                         })
                         .unwrap_or(lit_skinned[0])

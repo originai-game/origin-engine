@@ -223,7 +223,6 @@ impl Renderer {
                         effects: m.effects,
                         shader: m.shader,
                         lean: false,
-                        derivatives: m.flat,
                         reveal,
                         compact: false,
                         array: m.array.is_some(),

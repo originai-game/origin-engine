@@ -32,10 +32,10 @@ impl Renderer {
         physical: bool,
     ) -> Option<&wgpu::RenderPipeline> {
         if b.lean && !skinned {
-            return self.lit.lean_pipelines[&(b.faces, b.effects, b.derivatives, b.compact)]
+            return self.lit.lean_pipelines[&(b.faces, b.effects, b.dissolve, b.compact)]
                 .get(self.frame_features);
         }
-        let key = (b.faces, b.blend, skinned, b.effects);
+        let key = (b.faces, b.blend, skinned, b.effects, b.dissolve);
         if b.array && !physical {
             return self.lit.array_maps.as_ref().expect("an array batch").lit[&key].get();
         }
@@ -47,7 +47,10 @@ impl Renderer {
                 .expect("a physical batch")
                 .pipelines[&key]
                 .get(),
-            (true, Some(sh)) => self.cache.physical_hook_pipelines[&(sh, key)].get(),
+            (true, Some(sh)) => {
+                let hook_key = (b.faces, b.blend, skinned, b.effects, true);
+                self.cache.physical_hook_pipelines[&(sh, hook_key)].get()
+            }
             (false, Some(sh)) => {
                 self.cache.hook_pipelines[&(sh, b.faces, b.blend, b.effects, skinned)].get()
             }
@@ -81,7 +84,7 @@ impl Renderer {
             return self
                 .prepass
                 .lean_prepass_pipelines
-                .get(&(b.faces, b.derivatives, b.compact))
+                .get(&(b.faces, b.dissolve, b.compact))
                 .and_then(|p| p.get(self.frame_features));
         }
         if b.array {
@@ -89,12 +92,12 @@ impl Renderer {
                 .lit
                 .array_maps
                 .as_ref()
-                .and_then(|a| a.prepass.get(&(b.faces, skinned)))
+                .and_then(|a| a.prepass.get(&(b.faces, skinned, b.dissolve)))
                 .and_then(|p| p.get());
         }
         self.prepass
             .prepass_pipelines
-            .get(&(b.faces, skinned))
+            .get(&(b.faces, skinned, b.dissolve))
             .and_then(|p| p.get(self.frame_features))
     }
 

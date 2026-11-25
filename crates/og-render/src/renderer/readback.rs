@@ -226,7 +226,13 @@ impl Renderer {
     fn warm_plain_lit(&mut self) -> bool {
         // With the effect shader when the frame puts it on every batch:
         // the variant without it would be made for nothing.
-        let key = (Side::Front.into(), false, false, self.lit.plain_effects);
+        let key = (
+            Side::Front.into(),
+            false,
+            false,
+            self.lit.plain_effects,
+            false,
+        );
         if !self.lit.pbr_pipelines.contains_key(&key) {
             let p = pbr_pipeline(
                 &self.device,

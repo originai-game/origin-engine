@@ -131,12 +131,20 @@ pub(crate) fn styled(m: &StandardMaterial, style: &crate::MaterialStyle) -> Stan
 pub(crate) fn uniform(m: &StandardMaterial, two_channel_normal: bool) -> MaterialUniform {
     let has_normal = m.normalMap != 0;
     let cutoff = if m.alphaTest > 0.0 { m.alphaTest } else { -1.0 };
+    let has_base = m.map != 0 || m.draws_array_maps();
+    let has_metalness = m.metalnessMap != 0;
+    let has_roughness = m.roughnessMap != 0;
+    let has_emissive = m.emissiveMap != 0;
     let mode = (m.flatShading != 0) as u32
         | ((m.unlit != 0) as u32) << 1
         | (m.is_transparent() as u32) << 2
         | ((m.styled == 0) as u32) << 3
         | ((m.alphaToCoverage != 0 && m.alphaTest > 0.0) as u32) << 4
-        | ((m.side() != Side::Double) as u32) << 5;
+        | ((m.side() != Side::Double) as u32) << 5
+        | (has_base as u32) << 6
+        | (has_metalness as u32) << 7
+        | (has_roughness as u32) << 8
+        | (has_emissive as u32) << 9;
     let scale = if has_normal { m.normalScale } else { Vec2::ONE };
     MaterialUniform {
         base_color: [m.color.x, m.color.y, m.color.z, m.opacity],
@@ -465,12 +473,12 @@ pub(crate) struct ArrayMaps {
     pub layouts: (wgpu::PipelineLayout, wgpu::PipelineLayout),
     pub module: wgpu::ShaderModule,
     pub shadow_module: wgpu::ShaderModule,
-    /// By (side, blended, skinned, effects).
+    /// By (side, blended, skinned, effects, dissolve).
     pub lit:
         std::collections::HashMap<crate::PbrKey, crate::deferred::Deferred<wgpu::RenderPipeline>>,
-    /// By (side, skinned).
+    /// By (side, skinned, dissolve).
     pub prepass: std::collections::HashMap<
-        (crate::Faces, bool),
+        (crate::Faces, bool, bool),
         crate::deferred::Deferred<wgpu::RenderPipeline>,
     >,
     /// Unskinned casters by (side, dissolve) (skinned instances carry no

@@ -368,7 +368,6 @@ impl Renderer {
             let mut loaded = self.loaded_batches(scene);
             for b in loaded.iter_mut().filter(|_| plain) {
                 b.effects = true;
-                b.derivatives |= decals;
             }
             (self.loaded.0, self.loaded.1) = (read, loaded);
         }

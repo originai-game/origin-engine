@@ -20,18 +20,10 @@ fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> Prep
 // What the prepass writes for a fragment (`fs_prepass`, and
 // `fs_prepass_lean`, which may drop the discard: DISCARD in pbr_fs.wgsl).
 fn prepass_targets(in: PrepassOut) -> PrepassTargets {
+  let mode = u32(material.flags.w);
   // The lit pass's uv (pbr.wgsl `stylised_uv`), so both cut the same pixels.
   let uv = stylised_uv(in.uv, in.affine);
-  let base_uv = material_uv(UV_MAP, uv);
-  var base_sample: vec4<f32>;
-  if (ANALYTIC) {
-    let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
-    let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
-    base_sample = base_texel(base_uv, gx, gy);
-  } else {
-    base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
-  }
-  // A material shader's colour (and alpha cut) as in the lit pass.
+  // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
@@ -44,18 +36,29 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.front = hook_front;
   hook.wind = frame.foliage_wind[0][0];
   let params = shader_params();
-  let base = surface_color(hook, params, material.base_color * base_sample * in.color);
-  let dissolved = dissolve_at(uv, in.local_pos).w > 0.5;
-  // An instance fading in: the pixels the lit pass cuts (instance.wgsl
-  // `dither_cut`), from the bits `outline_object` put above its id.
-  let hidden = dither_cut(hidden_share((in.object >> 16u) & 511u), in.clip.xy, frame.drawn.w);
   if (DISCARD) {
+    var base_sample = vec4<f32>(1.0);
+    if ((mode & 64u) != 0u) {
+      let base_uv = material_uv(UV_MAP, uv);
+      if (ANALYTIC) {
+        let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
+        let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
+        base_sample = base_texel(base_uv, gx, gy);
+      } else {
+        base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
+      }
+    }
+    let base = surface_color(hook, params, material.base_color * base_sample * in.color);
+    let dissolved = dissolve_at(uv, in.local_pos).w > 0.5;
+    // An instance fading in: the pixels the lit pass cuts (instance.wgsl
+    // `dither_cut`), from the bits `outline_object` put above its id.
+    let hidden = dither_cut(hidden_share((in.object >> 16u) & 511u), in.clip.xy, frame.drawn.w);
     if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved || hidden) {
       discard;
     }
   }
   var n = normalize(in.normal);
-  if ((u32(material.flags.w) & 1u) != 0u) {
+  if ((mode & 1u) != 0u) {
     n = -normalize(cross(world_dx(in.world_pos), world_dy(in.world_pos))) * hook_front;
   }
   n *= material_face(hook_front);
@@ -69,13 +72,22 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // y: the reflectivity screen-space reflections read (ssr.rs): the gloss
   // and metalness as the lit pass shades them (the factors times their
   // maps' b and g), none for an unlit material (mode bit 2).
-  let unlit = (u32(material.flags.w) & 2u) != 0u;
-  var metalness = clamp(surface_metalness(hook, params, material.mr.x * material_sample(metalness_tex, UV_METALNESS, uv, 1u).b), 0.0, 1.0);
-  var roughness = clamp(surface_roughness(hook, params, material.mr.y * material_sample(roughness_tex, UV_METALNESS, uv, 2u).g), 0.04, 1.0);
+  let unlit = (mode & 2u) != 0u;
+  var reflectivity = 0.0;
   // Wet ground, streaks and puddles as the lit pass shades them
   // (weather_surface.wgsl weather_gloss): reflections see the puddles as
   // mirrors and their ripples, and the normal is the water's.
   if (!unlit) {
+    var metalness_factor = material.mr.x;
+    if ((mode & 128u) != 0u && metalness_factor > 0.0) {
+      metalness_factor *= material_sample(metalness_tex, UV_METALNESS, uv, 1u).b;
+    }
+    var roughness_factor = material.mr.y;
+    if ((mode & 256u) != 0u) {
+      roughness_factor *= material_sample(roughness_tex, UV_METALNESS, uv, 2u).g;
+    }
+    var metalness = clamp(surface_metalness(hook, params, metalness_factor), 0.0, 1.0);
+    var roughness = clamp(surface_roughness(hook, params, roughness_factor), 0.04, 1.0);
     var surface: Surface;
     surface.metallic = metalness;
     surface.roughness = roughness;
@@ -95,8 +107,8 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);
+    reflectivity = reflectivity_bits(roughness, metalness);
   }
-  let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, unlit);
   // Above the reflectivity's 16 bits, the painterly filter's detail byte
   // (stylise.wgsl paint_detail): the material's paintDetail in 7 bits, bit 7
   // a skinned instance (a character). At most 2^24, exact in an f32.

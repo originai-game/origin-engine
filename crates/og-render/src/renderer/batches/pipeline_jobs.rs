@@ -84,7 +84,7 @@ impl Renderer {
                     .array_maps
                     .as_ref()
                     .expect("made with the material");
-                let key = (b.faces, b.blend, is_skinned, b.effects);
+                let key = (b.faces, b.blend, is_skinned, b.effects, b.dissolve);
                 add_job!(jobs, Slot::ArrayLit(key), a.lit.contains_key(&key), {
                     let (d, layouts, module) =
                         (device.clone(), a.layouts.clone(), a.module.clone());
@@ -98,15 +98,20 @@ impl Renderer {
                         ))
                     }))
                 });
-                let key = (b.faces, is_skinned);
+                let key = (b.faces, is_skinned, b.dissolve);
                 if prepass && !b.transparent {
                     add_job!(
                         jobs,
                         Slot::ArrayPrepass(key),
                         a.prepass.contains_key(&key),
                         {
-                            let (d, layouts, module, side) =
-                                (device.clone(), a.layouts.clone(), a.module.clone(), b.faces);
+                            let (d, layouts, module, side, discard) = (
+                                device.clone(),
+                                a.layouts.clone(),
+                                a.module.clone(),
+                                b.faces,
+                                b.dissolve,
+                            );
                             Work::Once(Box::new(move || {
                                 Made::Pipeline(prepass_pipeline(
                                     &d,
@@ -114,6 +119,7 @@ impl Renderer {
                                     &module,
                                     side,
                                     is_skinned,
+                                    discard,
                                     None,
                                     None,
                                     &[],
@@ -147,7 +153,7 @@ impl Renderer {
             if b.physical {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
-                let key = (b.faces, b.blend, is_skinned, b.effects);
+                let key = (b.faces, b.blend, is_skinned, b.effects, b.dissolve);
                 let physical = self.lit.physical.as_ref().expect("made with the material");
                 match b.shader {
                     None => {
@@ -174,10 +180,13 @@ impl Renderer {
                         );
                     }
                     Some(sh) => {
+                        let hook_key = (b.faces, b.blend, is_skinned, b.effects, true);
                         add_job!(
                             jobs,
-                            Slot::PhysicalHook((sh, key)),
-                            self.cache.physical_hook_pipelines.contains_key(&(sh, key)),
+                            Slot::PhysicalHook((sh, hook_key)),
+                            self.cache
+                                .physical_hook_pipelines
+                                .contains_key(&(sh, hook_key)),
                             {
                                 let layouts = physical.layouts.clone();
                                 let d = device.clone();
@@ -187,7 +196,7 @@ impl Renderer {
                                         &d,
                                         (&layouts.0, &layouts.1),
                                         &module,
-                                        key,
+                                        hook_key,
                                         samples,
                                         true,
                                         &[],
@@ -200,7 +209,7 @@ impl Renderer {
             }
             if let Some(sh) = b.shader {
                 let key = (sh, b.faces, b.blend, b.effects, is_skinned);
-                let lit = (b.faces, b.blend, is_skinned, b.effects);
+                let lit = (b.faces, b.blend, is_skinned, b.effects, true);
                 add_job!(
                     jobs,
                     Slot::Hook(key),
@@ -258,6 +267,7 @@ impl Renderer {
                                     &module,
                                     side,
                                     is_skinned,
+                                    true,
                                     None,
                                     None,
                                     &[],
@@ -270,7 +280,7 @@ impl Renderer {
             if b.lean && !is_skinned {
                 // A plain material: the lean lit and prepass pipelines (its
                 // shadows take the shadow pipeline below, lean as well).
-                let key = (b.faces, b.effects, b.derivatives, b.compact);
+                let key = (b.faces, b.effects, b.dissolve, b.compact);
                 add_job!(
                     jobs,
                     Slot::Lean(key),
@@ -286,7 +296,7 @@ impl Renderer {
                         }))
                     }
                 );
-                let key = (b.faces, b.derivatives, b.compact);
+                let key = (b.faces, b.dissolve, b.compact);
                 if prepass {
                     add_job!(
                         jobs,
@@ -295,7 +305,7 @@ impl Renderer {
                         {
                             let (d, layouts, module) =
                                 (device.clone(), pbr.clone(), pbr_shader.clone());
-                            let (side, lean) = (b.faces, (b.derivatives, b.compact));
+                            let (side, discard, compact) = (b.faces, b.dissolve, b.compact);
                             Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
                                 Made::Pipeline(prepass_pipeline(
                                     &d,
@@ -303,7 +313,8 @@ impl Renderer {
                                     &module,
                                     side,
                                     false,
-                                    Some(lean),
+                                    discard,
+                                    Some(compact),
                                     None,
                                     off,
                                 ))
@@ -340,7 +351,7 @@ impl Renderer {
             let uses_standard_lit =
                 !(b.lean && !is_skinned) && !(b.array && !b.physical) && b.shader.is_none();
             if uses_standard_lit {
-                let key = (b.faces, b.blend, is_skinned, b.effects);
+                let key = (b.faces, b.blend, is_skinned, b.effects, b.dissolve);
                 add_job!(
                     jobs,
                     Slot::Pbr(key),
@@ -393,7 +404,7 @@ impl Renderer {
                 && !(b.lean && !is_skinned)
                 && !(!is_skinned && b.simulated && self.cache.meshes[b.mesh].surface.is_some());
             if uses_standard_prepass {
-                let key = (b.faces, is_skinned);
+                let key = (b.faces, is_skinned, b.dissolve);
                 add_job!(
                     jobs,
                     Slot::Prepass(key),
@@ -408,6 +419,7 @@ impl Renderer {
                                 &module,
                                 key.0,
                                 key.1,
+                                key.2,
                                 None,
                                 None,
                                 off,
@@ -427,7 +439,7 @@ impl Renderer {
 pub(super) enum Slot {
     SurfacePrepass((Option<usize>, Faces, bool)),
     ArrayLit(PbrKey),
-    ArrayPrepass((Faces, bool)),
+    ArrayPrepass((Faces, bool, bool)),
     ArrayShadow((Faces, bool)),
     Physical(PbrKey),
     PhysicalHook((usize, PbrKey)),
@@ -439,7 +451,7 @@ pub(super) enum Slot {
     CompactShadow(Faces),
     Pbr(PbrKey),
     Shadow(ShadowKey),
-    Prepass((Faces, bool)),
+    Prepass((Faces, bool, bool)),
 }
 
 /// What a batch pipeline's job makes.

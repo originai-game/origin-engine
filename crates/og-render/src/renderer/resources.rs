@@ -217,11 +217,9 @@ pub(crate) struct GpuMaterial {
     /// Plain: an occluder with no texture, no effect (toon, rim, flash,
     /// outline) and not physical. Its unskinned instances draw through the
     /// lean lit and prepass pipelines (`pbr_lean.wgsl`): the same pixels
-    /// with fewer attributes read, fewer varyings and (without screen
-    /// derivatives) no discard.
+    /// with fewer attributes read, fewer varyings and (unless fading in)
+    /// no discard.
     pub(crate) lean: bool,
-    /// Flat-shaded: its normals come from screen derivatives.
-    pub(crate) flat: bool,
     /// Its triangles' edges drawn as lines (`lines.rs`): every edge, or
     /// with a feature angle above 0 its borders and creases past that
     /// angle (`lines::feature_edges`).
@@ -407,11 +405,6 @@ pub(crate) struct Batch {
     pub(crate) shader: Option<usize>,
     /// Drawn with the lean pipelines ([`GpuMaterial::lean`]; never skinned).
     pub(crate) lean: bool,
-    /// Its fragments take screen derivatives (flat shading, or the frame's
-    /// decals): its lean pipelines keep the discard (`DISCARD` in
-    /// pbr_fs.wgsl), so the derivatives are the full pipeline's. A run
-    /// fading in keeps it too: the dither is that discard.
-    pub(crate) derivatives: bool,
     /// Its instances are fading in ([`crate::InstanceFx::reveal`]): cut by
     /// the dither in the lit, prepass and shadow passes, and drawn off the
     /// cluster path, whose rasteriser keeps one surface a pixel.
@@ -481,15 +474,16 @@ pub(crate) struct SkinnedFrame {
     pub(crate) baked_moved: bool,
 }
 
-/// The lit pipelines: (side, blended, skinned, effects). Without effects the
-/// shader's `EFFECTS` override is false: the toon, rim, flash, dissolve,
-/// decal and AO code is compiled out (the features-off cost). The physical
-/// pipelines are keyed the same (`physical.rs`).
-pub(crate) type PbrKey = (Faces, bool, bool, bool);
+/// The lit pipelines: (side, blended, skinned, effects, discard). Without
+/// effects the shader's `EFFECTS` override is false; without discard the
+/// shader's `DISCARD` override is false and alpha-to-coverage is off so
+/// opaque geometry retains hardware Early-Z / Hi-Z. The physical pipelines
+/// are keyed the same (`physical.rs`).
+pub(crate) type PbrKey = (Faces, bool, bool, bool, bool);
 /// The shadow pipelines: (side, skinned, dissolving).
 pub(crate) type ShadowKey = (Faces, bool, bool);
 /// What a lit pass's draws switch pipelines on: (side, blended, effects,
-/// material shader, physical, lean, derivatives, compact, array).
+/// material shader, physical, lean, dissolve, compact, array).
 pub(crate) type LitDrawKey = (
     Faces,
     bool,
@@ -501,10 +495,10 @@ pub(crate) type LitDrawKey = (
     bool,
     bool,
 );
-/// The lean lit pipelines: (side, effects, derivatives, compact); `effects`
+/// The lean lit pipelines: (side, effects, dissolve, compact); `effects`
 /// as in [`PbrKey`] (a plain material has none of its own: the frame's
-/// decals or AO), `derivatives` as [`Batch::derivatives`], `compact`: the
-/// vertices are [`VertexEncoding::Compact`]'s.
+/// decals or AO), `dissolve`: fading in, `compact`: the vertices are
+/// [`VertexEncoding::Compact`]'s.
 pub(crate) type LeanKey = (Faces, bool, bool, bool);
 
 /// What a frame's CPU culls share ([`Renderer::cull`]), kept between

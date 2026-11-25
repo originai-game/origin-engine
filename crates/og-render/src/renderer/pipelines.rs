@@ -342,7 +342,7 @@ pub(crate) fn lit_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
-    (faces, transparent, skinned, effects): PbrKey,
+    (faces, transparent, skinned, effects, discard): PbrKey,
     samples: u32,
     physical: bool,
     // The features left out (pipeline_features.rs).
@@ -351,6 +351,9 @@ pub(crate) fn lit_pipeline(
     let plain = [Some(VERTEX_LAYOUT), Some(INSTANCE_LAYOUT)];
     let mut constants = vec![("EFFECTS", effects as u32 as f64)];
     constants.extend_from_slice(off);
+    if !discard {
+        constants.push(("DISCARD", 0.0));
+    }
     let skin = [
         Some(VERTEX_LAYOUT),
         Some(skin::SKINNED_INSTANCE_LAYOUT),
@@ -361,8 +364,9 @@ pub(crate) fn lit_pipeline(
         &constants,
         faces.front(),
         HdrPipeline {
-            // Opaque lit pixels write alpha 1 (every sample); alpha-to-coverage materials write their coverage.
-            alpha_to_coverage: !transparent,
+            // Only alpha-tested / dissolving opaque pipelines need alpha-to-coverage;
+            // disabling it on non-discarding opaque pipelines preserves hardware Early-Z / Hi-Z.
+            alpha_to_coverage: !transparent && discard,
             label: match (physical, transparent) {
                 (false, false) => "pbr",
                 (false, true) => "pbr blended",
@@ -394,22 +398,22 @@ pub(crate) fn lit_pipeline(
 }
 
 /// The lean lit pipeline of a plain material ([`GpuMaterial::lean`]) for
-/// (side, effects, derivatives, compact): opaque and unskinned by
+/// (side, effects, dissolve, compact): opaque and unskinned by
 /// construction, `pbr_lean.wgsl`'s entry points with `EFFECTS` as
-/// [`lit_pipeline`]'s and without the discard unless the fragments take
-/// derivatives, reading [`Vertex`] or the compact vertices.
+/// [`lit_pipeline`]'s and without the discard unless the run is fading in
+/// (`dissolve`), reading [`Vertex`] or the compact vertices.
 pub(crate) fn lean_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     module: &wgpu::ShaderModule,
-    (faces, effects, derivatives, compact): LeanKey,
+    (faces, effects, dissolve, compact): LeanKey,
     samples: u32,
     // The features left out (pipeline_features.rs).
     off: &[(&'static str, f64)],
 ) -> wgpu::RenderPipeline {
     let mut constants = vec![("EFFECTS", effects as u32 as f64)];
     constants.extend_from_slice(off);
-    if !derivatives {
+    if !dissolve {
         constants.push(("DISCARD", 0.0));
     }
     hdr_pipeline_facing(
@@ -455,10 +459,9 @@ const PREV_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBuff
     attributes: &wgpu::vertex_attr_array![11 => Float32x3, 12 => Float32x3, 13 => Float32x3, 14 => Float32x3],
 };
 
-/// The depth-normal prepass pipeline for (side, skinned); `lean`: a plain
-/// material's (unskinned, `pbr_lean.wgsl`'s entry points), as
-/// `Some((derivatives, compact))` ([`Batch::derivatives`]: with them the
-/// discard stays; `compact`: from the compact vertices).
+/// The depth-normal prepass pipeline for (side, skinned, discard); `lean`:
+/// a plain material's (unskinned, `pbr_lean.wgsl`'s entry points), as
+/// `Some(compact)`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn prepass_pipeline(
     device: &wgpu::Device,
@@ -466,7 +469,8 @@ pub(crate) fn prepass_pipeline(
     module: &wgpu::ShaderModule,
     faces: Faces,
     skinned: bool,
-    lean: Option<(bool, bool)>,
+    discard: bool,
+    lean: Option<bool>,
     // The meshlet path's (vertex, fragment) entry points: no vertex
     // buffers (meshlet.wgsl pulls its vertices); with the third true, the
     // analytic gradients (pbr_fs.wgsl `ANALYTIC`: the visibility buffer's
@@ -476,7 +480,7 @@ pub(crate) fn prepass_pipeline(
     off: &[(&'static str, f64)],
 ) -> wgpu::RenderPipeline {
     prepass_variant(
-        device, layouts, module, faces, skinned, lean, meshlet, None, off,
+        device, layouts, module, faces, skinned, discard, lean, meshlet, None, off,
     )
 }
 
@@ -493,6 +497,7 @@ pub(crate) fn surface_prepass_pipeline(
         module,
         faces,
         false,
+        true,
         None,
         None,
         Some(if array {
@@ -511,12 +516,13 @@ fn prepass_variant(
     module: &wgpu::ShaderModule,
     faces: Faces,
     skinned: bool,
-    lean: Option<(bool, bool)>,
+    discard: bool,
+    lean: Option<bool>,
     meshlet: Option<(&str, &str, bool)>,
     surface: Option<&str>,
     off: &[(&'static str, f64)],
 ) -> wgpu::RenderPipeline {
-    let (derivatives, compact) = lean.unwrap_or_default();
+    let compact = lean.unwrap_or(false);
     let lean = lean.is_some();
     let plain = [
         Some(match (lean, compact) {
@@ -538,9 +544,10 @@ fn prepass_variant(
         }),
     ];
     let mut constants = off.to_vec();
-    if lean && !derivatives {
+    if !discard {
         constants.push(("DISCARD", 0.0));
-    } else if meshlet.is_some_and(|m| m.2) {
+    }
+    if meshlet.is_some_and(|m| m.2) {
         constants.push(("ANALYTIC", 1.0));
     }
     let options = wgpu::PipelineCompilationOptions {
@@ -734,10 +741,10 @@ pub(crate) fn meshlet_shadow_pipeline(
 /// The depth prepass's pipelines: the standard and the lean ones by key,
 /// and stylise's object pass.
 pub(crate) struct PrepassState {
-    /// Prepass pipelines by (side, skinned).
+    /// Prepass pipelines by (side, skinned, discard).
     pub(crate) prepass_pipelines:
-        HashMap<(Faces, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
-    /// Their prepass pipelines by (side, derivatives, compact).
+        HashMap<(Faces, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// Their prepass pipelines by (side, dissolve, compact).
     pub(crate) lean_prepass_pipelines:
         HashMap<(Faces, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// Stylise's object pass, made the first frame a pattern is laid in

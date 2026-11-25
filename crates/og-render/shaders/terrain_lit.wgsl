@@ -674,7 +674,11 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   // and the far grass leave, with what the decals on it emit, and the
   // screen's occlusion: what stands on the ground darkens it round its foot.
   let at = ShadeAt(p, n, v, clip, true, true, true);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, decal_emissive, 1.0, sky);
+  let direct = surface_direct(s, at, sun.direct, n_dot_l * shadow);
+  var around = surface_ambient(s, at, n);
+  let r_base = normalize(mix(reflect(-v, n), n, s.roughness * s.roughness));
+  around.specular *= specular_horizon_occlusion(r_base, n_geo);
+  let lit = surface_sum(s, direct, around, decal_emissive, 1.0, sky * sun.keep);
   let view = u32(frame.light_color.w);
   if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), 1.0); }
   if (view == 1u) { return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0); }

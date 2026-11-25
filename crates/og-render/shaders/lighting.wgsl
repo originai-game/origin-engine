@@ -630,15 +630,21 @@ fn source_brdf_kept(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_lig
   let a = s.roughness * s.roughness;
   let d = d_ggx(n_dot_h, a);
   let f = f_schlick(h_dot_v, s.f0);
-  let spec = d * v_ggx(n_dot_v, n_dot_ls, a) * f * energy;
+  // Multi-scattering GGX energy compensation (Turquin 2019 / Filament): restore
+  // energy lost by single-scatter microfacet GGX on rough metals and dielectrics.
+  let dfg = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
+  let ess = max(dfg.x + dfg.y, 1e-4);
+  let energy_comp = vec3<f32>(1.0) + s.f0 * (1.0 / ess - 1.0);
+  let spec = d * v_ggx(n_dot_v, n_dot_ls, a) * f * energy_comp * energy;
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
   var base = (kd * s.albedo / PI * kept + spec) * n_dot_l + leaf_transmission(s, n, v, l) * kept;
   if (radius > 0.0) {
     base = kd * s.albedo / PI * n_dot_l * kept + spec * n_dot_ls + leaf_transmission(s, n, v, l) * kept;
   }
   if (s.coat <= 0.0) { return base; }
-  // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
-  // Kelemen's visibility; what it reflects never reaches the base.
+  // The coat: GGX with 4% dielectric reflectance and height-correlated
+  // Smith-GGX visibility (avoids Kelemen grazing-angle fireflies); what it
+  // reflects never reaches the base.
   let nc = s.coat_normal;
   var lc = l;
   var coat_energy = 1.0;
@@ -648,11 +654,12 @@ fn source_brdf_kept(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_lig
   }
   let hc = normalize(v + lc);
   let hc_dot_v = max(dot(hc, v), 0.0);
+  let c_dot_v = max(dot(nc, v), 1e-4);
   let c_dot_l = max(dot(nc, lc), 0.0);
   let ac = s.coat_roughness * s.coat_roughness;
   let fc = f_schlick(hc_dot_v, vec3<f32>(0.04)).x * s.coat;
   let dc = d_ggx(max(dot(nc, hc), 0.0), ac);
-  let vc = 0.25 / max(hc_dot_v * hc_dot_v, 1e-4);
+  let vc = v_ggx(c_dot_v, c_dot_l, ac);
   return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l * coat_energy);
 }
 

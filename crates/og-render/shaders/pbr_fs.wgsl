@@ -139,15 +139,18 @@ fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
 
 // The lit shading of a fragment (`fs`, and `fs_lean`).
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
+  let mode = u32(material.flags.w);
   let uv = stylised_uv(in.uv, in.affine);
   let base_uv = material_uv(UV_MAP, uv);
-  var base_sample: vec4<f32>;
-  if (ANALYTIC) {
-    let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
-    let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
-    base_sample = base_texel(base_uv, gx, gy);
-  } else {
-    base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    if (ANALYTIC) {
+      let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
+      let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
+      base_sample = base_texel(base_uv, gx, gy);
+    } else {
+      base_sample = base_texel(base_uv, dpdxFine(base_uv), dpdyFine(base_uv));
+    }
   }
   // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
@@ -164,24 +167,21 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let params = shader_params();
   let base = surface_color(hook, params, look_tint(season_base(base_sample, in.color, in.season), in.look));
   var dissolve = vec4<f32>(0.0);
-  if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
-  // One discard for the alpha cut-off and the dissolve (see dissolve_at);
-  // none in most lean pipelines (DISCARD).
-  let mode = u32(material.flags.w);
+  if (DISCARD && EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // A closed, single-sided surface (mode 32): its shadows compare past its depth (lighting.wgsl shadow_closed).
   shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16, an alpha-tested material): alpha past the cut-off over one pixel's change of it is the
   // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
-  let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  let a2c = DISCARD && (mode & 16u) != 0u && material.emissive.w >= 0.0;
   var coverage = 1.0;
-  if (!ANALYTIC) {
-    coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
-  } else if (material.emissive.w >= 0.0) {
-    coverage = select(0.0, 1.0, base.a >= material.emissive.w);
-  }
-  // An instance fading in is cut by the dither (common.wgsl `dither_cut`).
-  let hidden = dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w);
   if (DISCARD) {
+    if (!ANALYTIC) {
+      coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+    } else if (material.emissive.w >= 0.0) {
+      coverage = select(0.0, 1.0, base.a >= material.emissive.w);
+    }
+    // An instance fading in is cut by the dither (common.wgsl `dither_cut`).
+    let hidden = dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w);
     if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || hidden) {
       discard;
     }
@@ -192,7 +192,11 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_color.w > 6.5) { return debug_unsupported(in.clip.xy); }
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb);
+    var emissive_in = material.emissive.rgb;
+    if ((mode & 512u) != 0u && any(emissive_in != vec3<f32>(0.0))) {
+      emissive_in *= material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb;
+    }
+    let e = surface_emissive(hook, params, emissive_in);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
@@ -205,13 +209,19 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
-  let metalness_sample = material_sample(metalness_tex, UV_METALNESS, uv, 1u);
-  let roughness_sample = material_sample(roughness_tex, UV_METALNESS, uv, 2u);
+  var metalness_factor = material.mr.x;
+  if ((mode & 128u) != 0u && metalness_factor > 0.0) {
+    metalness_factor *= material_sample(metalness_tex, UV_METALNESS, uv, 1u).b;
+  }
+  var roughness_factor = material.mr.y;
+  if ((mode & 256u) != 0u) {
+    roughness_factor *= material_sample(roughness_tex, UV_METALNESS, uv, 2u).g;
+  }
   let dpx = world_dx(in.world_pos);
   let dpy = world_dy(in.world_pos);
   var s: Surface;
-  s.metallic = clamp(surface_metalness(hook, params, material.mr.x * metalness_sample.b), 0.0, 1.0);
-  s.roughness = clamp(surface_roughness(hook, params, material.mr.y * roughness_sample.g), 0.04, 1.0);
+  s.metallic = clamp(surface_metalness(hook, params, metalness_factor), 0.0, 1.0);
+  s.roughness = clamp(surface_roughness(hook, params, roughness_factor), 0.04, 1.0);
   s.albedo = base.rgb;
 
   var n = normalize(in.normal);
@@ -238,16 +248,16 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     decal_coverage = d.coverage;
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
-  let normal_uv = material_uv(UV_NORMAL, uv);
-  var normal_sample: vec4<f32>;
-  if (ANALYTIC) {
-    let gx = analytic_grad(UV_NORMAL, uv, analytic_uv.xy);
-    let gy = analytic_grad(UV_NORMAL, uv, analytic_uv.zw);
-    normal_sample = normal_texel(normal_uv, gx, gy);
-  } else {
-    normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
-  }
   if (material.flags.x > 0.5) {
+    let normal_uv = material_uv(UV_NORMAL, uv);
+    var normal_sample: vec4<f32>;
+    if (ANALYTIC) {
+      let gx = analytic_grad(UV_NORMAL, uv, analytic_uv.xy);
+      let gy = analytic_grad(UV_NORMAL, uv, analytic_uv.zw);
+      normal_sample = normal_texel(normal_uv, gx, gy);
+    } else {
+      normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
+    }
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
       // Two-channel (BC5, EAC RG11): z from x and y.
@@ -277,7 +287,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (OG_SURFACE) {
     if (ms.x > 0.5 && (mode & 8u) == 0u) {
       let kind = u32(ms.x + 0.5);
-      if (kind != 2u) {
+      if (kind != 2u && (mode & 64u) != 0u) {
         // Clay and toys are painted or moulded, not photographed: the base
         // texture's detail gives way to its local average (a coarse mip).
         // (A bias of 6 is the gradients 2^6 times longer.)
@@ -354,7 +364,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   s.coat = material.coat.x;
   s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
-  s.coat_normal = n_vertex * face;
+  s.coat_normal = geo_n;
   s.translucency = material.coat.z;
 
   // The directional light.
@@ -428,7 +438,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // gather. Screen-space reflections only in the opaque main pass (a
   // blended surface lies over the one they were traced for).
   let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
-  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
+  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (mode & 4u) == 0u, false);
   // A leaf takes the light around it along its canopy's normal (its
   // material's foliage, coat.w), but its own face mirrors the sky: a
   // crown of leaves, each at its own angle, has no grazing rim, and an
@@ -440,6 +450,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     facet = normalize(mix(n, face * select(-1.0, 1.0, dot(face, v) >= 0.0), clamp(material.coat.w, 0.0, 1.0)));
   }
   var around = surface_ambient(s, at, facet);
+  let r_base = normalize(mix(reflect(-v, facet), facet, s.roughness * s.roughness));
+  around.specular *= specular_horizon_occlusion(r_base, geo_n);
   // A leaf lets the light around it through from behind, as it does the
   // sun's (lighting.wgsl leaf_transmission): the sky and ground behind it,
   // tinted by its colour.
@@ -482,14 +494,17 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     // The coat's reflection of the environment, occluded by probe GI and
     // combined with screen-space reflections like the base layer.
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
-    let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
-    let rc = reflect(-v, s.coat_normal);
+    let rc = normalize(mix(reflect(-v, s.coat_normal), s.coat_normal, s.coat_roughness * s.coat_roughness));
     let coat_gi = gi_sample_at(in.world_pos, s.coat_normal);
     var coat_env = surface_reflected(reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y) * frame.params.x, at, rc, s.coat_roughness, coat_gi);
     if (at.opaque) { coat_env = ssr_reflected(coat_env, in.world_pos, in.clip.xy); }
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
-    around.diffuse *= 1.0 - fc;
-    around.specular = around.specular * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    let coat_f = (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    let coat_spec_ao = specular_occlusion(c_dot_v, around.occlusion.ambient, s.coat_roughness);
+    let coat_horizon = specular_horizon_occlusion(rc, geo_n);
+    around.diffuse *= 1.0 - coat_f;
+    around.specular = around.specular * (1.0 - coat_f)
+      + coat_env * coat_f * coat_horizon * (coat_spec_ao / max(around.occlusion.ambient, 1e-4));
   }
   // What the material's AO map keeps of the light around it (it darkens
   // only that), with the style's shadow darkness.
@@ -498,7 +513,11 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     ao = mix(1.0, material_sample(ao_tex, UV_AO, uv, 5u).r, material.flags.y);
   }
   let kept = keep * clamp(surface_ao(hook, params, ao), 0.0, 1.0);
-  let emitted = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb);
+  var emissive_in = material.emissive.rgb;
+  if ((mode & 512u) != 0u && any(emissive_in != vec3<f32>(0.0))) {
+    emissive_in *= material_sample(emissive_tex, UV_EMISSIVE, uv, 4u).rgb;
+  }
+  let emitted = surface_emissive(hook, params, emissive_in);
   let shaded = surface_sum(s, color, around, emitted, material.flags.z, kept);
   color = shaded_color(shaded);
 

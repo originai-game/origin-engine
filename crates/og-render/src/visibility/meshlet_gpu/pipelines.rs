@@ -100,6 +100,7 @@ impl MeshletGpu {
                         module,
                         b.faces,
                         false,
+                        true,
                         None,
                         Some(("vs_prepass_meshlet", "fs_prepass", false)),
                         &[],

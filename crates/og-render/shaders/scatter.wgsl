@@ -137,14 +137,18 @@ fn scatter_cavity(uv: vec2<f32>) -> f32 {
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
-  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
+  let mode = u32(material.flags.w);
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    base_sample = textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv));
+  }
+  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * base_sample);
   let dpx = dpdxFine(in.world);
   let dpy = dpdyFine(in.world);
   let dlx = dpdxFine(in.local);
   let dly = dpdyFine(in.local);
   // Alpha to coverage (mode 16, an alpha-tested material, as pbr_fs.wgsl): alpha past the cut-off over one pixel's change
   // of it is the share of the MSAA samples covered (three.js' alphaToCoverage on grass and foliage cards).
-  let mode = u32(material.flags.w);
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
   let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
   // One discard for the cut-off and the fade (Metal ignored a second one).
@@ -161,7 +165,12 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
 @fragment
 fn fs_equal(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
-  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)));
+  let mode = u32(material.flags.w);
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    base_sample = textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv));
+  }
+  let base = surface_color(h, shader_params(), season_mix(material.base_color * in.color, in.season) * base_sample);
   return scatter_lit(in, h, base, 1.0, dpdxFine(in.world), dpdyFine(in.world), dpdxFine(in.local), dpdyFine(in.local));
 }
 
@@ -175,14 +184,26 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   }
   if (frame.light_color.w > 0.5 && (frame.light_color.w < 1.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
   let params = shader_params();
-  let emissive = surface_emissive(h, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
+  var emissive_in = material.emissive.rgb;
+  if ((mode & 512u) != 0u && any(emissive_in != vec3<f32>(0.0))) {
+    emissive_in *= textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb;
+  }
+  let emissive = surface_emissive(h, params, emissive_in);
   if ((mode & 2u) != 0u) {
     if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);
   }
+  var metalness_factor = material.mr.x;
+  if ((mode & 128u) != 0u && metalness_factor > 0.0) {
+    metalness_factor *= textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
+  }
+  var roughness_factor = material.mr.y;
+  if ((mode & 256u) != 0u) {
+    roughness_factor *= textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g;
+  }
   var s: Surface;
-  s.metallic = clamp(surface_metalness(h, params, material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b), 0.0, 1.0);
-  s.roughness = clamp(surface_roughness(h, params, material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g), 0.04, 1.0);
+  s.metallic = clamp(surface_metalness(h, params, metalness_factor), 0.0, 1.0);
+  s.roughness = clamp(surface_roughness(h, params, roughness_factor), 0.04, 1.0);
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   // A leaf lets the sun through (brdf's leaf_transmission), as pbr_fs.wgsl.
@@ -246,7 +267,9 @@ fn scatter_lit(in: ScatterOut, h: Hook, base: vec4<f32>, out_a: f32, dpx: vec3<f
   let at = ShadeAt(in.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
   // The light around a leaf inside its crown (crown_ambient), as a model's.
   let direct = surface_direct(s, at, sun.direct, n_dot_l * shadow);
-  let around = crown_ambient(surface_ambient(s, at, n), s, clamp(dot(n_geo, v), 1e-4, 1.0), in.crown.x);
+  var around = crown_ambient(surface_ambient(s, at, n), s, clamp(dot(n_geo, v), 1e-4, 1.0), in.crown.x);
+  let r_base = normalize(mix(reflect(-v, n), n, s.roughness * s.roughness));
+  around.specular *= specular_horizon_occlusion(r_base, n_geo);
   let lit = surface_sum(s, direct, around, emissive + decaled.emissive, material.flags.z, keep * sun.keep);
   if (frame.light_color.w > 2.5) {
     return vec4<f32>(shaded_debug(lit, s.albedo, u32(frame.light_color.w + 0.5)), out_a);

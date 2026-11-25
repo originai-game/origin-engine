@@ -255,6 +255,9 @@ fn physical_source_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec
     let a = s.roughness * s.roughness;
     spec = f * d_ggx(n_dot_h, a) * v_ggx(n_dot_v, n_dot_ls, a);
   }
+  let dfg = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
+  let ess = max(dfg.x + dfg.y, 1e-4);
+  spec *= vec3<f32>(1.0) + s.f0 * (1.0 / ess - 1.0);
   var o: Shade;
   // The light's falloff: the cosine, spread past the terminator where the
   // light scatters under the surface.
@@ -298,11 +301,12 @@ fn physical_source_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec
     }
     let hc = normalize(v + lc);
     let hc_dot_v = max(dot(hc, v), 0.0);
+    let c_dot_v = max(dot(nc, v), 1e-4);
     let c_dot_l = max(dot(nc, lc), 0.0);
     let ac = s.coat_roughness * s.coat_roughness;
     let fc = f_schlick(hc_dot_v, vec3<f32>(0.04)).x * s.coat;
     let dc = d_ggx(max(dot(nc, hc), 0.0), ac);
-    let vc = 0.25 / max(hc_dot_v * hc_dot_v, 1e-4);
+    let vc = v_ggx(c_dot_v, c_dot_l, ac);
     o.diffuse *= 1.0 - fc;
     o.specular = o.specular * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l * coat_energy);
   }
@@ -565,6 +569,10 @@ fn fs_oit_mark(in: PhysicalOut, @builtin(front_facing) front_facing: bool) {
   oit_front_mark(in.clip, c.a);
 }
 
+// False for opaque physical batches without alpha-test, dissolve, or reveal fade,
+// restoring hardware Early-Z / Hi-Z depth rejection.
+override DISCARD: bool = true;
+
 // The physical shading of a fragment (`fs`, and lightmap_physical.wgsl's
 // `fs_physical_lightmap`).
 fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
@@ -582,6 +590,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let v = toward_eye(in.world_pos);
   let n_vertex = n;
   let face = material_face(hook_front);
+  let geo_n = normalize(n_vertex * face);
   n = n * face;
   // The vertex tangent frame (pbr_fs.wgsl's), for the normal maps, the stretch and the iris.
   var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);
@@ -591,15 +600,18 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let tbn = mat3x3<f32>(t, bt, n_vertex);
   // An eye: the base colour inside the iris lies under the cornea (eye.wgsl).
   // Take screen derivatives before iris_uv's non-uniform rim branch.
-  let base_uv_ref = material_uv(UV_MAP, uv);
-  let base_dx = dpdxFine(base_uv_ref);
-  let base_dy = dpdyFine(base_uv_ref);
-  var base_at = uv;
-  if (physical.layers2.y > 0.0) {
-    base_at = iris_uv(uv, t, bt, n_vertex * face, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
+  var base_sample = vec4<f32>(1.0);
+  if ((mode & 64u) != 0u) {
+    let base_uv_ref = material_uv(UV_MAP, uv);
+    let base_dx = dpdxFine(base_uv_ref);
+    let base_dy = dpdyFine(base_uv_ref);
+    var base_at = uv;
+    if (physical.layers2.y > 0.0) {
+      base_at = iris_uv(uv, t, bt, geo_n, v, physical.transmission.z, physical.layers2.y, physical.layers2.z);
+    }
+    let base_uv = material_uv(UV_MAP, base_at);
+    base_sample = base_texel(base_uv, base_dx, base_dy);
   }
-  let base_uv = material_uv(UV_MAP, base_at);
-  let base_sample = base_texel(base_uv, base_dx, base_dy);
   var hook: Hook;
   hook.world = in.world_pos;
   hook.local = in.local_pos;
@@ -614,24 +626,30 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let params = shader_params();
   let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
   var dissolve = vec4<f32>(0.0);
-  if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
+  if (DISCARD && EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // A closed, single-sided surface (mode 32): its shadows compare past its depth (lighting.wgsl shadow_closed).
   shadow_closed = (mode & 32u) != 0u;
   // Alpha to coverage (mode 16): as pbr_fs.wgsl.
-  let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
-  let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
-  if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) {
-    discard;
+  let a2c = DISCARD && (mode & 16u) != 0u && material.emissive.w >= 0.0;
+  var coverage = 1.0;
+  if (DISCARD) {
+    coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
+    if ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || dither_cut(look_hidden(in.look), in.clip.xy, frame.drawn.w)) {
+      discard;
+    }
   }
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
   // The packed maps (physical.rs): white where a material has none; all
-  // at the metalness map's uv transform.
+  // at the metalness map's uv transform. Explicit gradients allow pack_sample
+  // to skip texture fetches for unused layers while keeping derivatives uniform.
   let pack_uv = material_uv(UV_METALNESS, uv);
-  let maps = pack_sample(physical.layers.x, pack_uv);      // metalness, roughness, ao, dissolve
-  let coat_maps = pack_sample(physical.layers.y, pack_uv); // clearcoat, its roughness, transmission, thickness
-  let sheen_maps = pack_sample(physical.layers.z, pack_uv); // sheen colour (sRGB), its roughness
-  let film_maps = pack_sample(physical.layers.w, pack_uv);  // the coat's normal, iridescence
-  let aniso_maps = pack_sample(physical.layers2.x, pack_uv); // anisotropy, the film's thickness
+  let pack_dx = dpdxFine(pack_uv);
+  let pack_dy = dpdyFine(pack_uv);
+  let maps = pack_sample(physical.layers.x, pack_uv, pack_dx, pack_dy);      // metalness, roughness, ao, dissolve
+  let coat_maps = pack_sample(physical.layers.y, pack_uv, pack_dx, pack_dy); // clearcoat, its roughness, transmission, thickness
+  let sheen_maps = pack_sample(physical.layers.z, pack_uv, pack_dx, pack_dy); // sheen colour (sRGB), its roughness
+  let film_maps = pack_sample(physical.layers.w, pack_uv, pack_dx, pack_dy);  // the coat's normal, iridescence
+  let aniso_maps = pack_sample(physical.layers2.x, pack_uv, pack_dx, pack_dy); // anisotropy, the film's thickness
   var s: Surface;
   s.metallic = clamp(surface_metalness(hook, params, material.mr.x * maps.r), 0.0, 1.0);
   s.roughness = clamp(surface_roughness(hook, params, material.mr.y * maps.g), 0.04, 1.0);
@@ -655,9 +673,9 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let f0 = ior_to_f0(ior, 1.0);
   let diel_f0 = min(vec3<f32>(f0) * max(physical.specular.rgb, vec3<f32>(0.0)), vec3<f32>(1.0)) * clamp(physical.specular.w, 0.0, 1.0);
   s.f0 = mix(diel_f0, s.albedo, s.metallic);
-  let normal_uv = material_uv(UV_NORMAL, uv);
-  let normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
   if (material.flags.x > 0.5) {
+    let normal_uv = material_uv(UV_NORMAL, uv);
+    let normal_sample = normal_texel(normal_uv, dpdxFine(normal_uv), dpdyFine(normal_uv));
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
       map.z = sqrt(max(1.0 - dot(map.xy, map.xy), 0.0));
@@ -668,14 +686,14 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
   n = decal_shading_normal(n, decal_normal, decal_coverage);
-  s = material_wear(s, in.uv, normalize(n_vertex * face), in.world_pos, length(fwidthFine(in.world_pos)));
-  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
+  s = material_wear(s, in.uv, geo_n, in.world_pos, length(fwidthFine(in.world_pos)));
+  let weathered = weather_surface_at(s, n, geo_n, in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
   s.roughness = specular_aa(n, s.roughness, dpdxFine(n), dpdyFine(n));
   s.coat = material.coat.x * coat_maps.r;
   s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
-  s.coat_normal = n_vertex * face;
+  s.coat_normal = geo_n;
   s.translucency = material.coat.z;
   if (physical.coat.z > 0.5 && framed) {
     var map = film_maps.xyz * 2.0 - 1.0;
@@ -741,7 +759,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let shadowed = frame.light_dir.w > 0.5 && receives;
   var shadow = 1.0;
   if (shadowed && (n_dot_l > 0.0 || s.translucency > 0.0 || k.subsurface > 0.0 || k.hair > 0.0)) {
-    shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, normalize(n_vertex * face), l), abs(dot(n, l)));
+    shadow = cascade_shadow(in.world_pos + l * subsurface_reach(k), leaf_shadow_normal(s, geo_n, l), abs(dot(n, l)));
   }
   let sun = physical_brdf(s, k, n, v, l);
   let band_aa = style_edge(n_dot_l * shadow);
@@ -783,7 +801,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     let w = 1.0 - k.anisotropy * (1.0 - s.roughness);
     bent = normalize(mix(across, n, w * w * w * w));
   }
-  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, styled);
+  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (mode & 4u) == 0u, styled);
   let around = surface_gather(at, bent, n, s.roughness);
   let irradiance = around.irradiance;
   let prefiltered = around.prefiltered;
@@ -807,19 +825,22 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // like the base layer.
   var coat_keep = 1.0;
   var coat_ibl = vec3<f32>(0.0);
+  var coat_spec_scale = spec_scale;
   if (material.coat.x > 0.0) {
     let c_dot_v = max(dot(s.coat_normal, v), 1e-4);
-    let fc = f_schlick(c_dot_v, vec3<f32>(0.04)).x * s.coat;
-    let rc = reflect(-v, s.coat_normal);
+    let rc = normalize(mix(reflect(-v, s.coat_normal), s.coat_normal, s.coat_roughness * s.coat_roughness));
     let coat_gi = gi_sample_at(in.world_pos, s.coat_normal);
     var coat_env = surface_reflected(reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y) * frame.params.x, at, rc, s.coat_roughness, coat_gi);
     if (at.opaque) { coat_env = ssr_reflected(coat_env, in.world_pos, in.clip.xy); }
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
-    coat_keep = 1.0 - fc;
-    coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    let coat_f = (0.04 * coat_lut.x + coat_lut.y) * s.coat;
+    coat_keep = 1.0 - coat_f;
+    coat_ibl = coat_env * coat_f * specular_horizon_occlusion(rc, geo_n);
+    coat_spec_scale = material.flags.z * kept * specular_occlusion(c_dot_v, around.occlusion.ambient, s.coat_roughness);
   }
   var ibl_diffuse = kd_ibl * (irradiance * ibl_scale + bounce) * s.albedo;
-  var ibl_specular = prefiltered * env_brdf;
+  let r_base = normalize(mix(reflect(-v, bent), bent, s.roughness * s.roughness));
+  var ibl_specular = prefiltered * env_brdf * specular_horizon_occlusion(r_base, geo_n);
   // The sheen over the base (the lights' share is in physical_brdf).
   var sheen_keep = 1.0;
   if (any(k.sheen_color > vec3<f32>(0.0))) {
@@ -832,7 +853,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     ibl_specular = ibl_specular * sheen_keep + irradiance * k.sheen_color * k.sheen_albedo;
   }
   diffuse += ibl_diffuse * coat_keep;
-  specular += (ibl_specular * coat_keep + coat_ibl) * spec_scale;
+  specular += ibl_specular * coat_keep * spec_scale + coat_ibl * coat_spec_scale;
 
   // Transmission: the opaque scene behind, refracted through the volume
   // (`thickness` along the refracted ray, in object space), blurred by
@@ -932,14 +953,18 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   }
   var color = diffuse + specular;
 
-  let emissive_uv = material_uv(UV_EMISSIVE, uv);
-  color += surface_emissive(hook, params, material.emissive.rgb * stochastic_texel(emissive_tex, emissive_uv, dpdxFine(emissive_uv), dpdyFine(emissive_uv), 4u).rgb);
+  var emissive_in = material.emissive.rgb;
+  if ((mode & 512u) != 0u && any(emissive_in != vec3<f32>(0.0))) {
+    let emissive_uv = material_uv(UV_EMISSIVE, uv);
+    emissive_in *= stochastic_texel(emissive_tex, emissive_uv, dpdxFine(emissive_uv), dpdyFine(emissive_uv), 4u).rgb;
+  }
+  color += surface_emissive(hook, params, emissive_in);
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {
     // The artistic silhouette rim, unlike physical Fresnel, uses the
     // underlying surface normal before its normal maps and weathering.
-    let rim_dot_v = clamp(dot(n_vertex * face, v), 0.0, 1.0);
+    let rim_dot_v = clamp(dot(geo_n, v), 0.0, 1.0);
     color += material.rim.rgb * material.toon.y * pow(1.0 - rim_dot_v, material.toon.z);
   }
   if (EFFECTS && material.toon.w > 0.0) {

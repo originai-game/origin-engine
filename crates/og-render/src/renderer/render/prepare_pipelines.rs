@@ -41,8 +41,7 @@ impl Renderer {
             prepass,
         }: PrepareFramePipelinesInputs<'_>,
     ) -> (bool, bool, bool) {
-        // Decals and screen-space AO (or GI) need the effect shader on every batch;
-        // decals take screen derivatives (the lean pipelines keep the discard).
+        // Decals and screen-space AO (or GI) need the effect shader on every batch.
         // (No decal in a renderer made without them, RenderDesc::without.)
         let decals =
             !scene.effects.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
@@ -53,7 +52,6 @@ impl Renderer {
                 .chain(skinned_batches.iter_mut())
             {
                 b.effects = true;
-                b.derivatives |= decals;
             }
             for b in skinned_visible
                 .iter_mut()
@@ -61,7 +59,6 @@ impl Renderer {
                 .chain(probe_skinned.iter_mut().flatten())
             {
                 b.effects = true;
-                b.derivatives |= decals;
             }
         }
         // A target's depth texture, and the depth a view's soft particles

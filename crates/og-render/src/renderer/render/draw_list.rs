@@ -64,7 +64,7 @@ impl Renderer {
                     batch.shader,
                     physical,
                     batch.lean,
-                    batch.derivatives,
+                    batch.dissolve,
                     batch.compact,
                     batch.array,
                 );

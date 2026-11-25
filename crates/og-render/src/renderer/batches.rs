@@ -66,7 +66,6 @@ impl Renderer {
             effects: m.effects,
             shader: m.shader,
             lean: m.lean,
-            derivatives: m.flat || r.reveal,
             reveal: r.reveal,
             compact: r.dequant.is_some(),
             array: r.array,

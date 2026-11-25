@@ -183,7 +183,7 @@ impl Renderer {
                     batch.faces,
                     batch.shader,
                     batch.lean,
-                    batch.derivatives,
+                    batch.dissolve,
                     batch.compact,
                     batch.array,
                     self.cache.meshes[batch.mesh].surface.is_some(),

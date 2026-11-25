@@ -118,6 +118,13 @@ fn specular_occlusion(n_dot_v: f32, ao: f32, roughness: f32) -> f32 {
   return clamp(pow(n_dot_v + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
 }
 
+// Lagarde & de Rousiers 2014 horizon occlusion: attenuates specular IBL when
+// a normal-mapped reflection ray dips below the geometric surface plane.
+fn specular_horizon_occlusion(r: vec3<f32>, geo_n: vec3<f32>) -> f32 {
+  let h = clamp(1.0 + 1.3 * dot(r, geo_n), 0.0, 1.0);
+  return h * h;
+}
+
 // Multi-scattering GGX IBL directional reflectance (Fdez-Aguera 2019 / Turquin 2019)
 // using the existing single-scattering split-sum BRDF LUT (scale, bias).
 fn multi_scatter_ibl(f0: vec3<f32>, lut: vec2<f32>) -> vec3<f32> {

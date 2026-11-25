@@ -683,7 +683,6 @@ impl Renderer {
                     && hooked.is_none()
                     && !material.draws_array_maps(),
                 lean: false,
-                flat: material.flatShading != 0,
                 wire_only: material.wireframe == 1,
                 wireframe: (material.wireframe != 0).then(|| crate::lines::Wire {
                     color: (material.wireframeColor != glam::Vec3::ZERO).then(|| {
