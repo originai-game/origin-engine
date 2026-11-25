@@ -137,8 +137,69 @@ pub(crate) const CULL_WGSL: &str = concat!(
     wgsl!("cull_box.wgsl"),
     wgsl!("cull_hiz.wgsl")
 );
+const CULL_SCAN_WGSL: &str = wgsl!("cull_scan.wgsl");
+const CULL_SCAN_SG_WGSL: &str = wgsl!("cull_scan_sg.wgsl");
 const HIZ_WGSL: &str = wgsl!("hiz.wgsl");
 pub(crate) const DEPTH_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull_depth.wgsl"));
+
+/// True when the device supports `Tier::Full` subgroup ops and 256-lane compute workgroups.
+pub(crate) fn supports_subgroup_256(device: &wgpu::Device) -> bool {
+    let lim = device.limits();
+    device.features().contains(wgpu::Features::SUBGROUP)
+        && lim.max_compute_invocations_per_workgroup >= 256
+        && lim.max_compute_workgroup_size_x >= 256
+}
+
+fn inject_subgroup_builtins(src: &mut String, fn_name: &str) {
+    let needle = format!("fn {fn_name}(");
+    let Some(pos) = src.find(&needle) else {
+        return;
+    };
+    let arg_at = pos + needle.len();
+    let inject_args =
+        "@builtin(subgroup_size) _sg_sz: u32, @builtin(subgroup_invocation_id) _sg_id: u32, ";
+    src.insert_str(arg_at, inject_args);
+    let after_args = arg_at + inject_args.len();
+    if let Some(rel_brace) = src[after_args..].find('{') {
+        let brace_at = after_args + rel_brace + 1;
+        src.insert_str(
+            brace_at,
+            "\n  cull_sg_size = _sg_sz;\n  cull_sg_lane = _sg_id;\n",
+        );
+    }
+}
+
+/// WebGPU browsers (wasm32) require `enable subgroups;`, whereas wgpu-core's
+/// Naga frontend parses subgroup builtins directly and rejects the directive.
+pub(crate) const SUBGROUP_HEADER: &str = if cfg!(target_arch = "wasm32") {
+    "enable subgroups;\n"
+} else {
+    ""
+};
+
+/// Rewrites a `cull_scan.wgsl`-based compute module (`cull.wgsl`, `crowd_cull.wgsl`,
+/// `meshlet_compact.wgsl`) into its `Tier::Full` `Caps::SUBGROUP` WG=256 variant.
+pub(crate) fn subgroup_scan_source(base: &str) -> String {
+    let mut s = format!(
+        "{SUBGROUP_HEADER}{}",
+        base.replace("const WG: u32 = 128u;", "const WG: u32 = 256u;")
+            .replace(CULL_SCAN_WGSL, CULL_SCAN_SG_WGSL)
+            .replace("scan_shared(li)", "sg_scan_shared(li)")
+    );
+    inject_subgroup_builtins(&mut s, "scan_blocks");
+    inject_subgroup_builtins(&mut s, "prefix");
+    s
+}
+
+/// The instance cull shader, either Compat (WG=128 Blelloch) or `Tier::Full`
+/// (`Caps::SUBGROUP`, WG=256).
+pub(crate) fn cull_source(subgroup: bool) -> String {
+    if subgroup {
+        subgroup_scan_source(CULL_WGSL)
+    } else {
+        CULL_WGSL.to_string()
+    }
+}
 
 /// Planes per pass (a cascade's box and the slice planes facing the light).
 const MAX_PLANES: usize = 12;
@@ -147,8 +208,10 @@ const MAX_PLANES: usize = 12;
 pub(crate) fn tested(planes: &[Vec4]) -> &[Vec4] {
     &planes[..planes.len().min(MAX_PLANES)]
 }
-/// `cull.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
-const WORKGROUP: u32 = 128;
+/// Compat fallback workgroup size (`cull.wgsl` `WG`).
+const WORKGROUP_COMPAT: u32 = 128;
+/// `Tier::Full` subgroup workgroup size.
+const WORKGROUP_SUBGROUP: u32 = 256;
 const READBACKS: usize = 3;
 
 const TRANSPARENT: u32 = 1;
@@ -503,6 +566,8 @@ pub(crate) struct GpuCulling {
     /// read instead of `args` on WebKit (`indirect_own.rs`); `None`
     /// elsewhere.
     per_draw: Option<crate::indirect_own::OwnArgs>,
+    /// Compute workgroup width (`128` on Compat, `256` with `Caps::SUBGROUP`).
+    workgroup: u32,
 }
 
 fn storage(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
@@ -568,7 +633,7 @@ impl GpuCulling {
             && (passes as u64 + 1) * all * INSTANCE_STRIDE <= self.max_binding
             && (passes as u64 + 1) * skinned as u64 * crate::skin::SKINNED_INSTANCE_STRIDE
                 <= self.max_binding
-            && Self::scan_words(all as u32, passes) * 4 <= self.max_binding
+            && self.scan_words(all as u32, passes) * 4 <= self.max_binding
     }
 
     /// Where pass `g`'s records of the skinned batch starting at `first`
@@ -577,8 +642,8 @@ impl GpuCulling {
         (g + 1) * self.skinned_n + first
     }
 
-    fn scan_words(n: u32, passes: usize) -> u64 {
-        let blocks = n.div_ceil(WORKGROUP) as u64;
+    fn scan_words(&self, n: u32, passes: usize) -> u64 {
+        let blocks = n.div_ceil(self.workgroup) as u64;
         n as u64 + passes as u64 * (n as u64 + 1) + passes as u64 * blocks
     }
 

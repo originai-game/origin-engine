@@ -7,6 +7,7 @@ use super::fsr::{self, B};
 use crate::deferred::Deferred;
 
 const WGSL: &str = wgsl_library!("exposure_hist.wgsl");
+const WGSL_SG_BODY: &str = wgsl_library!("exposure_hist_sg.wgsl");
 
 /// Storage format of the 1x1 metered luminance target (`Rgba16Float` is
 /// universally valid as a WebGPU Compat write-only storage texture and
@@ -15,6 +16,10 @@ pub(crate) const HIST_METER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R
 
 pub(crate) fn source() -> String {
     WGSL.to_string()
+}
+
+pub(crate) fn source_sg() -> String {
+    format!("{}{WGSL_SG_BODY}", crate::cull_gpu::SUBGROUP_HEADER)
 }
 
 #[repr(C)]
@@ -29,10 +34,12 @@ pub(crate) struct ExposureHistPass {
     average: Deferred<wgpu::ComputePipeline>,
     params: wgpu::Buffer,
     bins: wgpu::Buffer,
+    subgroup: bool,
 }
 
 impl ExposureHistPass {
     pub fn new(device: &wgpu::Device) -> ExposureHistPass {
+        let subgroup = crate::cull_gpu::supports_subgroup_256(device);
         let bindings = [
             B::Uniform,
             B::Tex(false),
@@ -53,7 +60,12 @@ impl ExposureHistPass {
             label: Some("exposure histogram"),
             entries: &entries,
         });
-        let module = crate::deferred::module(device, "exposure histogram", WGSL.to_string());
+        let wgsl = if subgroup {
+            source_sg()
+        } else {
+            WGSL.to_string()
+        };
+        let module = crate::deferred::module(device, "exposure histogram", wgsl);
         let make = |label: &'static str, entry: &'static str| {
             let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
             Deferred::new(move || {
@@ -103,6 +115,7 @@ impl ExposureHistPass {
             average,
             params,
             bins,
+            subgroup,
         }
     }
 
@@ -153,9 +166,10 @@ impl ExposureHistPass {
             label: Some("meter histogram"),
             timestamp_writes: None,
         });
+        let tile_y = if self.subgroup { 32 } else { 16 };
         pass.set_pipeline(self.histogram.wait());
         pass.set_bind_group(0, group, &[]);
-        pass.dispatch_workgroups(size.0.div_ceil(32), size.1.div_ceil(16), 1);
+        pass.dispatch_workgroups(size.0.div_ceil(32), size.1.div_ceil(tile_y), 1);
         pass.set_pipeline(self.average.wait());
         pass.set_bind_group(0, group, &[]);
         pass.dispatch_workgroups(1, 1, 1);

@@ -29,11 +29,21 @@ const SHADERS: [(&str, &str); 5] = [
     ("fsr accumulate", wgsl!("fsr_accumulate.wgsl")),
 ];
 const COMMON: &str = wgsl!("fsr_common.wgsl");
+const LUMA_PYRAMID_SG: &str = wgsl!("fsr_luma_pyramid_sg.wgsl");
 
 /// A pass's module: fullscreen.wgsl (for `sample_exact`), fsr_common.wgsl
 /// and its body.
 fn source(body: &str) -> String {
     format!("{}{COMMON}{body}", crate::post::FULLSCREEN_WGSL)
+}
+
+/// Tier::Full (`Caps::SUBGROUP`) WG=256 luma pyramid module.
+pub(crate) fn luma_sg_source() -> String {
+    format!(
+        "{}{}{COMMON}{LUMA_PYRAMID_SG}",
+        crate::cull_gpu::SUBGROUP_HEADER,
+        crate::post::FULLSCREEN_WGSL
+    )
 }
 
 /// The modules as the renderer compiles them (shaders.rs validates them).
@@ -193,9 +203,10 @@ struct Pass {
     pipeline: Deferred<wgpu::ComputePipeline>,
 }
 
-fn pass(
+fn pass_with_source(
     device: &wgpu::Device,
-    (label, body): (&'static str, &'static str),
+    label: &'static str,
+    wgsl: String,
     bindings: &[B],
     entry: &'static str,
 ) -> Pass {
@@ -208,7 +219,7 @@ fn pass(
                 &device,
                 wgpu::ShaderModuleDescriptor {
                     label: Some(label),
-                    source: wgpu::ShaderSource::Wgsl(source(body).into()),
+                    source: wgpu::ShaderSource::Wgsl(wgsl.as_str().into()),
                 },
             );
             let pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -229,6 +240,15 @@ fn pass(
             )
         }),
     }
+}
+
+fn pass(
+    device: &wgpu::Device,
+    (label, body): (&'static str, &'static str),
+    bindings: &[B],
+    entry: &'static str,
+) -> Pass {
+    pass_with_source(device, label, source(body), bindings, entry)
 }
 
 /// A storage texture of FSR's own.
@@ -577,6 +597,7 @@ pub(crate) struct FsrPasses {
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
     passes: [Pass; 6],
+    subgroup: bool,
     state: Option<State>,
     /// Frames since the state was made: its ping-pong parity.
     index: u64,
@@ -591,6 +612,20 @@ pub(crate) struct FsrPasses {
 impl FsrPasses {
     pub fn new(device: &wgpu::Device) -> FsrPasses {
         let [prepare, luma, scp, reactivity, accumulate] = SHADERS;
+        let subgroup = crate::cull_gpu::supports_subgroup_256(device);
+        let luma_pass = |entry: &'static str| {
+            if subgroup {
+                pass_with_source(
+                    device,
+                    "fsr luma pyramid (subgroup)",
+                    luma_sg_source(),
+                    LUMA_PYRAMID,
+                    entry,
+                )
+            } else {
+                pass(device, luma, LUMA_PYRAMID, entry)
+            }
+        };
         FsrPasses {
             device: device.clone(),
             uniform: crate::traffic::create_buffer(
@@ -611,12 +646,13 @@ impl FsrPasses {
             }),
             passes: [
                 pass(device, prepare, PREPARE_INPUTS, "cs"),
-                pass(device, luma, LUMA_PYRAMID, "cs_reduce"),
-                pass(device, luma, LUMA_PYRAMID, "cs_finish"),
+                luma_pass("cs_reduce"),
+                luma_pass("cs_finish"),
                 pass(device, scp, SHADING_CHANGE_PYRAMID, "cs"),
                 pass(device, reactivity, PREPARE_REACTIVITY, "cs"),
                 pass(device, accumulate, ACCUMULATE, "cs"),
             ],
+            subgroup,
             state: None,
             index: 0,
             previous: None,
@@ -723,7 +759,11 @@ impl FsrPasses {
         // rows 2 and 3 (fsr_common.wgsl `view_depth`).
         let ip = f.proj.inverse().transpose();
         let device_to_view = [ip.z_axis.z, ip.z_axis.w, ip.w_axis.z, ip.w_axis.w];
-        let luma_groups = (f.render.0.div_ceil(TILE.0), f.render.1.div_ceil(TILE.1));
+        let luma_tile = if self.subgroup { (32, 32) } else { TILE };
+        let luma_groups = (
+            f.render.0.div_ceil(luma_tile.0),
+            f.render.1.div_ceil(luma_tile.1),
+        );
         let i = |(x, y): (u32, u32)| [x as i32, y as i32];
         let u = FsrUniform {
             inv_view_proj: f.inv_view_proj.to_cols_array_2d(),

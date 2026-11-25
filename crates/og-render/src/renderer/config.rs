@@ -402,7 +402,7 @@ pub use og_render_data::MAX_PLANAR_REFLECTIONS;
 /// (a few hundred instances, foliage) drew 5.3 ms slower per frame and
 /// made 0.8 s more pipelines at load with them (M4 Pro, 2560x1440). The
 /// GPU path's own frustum cull runs whatever the count.
-pub const OCCLUSION_MIN_INSTANCES: u32 = 16_384;
+pub const OCCLUSION_MIN_INSTANCES: u32 = 2_048;
 
 impl Default for RenderDesc {
     fn default() -> Self {

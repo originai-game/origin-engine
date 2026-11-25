@@ -11,6 +11,12 @@ const WGSL: &str = concat!(
     wgsl!("bloom_chain.wgsl"),
     wgsl!("bloom_spd.wgsl"),
 );
+const WGSL_F16: &str = concat!(
+    "enable f16;\n",
+    wgsl_library!("fullscreen.wgsl"),
+    wgsl!("bloom_chain.wgsl"),
+    wgsl!("bloom_spd_f16.wgsl"),
+);
 
 const BLOOM_SPD_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
@@ -19,6 +25,10 @@ pub(crate) const BLOOM_UP_TARGET: &str = "bloom-up";
 
 pub(crate) fn source() -> String {
     WGSL.to_string()
+}
+
+pub(crate) fn source_f16() -> String {
+    WGSL_F16.to_string()
 }
 
 /// Persistent compute bloom pyramids at the current post resolution.
@@ -171,7 +181,12 @@ impl BloomSpdPass {
                 (5, B::Storage(BLOOM_SPD_FORMAT)),
             ],
         );
-        let module = crate::deferred::module(device, "bloom spd", WGSL.to_string());
+        let wgsl = if device.features().contains(wgpu::Features::SHADER_F16) {
+            WGSL_F16
+        } else {
+            WGSL
+        };
+        let module = crate::deferred::module(device, "bloom spd", wgsl.to_string());
         let make_pipe =
             |label: &'static str, layout: &wgpu::BindGroupLayout, entry: &'static str| {
                 let (device, layout, module) = (device.clone(), layout.clone(), module.clone());

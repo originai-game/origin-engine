@@ -150,8 +150,10 @@ impl GpuCulling {
         self.skinned_base = base;
         self.skinned_base_batch = batches.iter().take_while(|x| x.first < base).count() as u32;
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
+        let _ = samples;
+        let occluder_samples = 1u32;
         if occlusion {
-            self.ensure_pyramid(device, width, height, samples);
+            self.ensure_pyramid(device, width, height, occluder_samples);
             let occluder_kinds: Vec<(Faces, bool)> = {
                 let mut s: Vec<(Faces, bool)> = batches
                     .iter()
@@ -163,13 +165,13 @@ impl GpuCulling {
                 s
             };
             for (faces, compact) in occluder_kinds {
-                self.depth_pipeline(device, faces, compact, samples);
+                self.depth_pipeline(device, faces, compact, occluder_samples);
             }
         }
 
         // Buffers (grown as needed; new ones start zeroed: nothing was
         // visible last frame).
-        let blocks = n.div_ceil(WORKGROUP);
+        let blocks = n.div_ceil(self.workgroup);
         let args_words = CountLayout::words(p, b);
         let instances_replaced = Self::grow(
             device,
@@ -229,12 +231,13 @@ impl GpuCulling {
         ) {
             self.held.batches.invalidate();
         }
+        let scan_bytes = self.scan_words(n, p) * 4;
         let scan_replaced = Self::grow(
             device,
             &mut self.scan,
             &mut self.groups,
             "cull scan",
-            Self::scan_words(n, p) * 4,
+            scan_bytes,
             self.max_binding,
             Self::storage_usage(),
         );
@@ -529,7 +532,7 @@ impl GpuCulling {
                         }
                         if kind != Some((x.faces, x.compact)) {
                             pass.set_pipeline(
-                                &self.depth_pipelines[&(x.faces, x.compact, samples)],
+                                &self.depth_pipelines[&(x.faces, x.compact, occluder_samples)],
                             );
                             kind = Some((x.faces, x.compact));
                         }

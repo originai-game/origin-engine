@@ -35,6 +35,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("pre-skin", crate::mesh::pre_skin::source());
     crate::systems::shader_sources(&mut add);
     drop(add);
+    crate::systems::crowd::subgroup_shader_sources(&mut out);
     crate::systems::vegetation::vertex_storage_shader_sources(&mut out);
     crate::systems::terrain::vertex_storage_shader_sources(&mut out);
     shaders::with_variants(out)

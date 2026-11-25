@@ -10,13 +10,11 @@
 //! culling's in the frame's stats: written after the draws and copied into
 //! GPU culling's count words before their readback.
 
-use crate::crowd::{CROWD_CULL_WGSL, CrowdFrame};
+use crate::crowd::{CrowdFrame, crowd_cull_source};
 use crate::cull_gpu::{CROWD_COUNT_WORDS, CullPass, PassKind};
 use crate::skin::SKINNED_INSTANCE_STRIDE;
 use glam::{Mat4, Vec3};
 
-/// `crowd_cull.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
-const WORKGROUP: u32 = 128;
 const MAX_PLANES: usize = 12;
 
 /// `Params` in crowd_cull.wgsl.
@@ -79,6 +77,7 @@ pub(crate) struct CrowdCulling {
     /// instead of `args` on WebKit (`indirect_own.rs`); `None` elsewhere.
     per_draw: Option<crate::indirect_own::OwnArgs>,
     group_cache: crate::gpu::bind_cache::SingleBindCache<CrowdBindKey>,
+    workgroup: u32,
 }
 
 #[derive(Clone, PartialEq)]
@@ -159,11 +158,13 @@ impl CrowdCulling {
                 storage(9, false),
             ],
         });
+        let subgroup = crate::cull_gpu::supports_subgroup_256(device);
+        let workgroup = if subgroup { 256 } else { 128 };
         let module = crate::gpu::shader_module(
             device,
             wgpu::ShaderModuleDescriptor {
                 label: Some("crowd cull"),
-                source: wgpu::ShaderSource::Wgsl(CROWD_CULL_WGSL.into()),
+                source: wgpu::ShaderSource::Wgsl(crowd_cull_source(subgroup).into()),
             },
         );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -226,6 +227,7 @@ impl CrowdCulling {
             rows_of: Vec::new(),
             per_draw: per_draw.then(Default::default),
             group_cache: Default::default(),
+            workgroup,
         }
     }
 
@@ -233,11 +235,11 @@ impl CrowdCulling {
     /// binding limit (the records, the scan).
     pub fn fits(&self, n: u32, rows: usize) -> bool {
         let records = rows as u64 * n as u64 * SKINNED_INSTANCE_STRIDE;
-        records <= self.max_binding && Self::scan_words(n, rows) * 16 <= self.max_binding
+        records <= self.max_binding && self.scan_words(n, rows) * 16 <= self.max_binding
     }
 
-    fn scan_words(n: u32, rows: usize) -> u64 {
-        rows as u64 * (n as u64 + 1 + 2 * n.div_ceil(WORKGROUP) as u64)
+    fn scan_words(&self, n: u32, rows: usize) -> u64 {
+        rows as u64 * (n as u64 + 1 + 2 * n.div_ceil(self.workgroup) as u64)
     }
 
     /// Where row `row`'s records start in [`Self::records`], in bytes.
@@ -327,7 +329,7 @@ impl CrowdCulling {
         let r = rows.len() as u32;
         self.n = n;
         self.d = d;
-        let blocks = n.div_ceil(WORKGROUP);
+        let blocks = n.div_ceil(self.workgroup);
         let bytes = |s: &[u8]| s.len() as u64;
         let members: &[u8] = bytemuck::cast_slice(&frame.members);
         let crowds: &[u8] = bytemuck::cast_slice(&frame.crowds);
@@ -339,12 +341,8 @@ impl CrowdCulling {
         Self::grow(device, &mut self.clips, "crowd clips", bytes(clips));
         Self::grow(device, &mut self.draws, "crowd draws", bytes(draws));
         Self::grow(device, &mut self.rows, "crowd rows", bytes(rows_bytes));
-        Self::grow(
-            device,
-            &mut self.scan,
-            "crowd scan",
-            Self::scan_words(n, rows.len()) * 16,
-        );
+        let scan_bytes = self.scan_words(n, rows.len()) * 16;
+        Self::grow(device, &mut self.scan, "crowd scan", scan_bytes);
         Self::grow(
             device,
             &mut self.records,

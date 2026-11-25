@@ -35,7 +35,6 @@ impl ShaderSource {
 
     /// A module gated on `needs` (validated under those capabilities rather
     /// than the `Tier::Compat` ceiling).
-    #[allow(dead_code)]
     pub(crate) fn with_caps(label: &str, wgsl: String, needs: crate::Caps) -> ShaderSource {
         ShaderSource {
             label: label.to_string(),
@@ -217,6 +216,32 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         constants: vec![("ANALYTIC".to_string(), 1.0), ("DISCARD".to_string(), 0.0)],
         needs: crate::Caps::VERTEX_STORAGE,
     });
+    // Tier::Full subgroup (WG=256) and f16 compute shader variants.
+    out.push(ShaderSource::with_caps(
+        "cull (subgroup)",
+        crate::cull_gpu::cull_source(true),
+        crate::Caps::SUBGROUP,
+    ));
+    out.push(ShaderSource::with_caps(
+        "meshlet compact (subgroup)",
+        crate::meshlet_gpu::compact::compact_source(true),
+        crate::Caps::SUBGROUP,
+    ));
+    out.push(ShaderSource::with_caps(
+        "fsr luma pyramid (subgroup)",
+        crate::post::fsr::luma_sg_source(),
+        crate::Caps::SUBGROUP,
+    ));
+    out.push(ShaderSource::with_caps(
+        "exposure hist (subgroup)",
+        crate::post::exposure_hist::source_sg(),
+        crate::Caps::SUBGROUP,
+    ));
+    out.push(ShaderSource::with_caps(
+        "bloom spd (f16)",
+        crate::post::bloom_spd::source_f16(),
+        crate::Caps::SHADER_F16,
+    ));
 }
 
 /// `out` and its modules' variants.

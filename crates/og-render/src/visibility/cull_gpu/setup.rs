@@ -31,11 +31,17 @@ impl GpuCulling {
                 storage(8, false),
             ],
         });
+        let subgroup = supports_subgroup_256(device);
+        let workgroup = if subgroup {
+            WORKGROUP_SUBGROUP
+        } else {
+            WORKGROUP_COMPAT
+        };
         let module = crate::gpu::shader_module(
             device,
             wgpu::ShaderModuleDescriptor {
                 label: Some("cull"),
-                source: wgpu::ShaderSource::Wgsl(CULL_WGSL.into()),
+                source: wgpu::ShaderSource::Wgsl(cull_source(subgroup).into()),
             },
         );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -199,6 +205,7 @@ impl GpuCulling {
             b: 0,
             skinned_base_batch: 0,
             per_draw: per_draw.then(Default::default),
+            workgroup,
         }
     }
 

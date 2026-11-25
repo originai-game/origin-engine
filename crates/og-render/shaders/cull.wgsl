@@ -172,24 +172,18 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     let b = batches[bi];
     let m = instance_at(k);
     let center = (m * vec4<f32>(b.bounds.xyz, 1.0)).xyz;
-    let scale = max(length(m[0].xyz), max(length(m[1].xyz), length(m[2].xyz)));
-    // The CPU path's sphere, widened by its rounding.
-    let radius = b.bounds.w * scale * (1.0 + 1e-5);
-    let boxed = (b.flags & SKINNED) != 0u;
     let batch_drawn = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
       && (kind != FRUSTUM_ALL || (b.flags & NO_CAST) == 0u);
     let on_layers = (b.layers & pass_info.w) != 0u;
     var inside = batch_drawn && on_layers;
     for (var p = 0u; p < pass_info.y && inside; p++) {
       let plane = passes[pass_at(wid.y)].planes[p];
-      // A box (a skinned instance's): each plane against its corner
-      // farthest inside it, as the CPU's `Frustum::intersects_box`.
-      var reach = radius;
-      if (boxed) {
-        reach = (abs(dot(plane.xyz, m[0].xyz)) * b.extent.x
-          + abs(dot(plane.xyz, m[1].xyz)) * b.extent.y
-          + abs(dot(plane.xyz, m[2].xyz)) * b.extent.z) * (1.0 + 1e-5);
-      }
+      // Exact OBB test for both static and skinned meshes: projects each
+      // world-space box axis onto the plane normal, eliminating loose sphere
+      // false positives on walls, corridors, and floors while saving 3 length() sqrts.
+      let reach = (abs(dot(plane.xyz, m[0].xyz)) * b.extent.x
+        + abs(dot(plane.xyz, m[1].xyz)) * b.extent.y
+        + abs(dot(plane.xyz, m[2].xyz)) * b.extent.z) * (1.0 + 1e-5);
       inside = plane_keeps(plane, center, reach);
     }
     if (inside) { atomicAdd(&shared_inside, 1u); }

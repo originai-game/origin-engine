@@ -429,7 +429,7 @@ fn every_loop_ends() {
             &s.label,
             &s.wgsl,
             &s.constants,
-            super::shaders::full_capabilities(),
+            super::shaders::capabilities_for(s.needs),
         )
         .unwrap_or_else(|e| panic!("{e}"));
         let functions = module

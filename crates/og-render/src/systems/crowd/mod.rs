@@ -87,6 +87,14 @@ pub(crate) const CROWD_CULL_WGSL: &str = concat!(
     wgsl!("lod.wgsl")
 );
 
+pub(crate) fn crowd_cull_source(subgroup: bool) -> String {
+    if subgroup {
+        crate::cull_gpu::subgroup_scan_source(CROWD_CULL_WGSL)
+    } else {
+        CROWD_CULL_WGSL.to_string()
+    }
+}
+
 /// The most levels a crowd draws: its mesh levels (`Crowd::errors`) and,
 /// with an impostor, its card.
 pub const MAX_CROWD_LEVELS: usize = 4;
@@ -851,4 +859,13 @@ pub(crate) fn cpu_records(
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("crowd cull", crate::crowd::CROWD_CULL_WGSL.to_string());
     add("crowd bake", crate::crowd_bake_source());
+}
+
+/// The system's `Tier::Full` subgroup shader variants.
+pub(crate) fn subgroup_shader_sources(out: &mut Vec<crate::ShaderSource>) {
+    out.push(crate::ShaderSource::with_caps(
+        "crowd cull (subgroup)",
+        crowd_cull_source(true),
+        crate::Caps::SUBGROUP,
+    ));
 }

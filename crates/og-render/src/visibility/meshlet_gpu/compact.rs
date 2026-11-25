@@ -4,8 +4,14 @@
 use super::{WORKGROUPS_PER_ROW, buffer, entry, grow, storage, storage_usage};
 
 pub(crate) const WGSL: &str = concat!(wgsl!("meshlet_compact.wgsl"), wgsl!("cull_scan.wgsl"));
-/// `meshlet_compact.wgsl` `WG`: 128, compatibility mode's most invocations a workgroup.
-const WG: u32 = 128;
+
+pub(crate) fn compact_source(subgroup: bool) -> String {
+    if subgroup {
+        crate::cull_gpu::subgroup_scan_source(WGSL)
+    } else {
+        WGSL.to_string()
+    }
+}
 
 pub(super) struct Compact {
     pub selected: wgpu::Buffer,
@@ -13,6 +19,7 @@ pub(super) struct Compact {
     block_sums: wgpu::Buffer,
     params: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
+    workgroup: u32,
     /// Asked for when it is made (gpu/deferred.rs).
     pub(super) pipelines: crate::deferred::Deferred<[wgpu::ComputePipeline; 4]>,
     group: Option<(Vec<wgpu::Buffer>, [u32; 4], wgpu::BindGroup)>,
@@ -34,11 +41,13 @@ impl Compact {
                 storage(7, false, c),
             ],
         });
+        let subgroup = crate::cull_gpu::supports_subgroup_256(device);
+        let workgroup = if subgroup { 256 } else { 128 };
         let module = crate::gpu::shader_module(
             device,
             wgpu::ShaderModuleDescriptor {
                 label: Some("meshlet compact"),
-                source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+                source: wgpu::ShaderSource::Wgsl(compact_source(subgroup).into()),
             },
         );
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -75,6 +84,7 @@ impl Compact {
                 wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             ),
             layout,
+            workgroup,
             pipelines,
             group: None,
         }
@@ -106,7 +116,7 @@ impl Compact {
             device,
             &mut self.block_sums,
             "meshlet block sums",
-            u64::from(slots.div_ceil(WG) + 1) * 8,
+            u64::from(slots.div_ceil(self.workgroup) + 1) * 8,
             storage_usage(),
         );
         let bound = vec![
@@ -155,7 +165,7 @@ impl Compact {
     }
 
     pub fn encode(&self, pass: &mut wgpu::ComputePass<'_>, slots: u32) {
-        let blocks = slots.div_ceil(WG);
+        let blocks = slots.div_ceil(self.workgroup);
         pass.set_bind_group(0, &self.group.as_ref().expect("prepared").2, &[]);
         for (i, pipeline) in self.pipelines.wait().iter().enumerate() {
             pass.set_pipeline(pipeline);

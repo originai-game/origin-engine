@@ -75,12 +75,23 @@ fn failures(s: &og_render::ShaderSource) -> Vec<String> {
     if let Err(e) = msl::write_string(&module, &info, &options, &msl::PipelineOptions::default()) {
         failures.push(format!("{label}: MSL: {e}"));
     }
-    if let Err(e) = spv::write_vec(&module, &info, &spv::Options::default(), None) {
+    let mut spv_options = spv::Options::default();
+    if (s.needs & (og_render::Caps::SUBGROUP | og_render::Caps::SHADER_F16))
+        != og_render::Caps::NONE
+    {
+        spv_options.lang_version = (1, 3);
+    }
+    if let Err(e) = spv::write_vec(&module, &info, &spv_options, None) {
         failures.push(format!("{label}: SPIR-V: {e}"));
     }
-    // DX12: wgpu's dx12 backend compiles HLSL with DXC at shader model 6.
+    // DX12: wgpu's dx12 backend compiles HLSL with DXC at shader model 6
+    // (6.2 for native float16_t when Caps::SHADER_F16 is active).
     let options = hlsl::Options {
-        shader_model: hlsl::ShaderModel::V6_0,
+        shader_model: if s.needs.contains(og_render::Caps::SHADER_F16) {
+            hlsl::ShaderModel::V6_2
+        } else {
+            hlsl::ShaderModel::V6_0
+        },
         ..Default::default()
     };
     let mut out = String::new();

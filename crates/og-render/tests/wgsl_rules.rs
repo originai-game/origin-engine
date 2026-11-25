@@ -1099,7 +1099,7 @@ fn every_fragment_entry_has_at_most_one_discard() {
             &s.label,
             &s.wgsl,
             &s.constants,
-            crate::shaders::full_capabilities(),
+            crate::shaders::capabilities_for(s.needs),
         )
         .unwrap_or_else(|e| panic!("{e}"));
         for ep in &module.entry_points {
