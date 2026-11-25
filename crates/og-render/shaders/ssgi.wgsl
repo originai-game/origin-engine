@@ -411,9 +411,11 @@ fn fs_gi_blur(in: VsOut) -> @location(0) vec4<f32> {
     }
   }
   // GTAO's visibility (r) overshoots 1 before it is averaged (fxpost.wgsl
-  // gtao_bent); after, it is clamped.
+  // gtao_bent); after, it is clamped. Keep `.gba` signed: `fs_gtao_bent`
+  // stores world-space bent normals in [-1, 1], while SSGI bounce inputs are
+  // already non-negative and stay non-negative under positive weights.
   let mean = sum / weight;
-  return vec4<f32>(min(mean.r, 1.0), max(mean.gba, vec3<f32>(0.0)));
+  return vec4<f32>(min(mean.r, 1.0), mean.gba);
 }
 
 // Normal- and depth-aware bilateral upsample over the GI's four channels.

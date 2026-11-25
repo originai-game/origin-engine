@@ -204,13 +204,24 @@ impl Output {
             1.0
         };
         let encode = space != Space::ExtendedSrgbLinear && !format.is_srgb();
+        let is_8bit = matches!(
+            format.remove_srgb_suffix(),
+            Format::Bgra8Unorm | Format::Rgba8Unorm
+        );
+        let transfer_mode = if encode {
+            if is_8bit { 2.0 } else { 1.0 }
+        } else if format.is_srgb() && is_8bit {
+            -1.0
+        } else {
+            0.0
+        };
         let p3 = matches!(space, Space::DisplayP3 | Space::ExtendedDisplayP3);
         let uniform = crate::buffer_init(
             device,
             queue,
             &wgpu::util::BufferInitDescriptor {
                 label: Some("display output"),
-                contents: bytemuck::bytes_of(&[scale, f32::from(encode), headroom, f32::from(p3)]),
+                contents: bytemuck::bytes_of(&[scale, transfer_mode, headroom, f32::from(p3)]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             },
         );

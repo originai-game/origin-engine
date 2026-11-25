@@ -325,8 +325,12 @@ impl PostPasses {
             HDR_FORMAT,
             Some(additive),
         );
-        // A non-sRGB output (web canvases) gets the sRGB curve in the shader.
-        let tonemap_entry = if output_format.is_srgb() || output_format == HDR_FORMAT {
+        // Hardware sRGB 8-bit outputs get perceptual 1-LSB IGN dithering in
+        // `fs_srgb_dither`; HDR_FORMAT stays linear (`fs`); non-sRGB 8-bit
+        // outputs (web canvases) encode and dither in `fs_srgb_encode`.
+        let tonemap_entry = if output_format.is_srgb() {
+            "fs_srgb_dither"
+        } else if output_format == HDR_FORMAT {
             "fs"
         } else {
             "fs_srgb_encode"
@@ -563,11 +567,16 @@ impl PostPasses {
             return;
         }
         if self.tonemap_ldr.is_none() {
+            let entry = if self.chain_format.is_srgb() {
+                "fs_srgb_dither"
+            } else {
+                "fs"
+            };
             self.tonemap_ldr = Some(fullscreen_pipeline(
                 device,
                 "tonemap (ldr)",
                 &self.post_shader,
-                "fs",
+                entry,
                 &self.post_pl,
                 self.chain_format,
                 None,

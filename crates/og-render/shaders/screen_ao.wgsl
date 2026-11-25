@@ -58,20 +58,20 @@ fn screen_occlusion(frag: vec2<f32>) -> ScreenOcclusion {
   return o;
 }
 
-// A local light's screen-space contact shadow at world point `p`
+// A local light's screen-space contact shadow at fragment coordinate `frag`
 // (contact.wgsl `cs_contact`, its mask in the effect group's AO texture's
 // g, b or a): a contact light's shadow slot carries a quarter, a half or
-// three quarters past its layer (render.rs). 1 for every other light, in a
-// reflection probe's face (no clusters: the mask is the camera's) and
-// where the AO texture is the white placeholder (views, reflections), and
-// for a blended surface in the order-independent passes (oit.wgsl
-// `oit_pass`), which the opaque surface's mask behind it would darken.
-fn contact_shadow(light: LocalLight, p: vec3<f32>) -> f32 {
+// three quarters past its layer (render.rs). Sampling at `frag * fx.screen.zw`
+// matches the jittered prepass depth that `cs_contact` traced and avoids a
+// per-light matrix multiply. 1 for every other light, in a reflection probe's
+// face (no clusters: the mask is the camera's), where the AO texture is the
+// white placeholder (views, reflections), and for a blended surface in the
+// order-independent passes (oit.wgsl `oit_pass`), which the opaque surface's
+// mask behind it would darken.
+fn contact_shadow(light: LocalLight, frag: vec2<f32>) -> f32 {
   let w = light.direction_slot.w;
   let c = i32(round(fract(max(w, 0.0)) * 4.0)) - 1;
   if (c < 0 || frame.cluster.x <= 0.0 || oit_pass) { return 1.0; }
-  let clip = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
-  let ndc = clip.xy / max(clip.w, 1e-4);
-  let m = textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0);
+  let m = textureSampleLevel(ssao_tex, fx_sampler, frag * fx.screen.zw, 0.0);
   return select(select(m.a, m.b, c == 1), m.g, c == 0);
 }

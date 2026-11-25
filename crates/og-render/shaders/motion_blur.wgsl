@@ -57,7 +57,8 @@ fn fs_motion_neighbor(in: VsOut) -> @location(0) vec4<f32> {
 fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   let px = vec2<i32>(in.pos.xy);
   let c = textureLoad(tex_a, px, 0);
-  var v = motion_sweep(px);
+  let v_center = motion_sweep(px);
+  var v = v_center;
   let dominant = motion_max(textureLoad(tex_b, px / motion_tile_width(), 0).xy, v);
   if (dot(dominant, dominant) < 0.25) { return c; }
   let n = u32(fxp.mb.y);
@@ -83,15 +84,30 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   if (dot(v, v) < 0.25) { return c; }
   let z0 = depth_at(px);
   let soft_z = max(z0 * 0.04, 1e-2);
-  var sum = c.rgb;
-  var weight = 1.0;
+  let half_c = max(length(v_center) * 0.5, 0.5);
+  let jitter = ign(in.pos.xy);
+  let screen_max = vec2<i32>(fxp.screen.xy) - vec2<i32>(1);
+  // McGuire 2012 Algorithm 1 / Eq. 5: center weight inversely proportional to
+  // center half-sweep; taps accumulate foreground cone, background cone, and
+  // shared-velocity cylinder weights using positive view depth (smaller = closer).
+  var weight = 1.0 / half_c;
+  var sum = c.rgb * weight;
   for (var i = 0u; i < n; i++) {
-    let t = (f32(i) + 0.5) / f32(n) - 0.5;
-    let q_uv = in.uv + v * t * fxp.screen.zw;
-    let q_z = depth_uv(q_uv);
-    // Accept samples in front of or at similar depth to the centre, and
-    // softly attenuate stationary closer foreground occluders.
-    let w = clamp((q_z - z0) / soft_z + 1.0, 0.0, 1.0);
+    let t = (f32(i) + jitter) / f32(n) - 0.5;
+    let delta_px = v * t;
+    let dist = length(delta_px);
+    let q_uv = in.uv + delta_px * fxp.screen.zw;
+    let q_px = clamp(vec2<i32>(floor(in.pos.xy + delta_px)), vec2<i32>(0), screen_max);
+    let q_z = depth_at(q_px);
+    let half_q = max(length(motion_sweep(q_px)) * 0.5, 0.5);
+    // f: sample q is in front of centre; b: centre is in front of sample q.
+    let f = clamp(1.0 - (q_z - z0) / soft_z, 0.0, 1.0);
+    let b = clamp(1.0 - (z0 - q_z) / soft_z, 0.0, 1.0);
+    let cone_q = clamp(1.0 - dist / half_q, 0.0, 1.0);
+    let cone_c = clamp(1.0 - dist / half_c, 0.0, 1.0);
+    let cyl_q = 1.0 - smoothstep(0.95 * half_q, 1.05 * half_q, dist);
+    let cyl_c = 1.0 - smoothstep(0.95 * half_c, 1.05 * half_c, dist);
+    let w = f * cone_q + b * cone_c + cyl_q * cyl_c * 2.0;
     sum += textureSampleLevel(tex_a, fx_linear, q_uv, 0.0).rgb * w;
     weight += w;
   }

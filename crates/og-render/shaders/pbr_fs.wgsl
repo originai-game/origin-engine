@@ -421,7 +421,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // which has no clusters. One loop, so local_light is inlined once.
   let lights = frame_lights(in.clip.xy, in.world_pos);
   for (var k = 0u; k < lights.y; k++) {
-    color += local_light(frame_light(lights, k), s, in.world_pos, n, v, receives);
+    color += local_light(frame_light(lights, k), s, in.world_pos, n, v, in.clip.xy, receives);
   }
 
   // The light around it (surface_shade.wgsl): every lit surface's one

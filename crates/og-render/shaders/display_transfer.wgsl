@@ -4,7 +4,7 @@
 // space (scRGB, extended sRGB, or Display P3 at either range).
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var source_sampler: sampler;
-// x: scale (scRGB's 80-nit unit), y: 1 to sRGB-encode, z: headroom, w: 1 for P3 primaries.
+// x: scale (scRGB's 80-nit unit), y: transfer mode (0 linear, 1 shader sRGB, 2 shader sRGB + 8-bit dither, -1 hw sRGB + 8-bit dither), z: headroom, w: 1 for P3 primaries.
 @group(0) @binding(2) var<uniform> output: vec4f;
 
 @fragment
@@ -27,10 +27,16 @@ fn fs(v: VsOut) -> @location(0) vec4f {
   if (output.y > 0.5) {
     // Extended sRGB continues the curve below zero, mirrored.
     color = sign(color) * srgb_encode(abs(color));
-    if (output.z <= 1.01) {
+    if (output.y > 1.5 && output.z <= 1.01) {
       let dither = (ign(v.pos.xy) + ign(v.pos.xy + vec2f(17.0, 31.0)) - 1.0) / 255.0;
-      color += vec3f(dither);
+      color = clamp(color + vec3f(dither), vec3f(0.0), vec3f(1.0));
     }
+  } else if (output.y < -0.5 && output.z <= 1.01) {
+    // Hardware sRGB 8-bit surface: dither in perceptual sRGB space before
+    // converting back to linear for hardware sRGB encoding.
+    let enc = srgb_encode(clamp(color, vec3f(0.0), vec3f(1.0)));
+    let dither = (ign(v.pos.xy) + ign(v.pos.xy + vec2f(17.0, 31.0)) - 1.0) / 255.0;
+    color = srgb_decode(clamp(enc + vec3f(dither), vec3f(0.0), vec3f(1.0)));
   }
   return vec4f(color, 1.0);
 }

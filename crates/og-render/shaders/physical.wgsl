@@ -314,7 +314,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
 }
 
 // A point or spot light, as pbr.wgsl's local_light.
-fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> Shade {
+fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, frag: vec2<f32>, receives: bool) -> Shade {
   var o: Shade;
   o.diffuse = vec3<f32>(0.0);
   o.specular = vec3<f32>(0.0);
@@ -332,7 +332,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
   if (receives) {
     radiance *= local_shadow(light, p + r.l * subsurface_reach(k), leaf_shadow_normal(s, n, r.l));
     // The screen's contact shadow is the surface's own past the terminator.
-    if (max(k.subsurface, k.hair) <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
+    if (max(k.subsurface, k.hair) <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, frag); }
   }
   let b = physical_source_brdf(s, k, n, v, r.l, light.position_range.xyz - p, light.source.x);
   o.diffuse = b.diffuse * radiance * r.diffuse;
@@ -770,7 +770,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // (probes.rs), which has no clusters (pbr_fs.wgsl).
   let lights = frame_lights(in.clip.xy, in.world_pos);
   for (var c = 0u; c < lights.y; c++) {
-    let o = physical_local(frame_light(lights, c), s, k, in.world_pos, n, v, receives);
+    let o = physical_local(frame_light(lights, c), s, k, in.world_pos, n, v, in.clip.xy, receives);
     diffuse += o.diffuse;
     specular += o.specular;
   }

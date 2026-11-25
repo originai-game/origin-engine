@@ -192,11 +192,29 @@ fn fs(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 @fragment
+fn fs_srgb_dither(in: VsOut) -> @location(0) vec4<f32> {
+  var c = finished(in.uv, in.pos.xy);
+  // 1-LSB perceptual triangular IGN dither for 8-bit hardware sRGB SDR outputs;
+  // skip under HDR or Tonemap::None (mode.x == 1) so authored exact 2D colours
+  // stay bit-for-bit intact.
+  if (post.hdr.x <= 0.0 && abs(post.mode.x - 1.0) > 0.5) {
+    let enc = srgb_encode(clamp(c, vec3<f32>(0.0), vec3<f32>(1.0)));
+    let dither = (ign(in.pos.xy) + ign(in.pos.xy + vec2<f32>(17.0, 31.0)) - 1.0) / 255.0;
+    c = srgb_decode(clamp(enc + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0)));
+  }
+  return vec4<f32>(c, 1.0);
+}
+
+@fragment
 fn fs_srgb_encode(in: VsOut) -> @location(0) vec4<f32> {
-  let enc = srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0)));
-  // 1-LSB triangular IGN dither to break 8-bit sky and shadow banding.
-  let dither = (ign(in.pos.xy) + ign(in.pos.xy + vec2<f32>(17.0, 31.0)) - 1.0) / 255.0;
-  return vec4<f32>(clamp(enc + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);
+  var enc = srgb_encode(clamp(finished(in.uv, in.pos.xy), vec3<f32>(0.0), vec3<f32>(1.0)));
+  // 1-LSB triangular IGN dither to break 8-bit sky and shadow banding; skip
+  // under Tonemap::None so authored exact 2D colours stay intact.
+  if (abs(post.mode.x - 1.0) > 0.5) {
+    let dither = (ign(in.pos.xy) + ign(in.pos.xy + vec2<f32>(17.0, 31.0)) - 1.0) / 255.0;
+    enc = clamp(enc + vec3<f32>(dither), vec3<f32>(0.0), vec3<f32>(1.0));
+  }
+  return vec4<f32>(enc, 1.0);
 }
 
 // The bloom chain's source size (bloom_chain.wgsl): each bloom level is a

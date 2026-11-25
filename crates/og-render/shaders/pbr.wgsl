@@ -464,7 +464,7 @@ fn shadow_keep(sun: f32, mode: u32) -> f32 {
 
 // `receives`: the instance is darkened by the light's shadow map
 // (look_receives).
-fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, receives: bool) -> vec3<f32> {
+fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, frag: vec2<f32>, receives: bool) -> vec3<f32> {
   if (!OG_LOCAL_LIGHTS) { return vec3<f32>(0.0); }
   // A rect light (area.wgsl): linearly transformed cosines, no shadow map.
   if (light.color_kind.w < -0.5) {
@@ -475,7 +475,7 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   let r = local_reach(light, s.translucency, p, n);
   if (!r.lit) { return vec3<f32>(0.0); }
   var shadow = 1.0;
-  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
+  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, frag); }
   if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     return toon_light(s, n, v, r.l, shadow) * r.radiance * r.diffuse;
   }
