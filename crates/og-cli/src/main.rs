@@ -248,12 +248,14 @@ commands:
                       Effekseer file in assets/ is converted the same way by og cook. A
                       one-shot effect gets an impact where the most starts at once; --hit
                       adds a light and a camera shake there (hits, explosions)
-  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
+  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day]
               [--project-look | --look asset.ogt] [--scene asset.ogt]
               [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov]
               [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]
                       play each effect (type vfx, or type vfx2d in a 2D project) alone on a
-                      dark stage, or the selected project look/scene, and report it: six frames tiled into
+                      dark stage at dusk (--stage day: a grey one under an overcast day, where
+                      smoke, dust, debris and marks read), or the selected project look/scene,
+                      and report it: six frames tiled into
                       <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed
                       by the box the effect was measured to reach; its length, impact time,
                       measured size and anchor, draw calls, particle slots, the engine's

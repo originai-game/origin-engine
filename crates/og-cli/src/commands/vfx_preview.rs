@@ -1,5 +1,5 @@
 //! `og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
-//! [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
+//! [--stage dusk|day] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
 //! it is and what it costs, without writing a scene for it.
 //!
 //! Each effect (an asset id of the project, `fx/hit.ogt`, or a file under
@@ -24,8 +24,17 @@
 //!    meet in that view, so they fall a little further than in a game.
 //!    An effect with [`CENTRE_SHARE`] or more of itself below its origin
 //!    is anchored at its `centre` (a ring about its origin, a shield),
-//!    any other on the `ground`;
-//! 3. **shots**: six frames in time order, the impact frame among them, the
+//!    any other on the `ground`, and so is every effect with a `decal`,
+//!    which lands on the surface at its origin. From above, what a centred effect draws
+//!    below its origin is under the ground, so it is seen from above once
+//!    more raised to stand on it, for its x and z. A decal lands on lit surfaces alone, so
+//!    an effect with a `decal` that drew nothing over black (a bullet
+//!    hole, a skid mark) is measured once more from above on a ground lit
+//!    from straight overhead: its box is flat, what it left there;
+//! 3. **shots**: six frames in time order (`frameSeconds`), the impact
+//!    frame among them, spread over the time it is shown, or for an effect
+//!    that leaves a mark (a `decal`) over the time it drew anything else
+//!    over black and a quarter more, so the last shows what is left, the
 //!    camera placed so the measured core fills the view (an effect that
 //!    draws nothing measurable gets the default view) and an effect
 //!    anchored at its centre raised to stand whole on the ground, each with the
@@ -50,6 +59,10 @@
 //! `<out>/together.png`, written to `<out>/together.json`. Each effect starts
 //! at its origin on the ground, whatever its anchor.
 //!
+//! `--stage day` shows them on a grey ground under an overcast day instead
+//! of the dusk: what is lit (smoke, dust, debris, marks) reads there, and
+//! what glows reads at dusk. The measuring and the numbers are the same.
+//!
 //! `--quality low` plays them with
 //! that graphics preset applied (og.render.applyQuality), as a player who
 //! picked it sees them: every frame, size and millisecond is at it (the
@@ -67,7 +80,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--project-look | --look asset.ogt] [--scene asset.ogt] [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
+const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--stage dusk|day] [--project-look | --look asset.ogt] [--scene asset.ogt] [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
 
 const STAGE: &str = include_str!("vfx_preview/stage.ts");
 const TICK: f64 = 60.0;
@@ -78,6 +91,9 @@ const SLOT: f64 = 4.0;
 const LOOP_SHOW: f64 = 2.0;
 /// Where in an effect's shown time its six shots are taken.
 const FRACTIONS: [f64; 6] = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9];
+/// How much longer than it drew anything but its mark an effect that
+/// leaves one is shot, as a multiple.
+const MARK_TAIL: f64 = 1.25;
 /// Where its bounds are sampled.
 const SAMPLES: [f64; 10] = [0.03, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.95];
 /// Effects per shot or measuring run.
@@ -92,7 +108,7 @@ const MEASURE_HALF_MAX: f64 = 48.0;
 /// each axis: the few sparks that fly furthest do not set the camera.
 const CORE_TRIM: f64 = 0.01;
 /// An effect with this share of its pixels below its origin, seen from the
-/// front, is anchored at its centre.
+/// front, is anchored at its centre, unless it has a decal.
 const CENTRE_SHARE: f64 = 0.1;
 /// A channel differing by more than this from the empty stage (of 255) is
 /// the effect's.
@@ -106,6 +122,10 @@ const MIN_RADIUS: f64 = 0.5;
 /// From the framed centre to the camera, and its vertical field of view.
 const VIEW_DIR: [f64; 3] = [0.0, 1.4, 5.2];
 const VIEW_FOV: f64 = 50.0;
+/// The shot camera's direction for a box flatter than [`FLAT_SHARE`] of its
+/// longer side: 42 degrees above the ground.
+const VIEW_DIR_FLAT: [f64; 3] = [0.0, 3.6, 4.0];
+const FLAT_SHARE: f64 = 0.05;
 /// The timed run: empty frames from `BASE_FROM` seconds, the effect at
 /// `BASE_FROM + GAP`, its first `WARM` ticks (one-off uploads) not counted.
 const BASE_FROM: f64 = 0.4;
@@ -124,6 +144,8 @@ struct Args {
     json: bool,
     /// The graphics preset the stage applies ("": none).
     quality: String,
+    /// The shown stage: "dusk" or "day".
+    stage: String,
     keep: bool,
     together: bool,
     project_look: bool,
@@ -143,6 +165,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         cost_only: false,
         json: false,
         quality: String::new(),
+        stage: "dusk".into(),
         keep: false,
         together: false,
         project_look: false,
@@ -160,7 +183,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             "--keep" => a.keep = true,
             "--together" => a.together = true,
             "--project-look" => a.project_look = true,
-            flag @ ("--project" | "--out" | "--size" | "--quality" | "--look"
+            flag @ ("--project" | "--out" | "--size" | "--quality" | "--stage" | "--look"
             | "--scene" | "--position" | "--camera") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
@@ -185,6 +208,8 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                         a.quality = v.to_string()
                     }
                     "--quality" => return Err(format!("--quality {v}: low, medium or high")),
+                    "--stage" if matches!(*v, "dusk" | "day") => a.stage = v.to_string(),
+                    "--stage" => return Err(format!("--stage {v}: dusk or day")),
                     _ => {
                         let size = v
                             .split_once('x')
@@ -251,12 +276,19 @@ struct Measured {
     core: Bounds,
     /// The share of its pixels below its origin, seen from the front.
     below: f64,
+    /// The share of its shown time after which it drew nothing more over
+    /// black (the first of [`SAMPLES`] past the last that showed it; 1 for
+    /// one that showed to the end, and for a mark alone).
+    busy: f64,
+    /// It has a `decal`: the decal lands on the surface at its origin, so
+    /// it stands there whatever else it draws below.
+    marks: bool,
 }
 
 impl Measured {
     /// Its origin is inside it, not under it.
     fn centred(&self) -> bool {
-        self.below >= CENTRE_SHARE
+        !self.marks && self.below >= CENTRE_SHARE
     }
 
     /// How far above the origin the shots play it: an effect anchored at
@@ -485,15 +517,19 @@ impl Seen {
         }
     }
 
-    /// Counts the pixels of `frame` that differ from `empty`.
-    fn add(&mut self, empty: &RgbaImage, frame: &RgbaImage) {
+    /// Counts the pixels of `frame` that differ from `empty`, and says
+    /// whether any did.
+    fn add(&mut self, empty: &RgbaImage, frame: &RgbaImage) -> bool {
+        let mut any = false;
         for (x, y, p) in frame.enumerate_pixels() {
             let q = empty.get_pixel(x, y);
             if (0..3).any(|c| (i16::from(p[c]) - i16::from(q[c])).abs() > THRESHOLD) {
                 self.cols[x as usize] += 1;
                 self.rows[y as usize] += 1;
+                any = true;
             }
         }
+        any
     }
 
     /// The pixel box (x0, y0, x1, y1, inclusive) holding all it showed but
@@ -533,6 +569,23 @@ impl Seen {
             below as f64 / total as f64
         }
     }
+}
+
+/// Writes a sheet, packed as small as PNG allows: it is written once and
+/// kept (a pack pins one per effect), and the encoder's default leaves a
+/// sheet several times larger.
+fn save(sheet: RgbaImage, path: &Path) -> Result<(), String> {
+    use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+    let file = std::fs::File::create(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let encoder = PngEncoder::new_with_quality(
+        std::io::BufWriter::new(file),
+        CompressionType::Best,
+        FilterType::Adaptive,
+    );
+    image::DynamicImage::ImageRgba8(sheet)
+        .to_rgb8()
+        .write_with_encoder(encoder)
+        .map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn open(path: &Path) -> Result<RgbaImage, String> {
@@ -597,6 +650,8 @@ fn bounds(
     timing: &[Timing],
 ) -> Result<Vec<Option<Measured>>, String> {
     let mut out: Vec<Option<Measured>> = vec![None; effects.len()];
+    // The half side each effect was last measured with.
+    let mut halves = vec![MEASURE_HALF; effects.len()];
     let mut todo: Vec<usize> = (0..effects.len()).collect();
     let mut half = MEASURE_HALF;
     while !todo.is_empty() {
@@ -629,14 +684,20 @@ fn bounds(
             ];
             for &i in chunk {
                 let mut seen = [Seen::new(), Seen::new()];
+                // The first sample after the last that showed anything.
+                let mut busy = 0;
                 for k in 0..SAMPLES.len() {
                     for (v, name) in ["f", "t"].iter().enumerate() {
                         let frame = open(&dir.join(format!("m{i}-{name}{k}.png")))?;
-                        seen[v].add(&empty[v], &frame);
+                        if seen[v].add(&empty[v], &frame) {
+                            busy = k + 1;
+                        }
                     }
                 }
+                let busy = SAMPLES.get(busy).copied().unwrap_or(1.0);
                 let reach = metres(seen[0].pixels(0.0), seen[1].pixels(0.0), half);
                 let core = metres(seen[0].pixels(CORE_TRIM), seen[1].pixels(CORE_TRIM), half);
+                halves[i] = half;
                 match reach.zip(core) {
                     None => out[i] = None,
                     Some(((b, edge), (core, _))) => {
@@ -648,6 +709,8 @@ fn bounds(
                             },
                             core,
                             below: seen[0].below(),
+                            busy,
+                            marks: timing[i].elements.iter().any(|e| e == "decal"),
                         });
                         if edge && !widest {
                             again.push(i);
@@ -660,7 +723,148 @@ fn bounds(
         todo = again;
         half *= 2.0;
     }
+    depth(stage, bundle, effects, timing, &halves, &mut out)?;
+    let flat: Vec<usize> = (0..effects.len())
+        .filter(|&i| out[i].is_none() && timing[i].elements.iter().any(|e| e == "decal"))
+        .collect();
+    marks(stage, bundle, effects, timing, flat, &mut out)?;
     Ok(out)
+}
+
+/// The depth of the effects anchored at their centre: from above, what one
+/// draws below its origin is under the ground, so each is seen from above
+/// once more raised to stand on it, as the shots play it, and its box takes
+/// that view's x and z.
+fn depth(
+    stage: &Stage,
+    bundle: &Path,
+    effects: &[Effect],
+    timing: &[Timing],
+    halves: &[f64],
+    out: &mut [Option<Measured>],
+) -> Result<(), String> {
+    let raised: Vec<usize> = (0..effects.len())
+        .filter(|&i| out[i].is_some_and(|m| m.lift() > 0.0))
+        .collect();
+    let mut sizes: Vec<f64> = raised.iter().map(|&i| halves[i]).collect();
+    sizes.sort_by(f64::total_cmp);
+    sizes.dedup();
+    for half in sizes {
+        let [_, top] = measure_views(half);
+        let of: Vec<usize> = raised
+            .iter()
+            .copied()
+            .filter(|&i| halves[i] == half)
+            .collect();
+        for chunk in of.chunks(CHUNK) {
+            let mut commands = vec![
+                "0:stage:measure".to_string(),
+                format!("0.3:{top}"),
+                "0.3:screenshot:empty.png".to_string(),
+            ];
+            let mut t = 0.5;
+            for &i in chunk {
+                let lift = out[i].map_or(0.0, |m| m.lift());
+                commands.push(format!("{t:.3}:lift:{lift:.4}"));
+                commands.push(format!("{t:.3}:play:{}", effects[i].id));
+                for (k, f) in SAMPLES.iter().enumerate() {
+                    let at = t + (f * timing[i].show).max(1.0 / TICK);
+                    commands.push(format!("{at:.3}:screenshot:m{i}-{k}.png"));
+                }
+                t += timing[i].show;
+                commands.push(format!("{t:.3}:clear"));
+                t += 0.2;
+            }
+            let (_, dir) = stage.run(bundle, (MEASURE_PX, MEASURE_PX), commands, t + 0.1, &[])?;
+            let empty = open(&dir.join("empty.png"))?;
+            for &i in chunk {
+                let mut seen = Seen::new();
+                for k in 0..SAMPLES.len() {
+                    seen.add(&empty, &open(&dir.join(format!("m{i}-{k}.png")))?);
+                }
+                let reach = metres(None, seen.pixels(0.0), half);
+                let core = metres(None, seen.pixels(CORE_TRIM), half);
+                if let (Some(m), Some(((reach, _), (core, _)))) = (out[i].as_mut(), reach.zip(core))
+                {
+                    for (b, seen) in [(&mut m.reach, reach), (&mut m.core, core)] {
+                        for axis in [0, 2] {
+                            b.min[axis] = b.min[axis].min(seen.min[axis]);
+                            b.max[axis] = b.max[axis].max(seen.max[axis]);
+                        }
+                    }
+                }
+            }
+            stage.done(&dir);
+        }
+    }
+    Ok(())
+}
+
+/// The flat boxes of effects that drew nothing over black and have a decal
+/// (`todo`): a decal lands on lit surfaces alone, so each is seen from above
+/// on a ground lit from straight overhead (stage.ts `stage:marks`), where
+/// what it left differs from the empty ground.
+fn marks(
+    stage: &Stage,
+    bundle: &Path,
+    effects: &[Effect],
+    timing: &[Timing],
+    mut todo: Vec<usize>,
+    out: &mut [Option<Measured>],
+) -> Result<(), String> {
+    let mut half = MEASURE_HALF;
+    while !todo.is_empty() {
+        let [_, top] = measure_views(half);
+        let mut again = Vec::new();
+        for chunk in todo.chunks(CHUNK) {
+            let mut commands = vec![
+                "0:stage:marks".to_string(),
+                format!("0.3:{top}"),
+                "0.3:screenshot:empty.png".to_string(),
+            ];
+            let mut t = 0.5;
+            for &i in chunk {
+                commands.push(format!("{t:.3}:play:{}", effects[i].id));
+                for (k, f) in SAMPLES.iter().enumerate() {
+                    let at = t + (f * timing[i].show).max(1.0 / TICK);
+                    commands.push(format!("{at:.3}:screenshot:m{i}-{k}.png"));
+                }
+                t += timing[i].show;
+                commands.push(format!("{t:.3}:clear"));
+                t += 0.2;
+            }
+            let (_, dir) = stage.run(bundle, (MEASURE_PX, MEASURE_PX), commands, t + 0.1, &[])?;
+            let empty = open(&dir.join("empty.png"))?;
+            for &i in chunk {
+                let mut seen = Seen::new();
+                for k in 0..SAMPLES.len() {
+                    seen.add(&empty, &open(&dir.join(format!("m{i}-{k}.png")))?);
+                }
+                let reach = metres(None, seen.pixels(0.0), half);
+                let core = metres(None, seen.pixels(CORE_TRIM), half);
+                if let Some(((b, edge), (core, _))) = reach.zip(core) {
+                    let widest = half * 2.0 > MEASURE_HALF_MAX;
+                    out[i] = Some(Measured {
+                        reach: Bounds {
+                            clipped: edge && widest,
+                            ..b
+                        },
+                        core,
+                        below: 0.0,
+                        busy: 1.0,
+                        marks: true,
+                    });
+                    if edge && !widest {
+                        again.push(i);
+                    }
+                }
+            }
+            stage.done(&dir);
+        }
+        todo = again;
+        half *= 2.0;
+    }
+    Ok(())
 }
 
 /// The shot camera for a box: the centre it looks at and how far it stands.
@@ -685,8 +889,15 @@ fn framing(b: Option<Bounds>) -> ([f64; 3], f64) {
 fn view_command(b: Option<Bounds>, lift: f64) -> String {
     let (mut c, distance) = framing(b);
     c[1] += lift;
-    let len = VIEW_DIR.iter().map(|v| v * v).sum::<f64>().sqrt();
-    let p: [f64; 3] = std::array::from_fn(|i| c[i] + VIEW_DIR[i] / len * distance);
+    // A mark on the ground (a decal, a ground ring) is looked down on: from
+    // the side it is a line.
+    let flat = b.is_some_and(|b| {
+        let side = (b.max[0] - b.min[0]).max(b.max[2] - b.min[2]);
+        b.max[1] - b.min[1] < side * FLAT_SHARE
+    });
+    let dir = if flat { VIEW_DIR_FLAT } else { VIEW_DIR };
+    let len = dir.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let p: [f64; 3] = std::array::from_fn(|i| c[i] + dir[i] / len * distance);
     format!(
         "eye:{:.4}:{:.4}:{:.4}:{:.4}:{:.4}:{:.4}:{VIEW_FOV}",
         p[0], p[1], p[2], c[0], c[1], c[2]
@@ -700,6 +911,8 @@ struct Shots {
     particles: u64,
     /// The engine's warnings of the run that name the effect.
     warnings: Vec<String>,
+    /// Seconds from the effect's start to each frame.
+    times: Vec<f64>,
 }
 
 /// Step 3: the six shots of each effect, tiled into its sheet under `out`.
@@ -717,10 +930,21 @@ fn shots(
     for chunk in all.chunks(CHUNK) {
         let mut commands = vec!["0:stage:show".to_string()];
         let mut t = 0.5;
+        // Each effect's frame times, in the chunk's order.
+        let mut taken = Vec::new();
         for &i in chunk {
             let tm = &timing[i];
             let start = t + 0.2;
-            let mut times: Vec<f64> = FRACTIONS.iter().map(|f| f * tm.show).collect();
+            // An effect that leaves a mark lasts as long as the mark: its
+            // shots are spread over the time it drew anything else and a
+            // quarter more, so the last shows what is left.
+            let span = match boxes[i] {
+                Some(m) if !tm.looping && tm.elements.iter().any(|e| e == "decal") => {
+                    (m.busy * MARK_TAIL).min(1.0) * tm.show
+                }
+                _ => tm.show,
+            };
+            let mut times: Vec<f64> = FRACTIONS.iter().map(|f| f * span).collect();
             if let Some(impact) = tm.impact {
                 // The shot nearest the impact is taken two ticks after it, when
                 // what it started shows.
@@ -746,13 +970,17 @@ fn shots(
             ));
             commands.push(format!("{:.3}:lift:{lift:.4}", t + 0.1));
             commands.push(format!("{start:.3}:play:{}", effects[i].id));
+            for dt in &mut times {
+                *dt = dt.max(1.0 / TICK);
+            }
             for (n, dt) in times.iter().enumerate() {
-                let at = start + dt.max(1.0 / TICK);
+                let at = start + dt;
                 commands.push(format!("{at:.3}:screenshot:s{i}-{n}.png"));
                 commands.push(format!("{at:.3}:dump_render:s{i}-{n}.json"));
             }
             t = start + tm.show;
             commands.push(format!("{t:.3}:clear"));
+            taken.push(times);
         }
         let (summary, dir) = stage.run(bundle, size, commands, t + 0.3, &[])?;
         // "WARN tick N: <text>", the run's log; each effect keeps the
@@ -764,7 +992,7 @@ fn shots(
             .filter_map(Value::as_str)
             .map(|l| l.split_once(": ").map_or(l, |(_, text)| text))
             .collect();
-        for &i in chunk {
+        for (&i, times) in chunk.iter().zip(taken) {
             let quoted = format!("'{}'", effects[i].id);
             let mut warnings: Vec<String> = logged
                 .iter()
@@ -797,15 +1025,13 @@ fn shots(
                 std::fs::create_dir_all(parent)
                     .map_err(|e| format!("{}: {e}", parent.display()))?;
             }
-            image::DynamicImage::ImageRgba8(sheet)
-                .to_rgb8()
-                .save(&path)
-                .map_err(|e| format!("{}: {e}", path.display()))?;
+            save(sheet, &path)?;
             done.push(Shots {
                 sheet: path,
                 draws,
                 particles,
                 warnings,
+                times,
             });
         }
         stage.done(&dir);
@@ -1035,10 +1261,7 @@ fn together(
         image::imageops::overlay(&mut sheet, &frame, i64::from(k as u32 * size.0), 0);
     }
     let sheet_path = out.join("together.png");
-    image::DynamicImage::ImageRgba8(sheet)
-        .to_rgb8()
-        .save(&sheet_path)
-        .map_err(|e| format!("{}: {e}", sheet_path.display()))?;
+    save(sheet, &sheet_path)?;
     stage.done(&dir);
     let gpu = gpu_frames(&trace)?;
     let cpu = cpu_frames(&trace)?;
@@ -1213,6 +1436,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     let context = json!({
         "enabled": !look.is_empty() || !a.scene.is_empty() || a.camera.is_some() || a.position != [0.0; 3],
         "look": look, "scene": a.scene, "position": a.position, "camera": a.camera,
+        "stage": a.stage,
     });
     let stage = Stage {
         project: &p,
@@ -1310,6 +1534,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
                 "loop": tm.looping,
                 "impactSeconds": tm.impact.map(round3),
                 "shownSeconds": round3(tm.show),
+                "frameSeconds": s.times.iter().copied().map(round3).collect::<Vec<_>>(),
                 "elements": tm.elements,
                 "bounds": bounds,
                 "core": core,

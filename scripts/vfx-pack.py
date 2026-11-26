@@ -3,7 +3,7 @@
 docs/vfx-packs.md).
 
     python3 scripts/vfx-pack.py manifest <pack> --spec <spec.json> [--revision SHA]
-    python3 scripts/vfx-pack.py preview <pack> [--og target/debug/og] [--cover <effect.ogt>] [--only <a.ogt,b.ogt>]
+    python3 scripts/vfx-pack.py preview <pack> [--og target/debug/og] [--stage dusk|day] [--cover <effect.ogt>] [--cover-frame 0..5] [--only <a.ogt,b.ogt>]
 
 `manifest` writes the pack's assets.json (every installed file with its
 sha256 and provenance, every top-level effect with its timing) and the
@@ -25,7 +25,10 @@ catalog fields of extension.json (minEngine, tags, keywords) from a spec:
 camera, the shots, the timing and the size) play the pack's effects there,
 then writes, per effect, preview/<effect>.png (six 960x540 frames in time
 order, the impact frame among them, 3 x 2, the camera placed by the
-effect's measured core), preview/<effect>.cost.json (its peak GPU
+effect's measured core; on the dusk stage, or with `--stage day` on the
+day stage, which lit effects such as smoke, dust and debris read on:
+`--stage day --only <those>` after the dusk run re-renders them alone),
+preview/<effect>.cost.json (its peak GPU
 milliseconds over an empty frame, its draws, particle slots and measured
 bounds) and preview/cover.png, and its timing back into assets.json's
 effects:
@@ -205,9 +208,10 @@ def preview(args):
         # effect that does not play.
         failed = {}
         label = f"vfx-pack preview {name}: shots, {len(effects)} effects"
-        if og_preview(og, game, work, [ids[r] for r in effects], ["--no-cost"], ("", label)) is not None:
+        stage = ["--stage", args.stage]
+        if og_preview(og, game, work, [ids[r] for r in effects], ["--no-cost", *stage], ("", label)) is not None:
             for rel in effects:
-                err = og_preview(og, game, work, [ids[rel]], ["--no-cost"], ("", f"vfx-pack preview {name}/{rel}"))
+                err = og_preview(og, game, work, [ids[rel]], ["--no-cost", *stage], ("", f"vfx-pack preview {name}/{rel}"))
                 if err is not None:
                     failed[rel] = err
         if failed and not args.skip_failed:
@@ -225,7 +229,7 @@ def preview(args):
         rows, records = [], {}
         for rel in effects:
             # Every GPU slot for one effect's timed run at a time.
-            err = og_preview(og, game, work, [ids[rel]], ["--cost-only"], ("_all", f"vfx-pack cost {name}/{rel}"))
+            err = og_preview(og, game, work, [ids[rel]], ["--cost-only", *stage], ("_all", f"vfx-pack cost {name}/{rel}"))
             if err is not None:
                 sys.exit(f"{rel}: {err}")
             record = json.loads((work / (ids[rel][:-4] + ".json")).read_text())
@@ -249,7 +253,8 @@ def preview(args):
             print(f"{rel}\tbaseline {record['cost']['baselineMs']:.3f} ms\t+{cost['peakFrameMs']['total']:.3f} ms", flush=True)
 
         # The cover: one frame of the named effect (else the first with an
-        # impact, else the first), its impact's when it has one.
+        # impact, else the first): the one named, else its impact's when it
+        # has one (an explosion's is its flash: name the fireball's).
         if args.cover not in records:
             args.cover = None
         if args.only and args.cover is None:
@@ -260,9 +265,10 @@ def preview(args):
         if cover is not None:
             record = records[cover]
             n = 2
-            if record["impactSeconds"] is not None:
-                fractions = [0.04, 0.15, 0.3, 0.5, 0.7, 0.9]
-                n = min(range(6), key=lambda n: abs(fractions[n] * record["shownSeconds"] - record["impactSeconds"]))
+            if args.cover_frame is not None:
+                n = args.cover_frame
+            elif record["impactSeconds"] is not None:
+                n = min(range(6), key=lambda n: abs(record["frameSeconds"][n] - record["impactSeconds"]))
             sheet = Image.open(record["sheet"]).convert("RGB")
             w, h = sheet.width // 3, sheet.height // 2
             sheet.crop(((n % 3) * w, (n // 3) * h, (n % 3 + 1) * w, (n // 3 + 1) * h)).save(out / "cover.png", optimize=True)
@@ -296,7 +302,11 @@ def main():
     p = sub.add_parser("preview")
     p.add_argument("pack")
     p.add_argument("--og", default=str(Path(__file__).resolve().parent.parent / "target/debug/og"))
+    p.add_argument("--stage", choices=["dusk", "day"], default="dusk",
+                   help="the stage the sheets show the effects on (og vfx preview --stage)")
     p.add_argument("--cover")
+    p.add_argument("--cover-frame", type=int, choices=range(6),
+                   help="which of the cover effect's six frames (default: its impact's, else the third)")
     p.add_argument("--keep", action="store_true")
     p.add_argument("--only", help="comma-separated effect paths to re-render; the other sheets stay")
     p.add_argument("--skip-failed", action="store_true",

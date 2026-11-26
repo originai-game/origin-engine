@@ -169,6 +169,14 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
   measured size, anchor, draw calls and peak GPU milliseconds (§4), and
   the engine's warnings about it. Judge its frames as `art-review §7`
   says, and capture it in the game as `captures §6` says.
+- The stage is a dark ground at dusk, where what glows reads. An effect
+  that is lit instead (smoke, dust, debris, a mark on the ground) is near
+  black there: `og vfx preview fx/dust.ogt --stage day` shows it on a grey
+  ground under an overcast day. The measured numbers are the same.
+- An effect that leaves a mark (a `decal`) lasts as long as the mark, so
+  its six frames are taken over the time it drew anything else and a
+  quarter more: the last shows the mark alone, the others what left it.
+  The record's `frameSeconds` says when each frame was taken.
 - For context, `og vfx preview fx/hit.ogt --project-look --scene scenes/courtyard.ogt --position 2,0.5,-1 --camera 2,2,6,2,1,-1,50`
   checks the same six moments in the project's look and a cooked scene instead. Fog, exposure and grading stay active; scene resources apply after the look. Use `--look looks/alternate.ogt` instead of `--project-look` to compare an explicit look. The position is exact (no automatic ground lift); the camera is world-space, or without `--camera` it auto-frames at that position. Bounds remain an isolated black-stage measurement, while draws and GPU growth are measured in the selected scene. No game entry or gameplay system runs in this preview.
 - Read og.VfxEvent for the frame the hit lands; the drawn parts never
