@@ -34,7 +34,54 @@ fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4
     case 2u: { t = textureSampleGrad(normal2, layer_sampler, uv, dx, dy); }
     default: { t = textureSampleGrad(normal3, layer_sampler, uv, dx, dy); }
   }
-  return vec4<f32>(t.xyz * 2.0 - 1.0, t.w);
+  return layer_normal_texel(i, t);
+}
+
+// A normal map's texel `t` as layer_normal_map gives it. A map of x and y
+// alone (BC5, EAC RG11: what a `kind normal` texture is on an adapter that
+// has them; the 4 in mapping.w) reads its blue as 0, so its z is rebuilt
+// from them, as pbr_fs.wgsl rebuilds a material's: read as stored it was
+// -1, a normal into the ground (no sunlight on a layer read from above)
+// and, hex-tiled, a slope twenty times too steep (taps_normal divides by
+// z, held at 0.05).
+fn layer_normal_texel(i: u32, t: vec4<f32>) -> vec4<f32> {
+  var n = t.xyz * 2.0 - 1.0;
+  if ((u32(terrain.layers[i].mapping.w) & 4u) != 0u) {
+    n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
+  }
+  return vec4<f32>(n, t.w);
+}
+
+// The mean slope of layer `i`'s normal map: its smallest mip, the box
+// filter's average of the whole map, as a slope (xy over z). A surface that
+// repeats has none (its height comes back to where it started, so its
+// slopes sum to nothing), so a map that has one carries a tilt its scan
+// left in it (Poly Haven's snow_02: 13 degrees), and `taps_normal` takes it
+// out: left in, every repeat leans the ground one way under the light, and
+// each hexagon of the anti-tiling, turning its copy, leans its own way: a
+// honeycomb of lighter and darker cells, plainest from afar, where the
+// taps read the map's high mips and little but that mean is left. 0 for a
+// map without mips, whose mean is not known.
+fn layer_normal_tilt(i: u32) -> vec2<f32> {
+  var t = vec4<f32>(0.5, 0.5, 1.0, 1.0);
+  switch i {
+    case 0u: { t = normal_mean(normal0); }
+    case 1u: { t = normal_mean(normal1); }
+    case 2u: { t = normal_mean(normal2); }
+    default: { t = normal_mean(normal3); }
+  }
+  return mean_tilt(i, t);
+}
+
+fn normal_mean(map: texture_2d<f32>) -> vec4<f32> {
+  let levels = textureNumLevels(map);
+  if (levels < 2u) { return vec4<f32>(0.5, 0.5, 1.0, 1.0); }
+  return textureSampleLevel(map, layer_sampler, vec2<f32>(0.5), f32(levels - 1u));
+}
+
+fn mean_tilt(i: u32, t: vec4<f32>) -> vec2<f32> {
+  let m = layer_normal_texel(i, t).xyz;
+  return m.xy / max(m.z, 0.05);
 }
 
 // The weight of a rule over [lo, hi] faded over `fade` on both sides.
@@ -402,9 +449,12 @@ fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
     }
     m[j] = layer_normal_map(i, t.uv[j], t.dx[j], t.dy[j]);
   }
+  // The map's own tilt (layer_normal_tilt), taken out of every tap's slope
+  // in the map's frame, before its hexagon turns it.
+  let tilt = layer_normal_tilt(i);
   var o: TapsNormal;
   if (t.n == 1u) {
-    o.normal = m[0].xyz;
+    o.normal = vec3<f32>(m[0].xy - tilt * m[0].z, m[0].z);
     o.tone = cell_tone(m[0].w, select(s, 0.0, m[0].w == 1.0));
     return o;
   }
@@ -414,7 +464,7 @@ fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
     let wj = w[j];
     if (wj <= 0.0) { continue; }
     let mj = m[j];
-    d += turn2(mj.xy, t.turn[j]) / max(mj.z, 0.05) * wj;
+    d += turn2(mj.xy / max(mj.z, 0.05) - tilt, t.turn[j]) * wj;
     tone += cell_tone(mj.w + t.seed[j], select(s, 0.0, mj.w == 1.0)) * wj;
   }
   o.normal = normalize(vec3<f32>(d, 1.0));
