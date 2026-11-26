@@ -260,99 +260,107 @@ impl<'a> Visit<'a> for Synchronous {
     }
 }
 
-fn module(
-    root: &Path,
-    path: &str,
-    overlay: &BTreeMap<String, String>,
-    modules: &mut BTreeMap<String, String>,
-    inputs: &mut BTreeMap<String, bool>,
-    hash: &mut blake3::Hasher,
-    entry_source: &mut Option<source::Source>,
-) -> Result<(), String> {
-    if modules.contains_key(path) {
-        return Ok(());
-    }
-    if modules.len() >= 128 {
-        return Err("a generator imports at most 128 modules".into());
-    }
-    let bytes = read(root, path, overlay)?;
-    if bytes.len() > SOURCE_LIMIT
-        || modules.values().map(String::len).sum::<usize>() + bytes.len() > 8 * 1024 * 1024
-    {
-        return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
-    }
-    let text = std::str::from_utf8(&bytes).map_err(|e| format!("{path}: {e}"))?;
-    entry_source.get_or_insert_with(|| source::Source::new(path, text));
-    hash.update(&(path.len() as u64).to_le_bytes());
-    hash.update(path.as_bytes());
-    hash.update(blake3::hash(&bytes).as_bytes());
-    let allocator = Allocator::default();
-    let source_type = SourceType::from_path(path).map_err(|e| format!("{path}: {e}"))?;
-    let parsed = Parser::new(&allocator, text, source_type).parse();
-    if !parsed.diagnostics.is_empty() {
-        return Err(format!("{path}: {:?}", parsed.diagnostics));
-    }
-    let mut program = parsed.program;
-    let mut synchronous = Synchronous::default();
-    synchronous.visit_program(&program);
-    if let Some((offset, feature)) = synchronous.forbidden {
-        let before = &text[..offset as usize];
-        let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
-        let column = before.rsplit('\n').next().unwrap_or("").chars().count() + 1;
-        return Err(format!(
-            "{path}:{line}:{column}: {feature} is not allowed in synchronous cook modules"
-        ));
-    }
-    let semantics = SemanticBuilder::new().build(&program);
-    if !semantics.diagnostics.is_empty() {
-        return Err(format!("{path}: {:?}", semantics.diagnostics));
-    }
-    let mut options = TransformOptions::default();
-    options.env.es2016.exponentiation_operator = true;
-    let transformed = Transformer::new(&allocator, Path::new(path), &options)
-        .build_with_scoping(semantics.semantic.into_scoping(), &mut program);
-    if !transformed.diagnostics.is_empty() {
-        return Err(format!("{path}: {:?}", transformed.diagnostics));
-    }
-    for (input, text) in
-        author::collect(&program, &transformed.scoping).map_err(|(offset, message)| {
+struct ModuleGraph {
+    modules: BTreeMap<String, String>,
+    inputs: BTreeMap<String, bool>,
+    hash: blake3::Hasher,
+    entry_source: Option<source::Source>,
+}
+
+impl ModuleGraph {
+    fn read(
+        &mut self,
+        root: &Path,
+        path: &str,
+        overlay: &BTreeMap<String, String>,
+    ) -> Result<(), String> {
+        if self.modules.contains_key(path) {
+            return Ok(());
+        }
+        if self.modules.len() >= 128 {
+            return Err("a generator imports at most 128 modules".into());
+        }
+        let bytes = read(root, path, overlay)?;
+        if bytes.len() > SOURCE_LIMIT
+            || self.modules.values().map(String::len).sum::<usize>() + bytes.len() > 8 * 1024 * 1024
+        {
+            return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
+        }
+        let text = std::str::from_utf8(&bytes).map_err(|e| format!("{path}: {e}"))?;
+        self.entry_source
+            .get_or_insert_with(|| source::Source::new(path, text));
+        self.hash.update(&(path.len() as u64).to_le_bytes());
+        self.hash.update(path.as_bytes());
+        self.hash.update(blake3::hash(&bytes).as_bytes());
+        let allocator = Allocator::default();
+        let source_type = SourceType::from_path(path).map_err(|e| format!("{path}: {e}"))?;
+        let parsed = Parser::new(&allocator, text, source_type).parse();
+        if !parsed.diagnostics.is_empty() {
+            return Err(format!("{path}: {:?}", parsed.diagnostics));
+        }
+        let mut program = parsed.program;
+        let mut synchronous = Synchronous::default();
+        synchronous.visit_program(&program);
+        if let Some((offset, feature)) = synchronous.forbidden {
             let before = &text[..offset as usize];
             let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
             let column = before.rsplit('\n').next().unwrap_or("").chars().count() + 1;
-            format!("{path}:{line}:{column}: {message}")
-        })?
-    {
-        let input = relative("", &input).map_err(|e| format!("{path}: {e}"))?;
-        *inputs.entry(input).or_default() |= text;
-    }
-    // Only executable imports enter the realm. Type-only imports are erased
-    // by OXC; their resolution belongs to the project's type checker.
-    let mut imports = Vec::new();
-    for s in &program.body {
-        let source = match s {
-            Statement::ImportDeclaration(d) => d.source.value.as_str(),
-            Statement::ExportAllDeclaration(d) => d.source.value.as_str(),
-            Statement::ExportFromDeclaration(d) => d.source.value.as_str(),
-            _ => None,
-        };
-        if let Some(name) = source {
-            if name == BUILTIN || name == author::MODULE {
-                continue;
-            }
-            if !name.starts_with("./") && !name.starts_with("../") {
-                return Err(format!(
-                    "{path}: imports must be relative with an explicit suffix, {BUILTIN} or {}: {name}",
-                    author::MODULE
-                ));
-            }
-            imports.push(relative(path, name)?);
+            return Err(format!(
+                "{path}:{line}:{column}: {feature} is not allowed in synchronous cook modules"
+            ));
         }
+        let semantics = SemanticBuilder::new().build(&program);
+        if !semantics.diagnostics.is_empty() {
+            return Err(format!("{path}: {:?}", semantics.diagnostics));
+        }
+        let mut options = TransformOptions::default();
+        options.env.es2016.exponentiation_operator = true;
+        let transformed = Transformer::new(&allocator, Path::new(path), &options)
+            .build_with_scoping(semantics.semantic.into_scoping(), &mut program);
+        if !transformed.diagnostics.is_empty() {
+            return Err(format!("{path}: {:?}", transformed.diagnostics));
+        }
+        for (input, text) in
+            author::collect(&program, &transformed.scoping).map_err(|(offset, message)| {
+                let before = &text[..offset as usize];
+                let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
+                let column = before.rsplit('\n').next().unwrap_or("").chars().count() + 1;
+                format!("{path}:{line}:{column}: {message}")
+            })?
+        {
+            let input = relative("", &input).map_err(|e| format!("{path}: {e}"))?;
+            *self.inputs.entry(input).or_default() |= text;
+        }
+        // Only executable imports enter the realm. Type-only imports are erased
+        // by OXC; their resolution belongs to the project's type checker.
+        let mut imports = Vec::new();
+        for s in &program.body {
+            let source = match s {
+                Statement::ImportDeclaration(d) => d.source.value.as_str(),
+                Statement::ExportAllDeclaration(d) => d.source.value.as_str(),
+                Statement::ExportFromDeclaration(d) => d.source.value.as_str(),
+                _ => None,
+            };
+            if let Some(name) = source {
+                if name == BUILTIN || name == author::MODULE {
+                    continue;
+                }
+                if !name.starts_with("./") && !name.starts_with("../") {
+                    return Err(format!(
+                        "{path}: imports must be relative with an explicit suffix, {BUILTIN} or {}: {name}",
+                        author::MODULE
+                    ));
+                }
+                imports.push(relative(path, name)?);
+            }
+        }
+        self.modules
+            .insert(path.to_string(), Codegen::new().build(&program).code);
+        for name in imports {
+            self.read(root, &name, overlay)?;
+        }
+        Ok(())
     }
-    modules.insert(path.to_string(), Codegen::new().build(&program).code);
-    for name in imports {
-        module(root, &name, overlay, modules, inputs, hash, entry_source)?;
-    }
-    Ok(())
 }
 
 impl Program {
@@ -431,24 +439,26 @@ impl Program {
         hash.update(og_generation::MODULE_SOURCE.as_bytes());
         hash.update(include_bytes!("../../../../Cargo.lock"));
         hash.update(&crate::format::revisions(&crate::format::Area::ALL).to_le_bytes());
-        let mut modules = BTreeMap::from([
+        let modules = BTreeMap::from([
             (
                 BUILTIN.to_string(),
                 og_generation::MODULE_SOURCE.to_string(),
             ),
             (author::MODULE.to_string(), author::SOURCE.to_string()),
         ]);
-        let mut declared = BTreeMap::new();
-        let mut entry_source = None;
-        module(
-            root,
-            &entry,
-            overlay,
-            &mut modules,
-            &mut declared,
-            &mut hash,
-            &mut entry_source,
-        )?;
+        let mut graph = ModuleGraph {
+            modules,
+            inputs: BTreeMap::new(),
+            hash,
+            entry_source: None,
+        };
+        graph.read(root, &entry, overlay)?;
+        let ModuleGraph {
+            modules,
+            inputs: declared,
+            mut hash,
+            entry_source,
+        } = graph;
         let mut dependencies: std::collections::BTreeSet<String> = modules
             .keys()
             .filter(|p| *p != BUILTIN && *p != author::MODULE)
