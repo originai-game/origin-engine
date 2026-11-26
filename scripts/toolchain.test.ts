@@ -3,8 +3,7 @@
 // docs/ci.md's bun-types row and BUN_VERSION in scripts/install-tools.sh
 // are one version.
 import { expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const repo = join(import.meta.dir, "..");
@@ -27,8 +26,8 @@ test("the vendored bun-types, its docs/ci.md pin and BUN_VERSION are one version
 // tsconfig.runtime.json `paths`; a local `declare module "bun:test"` stub once
 // shadowed it, and engine tests used matchers the stub lacked. The pinned
 // tsrs (what `og check` runs) checks the three configs of `bun run typecheck`
-// without the native og, which quick does not build, and a probe that uses an
-// asymmetric matcher through the runtime config.
+// without the native og, which quick does not build; the runtime config's
+// tests use asymmetric matchers (expect.stringContaining and the like).
 const tsrs = (config: string) => {
   const r = Bun.spawnSync(["tsrs", "-p", config, "--noEmit", "--pretty", "false"], { cwd: repo });
   return `${r.stdout}${r.stderr}`.trim() || (r.exitCode === 0 ? "ok" : `exit ${r.exitCode}`);
@@ -36,20 +35,6 @@ const tsrs = (config: string) => {
 
 test.each(["tsconfig.json", "tsconfig.runtime.json", "tsconfig.templates.json"])("packages/engine/%s type-checks", (config) => {
   expect(tsrs(`packages/engine/${config}`)).toBe("ok");
-}, 60_000);
-
-test("bun:test in the engine package resolves to the vendored bun-types", () => {
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), "og-bun-types-")));
-  try {
-    writeFileSync(join(dir, "probe.test.ts"), `import { expect } from "bun:test";
-expect({ reason: "a stable id" }).toMatchObject({ reason: expect.stringContaining("stable") });
-expect("abc").toEqual(expect.stringMatching(/b/));
-`);
-    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ extends: join(repo, "packages/engine/tsconfig.runtime.json"), include: ["probe.test.ts"] }));
-    expect(tsrs(join(dir, "tsconfig.json"))).toBe("ok");
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
 }, 60_000);
 
 // quick type-checks without building the web host, so a literal import of a
