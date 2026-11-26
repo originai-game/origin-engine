@@ -150,15 +150,15 @@ Measured on NVIDIA L4 (Vulkan 580.82.07, native dev build, 960x540).
 
 | Effect | Title | Category | Element | Seconds | Size (m) | Anchor | GPU ms | Draws |
 |---|---|---|---|---|---|---|---|---|
-| `vfx/cinematic-realism/celebration.ogt` | Satin Confetti | ui |  | 3 | 3.5 × 3.5 × 2.8 | centre | 0.04 | 11 |
-| `vfx/cinematic-realism/dust.ogt` | Rolling Dust | smoke | earth | 2.6 | 1.8 × 3.7 × 1.8 | ground | 0.16 | 15 |
+| `vfx/cinematic-realism/celebration.ogt` | Satin Confetti | ui |  | 3 | 3.0 × 1.2 × 2.9 | ground | 0.07 | 12 |
+| `vfx/cinematic-realism/dust.ogt` | Rolling Dust | smoke | earth | 2.6 | 1.5 × 1.5 × 1.8 | ground | 0.16 | 15 |
 | `vfx/cinematic-realism/exhaust.ogt` | Ion Exhaust | fire |  | loops | 0.4 × 1.2 × 0.4 | centre | 0.08 | 14 |
-| `vfx/cinematic-realism/explosion.ogt` | Cinematic Explosion | explosion | fire | 4.5 | 9.3 × 8.8 × 5.6 | ground | 0.83 | 20 |
-| `vfx/cinematic-realism/impact.ogt` | Steel Impact | hit-spark |  | 1.2 | 2.7 × 3.0 × 1.4 | centre | 0.15 | 18 |
+| `vfx/cinematic-realism/explosion.ogt` | Cinematic Explosion | explosion | fire | 4.5 | 6.6 × 3.7 × 7.0 | ground | 0.21 | 21 |
+| `vfx/cinematic-realism/impact.ogt` | Steel Impact | hit-spark |  | 1.2 | 2.5 × 0.8 × 1.4 | ground | 0.15 | 18 |
 | `vfx/cinematic-realism/magic.ogt` | Aether Wisps | magic-impact |  | 1.8 | 1.0 × 1.2 × 0.9 | centre | 0.09 | 14 |
-| `vfx/cinematic-realism/muzzle.ogt` | Powder Flash | gunfire | fire | 1.4 | 0.4 × 0.5 × 0.4 | ground | 0.15 | 17 |
+| `vfx/cinematic-realism/muzzle.ogt` | Powder Flash | gunfire | fire | 1.4 | 0.4 × 0.5 × 0.4 | ground | 0.29 | 17 |
 | `vfx/cinematic-realism/pickup.ogt` | Amber Motes | buff |  | 1.2 | 0.8 × 1.2 × 1.3 | ground | 0.08 | 15 |
-| `vfx/cinematic-realism/splash.ogt` | Ballistic Spray | splash | water | 1.6 | 4.0 × 4.8 × 1.9 | centre | 0.14 | 22 |
+| `vfx/cinematic-realism/splash.ogt` | Ballistic Spray | splash | water | 1.6 | 1.8 × 0.7 × 1.7 | ground | 0.14 | 26 |
 
 <a id="guide-effect-packs-5"></a>
 ### `effect-packs §5` effekseer-andrewfm01

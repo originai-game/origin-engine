@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og vfx add cinematic-realism",
+      "change": "The splash becomes a torn crown sheet, rim droplets, a delayed central jet, flat surface foam and soft-banded ripples; debris, grit, sparks and confetti now land on the drawn depth instead of falling through the ground, and the explosion adds a short heat haze.",
+      "fix": "Reinstall the pack with og vfx add cinematic-realism; particles that land on the drawn depth do not collide off screen, so frame splashes and blasts where their ground is visible."
+    }
+  ]
+}

@@ -15,6 +15,9 @@ emitter "vfx/cinematic-realism/emitters/ground-dust.ogt" {
 emitter "vfx/cinematic-realism/emitters/debris.ogt" {
   offset 0 0.2 0
 }
+emitter "vfx/cinematic-realism/emitters/heat.ogt" {
+  offset 0 1.6 0
+}
 emitter "vfx/cinematic-realism/emitters/sparks.ogt" {
   offset 0 0.4 0
 }

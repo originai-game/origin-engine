@@ -18,3 +18,4 @@ render mesh box
 lit true
 blend alpha
 color 0.42 0.38 0.32
+collision 0.15 0.8 depth

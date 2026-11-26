@@ -2,12 +2,12 @@
   "format": 1,
   "engine": {
     "version": "0.9.0",
-    "revision": "47147de89cc40d6674adfec999dac0cf029106c8"
+    "revision": "7bfd23ad03fc8417006b37877a639e2bff1e0427"
   },
   "files": [
     {
       "path": "README.md",
-      "sha256": "c1d18c8aa53689ecbd999f37e1a0f87eeeaa97e9717df8c69b87ea41a303d616",
+      "sha256": "0dea43db9b9a230fceb93e81fb26d9ef40ec468fa6c3ad96b70bad147d502cb6",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -18,6 +18,16 @@
     {
       "path": "celebration.ogt",
       "sha256": "03da2874d5fadc1354873c23dffd77908217cd7c4ed892daa8bb81cf4949bb63",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
+      "path": "crown.ogt",
+      "sha256": "076c13dc368ff78124f3ee2eacb6cbfb569eb50358cd8652f201662182a0dce2",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -47,7 +57,7 @@
     },
     {
       "path": "emitters/column.ogt",
-      "sha256": "3e797204d858010fbcc413c6bc1ec89bc594e0c67366e01424f1f9b0928bfa6a",
+      "sha256": "75535433e2a3cba7d6877b2b1598317ce341008b3088cae44f62f6211168789f",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -57,7 +67,7 @@
     },
     {
       "path": "emitters/confetti.ogt",
-      "sha256": "ecf3ec2caecc906c78a16d60572af85638aa58f8a41cc9ccb603633856acb416",
+      "sha256": "e297b3d89c93a227effbe5642fb6959ea58ea60b61ab2ccfa3ea5cb43acd7f5a",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -67,7 +77,7 @@
     },
     {
       "path": "emitters/debris.ogt",
-      "sha256": "05a764a8840ec8366ebf2813392d75f38c7d8c960cd5b420795576303a00acd2",
+      "sha256": "0d92d5051f2d78bfe6c880ba2e04c3946bdda2400bdfbbde3a51c5eb67534a1e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -106,6 +116,16 @@
       "derived": "Original native effect composition for cinematic-realism and muted looks."
     },
     {
+      "path": "emitters/foam.ogt",
+      "sha256": "935b65299a8ed787412a087b4c5d645d6dd80da8429efd660a4e7deb2a3c1ac8",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
       "path": "emitters/glints.ogt",
       "sha256": "43771c2e3b04fae23254fe8b22cfef3c88ed68b7f7ce7e9d2d9a5cfd2f28682c",
       "licence": "MIT",
@@ -117,7 +137,7 @@
     },
     {
       "path": "emitters/grit.ogt",
-      "sha256": "8acaae3bdd37288bd04b02f12f91a7493b4f2fb0a33b130fc406bc3de31d0045",
+      "sha256": "facb5a6652962b1985385de8ff4631013b47d077419ff9bb8f77b189ed400c6e",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -146,6 +166,16 @@
       "derived": "Original native effect composition for cinematic-realism and muted looks."
     },
     {
+      "path": "emitters/heat.ogt",
+      "sha256": "f2280a2b4094ff7c88be50039a39f099a4905a29242a296627a3ed33b30ef616",
+      "licence": "MIT",
+      "source": {
+        "url": "https://github.com/originai-game/origin-engine"
+      },
+      "credit": "Origin Engine",
+      "derived": "Original native effect composition for cinematic-realism and muted looks."
+    },
+    {
       "path": "emitters/impact-dust.ogt",
       "sha256": "29417ae07a27daaa9e56f1cd73d2b9737b666324f2a1c2c3636aa3ce6b2dd01d",
       "licence": "MIT",
@@ -157,7 +187,7 @@
     },
     {
       "path": "emitters/impact-sparks.ogt",
-      "sha256": "881b364842c5c59bbe9888b37e6ceecd26ad1b4f1e19788f402e6992e597f219",
+      "sha256": "91e2fc65849934b9807c41aa2a9cf7fa92b031dd5197d58e532bf2e703841f76",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -227,7 +257,7 @@
     },
     {
       "path": "emitters/sparks.ogt",
-      "sha256": "d586256440543dfed6acd990086ed71b5bfcc41100b95f30f99fd422eb3caa8f",
+      "sha256": "d5d657c7048c940630def2c77b939cf8b4d5a071d9699c4a8ee2082b8e9b9114",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -237,7 +267,7 @@
     },
     {
       "path": "emitters/spray.ogt",
-      "sha256": "297854b92d5ba05895d1b947833165933567f5fc279b96d7c4e552272e4d9658",
+      "sha256": "cd9b2bf45af4320d6e159cf5fda9a07f8d562aea332b9573cc251b58f0af75e7",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -257,7 +287,7 @@
     },
     {
       "path": "explosion.ogt",
-      "sha256": "2689171bd00cbd8b7b07f157abe36a65cfb724dce552d6d0fff75fc202610666",
+      "sha256": "346644a3d59662fc5793e56a788003bf441c6788ea948f19a1207f2e2b8412dc",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"
@@ -317,7 +347,7 @@
     },
     {
       "path": "splash.ogt",
-      "sha256": "71f0eb9ca65685f562228c9b16b4d2c41e60a92255f07509d848396ae930645f",
+      "sha256": "93e716553f4305ccded8d3b2a5b041332c9af23e82063f9cf3971ba0b6f00a46",
       "licence": "MIT",
       "source": {
         "url": "https://github.com/originai-game/origin-engine"

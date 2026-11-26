@@ -15,7 +15,7 @@ impulses, decayed by the game's `og.Camera.traumaDecay` setting.
 | pickup | Origin at the object; amber motes and a brief warm pulse |
 | magic | Origin at the source; cool turbulent wisps and a lit core |
 | dust | Origin on the ground; rolling dust, not an opaque smoke wall |
-| splash | Origin on the water plane; a water column, ballistic spray, mist and a ripple |
+| splash | Origin on the water plane; a torn crown sheet, droplets, a central jet, foam, mist and ripples |
 | exhaust | Loop at the nozzle, +y downstream; a hot jet and a cooler wake; move/rotate the instance with the craft |
 | celebration | Origin at the UI anchor projected into the scene; falling satin confetti |
 

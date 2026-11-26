@@ -3,20 +3,20 @@
   "files": [
     {
       "path": "cinematic-realism/preview/celebration.png",
-      "sha256": "bf37b869465bb0c0334dd9811ba1db3286cbbebe57bd82b5e31b17aa44a96266",
-      "size": 3143889,
+      "sha256": "8c2a3e20701e9a2e02923893535f36b72a1e76dd1b172a27af6b2214a9b8facf",
+      "size": 3150095,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/cover.png",
-      "sha256": "98520afd891cf7f11012ad364b35defbce33dd7f95dc06e7c72ccbbd260a12ac",
-      "size": 162494,
+      "sha256": "91f4a00a910070f742b4ea738268229daebae2644128f7e5ac2dfbfa65fa5b14",
+      "size": 162618,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/dust.png",
-      "sha256": "9f0b00a149218a2f163636d9b213298a1d3d1278fa8f2e6057f59ab93dcdf61b",
-      "size": 3147730,
+      "sha256": "cec79a331ae951e0a77bfe60f37c5a2d72ac32fd2fec971607f4ca850e78f937",
+      "size": 3148079,
       "visibility": "public"
     },
     {
@@ -27,14 +27,14 @@
     },
     {
       "path": "cinematic-realism/preview/explosion.png",
-      "sha256": "7fa19ddecb489653ea71e623f201c8c75df257fa3d2de43fc6452e9bc66cb27c",
-      "size": 3168315,
+      "sha256": "d4062b6225206bcf1bb57da098631be2b0cfe74aa050a885e468eb5467b06d2d",
+      "size": 3168418,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/impact.png",
-      "sha256": "d47d388ec0e500875f2e9463e15a89f82834165d4845de35933475e73d6692d4",
-      "size": 3155050,
+      "sha256": "d12865aa15591ac368366b7228da75a3b36e272d446ad637a3d26146c5e2a2dc",
+      "size": 3158621,
       "visibility": "public"
     },
     {
@@ -57,8 +57,8 @@
     },
     {
       "path": "cinematic-realism/preview/splash.png",
-      "sha256": "9d7e5425f85fd309ac0de00078c1c2eab483ba5e4aa24903d0e0c8af58407dd5",
-      "size": 3170319,
+      "sha256": "bf476df78a57b48b4a85cd4dec8c6bd22347ef20f35fa3c7e3d7898687c22b94",
+      "size": 3243655,
       "visibility": "public"
     },
     {
