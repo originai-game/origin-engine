@@ -39,9 +39,10 @@ export function mountShell(world: World) {
     // ground; once a session started they stand on its frozen frame.
     const beforePlay = () => view() === "title" || view() === "menu" || (view() === "settings" && back() === "menu");
     const identity = () => ({ keyArt: 0 as const, logo: art().logo as Texture | 0, name: shellConfig.name, version: "" });
-    // Every page arrives the same way: it fades up and settles.
+    // Every page is dark, the built-in components in the theme's dark
+    // tokens over the game, and arrives the same way: it fades up and settles.
     const page = "absolute inset-0 transition duration-slow ease-out starting:opacity-0 starting:translate-y-2";
-    return <View class="absolute inset-0 overflow-hidden" focusGroup="wrap" focusMemory label={shellConfig.name}>
+    return <View class="absolute inset-0 overflow-hidden scheme-dark" focusGroup="wrap" focusMemory label={shellConfig.name}>
       <Show when={beforePlay() && view() !== "title" && keyArt() !== 0}>
         <Art class="absolute object-cover inset-0 size-full pointer-events-none" kind="keyArt" src={keyArt()} />
       </Show>

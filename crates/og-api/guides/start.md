@@ -10,8 +10,8 @@ with a connected UI shell for every genre and view: `project.ogt`,
 `src/shell-locales.ts`, string tables, `tests/smoke.og.ts`, `package.json`
 and `tsconfig.json`. Title, main menu, pause, settings and save/load are
 built-in screens with working navigation, world-snapshot saves and
-persistent volume, text size, motion and language settings. Title and main
-menu stand on the game's key art, else its live scene, else a dark ground;
+persistent volume, text size, motion and language settings. Every page is
+dark and fades in as it opens. Title and main menu stand on the game's key art, else its live scene, else a dark ground;
 pause, settings and save/load during play stand on the frozen game frame,
 blurred or dimmed. There is no
 sample level, gameplay, rule set or balance to adapt.
