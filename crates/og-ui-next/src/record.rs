@@ -238,6 +238,16 @@ pub struct Shadow {
     pub inset: bool,
 }
 
+impl Shadow {
+    /// Whether a box's shadow shows at all: one neither moved, blurred
+    /// nor spread (`ring-0`, `inset-ring-0`) lies on the box's own edge,
+    /// which CSS paints nothing for. Painting it anyway leaves the edge's
+    /// antialiasing as a faint rim on rounded corners.
+    pub fn shows(&self) -> bool {
+        self.offset != [0.0; 2] || self.blur > 0.0 || self.spread > 0.0
+    }
+}
+
 /// An outline: outside the border, `offset` out, taking no space.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Outline {

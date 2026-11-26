@@ -543,7 +543,7 @@ impl Tree {
             // Outer shadows under the box, the last listed lowest.
             let shadows = &s.shadows[..usize::from(s.shadow_count)];
             for (k, sh) in shadows.iter().enumerate().rev() {
-                if sh.inset {
+                if sh.inset || !sh.shows() {
                     continue;
                 }
                 let col =
@@ -709,7 +709,7 @@ impl Tree {
                 });
             }
             for (k, sh) in shadows.iter().enumerate().rev() {
-                if !sh.inset {
+                if !sh.inset || !sh.shows() {
                     continue;
                 }
                 let col =
