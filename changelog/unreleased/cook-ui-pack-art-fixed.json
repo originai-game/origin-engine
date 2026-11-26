@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A style pack's art keeps its size under a pixel look again. Since the CSS style readers were removed, the images a `pack.json` names (its nine-slice panels, buttons, dividers, icons) were resampled to the look's sprite sizes like sprites: a 528x32 divider became 8x1 and lost every texel, and the cook failed with \"<image>#palette: the palette holds no colours\" (the `pixel` theme's divider and slot rim). They now take the look's palette and alpha only, as a layout the cook cannot move."
+    }
+  ]
+}

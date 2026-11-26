@@ -36,7 +36,7 @@ pub(in crate::cook) use art_layout::paint_of;
 use art_layout::{Art, Grid, Layout, grid_of, relayout};
 use process::run;
 
-use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap};
+use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap, ui_packs};
 use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
@@ -232,6 +232,18 @@ pub(super) fn uses(
                         .and_then(|e| e.values.first()?.as_str())
                 {
                     add(flipbook::resolve(s, p), UseKind::Fixed("a 2D rig's parts"));
+                }
+            }
+            // A UI style's art is laid out by its pack (nine-slice insets, sizes):
+            // palette and alpha only, never resampled to a sprite's cells.
+            k if k == &ui_packs::PACK => {
+                if let Ok(layer) = ui_packs::pack_layer(s) {
+                    for a in layer.assets() {
+                        add(
+                            crate::runtime::asset_id(a).to_string(),
+                            UseKind::Fixed("a UI style"),
+                        );
+                    }
                 }
             }
             k if k == &tilemap::TILEMAP => {

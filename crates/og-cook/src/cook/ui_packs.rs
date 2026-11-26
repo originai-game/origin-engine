@@ -23,7 +23,7 @@ pub(crate) fn is_pack(rel: &str) -> bool {
 }
 
 /// A `pack.json` read and its asset paths resolved against its directory.
-fn pack_layer(s: &Source) -> Result<og_ui_next::pack::Layer, CookError> {
+pub(crate) fn pack_layer(s: &Source) -> Result<og_ui_next::pack::Layer, CookError> {
     let text =
         std::str::from_utf8(&s.bytes).map_err(|_| CookError(format!("{}: not UTF-8", s.rel)))?;
     let mut layer =
