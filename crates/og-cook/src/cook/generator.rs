@@ -23,6 +23,7 @@ use std::sync::{
 
 mod author;
 pub mod source;
+pub mod value;
 
 const BUILTIN: &str = "@origingame/engine/generate";
 
@@ -415,6 +416,7 @@ impl Program {
         });
         hash.update(include_bytes!("generator.rs"));
         hash.update(include_bytes!("generator_value.js"));
+        hash.update(include_bytes!("generator/value.rs"));
         hash.update(include_bytes!("generator/author.rs"));
         hash.update(author::SOURCE.as_bytes());
         hash.update(&serde_json::to_vec(&author::kinds()).expect("kind names serialize"));
@@ -507,10 +509,18 @@ impl Program {
         })
     }
 
+    /// JSON is an explicit projection for existing consumers, not the
+    /// evaluator's transfer or cache format. There is only one evaluator.
     pub fn run(&self) -> Result<Json, String> {
+        self.run_ir().map(|data| data.root().into_json())
+    }
+
+    /// Evaluate into owned canonical author data. Numeric buffers retain their
+    /// element type and little-endian bytes across the VM and action cache.
+    pub fn run_ir(&self) -> Result<value::Data, String> {
         let store = cache::default_path().map(cache::Store::new);
         if let Some((bytes, _)) = store.as_ref().and_then(|s| s.action(&self.key)) {
-            return serde_json::from_slice(&bytes).map_err(|e| e.to_string());
+            return value::Data::from_bytes(bytes).map_err(|e| format!("{}: {e}", self.entry));
         }
         let rt = Runtime::new().map_err(|e| e.to_string())?;
         rt.set_memory_limit(256 * 1024 * 1024);
@@ -535,8 +545,8 @@ impl Program {
             intrinsic::Promise,
         )>(&rt)
         .map_err(|e| e.to_string())?;
-        let output = ctx.with(|ctx| -> Result<String, String> {
-            let run = || -> rquickjs::Result<String> {
+        let output = ctx.with(|ctx| -> Result<Vec<u8>, String> {
+            let run = || -> rquickjs::Result<Vec<u8>> {
                 ctx.eval::<(), _>(r#"
                     Math.random = () => { throw new Error('use rng(seed) from @origingame/engine/author'); };
                     delete globalThis.SharedArrayBuffer;
@@ -587,15 +597,15 @@ impl Program {
                         f.call((context,))?
                     }
                 };
-                encode.call((value,))
+                let bytes: rquickjs::TypedArray<u8> = encode.call((value,))?;
+                // SAFETY: copy immediately; no JS runs while this slice exists.
+                Ok(unsafe { bytes.as_bytes() }.ok_or(rquickjs::Error::Unknown)?.to_vec())
             };
             run().catch(&ctx).map_err(|e| format!("{}: {e}", self.entry))
         })?;
-        let value: Json = serde_json::from_str(&output).map_err(|e| {
-            format!("generator must return synchronous JSON-compatible source data: {e}")
-        })?;
+        let value = value::Data::from_bytes(output).map_err(|e| format!("{}: {e}", self.entry))?;
         if let Some(store) = store {
-            let _ = store.put_action(&self.key, output.as_bytes(), &[]);
+            let _ = store.put_action(&self.key, value.as_bytes(), &[]);
         }
         Ok(value)
     }

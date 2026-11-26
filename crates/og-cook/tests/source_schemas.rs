@@ -24,6 +24,85 @@ export default {
     .unwrap();
     let program = Program::prepare_value(&dir, "content.ts").unwrap();
     let value = program.run().unwrap();
+    let canonical = program.run_ir().unwrap();
+    assert_eq!(canonical.root().into_json(), value);
+    // Numeric storage survives the realm and action cache, including view
+    // offsets, signedness, non-ASCII strings and a writer buffer growth.
+    use og_cook::cook::generator::value::{Data, Element, Value};
+    std::fs::write(
+        dir.join("buffers.ts"),
+        r#"
+export default {
+  a: new Int8Array([-97, 13]), b: new Uint8Array([251, 17]),
+  c: new Uint8ClampedArray([-7, 301]), d: new Int16Array([-30001, 513]),
+  e: new Uint16Array([65001, 1027]), f: new Int32Array([-2147483647, 66051]),
+  g: new Uint32Array([4294967295, 16909060]),
+  h: new Float32Array([91, -7.25, 0.125, 103]).subarray(1, 3),
+  i: new Float64Array([-1.5e100, 0.0625]), empty: new Uint16Array(0),
+  large: Float32Array.from({length: 32769}, (_, i) => (i % 7 - 3) / 8),
+  label: '北门🙂', '\u{10000}': true, '\ue000': false,
+};
+// Private encoding must use captured intrinsics, not user-editable hooks.
+Object.defineProperty(Uint8Array, Symbol.species, {get() {throw new Error('species hook');}});
+Object.defineProperty(Uint8Array.prototype, 'length', {get() {throw new Error('length hook');}});
+"#,
+    )
+    .unwrap();
+    let buffers = Program::prepare_value(&dir, "buffers.ts").unwrap();
+    let data = buffers.run_ir().unwrap();
+    assert_eq!(buffers.run_ir().unwrap(), data);
+    assert_eq!(Data::from_bytes(data.as_bytes().to_vec()).unwrap(), data);
+    let Value::Object(values) = data.root() else {
+        panic!("an authored object must remain structural data");
+    };
+    for (key, element, expected) in [
+        ("a", Element::I8, vec![-97.0, 13.0]),
+        ("b", Element::U8, vec![251.0, 17.0]),
+        ("c", Element::U8Clamped, vec![0.0, 255.0]),
+        ("d", Element::I16, vec![-30001.0, 513.0]),
+        ("e", Element::U16, vec![65001.0, 1027.0]),
+        ("f", Element::I32, vec![-2147483647.0, 66051.0]),
+        ("g", Element::U32, vec![4294967295.0, 16909060.0]),
+        ("h", Element::F32, vec![-7.25, 0.125]),
+        ("i", Element::F64, vec![-1.5e100, 0.0625]),
+        ("empty", Element::U16, vec![]),
+    ] {
+        let Value::Buffer(buffer) = &values[key] else {
+            panic!("{key}: lost typed storage");
+        };
+        assert_eq!(buffer.element, element, "{key}");
+        assert_eq!(buffer.len(), expected.len(), "{key}");
+        assert_eq!(buffer.numbers().collect::<Vec<_>>(), expected, "{key}");
+    }
+    let Value::Buffer(samples) = &values["large"] else {
+        panic!("large samples expanded into a tree");
+    };
+    assert_eq!(samples.len(), 32769);
+    assert_eq!(samples.as_bytes().len(), 32769 * 4);
+    assert_eq!(samples.numbers().next(), Some(-0.375));
+    assert_eq!(samples.numbers().last(), Some(-0.25));
+    assert_eq!(values["label"], Value::String("北门🙂".into()));
+    assert_eq!(values["\u{10000}"], Value::Bool(true));
+    assert_eq!(values["\u{e000}"], Value::Bool(false));
+    let Value::Buffer(wide) = &values["g"] else {
+        unreachable!();
+    };
+    assert_eq!(wide.as_bytes(), &[255, 255, 255, 255, 4, 3, 2, 1]);
+    assert_eq!(buffers.run().unwrap()["h"], json!([-7.25, 0.125]));
+    std::fs::write(
+        dir.join("reordered.ts"),
+        "import value from './buffers.ts'; export default Object.fromEntries(Object.entries(value).reverse());",
+    )
+    .unwrap();
+    assert_eq!(
+        Program::prepare_value(&dir, "reordered.ts")
+            .unwrap()
+            .run_ir()
+            .unwrap(),
+        data,
+        "object insertion order and entry path cannot change canonical data"
+    );
+
     let file: File = serde_json::from_value(value["content"].clone()).unwrap();
     assert_eq!(file.kind, "strings");
     assert_eq!(file.value["entries"]["gate"], "北门");
@@ -183,7 +262,13 @@ export default {
         let source = Source::new("source.ts", &format!("{imports}\nexport default ({call});"));
         assert_eq!(source.content_kind().ok().as_deref(), kind, "{call}");
     }
-    for expr in ["og.ref(42)", "og.ref('')", "og.file.unknown({})"] {
+    for expr in [
+        "og.ref(42)",
+        "og.ref('')",
+        "og.file.unknown({})",
+        "Object.setPrototypeOf(new Float32Array([1.25]), Int32Array.prototype)",
+        "Object.setPrototypeOf(new Float32Array([NaN]), Int32Array.prototype)",
+    ] {
         std::fs::write(
             dir.join("bad.ts"),
             format!("import * as og from '@origingame/engine/author'; export default {expr};"),
