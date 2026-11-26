@@ -15,8 +15,10 @@ copy; `og ui list` lists resource packs and `og style list` lists styles.
 
 1. List the screens the game needs: title, HUD, pause, settings, results,
    and domain pages such as inventory, shop or deck.
-2. Import a built-in screen/component (§2), or compose core controls in a
-   `.tsx` screen. No installation or document loading is required.
+2. Use the built-in screen or component (§2) first when it covers that role,
+   including HUD pieces; customize its props and style-pack slots before
+   composing a replacement from View/Text. No installation or document
+   loading is required.
 3. Pass typed props and handlers from the game's presentation stores;
    keep domain decisions in gameplay systems.
 4. Dress the shared slots through the look's style (§3), then preview and
@@ -70,6 +72,58 @@ when changing layout.
 Components draw data and report callbacks with stable IDs; they do not
 decide purchases, rewards, legality, damage or timing rules. A game's own
 component is an ordinary TSX function imported the same way.
+
+For title, main menu, pause, settings, save/load, results and game over,
+start with `TitleScreen`, `MainMenuScreen`, `PauseScreen`, `SettingsScreen`,
+`SaveLoadScreen`, `ResultsScreen` and `GameOverScreen`. Their files are
+`screens/title`, `screens/main-menu`, `screens/pause`, `screens/settings`,
+`screens/save-load`, `screens/results` and `screens/game-over`.
+If replacing a whole built-in screen, put a code comment beside the
+replacement explaining the game's requirement that its props, slots or
+an ejected copy cannot meet. A different palette or font is a style-pack
+change, not a reason to rewrite the screen. Keep a justified replacement;
+the checker does not decide whether its design is good.
+
+### Title art
+
+A finished title screen needs a main visual and the game's logo, not only
+text on an empty ground. Use the game's own commissioned/authored art,
+appropriately licensed assets, or images made for its art direction. Keep
+asset licences with the project. Prepare a background composition with
+space for the title/actions and a transparent logo image; a theme supplies
+the controls' materials, not the game's identity or key art.
+
+Save the images under `assets/`, for example `assets/textures/title.png`
+and `assets/textures/logo.png`. Load their asset IDs (without `assets/`)
+with `og.load.texture` after cooking, check each result, and pass the
+texture handles in `keyArt` and `logo`, not paths or zero:
+
+```tsx
+import { og, type World } from "@origingame/engine";
+import { mount } from "@origingame/engine/ui";
+import { TitleScreen } from "@origingame/engine/ui/screens/title.tsx";
+
+function showTitle(world: World, onStart: () => void) {
+  const keyArt = og.load.texture(world, "textures/title.png");
+  const logo = og.load.texture(world, "textures/logo.png");
+  if (!keyArt.ok) throw new Error(keyArt.reason);
+  if (!logo.ok) throw new Error(logo.reason);
+  return mount(world, TitleScreen, {
+    keyArt: keyArt.value,
+    logo: logo.value,
+    name: "The game's name",
+    version: "1.0.0",
+    legal: "© Your studio",
+    onStart,
+  }, { layer: "menu" });
+}
+```
+
+`keyArt` covers the screen and may crop at different aspect ratios; review
+phone and desktop crops. `logo` fits its slot without cropping. Zero is a
+placeholder/fallback: `keyArt={0}` leaves the style's ground behind the
+title; `logo={0}` uses `name` as a wordmark (or a placeholder if empty).
+Those fallbacks allow work in progress, but are not finished title art.
 
 ### A weapon level from Pips, Counter and Bar
 
@@ -261,6 +315,17 @@ resource presets and the current attachment boundary are in ui-materials.
 
 `og ui check` runs game screens through styles, breakpoints, locales and
 text scales, reports findings and measurements, and does not score taste.
+Run `og check` too and read its complete output; do not filter warnings
+with `grep -v`, redirect them away or treat exit 0 as a visual approval.
+OG9112 reports literal-zero or omitted `TitleScreen` art props. OG9113
+lists locally defined screen-role candidates by conventional function
+names (such as `TitleScreen`, `PauseMenu`, `Settings` or `GameOver`), where
+View/Text are composed without a direct use of the corresponding built-in.
+These are source facts, not proof that a screen is full-screen or needs
+replacing: review indirect wrappers and ejected copies with their code
+comments. Dynamic props, spread props, re-exports and unconventional names
+can remain unknown; silence is not proof of complete art or built-in use.
+Both reports are warnings only and do not change the exit code.
 Use game command scripts to show each screen (`--screen name=commands`,
 or project screen declarations); exporting `fixtures` alone is not how
 a game's screen is selected. Check command help for the matrix options.

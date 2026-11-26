@@ -202,3 +202,111 @@ fn vfx_add_downloads_a_signed_pack_and_refuses_anything_else() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The public check report names source facts, preserves a successful exit
+/// for warnings, and does not mistake a built-in wrapper or unknown art for
+/// a handwritten replacement/missing texture.
+#[test]
+fn check_reports_screen_facts_without_refusing_the_game() {
+    let dir = TempDir::new("og-screen-check");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Screens\"\nentry \"src/main.tsx\"\n",
+    )
+    .unwrap();
+    let check = |source: &str, json: bool| {
+        std::fs::write(dir.join("src/main.tsx"), source).unwrap();
+        let out = og()
+            .arg("check")
+            .arg(&dir)
+            .args(json.then_some("--json"))
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+        String::from_utf8(out.stdout).unwrap()
+    };
+    let events = |out: &str| -> Vec<serde_json::Value> {
+        out.lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect()
+    };
+    let source = r#"
+import { View, Text } from "@origingame/engine/ui";
+export function TitleScreen() { return <View><Text>Title</Text></View>; }
+export const MainMenu = () => <View />;
+export function PauseMenu() { return View({}); }
+export function SettingsScreen() { return <View />; }
+export function SaveLoadScreen() { return <View />; }
+export function Results() { return <View />; }
+export function GameOver() { return <View />; }
+export function ResultsStats() { return <Text>Not a screen name</Text>; }
+"#;
+    let out = events(&check(source, true));
+    let warnings = out.iter().find(|e| e["event"] == "ui-screens").unwrap()["warnings"]
+        .as_array()
+        .unwrap();
+    assert_eq!(warnings.len(), 7, "{out:?}");
+    for (warning, builtin) in warnings.iter().zip([
+        "title",
+        "main-menu",
+        "pause",
+        "settings",
+        "save-load",
+        "results",
+        "game-over",
+    ]) {
+        assert_eq!(warning["code"], 9113);
+        assert!(
+            warning["message"]
+                .as_str()
+                .unwrap()
+                .contains(&format!("og ui eject screens/{builtin}"))
+        );
+    }
+    let out = check(source, false);
+    assert!(out.contains("warning OG9113:"), "{out}");
+
+    let source = r#"
+import { View, mount } from "@origingame/engine/ui";
+import { TitleScreen as Builtin, type TitleScreenProps } from "@origingame/engine/ui/screens/title.tsx";
+import * as Screens from "@origingame/engine/ui/screens/title.tsx";
+import type { World } from "@origingame/engine";
+export const TitleScreen = (p: TitleScreenProps) => <View><Builtin {...p} /></View>;
+export function art(p: TitleScreenProps, world: World) {
+  const zero = <Builtin keyArt={0} logo={0} name="T" legal="" version="1" />;
+  // @ts-expect-error The omitted logo is deliberately checked separately from type errors.
+  const missing = <Screens.TitleScreen keyArt={p.keyArt} name="T" legal="" version="1" />;
+  // @ts-expect-error The later spread deliberately overwrites both literal props.
+  const unknown = <Builtin keyArt={0} logo={0} {...p} />;
+  const explicit = <Builtin {...p} keyArt={0} />;
+  const mounted = mount(world, Builtin, { ...p, logo: 0 });
+  const supplied = Builtin(p);
+  function shadow(Builtin: (p: object) => unknown) { return Builtin({}); }
+  return [zero, missing, unknown, explicit, mounted, supplied, shadow];
+}
+"#;
+    let out = events(&check(source, true));
+    let warnings = out.iter().find(|e| e["event"] == "ui-screens").unwrap()["warnings"]
+        .as_array()
+        .unwrap();
+    assert_eq!(warnings.len(), 5, "{out:?}");
+    assert!(warnings.iter().all(|w| w["code"] == 9112), "{out:?}");
+    assert_eq!(
+        warnings
+            .iter()
+            .filter(|w| w["message"].as_str().unwrap().contains("is omitted"))
+            .count(),
+        1
+    );
+    let out = events(&check(
+        r#"
+import { View } from "@origingame/engine/ui";
+import { TitleScreen as Builtin, type TitleScreenProps } from "@origingame/engine/ui/screens/title.tsx";
+export function TitleScreen(p: TitleScreenProps) { return <View><Builtin keyArt={p.keyArt} logo={p.logo} name={p.name} version={p.version} legal={p.legal} /></View>; }
+"#,
+        true,
+    ));
+    assert!(out.iter().all(|e| e["event"] != "ui-screens"), "{out:?}");
+}

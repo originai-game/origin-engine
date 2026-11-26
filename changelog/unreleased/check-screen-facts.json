@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og check",
+      "summary": "Reports literal-zero or omitted TitleScreen keyArt/logo (OG9112), and named local screen-role candidates composing View/Text without a direct use of their corresponding built-in (OG9113), with built-in import and og ui eject pointers. Text warnings and a ui-screens JSON event are informational and do not change exit status; the same screen facts are reported by the pre-bundle check. The screens guide explains built-in-first composition, title art wiring and comments for whole-screen replacements."
+    }
+  ]
+}

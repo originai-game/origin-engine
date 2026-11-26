@@ -58,6 +58,7 @@ const TEMPLATE_TSCONFIG: &str = include_str!("../../../../packages/create/templa
 const USAGE: &str = "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo] [--require-checked]";
 
 mod lints;
+mod screens;
 mod tsgo;
 mod ui;
 use lints::{
@@ -246,6 +247,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     locale_fonts_lint(p, json, true);
     font_packs_lint(p, json, true);
     shader_capabilities_lint(p, json, true);
+    screens::lint(p, json);
     Ok(report)
 }
 
@@ -394,6 +396,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         ui_grounds_lint(&p.root, &dirs, Some(&game), json);
         crate::ui_data::lint(&p.root, &dirs, json);
         crate::ui_styles::lint(&p.root, &dirs, json);
+        screens::lint(p, json);
     } else {
         ui_grounds_lint(&target.root, &[&target.root], None, json);
         crate::ui_data::lint(&target.root, &[&target.root], json);
