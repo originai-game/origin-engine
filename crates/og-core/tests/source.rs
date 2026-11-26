@@ -43,6 +43,55 @@ struct Input {
 
 #[test]
 fn one_author_schema_checks_values_and_typescript() {
+    let float = InputSchema::<f32>::new().unwrap();
+    let overflow = float.decode(json!(1e100));
+    assert!(
+        overflow.is_err(),
+        "finite JSON overflow decoded as {overflow:?}"
+    );
+    let max = f64::from(f32::MAX);
+    assert_eq!(float.decode(json!(max)).unwrap(), f32::MAX);
+    assert_eq!(float.decode(json!(-max)).unwrap(), f32::MIN);
+    for outside in [max.next_up(), (-max).next_down(), -1e100] {
+        assert!(float.decode(json!(outside)).is_err(), "accepted {outside}");
+    }
+    assert_eq!(
+        InputSchema::<f64>::new()
+            .unwrap()
+            .decode(json!(1e100))
+            .unwrap(),
+        1e100
+    );
+    let narrow = InputSchema::<f32>::from_document(json!({
+        "type": "number", "format": "float", "minimum": -0.25, "maximum": 0.75
+    }))
+    .unwrap();
+    assert_eq!(narrow.decode(json!(-0.25)).unwrap(), -0.25);
+    assert_eq!(narrow.decode(json!(0.75)).unwrap(), 0.75);
+    assert!(narrow.decode(json!(-0.251)).is_err());
+    assert!(narrow.decode(json!(0.751)).is_err());
+    let annotations = json!({"type": "number", "format": "float", "maximum": 1e100});
+    let annotated = InputSchema::<serde_json::Value>::from_document(json!({
+        "type": "object", "default": annotations, "examples": [annotations],
+        "properties": {"gain": {"type": "number", "format": "float"}}
+    }))
+    .unwrap();
+    assert_eq!(annotated.document()["default"], annotations);
+    assert_eq!(annotated.document()["examples"][0], annotations);
+    assert_eq!(
+        annotated
+            .validate(&json!({"gain": 1e100}))
+            .unwrap_err()
+            .path,
+        "/gain"
+    );
+    assert!(
+        InputSchema::<f32>::from_document(json!({
+            "type": "number", "format": "float", "minimum": "invalid"
+        }))
+        .is_err()
+    );
+
     let schema = InputSchema::<Input>::new().unwrap();
     let valid = json!({
         "display-name": "north",
@@ -77,12 +126,16 @@ fn one_author_schema_checks_values_and_typescript() {
 
     for (pointer, wrong) in [
         ("/tuple/1", json!(-1)),
+        ("/tuple/0", json!(1e100)),
         ("/duration", json!(0.249)),
         ("/duration", json!(4.001)),
         ("/samples", json!(vec![0; 64])),
+        ("/samples/0", json!(-1e100)),
         ("/mode", json!({"kind": "grid", "cell-size": [2, 3]})),
         ("/mode", json!({"kind": "random"})),
+        ("/mode", json!({"kind": "constant", "value": 1e100})),
         ("/values/wind/1", json!("gust")),
+        ("/values/wind/1", json!(1e100)),
         ("/tiles", json!({"-1": {"kind": "constant", "value": 1}})),
         ("/tiles/257", json!({"kind": "random"})),
         ("/masks", json!({"256": 513})),

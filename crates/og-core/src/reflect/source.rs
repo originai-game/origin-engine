@@ -7,6 +7,7 @@
 //! This module is behind `source` and is not linked by a runtime-only build.
 
 use schemars::JsonSchema;
+use schemars::transform::{RecursiveTransform, Transform};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::marker::PhantomData;
@@ -70,6 +71,29 @@ impl<T> InputSchema<T> {
     /// Bind a reflected or context-expanded schema to the same Rust decoder.
     /// Local `$defs` must be included; remote schema retrieval is disabled.
     pub fn from_document(document: Value) -> Result<Self, String> {
+        let mut schema = schemars::Schema::try_from(document).map_err(|e| e.to_string())?;
+        // Schemars marks f32 as `float` without bounds; serde_json can cast a
+        // finite f64 to infinity. Intersect the Rust range, retaining narrower
+        // domain bounds. Visit schema positions, never default/example data.
+        RecursiveTransform(|schema: &mut schemars::Schema| {
+            if schema.get("format").and_then(Value::as_str) != Some("float") {
+                return;
+            }
+            if schema
+                .get("minimum")
+                .is_none_or(|v| v.as_f64().is_some_and(|n| n < f64::from(f32::MIN)))
+            {
+                schema.insert("minimum".into(), Value::from(f32::MIN));
+            }
+            if schema
+                .get("maximum")
+                .is_none_or(|v| v.as_f64().is_some_and(|n| n > f64::from(f32::MAX)))
+            {
+                schema.insert("maximum".into(), Value::from(f32::MAX));
+            }
+        })
+        .transform(&mut schema);
+        let document = schema.to_value();
         let validator = jsonschema::validator_for(&document).map_err(|e| e.to_string())?;
         Ok(Self {
             document,
