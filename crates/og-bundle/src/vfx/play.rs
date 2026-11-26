@@ -416,7 +416,7 @@ impl Vfx {
                     ..
                 } if alive => VfxDrawKind::Beam {
                     start: local.transform_point3(Vec3::ZERO),
-                    end: local.transform_point3(*to),
+                    end: local.transform_point3(*to * long),
                     width: width * scale * amount,
                     color: shaded(*color, tint, hue),
                     segments: *segments,

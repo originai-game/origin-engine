@@ -4102,6 +4102,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
 | `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. A beam's `to` is multiplied instead: a laser as long as the distance to its mark, no wider. Applied with `amount`, which scales it whole (a beam's width). |
 | `effect "<id>"` | `` | Its effect material (§2); a mesh needs one. |
 | `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
 | `width <metres>` | `0.2` | Metres across. |
@@ -4185,7 +4186,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
 | `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
-| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole. |
+| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. A beam's `to` is multiplied instead: a laser as long as the distance to its mark, no wider. Applied with `amount`, which scales it whole (a beam's width). |
 | `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
 | `size <value>` | `1` | Metres across over its life. |
 
@@ -4221,7 +4222,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
 | `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
-| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole. |
+| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. A beam's `to` is multiplied instead: a laser as long as the distance to its mark, no wider. Applied with `amount`, which scales it whole (a beam's width). |
 | `effect "<id>"` | `` | Its effect material (§2); a mesh needs one. |
 | `scale <value>` | `1` | Uniform scale over its life. |
 | `spin <x> <y> <z>` | `0 0 0` | Degrees per second. |

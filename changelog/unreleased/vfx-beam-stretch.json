@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "type vfx: beam",
+      "summary": "A `beam` element takes `stretch <param>`: the param multiplies its `to`, so one file draws a laser, a tracer or an arc as long as the instance says (og.Vfx.params) without growing wider."
+    }
+  ]
+}

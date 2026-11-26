@@ -222,11 +222,11 @@ pub const ELEMENT_LINES: &[Line] = &[
         "amount power",
     ),
     Line::of(
-        &["mesh", "glow"],
+        &["mesh", "glow", "beam"],
         "stretch",
         "<param>",
         "",
-        "Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole.",
+        "Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. A beam's `to` is multiplied instead: a laser as long as the distance to its mark, no wider. Applied with `amount`, which scales it whole (a beam's width).",
         "stretch power",
     ),
     Line::of(
@@ -617,8 +617,8 @@ pub struct VfxElement {
     pub when: Option<usize>,
     /// The param that multiplies how much of it there is (`amount`).
     pub amount: Option<usize>,
-    /// The param that multiplies its length along its y (`stretch`): a
-    /// mesh's or a glow's.
+    /// The param that multiplies its length (`stretch`): a mesh's or a
+    /// glow's along its y, a beam's `to`.
     pub stretch: Option<usize>,
     pub kind: VfxKind,
 }
@@ -1109,7 +1109,10 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
             ("move", _) => el.velocity = vec3(k)?,
             ("accelerate", _) => el.acceleration = vec3(k)?,
             (key @ ("when" | "amount"), _)
-            | (key @ "stretch", VfxKind::Mesh { .. } | VfxKind::Glow { .. }) => {
+            | (
+                key @ "stretch",
+                VfxKind::Mesh { .. } | VfxKind::Glow { .. } | VfxKind::Beam { .. },
+            ) => {
                 let name = match &k.values[..] {
                     [Value::Word(w)] => w,
                     _ => return Err(format!("line {kl}: {key} <param>")),
