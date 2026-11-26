@@ -583,6 +583,24 @@ step_guide_recipes() {
   bun scripts/guide-recipes.ts --og "$OG_TARGET_DIR/debug/og"
 }
 
+# Every preview slot a release draws (create-game's previewSlots: each look,
+# each variant and each UI pack's gallery card), cooked and run headless by the
+# dev og through templates/looks/preview/render.ts on whatever adapter the host
+# has. A slot that fails to cook or run fails here, not on the GPU host after a
+# pack (scripts/release.sh previews). Frames are judged there, not here. The
+# checkout's catalogue is packages/knowledge/looks/, so `packages` stands where
+# a packed engine sits.
+step_looks() {
+  require_ready looks native-ready || return 1
+  local work="$GATE_LOGS/looks"
+  rm -rf "$work"; mkdir -p "$work"
+  bun scripts/assets.ts ensure templates || return 1
+  # shellcheck disable=SC2016 # the bun script takes its arguments from argv
+  bun -e 'const [d, e, o] = process.argv.slice(1); const { creationOf } = await import(`${process.cwd()}/scripts/release-dist.ts`); require("node:fs").writeFileSync(o, JSON.stringify((await creationOf(d, e)).slots))' \
+    "$OG_ROOT/packages/create" "$OG_ROOT/packages" "$work/slots.json" || return 1
+  bun templates/looks/preview/render.ts --og "$OG_TARGET_DIR/debug/og" --out "$work/frames" --previews "$work/previews" --slots "$work/slots.json"
+}
+
 # The showcases (showcase/*/ with tests/): `og test` in each whose inputs
 # changed since it last passed, as step_fixtures does. Each has a playtest
 # that reaches an og.assert.reachable site through its keys and ends two
