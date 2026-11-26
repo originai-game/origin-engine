@@ -198,6 +198,209 @@ entry.kind = 'model';
 }
 
 #[test]
+fn content_preparation_tracks_scoped_sources_and_captured_inputs() {
+    use og_cook::cook::{generator::Program, source_index::Index, source_project::Project};
+    use std::collections::BTreeMap;
+    let dir = temp::TempDir::new("content-preparation");
+    let write = |file: &str, text: &str| {
+        let at = dir.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    let manifest = |north: &[&str], east: &[&str]| {
+        write(
+            "project.ts",
+            &format!(
+                "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
+                json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+                "modules":[{"id":"north","root":"modules/north","dependsOn":north},
+                {"id":"east","root":"modules/east","dependsOn":east}]})
+            ),
+        );
+    };
+    write(
+        "src/main.ts",
+        "export type Token = string; throw new Error('GAME_EXECUTED');",
+    );
+    write(
+        "modules/north/src/schema/labels.ts",
+        "export const locale = 'en';",
+    );
+    write(
+        "lib/shared.ts",
+        "import {input} from '@origingame/engine/author'; export const name = input.text('sources/label.txt');",
+    );
+    write(
+        "modules/east/lib/colors.ts",
+        "export {name as east} from '../../../lib/shared.ts';",
+    );
+    write("sources/label.txt", "BASE, NOT NORTH");
+    write("modules/east/sources/label.txt", "EAST, NOT NORTH");
+    write("modules/north/sources/label.txt", "北门");
+    write("assets/payload.bin", "wrong root");
+    std::fs::create_dir_all(dir.join("modules/north/assets")).unwrap();
+    std::fs::write(dir.join("modules/north/assets/payload.bin"), [7, 231]).unwrap();
+    let file = "modules/north/content/main.ts";
+    let text = r#"
+import * as og from '@origingame/engine/author';
+import type {Token} from '../../../src/main.ts';
+import {name} from '../../../lib/shared.ts';
+import {east} from '../../east/lib/colors.ts';
+import {locale} from '../src/schema/labels.ts';
+const label: Token = name;
+export default og.file.strings({locale, entries:{label, east, pinned:'P', bytes:og.input.bytes('assets/payload.bin').join(',')}});
+"#;
+    write(file, text);
+    manifest(&["base", "east"], &["base"]);
+    let project = Project::open(&dir).unwrap();
+    let index = Index::open(&dir, &project).unwrap();
+    let entry = &index.entries["north/main"];
+    let empty = BTreeMap::new();
+    let prepared = Program::prepare_content(&dir, &project, entry, &empty).unwrap();
+    assert_eq!(
+        prepared.input_dependencies,
+        [
+            "modules/north/assets/payload.bin",
+            "modules/north/sources/label.txt"
+        ]
+    );
+    assert_eq!(prepared.imports.len(), 4);
+    assert_eq!(
+        prepared.imports["modules/east/lib/colors.ts"],
+        ["lib/shared.ts"]
+    );
+    assert!(prepared.imports["lib/shared.ts"].is_empty());
+    assert!(!prepared.dependencies.iter().any(|p| p == "src/main.ts"
+        || p == "sources/label.txt"
+        || p == "modules/east/sources/label.txt"));
+    let expected = json!({"$ogFile":"strings","value":{"locale":"en","entries":{"label":"北门","east":"北门","pinned":"P","bytes":"7,231"}}});
+    // Preparation captures bytes; neither cold evaluation nor a cache hit may
+    // reread them. Shared helpers use the ENTRY module's raw-input authority.
+    write("modules/north/sources/label.txt", "changed after capture");
+    assert_eq!(prepared.run().unwrap(), expected);
+    assert_eq!(prepared.run().unwrap(), expected);
+    serde_json::from_value::<source_schemas::File>(expected.clone())
+        .unwrap()
+        .check(None)
+        .unwrap();
+    let changed = Program::prepare_content(&dir, &project, entry, &empty).unwrap();
+    assert_ne!(changed.key, prepared.key);
+    assert_eq!(
+        changed.run().unwrap()["value"]["entries"]["east"],
+        "changed after capture"
+    );
+    write("sources/label.txt", "unused raw input changed");
+    assert_eq!(
+        Program::prepare_content(&dir, &project, entry, &empty)
+            .unwrap()
+            .key,
+        changed.key
+    );
+    write("modules/north/sources/label.txt", "北门");
+
+    let candidate = BTreeMap::from([(file.into(), text.replace("pinned:'P'", "pinned:'Q'"))]);
+    assert!(
+        Program::prepare_content(&dir, &project, entry, &candidate)
+            .err()
+            .unwrap()
+            .contains("stale")
+    );
+    let updated = Index::open_with_overlay(&dir, &project, &candidate).unwrap();
+    let preview =
+        Program::prepare_content(&dir, &project, &updated.entries["north/main"], &candidate)
+            .unwrap();
+    assert_eq!(preview.run().unwrap()["value"]["entries"]["pinned"], "Q");
+    assert_eq!(std::fs::read_to_string(dir.join(file)).unwrap(), text);
+
+    // Access is checked on each import edge, not once per visited helper or
+    // against the entry's flattened/transitive dependency closure.
+    manifest(&["east"], &["base"]);
+    let missing_direct = Project::open(&dir).unwrap();
+    assert!(
+        Program::prepare_content(&dir, &missing_direct, entry, &empty)
+            .err()
+            .unwrap()
+            .contains("module north to declare a direct dependency on base")
+    );
+    manifest(&["base", "east"], &[]);
+    let missing_reuse = Project::open(&dir).unwrap();
+    assert!(
+        Program::prepare_content(&dir, &missing_reuse, entry, &empty)
+            .err()
+            .unwrap()
+            .contains("module east to declare a direct dependency on base")
+    );
+    // Conversely, a legal east → base import does not require north → base
+    // unless north imports base itself.
+    let indirect = BTreeMap::from([(
+        file.into(),
+        text.replace(
+            "import {name} from '../../../lib/shared.ts';",
+            "const name = 'local';",
+        ),
+    )]);
+    assert_eq!(
+        Program::prepare_content(
+            &dir,
+            &missing_direct,
+            &Index::open_with_overlay(&dir, &missing_direct, &indirect)
+                .unwrap()
+                .entries["north/main"],
+            &indirect
+        )
+        .unwrap()
+        .run()
+        .unwrap()["value"]["entries"]["label"],
+        "local"
+    );
+
+    for target in [
+        "./other.ts",
+        "../../../src/main.ts",
+        "../../../project.ts",
+        "../sources/not-code.ts",
+        "../../../undeclared/lib/helper.ts",
+        "../lib/types.d.ts",
+        "../lib/.og/hidden.ts",
+    ] {
+        let overlay = BTreeMap::from([(file.into(), format!("import '{target}';\n{text}"))]);
+        let candidate = Index::open_with_overlay(&dir, &project, &overlay).unwrap();
+        let error =
+            Program::prepare_content(&dir, &project, &candidate.entries["north/main"], &overlay)
+                .err()
+                .unwrap();
+        assert!(error.contains("cannot import"), "{target}: {error}");
+        assert!(!error.contains("GAME_EXECUTED"));
+    }
+    for input in [
+        "../sources/label.txt",
+        "sources/../sources/label.txt",
+        "src/main.ts",
+        "modules/east/sources/label.txt",
+        "Sources/label.txt",
+        "assets\\payload.bin",
+    ] {
+        let overlay = BTreeMap::from([(
+            file.into(),
+            text.replace("'assets/payload.bin'", &json!(input).to_string()),
+        )]);
+        let candidate = Index::open_with_overlay(&dir, &project, &overlay).unwrap();
+        assert!(
+            Program::prepare_content(&dir, &project, &candidate.entries["north/main"], &overlay)
+                .is_err(),
+            "accepted input {input}"
+        );
+    }
+    write(file, &text.replace("pinned:'P'", "pinned:'disk changed'"));
+    assert!(
+        Program::prepare_content(&dir, &project, entry, &empty)
+            .err()
+            .unwrap()
+            .contains("stale")
+    );
+}
+
+#[test]
 fn author_factories_use_the_registered_input_contracts() {
     use og_cook::cook::{generator::Program, source_schemas::File};
     let dir = temp::TempDir::new("author-factories");

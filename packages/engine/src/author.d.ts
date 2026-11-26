@@ -47,6 +47,8 @@ export declare function rng(seed: number): Rng;
 
 /** Paths are string literals relative to the evaluator's input root, not the
  * importing helper. Cook captures and hashes them before entering the realm.
+ * For indexed content, the input root is the entry's declared source module;
+ * paths must be canonical and start with assets/ or sources/, even in helpers.
  * Call these methods directly; aliases, computed paths and re-exports are refused. */
 export declare const input: {
   /** An independent mutable copy of the captured bytes on each call. */

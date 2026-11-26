@@ -22,6 +22,7 @@ use std::sync::{
 };
 
 pub(super) mod author;
+mod content;
 pub mod source;
 pub mod value;
 
@@ -223,6 +224,11 @@ pub struct Program {
     pub key: String,
     /// Sorted, root-relative source and input paths, excluding built-in modules.
     pub dependencies: Vec<String>,
+    /// Source path → sorted executable relative imports. Includes leaf sources,
+    /// excludes built-ins and erased type imports. Raw inputs are never code.
+    pub imports: BTreeMap<String, Vec<String>>,
+    /// Sorted, root-relative captured raw inputs, separate from source edges.
+    pub input_dependencies: Vec<String>,
     /// Original entry bytes from the same read used to prepare this program.
     /// Literal edits never follow imported/shared definitions.
     pub source: source::Source,
@@ -260,20 +266,26 @@ impl<'a> Visit<'a> for Synchronous {
     }
 }
 
-struct ModuleGraph {
+struct ModuleGraph<'a> {
     modules: BTreeMap<String, String>,
     inputs: BTreeMap<String, bool>,
+    imports: BTreeMap<String, Vec<String>>,
     hash: blake3::Hasher,
     entry_source: Option<source::Source>,
+    scope: Option<content::Scope<'a>>,
 }
 
-impl ModuleGraph {
+impl ModuleGraph<'_> {
     fn read(
         &mut self,
         root: &Path,
         path: &str,
+        from: Option<&str>,
         overlay: &BTreeMap<String, String>,
     ) -> Result<(), String> {
+        if let Some(scope) = &self.scope {
+            scope.source(from, path)?;
+        }
         if self.modules.contains_key(path) {
             return Ok(());
         }
@@ -287,6 +299,16 @@ impl ModuleGraph {
             return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
         }
         let text = std::str::from_utf8(&bytes).map_err(|e| format!("{path}: {e}"))?;
+        if from.is_none()
+            && self
+                .scope
+                .as_ref()
+                .is_some_and(|scope| blake3::hash(&bytes).to_hex().as_str() != scope.entry.digest)
+        {
+            return Err(format!(
+                "{path}: content index is stale; rediscover source before evaluation"
+            ));
+        }
         self.entry_source
             .get_or_insert_with(|| source::Source::new(path, text));
         self.hash.update(&(path.len() as u64).to_le_bytes());
@@ -328,6 +350,10 @@ impl ModuleGraph {
                 format!("{path}:{line}:{column}: {message}")
             })?
         {
+            if let Some(scope) = &self.scope {
+                // Check the literal before normalization could hide ../ aliases.
+                scope.input(&input)?;
+            }
             let input = relative("", &input).map_err(|e| format!("{path}: {e}"))?;
             *self.inputs.entry(input).or_default() |= text;
         }
@@ -356,16 +382,19 @@ impl ModuleGraph {
         }
         self.modules
             .insert(path.to_string(), Codegen::new().build(&program).code);
-        for name in imports {
-            self.read(root, &name, overlay)?;
+        for name in &imports {
+            self.read(root, name, Some(path), overlay)?;
         }
+        imports.sort();
+        imports.dedup();
+        self.imports.insert(path.into(), imports);
         Ok(())
     }
 }
 
 impl Program {
     pub fn prepare(root: &Path, source: &str, spec: &Spec) -> Result<Self, String> {
-        Self::prepare_export(root, source, spec, Export::Call, &BTreeMap::new())
+        Self::prepare_export(root, source, spec, Export::Call, &BTreeMap::new(), None)
     }
 
     /// Evaluate an authored module's default data export, without calling it.
@@ -395,6 +424,33 @@ impl Program {
             },
             Export::Value,
             overlay,
+            None,
+        )
+    }
+
+    /// Prepare one indexed content entry without evaluating it. Every executable
+    /// source edge must stay in declared pure roots and direct module access;
+    /// literal raw inputs are captured from the entry module's assets/sources.
+    /// Rejects a stale entry snapshot. Domain/ref validation remains the cook's
+    /// responsibility; this is not a complete validated content graph.
+    pub fn prepare_content(
+        root: &Path,
+        project: &super::source_project::Project,
+        entry: &super::source_index::Entry,
+        overlay: &BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        Self::prepare_export(
+            root,
+            "",
+            &Spec {
+                script: entry.file.clone(),
+                params: json!({}),
+                seed: 0,
+                inputs: BTreeMap::new(),
+            },
+            Export::Value,
+            overlay,
+            Some(content::Scope { project, entry }),
         )
     }
 
@@ -404,6 +460,7 @@ impl Program {
         spec: &Spec,
         export: Export,
         overlay: &BTreeMap<String, String>,
+        scope: Option<content::Scope<'_>>,
     ) -> Result<Self, String> {
         for path in overlay.keys() {
             if relative("", path)? != *path || !path.ends_with(".ts") {
@@ -427,6 +484,7 @@ impl Program {
         hash.update(include_bytes!("generator_value.js"));
         hash.update(include_bytes!("generator/value.rs"));
         hash.update(include_bytes!("generator/author.rs"));
+        hash.update(include_bytes!("generator/content.rs"));
         hash.update(author::SOURCE.as_bytes());
         hash.update(&serde_json::to_vec(&author::kinds()).expect("kind names serialize"));
         hash.update(include_bytes!("../../../og-core/src/rng.rs"));
@@ -449,15 +507,19 @@ impl Program {
         let mut graph = ModuleGraph {
             modules,
             inputs: BTreeMap::new(),
+            imports: BTreeMap::new(),
             hash,
             entry_source: None,
+            scope,
         };
-        graph.read(root, &entry, overlay)?;
+        graph.read(root, &entry, None, overlay)?;
         let ModuleGraph {
             modules,
             inputs: declared,
+            imports,
             mut hash,
             entry_source,
+            scope,
         } = graph;
         let mut dependencies: std::collections::BTreeSet<String> = modules
             .keys()
@@ -465,10 +527,12 @@ impl Program {
             .cloned()
             .collect();
         let mut inputs = BTreeMap::new();
+        let mut input_dependencies = std::collections::BTreeSet::new();
         let mut total = 0;
         for (name, path) in &spec.inputs {
             let path = relative(source, path)?;
             let bytes = read(root, &path, overlay)?;
+            input_dependencies.insert(path.clone());
             dependencies.insert(path);
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
@@ -477,7 +541,11 @@ impl Program {
             inputs.insert(name, bytes);
         }
         let mut author_inputs = BTreeMap::new();
-        for (path, text) in declared {
+        for (name, text) in declared {
+            let path = match &scope {
+                Some(scope) => scope.input(&name)?,
+                None => name.clone(),
+            };
             let bytes = read(root, &path, overlay)?;
             total += bytes.len();
             if total > 64 * 1024 * 1024 {
@@ -490,8 +558,9 @@ impl Program {
             hash.update(&(path.len() as u64).to_le_bytes());
             hash.update(path.as_bytes());
             hash.update(blake3::hash(&bytes).as_bytes());
+            input_dependencies.insert(path.clone());
             dependencies.insert(path.clone());
-            author_inputs.insert(path, bytes);
+            author_inputs.insert(name, bytes);
         }
         // JS has one numeric parameter type. OGT's 17.0 and CLI JSON's 17
         // must identify the same action, not two spelling-dependent caches.
@@ -512,6 +581,8 @@ impl Program {
             modules,
             key: hash.finalize().to_hex().to_string(),
             dependencies: dependencies.into_iter().collect(),
+            imports,
+            input_dependencies: input_dependencies.into_iter().collect(),
             source: entry_source
                 .ok_or("generator entry must be a source file, not a built-in module")?,
             context,
