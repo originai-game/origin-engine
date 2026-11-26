@@ -863,7 +863,10 @@ fn encode_keyed(
         .args(["-t", &format!("{seconds}"), "-an"])
         .args([
             "-vf",
-            &format!("fps={},scale={w}:{h}:flags=bicubic", plan.decl.fps),
+            &format!(
+                "fps={}:start_time=0,scale={w}:{h}:flags=bicubic",
+                plan.decl.fps
+            ),
         ])
         .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"])
         .stdout(Stdio::piped())
@@ -929,7 +932,10 @@ fn decode(path: &Path, plan: &VideoPlan) -> Result<Decoded, String> {
         .args(["-t", &plan.decl.max_seconds.to_string(), "-an"])
         .args([
             "-vf",
-            &format!("fps={},scale={w}:{h}:flags=bicubic", plan.decl.fps),
+            &format!(
+                "fps={}:start_time=0,scale={w}:{h}:flags=bicubic",
+                plan.decl.fps
+            ),
         ])
         .args(["-f", "rawvideo", "-pix_fmt", "rgba", "-"])
         .output()
@@ -1508,11 +1514,15 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
         )
     } else {
         let mut c = reading(path, plan);
-        c.args(["-t", &format!("{seconds}"), "-an"]);
+        c.arg("-an");
+        // The frames start at the file's start, as its sound does: a video
+        // stream that starts later (a concatenation's, a few hundredths of a
+        // second in) has its first frame held over the gap. The count is
+        // `-frames:v`'s alone; an output `-t` cut the held frames at the end.
         (
             c,
             format!(
-                "fps={fps},scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1"
+                "fps={fps}:start_time=0,scale={w}:{h}:flags=bicubic:out_color_matrix=bt709:out_range=tv,format=yuv420p,tpad=stop_mode=clone:stop=-1"
             ),
         )
     };
@@ -1549,6 +1559,8 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
                 "keyint={key}:min-keyint={key}:scenecut=0:bframes=0:open-gop=0:info=0:log-level=error"
             ),
         ]),
+        // The key interval through ffmpeg's own `-keyint_min` (and `-g`
+        // above): libaom takes no `kf-min-dist` in `-aom-params`.
         _ => cmd.args([
             "-b:v",
             "0",
@@ -1556,8 +1568,10 @@ fn encode(path: &Path, plan: &VideoPlan) -> Result<Encoded, String> {
             "6",
             "-row-mt",
             "1",
+            "-keyint_min",
+            &key,
             "-aom-params",
-            &format!("enable-keyframe-filtering=0:kf-min-dist={key}:kf-max-dist={key}"),
+            "enable-keyframe-filtering=0",
         ]),
     };
     cmd.args([
