@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "author record schemas",
+      "summary": "Tooling can obtain closed record-patch schemas directly from the IDL reflection registry or a real Reflect layout, including ranges, units, enums and tuples, plus writable fields and reference metadata where the IDL supplies them. The shared typed patch container validates even direct serde decoding. This foundation does not switch any author file format."
+    }
+  ]
+}
