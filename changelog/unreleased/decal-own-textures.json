@@ -1,0 +1,37 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.RenderSettings.decalAtlas",
+      "change": "Removed. Every decal names its own texture; the renderer keeps the textures a frame's decals name in an atlas of its own, so decals from different effect packs and the game's own no longer share one texture the game had to build and set.",
+      "fix": "Delete the line that sets decalAtlas and set that texture on each decal instead: og.Decal.texture, or a `texture \"<id>\"` line in a vfx file's `decal` element. uvMin, uvMax and `uv` stay as they are: they are now a region of the decal's own texture.",
+      "find": ["decalAtlas"]
+    },
+    {
+      "member": "og.Decal.normalMin / normalMax",
+      "change": "Removed. A decal's normal map is its own texture, og.Decal.normalMap, read over the same uvMin to uvMax region as its image.",
+      "fix": "Put the normal map in a texture laid out as the colour texture is (each mark's map in the cell its colour has) and set og.Decal.normalMap to it.",
+      "find": ["normalMin", "normalMax"]
+    },
+    {
+      "member": "type vfx: decal",
+      "change": "A `decal` element's `uv` is a region of its own `texture` line, not of og.RenderSettings.decalAtlas. A decal with no `texture` draws a square of its colour.",
+      "fix": "Add `texture \"<the atlas's id>\"` to each `decal` element that has a `uv` line."
+    },
+    {
+      "member": "og vfx preview --decal-atlas",
+      "change": "Removed: an effect's decals carry their textures.",
+      "fix": "Drop the flag and name the texture in the effect's `decal` element."
+    }
+  ],
+  "added": [
+    {
+      "member": "og.Decal.texture, og.Decal.normalMap",
+      "summary": "A decal's image and its tangent-space normal map, each any loaded texture (a sheet of several marks is one texture, each decal a region of it)."
+    },
+    {
+      "member": "type vfx: decal",
+      "summary": "A `decal` element takes `texture`, `normal`, `normalScale`, `emissive`, `roughness`, `metallic`, `wet`, `angleFade` and `turn` (a random turn per instance), so an effect leaves a scorch with glowing embers, a crater with a raised rim, a bullet hole or a wet splash mark with its own textures."
+    }
+  ]
+}

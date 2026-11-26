@@ -8,17 +8,11 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         fx,
         scene,
         draw,
-        settings: render_settings,
         textures,
         art,
         ..
     } = rs;
     let layouts = &draw.fx;
-    // RenderSettings.decalAtlas: the texture Decal components sample.
-    scene.effects.decal_atlas = resource(world, render_settings.as_ref())
-        .and_then(|s| record::RenderSettings::from_json(&s).ok())
-        .and_then(|s| crate::world::assets::index_of(s.decal_atlas as f64))
-        .and_then(|i| textures.get(i).copied());
     let post = &mut scene.look.post;
     post.ao = None;
     post.outline = None;

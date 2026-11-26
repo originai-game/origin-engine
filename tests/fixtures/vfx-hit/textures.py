@@ -41,7 +41,7 @@ save("spark.png", 64, lambda u, v: white((lambda d: 0.75 * (1 - smooth(0, 0.25, 
 save("noise.png", 128, lambda u, v: int(255 * min(max((fbm(u, v) - 0.2) / 0.6, 0), 1)))
 # A soft puff, white in alpha: smoke billboards.
 save("puff.png", 64, lambda u, v: white((1 - smooth(0.1, 1, math.hypot(u - .5, v - .5) * 2)) ** 1.5 * (0.6 + 0.4 * fbm(u, v))), "RGBA")
-# The decal atlas: a scorch (left half) and a heal sigil (right half), RGBA.
+# The decals' sheet: a scorch (left half) and a heal sigil (right half), RGBA.
 def atlas(u, v):
     if u < 0.5:
         x, y = (u - 0.25) * 4, (v - 0.5) * 2

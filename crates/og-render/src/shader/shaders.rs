@@ -151,6 +151,10 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
         crate::color_vision::COLOR_FILTER_WGSL.to_string(),
     );
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
+    add(
+        "decal atlas",
+        crate::decal_atlas::DECAL_ATLAS_WGSL.to_string(),
+    );
     add("ibl", crate::ibl::ibl_source());
     add("cloud noise", crate::clouds::NOISE_WGSL.to_string());
     add("cloud shadow", crate::clouds::bake_source());

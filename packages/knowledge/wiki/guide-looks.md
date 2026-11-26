@@ -405,7 +405,12 @@ from above, the play area lies at one depth and falls in one band.
   math. The renderer draws that simulation as it stands. Give `events` only to emitters whose
   particles gameplay reads.
 - Decals: tens of thousands can be placed, because each pixel walks only
-  the decals whose box can reach it. They land on meshes (the standard
+  the decals whose box can reach it. Each names its own texture and
+  normal map (og.Decal.texture, a `decal` element's `texture` line), so
+  an effect pack's marks need no setup in the game; marks that share a
+  sheet are one texture, each a region of it. A decal's texture is kept
+  up to 2048 texels a side, and smaller when one frame's decals name
+  more than a 4096 texel sheet holds. They land on meshes (the standard
   and physical materials, hooks and `mode full lit` shaders), terrain,
   grass and scattered copies. Water, the 3D fluid, particles and unlit
   shaders take none: a mark on water is the water's own foam or wake.

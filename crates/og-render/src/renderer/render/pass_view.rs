@@ -494,7 +494,7 @@ impl Pass for ViewPass {
             post_fx,
         }: ViewBindIn<'f>,
     ) -> Option<ViewPlan<'f>> {
-        frame.groups = r.view_groups(scene, view_plans);
+        frame.groups = r.view_groups(view_plans);
         // Each view's metaball field groups (its own fields' textures).
         frame.fields = view_plans
             .iter()

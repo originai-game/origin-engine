@@ -9,7 +9,6 @@
 use super::*;
 
 pub(super) struct BindFrameInputs<'a> {
-    pub scene: &'a RenderScene,
     pub batches: &'a [Batch],
     pub oit_mode: Option<oit::Oit>,
     pub probe_frame: &'a probes::ProbeFrame,
@@ -45,7 +44,6 @@ impl Renderer {
     pub(super) fn bind_frame<'a>(
         &'a self,
         BindFrameInputs {
-            scene,
             batches,
             oit_mode,
             probe_frame,
@@ -162,10 +160,7 @@ impl Renderer {
                     .chain(skinned_visible)
                     .any(|b| b.physical)
                     .then(|| {
-                        let atlas_view =
-                            scene.effects.decal_atlas.map_or(&self.default_white, |t| {
-                                &self.cache.textures[t.index()].view
-                            });
+                        let atlas_view = self.decal_atlas_view();
                         let ao_view = if ao_target || contact {
                             self.graph.view("ao")
                         } else {

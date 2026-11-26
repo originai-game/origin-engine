@@ -9047,10 +9047,6 @@ export interface RenderSettings {
   exposure: number;
   // ── Scene ──
   /**
-   * The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.
-   */
-  decalAtlas: Texture;
-  /**
    * A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full.
    * See `render §10`.
    *
@@ -11276,14 +11272,22 @@ export interface LightMask2D {
 }
 
 /**
- * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
+ * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
  * See `looks §14`.
  *
  * The value of the `Decal` component (token `og.Decal`).
  */
 export interface Decal {
   /**
-   * A linear colour multiplied with the atlas.
+   * The image (og.load.texture): its colour times color, its alpha the coverage. A sheet of several marks is one texture, each decal a uvMin to uvMax region of it. 0 is a solid colour.
+   */
+  texture: Texture;
+  /**
+   * A tangent-space normal map over the same region (og.load.texture; glTF's convention: +X along u, +Y up the image) that bends the surface under the decal: a crack, a bullet hole's rim, embossed lettering. 0 is none.
+   */
+  normalMap: Texture;
+  /**
+   * A linear colour multiplied with the texture.
    *
    * @default { r: 1, g: 1, b: 1 }
    */
@@ -11297,13 +11301,13 @@ export interface Decal {
    */
   opacity: number;
   /**
-   * The atlas region's top-left corner, v down.
+   * The top-left corner of the decal's region of texture and normalMap, v down.
    *
    * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   uvMin: Vector2;
   /**
-   * The atlas region's bottom-right corner, v down.
+   * The region's bottom-right corner, v down.
    *
    * @default { x: 1, y: 1 }
    * @worldspace none (how og.WorldOrigin's shift moves it)
@@ -11340,13 +11344,7 @@ export interface Decal {
    */
   angleFade: number;
   /**
-   * The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map.
-   */
-  normalMin: Vector2;
-  /** The bottom-right corner of the decal's normal map in the atlas, v down. */
-  normalMax: Vector2;
-  /**
-   * How strongly the normal map bends the surface, as three.js normalScale.
+   * How strongly normalMap bends the surface, as three.js normalScale.
    *
    * @default 1
    * @range 0..4
@@ -38968,7 +38966,7 @@ export declare namespace og {
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly skyCaptureSliced: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly staticLightReach: FieldSpec<"f32">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly skyCaptureSliced: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    * See `render §9`.
@@ -39023,10 +39021,10 @@ export declare namespace og {
    */
   const LightMask2D: ComponentType<{ readonly layers: FieldSpec<"u32"> }, LightMask2D>;
   /**
-   * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
+   * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
    * See `looks §14`.
    */
-  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly metallic: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
+  const Decal: ComponentType<{ readonly texture: FieldSpec<"Texture">; readonly normalMap: FieldSpec<"Texture">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly metallic: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
    * See `looks §14`.

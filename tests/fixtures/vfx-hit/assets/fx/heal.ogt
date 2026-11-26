@@ -48,6 +48,7 @@ light {
 decal {
   at 0.1
   life 1.9
+  texture "textures/atlas.png"
   uv 0.5 0 1 1
   size 2.2 0.5 2.2
   fade 0.5

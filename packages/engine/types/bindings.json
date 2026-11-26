@@ -1880,6 +1880,16 @@
       "module": "render",
       "fields": [
         {
+          "name": "texture",
+          "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "normalMap",
+          "column": "Texture",
+          "default": 0
+        },
+        {
           "name": "color",
           "column": "Color",
           "default": {
@@ -1938,22 +1948,6 @@
           "name": "angleFade",
           "column": "f32",
           "default": 75
-        },
-        {
-          "name": "normalMin",
-          "column": "Vector2",
-          "default": {
-            "x": 0,
-            "y": 0
-          }
-        },
-        {
-          "name": "normalMax",
-          "column": "Vector2",
-          "default": {
-            "x": 0,
-            "y": 0
-          }
         },
         {
           "name": "normalScale",
@@ -11972,11 +11966,6 @@
           "column": "f32",
           "default": 1,
           "tunable": true
-        },
-        {
-          "name": "decalAtlas",
-          "column": "Texture",
-          "default": 0
         },
         {
           "name": "lodBias",

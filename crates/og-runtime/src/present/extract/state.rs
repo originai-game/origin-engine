@@ -225,10 +225,6 @@ pub(crate) struct RenderState {
     /// it is warned of on the tick it was first drawn
     /// (`crate::present::faces::lacking`).
     pub glyphs_judged: std::collections::BTreeSet<char>,
-    /// Composed effects (by asset id) warned of drawing a decal region
-    /// without og.RenderSettings.decalAtlas, each once a run
-    /// (`crate::present::vfx`).
-    pub vfx_decals_warned: std::collections::BTreeSet<String>,
     /// The last frame's og.Vfx: drawn, and left out past
     /// RenderSettings.maxVfx or maxVfxParticles (the render dump's `vfx`).
     pub vfx_drawn: u32,
@@ -340,7 +336,6 @@ impl RenderState {
             ui_next: None,
             notes: Vec::new(),
             glyphs_judged: Default::default(),
-            vfx_decals_warned: Default::default(),
             vfx_drawn: 0,
             vfx_dropped: 0,
             #[cfg(not(feature = "publish"))]

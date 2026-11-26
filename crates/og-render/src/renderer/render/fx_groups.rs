@@ -1,5 +1,5 @@
 //! The effect bind groups (`FxGroups`): the effects uniform, the AO and
-//! planar reflection views, the decal atlas and buffers, the sprites' light
+//! planar reflection views, the decals' atlas and buffers, the sprites' light
 //! map and directions; rebuilt only when what they read changed.
 
 use super::*;
@@ -13,16 +13,19 @@ impl Renderer {
         let fx_key = (
             self.graph.generation,
             scene.id(),
-            scene.effects.decal_atlas,
+            self.lights.decal_atlas.as_ref().map(|a| a.generation),
             self.lights.decal_buffers.generation,
             ao,
             scene.sprite.lighting_2d.is_some(),
             reflection,
         );
         if self.lights.fx_groups.as_ref().map(|g| g.key) != Some(fx_key) {
-            let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
-                &self.cache.textures[t.index()].view
-            });
+            // `Renderer::decal_atlas_view`, borrowing only the lights.
+            let atlas_view = self
+                .lights
+                .decal_atlas
+                .as_ref()
+                .map_or(&self.default_white, |a| &a.view);
             let ao_view = if ao {
                 self.graph.view("ao")
             } else {

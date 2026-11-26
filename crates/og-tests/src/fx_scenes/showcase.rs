@@ -27,19 +27,20 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         cast_shadows: false,
         mobility: og_render::LightMobility::Movable,
     });
-    let atlas = decal_atlas(scene);
-    scene.effects.decal_atlas = Some(atlas);
+    let sheet = Some(decal_sheet(scene));
     for (p, s, r) in [
         (Vec3::new(-5.0, 0.0, -5.0), 4.0, 0.2),
         (Vec3::new(5.5, 0.0, -4.0), 3.6, 1.3),
         (Vec3::new(1.4, 0.0, 1.4), 2.2, 0.0),
     ] {
         scene.effects.decals.push(Decal {
+            texture: sheet,
             uv_rect: DECAL_SCORCH,
             ..Decal::on_surface(p, Vec3::Y, Vec2::splat(s), 0.8, r)
         });
     }
     scene.effects.decals.push(Decal {
+        texture: sheet,
         uv_rect: DECAL_RUNE,
         emissive: Vec3::new(0.8, 2.0, 3.0),
         ..Decal::on_surface(

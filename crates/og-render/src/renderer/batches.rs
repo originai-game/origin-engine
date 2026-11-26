@@ -255,6 +255,15 @@ impl Renderer {
         planar_slot(self.info.planar_reflections)
     }
 
+    /// The decals' atlas (`decal_atlas.rs`), or white while no decal has
+    /// named a texture.
+    pub(crate) fn decal_atlas_view(&self) -> &wgpu::TextureView {
+        self.lights
+            .decal_atlas
+            .as_ref()
+            .map_or(&self.default_white, |a| &a.view)
+    }
+
     /// An effect group without the planar reflection, for the lightmapped
     /// pipelines (`fx_lean_layout`); `None` where the effect group has no
     /// planar reflection and serves them itself.

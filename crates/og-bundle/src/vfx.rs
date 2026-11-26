@@ -107,8 +107,8 @@ pub const VFX_LINES: &[Line] = &[
         "decal",
         "{ ... }",
         "",
-        "A decal projected down the element's -y, from og.RenderSettings.decalAtlas.",
-        "decal {\n  at 0.25\n  life 4\n}",
+        "A decal projected down the element's -y onto every lit surface in its box: its `texture` and `normal` map, or a square of its colour without them.",
+        "decal {\n  at 0.25\n  life 4\n  texture \"fx/scorch.png\"\n}",
     ),
     Line::new(
         "glow",
@@ -369,11 +369,83 @@ pub const ELEMENT_LINES: &[Line] = &[
     ),
     Line::of(
         DECAL,
+        "texture",
+        "\"<id>\"",
+        "",
+        "Its image (a texture's id): the colour times `color`, the alpha its coverage. Without one it is a square of `color`.",
+        "texture \"fx/scorch.png\"",
+    ),
+    Line::of(
+        DECAL,
+        "normal",
+        "\"<id>\"",
+        "",
+        "A tangent-space normal map (a texture's id; +x along u, +y up the image, as glTF) that bends the surface under it: a crater's rim, a crack, a bullet hole.",
+        "normal \"fx/scorch-normal.png\"",
+    ),
+    Line::of(
+        DECAL,
+        "normalScale",
+        "<strength>",
+        "1",
+        "How strongly `normal` bends the surface, 0 to 4.",
+        "normalScale 1.5",
+    ),
+    Line::of(
+        DECAL,
         "uv",
         "<u0> <v0> <u1> <v1>",
         "0 0 1 1",
-        "Its region of og.RenderSettings.decalAtlas.",
+        "Its region of `texture` and `normal`, v down: one mark of a sheet of several.",
         "uv 0 0 0.5 0.5",
+    ),
+    Line::of(
+        DECAL,
+        "emissive",
+        "<r> <g> <b>",
+        "0 0 0",
+        "Linear light it adds where it covers, times the image (embers in a scorch, a glowing rune); above 1 blooms. It fades with the decal.",
+        "emissive 4 1.2 0.2",
+    ),
+    Line::of(
+        DECAL,
+        "roughness",
+        "<0..1>",
+        "",
+        "The surface's roughness under it (soot is rough, a puddle smooth); without the line the surface keeps its own.",
+        "roughness 0.95",
+    ),
+    Line::of(
+        DECAL,
+        "metallic",
+        "<0..1>",
+        "",
+        "The surface's metalness under it; without the line the surface keeps its own.",
+        "metallic 0",
+    ),
+    Line::of(
+        DECAL,
+        "wet",
+        "true | false",
+        "false",
+        "Darkens the surface by its colour and flattens it toward the decal's normal instead of covering it: a puddle, a splash mark, blood soaking in. Set `roughness` low for standing water.",
+        "wet true",
+    ),
+    Line::of(
+        DECAL,
+        "angleFade",
+        "<degrees>",
+        "75",
+        "Surfaces turned further than this from the projection are not covered (the last 15 degrees fade), 0 to 90.",
+        "angleFade 80",
+    ),
+    Line::of(
+        DECAL,
+        "turn",
+        "<degrees> | <min> <max>",
+        "0",
+        "Turns it about the projection; a range picks one angle per instance from its seed, so repeated marks do not look stamped.",
+        "turn 0 360",
     ),
     Line::of(
         DECAL,
@@ -625,12 +697,25 @@ pub enum VfxKind {
         distance: f32,
     },
     Decal {
-        /// `[u0, v0, u1, v1]` of the decal atlas.
+        /// Its image and its normal map (texture ids).
+        texture: Option<String>,
+        normal: Option<String>,
+        normal_scale: f32,
+        /// `[u0, v0, u1, v1]` of both.
         uv: [f32; 4],
         size: glam::Vec3,
         /// Seconds it fades out over at its end.
         fade: f32,
         color: [f32; 4],
+        emissive: [f32; 3],
+        /// The surface's under it; negative keeps the surface's own.
+        roughness: f32,
+        metallic: f32,
+        wet: bool,
+        /// Degrees from the projection past which a surface is not covered.
+        angle_fade: f32,
+        /// Degrees about the projection, an instance's picked between them.
+        turn: [f32; 2],
     },
     Glow {
         size: EffectValue,
@@ -680,6 +765,8 @@ pub struct VfxReferences {
     pub models: Vec<String>,
     pub sounds: Vec<String>,
     pub flipbooks: Vec<String>,
+    /// Decals' images and normal maps.
+    pub textures: Vec<String>,
 }
 
 impl Vfx {
@@ -706,10 +793,14 @@ impl Vfx {
                 }
                 VfxKind::Sound { id, .. } => push(&mut r.sounds, id),
                 VfxKind::Flipbook { id, .. } => push(&mut r.flipbooks, id),
-                VfxKind::Light { .. }
-                | VfxKind::Decal { .. }
-                | VfxKind::Glow { .. }
-                | VfxKind::Shake { .. } => {}
+                VfxKind::Decal {
+                    texture, normal, ..
+                } => {
+                    for t in [texture, normal].into_iter().flatten() {
+                        push(&mut r.textures, t);
+                    }
+                }
+                VfxKind::Light { .. } | VfxKind::Glow { .. } | VfxKind::Shake { .. } => {}
             }
         }
         r
@@ -935,10 +1026,19 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
                 distance: 5.0,
             },
             "decal" => VfxKind::Decal {
+                texture: None,
+                normal: None,
+                normal_scale: 1.0,
                 uv: [0.0, 0.0, 1.0, 1.0],
                 size: glam::Vec3::ONE,
                 fade: 0.0,
                 color: [1.0; 4],
+                emissive: [0.0; 3],
+                roughness: -1.0,
+                metallic: -1.0,
+                wet: false,
+                angle_fade: 75.0,
+                turn: [0.0; 2],
             },
             // Version 1 named the glow `flash`, as og.tween.flash and
             // PostEffects.flash name other things.
@@ -1111,6 +1211,27 @@ fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, S
                 *uv = match nums(k, 0)?[..] {
                     [a, b, c, d] => [a, b, c, d],
                     _ => return Err(format!("line {kl}: uv <u0> <v0> <u1> <v1>")),
+                }
+            }
+            ("texture", VfxKind::Decal { texture, .. }) => *texture = Some(id(k, "texture")?),
+            ("normal", VfxKind::Decal { normal, .. }) => *normal = Some(id(k, "texture")?),
+            ("normalScale", VfxKind::Decal { normal_scale, .. }) => {
+                *normal_scale = one(k)?.clamp(0.0, 4.0)
+            }
+            ("emissive", VfxKind::Decal { emissive, .. }) => {
+                *emissive = vec3(k)?.max(glam::Vec3::ZERO).to_array()
+            }
+            ("roughness", VfxKind::Decal { roughness, .. }) => *roughness = one(k)?.clamp(0.0, 1.0),
+            ("metallic", VfxKind::Decal { metallic, .. }) => *metallic = one(k)?.clamp(0.0, 1.0),
+            ("wet", VfxKind::Decal { wet, .. }) => *wet = flag(k)?,
+            ("angleFade", VfxKind::Decal { angle_fade, .. }) => {
+                *angle_fade = one(k)?.clamp(0.0, 90.0)
+            }
+            ("turn", VfxKind::Decal { turn, .. }) => {
+                *turn = match nums(k, 0)?[..] {
+                    [a] => [a, a],
+                    [a, b] => [a, b],
+                    _ => return Err(format!("line {kl}: turn <degrees> | <min> <max>")),
                 }
             }
             ("size", VfxKind::Glow { size, .. }) => *size = value(k, 0)?,

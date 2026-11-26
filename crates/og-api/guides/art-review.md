@@ -229,7 +229,7 @@ Capture an effect's first frames, its impact and its last frames (captures §6),
 - **Scale and reading.** It is sized to what caused it (a sword hit is smaller than a fireball's explosion) and reads against the ground, and it never hides the player or a threat for longer than its impact.
 - **Agreement.** Its colours and shapes belong to the game's style and to the other effects: one set of sparks, one kind of smoke.
 
-An effect that fails is fixed in its files and previewed again. A warning in its preview (a decal with no atlas, say) is fixed first.
+An effect that fails is fixed in its files and previewed again. A warning in its preview is fixed first.
 
 ## 8. Route a visible or audible problem to its mechanism
 

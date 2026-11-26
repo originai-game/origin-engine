@@ -845,7 +845,6 @@ module render {
       tunable true
     }
     group "Scene"
-    field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
     field lodBias f32 "A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full." {
       default 1
       min 0

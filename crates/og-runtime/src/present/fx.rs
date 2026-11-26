@@ -650,6 +650,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         let rows = crate::present::extract::column_rows(world, layout);
         if !rows.is_empty() {
             let visible_s = Slot::of(layout, "visible");
+            let texture_s = Slot::of(layout, "texture");
+            let normal_map_s = Slot::of(layout, "normalMap");
             let color_s = Slot::of(layout, "color");
             let opacity_s = Slot::of(layout, "opacity");
             let uv_min_s = Slot::of(layout, "uvMin");
@@ -659,8 +661,6 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             let metallic_s = Slot::of(layout, "metallic");
             let wet_s = Slot::of(layout, "wet");
             let angle_fade_s = Slot::of(layout, "angleFade");
-            let normal_min_s = Slot::of(layout, "normalMin");
-            let normal_max_s = Slot::of(layout, "normalMax");
             let normal_scale_s = Slot::of(layout, "normalScale");
             for (e, v) in sorted_column_rows(&rows) {
                 if !v.flag(&visible_s).unwrap_or(true) {
@@ -669,10 +669,10 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 let c = col_rgb(&v, &color_s, Vec3::ONE);
                 let lo = col_vec2(&v, &uv_min_s, Vec2::ZERO);
                 let hi = col_vec2(&v, &uv_max_s, Vec2::ONE);
-                let nlo = col_vec2(&v, &normal_min_s, Vec2::ZERO);
-                let nhi = col_vec2(&v, &normal_max_s, Vec2::ZERO);
                 scene.effects.decals.push(Decal {
                     transform: h.world_of(e),
+                    texture: texture(v.uint(&texture_s).unwrap_or(0)),
+                    normal_map: texture(v.uint(&normal_map_s).unwrap_or(0)),
                     uv_rect: [lo.x, lo.y, hi.x, hi.y],
                     color: [c.x, c.y, c.z, v.num(&opacity_s).map_or(1.0, |x| x as f32)],
                     emissive: col_rgb(&v, &emissive_s, Vec3::ZERO),
@@ -680,7 +680,6 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                     metallic: v.num(&metallic_s).map_or(-1.0, |x| x as f32),
                     wet: v.flag(&wet_s).unwrap_or(false),
                     angle_fade_degrees: v.num(&angle_fade_s).map_or(75.0, |x| x as f32),
-                    normal_rect: [nlo.x, nlo.y, nhi.x, nhi.y],
                     normal_scale: v.num(&normal_scale_s).map_or(1.0, |x| x as f32),
                 });
             }

@@ -427,8 +427,12 @@ impl RenderScene {
                 }
             }
         }
-        if self.effects.decal_atlas == Some(handle) {
-            self.effects.decal_atlas = None;
+        for d in &mut self.effects.decals {
+            for t in [&mut d.texture, &mut d.normal_map] {
+                if *t == Some(handle) {
+                    *t = None;
+                }
+            }
         }
         self.texture_slots.remove(i, true);
         true

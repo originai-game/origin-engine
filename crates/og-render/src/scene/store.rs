@@ -219,7 +219,6 @@ impl RenderScene {
                 points: Vec::new(),
                 point_layers: Vec::new(),
                 decals: Vec::new(),
-                decal_atlas: None,
             },
             ui: SceneUi {
                 overlay: None,

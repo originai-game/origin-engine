@@ -217,6 +217,8 @@ impl Lights {
             decal_records: Vec::new(),
             decal_spheres: Vec::new(),
             decal_bins: clusters::DecalBins::default(),
+            decal_atlas: None,
+            decal_copies: None,
             fx_buffer,
             fx_groups: None,
         }

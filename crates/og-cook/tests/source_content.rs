@@ -509,7 +509,7 @@ fn evaluated_content_resolves_snapshot_scoped_references() {
         ),
     );
     write(scene_file, &scene.replace("base/model", "base/program"));
-    let look = "import {file,ref} from '@origingame/engine/author'; export default file.look({RenderSettings:{decalAtlas:ref('base/texture#emission')},ui:ref('base/child-theme')});";
+    let look = "import {file,ref} from '@origingame/engine/author'; export default file.look({MaterialStyle:{gradientMap:ref('base/texture#emission')},ui:ref('base/child-theme')});";
     write("content/look.ts", look);
     write(
         "content/sound.ts",

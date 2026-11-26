@@ -501,14 +501,6 @@ impl Renderer {
             lit_range: arenas.lit_range,
             particle_frame: &particle_frame,
         });
-        if let Some(t) = scene.effects.decal_atlas
-            && t.index() >= self.cache.textures.len()
-        {
-            return Err(RenderError::InvalidHandle(format!(
-                "decal atlas {}",
-                t.index()
-            )));
-        }
         let lut_index = post_fx.color_grading.map(|g| g.lut.index());
         if let Some(g) = post_fx.color_grading
             && !(scene.contains_lut(g.lut)
@@ -1269,7 +1261,6 @@ impl Renderer {
         }
         // The frame's bind groups (frame_binds.rs).
         let binds = self.bind_frame(BindFrameInputs {
-            scene,
             batches: &batches,
             oit_mode: camera_lists.oit_mode,
             probe_frame: &probe_frame,

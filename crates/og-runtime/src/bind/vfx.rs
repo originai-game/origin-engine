@@ -56,6 +56,11 @@ pub(crate) enum Link {
     Effect(Option<EffectMaterialHandle>),
     /// A sound's handle (og.AudioSource.sound).
     Sound(f64),
+    /// A decal's image and normal map.
+    Decal {
+        texture: Option<og_render::TextureHandle>,
+        normal: Option<og_render::TextureHandle>,
+    },
     /// A flipbook sheet (og.load.flipbook): its handle, texture, the first
     /// frame's width over height and the first clip's length.
     Flipbook {
@@ -184,7 +189,20 @@ fn link(eng: &crate::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
                 clip: info.clips.first().map_or(0.0, |c| c.duration),
             }
         }
-        VfxKind::Light { .. } | VfxKind::Decal { .. } | VfxKind::Shake { .. } => Link::None,
+        VfxKind::Decal {
+            texture, normal, ..
+        } => {
+            let load = |id: &Option<String>| -> Result<_, String> {
+                let Some(id) = id else { return Ok(None) };
+                let i = crate::world::assets::load_texture(eng, id)?;
+                Ok(eng.render.borrow().textures.get(i).copied())
+            };
+            Link::Decal {
+                texture: load(texture)?,
+                normal: load(normal)?,
+            }
+        }
+        VfxKind::Light { .. } | VfxKind::Shake { .. } => Link::None,
     })
 }
 

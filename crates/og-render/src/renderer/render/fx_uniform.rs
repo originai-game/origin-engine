@@ -56,15 +56,18 @@ impl Renderer {
         if !motion_read {
             fx_uniform.motion[0] = 0.0;
         }
-        // The decals: their records, and the main view's clusters they reach
-        // (none in a renderer made without them, RenderDesc::without).
+        // The decals: their textures in the atlas, their records, and the
+        // main view's clusters they reach (none in a renderer made without
+        // them, RenderDesc::without).
+        let drawn: &[Decal] = if self.info.without.contains(LitFeatures::DECALS) {
+            &[]
+        } else {
+            &scene.effects.decals
+        };
+        self.sync_decal_atlas(scene, drawn);
         let (decals, decals_dropped) = self.lights.prepare_decals(
             (&self.device, &self.queue),
-            if self.info.without.contains(LitFeatures::DECALS) {
-                &[]
-            } else {
-                &scene.effects.decals
-            },
+            drawn,
             &clusters::ClusterView {
                 camera: cam,
                 frustum: view_frustum,
@@ -81,11 +84,7 @@ impl Renderer {
             fx_uniform.decal_info[3] = skinned_section as f32;
         }
         fx_uniform.decal_info[0] = decals as f32;
-        fx_uniform.decal_info[1] = match scene.effects.decal_atlas {
-            None => 0.0,
-            Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
-            Some(_) => 1.0,
-        };
+        fx_uniform.decal_info[1] = f32::from(self.lights.decal_atlas.is_some());
         self.world
             .terrain_fx
             .write(&self.queue, &fx_uniform, self.world.trample.grid());
@@ -141,5 +140,92 @@ impl Renderer {
             decals,
             decals_dropped,
         }
+    }
+
+    /// Brings the decals' atlas in line with the textures `decals` name:
+    /// each given its cells, and copied in when it is new there or its
+    /// texels changed. A handle that names no texture of the scene draws
+    /// its decal without one.
+    fn sync_decal_atlas(&mut self, scene: &RenderScene, decals: &[Decal]) {
+        use crate::decal_atlas::{Blit, Copy, DecalAtlas, DecalCopies, Key, Wanted};
+        let mut wanted: Vec<Wanted> = Vec::new();
+        let mut copies: Vec<(Key, Copy)> = Vec::new();
+        for d in decals.iter().take(crate::effects::MAX_DECALS) {
+            for (handle, normal) in [(d.texture, false), (d.normal_map, true)] {
+                let Some(handle) = handle.filter(|&h| scene.contains_texture(h)) else {
+                    continue;
+                };
+                let key = Key {
+                    index: handle.index(),
+                    normal,
+                };
+                let Some(gpu) = self.cache.textures.get(key.index) else {
+                    continue;
+                };
+                if wanted.iter().any(|w| w.key == key) {
+                    continue;
+                }
+                // What the copy can filter (not a depth target).
+                let texture = gpu.view.texture();
+                if !matches!(
+                    texture
+                        .format()
+                        .sample_type(None, Some(self.device.features())),
+                    Some(wgpu::TextureSampleType::Float { filterable: true })
+                ) {
+                    continue;
+                }
+                let size = texture.size();
+                wanted.push(Wanted {
+                    key,
+                    size: (size.width, size.height),
+                    revision: self.cache.texture_revisions[key.index],
+                    live: gpu.target,
+                });
+                copies.push((
+                    key,
+                    if !normal {
+                        Copy::Color
+                    } else if scene.texture_color_space(handle) == Some(ColorSpace::Srgb) {
+                        Copy::NormalSrgb
+                    } else if gpu.format.two_channel() {
+                        Copy::NormalRg
+                    } else {
+                        Copy::Normal
+                    },
+                ));
+            }
+        }
+        if wanted.is_empty() {
+            return;
+        }
+        let atlas = self
+            .lights
+            .decal_atlas
+            .get_or_insert_with(|| DecalAtlas::new(&self.device));
+        let stale = atlas.place(&self.device, &wanted);
+        if stale.is_empty() {
+            return;
+        }
+        let blits: Vec<Blit> = copies
+            .iter()
+            .filter(|(key, _)| stale.contains(key))
+            .map(|&(key, copy)| Blit {
+                key,
+                source: &self.cache.textures[key.index].view,
+                copy,
+            })
+            .collect();
+        let copies = self
+            .lights
+            .decal_copies
+            .get_or_insert_with(|| DecalCopies::new(&self.device));
+        let mut encoder = Encoder::untimed(self.device.create_command_encoder(
+            &wgpu::CommandEncoderDescriptor {
+                label: Some("decal atlas"),
+            },
+        ));
+        atlas.copy(&self.device, copies, &mut self.mips, &blits, &mut encoder);
+        self.queue.submit(Some(encoder.finish()));
     }
 }

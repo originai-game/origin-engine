@@ -27768,11 +27768,6 @@
           "maximum": 16,
           "x-og-tunable": true
         },
-        "decalAtlas": {
-          "$ref": "#/$defs/Texture",
-          "description": "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour.",
-          "default": 0
-        },
         "lodBias": {
           "type": "number",
           "description": "A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full.\nSee `render §10`.",
@@ -30074,12 +30069,22 @@
     "Decal": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).\nSee `looks §14`.",
+      "description": "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).\nSee `looks §14`.",
       "type": "object",
       "properties": {
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The image (og.load.texture): its colour times color, its alpha the coverage. A sheet of several marks is one texture, each decal a uvMin to uvMax region of it. 0 is a solid colour.",
+          "default": 0
+        },
+        "normalMap": {
+          "$ref": "#/$defs/Texture",
+          "description": "A tangent-space normal map over the same region (og.load.texture; glTF's convention: +X along u, +Y up the image) that bends the surface under the decal: a crack, a bullet hole's rim, embossed lettering. 0 is none.",
+          "default": 0
+        },
         "color": {
           "$ref": "#/$defs/Color",
-          "description": "A linear colour multiplied with the atlas.",
+          "description": "A linear colour multiplied with the texture.",
           "default": {
             "r": 1,
             "g": 1,
@@ -30096,7 +30101,7 @@
         },
         "uvMin": {
           "$ref": "#/$defs/Vector2",
-          "description": "The atlas region's top-left corner, v down.",
+          "description": "The top-left corner of the decal's region of texture and normalMap, v down.",
           "default": {
             "x": 0,
             "y": 0
@@ -30105,7 +30110,7 @@
         },
         "uvMax": {
           "$ref": "#/$defs/Vector2",
-          "description": "The atlas region's bottom-right corner, v down.",
+          "description": "The region's bottom-right corner, v down.",
           "default": {
             "x": 1,
             "y": 1
@@ -30148,25 +30153,9 @@
           "maximum": 90,
           "x-og-unit": "deg"
         },
-        "normalMin": {
-          "$ref": "#/$defs/Vector2",
-          "description": "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map.",
-          "default": {
-            "x": 0,
-            "y": 0
-          }
-        },
-        "normalMax": {
-          "$ref": "#/$defs/Vector2",
-          "description": "The bottom-right corner of the decal's normal map in the atlas, v down.",
-          "default": {
-            "x": 0,
-            "y": 0
-          }
-        },
         "normalScale": {
           "type": "number",
-          "description": "How strongly the normal map bends the surface, as three.js normalScale.",
+          "description": "How strongly normalMap bends the surface, as three.js normalScale.",
           "default": 1,
           "minimum": 0,
           "maximum": 4,

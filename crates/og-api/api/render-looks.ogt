@@ -647,9 +647,11 @@
   }
 
   component Decal {
-    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept)."
+    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of its texture (a solid colour without one); the same region of normalMap is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept)."
     guide "looks §14"
-    field color Color "A linear colour multiplied with the atlas." {
+    field texture Texture "The image (og.load.texture): its colour times color, its alpha the coverage. A sheet of several marks is one texture, each decal a uvMin to uvMax region of it. 0 is a solid colour."
+    field normalMap Texture "A tangent-space normal map over the same region (og.load.texture; glTF's convention: +X along u, +Y up the image) that bends the surface under the decal: a crack, a bullet hole's rim, embossed lettering. 0 is none."
+    field color Color "A linear colour multiplied with the texture." {
       default 1 1 1
     }
     field opacity f32 "The decal's opacity." {
@@ -658,10 +660,10 @@
       max 1
       tunable true
     }
-    field uvMin Vector2 "The atlas region's top-left corner, v down." {
+    field uvMin Vector2 "The top-left corner of the decal's region of texture and normalMap, v down." {
       worldspace none
     }
-    field uvMax Vector2 "The atlas region's bottom-right corner, v down." {
+    field uvMax Vector2 "The region's bottom-right corner, v down." {
       worldspace none
       default 1 1
     }
@@ -685,9 +687,7 @@
       max 90
       unit deg
     }
-    field normalMin Vector2 "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map."
-    field normalMax Vector2 "The bottom-right corner of the decal's normal map in the atlas, v down."
-    field normalScale f32 "How strongly the normal map bends the surface, as three.js normalScale." {
+    field normalScale f32 "How strongly normalMap bends the surface, as three.js normalScale." {
       default 1
       min 0
       max 4

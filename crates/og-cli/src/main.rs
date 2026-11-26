@@ -248,7 +248,7 @@ commands:
                       Effekseer file in assets/ is converted the same way by og cook. A
                       one-shot effect gets an impact where the most starts at once; --hit
                       adds a light and a camera shake there (hits, explosions)
-  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>]
+  vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
               [--project-look | --look asset.ogt] [--scene asset.ogt]
               [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov]
               [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]

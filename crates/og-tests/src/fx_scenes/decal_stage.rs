@@ -12,9 +12,9 @@
 
 use super::*;
 
-/// The stage's atlas: 4 × 4 cells of 256 px; the first row the colours
-/// (scorch, rune, crack, puddle), the second moss, the third the first
-/// row's normal maps.
+/// The stage's sheets: 4 × 4 cells of 256 px. The colours' first row is
+/// scorch, rune, crack and puddle, the second moss; the normal maps' sheet
+/// has each mark's map in the cell its colour has.
 const CELLS: f32 = 4.0;
 
 fn cell(col: u32, row: u32) -> [f32; 4] {
@@ -72,8 +72,18 @@ fn normal_of(h: impl Fn(f32, f32) -> f32, x: f32, y: f32, strength: f32) -> [u8;
     [enc(n.x), enc(n.y), enc(n.z), 255]
 }
 
-fn atlas(scene: &mut RenderScene) -> og_render::TextureHandle {
-    scene.add_texture(texture(1024, og_render::ColorSpace::Srgb, |u, v| {
+/// The colours' sheet and the normal maps' (the generator's third row
+/// brought to the first, where its colours are).
+fn sheets(scene: &mut RenderScene) -> (og_render::TextureHandle, og_render::TextureHandle) {
+    let colors = scene.add_texture(texture(1024, og_render::ColorSpace::Srgb, sheet_texel));
+    let normals = scene.add_texture(texture(1024, og_render::ColorSpace::Srgb, |u, v| {
+        sheet_texel(u, (v + 0.5).fract())
+    }));
+    (colors, normals)
+}
+
+fn sheet_texel(u: f32, v: f32) -> [u8; 4] {
+    {
         let (col, row) = ((u * CELLS) as u32, (v * CELLS) as u32);
         let (x, y) = ((u * CELLS).fract() - 0.5, (v * CELLS).fract() - 0.5);
         let r = (x * x + y * y).sqrt();
@@ -170,7 +180,7 @@ fn atlas(scene: &mut RenderScene) -> og_render::TextureHandle {
             (2, _) => [128, 128, 255, 255],
             _ => [0, 0, 0, 0],
         }
-    }))
+    }
 }
 
 pub fn decals_stage_scene() -> RenderScene {
@@ -209,15 +219,16 @@ pub fn decals_stage_scene() -> RenderScene {
         radius: 0.12,
         ..Default::default()
     });
-    let atlas = atlas(&mut scene);
-    scene.effects.decal_atlas = Some(atlas);
+    let (colors, normals) = sheets(&mut scene);
+    let (colors, normals) = (Some(colors), Some(normals));
     let up = Vec3::Y;
     let rune_at = Vec3::new(1.0, 0.0, 0.7);
     scene.effects.decals = vec![
         // The crater in the wall, its cracks running out over the plaster.
         Decal {
+            texture: colors,
+            normal_map: normals,
             uv_rect: cell(2, 0),
-            normal_rect: cell(2, 2),
             normal_scale: 1.5,
             roughness: 0.85,
             ..Decal::on_surface(
@@ -230,8 +241,9 @@ pub fn decals_stage_scene() -> RenderScene {
         },
         // The blast's scorch on the flags below it.
         Decal {
+            texture: colors,
+            normal_map: normals,
             uv_rect: cell(0, 0),
-            normal_rect: cell(0, 2),
             roughness: 0.95,
             angle_fade_degrees: 80.0,
             ..Decal::on_surface(
@@ -244,6 +256,7 @@ pub fn decals_stage_scene() -> RenderScene {
         },
         // The rune, glowing.
         Decal {
+            texture: colors,
             uv_rect: cell(1, 0),
             color: [1.0, 1.0, 1.0, 1.0],
             emissive: Vec3::new(1.2, 3.2, 6.0),
@@ -252,6 +265,7 @@ pub fn decals_stage_scene() -> RenderScene {
         },
         // A rain puddle where the lantern's reflection meets the lens.
         Decal {
+            texture: colors,
             uv_rect: cell(3, 0),
             roughness: 0.04,
             wet: true,
@@ -260,6 +274,7 @@ pub fn decals_stage_scene() -> RenderScene {
         // Moss projected diagonally into the corner: on the wall's foot
         // and the flags at once.
         Decal {
+            texture: colors,
             uv_rect: cell(0, 1),
             angle_fade_degrees: 80.0,
             roughness: 0.9,

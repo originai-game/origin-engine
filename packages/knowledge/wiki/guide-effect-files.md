@@ -115,7 +115,7 @@ A texture line (`main`, `mask`, `noise`, `flowMap`) takes a block of how it is r
 | `trail { ... }` |  | A trail behind the element's point. |
 | `beam { ... }` |  | A beam from the element's point to `to`. |
 | `light { ... }` |  | A point light. |
-| `decal { ... }` |  | A decal projected down the element's -y, from og.RenderSettings.decalAtlas. |
+| `decal { ... }` |  | A decal projected down the element's -y onto every lit surface in its box: its `texture` and `normal` map, or a square of its colour without them. |
 | `glow { ... }` |  | A soft bright glow facing the eye (version 1 named it `flash`). |
 | `shake { ... }` |  | og.camera.shake, at once. |
 | `sound "<id>" { ... }` |  | A sound asset, played at once by a child entity with og.AudioSource, cut when the effect despawns. |
@@ -152,7 +152,16 @@ An element's block takes these lines; In names the elements that take one (every
 | `jitter <metres>` | beam | `0` | Sideways jitter, new every tick (lightning). |
 | `intensity <value>` | light | `1` | Candela over its life. |
 | `distance <metres>` | light | `5` | Where it reaches zero. |
-| `uv <u0> <v0> <u1> <v1>` | decal | `0 0 1 1` | Its region of og.RenderSettings.decalAtlas. |
+| `texture "<id>"` | decal |  | Its image (a texture's id): the colour times `color`, the alpha its coverage. Without one it is a square of `color`. |
+| `normal "<id>"` | decal |  | A tangent-space normal map (a texture's id; +x along u, +y up the image, as glTF) that bends the surface under it: a crater's rim, a crack, a bullet hole. |
+| `normalScale <strength>` | decal | `1` | How strongly `normal` bends the surface, 0 to 4. |
+| `uv <u0> <v0> <u1> <v1>` | decal | `0 0 1 1` | Its region of `texture` and `normal`, v down: one mark of a sheet of several. |
+| `emissive <r> <g> <b>` | decal | `0 0 0` | Linear light it adds where it covers, times the image (embers in a scorch, a glowing rune); above 1 blooms. It fades with the decal. |
+| `roughness <0..1>` | decal |  | The surface's roughness under it (soot is rough, a puddle smooth); without the line the surface keeps its own. |
+| `metallic <0..1>` | decal |  | The surface's metalness under it; without the line the surface keeps its own. |
+| `wet true \| false` | decal | `false` | Darkens the surface by its colour and flattens it toward the decal's normal instead of covering it: a puddle, a splash mark, blood soaking in. Set `roughness` low for standing water. |
+| `angleFade <degrees>` | decal | `75` | Surfaces turned further than this from the projection are not covered (the last 15 degrees fade), 0 to 90. |
+| `turn <degrees> \| <min> <max>` | decal | `0` | Turns it about the projection; a range picks one angle per instance from its seed, so repeated marks do not look stamped. |
 | `size <s> \| <x> <y> <z>` | decal | `1 1 1` | x, the depth it reaches down its -y, and z. |
 | `fade <seconds>` | decal | `0` | Fades out over its last this many seconds. |
 | `size <value>` | glow | `1` | Metres across over its life. |

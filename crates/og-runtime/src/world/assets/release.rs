@@ -234,6 +234,10 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
                         candidate_meshes.contains(mesh) || bundle_effect_render.contains(mat)
                     }
                     crate::bind::vfx::Link::Effect(Some(mat)) => bundle_effect_render.contains(mat),
+                    crate::bind::vfx::Link::Decal { texture, normal } => [texture, normal]
+                        .into_iter()
+                        .flatten()
+                        .any(|t| candidate_textures.contains(t)),
                     _ => false,
                 });
                 if owned || uses_bundle {

@@ -2,8 +2,10 @@
 //! record with its bounding sphere ([`pack_decals`]), the records and their
 //! clusters (binned by `clusters::DecalBins`) in one storage buffer of the
 //! effect group ([`DecalBuffers`], binding 5) and its layout
-//! ([`decal_layout_entries`]). pbr.wgsl projects them.
+//! ([`decal_layout_entries`]). pbr.wgsl projects them. Their textures are
+//! in the atlas `shading::decal_atlas` keeps.
 
+use crate::decal_atlas::{DecalAtlas, Key};
 use crate::effects::{Decal, MAX_DECALS};
 use glam::Vec3;
 
@@ -12,9 +14,11 @@ use glam::Vec3;
 pub(crate) struct DecalGpu {
     inv: [[f32; 4]; 4],
     axis: [f32; 4],
+    /// The image's region of the atlas; below 0 without an image.
     uv_rect: [f32; 4],
     color: [f32; 4],
     emissive: [f32; 4],
+    /// The normal map's region of the atlas.
     normal_rect: [f32; 4],
     /// x: the normal map's scale (0 without one), y: wet coverage mode.
     normal: [f32; 4],
@@ -23,10 +27,16 @@ pub(crate) struct DecalGpu {
 /// Width of the facing fade at a decal's cut-off angle, as a cosine step.
 pub(crate) const DECAL_FADE: f32 = 0.25;
 
+/// What a record without an image carries as its region (decals.wgsl
+/// samples nothing for it).
+const NO_IMAGE: [f32; 4] = [-1.0; 4];
+
 /// Packs the first [`MAX_DECALS`] decals into `out` and their bounding
-/// spheres (world centre, radius) into `spheres`.
+/// spheres (world centre, radius) into `spheres`, each texture's region
+/// brought into `atlas` (a texture it does not hold is left out).
 pub(crate) fn pack_decals(
     decals: &[Decal],
+    atlas: Option<&DecalAtlas>,
     out: &mut Vec<DecalGpu>,
     spheres: &mut Vec<(Vec3, f32)>,
 ) {
@@ -35,17 +45,24 @@ pub(crate) fn pack_decals(
     for d in decals.iter().take(MAX_DECALS) {
         let axis = d.transform.transform_vector3(Vec3::Z).normalize_or(Vec3::Y);
         let cut = d.angle_fade_degrees.clamp(0.0, 180.0).to_radians().cos();
-        let [u0, v0, u1, v1] = d.normal_rect;
-        let mapped = u1 > u0 && v1 > v0;
+        let region = |texture: Option<crate::TextureHandle>, normal| {
+            let index = texture?.index();
+            atlas?.region(Key { index, normal }, d.uv_rect)
+        };
+        let normal_rect = region(d.normal_map, true);
         out.push(DecalGpu {
             inv: d.transform.inverse().to_cols_array_2d(),
             axis: axis.extend(cut - DECAL_FADE).to_array(),
-            uv_rect: d.uv_rect,
+            uv_rect: region(d.texture, false).unwrap_or(NO_IMAGE),
             color: d.color,
             emissive: d.emissive.extend(d.roughness).to_array(),
-            normal_rect: d.normal_rect,
+            normal_rect: normal_rect.unwrap_or_default(),
             normal: [
-                if mapped { d.normal_scale } else { 0.0 },
+                if normal_rect.is_some() {
+                    d.normal_scale
+                } else {
+                    0.0
+                },
                 f32::from(d.wet),
                 d.metallic,
                 0.0,

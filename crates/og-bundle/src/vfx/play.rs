@@ -140,12 +140,20 @@ pub enum VfxDrawKind {
         intensity: f32,
         range: f32,
     },
-    /// A decal box (it projects along its -z).
+    /// A decal box (it projects along its -z), with its element's image
+    /// and normal map.
     Decal {
         transform: Mat4,
-        /// `[u0, v0, u1, v1]` of the decal atlas.
+        /// `[u0, v0, u1, v1]` of its textures.
         uv: [f32; 4],
         color: [f32; 4],
+        emissive: Vec3,
+        normal_scale: f32,
+        /// Negative: the surface's own.
+        roughness: f32,
+        metallic: f32,
+        wet: bool,
+        angle_fade: f32,
     },
 }
 
@@ -430,6 +438,14 @@ impl Vfx {
                     size,
                     fade,
                     color,
+                    emissive,
+                    normal_scale,
+                    roughness,
+                    metallic,
+                    wet,
+                    angle_fade,
+                    turn,
+                    ..
                 } if alive => {
                     let a = if *fade > 0.0 {
                         ((el.life - te) / fade).clamp(0.0, 1.0)
@@ -439,12 +455,20 @@ impl Vfx {
                     let c = shaded(*color, tint, hue);
                     // Its unit box projects along its -z: turned down the
                     // element's -y, y the depth.
+                    let turned = (turn[0] + (turn[1] - turn[0]) * rnd).to_radians();
                     VfxDrawKind::Decal {
                         transform: local
                             * Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2)
+                            * Mat4::from_rotation_z(turned)
                             * Mat4::from_scale(Vec3::new(size.x * amount, size.z * amount, size.y)),
                         uv: *uv,
                         color: [c[0], c[1], c[2], c[3] * a],
+                        emissive: hue_rotated(Vec3::from_array(*emissive) * tint, hue),
+                        normal_scale: *normal_scale,
+                        roughness: *roughness,
+                        metallic: *metallic,
+                        wet: *wet,
+                        angle_fade: *angle_fade,
                     }
                 }
                 _ => continue,

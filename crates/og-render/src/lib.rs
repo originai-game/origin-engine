@@ -82,6 +82,7 @@ use shader::blue_noise;
 use shading::area;
 use shading::bindless;
 use shading::clusters;
+use shading::decal_atlas;
 use shading::decals;
 use systems::crowd;
 use systems::crowd::crowd_gpu;

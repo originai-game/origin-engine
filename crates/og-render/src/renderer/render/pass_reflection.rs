@@ -388,10 +388,7 @@ impl Pass for ReflectionPass {
         // The planar reflection's effect group: its decals, no AO.
         frame.fx_group = (0..reflections.len())
             .map(|k| {
-                let atlas_view = scene
-                    .effects
-                    .decal_atlas
-                    .map_or(&r.default_white, |t| &r.cache.textures[t.index()].view);
+                let atlas_view = r.decal_atlas_view();
                 fx::fx_group(
                     &r.device,
                     "fx (planar reflection)",
@@ -412,10 +409,7 @@ impl Pass for ReflectionPass {
         // lightmapped draws (`fx_lean_group`), by the pass's own group.
         frame.fx_lean = (0..reflections.len())
             .map(|k| {
-                let atlas_view = scene
-                    .effects
-                    .decal_atlas
-                    .map_or(&r.default_white, |t| &r.cache.textures[t.index()].view);
+                let atlas_view = r.decal_atlas_view();
                 r.fx_lean_group(
                     &r.reflections.reflection_fx_buffer[k],
                     &r.post.white,

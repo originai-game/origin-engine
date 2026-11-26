@@ -31,7 +31,6 @@ function build(world: World): void {
   const moon = must(world.spawn({ quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -0.3, y: -0.6, z: -0.6 }) }));
   must(world.insert(moon, og.DirectionalLight, { color: { r: 0.55, g: 0.6, b: 0.9 }, intensity: 0.25, castShadow: true }));
   const rs = must(world.resource(og.RenderSettings));
-  rs.decalAtlas = must(og.load.texture(world, "textures/atlas.png"));
   rs.bloom = true;
   rs.environmentIntensity = 0.15;
   const cam = must(world.resource(og.Camera));

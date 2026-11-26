@@ -31861,7 +31861,6 @@ pub mod record {
             pub tone_mapped: bool,
             pub tone_mapping: ToneMapping,
             pub exposure: f32,
-            pub decal_atlas: u64,
             pub lod_bias: f32,
             pub baked_lighting: bool,
             pub static_light_reach: f32,
@@ -31906,7 +31905,6 @@ pub mod record {
                     tone_mapped: true,
                     tone_mapping: Default::default(),
                     exposure: 1.0_f32,
-                    decal_atlas: Default::default(),
                     lod_bias: 1.0_f32,
                     baked_lighting: true,
                     static_light_reach: 0.0_f32,
@@ -31957,7 +31955,6 @@ pub mod record {
                     tone_mapped: field(o, "toneMapped", d.tone_mapped)?,
                     tone_mapping: field(o, "toneMapping", d.tone_mapping)?,
                     exposure: field(o, "exposure", d.exposure)?,
-                    decal_atlas: field(o, "decalAtlas", d.decal_atlas)?,
                     lod_bias: field(o, "lodBias", d.lod_bias)?,
                     baked_lighting: field(o, "bakedLighting", d.baked_lighting)?,
                     static_light_reach: field(o, "staticLightReach", d.static_light_reach)?,
@@ -32928,6 +32925,8 @@ pub mod record {
         /// `Decal`: packages/knowledge/wiki/render.md.
         #[derive(Clone, Debug, PartialEq)]
         pub struct Decal {
+            pub texture: u64,
+            pub normal_map: u64,
             pub color: Color,
             pub opacity: f32,
             pub uv_min: Vec2,
@@ -32937,8 +32936,6 @@ pub mod record {
             pub metallic: f32,
             pub wet: bool,
             pub angle_fade: f32,
-            pub normal_min: Vec2,
-            pub normal_max: Vec2,
             pub normal_scale: f32,
             pub visible: bool,
         }
@@ -32946,6 +32943,8 @@ pub mod record {
         impl Default for Decal {
             fn default() -> Self {
                 Self {
+                    texture: Default::default(),
+                    normal_map: Default::default(),
                     color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                     opacity: 1.0_f32,
                     uv_min: Default::default(),
@@ -32955,8 +32954,6 @@ pub mod record {
                     metallic: -1.0_f32,
                     wet: false,
                     angle_fade: 75.0_f32,
-                    normal_min: Default::default(),
-                    normal_max: Default::default(),
                     normal_scale: 1.0_f32,
                     visible: true,
                 }
@@ -32970,6 +32967,8 @@ pub mod record {
             fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
                 let o = object(v)?;
                 Ok(Self {
+                    texture: field(o, "texture", d.texture)?,
+                    normal_map: field(o, "normalMap", d.normal_map)?,
                     color: field(o, "color", d.color)?,
                     opacity: field(o, "opacity", d.opacity)?,
                     uv_min: field(o, "uvMin", d.uv_min)?,
@@ -32979,8 +32978,6 @@ pub mod record {
                     metallic: field(o, "metallic", d.metallic)?,
                     wet: field(o, "wet", d.wet)?,
                     angle_fade: field(o, "angleFade", d.angle_fade)?,
-                    normal_min: field(o, "normalMin", d.normal_min)?,
-                    normal_max: field(o, "normalMax", d.normal_max)?,
                     normal_scale: field(o, "normalScale", d.normal_scale)?,
                     visible: field(o, "visible", d.visible)?,
                 })

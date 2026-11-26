@@ -15,7 +15,7 @@ pub(crate) struct FxUniform {
     pub screen: [f32; 4],
     pub ao: [f32; 4],
     /// x: decal records (negated: walk them all, the view has no decal
-    /// clusters), y: the atlas (0 none, 1 linear, 2 sRGB), z: the cos fade
+    /// clusters), y: 1 with the decals' atlas, z: the cos fade
     /// width, w: free for the skinned motion vectors.
     pub decal_info: [f32; 4],
     pub planar: [f32; 4],

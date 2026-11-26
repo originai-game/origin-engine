@@ -20,7 +20,6 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 }
 const DIM: string = "__DIM__";
 const VFX2D: string[] = __VFX2D__;
-const DECAL_ATLAS: string = "__DECAL_ATLAS__";
 const QUALITY: string = "__QUALITY__";
 const CONTEXT: { enabled?: boolean; look?: string; scene?: string; position?: number[]; camera?: number[] } = __CONTEXT__;
 const VIEW_HEIGHT = __H__;
@@ -44,7 +43,6 @@ function stage(world: World, mode: string): void {
   // Shown, the sky is the far ground's tone: no bright band above the horizon.
   cam.background = show ? { r: 0.014, g: 0.02, b: 0.038 } : { r: 0, g: 0, b: 0 };
   rs.bloom = show;
-  if (DECAL_ATLAS !== "") rs.decalAtlas = must(og.load.texture(world, DECAL_ATLAS));
   if (DIM === "2d") {
     cam.orthographic = true;
     cam.height = 10;
@@ -77,7 +75,6 @@ function stage(world: World, mode: string): void {
       must(world.instantiate(must(og.load.scene(world, CONTEXT.scene))));
     }
     if (QUALITY !== "") must(og.render.applyQuality(world, QUALITY as GraphicsQuality));
-    if (DECAL_ATLAS !== "") rs.decalAtlas = must(og.load.texture(world, DECAL_ATLAS));
     contextReady = true;
   }
 }

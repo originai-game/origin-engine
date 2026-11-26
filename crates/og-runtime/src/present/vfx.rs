@@ -247,8 +247,7 @@ pub(crate) fn extract_particles(
 
 /// Every playing og.Vfx expanded into the scene's systems, meshes, trails,
 /// beams, lights and decals for the frame at `tick`. A `frame`'s
-/// extraction also notes a decal drawn from an atlas region with no atlas set,
-/// and counts the effects drawn and left out (`kept`).
+/// extraction also counts the effects drawn and left out (`kept`).
 pub(crate) fn extract(
     world: &World,
     rs: &mut RenderState,
@@ -421,25 +420,27 @@ pub(crate) fn extract(
                         transform,
                         uv,
                         color,
+                        emissive,
+                        normal_scale,
+                        roughness,
+                        metallic,
+                        wet,
+                        angle_fade,
                     },
-                    _,
+                    Link::Decal { texture, normal },
                 ) => {
-                    // A region of no atlas draws the decal's colour as a square.
-                    if frame
-                        && rs.scene.effects.decal_atlas.is_none()
-                        && uv != [0.0, 0.0, 1.0, 1.0]
-                        && rs.vfx_decals_warned.insert(l.id.clone())
-                    {
-                        rs.notes.push(format!(
-                            "og.vfx: '{}' draws a decal from region {uv:?} of og.RenderSettings.decalAtlas, which is not set, so the decal is a square of its colour; set decalAtlas to the texture its regions are in",
-                            l.id
-                        ));
-                    }
                     rs.scene.effects.decals.push(Decal {
                         transform,
+                        texture: *texture,
+                        normal_map: *normal,
                         uv_rect: uv,
                         color,
-                        ..Default::default()
+                        emissive,
+                        roughness,
+                        metallic,
+                        wet,
+                        angle_fade_degrees: angle_fade,
+                        normal_scale,
                     });
                 }
                 _ => {}

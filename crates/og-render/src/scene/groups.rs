@@ -209,8 +209,6 @@ pub struct SceneEffects {
     pub point_layers: Vec<u32>,
     /// Projected decals (the first [`crate::MAX_DECALS`] are drawn).
     pub decals: Vec<Decal>,
-    /// The texture decals take their `uv_rect` from (`None`: solid colour).
-    pub decal_atlas: Option<TextureHandle>,
 }
 
 /// The 2D scene: sprites and texts with their order, outlines, shadows,

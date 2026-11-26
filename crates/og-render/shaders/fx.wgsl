@@ -9,7 +9,7 @@ struct Fx {
   prev_view_proj: mat4x4<f32>,
   screen: vec4<f32>,      // w, h, 1/w, 1/h
   ao: vec4<f32>,          // x: 1 when the AO texture is valid, y: intensity
-  decal_info: vec4<f32>,  // x: decals (negative: no decal clusters, walk them all), y: atlas (1 linear, 2 sRGB), z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
+  decal_info: vec4<f32>,  // x: decals (negative: no decal clusters, walk them all), y: 1 with the decals' atlas, z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
   planar: vec4<f32>,      // the planar reflection's plane (n, n·at); n 0: none, then w -1 while drawing it
   motion: vec4<f32>,      // x: 1 when the frame's motion vectors are read (TAA, motion blur, SSR, SSGI, a custom post), 0 when nothing reads them
 };

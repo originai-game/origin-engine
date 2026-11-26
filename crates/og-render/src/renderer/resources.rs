@@ -458,7 +458,7 @@ pub(crate) struct Batch {
 
 /// The effect bind groups and what they were made from.
 pub(crate) struct FxGroups {
-    pub(crate) key: (u64, u64, Option<TextureHandle>, u32, bool, bool, bool),
+    pub(crate) key: (u64, u64, Option<u32>, u32, bool, bool, bool),
     pub(crate) fx: wgpu::BindGroup,
     /// `fx` for the lightmapped pipelines (`Renderer::fx_lean_group`).
     pub(crate) fx_lean: Option<wgpu::BindGroup>,
@@ -735,6 +735,10 @@ pub(crate) struct Lights {
     pub(crate) decal_records: Vec<crate::decals::DecalGpu>,
     pub(crate) decal_spheres: Vec<(glam::Vec3, f32)>,
     pub(crate) decal_bins: clusters::DecalBins,
+    /// The textures the frames' decals name, in one (`decal_atlas.rs`), and
+    /// what copies them in: made when a decal first names a texture.
+    pub(crate) decal_atlas: Option<crate::decal_atlas::DecalAtlas>,
+    pub(crate) decal_copies: Option<crate::decal_atlas::DecalCopies>,
     pub(crate) fx_buffer: wgpu::Buffer,
     pub(crate) fx_groups: Option<FxGroups>,
 }
@@ -824,7 +828,12 @@ impl Lights {
         view: &clusters::ClusterView,
         total: u32,
     ) -> (u32, u32) {
-        crate::decals::pack_decals(decals, &mut self.decal_records, &mut self.decal_spheres);
+        crate::decals::pack_decals(
+            decals,
+            self.decal_atlas.as_ref(),
+            &mut self.decal_records,
+            &mut self.decal_spheres,
+        );
         let drawn = self.decal_records.len() as u32;
         if drawn > 0 {
             self.clusters

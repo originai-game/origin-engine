@@ -135,7 +135,8 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     var texel = vec4<f32>(1.0);
     let gx = (inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0);
     let gy = (inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0);
-    if (fx.decal_info.y > 0.5) {
+    // A record without an image has a region below 0.
+    if (fx.decal_info.y > 0.5 && uv_rect.x >= 0.0) {
       texel = decal_sample(uv_rect, t, gx, gy);
     }
     let c = color * texel;
@@ -150,8 +151,8 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     r.emissive += emissive.rgb * texel.rgb * a;
     var target_normal = n;
     if (normal_row.x != 0.0 && fx.decal_info.y > 0.5) {
-      var m = decal_sample(normal_rect, t, gx, gy).xyz;
-      if (fx.decal_info.y > 1.5) { m = srgb_encode(m); }
+      // The atlas holds a normal map's values as they are (decal_atlas.wgsl).
+      let m = decal_sample(normal_rect, t, gx, gy).xyz;
       let ts = vec3<f32>((m.xy * 2.0 - 1.0) * normal_row.x, max(m.z * 2.0 - 1.0, 1e-3));
       let ux = vec3<f32>(inv[0].x, inv[1].x, inv[2].x);
       var tu = ux - n * dot(n, ux);

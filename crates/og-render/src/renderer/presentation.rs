@@ -329,6 +329,7 @@ impl Renderer {
             textures: textures.iter().map(|t| t.bytes).sum::<u64>()
                 + self.asset_bytes()
                 + self.lights.ibl.bytes()
+                + self.lights.decal_atlas.as_ref().map_or(0, |a| a.bytes())
                 + self.world.terrain.get().map_or(0, |t| t.bytes()),
             meshes,
             render_targets,

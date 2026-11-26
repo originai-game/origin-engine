@@ -548,7 +548,7 @@ default:
 |---|---|
 | AO, outlines, depth of field, motion blur, screen blur, god rays, glow, LUT grading, colour adjustments, vignette, aberration, lens distortion, grain, flash, shake | resource `og.PostEffects` (zero = off; `lut` is a handle from `og.load.lut`) |
 | `Lighting2d`, `Light2d`, `Occluder2d` | resource `og.Lighting2D`; components `og.Light2D`, `og.Occluder2D`; `SpriteDesc.castShadow` |
-| `Decal` | component `og.Decal` with the atlas in `og.RenderSettings.decalAtlas` |
+| `Decal` | component `og.Decal`, its `texture` and `normalMap` (the renderer keeps them in its own atlas) |
 | `ParticleSystem` | component `og.ParticleSystem` naming an emitter from `og.load.emitter` (`.ogt` of type `particles`, cooked by og-cook) |
 | `Trail`, `Beam`, `Ribbon` | components `og.Trail`, `og.Beam`; `og.render.ribbon(world, desc)` per tick |
 | `SpriteFx` | `SpriteDesc` `flash`, `flashColor`, `glow`, `blend`, `toneMapped` |

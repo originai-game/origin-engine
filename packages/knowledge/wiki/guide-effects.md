@@ -58,7 +58,7 @@ whole fight), the element for a part of one effect (a dash's trail for its
   effects are `pixel-vfx`.
 - Ground markers are world drawing, not UI: the UI draws over the frame
   and never on the ground.
-  - A selection ring is a decal whose atlas region is a ring, on an
+  - A selection ring is a decal whose texture is a ring, on an
     entity parented to the unit (or moved to it each tick), scaled to the
     unit's footprint and tinted by its team; hide it with `visible`.
   - An attack telegraph is a decal over the area to be hit whose opacity

@@ -1816,10 +1816,6 @@ readonly "bloomKnee"?: (number);
 readonly "bloomRadius"?: (number);
 /** Brightness after exposure where bloom starts; 1 is display white. */
 readonly "bloomThreshold"?: (number);
-/** The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. */
-readonly "decalAtlas"?: ({
-readonly "$ogRef": (string);
-});
 /** The strength of the image-based ambient light from the sky on surfaces; og.Environment.intensity takes its place while an environment map is set. The sky and its clouds are drawn as they are whatever it is. */
 readonly "environmentIntensity"?: (number);
 /** A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. */

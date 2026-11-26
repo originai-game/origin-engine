@@ -3,6 +3,7 @@
 pub(crate) mod area;
 pub(crate) mod bindless;
 pub(crate) mod clusters;
+pub(crate) mod decal_atlas;
 pub(crate) mod decals;
 pub(crate) mod environment;
 pub(crate) mod gi_probes;

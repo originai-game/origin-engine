@@ -707,7 +707,6 @@ Mood values: bright, dark, warm, cold, soft, high-contrast. Antialias values: ti
 | `toneMapped bool` | `true` | Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1. |
 | `toneMapping ToneMapping` | `"aces"` | Which curve tone maps the frame while toneMapped is true: aces (the default), agx, neutral or none. |
 | `exposure f32` | `1` | A multiplier on every camera's Camera.exposure, as three.js renderer.toneMappingExposure is one for the whole frame: a look's brightness without touching the cameras; 1 leaves them as they are. |
-| `decalAtlas Texture` | `0` | The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour. |
 | `lodBias f32` | `1` | A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full. See `render §10`. |
 | `bakedLighting bool` | `true` | Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map. See `render §4`. |
 | `staticLightReach f32` | `0` | How far from itself a stationary or static light (LightMobility) has its diffuse light shaded per pixel; past it, that light comes from a grid of probes round the camera and such a rect light skips rough surfaces. Glossy surfaces keep the highlights. 0 shades every light whole. See `render §3`. |
@@ -4085,7 +4084,7 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `trail { ... }` | `` | A trail behind the element's point. |
 | `beam { ... }` | `` | A beam from the element's point to `to`. |
 | `light { ... }` | `` | A point light. |
-| `decal { ... }` | `` | A decal projected down the element's -y, from og.RenderSettings.decalAtlas. |
+| `decal { ... }` | `` | A decal projected down the element's -y onto every lit surface in its box: its `texture` and `normal` map, or a square of its colour without them. |
 | `glow { ... }` | `` | A soft bright glow facing the eye (version 1 named it `flash`). |
 | `shake { ... }` | `` | og.camera.shake, at once. |
 | `sound "<id>" { ... }` | `` | A sound asset, played at once by a child entity with og.AudioSource, cut when the effect despawns. |
@@ -4127,7 +4126,16 @@ Alternatively, one exclusive generate block returns EffectSource {text}: the bod
 | `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
 | `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
 | `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
-| `uv <u0> <v0> <u1> <v1>` | `0 0 1 1` | Its region of og.RenderSettings.decalAtlas. |
+| `texture "<id>"` | `` | Its image (a texture's id): the colour times `color`, the alpha its coverage. Without one it is a square of `color`. |
+| `normal "<id>"` | `` | A tangent-space normal map (a texture's id; +x along u, +y up the image, as glTF) that bends the surface under it: a crater's rim, a crack, a bullet hole. |
+| `normalScale <strength>` | `1` | How strongly `normal` bends the surface, 0 to 4. |
+| `uv <u0> <v0> <u1> <v1>` | `0 0 1 1` | Its region of `texture` and `normal`, v down: one mark of a sheet of several. |
+| `emissive <r> <g> <b>` | `0 0 0` | Linear light it adds where it covers, times the image (embers in a scorch, a glowing rune); above 1 blooms. It fades with the decal. |
+| `roughness <0..1>` | `` | The surface's roughness under it (soot is rough, a puddle smooth); without the line the surface keeps its own. |
+| `metallic <0..1>` | `` | The surface's metalness under it; without the line the surface keeps its own. |
+| `wet true \| false` | `false` | Darkens the surface by its colour and flattens it toward the decal's normal instead of covering it: a puddle, a splash mark, blood soaking in. Set `roughness` low for standing water. |
+| `angleFade <degrees>` | `75` | Surfaces turned further than this from the projection are not covered (the last 15 degrees fade), 0 to 90. |
+| `turn <degrees> \| <min> <max>` | `0` | Turns it about the projection; a range picks one angle per instance from its seed, so repeated marks do not look stamped. |
 | `size <s> \| <x> <y> <z>` | `1 1 1` | x, the depth it reaches down its -y, and z. |
 | `fade <seconds>` | `0` | Fades out over its last this many seconds. |
 

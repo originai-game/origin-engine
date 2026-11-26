@@ -1,6 +1,6 @@
 //! Composed effects (`type vfx`, `og_bundle::vfx`): the cook checks the
 //! file with the runtime's parser and that every emitter, effect material,
-//! model and sound it names is an asset, and stores the text,
+//! model, sound, flipbook and texture it names is an asset, and stores the text,
 //! which the runtime parses again.
 
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
@@ -23,6 +23,7 @@ pub(crate) fn cook_vfx(
         ("model", &r.models),
         ("sound", &r.sounds),
         ("flipbook", &r.flipbooks),
+        ("texture", &r.textures),
     ] {
         for id in ids {
             if !known(crate::runtime::asset_id(id)) {
@@ -88,7 +89,16 @@ fn plan_vfx<'a>(
         let r = v.references();
         let entry = state.parsed_refs.entry(s.rel.clone()).or_default();
         let mut lines = Vec::new();
-        for id in [r.emitters, r.effects, r.models, r.sounds, r.flipbooks].concat() {
+        for id in [
+            r.emitters,
+            r.effects,
+            r.models,
+            r.sounds,
+            r.flipbooks,
+            r.textures,
+        ]
+        .concat()
+        {
             entry.insert(id.clone());
             lines.push(format!(
                 "{id}={}",

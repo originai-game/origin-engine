@@ -200,8 +200,8 @@ pub fn beam_texture(scene: &mut RenderScene) -> TextureHandle {
     scene.add_texture(t)
 }
 
-/// A 2x2 decal atlas: scorch mark, glowing rune circle, cracks, paint splat.
-pub fn decal_atlas(scene: &mut RenderScene) -> TextureHandle {
+/// A 2x2 decal sheet: scorch mark, glowing rune circle, cracks, paint splat.
+pub fn decal_sheet(scene: &mut RenderScene) -> TextureHandle {
     scene.add_texture(texture(512, ColorSpace::Srgb, |u, v| {
         let (qu, qv) = ((u * 2.0).fract(), (v * 2.0).fract());
         let q = (u >= 0.5) as u32 + 2 * (v >= 0.5) as u32;
@@ -240,7 +240,7 @@ pub fn decal_atlas(scene: &mut RenderScene) -> TextureHandle {
     }))
 }
 
-/// The four quadrants of [`decal_atlas`].
+/// The four quadrants of [`decal_sheet`].
 pub const DECAL_SCORCH: [f32; 4] = [0.0, 0.0, 0.5, 0.5];
 pub const DECAL_RUNE: [f32; 4] = [0.5, 0.0, 1.0, 0.5];
 pub const DECAL_CRACK: [f32; 4] = [0.0, 0.5, 0.5, 1.0];
@@ -250,12 +250,22 @@ pub const DECAL_PAINT: [f32; 4] = [0.5, 0.5, 1.0, 1.0];
 // Decals.
 // ---------------------------------------------------------------------------
 
-/// A bullet-hole atlas: the left half the hole's colour (a dark pit in a
-/// pale chipped rim), the right half its tangent-space normal map (the rim
-/// raised, the pit sunk; glTF's convention, +y up the image), sRGB as an
-/// artist's atlas usually is.
-pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
-    scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+/// A bullet hole's colour (a dark pit in a pale chipped rim) and its
+/// tangent-space normal map (the rim raised, the pit sunk; glTF's
+/// convention, +y up the image), both sRGB as an artist's files often are.
+pub fn bullet_hole(scene: &mut RenderScene) -> (TextureHandle, TextureHandle) {
+    let half = |scene: &mut RenderScene, left: bool| {
+        scene.add_texture(texture(256, ColorSpace::Srgb, move |u, v| {
+            bullet_hole_texel(if left { u * 0.5 } else { 0.5 + u * 0.5 }, v)
+        }))
+    };
+    (half(scene, true), half(scene, false))
+}
+
+/// [`bullet_hole`]'s two images side by side: the colour over u 0..0.5, the
+/// normal map over 0.5..1.
+fn bullet_hole_texel(u: f32, v: f32) -> [u8; 4] {
+    {
         let qu = (u * 2.0).fract();
         let (x, y) = (qu - 0.5, 0.5 - v);
         let d = (x * x + y * y).sqrt() * 2.0;
@@ -287,7 +297,7 @@ pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
             let enc = |c: f32| ((c * 0.5 + 0.5) * 255.0).round() as u8;
             [enc(n.x), enc(n.y), enc(n.z), 255]
         }
-    }))
+    }
 }
 
 /// A plastered court wall and the flags before it peppered with 640
@@ -299,7 +309,7 @@ pub fn decals_many_scene() -> RenderScene {
     use crate::kit;
     let mut scene = RenderScene::new();
     let rubble = crate::shadow_scenes::court(&mut scene);
-    scene.effects.decal_atlas = Some(bullet_hole_atlas(&mut scene));
+    let (hole_color, hole_normal) = bullet_hole(&mut scene);
     // The wall's face at z = -2.0, 8 m wide and 3 m high, under a plank
     // coping, between rubble piers.
     let plaster = kit::plaster(&mut scene, [0.66, 0.6, 0.52]);
@@ -325,8 +335,8 @@ pub fn decals_many_scene() -> RenderScene {
         scene.add_instance(pier, rubble, Mat4::IDENTITY);
     }
     let hole = |p: Vec3, n: Vec3, size: f32, rot: f32| Decal {
-        uv_rect: [0.0, 0.0, 0.5, 1.0],
-        normal_rect: [0.5, 0.0, 1.0, 1.0],
+        texture: Some(hole_color),
+        normal_map: Some(hole_normal),
         normal_scale: 1.0,
         roughness: 0.95,
         ..Decal::on_surface(p, n, Vec2::splat(size), 0.3, rot)
@@ -391,8 +401,7 @@ pub fn decals_many_scene() -> RenderScene {
 pub fn decals_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
-    let atlas = decal_atlas(&mut scene);
-    scene.effects.decal_atlas = Some(atlas);
+    let sheet = Some(decal_sheet(&mut scene));
     let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 3.0, 0.4)));
     let plaster = scene.add_material(Material {
         base_color: [0.82, 0.78, 0.7, 1.0],
@@ -413,14 +422,17 @@ pub fn decals_scene() -> RenderScene {
     let up = Vec3::Y;
     scene.effects.decals = vec![
         Decal {
+            texture: sheet,
             uv_rect: DECAL_SCORCH,
             ..Decal::on_surface(Vec3::new(-1.6, 0.0, 0.6), up, Vec2::splat(2.4), 0.6, 0.3)
         },
         Decal {
+            texture: sheet,
             uv_rect: DECAL_SCORCH,
             ..Decal::on_surface(Vec3::new(2.2, 0.0, 0.6), up, Vec2::splat(1.8), 0.6, 1.4)
         },
         Decal {
+            texture: sheet,
             uv_rect: DECAL_RUNE,
             color: [1.0, 1.0, 1.0, 1.0],
             emissive: Vec3::new(1.5, 3.5, 5.0),
@@ -428,6 +440,7 @@ pub fn decals_scene() -> RenderScene {
             ..Decal::on_surface(Vec3::new(0.2, 0.0, 1.6), up, Vec2::splat(2.0), 0.4, 0.0)
         },
         Decal {
+            texture: sheet,
             uv_rect: DECAL_CRACK,
             ..Decal::on_surface(
                 Vec3::new(-2.0, 1.6, -2.0),
@@ -439,6 +452,7 @@ pub fn decals_scene() -> RenderScene {
         },
         // Projected diagonally into the corner: it covers wall and ground.
         Decal {
+            texture: sheet,
             uv_rect: DECAL_PAINT,
             angle_fade_degrees: 80.0,
             ..Decal::on_surface(
