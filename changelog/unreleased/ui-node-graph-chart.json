@@ -15,13 +15,13 @@
       "member": "NodeGraph links and view",
       "change": "A link is { id, points, active }, points x, y pairs in graph units, not SVG path data in `d`; `view` is [x, y, width, height], not a viewBox string.",
       "fix": "Pass og.film.chart's `link.points` (or sample your own curve into x, y pairs) and `view={[0, 0, chart.width, chart.height]}`.",
-      "find": ["NodeGraph"]
+      "find": ["<NodeGraph"]
     },
     {
       "member": "Chart bars, line and area",
       "change": "A bar's `color` (#rrggbb) is `tone`, a role: danger, success, warn, info or gold, empty the accent. `line` is one value per bar on the chart's axis, not SVG path data in a 350 by 180 box. `area` is gone: a `<Line>` has no fill, so the area under the line is not drawn.",
       "fix": "Give each bar a `tone` instead of a colour, and pass the series' values as `line`. Drop `area`.",
-      "find": ["Chart"]
+      "find": ["<Chart"]
     }
   ]
 }
