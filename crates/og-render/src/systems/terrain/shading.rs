@@ -170,7 +170,22 @@ fn layer_dimensions(i: u32) -> vec2<f32> {
 
 fn layer_normal_map(i: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
   let t = textureSampleGrad(normal_array, layer_sampler, uv, i32(terrain.layers[i].altitude.w), dx, dy);
-  return vec4<f32>(t.xyz * 2.0 - 1.0, t.w);
+  return layer_normal_texel(i, t);
+}
+
+fn layer_normal_texel(i: u32, t: vec4<f32>) -> vec4<f32> {
+  var n = t.xyz * 2.0 - 1.0;
+  if ((u32(terrain.layers[i].mapping.w) & 4u) != 0u) {
+    n.z = sqrt(max(1.0 - dot(n.xy, n.xy), 0.0));
+  }
+  return vec4<f32>(n, t.w);
+}
+
+fn layer_normal_tilt(i: u32) -> vec2<f32> {
+  let levels = textureNumLevels(normal_array);
+  if (levels < 2u) { return vec2<f32>(0.0); }
+  let m = layer_normal_texel(i, textureSampleLevel(normal_array, layer_sampler, vec2<f32>(0.5), i32(terrain.layers[i].altitude.w), f32(levels - 1u))).xyz;
+  return m.xy / max(m.z, 0.05);
 }
 
 ",

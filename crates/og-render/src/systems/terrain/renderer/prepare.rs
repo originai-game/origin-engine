@@ -151,7 +151,12 @@ impl TerrainRenderer {
                     // textures, the layer indices in slope.w and altitude.w.
                     let albedo = t.layer_arrays.albedo.and(l.albedo_layer);
                     let normal = t.layer_arrays.normal.and(l.normal_layer);
-                    let bits = u32::from(albedo.is_some()) | (u32::from(normal.is_some()) << 1);
+                    let two_channel = t
+                        .layer_arrays
+                        .normal
+                        .and_then(&arrays)
+                        .is_some_and(|a| two_channel(a.format()));
+                    let bits = layer_bits(albedo.is_some(), normal.is_some(), two_channel);
                     let at = |layer: Option<u32>| layer.unwrap_or(0).min(1 << 24) as f32;
                     layers[i] = LayerGpu {
                         color: l.color.extend(l.roughness.clamp(0.04, 1.0)).to_array(),
@@ -191,7 +196,10 @@ impl TerrainRenderer {
                         handles[k] = Some(h);
                     }
                 }
-                let bits = u32::from(albedo.is_some()) | (u32::from(normal.is_some()) << 1);
+                let two_channel = normal
+                    .and_then(&textures)
+                    .is_some_and(|v| two_channel(v.texture().format()));
+                let bits = layer_bits(albedo.is_some(), normal.is_some(), two_channel);
                 layers[i] = LayerGpu {
                     color: l.color.extend(l.roughness.clamp(0.04, 1.0)).to_array(),
                     mapping: [
@@ -581,6 +589,22 @@ impl TerrainRenderer {
         self.prepare_stamps(device, queue, scene, &mut draws);
         Ok(draws)
     }
+}
+
+/// A layer's `mapping.w` (terrain.wgsl `TerrainLayerGpu`): which maps it
+/// has, and whether its normal map holds x and y alone.
+fn layer_bits(albedo: bool, normal: bool, two_channel: bool) -> u32 {
+    u32::from(albedo) | (u32::from(normal) << 1) | (u32::from(normal && two_channel) << 2)
+}
+
+/// Whether a normal map of `format` holds x and y alone (BC5, EAC RG11:
+/// what a `kind normal` texture transcodes to where the adapter has
+/// them), its z left for the shader to rebuild.
+fn two_channel(format: wgpu::TextureFormat) -> bool {
+    matches!(
+        format,
+        wgpu::TextureFormat::Bc5RgUnorm | wgpu::TextureFormat::EacRg11Unorm
+    )
 }
 
 /// Every resident tile's square in the terrain's space (grown by one of
