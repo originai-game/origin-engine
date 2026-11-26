@@ -381,6 +381,7 @@ impl Program {
         hash.update(include_bytes!("generator_value.js"));
         hash.update(include_bytes!("generator/author.rs"));
         hash.update(author::SOURCE.as_bytes());
+        hash.update(&serde_json::to_vec(&author::kinds()).expect("kind names serialize"));
         hash.update(include_bytes!("../../../og-core/src/rng.rs"));
         hash.update(include_bytes!(
             "../../../../crates/og-generation/src/lib.rs"

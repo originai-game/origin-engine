@@ -10,6 +10,8 @@ Cook scripts may import `{ input, procgen }` from `@origingame/engine/author`. C
 
 For random source data, import `rng` from the same author module and supply a u32 seed: `const stream = rng(42)`. `stream.next()` draws in [0, 1) using the engine's Rust RNG; `stream.fork("cliffs")` makes an independent stream derived from the seed and UTF-16 label, without advancing its parent. Repeated forks with the same label start the same sequence, regardless of the parent's draw count. Streams are local to the cook realm, not runtime handles or simulation state. There is no implicit project seed or global draw counter; `Math.random()` remains forbidden. The RNG implementation participates in the cook cache key.
 
+The author module also exposes schema-derived `file.<kind>(value)` factories and `ref(id)` content identities. A factory returns a descriptor, not a cooked asset or runtime handle; constructing a reference never runs another content module. Hyphenated kinds use brackets, such as `file["texture-array"](...)`. `og api gen/check` generate and drift-check the engine's `types/author-inputs.d.ts` from its Rust input schemas. Contextual scene, prefab and table types require project-specific record binding rather than accepting arbitrary fields. These are author frontend primitives; the asset declarations and generation blocks below still use their existing cook consumers until each format is cut over.
+
 <a id="guide-generating-1"></a>
 ### `generating §1` Find the file contract
 

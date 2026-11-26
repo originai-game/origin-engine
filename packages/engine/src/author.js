@@ -11,3 +11,17 @@ export const input = Object.freeze({
   bytes(path) { return read(path, false); },
   text(path) { return read(path, true); },
 });
+
+// Kind names come from the Rust schema registry. A descriptor has no side
+// effects: constructing one never evaluates or cooks another content entry.
+export const file = Object.freeze(Object.fromEntries(
+  globalThis.__authorKinds.map(kind => [kind, value => ({ $ogFile: kind, value })]),
+));
+
+/** Identity only. Existence, access and target kinds belong to the content graph. */
+export function ref(id) {
+  if (typeof id !== "string" || id.length === 0) {
+    throw new TypeError("ref requires a nonempty content ID, not a runtime handle");
+  }
+  return Object.freeze({ $ogRef: id });
+}

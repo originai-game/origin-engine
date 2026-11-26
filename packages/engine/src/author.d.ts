@@ -1,4 +1,23 @@
 import type { og } from "../types/index.d.ts";
+import type { FileInputs } from "../types/author-inputs.d.ts";
+
+/** Project declarations augment this interface with contextual file inputs. */
+export interface ContextualFileInputs {}
+
+/** A cook descriptor, never a runtime asset handle. */
+export interface File<K extends string, T> {
+  readonly $ogFile: K;
+  readonly value: T;
+}
+
+/** One schema-derived factory per content kind; hyphenated kinds use brackets. */
+export declare const file: {
+  readonly [K in keyof (FileInputs & ContextualFileInputs)]:
+    (value: (FileInputs & ContextualFileInputs)[K]) => File<K, (FileInputs & ContextualFileInputs)[K]>;
+};
+
+/** An immutable identity. Project checking validates its target and module access. */
+export declare function ref<const I extends string>(id: I): { readonly $ogRef: I };
 
 /** Pure cook mechanisms, without a world or runtime handles. */
 export declare const procgen: typeof og.procgen;

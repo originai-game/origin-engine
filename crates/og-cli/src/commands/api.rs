@@ -136,6 +136,15 @@ fn api_gen(root: &Path, wiki: bool) -> ExitCode {
     } else {
         og_idl::generate(&api)
     };
+    if !wiki {
+        match author_declarations() {
+            Ok(file) => files.push(file),
+            Err(e) => {
+                eprintln!("og api gen: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     let write = |files: &[og_idl::Generated]| -> Result<Vec<String>, ExitCode> {
         og_idl::write(root, files)
             .map(|w| w.into_iter().map(str::to_string).collect())
@@ -317,6 +326,13 @@ fn api_budget(root: &Path, list: bool) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn author_declarations() -> Result<og_idl::Generated, String> {
+    Ok(og_idl::Generated {
+        path: "packages/engine/types/author-inputs.d.ts".into(),
+        contents: og_cook::cook::source_schemas::declarations()?,
+    })
+}
+
 fn api_check(root: &Path) -> ExitCode {
     let presets = match presets(root) {
         Ok(p) => p,
@@ -343,13 +359,20 @@ fn api_check(root: &Path) -> ExitCode {
         .map(|(path, _)| og_idl::Drift::Differs { path, line: 1 })
         .chain(presets.stale.into_iter().map(og_idl::Drift::Unexpected))
         .collect();
-    let ui = match ui_declarations(root) {
+    let mut ui = match ui_declarations(root) {
         Ok(ui) => ui,
         Err(e) => {
             eprintln!("og api check: {e}");
             return ExitCode::FAILURE;
         }
     };
+    match author_declarations() {
+        Ok(file) => ui.push(file),
+        Err(e) => {
+            eprintln!("og api check: {e}");
+            return ExitCode::FAILURE;
+        }
+    }
     match og_idl::check(root, &ui).map(|d| stale.into_iter().chain(d).collect::<Vec<_>>()) {
         Err(e) => {
             eprint!("og api check: {e}");

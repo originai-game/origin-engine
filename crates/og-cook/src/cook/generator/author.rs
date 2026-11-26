@@ -12,6 +12,14 @@ use std::sync::Arc;
 pub const MODULE: &str = "@origingame/engine/author";
 pub const SOURCE: &str = include_str!("../../../../../packages/engine/src/author.js");
 
+/// Contextual kinds are bound per project, never in the process-global registry.
+pub fn kinds() -> Vec<&'static str> {
+    super::super::source_schemas::all()
+        .map(|kind| kind.name)
+        .chain(["scene", "prefab", "table"])
+        .collect()
+}
+
 struct Inputs<'s> {
     scoping: &'s Scoping,
     namespaces: BTreeSet<SymbolId>,
@@ -174,6 +182,10 @@ pub fn install<'js>(
     ctx: &rquickjs::Ctx<'js>,
     inputs: Arc<BTreeMap<String, Vec<u8>>>,
 ) -> rquickjs::Result<()> {
+    ctx.globals().set(
+        "__authorKinds",
+        ctx.json_parse(serde_json::to_vec(&kinds()).expect("kind names serialize"))?,
+    )?;
     ctx.globals().set(
         "__authorRng",
         rquickjs::Function::new(
