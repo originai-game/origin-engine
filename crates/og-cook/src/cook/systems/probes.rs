@@ -22,6 +22,45 @@ use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use og_core::ogt::{Document, Entry, Value};
 use std::path::{Path, PathBuf};
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "position",
+        "\"<x>\" \"<y>\" \"<z>\"",
+        "0 0 0",
+        "World position in metres, stored as quoted numeric strings.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "box",
+        "\"<x>\" \"<y>\" \"<z>\"",
+        "0 0 0",
+        "World box size in metres, stored as quoted numeric strings.",
+        "",
+    ),
+    crate::grammar::Line::new("room", "\"<hash>\"", "", "Captured room content hash.", ""),
+    crate::grammar::Line::new(
+        "commands",
+        "\"<commands>\"",
+        "",
+        "Commands which reached the capture.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "asset",
+        "\"<id>\" \"<hex hash>\"",
+        "",
+        "Repeated captured model output hashes.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "code",
+        "\"<hex hash>\"",
+        "none",
+        "Source hash when code built the captured room.",
+        "",
+    ),
+];
+
 /// What a bake was taken of (`cooked/probes/<key>.ogt`).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ProbeRecord {
@@ -69,6 +108,14 @@ impl ProbeRecord {
         let doc = Document::parse(text).map_err(|e| e.to_string())?;
         if doc.ty != "probe" || doc.version != 1 {
             return Err(format!("not a probe record ('{}' {})", doc.ty, doc.version));
+        }
+        for e in &doc.body.entries {
+            if !LINES.iter().any(|f| f.key == e.key) {
+                return Err(format!(
+                    "line {}: unknown probe record field '{}'",
+                    e.line, e.key
+                ));
+            }
         }
         let text_of = |k: &str, i: usize| -> Option<String> {
             doc.body.get(k)?.string(i).ok().map(str::to_string)

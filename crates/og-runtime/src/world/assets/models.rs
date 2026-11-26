@@ -670,6 +670,7 @@ pub(crate) fn insert_model(
             meshes: prim_meshes,
             prim_mesh,
             part_nodes: parts.nodes,
+            part_offsets: parts.node_offsets,
             part_shown: parts.shown,
             part_variants: parts.variants,
             lod_sources,

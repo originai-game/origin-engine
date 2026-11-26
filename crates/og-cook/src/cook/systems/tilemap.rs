@@ -25,6 +25,25 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
+pub(crate) const IMPORT_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new("unit", "<number>", "1", "World units per tile width.", ""),
+    crate::grammar::Line::new(
+        "level",
+        "<identifier>",
+        "first level",
+        "LDtk level identifier.",
+        "",
+    ),
+    crate::grammar::Line::new("solid", "<i64> ...", "1", "LDtk solid IntGrid values.", ""),
+    crate::grammar::Line::new(
+        "tileset",
+        "\"<asset.ogt>\"",
+        "source tilesets",
+        "Replace every source tileset with this authored asset.",
+        "",
+    ),
+];
+
 /// The `tilemap { ... }` block of a map's import settings.
 #[derive(Clone, Debug, Default)]
 pub struct MapSettings {
@@ -41,6 +60,9 @@ pub struct MapSettings {
 impl MapSettings {
     pub fn parse(block: Option<&Block>) -> Result<MapSettings, String> {
         let mut s = MapSettings::default();
+        if let Some(b) = block {
+            crate::grammar::check(b, IMPORT_LINES, "import.tilemap")?;
+        }
         for e in block.iter().flat_map(|b| &b.entries) {
             match e.key.as_str() {
                 "unit" => s.unit = Some(e.f32(0).map_err(|_| "tilemap.unit needs a number")?),

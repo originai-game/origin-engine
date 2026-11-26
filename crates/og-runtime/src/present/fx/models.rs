@@ -241,6 +241,9 @@ pub(crate) fn posed_model(
                 scene.objects.skinned_instances.push(inst);
             }
             None => {
+                let local = nodes
+                    .and_then(|n| out.nodes.get(n[k]))
+                    .map_or(local, |pose| *pose * info.part_offsets[k]);
                 scene.objects.instances.push(og_render::Instance {
                     mesh,
                     material,

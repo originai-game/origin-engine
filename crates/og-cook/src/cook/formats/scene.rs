@@ -59,6 +59,103 @@ mod scatter;
 pub(crate) use generate::expand;
 pub(crate) use scatter::LINES as SCATTER_LINES;
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new("name", "\"<name>\"", "", "Scene name.", ""),
+    crate::grammar::Line::new(
+        "entity",
+        "\"<name>\" { ... }",
+        "",
+        "Repeated entity trees, parents before children.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "resource",
+        "<record> { ... }",
+        "",
+        "One block per reflected resource; fields use its schema.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "stream",
+        "\"<group>\" { ... }",
+        "",
+        "Asset streaming group.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "hlod",
+        "{ ... }",
+        "",
+        "Explicit distant static-model proxy settings.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "path",
+        "\"<name>\" { ... }",
+        "",
+        "Named local-space path, shared with timeline paths.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "generate",
+        "{ ... }",
+        "",
+        "Deterministic SceneSource appended before normal scene validation.",
+        "",
+    ),
+];
+pub(crate) const ENTITY_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "entity",
+        "\"<name>\" { ... }",
+        "",
+        "Repeated children in this entity's space.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "model",
+        "\"<asset>\"",
+        "",
+        "Instantiate a model; its geometry/material handles are resolved at load.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "scene",
+        "\"<asset>\"",
+        "",
+        "Place one sub-scene; dependency cycles fail.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "static",
+        "true | false",
+        "false",
+        "Mark this entity's model for baked lighting and HLOD.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "prefab",
+        "\"<asset>\"",
+        "",
+        "Expand a prefab; remaining entries are explicit overrides.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "override",
+        "\"<node path>\" { ... }",
+        "",
+        "Instance-only component overrides on a descendant.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "remove",
+        "\"<node path>\" [<component>]",
+        "",
+        "Instance-only removal of a subtree or component.",
+        "",
+    ),
+];
+
 struct Entity {
     name: String,
     parent: u32,
@@ -530,6 +627,12 @@ pub fn cook(
         &doc.body.entries
     };
     for e in top {
+        if !LINES.iter().any(|f| f.key == e.key) {
+            return Err(CookError(format!(
+                "line {}: unknown scene entry '{}'",
+                e.line, e.key
+            )));
+        }
         match e.key.as_str() {
             "name" => {
                 name = e

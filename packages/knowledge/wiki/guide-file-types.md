@@ -84,21 +84,261 @@ Field coverage: asset bindings and all nested graph declarations share the runti
 
 An authored `behaviour` asset, cooked by `behaviour`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-behaviour-chase"></a>
+### `file:behaviour.chase`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <metres/second \| operand>` | `agent` | Fixed speed or a blackboard/reflected field read at runtime. |
+| `reach <metres>` | `0.5` | Stop distance. |
+
+<a id="file-behaviour-command"></a>
+### `file:behaviour.command`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `cooldown <seconds>` | `0` | Minimum command interval. |
+
+<a id="file-behaviour-flee"></a>
+### `file:behaviour.flee`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <metres/second \| operand>` | `agent` | Fixed speed or a blackboard/reflected field read at runtime. |
+| `distance <metres>` | `6` | Requested separation. |
+
+<a id="file-behaviour-instant"></a>
+### `file:behaviour.instant`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `stop ` | `` | Stop movement. |
+| `set <key> <value>` | `` | Set a non-builtin blackboard key. |
+| `command <snake_case command> [<args> ...] { cooldown ... }` | `` | Call an explicitly registered game command. |
+
+<a id="file-behaviour-machine"></a>
+### `file:behaviour.machine`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `initial <state>` | `first state` | Initial state name. |
+| `state <name> { <nodes>; entry ...; exit ...; to ... }` | `` | Named state, body is an implicit ordered sequence. |
+
+<a id="file-behaviour-move_to"></a>
+### `file:behaviour.move_to`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <metres/second \| operand>` | `agent` | Fixed speed or a blackboard/reflected field read at runtime. |
+
+<a id="file-behaviour-nodes"></a>
+### `file:behaviour.nodes`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ReactiveFallback [<label>] { <nodes> }` | `` | First child that does not fail, reevaluated. |
+| `ReactiveSequence [<label>] { <nodes> }` | `` | First child that does not succeed, reevaluated. |
+| `Sequence [<label>] { <nodes> }` | `` | Ordered steps, remembers its running child. |
+| `parallel [<label>] { policy all \| one; <nodes> }` | `all` | Nonempty children with explicit completion policy. |
+| `utility [<label>] { inertia <number>; option <name> { score ...; <nodes> } }` | `0` | Scores the game's options; inertia adds to the running option. |
+| `Inverter { <node> }` | `` | One child, invert success/failure. |
+| `ForceSuccess { <node> }` | `` | One child; force successful completion. |
+| `repeat [<u32>] { <node> }` | `0` | One child; zero repeats forever. |
+| `cooldown <seconds> { <node> }` | `required` | One child with a cooldown. |
+| `timeout <seconds> { <node> }` | `required` | One child with a deadline. |
+| `check <operand> [is \| not \| below \| above \| atMost \| atLeast <value or operand>]` | `truthy` | Reads blackboard or reflected field. Values are number, bool or xyz. |
+| `use "<behaviour asset>"` | `` | Inline a tree; tracked transitive dependencies, cycles fail. |
+| `move_to <point key \| x y z> { speed ... }` | `` | Move toward the explicit point. |
+| `chase [<target key>] { speed ...; reach ... }` | `target` | Chase the supplied target. |
+| `flee [<target key>] { speed ...; distance ... }` | `target` | Move away from the supplied target. |
+| `patrol <route> { speed ...; wait ...; loop ... }` | `` | Follow the declared route. |
+| `wander { speed ...; radius ...; wait ... }` | `` | Seeded movement within the stated radius. |
+| `wait <seconds>` | `required` | Wait for this duration. |
+| `stop ` | `` | Stop movement. |
+| `set <key> <value>` | `` | Set a non-builtin blackboard key. |
+| `command <snake_case command> [<args> ...] { cooldown ... }` | `` | Call an explicitly registered game command. |
+| `action <name> [<args> ...]` | `` | Game-owned action name under 64 bytes, arguments at most 255 bytes. |
+
+<a id="file-behaviour-option"></a>
+### `file:behaviour.option`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `score <number> \| <operand> linear \| inverse \| quadratic \| sqrt \| smooth \| step <lo> <hi>` | `required` | At least one score and node per utility option. |
+
+<a id="file-behaviour-patrol"></a>
+### `file:behaviour.patrol`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <metres/second \| operand>` | `agent` | Fixed speed or a blackboard/reflected field read at runtime. |
+| `wait <seconds>` | `0` | Wait between movement targets. |
+| `loop true \| false` | `true` | Repeat the route. |
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<name>"` | `behaviour` | Asset name. |
+| `key <name> <number \| boolean \| x y z>` | `` | Initial blackboard value; builtin keys cannot be redefined. |
+| `route <name> { point <x> <y> <z> ... }` | `` | Nonempty patrol route, metres. |
+| `tree { <node> ... }` | `` | Exactly one root node; exclusive with machine. |
+| `machine { initial <state>; state ... }` | `` | State machine, exclusive with tree. |
+
+<a id="file-behaviour-state"></a>
+### `file:behaviour.state`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `entry { <instant actions> }` | `` | Only set, stop and command. |
+| `exit { <instant actions> }` | `` | Only set, stop and command. |
+| `to <state> { check ...; after ... }` | `` | Transition to an existing state. |
+
+<a id="file-behaviour-to"></a>
+### `file:behaviour.to`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `check <operand> [is \| not \| below \| above \| atMost \| atLeast <value or operand>]` | `truthy` | Reads blackboard or reflected field. Values are number, bool or xyz. |
+| `after <seconds>` | `0` | Minimum time in state. |
+
+<a id="file-behaviour-wander"></a>
+### `file:behaviour.wander`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <metres/second \| operand>` | `agent` | Fixed speed or a blackboard/reflected field read at runtime. |
+| `wait <seconds>` | `0` | Wait between movement targets. |
+| `radius <metres>` | `4` | Wander radius. |
 
 <a id="file-dialogue"></a>
 ### `file:dialogue`
 
-An authored `dialogue` asset, cooked by `dialogue`. Input: `.ogt` under assets/.
+An authored `dialogue` asset, cooked by `dialogue`. Input: `.yarn` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Source: `.yarn`, not an authored `type dialogue` OGT. This registered kind is the cooked dialogue IR. The cook rejects removed OGT dialogue syntax; write Yarn with explicit #line: ids. See story for Yarn declarations, node headers, commands, expressions and validation.
+
 
 <a id="file-district"></a>
 ### `file:district`
 
 An authored `district` asset, cooked by `district`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+| Field | Default | Meaning |
+|---|---|---|
+| `seed <u32>` | `0` | Deterministic layout seed. |
+| `region { point <x> <z> ... }` | `` | Polygon in metres; exclusive with along. |
+| `along { ... }` | `` | Street centreline and adjacent lots; exclusive with region. |
+| `streets { ... }` | `` | Authored polylines and optional grid. |
+| `lots { ... }` | `required` | Lot dimensions, metres. |
+| `buildings { ... }` | `` | Explicit grammar rules and density, no inferred buildings. |
+| `prop "<name>" { ... }` | `` | Repeated placements along streets. |
+| `materials "<asset>"` | `required` | Material library. |
+| `cells { ... }` | `` | Split output into streamed cells. |
+| `hlod { ... }` | `` | Forwarded to scene HLOD processing. |
+| `merge true \| false` | `true` | Merge generated static geometry. |
+| `terrain "<asset>" { depth <metres> }` | `` | Project onto terrain; nonnegative carve depth. |
+
+<a id="file-district-region"></a>
+### `file:district.region`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `point <x> <z>` | `` | Repeated polygon vertices, metres. |
+
+<a id="file-district-along"></a>
+### `file:district.along`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `point <x> <z>` | `` | Repeated centreline vertices, metres. |
+| `width <metres>` | `0` | Street width. |
+| `sidewalk <metres>` | `0` | Sidewalk width. |
+| `depth <metres>` | `0` | Depth of lots beside the centreline. |
+| `name "<name>"` | `` | Street name used by rule filters. |
+
+<a id="file-district-streets"></a>
+### `file:district.streets`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `grid <x> <z>` | `` | Grid spacing in metres. |
+| `turn <degrees>` | `0` | Grid rotation. |
+| `jitter <metres>` | `0` | Grid jitter. |
+| `width <metres>` | `0` | Grid street width. |
+| `sidewalk <metres>` | `0` | Grid sidewalk width. |
+| `kerb <0..2 metres>` | `0` | Kerb height. |
+| `street ["<name>"] { ... }` | `` | Repeated authored centreline. |
+
+<a id="file-district-streets-street"></a>
+### `file:district.streets.street`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `point <x> <z>` | `` | Repeated centreline vertices, metres. |
+| `width <metres>` | `0` | Street width. |
+| `sidewalk <metres>` | `0` | Sidewalk width. |
+
+<a id="file-district-lots"></a>
+### `file:district.lots`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `width <least> <greatest>` | `required` | Lot width range in metres, least first. |
+| `depth <least> <greatest>` | `required` | Lot depth range in metres, least first. |
+
+<a id="file-district-buildings"></a>
+### `file:district.buildings`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `density <0..1>` | `0` | Share of lots built on. |
+| `height <least> <greatest>` | `0 0` | Nonnegative height range in metres. |
+| `heightNoise <frequency> <share>` | `0 0` | Nonnegative frequency per metre and share 0..1. |
+| `rule "<grammar asset>" { ... }` | `` | Repeated grammar candidates, required for nonzero density. |
+
+<a id="file-district-buildings-rule"></a>
+### `file:district.buildings.rule`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `weight <number > 0>` | `1` | Relative selection weight. |
+| `street "<name>"` | `` | Restrict to this street. |
+
+<a id="file-district-prop"></a>
+### `file:district.prop`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `model "<asset>"` | `required` | Model to place. |
+| `every <metres>` | `0` | Spacing along the street. |
+| `jitter <metres>` | `0` | Placement jitter. |
+| `kerb <metres>` | `0` | Offset from kerb. |
+| `corners true \| false` | `false` | Place at corners. |
+| `street "<name>"` | `` | Restrict to this street. |
+| `collider box <w> <h> <d> \| capsule <radius> <height>` | `` | Explicit collision dimensions, metres; positive except capsule height may be zero. |
+
+<a id="file-district-cells"></a>
+### `file:district.cells`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <8..4096 metres>` | `0 (must be set)` | Cell side. |
+| `load <metres >= 0>` | `0` | Load distance. |
+
+<a id="file-district-terrain"></a>
+### `file:district.terrain`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `depth <metres >= 0>` | `0` | Carve depth. |
+
+<a id="file-district-hlod"></a>
+### `file:district.hlod`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <4..4096 metres>` | `64` | Leaf cell side; doubles at each level. |
+| `error <metres > 0, <= size / 4>` | `size / 256` | Maximum leaf proxy displacement; zero requests the derived default. |
+| `texels <64..4096>` | `1024` | Longest texture side in pixels. |
 
 <a id="file-effect"></a>
 ### `file:effect`
@@ -130,6 +370,17 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 | `doubleSided true \| false` | `false` | Meshes: draw both faces. |
 | `shader "<id>"` | `` | A material shader (`type shader`) whose surface_color hook runs last; it reads effect_life(), effect_random(), effect_custom1() and effect_custom2(). |
 | `param <name> <1 to 4 numbers>` | `` | One of the shader's parameters by name. |
+
+<a id="file-effect-texture"></a>
+### `file:effect.texture`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `tile <u> [<v>]` | `1 1` | Repeats across the surface. |
+| `offset <u> [<v>]` | `0 0` | Added to the uv. |
+| `scroll <u> [<v>]` | `0 0` | Uv per second. |
+| `rotate <degrees per second>` | `0` | Turns about the centre. |
+| `polar true \| false` | `false` | u the angle about the centre, v the radius: rings and portals. |
 
 <a id="file-environment"></a>
 ### `file:environment`
@@ -185,14 +436,108 @@ Returns FieldSource: dimensions [x,y,z], channels 1..4, values, optional origin 
 
 An authored `flipbook` asset, cooked by `flipbook`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+| Field | Default | Meaning |
+|---|---|---|
+| `texture "<image>"` | `required` | Atlas image; cook resolves its dimensions. |
+| `size <width> <height>` | `image dimensions` | Atlas size in pixels, nonnegative integers. |
+| `filter nearest \| linear` | `nearest` | Texture sampling. |
+| `array true \| false` | `false` | Cook equal-sized frames as texture-array layers. |
+| `pivot <x> <y>` | `0.5 0.5` | Default frame pivot as fractions from bottom-left. |
+| `margin <pixels>` | `0` | Nonnegative integer grid margin. |
+| `spacing <pixels>` | `0` | Nonnegative integer grid spacing. |
+| `grid <width> <height> [<columns> <rows>]` | `` | Positive pixel cell size; counts otherwise derived from atlas size. |
+| `frame <name> <x> <y> <w> <h> [<pivot x> <pivot y>]` | `` | Repeated frame rectangles in pixels from top-left; optional fractional bottom-left pivot. |
+| `clip <name> { ... }` | `` | Named animation with explicit frame sequence. |
+| `atlas "<file.json>"` | `` | Cook imports Aseprite or TexturePacker frames, pivots and tags; no rotated frames. |
+
+<a id="file-flipbook-clip"></a>
+### `file:flipbook.clip`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `frames <name or index> ...` | `required` | Nonempty ordered frame sequence. |
+| `fps <number > 0>` | `12` | Uniform playback rate when durations is absent. |
+| `durations <seconds> ...` | `1 / fps` | Positive duration for every sequence frame. |
+| `mode loop \| pingPong \| once` | `loop` | Playback mode. |
+| `event <frame index> "<name>"` | `` | Repeated events on sequence frames, not atlas indices. |
 
 <a id="file-grammar"></a>
 ### `file:grammar`
 
 An authored `grammar` asset, cooked by `grammar`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Numbers may name declared parameters. Dimensions are metres and roof angles degrees. A rule ends in label/insert/drop or dispatch; no building composition is inferred.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `param <name> <number>` | `` | Repeated named numeric parameters. |
+| `start <rule>` | `required` | Starting rule. |
+| `rule <name> { ... }` | `` | Named sequence ending in an emitting or dispatching operation. |
+
+<a id="file-grammar-rule"></a>
+### `file:grammar.rule`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `recess <depth> [<jamb rule>]` | `` | Recess the face in metres before its terminal operation. |
+| `detail <integer 0..16>` | `0` | Output detail level. |
+| `label <label>` | `` | Emit this surface with a material label. |
+| `insert "<model asset>"` | `` | Insert a model into this scope. |
+| `drop ` | `` | Emit no surface. |
+| `extrude <depth> { ... }` | `` | Extrude in metres; map faces to rules. |
+| `split x \| y { ... }` | `` | Split across or up the face. |
+| `inset <width> <border rule> <inner rule>` | `` | Inset by metres. |
+| `roof flat \| gable <degrees> \| hip <degrees> { ... }` | `` | Build a roof from the footprint. |
+| `pick { option <weight> <rule> ... }` | `` | Deterministic weighted choice. |
+| `case { ... }` | `` | Ordered size/parameter predicates, optional final otherwise. |
+
+<a id="file-grammar-rule-extrude"></a>
+### `file:grammar.rule.extrude`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `top <rule>` | `` | Top face rule. |
+| `bottom <rule>` | `` | Bottom face rule. |
+| `front <rule>` | `` | Front face rule. |
+| `back <rule>` | `` | Back face rule. |
+| `side <rule>` | `` | Side face rule. |
+| `sides <rule>` | `` | All side faces rule. |
+
+<a id="file-grammar-rule-split"></a>
+### `file:grammar.rule.split`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `part <length> <rule>` | `` | Absolute length, metres. |
+| `fill <weight> <rule>` | `` | Weighted share of remaining length. |
+| `repeat <length> <rule>` | `` | Repeat at least once, stretching to fill. |
+
+<a id="file-grammar-rule-roof"></a>
+### `file:grammar.rule.roof`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `overhang <metres>` | `0` | Roof overhang. |
+| `slope <rule>` | `required` | Rule for slopes. |
+| `gable <rule>` | `` | Rule for gables. |
+| `eave <rule>` | `` | Rule for eaves. |
+
+<a id="file-grammar-rule-pick"></a>
+### `file:grammar.rule.pick`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `option <weight > 0> <rule>` | `required` | Repeated weighted candidate. |
+
+<a id="file-grammar-rule-case"></a>
+### `file:grammar.rule.case`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `wider <metres> <rule>` | `` | Dispatch when wider than the value. |
+| `taller <metres> <rule>` | `` | Dispatch when taller than the value. |
+| `param <name> <value> <rule>` | `` | Parameter predicate. |
+| `otherwise <rule>` | `` | Fallback, last. |
 
 <a id="file-icons"></a>
 ### `file:icons`
@@ -1376,6 +1721,46 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `process { ... }` | `` | Explicit static-mesh repair, simplification, UVs, material transfer and skin binding before prefracture; see model.process. |
 | `conform off \| character \| effect` | `project art contract` | Art conformance category. |
 
+<a id="file-model-program"></a>
+### `file:model.program`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `program "<file.shape.json>"` | `required` | Model program beside this model. |
+| `params { <name> <finite number> ... }` | `program parameters` | Named numeric parameter overrides. |
+| `material "<name>" { ... }` | `program materials` | Material overrides by name. |
+| `atlas <integer 16..8192>` | `none` | Repack UVs at this texel grid, gutter 4. |
+| `conform off \| character \| effect` | `project look` | Art conformance category. |
+| `process { ... }` | `off` | Shared static model preparation. |
+
+<a id="file-model-program-material"></a>
+### `file:model.program.material`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `color <r> <g> <b>; linear` | `program material` | Override the named program material; source image contents are tracked. |
+| `metalness <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `roughness <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `opacity <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `emissive <r> <g> <b>; linear` | `program material` | Override the named program material; source image contents are tracked. |
+| `emissiveIntensity <number >= 0>` | `program material` | Override the named program material; source image contents are tracked. |
+| `map "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `normalMap "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `normalScale <number >= 0>` | `program material` | Override the named program material; source image contents are tracked. |
+| `roughnessMap "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `metalnessMap "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `emissiveMap "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `aoMap "<image path>"; relative to model` | `program material` | Override the named program material; source image contents are tracked. |
+| `aoMapIntensity <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `clearcoat <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `clearcoatRoughness <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `sheen <r> <g> <b>; linear` | `program material` | Override the named program material; source image contents are tracked. |
+| `sheenRoughness <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `transmission <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `iridescence <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `alphaTest <number 0..1>` | `program material` | Override the named program material; source image contents are tracked. |
+| `doubleSided true \| false` | `program material` | Override the named program material; source image contents are tracked. |
+
 <a id="file-model-part-boxGeometry"></a>
 ### `file:model.part.boxGeometry`
 
@@ -1947,6 +2332,7 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `unwrap { ... }` | `off` | Replace UVs. Existing maps require bake so their appearance is not silently lost. |
 | `bake { ... }` | `off` | Transfer the source material and normals to a fresh low-mesh atlas. No image generation. |
 | `project { ... }` | `off` | Project registered authored views into prepared UVs through og-bake, preserving other material channels. See model.process.project. |
+| `transfer { ... }` | `off` | Carry an imported base model's painted maps to named parts in their own unscaled metric frames, through og-bake. Runs after project. |
 | `rig { ... }` | `off` | Bind explicit joints, or explicitly request the existing humanoid finder, after static processing. |
 
 <a id="file-model-process-repair"></a>
@@ -2018,6 +2404,15 @@ Field coverage: text-model declarations, every geometry, placement, material, pl
 | `target <x> <y> <z>` | `required` | Camera target, distinct from position. Vertical views use the kernel's fixed X right axis. |
 | `fov <degrees, 0..179>` | `0` | Positive perspective vertical field of view; exclusive with ortho. |
 | `ortho <metres > 0>` | `0` | Orthographic half-height and half-width; exclusive with positive fov. One projection size is required. |
+
+<a id="file-model-process-transfer"></a>
+### `file:model.process.transfer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source "<model asset>"` | `required` | Asset-root-relative base model, normally imported and processed before this model. Source contents, external files and parameters enter the cache key; cycles fail. |
+| `size <integer, 1..8192>` | `1024` | Destination map side. Source painted maps must be square and share one size; they are not resampled. |
+| `padding <integer, 0..8192>` | `4` | Destination chart gutters after nearest-painted-surface hole filling. |
 
 <a id="file-model-process-rig"></a>
 ### `file:model.process.rig`
@@ -2255,14 +2650,74 @@ Field coverage: complete shared shader-family parser table, filtered by document
 
 An authored `prefab` asset, cooked by `prefab`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+| Field | Default | Meaning |
+|---|---|---|
+| `base "<prefab asset>"` | `` | One base before the root entity; remaining fields override it. |
+| `entity "<name>" { ... }` | `required` | Exactly one root; nested entity grammar is shared with scenes. |
+
+<a id="file-prefab-entity"></a>
+### `file:prefab.entity`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `entity "<name>" { ... }` | `` | Repeated children in this entity's space. |
+| `model "<asset>"` | `` | Instantiate a model; its geometry/material handles are resolved at load. |
+| `scene "<asset>"` | `` | Place one sub-scene; dependency cycles fail. |
+| `static true \| false` | `false` | Mark this entity's model for baked lighting and HLOD. |
+| `prefab "<asset>"` | `` | Expand a prefab; remaining entries are explicit overrides. |
+| `override "<node path>" { ... }` | `` | Instance-only component overrides on a descendant. |
+| `remove "<node path>" [<component>]` | `` | Instance-only removal of a subtree or component. |
+
+Component blocks and their fields come from reflection, as for scenes. Query the record by name with og api show.
 
 <a id="file-quest"></a>
 ### `file:quest`
 
 An authored `quest` asset, cooked by `quest`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+| Field | Default | Meaning |
+|---|---|---|
+| `id <id>` | `required` | Unique quest id. |
+| `title "<i18n key>"` | `required` | Quest title. |
+| `summary "<i18n key>"` | `` | Summary key. |
+| `category <word>` | `main` | Game-owned category, no engine semantics. |
+| `giver "<i18n key>"` | `` | Quest giver key. |
+| `region "<i18n key>"` | `` | Quest region key. |
+| `global <name> <value>` | `` | Repeated story variables, checked by the shared expression parser. |
+| `reward "<i18n key>" [<amount>] { ... }` | `` | Declared reward metadata; amount defaults to one. Game applies rewards. |
+| `stage <id> { ... }` | `required` | Repeated stages in authored order. |
+
+<a id="file-quest-reward"></a>
+### `file:quest.reward`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `image "<asset>"` | `` | Reward image. |
+| `rarity <word>` | `` | Game-owned rarity label. |
+
+<a id="file-quest-stage"></a>
+### `file:quest.stage`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `summary "<i18n key>"` | `` | Summary key. |
+| `next <stage id>` | `next stage` | Explicit next stage; references are validated. |
+| `fail "<expression>"` | `` | Fail when this condition holds. |
+| `objective <id> "<i18n key>" { ... }` | `` | Repeated objectives; ids unique per stage. |
+
+<a id="file-quest-objective"></a>
+### `file:quest.objective`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `arg <name> "<expression>"` | `` | Repeated localized message arguments. |
+| `target <integer, 1..1000000>` | `1` | Required progress count. |
+| `when "<expression>"` | `` | Complete when condition holds. |
+| `on <event>` | `` | Progress on this event. |
+| `where "<expression>"` | `` | Filter the declared event. |
+| `optional ` | `false` | Not required for stage completion. |
+| `hidden ` | `false` | Hide until first progress. |
+| `marker <x> [<y> <z>]` | `` | World point in metres; omitted y/z are zero. |
 
 <a id="file-rig"></a>
 ### `file:rig`
@@ -2336,7 +2791,204 @@ Accepted schemes: `auto`, `mixamo`, `vrm`, `unity`, `rigify`, `ue`, `blender`, `
 
 An authored `rig2d` asset, cooked by `rig2d`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: shared runtime grammar plus cook-only layered-art input. Coordinates are pixels, +y up, angles counterclockwise degrees. Key easing is linear by default, step, or curve x1 y1 x2 y2 with optional further anchors/control points. Named attachment/constraint/bone references are validated; armatures share the same body grammar.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `texture "<image>"` | `required` | Shared atlas image. |
+| `size <width> <height>` | `from image` | Atlas pixels. |
+| `filter nearest \| linear` | `linear` | Atlas sampling. |
+| `unit <pixels > 0>` | `1` | Pixels per world metre. |
+| `bone <name> { ... }` | `required` | Parent-first setup bones. |
+| `slot <name> { ... }` | `` | Slots in draw order. |
+| `region <name> { ... }` | `` | Rectangular attachment. |
+| `mesh <name> { ... }` | `` | Weighted mesh attachment. |
+| `box <name> { ... }` | `` | Polygon attachment, used for queries. |
+| `path <name> { ... }` | `` | Cubic path attachment, three vertices per knot. |
+| `child <name> { ... }` | `` | Child armature attachment. |
+| `ik <name> { ... }` | `` | IK constraint. |
+| `transform <name> { ... }` | `` | Transform constraint. |
+| `along <name> { ... }` | `` | Path constraint. |
+| `skin <name> { swap <attachment> <attachment or none> ... }` | `` | Named attachment swaps; default is reserved. |
+| `armature <name> { ... }` | `` | Child armature using the same bone/slot/attachment/constraint/clip grammar. |
+| `clip <name> { ... }` | `` | Authored animation keys and events. |
+| `dragonbones "<export.json>"` | `` | Cook-only DragonBones 5.5 input; exclusive with authored bones/attachments/clips. |
+| `atlas "<atlas.json>"` | `` | Cook-only imported atlas metadata. |
+
+<a id="file-rig2d-bone"></a>
+### `file:rig2d.bone`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `parent <bone>` | `` | Parent bone declared earlier. |
+| `at <x> <y>` | `0 0` | Setup translation, pixels, +y up. |
+| `rotation <degrees>` | `0` | Counterclockwise setup rotation. |
+| `skew <degrees>` | `0` | Additional rotation of y axis. |
+| `scale <x> <y>` | `1 1` | Setup scale. |
+| `length <pixels>` | `0` | Bone length. |
+
+<a id="file-rig2d-slot"></a>
+### `file:rig2d.slot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `bone <bone>` | `required` | Owning bone. |
+| `attachment <attachment or none>` | `none` | Setup display. |
+| `color <r> <g> <b> <a>` | `1 1 1 1` | Linear colour multiplier. |
+| `offset <r> <g> <b> <a>` | `0 0 0 0` | Additive colour offset. |
+
+<a id="file-rig2d-region"></a>
+### `file:rig2d.region`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `slot <slot>` | `required` | Owning slot. |
+| `rect <x> <y> <w> <h>` | `required` | Atlas rectangle, top-left pixels. |
+| `at <x> <y>` | `0 0` | Attachment translation, pixels. |
+| `rotation <degrees>` | `0` | Counterclockwise rotation. |
+| `skew <degrees>` | `0` | Y-axis skew. |
+| `size <w> <h>` | `rectangle size` | Drawn dimensions, pixels. |
+
+<a id="file-rig2d-mesh"></a>
+### `file:rig2d.mesh`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `slot <slot>` | `required` | Owning slot. |
+| `vertex <u> <v> <x> <y> \| <u> <v> <bone> <x> <y> <weight> ...` | `` | Unweighted slot-local pixels or repeated bone-local influences; weights sum to one. |
+| `triangles <index> ...` | `` | Nonnegative integer indices, triples. |
+
+<a id="file-rig2d-box"></a>
+### `file:rig2d.box`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `slot <slot>` | `required` | Owning slot. |
+| `polygon <x> <y> ...` | `` | Polygon vertices, pixels. |
+
+<a id="file-rig2d-path"></a>
+### `file:rig2d.path`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `slot <slot>` | `required` | Owning slot. |
+| `closed true \| false` | `false` | Closed spline. |
+| `constant true \| false` | `true` | Measure distance by arc length. |
+| `lengths <pixels> ...` | `` | Curve ends, required if constant is false. |
+| `vertex <x> <y> \| <bone> <x> <y> <weight> ...` | `` | Handle-in/knot/handle-out, at least two knots; unweighted or bone influences. |
+
+<a id="file-rig2d-child"></a>
+### `file:rig2d.child`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `slot <slot>` | `required` | Owning slot. |
+| `armature <name>` | `required` | Child armature in this file. |
+| `clip <name>` | `` | Fallback clip when no inherited name matches. |
+| `at <x> <y>` | `0 0` | Translation, pixels. |
+| `rotation <degrees>` | `0` | Counterclockwise rotation. |
+| `skew <degrees>` | `0` | Y-axis skew. |
+| `scale <x> <y>` | `1 1` | Scale factors. |
+
+<a id="file-rig2d-ik"></a>
+### `file:rig2d.ik`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `bones <bone> ...` | `required` | Contiguous parent-first chain. |
+| `target <bone>` | `required` | Target bone. |
+| `bend clockwise \| counterclockwise` | `clockwise` | IK bend side. |
+| `weight <number>` | `1` | Constraint weight, clamped 0..1. |
+
+<a id="file-rig2d-transform"></a>
+### `file:rig2d.transform`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `bones <bone> ...` | `required` | Affected bones. |
+| `target <bone>` | `required` | Target bone. |
+| `rotation <degrees>` | `0` | Rotation offset. |
+| `at <x> <y>` | `0 0` | Translation offset, pixels. |
+| `scale <x> <y>` | `0 0` | Scale offset. |
+| `shear <degrees>` | `0` | Shear offset. |
+| `mix <rotation> <translation> <scale> <shear>` | `1 1 1 1` | Weights clamped 0..1. |
+
+<a id="file-rig2d-along"></a>
+### `file:rig2d.along`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `path <attachment>` | `required` | Path attachment. |
+| `bones <bone> ...` | `required` | Affected bones. |
+| `position <value> fixed \| percent` | `0 percent` | Start position in pixels or path fraction. |
+| `spacing <value> length \| fixed \| percent` | `0 length` | Bone spacing. |
+| `rotate tangent \| chain \| chainScale <degrees>` | `tangent 0` | Rotation mode and offset. |
+| `mix <rotation> <translation>` | `1 1` | Weights clamped 0..1. |
+
+<a id="file-rig2d-skin"></a>
+### `file:rig2d.skin`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `swap <attachment> <attachment or none>` | `` | Repeated swaps between attachments belonging to the same slot. |
+
+<a id="file-rig2d-clip"></a>
+### `file:rig2d.clip`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `duration <seconds>` | `0` | Clip duration; keys must be ordered and within duration. |
+| `loop true \| false` | `true` | Loop playback. |
+| `event <seconds> "<name>"` | `` | Repeated named markers. |
+| `bone <name> { ... }` | `` | Bone timeline. |
+| `slot <name> { ... }` | `` | Slot timeline. |
+| `deform <attachment> { key ... }` | `` | Mesh/path influence offsets. |
+| `order <seconds> [<slot> ...]` | `` | Every slot once in draw order, or empty for setup order. |
+| `ik <constraint> { key ... }` | `` | IK weight and bend timeline. |
+
+<a id="file-rig2d-clip-bone"></a>
+### `file:rig2d.clip.bone`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `rotate <seconds> <degrees> [clockwise\|counterclockwise <turns>] [<ease>]` | `` | Relative setup rotation; shortest arc unless explicit nonnegative integer extra turns. |
+| `skew <seconds> <degrees> [<ease>]` | `` | Relative setup skew. |
+| `translate <seconds> <x> <y> [<ease>]` | `` | Offset from setup, pixels. |
+| `scale <seconds> <x> <y> [<ease>]` | `` | Multiplier of setup scale. |
+
+<a id="file-rig2d-clip-slot"></a>
+### `file:rig2d.clip.slot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `attachment <seconds> <attachment or none>` | `` | Held display key. |
+| `color <seconds> <r> <g> <b> <a> [<ease>]` | `` | Colour multiplier. |
+| `offset <seconds> <r> <g> <b> <a> [<ease>]` | `` | Additive colour. |
+
+<a id="file-rig2d-clip-deform"></a>
+### `file:rig2d.clip.deform`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds> <x> <y> ... [<ease>]` | `` | One bone-local pixel offset pair per influence, in vertex order. |
+
+<a id="file-rig2d-clip-ik"></a>
+### `file:rig2d.clip.ik`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds> <weight> clockwise\|counterclockwise [<ease>]` | `` | Eased weight, held bend side. |
+
+<a id="file-rig2d-parts"></a>
+### `file:rig2d.parts`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `parts "<file.psd or folder/>"` | `required` | Layered art input; part files enter the cook stamp. |
+| `template <existing rig layout>` | `required` | Existing art-contract skeleton layout, not generated gameplay. |
+| `pivot <part> <x> <y>` | `` | Repeated authored joints in canvas pixels. |
+| `unit <pixels > 0>` | `from art` | Pixels per world metre. |
+| `filter nearest \| linear` | `linear` | Atlas sampling. |
 
 <a id="file-scatter"></a>
 ### `file:scatter`
@@ -2371,7 +3023,61 @@ Returns ScatterSource: flat positions, optional xyzw quaternions and xyz scales 
 
 An authored `scene` asset, cooked by `scene`. Input: `.ogt` under assets/.
 
-Field coverage: generate block only; authored declarations use the existing scene grammar and reflected component/resource fields. Output: a normal scene, loaded with og.load.scene.
+Field coverage: parser-owned declarations and reflected component/resource fields. Component blocks take schema field names: numbers/vectors, enum words, booleans or quoted strings; bounded lists may repeat. Query the reflected record with og api show. Game-owned records use the game's schema, never a gameplay template. Output: a normal scene, loaded with og.load.scene.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<name>"` | `` | Scene name. |
+| `entity "<name>" { ... }` | `` | Repeated entity trees, parents before children. |
+| `resource <record> { ... }` | `` | One block per reflected resource; fields use its schema. |
+| `stream "<group>" { ... }` | `` | Asset streaming group. |
+| `hlod { ... }` | `` | Explicit distant static-model proxy settings. |
+| `path "<name>" { ... }` | `` | Named local-space path, shared with timeline paths. |
+| `generate { ... }` | `` | Deterministic SceneSource appended before normal scene validation. |
+
+<a id="file-scene-entity"></a>
+### `file:scene.entity`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `entity "<name>" { ... }` | `` | Repeated children in this entity's space. |
+| `model "<asset>"` | `` | Instantiate a model; its geometry/material handles are resolved at load. |
+| `scene "<asset>"` | `` | Place one sub-scene; dependency cycles fail. |
+| `static true \| false` | `false` | Mark this entity's model for baked lighting and HLOD. |
+| `prefab "<asset>"` | `` | Expand a prefab; remaining entries are explicit overrides. |
+| `override "<node path>" { ... }` | `` | Instance-only component overrides on a descendant. |
+| `remove "<node path>" [<component>]` | `` | Instance-only removal of a subtree or component. |
+
+<a id="file-scene-stream"></a>
+### `file:scene.stream`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `asset "<asset>"` | `` | Repeated asset ids; each asset belongs to at most one group. |
+| `distance <x> <y> <z> <radius>` | `manual` | Distance trigger in scene metres; exclusive with volume and cell. |
+| `unload <metres>` | `radius * 1.25` | Unload distance for a distance trigger. |
+| `volume "<entity>"` | `manual` | Trigger inside the named entity's box. |
+| `priority <i32>` | `0` | Higher loads first and unloads last. |
+| `cell ` | `` | Sub-scene cell group, at most one, without other trigger. |
+
+<a id="file-scene-hlod"></a>
+### `file:scene.hlod`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `size <4..4096 metres>` | `64` | Leaf cell side; doubles at each level. |
+| `error <metres > 0, <= size / 4>` | `size / 256` | Maximum leaf proxy displacement; zero requests the derived default. |
+| `texels <64..4096>` | `1024` | Longest texture side in pixels. |
+
+<a id="file-scene-path"></a>
+### `file:scene.path`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind catmullRom \| bezier \| linear` | `catmullRom` | Spline kind. |
+| `closed true \| false` | `false` | Join the last point to the first. |
+| `tension <number>` | `0.5` | Catmull-Rom tangent scale. |
+| `point <x> <y> <z>` | `required` | Repeated local points, metres; point count must satisfy the spline kind. |
 
 <a id="file-scene-generate"></a>
 ### `file:scene.generate`
@@ -2879,7 +3585,384 @@ Field coverage: complete parser line tables. Atlas image, collision shapes, anim
 
 An authored `timeline` asset, cooked by `timeline`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<name>"` | `` | Timeline name. |
+| `duration <seconds > 0>` | `last key end` | No key may lie after the duration. |
+| `path "<name>" { ... }` | `` | Named scene-local path. |
+| `track <kind> ["<entity>"] { ... }` | `` | Repeated tracks; transform/animation/light/visibility/blendshape/material require an entity, property/video allow one, other kinds take none. |
+
+<a id="file-timeline-path"></a>
+### `file:timeline.path`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind catmullRom \| bezier \| linear` | `catmullRom` | Spline kind. |
+| `closed true \| false` | `false` | Join the last point to the first. |
+| `tension <number>` | `0.5` | Catmull-Rom tangent scale. |
+| `point <x> <y> <z>` | `required` | Repeated local points, metres; point count must satisfy the spline kind. |
+
+<a id="file-timeline-track-animation"></a>
+### `file:timeline.track.animation`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `model "<asset>"` | `` | Explicit clip source, checked at cook. |
+
+<a id="file-timeline-track-animation-key"></a>
+### `file:timeline.track.animation.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `clip "<name>"` | `required` | Authored clip name. |
+| `speed <number>` | `1` | Animation speed multiplier; nested timeline >0; video 0..4. |
+| `blendIn <seconds >= 0>` | `0.2` | Clip transition duration. |
+| `loop true \| false` | `context-dependent` | Animation/music default true; nested timeline false. |
+
+<a id="file-timeline-track-audio"></a>
+### `file:timeline.track.audio`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-audio-key"></a>
+### `file:timeline.track.audio.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `sound "<asset>"` | `required` | Cooked sound asset. |
+| `volume <number >= 0>` | `1` | Linear gain. |
+| `playbackRate <number > 0>` | `1` | Playback rate multiplier. |
+| `bus master \| music \| sfx \| ui` | `context-dependent` | Audio defaults sfx; music defaults music. |
+
+<a id="file-timeline-track-blendshape"></a>
+### `file:timeline.track.blendshape`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-blendshape-key"></a>
+### `file:timeline.track.blendshape.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `w0..w7 <number>` | `` | Morph weight by index; unspecified weights keep their values. |
+
+<a id="file-timeline-track-camera"></a>
+### `file:timeline.track.camera`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `rail "<path>"` | `` | Follow a named path, exclusive with follow and key positions. |
+| `follow "<entity>"` | `` | Follow an entity, exclusive with rail. |
+| `blendIn <seconds >= 0>` | `0` | Entry blend duration. |
+| `blendOut <seconds >= 0>` | `0` | Exit blend duration. |
+
+<a id="file-timeline-track-camera-key"></a>
+### `file:timeline.track.camera.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `context-dependent` | Local metres; camera/transform keep unspecified values, vfx defaults to origin. |
+| `target <x> <y> <z>` | `` | Look-at target, metres. |
+| `at <number>` | `` | Rail parameter. |
+| `fov <1..179 degrees>` | `` | Vertical field of view. |
+| `roll <degrees>` | `` | Camera roll. |
+| `focus <metres > 0>` | `` | Focus distance. |
+| `focusOn "<entity>"` | `` | Focus target. |
+| `focusRange <metres >= 0>` | `` | Focus range. |
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+
+<a id="file-timeline-track-caption"></a>
+### `file:timeline.track.caption`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `captions "<file.srt\|vtt\|json>" [<offset seconds>]` | `` | Import cues; files enter cook dependencies. |
+| `locale "<tag>" { captions ...; key ... }` | `` | Localized cues, no nested locale. |
+
+<a id="file-timeline-track-caption-key"></a>
+### `file:timeline.track.caption.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `end <seconds > key time>` | `context-dependent` | Absolute end; caption can derive it from following cues. |
+| `text "<text>"` | `required` | Caption text, not visual styling. |
+| `speaker "<speaker>"` | `` | Caption speaker. |
+| `position bottom \| top` | `` | Caption placement. |
+| `span <name> <position> <length> ["<color>"]` | `` | Repeated spans with unsigned character indices. |
+
+<a id="file-timeline-track-event"></a>
+### `file:timeline.track.event`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-event-key"></a>
+### `file:timeline.track.event.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `do "<action:arguments>"` | `required` | Command-channel action; action uses lowercase ASCII, digits and underscores. |
+| `retroactive true \| false` | `false` | Fire across a seek as defined by timeline playback. |
+
+<a id="file-timeline-track-hotspot"></a>
+### `file:timeline.track.hotspot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-hotspot-key"></a>
+### `file:timeline.track.hotspot.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `id "<1..63 byte id>"` | `required` | Stable hotspot id. |
+| `rect <x> <y> <width> <height>` | `` | Fractions from top-left, positive size within the frame; exclusive with off true. |
+| `shape rect \| circle` | `rect` | Hit shape. |
+| `kind choice \| inspect` | `choice` | Hotspot kind. |
+| `label "<label>"` | `` | Hotspot label. |
+| `off true \| false` | `false` | End this hotspot instead of providing rect. |
+
+<a id="file-timeline-track-light"></a>
+### `file:timeline.track.light`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-light-key"></a>
+### `file:timeline.track.light.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+
+<a id="file-timeline-track-marker"></a>
+### `file:timeline.track.marker`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-marker-key"></a>
+### `file:timeline.track.marker.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<1..63 byte name>"` | `required` | Named timeline marker. |
+
+<a id="file-timeline-track-material"></a>
+### `file:timeline.track.material`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `index <integer >= 0>` | `0` | Target material index. |
+
+<a id="file-timeline-track-material-key"></a>
+### `file:timeline.track.material.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+
+<a id="file-timeline-track-music"></a>
+### `file:timeline.track.music`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-music-key"></a>
+### `file:timeline.track.music.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `loop true \| false` | `context-dependent` | Animation/music default true; nested timeline false. |
+| `sound "<asset>"` | `required` | Cooked sound asset. |
+| `volume <number >= 0>` | `1` | Linear gain. |
+| `bus master \| music \| sfx \| ui` | `context-dependent` | Audio defaults sfx; music defaults music. |
+| `fadeIn <seconds >= 0>` | `0` | Fade in duration. |
+| `fadeOut <seconds >= 0>` | `0` | Fade out duration. |
+| `end <seconds > key time>` | `context-dependent` | Absolute end; caption can derive it from following cues. |
+
+<a id="file-timeline-track-post"></a>
+### `file:timeline.track.post`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-post-key"></a>
+### `file:timeline.track.post.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+
+<a id="file-timeline-track-property"></a>
+### `file:timeline.track.property`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `field "<record.field>"` | `required` | Reflected target field, declared before keys. |
+
+<a id="file-timeline-track-property-key"></a>
+### `file:timeline.track.property.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `value <1..4 numbers or word>` | `required` | Value of the declared reflected field. |
+
+<a id="file-timeline-track-scene"></a>
+### `file:timeline.track.scene`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-scene-key"></a>
+### `file:timeline.track.scene.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `scene "<asset>" \| none` | `required` | Place a scene or clear it. |
+
+<a id="file-timeline-track-shot"></a>
+### `file:timeline.track.shot`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-shot-key"></a>
+### `file:timeline.track.shot.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `camera "<entity>"` | `` | Virtual camera, exclusive in intent with none. |
+| `none ` | `` | Release virtual camera control. |
+| `blend <seconds >= 0>` | `camera setting` | Zero cuts immediately. |
+
+<a id="file-timeline-track-timeline"></a>
+### `file:timeline.track.timeline`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-timeline-key"></a>
+### `file:timeline.track.timeline.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <number>` | `1` | Animation speed multiplier; nested timeline >0; video 0..4. |
+| `loop true \| false` | `context-dependent` | Animation/music default true; nested timeline false. |
+| `play "<timeline asset>"` | `required` | Nested timeline; cook checks cycles and references. |
+
+<a id="file-timeline-track-transform"></a>
+### `file:timeline.track.transform`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-transform-key"></a>
+### `file:timeline.track.transform.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `context-dependent` | Local metres; camera/transform keep unspecified values, vfx defaults to origin. |
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `rotation <x> <y> <z>` | `` | Euler XYZ degrees. |
+| `quaternion <x> <y> <z> <w>` | `` | Nonzero quaternion, normalized. |
+| `scale <x> <y> <z>` | `` | Scale factors. |
+
+<a id="file-timeline-track-transition"></a>
+### `file:timeline.track.transition`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-transition-key"></a>
+### `file:timeline.track.transition.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind <transition kind>` | `fade` | Shared TransitionKind names. |
+| `mode through \| in \| out` | `through` | Transition mode. |
+| `duration <seconds >= 0>` | `1` | Transition duration. |
+| `color <r> <g> <b>` | `0 0 0` | Linear transition colour. |
+| `from left \| right \| top \| bottom` | `left` | Transition origin. |
+
+<a id="file-timeline-track-vfx"></a>
+### `file:timeline.track.vfx`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-vfx-key"></a>
+### `file:timeline.track.vfx.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `position <x> <y> <z>` | `context-dependent` | Local metres; camera/transform keep unspecified values, vfx defaults to origin. |
+| `effect "<asset>"` | `required` | Effect asset. |
+| `at "<entity>"` | `` | Effect anchor entity. |
+| `scale <number > 0>` | `1` | Uniform effect size. |
+| `seed <u32>` | `0` | Explicit effect seed. |
+
+<a id="file-timeline-track-video"></a>
+### `file:timeline.track.video`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+| `layer over \| under` | `over` | Only for the timeline's own player, not entity players. |
+
+<a id="file-timeline-track-video-key"></a>
+### `file:timeline.track.video.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `speed <number>` | `1` | Animation speed multiplier; nested timeline >0; video 0..4. |
+| `video "<asset>"` | `required` | Video asset. |
+| `from <seconds >= 0>` | `0` | Source offset. |
+
+<a id="file-timeline-track-visibility"></a>
+### `file:timeline.track.visibility`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `key <seconds >= 0> { ... }` | `` | Repeated keys, sorted stably by time; nested fields depend on track kind. |
+
+<a id="file-timeline-track-visibility-key"></a>
+### `file:timeline.track.visibility.key`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `ease <word or quoted easing expression>` | `linear` | Shared og-tween easing parser, including cubicBezier, steps and points. |
+| `visible true \| false` | `` | Entity visibility. |
+
+Light/post/material key names are writable reflected fields of their targets, with 1..4 numeric lanes or an enum word; query their record with og api show. Blendshape accepts w0..w7. Values not set by a key retain their track state.
+
+Transition kinds: cut, fade, wipe, dissolve, iris, slide.
+
 
 <a id="file-ui-material"></a>
 ### `file:ui-material`
@@ -2932,12 +4015,999 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 | `sound "<id>" { ... }` | `` | A sound asset, played at once by a child entity with og.AudioSource, cut when the effect despawns. |
 | `flipbook "<id>" { ... }` | `` | A camera-facing og.Sprite with og.Flipbook playing a sheet's first clip once (a `type vfx2d` pixel effect or any og.load.flipbook sheet); its og.FlipbookEvent events, the impact among them, reach the game as this effect's og.VfxEvent. |
 
+<a id="file-vfx-beam"></a>
+### `file:vfx.beam`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `effect "<id>"` | `` | Its effect material (§2); a mesh needs one. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `width <metres>` | `0.2` | Metres across. |
+| `to <x> <y> <z>` | `0 1 0` | Its far end, from the element's point. |
+| `segments <n>` | `1` | 1 to 256: more let `jitter` bend it. |
+| `jitter <metres>` | `0` | Sideways jitter, new every tick (lightning). |
+
+<a id="file-vfx-decal"></a>
+### `file:vfx.decal`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `uv <u0> <v0> <u1> <v1>` | `0 0 1 1` | Its region of og.RenderSettings.decalAtlas. |
+| `size <s> \| <x> <y> <z>` | `1 1 1` | x, the depth it reaches down its -y, and z. |
+| `fade <seconds>` | `0` | Fades out over its last this many seconds. |
+
+<a id="file-vfx-emitter"></a>
+### `file:vfx.emitter`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `seed <u32>` | `0` | Added to the effect's seed. |
+
+<a id="file-vfx-flipbook"></a>
+### `file:vfx.flipbook`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `blend additive \| alpha \| subtractive \| multiply` | `` | A mesh adds by default, a flipbook blends alpha; a flipbook takes additive or alpha only. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `size <metres>` | `1` | Its height; the width follows the frame's shape. |
+
+<a id="file-vfx-glow"></a>
+### `file:vfx.glow`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `size <value>` | `1` | Metres across over its life. |
+
+<a id="file-vfx-light"></a>
+### `file:vfx.light`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `intensity <value>` | `1` | Candela over its life. |
+| `distance <metres>` | `5` | Where it reaches zero. |
+
+<a id="file-vfx-mesh"></a>
+### `file:vfx.mesh`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `stretch <param>` | `` | Multiplies its length alone by the param (at least 0), along its own y after `rotate`: a jet plume that lengthens with thrust without growing wider. Applied with `amount`, which scales it whole. |
+| `effect "<id>"` | `` | Its effect material (§2); a mesh needs one. |
+| `scale <value>` | `1` | Uniform scale over its life. |
+| `spin <x> <y> <z>` | `0 0 0` | Degrees per second. |
+| `face camera` | `` | Turned to face the eye as a billboard is (a glow ring seen from any side): its spin and scale kept, the effect's and its own rotation left out. Without it a mesh lies as it is placed. |
+| `blend additive \| alpha \| subtractive \| multiply` | `` | A mesh adds by default, a flipbook blends alpha; a flipbook takes additive or alpha only. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+
+<a id="file-vfx-ring"></a>
+### `file:vfx.ring`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `inner <radius>` | `` | The inner radius (the outer is 1). |
+| `band <0..1>` | `` | Where its middle row lies between the edges. |
+| `height <outer> <inner>` | `` | Its edges raised along its axis: a cone, a tube. |
+| `arc <start> <length>` | `` | Degrees from +x. |
+| `segments <n>` | `` | 3 to 256 around it. |
+| `colors <outer rgba> <band rgba> <inner rgba>` | `` | Its vertex colours; u runs along the arc and v from the outer edge (0) to the inner (1). |
+
+<a id="file-vfx-shake"></a>
+### `file:vfx.shake`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `trauma <0..1>` | `0.2` | og.camera.shake's trauma. |
+
+<a id="file-vfx-sound"></a>
+### `file:vfx.sound`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `volume <gain>` | `1` | Its volume. |
+| `playbackRate <rate> \| <min> <max>` | `1` | A rate picked from the range by the effect's seed. |
+
+<a id="file-vfx-trail"></a>
+### `file:vfx.trail`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `at <seconds>` | `0` | When it starts, from the effect's start. |
+| `life <seconds>` | `` | How long it lasts (an element that lasts takes `life` or `until`; an emitter runs its cycle and a flipbook its clip without either). |
+| `until <seconds>` | `` | When it ends, instead of `life`. |
+| `offset <x> <y> <z>` | `0 0 0` | Where it starts, in the effect's space. |
+| `rotate <x> <y> <z>` | `0 0 0` | Degrees, in the effect's space. |
+| `move <x> <y> <z>` | `0 0 0` | Metres per second it moves from its offset: an emitter spawns along the path, a mesh, trail or light goes with it. |
+| `accelerate <x> <y> <z>` | `0 0 0` | Metres per second squared. |
+| `when <param>` | `` | Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground). |
+| `amount <param>` | `` | Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume. |
+| `effect "<id>"` | `` | Its effect material (§2); a mesh needs one. |
+| `color <r> <g> <b> [<a>]` | `1 1 1 1` | A linear colour; above 1 blooms (a light's alpha is ignored). |
+| `width <head> [<tail>]` | `0.2 0` | Metres across at its head and its tail. |
+| `lifetime <seconds>` | `0.4` | How long a point stays in the trail. |
+| `orbit <radius> <turns per second>` | `0 0` | Circles the element's y. |
+| `rise <metres per second>` | `0` | Climbs the element's y. |
+
 <a id="file-vfx2d"></a>
 ### `file:vfx2d`
 
 An authored `vfx2d` asset, cooked by `flipbook`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+OGT header followed by inline JSON or an external recipe, not an ordinary nested OGT grammar. Unknown JSON notes are ignored. JSON fields below share the recipe reader's recognised field registry. See pixel-vfx for layer-specific defaults and enum choices.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `duration <seconds > 0>` | `frames / fps` | Override clip duration. |
+| `loop true \| false` | `recipe` | Clip playback mode. |
+| `impact <seconds >= 0>` | `recipe or coverage jump` | One impact marker; must lie within duration. |
+| `event <seconds >= 0> "<name>"` | `` | Repeated markers, at most 16 including impact; names 1..63 bytes. |
+| `recipe "<path.json>"` | `inline JSON` | Relative file or asset id, exclusive with inline JSON. |
+
+<a id="file-vfx2d-recipe"></a>
+### `file:vfx2d.recipe`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `name string` | `Untitled effect` | Display name. |
+| `w integer, 8..512` | `64` | Canvas pixels. |
+| `h integer, 8..512` | `64` | Canvas pixels. |
+| `frames integer, 1..120` | `16` | Frame count. |
+| `fps integer, 1..60` | `15` | Frames per second. |
+| `seed integer, 0..2147483647` | `1` | Deterministic seed. |
+| `loop boolean` | `false` | Periodic animation. |
+| `ramps {name: ramp}` | `Forge ramps` | Ramp is a named ramp, hue:<degrees>, or hex colour array. |
+| `hue number, degrees` | `0` | Ramp hue rotation. |
+| `sat number` | `1` | Saturation multiplier. |
+| `outline none \| outside \| outside8 \| inside` | `none` | Pixel outline mode. |
+| `outlineColor hex colour or null` | `null` | Fixed outline colour. |
+| `dither number, 0..1` | `0` | Ordered dither. |
+| `palette named palette \| hex colour array \| null` | `null` | Quantise to an explicit palette. |
+| `cleanup boolean` | `true` | Clean isolated pixels and holes. |
+| `pivot [x,y], 0..1` | `[0.5,0.5]` | Top-left canvas fractions. |
+| `impact number, 0..1` | `coverage jump` | Normalised impact time. |
+| `layers [layer, ...]` | `required` | Layers paint in authored order. |
+
+<a id="file-vfx2d-layer-burst"></a>
+### `file:vfx2d.layer.burst`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cool number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `drift number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `erode number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `erodeStart number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `evolve number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hollow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rough number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `wobble number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-ring"></a>
+### `file:vfx2d.layer.ring`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `breakup number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fade number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `inner number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `th number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `thEnd number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-flame"></a>
+### `file:vfx2d.layer.flame`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `flick number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hgt number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hollow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rough number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `taper number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `w number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-beam"></a>
+### `file:vfx2d.layer.beam`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cap number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `len number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `th number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `wob number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-slash"></a>
+### `file:vfx2d.layer.slash`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `a0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `a1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `erode number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `sweep number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `th number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `trail number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-orb"></a>
+### `file:vfx2d.layer.orb`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `pulse number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `pulseRate number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rim number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spin number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-comet"></a>
+### `file:vfx2d.layer.comet`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `from [x,y]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `len number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rough number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `until number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-vortex"></a>
+### `file:vfx2d.layer.vortex`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `arms number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `core string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dir number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rIn number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spin number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `twist number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-pillar"></a>
+### `file:vfx2d.layer.pillar`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hgt number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rough number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `w number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-rays"></a>
+### `file:vfx2d.layer.rays`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `inner number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `jitter number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spin number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `twinkle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `width number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-glyph"></a>
+### `file:vfx2d.layer.glyph`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `draw number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fill number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rings [number,...]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `runes number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spin number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `star number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `step number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ticks number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-puffs"></a>
+### `file:vfx2d.layer.puffs`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cone number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `decay number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dir number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dissolve number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `drift number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `emit number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `flat number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `life number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rise number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spread number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-particles"></a>
+### `file:vfx2d.layer.particles`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `area number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `areaX number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `areaY number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `both boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dir number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `drag number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `driftX number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `emit number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fadeIn number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fallScale number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gravity number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ground number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `heat number \| [min,max]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `implodeR number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `jitter number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `life number \| [min,max]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `mode string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `orbitR number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `shape string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `size number \| [min,max]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spanX number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spanY number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number \| [min,max]` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spread number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `swirl number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `turns number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `twinkle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `wiggle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `wiggleRate number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-bolt"></a>
+### `file:vfx2d.layer.bolt`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `branch number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `depth number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fadeStart number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `flicker number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hold number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `jag number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `len number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `mode string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spread number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `thick number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-cracks"></a>
+### `file:vfx2d.layer.cracks`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fadeStart number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `len number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-spikes"></a>
+### `file:vfx2d.layer.spikes`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fan number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `grow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hgt number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hold number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `lean number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spread number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `width number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-star"></a>
+### `file:vfx2d.layer.star`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hollow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `inner number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `jitter number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `points number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `pop number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `sharp number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-streaks"></a>
+### `file:vfx2d.layer.streaks`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `count number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `curve number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dir number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gap number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `len number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `mode string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spanY number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `speed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `stagger number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `th number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `turns number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-bubble"></a>
+### `file:vfx2d.layer.bubble`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cell number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fill number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hex number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `shimmer number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `th number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-flash"></a>
+### `file:vfx2d.layer.flash`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dur number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `r number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-text"></a>
+### `file:vfx2d.layer.text`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `text string` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `fadeStart number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `pop boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rise number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `scale number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+
+<a id="file-vfx2d-layer-tornado"></a>
+### `file:vfx2d.layer.tornado`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `type layer type name` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ramp ramp name \| $name \| hex colour array` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `t1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `x number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `y number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `angle number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `squash number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gain number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `cut number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `gamma number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `dither number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glow number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `glowFalloff number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `blend string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hidden boolean` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `seed number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hue number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `ease string; see pixel-vfx for enumerated values` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `freq number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `hgt number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `rough number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `spin number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `sway number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `twist number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `w0 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
+| `w1 number` | `renderer; see pixel-vfx` | Positions and distances use half the shorter canvas dimension; angles are degrees, times are normalised 0..1 unless stated in pixels/frames. Not every common transform changes every layer. |
 
 <a id="file-video"></a>
 ### `file:video`
@@ -2976,17 +5046,177 @@ Field coverage: complete video parser field table. Sources require ffmpeg/ffprob
 
 project.ogt: project configuration, not an asset. See start and conventions.
 
+| Field | Default | Meaning |
+|---|---|---|
+| `name "<name>"` | `Origin Engine game` | Display name. |
+| `id "<id>"` | `game` | Project identifier. |
+| `engine "<version>"` | `installed engine` | Pinned released engine version. |
+| `entry "<path.ts>"` | `src/main.ts` | Game entry relative to project. |
+| `tick <integer 1..240>` | `GameDesc` | Fixed ticks per second; duplicate conflicting GameDesc values fail. |
+| `seed <u32>` | `GameDesc` | Simulation seed. |
+| `saveVersion <u32 >= 1>` | `GameDesc` | Save contract version. |
+| `scene <name>` | `GameDesc` | Initial scene from scenes. |
+| `scenes { <name> "<asset path>" ... }` | `GameDesc` | Named scene assets. |
+| `look "<asset path>"` | `none` | Look and cook art contract; see file:look. |
+| `create { ... }` | `none` | Creation choices retained as project data; form 2d selects the 2D profile, otherwise 3D. |
+| `flow "<dialogue.yarn>" { screen engine \| game }` | `none` | Dialogue started before GameDesc.start; screen defaults to engine. |
+| `cook { ... }` | `defaults` | Cook options. |
+| `publish { ... }` | `defaults` | Web export options, not an instruction to publish. |
+| `perf { budget "<line>" <milliseconds> ... }` | `none` | Per-line median time limits for perf reporting. |
+| `budgets { ... }` | `cook budget defaults` | Content limits, not generation decisions. |
+| `conform { off "<pattern>" ... }` | `none` | Explicit art-contract exemptions; * matches within a path segment, ** across segments, trailing / a directory. |
+
+<a id="file-project-cook"></a>
+### `file:project.cook`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `color_textures etc1s \| uastc` | `etc1s` | Colour texture encoding; publish can override. |
+| `clusters true \| false` | `true` | Bake meshlet clusters. |
+| `uses "<bundle>" ...` | `none` | Explicit additional bundles the project can reference. |
+
+<a id="file-project-publish"></a>
+### `file:project.publish`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `out "<directory>"` | `dist` | Export destination. |
+| `keep "<asset pattern>" ...` | `none` | Additional asset roots beyond reachable references. |
+| `color_textures etc1s \| uastc` | `cook setting` | Export texture encoding. |
+| `probe player \| all` | `export default` | Probe visibility. |
+| `isolation required \| preferred \| off` | `export default` | Cross-origin isolation policy. |
+| `fit fill \| letterbox` | `export default` | Canvas fit. |
+| `aspect "<width:height>"` | `none` | Required for letterbox. |
+| `aspect_min "<width:height>"` | `none` | Minimum fill aspect ratio. |
+| `aspect_max "<width:height>"` | `none` | Maximum fill aspect ratio. |
+| `orientation any \| landscape \| portrait` | `export default` | Screen orientation. |
+| `dpr_cap <0.5..4>` | `export default` | Maximum device pixel ratio. |
+| `fullscreen off \| gesture` | `export default` | Request fullscreen after gesture. |
+| `gate tap \| none` | `export default` | Ready-to-interact gate. |
+| `made_with true \| false` | `export default` | Engine badge. |
+| `icon "<path.png>"` | `brand tile` | Square icon at least 192 pixels. |
+| `short_name "<name>"` | `export default` | Installed application name. |
+| `telemetry on \| off` | `export default` | Field telemetry. |
+| `pipelines auto \| sync \| async \| prewarm` | `export default` | Web pipeline creation mode. |
+| `loading engine \| game \| page` | `export default` | Loading-screen owner. |
+| `loading_labels { fetch\|transcode\|prime\|present "<caption>" ... }` | `engine captions` | Per-stage loading captions. |
+| `assets "<https base URL>"` | `export directory` | Cooked asset base; localhost HTTP also accepted. No credentials, query or fragment. |
+| `content "<https base URL>"` | `export default` | Content base; same URL contract as assets. |
+
+<a id="file-project-budgets"></a>
+### `file:project.budgets`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `triangles <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `vertices <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `textureSize <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `bones <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `clips <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `assetBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `totalBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `soundSeconds <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `videoSeconds <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `navPolygons <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `sceneEntities <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `emitterParticles <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `bvhShare <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+| `gpuBytes <u64>` | `cook budget default` | Content limit; use og doctor --project for observed values and budget reports. |
+
+Creation data (form, genre, view, look, variant, ui, platform, input, players, lang, music) comes from `og create --creation`; it is retained as hints, not interpreted as gameplay rules. Apart from form, it does not configure the runtime. Arbitrary creation notes do not generate content.
 <a id="file-import"></a>
 ### `file:import`
 
 A source's .ogt sidecar or directory import.ogt: input settings, not an independent asset. See loading.
 
+Directory import.ogt contains repeated `match "<pattern>" ... { ... }` blocks (patterns are directory-relative). Matching ancestors merge in order, then the file's own sidecar overrides by key. Root `conform off` opts out of the project art contract; a model's optional `fracture` block is below. Rive uses its own root artboard/font declarations.
+
+
+<a id="file-import-model"></a>
+### `file:import.model`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `lods <fraction> ...` | `1 0.5 0.25` | At most eight strictly decreasing positive fractions, first 1. |
+| `lodError <0..1, >0>` | `0.05` | Largest simplification error relative to mesh extent. |
+| `raycast true \| false` | `true` | Bake raycast BVH; false builds it on first use. |
+| `collider true \| false \| convex \| vhacd` | `false` | Bake triangle, convex or decomposed collision. |
+| `impostor true \| false` | `false` | Bake octahedral impostor. |
+| `impostorGrid <integer 2..32>` | `8` | Impostor view grid. |
+| `impostorSize <integer 16..512>` | `128` | Impostor frame pixels; total atlas width cannot exceed 4096. |
+| `impostorBelow true \| false` | `false` | Include lower hemisphere. |
+| `stream_textures true \| false` | `false` | Stream high mip levels, keeping the shared mip tail resident. |
+| `process { ... }` | `off` | Shared static-mesh preparation; see file:model.process. |
+| `front "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `source orientation` | Source forward axis, rotated to engine +Z. Must be perpendicular to up. |
+| `up "+x" \| "-x" \| "+y" \| "-y" \| "+z" \| "-z"` | `+y when front is given` | Source up axis, rotated to engine +Y. |
+| `voxScale <metres per voxel > 0>` | `1` | VOX sources only. |
+| `voxOrigin center \| bottom` | `center` | VOX origin; bottom places the lowest voxel at y=0. |
+| `voxFps <1..120>` | `10` | VOX animation frames per second. |
+| `voxClip <name> <first u32> <last u32>` | `source clips` | VOX frame range, both ends inclusive; repeated unique names. |
+
+<a id="file-import-texture"></a>
+### `file:import.texture`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `kind color \| normal \| linear \| single \| pixel` | `color` | Image data interpretation and encoding. |
+| `stream true \| false` | `false` | Stream high mip levels. |
+| `normal auto \| "<image path>"` | `none` | 2D normal map generated from silhouette/luminance, or an authored tangent-space map beside the texture. |
+| `sway clumps \| tiers ["<parts map>"]` | `none` | 2D plant part segmentation; optional same-size colour-labelled map keeps authored parts. |
+
+<a id="file-import-font"></a>
+### `file:import.font`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `pixel <integer 4..64>` | `outline font` | Pixel grid per em. Does not change other fonts' charset or mode. |
+
+<a id="file-import-sound"></a>
+### `file:import.sound`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `stream true \| false` | `auto above 1 MiB` | QOA chunk streaming; Opus streams codec blocks instead. |
+| `chunk <seconds 1..60>` | `4` | QOA chunk duration rounded up to full codec frames. |
+| `codec qoa \| opus` | `qoa` | Opus resamples to 48kHz and uses at most the first two channels. |
+| `bitrate <16..256>` | `96 stereo / 64 mono` | Opus kb/s, rounded to nearest whole number. |
+
+<a id="file-import-tilemap"></a>
+### `file:import.tilemap`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `unit <number>` | `1` | World units per tile width. |
+| `level <identifier>` | `first level` | LDtk level identifier. |
+| `solid <i64> ...` | `1` | LDtk solid IntGrid values. |
+| `tileset "<asset.ogt>"` | `source tilesets` | Replace every source tileset with this authored asset. |
+
+<a id="file-import-rive"></a>
+### `file:import.rive`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `artboards <name> ...` | `all` | Artboards to cook, named as in the source. |
+| `artboard <name> { ... }` | `source defaults` | Per-artboard settings. |
+| `font <name> { source "<path.ttf>" }` | `embedded font` | Supply an external font relative to assets/. |
+
+<a id="file-import-rive-artboard"></a>
+### `file:import.rive.artboard`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `state-machine <name>` | `source default` | Initial state machine. |
+| `role <accessibility role>` | `none` | UI accessibility role; see ui accessibility vocabulary. |
+| `name <string>` | `source name` | Accessible name. |
+| `fit contain \| cover \| fill \| none \| scale-down \| fit-width \| fit-height` | `source default` | Artboard fit. |
+| `align center \| top \| bottom \| left \| right \| top-left \| top-right \| bottom-left \| bottom-right` | `source default` | Artboard alignment. |
 
 <a id="file-import-animation"></a>
 ### `file:import.animation`
 
 | Field | Default | Meaning |
 |---|---|---|
+| `clip "<name>" { channel ... }` | `` | Explicit named-node keys. Names cannot collide with the source clips; same sampler and codec as glTF. |
 | `rate <1..120 Hz>` | `source key rate` | Resample every clip at this rate. |
 | `event "<clip>" "<marker>" <seconds>` | `` | Repeat explicit markers. |
 | `rig "<asset>"` | `detected` | Humanoid rig map under assets/. |
@@ -2995,6 +5225,21 @@ A source's .ogt sidecar or directory import.ogt: input settings, not an independ
 | `footIk true \| false` | `true` | Retarget planted feet against the ground. |
 | `compress true \| false` | `false` | Quantize and reduce keys instead of storing f32 samples. |
 | `tolerance <number > 0, <= 0.1>` | `0.0001` | Maximum compression error per channel lane in its units. |
+
+<a id="file-import-animation-clip"></a>
+### `file:import.animation.clip`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `channel "<node>" translation \| rotation \| scale \| weights \| visibility { ... }` | `required` | Repeated channels; node names must resolve uniquely. Metres, xyzw unit quaternions, scale factors, morph weights or 0/1 visibility. |
+
+<a id="file-import-animation-clip-channel"></a>
+### `file:import.animation.clip.channel`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `interpolation step \| linear \| cubicSpline` | `linear` | glTF interpolation; visibility requires step. Cubic keys contain in-tangent, value, out-tangent; tangents are per second. |
+| `key <seconds >= 0> <values...>` | `required` | Strictly increasing times. Translation/scale have 3 lanes, rotation 4, weights one per morph target, visibility 1; cubic keys have three times as many values. |
 
 <a id="file-import-fracture"></a>
 ### `file:import.fracture`
@@ -3020,6 +5265,41 @@ A source's .ogt sidecar or directory import.ogt: input settings, not an independ
 
 .shape.json: model program operations; consumed by model. See model.
 
+
+<a id="file-model-program-surface"></a>
+### `file:model-program.surface`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `density number` | `0 (kernel default)` | Texels per model unit. |
+| `seed u32` | `0` | Surface random seed. |
+| `normalScale number` | `0 (kernel default)` | Relief-to-normal strength. |
+| `layers [layer, ...]` | `[]` | Ordered procedural paint layers. |
+
+<a id="file-model-program-surface-layer"></a>
+### `file:model-program.surface.layer`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `pattern noise \| ridged \| craters \| strata \| stripes \| panels \| rivets \| veins \| edges \| cavities \| facing \| gradient` | `required` | Shared paint mechanism. |
+| `scale number` | `0 (kernel default)` | Pattern scale in model units. |
+| `width number` | `0 (kernel default)` | Pattern width. |
+| `cell number` | `0 (kernel default)` | Pattern cell size. |
+| `inset number` | `0 (kernel default)` | Panel inset. |
+| `axis signed axis string \| [x,y,z]` | `+Z` | Projection direction. |
+| `octaves u32` | `0 (kernel default)` | Noise octave count. |
+| `threshold number` | `pattern default` | Pattern threshold. |
+| `softness number` | `0 (kernel default)` | Threshold softness. |
+| `seed u32` | `0` | Layer random seed. |
+| `amount number` | `1` | Layer blend weight. |
+| `breakup number` | `0` | Pattern breakup. |
+| `color hex string \| [r,g,b]` | `unchanged` | Layer colour. |
+| `jitter number` | `0` | Colour variation. |
+| `roughness number` | `unchanged` | Layer roughness. |
+| `metalness number` | `unchanged` | Layer metallic factor. |
+| `emissive hex string \| [r,g,b]` | `unchanged` | Emitted colour. |
+| `glow number` | `1` | Emission strength. |
+| `relief number` | `0` | Surface displacement. |
 The operation and profile key sets below are the exact tables used to reject unknown JSON fields; parameter expressions are resolved before dispatch. For value types, units and construction examples see model. These are JSON objects, not OGT blocks. The op discriminator selects an operation, and a one-key profile object selects a profile.
 
 <a id="file-model-program-op-frame"></a>
@@ -3027,154 +5307,154 @@ The operation and profile key sets below are the exact tables used to reject unk
 
 | Field | Default | Meaning |
 |---|---|---|
-| `origin <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `normal <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `up <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `origin [x,y,z]; origin in model units, others directions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `normal [x,y,z]; origin in model units, others directions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `up [x,y,z]; origin in model units, others directions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-offset"></a>
 ### `file:model-program.op.offset`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `distance number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-translate"></a>
 ### `file:model-program.op.translate`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `z <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `x number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `y number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `z number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-turn"></a>
 ### `file:model-program.op.turn`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `rz <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `rx number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `ry number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `rz number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-compose"></a>
 ### `file:model-program.op.compose`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `local <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `local {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-bbox"></a>
 ### `file:model-program.op.bbox`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `sides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ids part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `sides string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-face"></a>
 ### `file:model-program.op.face`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-edge"></a>
 ### `file:model-program.op.edge`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-local"></a>
 ### `file:model-program.op.local`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-anchor"></a>
 ### `file:model-program.op.anchor`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-placement"></a>
 ### `file:model-program.op.placement`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-grid"></a>
 ### `file:model-program.op.grid`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `nx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `ny <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `px <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `py <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `stagger <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `nx u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `ny u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `px number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `py number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `stagger boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-ring"></a>
 ### `file:model-program.op.ring`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `n <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `start <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `n u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `start number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-along"></a>
 ### `file:model-program.op.along`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `count <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `path {points:[[x,y,z], ...], closed:boolean}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `pitch number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `count u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-snap"></a>
 ### `file:model-program.op.snap`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `direction <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ids part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `points [[x,y,z], ...]; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `direction [x,y,z]; origin in model units, others directions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-names"></a>
 ### `file:model-program.op.names`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-measure"></a>
 ### `file:model-program.op.measure`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `posed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `posed {jointName:number, ...}; optional pose for measurement` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-units"></a>
 ### `file:model-program.op.units`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `unit <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `unit "mm" \| "cm" \| "m"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-uvs"></a>
 ### `file:model-program.op.uvs`
@@ -3187,607 +5467,607 @@ The operation and profile key sets below are the exact tables used to reject unk
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-cylinder"></a>
 ### `file:model-program.op.cylinder`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radiusTop <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radiusTop number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-cone"></a>
 ### `file:model-program.op.cone`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-sphere"></a>
 ### `file:model-program.op.sphere`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis "+Y" \| "+Z"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-dome"></a>
 ### `file:model-program.op.dome`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis "+Y" \| "+Z"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-tube"></a>
 ### `file:model-program.op.tube`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `outer <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `inner <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `outer number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `inner number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-torus"></a>
 ### `file:model-program.op.torus`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tube <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tubeSegments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tube number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis "+Y" \| "+Z"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tubeSegments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-wedge"></a>
 ### `file:model-program.op.wedge`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-extrude"></a>
 ### `file:model-program.op.extrude`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `twist <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `taper <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `bothSides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `until <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `twist number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `taper number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `bothSides boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `until {part: id, face: string}; extrude until the selected face` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-revolve"></a>
 ### `file:model-program.op.revolve`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis "+Y" \| "+Z"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-sweep"></a>
 ### `file:model-program.op.sweep`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `up <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `twist <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `scaleEnd <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `path point/piece array; arc {through,to}, tangentArc {to}, spline {points}; 3D also {helix:{radius,pitch,turns}}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `up [x,y,z]; origin in model units, others directions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `twist number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `scaleEnd number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-loft"></a>
 ### `file:model-program.op.loft`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `sections <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `samples <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `steps <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `curve <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `sections [{profile, z:number}, ...] \| [{profile, at:frame}, ...]; no mixed placement forms` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `samples u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `steps u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `curve "auto" \| "straight" \| "catmullRom" \| "spline"; placed sections only straight/catmullRom` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `closed boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-thread"></a>
 ### `file:model-program.op.thread`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `length <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `pitch number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `length number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-wire"></a>
 ### `file:model-program.op.wire`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `fillet <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `fillets <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `path point/piece array; arc {through,to}, tangentArc {to}, spline {points}; 3D also {helix:{radius,pitch,turns}}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `diameter number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `closed boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `fillet number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `fillets [number, ...]; one model-unit radius per path point` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-body"></a>
 ### `file:model-program.op.body`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `plan <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `top <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `bottom <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `n <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `plan number \| [[y,value], ...] \| {points: [[y,value],...], smooth: boolean}; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `top number \| [[y,value], ...] \| {points: [[y,value],...], smooth: boolean}; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `bottom number \| [[y,value], ...] \| {points: [[y,value],...], smooth: boolean}; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `n number \| [[y,value], ...] \| {points: [[y,value],...], smooth: boolean}; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-knurl"></a>
 ### `file:model-program.op.knurl`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `pitch <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `straight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `diameter number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `pitch number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `straight boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-gear"></a>
 ### `file:model-program.op.gear`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `teeth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `module <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `pressureAngle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `bore <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `hub <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `hubHeight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `uvs <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `teeth u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `module number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `pressureAngle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `bore number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `hub number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `hubHeight number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `uvs boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-at"></a>
 ### `file:model-program.op.at`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-transform"></a>
 ### `file:model-program.op.transform`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-group"></a>
 ### `file:model-program.op.group`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `children part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-wrap"></a>
 ### `file:model-program.op.wrap`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `parts <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `parts part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-assembly"></a>
 ### `file:model-program.op.assembly`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `anchors <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `children part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `anchors {name: frame, ...}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-attach"></a>
 ### `file:model-program.op.attach`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `to <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `children <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `to u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `children part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-copy"></a>
 ### `file:model-program.op.copy`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-mirror"></a>
 ### `file:model-program.op.mirror`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `plane <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `plane {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-cut"></a>
 ### `file:model-program.op.cut`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `target u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tool u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `check boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-join"></a>
 ### `file:model-program.op.join`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `target u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tool u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `check boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-intersect"></a>
 ### `file:model-program.op.intersect`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `check <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `target u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tool u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `check boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-merge"></a>
 ### `file:model-program.op.merge`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `tool <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `target u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `tool u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-delete"></a>
 ### `file:model-program.op.delete`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-seat"></a>
 ### `file:model-program.op.seat`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `host <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `part <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `host u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `part u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-scale"></a>
 ### `file:model-program.op.scale`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `z <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `x number; scale factor (zero keeps one)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `y number; scale factor (zero keeps one)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `z number; scale factor (zero keeps one)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-hole"></a>
 ### `file:model-program.op.hole`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `diameter <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `counterbore <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `countersink <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `diameter number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `at frame \| [frame, ...]; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `counterbore [number,number]; range in joint units, counterbore [diameter,depth], countersink [diameter,radians]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `countersink [number,number]; range in joint units, counterbore [diameter,depth], countersink [diameter,radians]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-pocket"></a>
 ### `file:model-program.op.pocket`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `at frame \| [frame, ...]; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-split"></a>
 ### `file:model-program.op.split`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `frame <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `keep <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `frame {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `keep "above" \| "below"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-shell"></a>
 ### `file:model-program.op.shell`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `thickness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `open <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `thickness number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `open string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-dent"></a>
 ### `file:model-program.op.dent`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `at <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `depth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `at [[x,y,z], ...]; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `depth number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-subdivide"></a>
 ### `file:model-program.op.subdivide`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `levels <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `sharp <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `levels u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `sharp string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-displace"></a>
 ### `file:model-program.op.displace`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `noise <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `scale <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `amount <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `octaves <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `seed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `density <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `noise "fbm" \| "ridged" \| "crater"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `scale number; noise frequency scale` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `amount number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `octaves u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `seed u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `density number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-fillet"></a>
 ### `file:model-program.op.fillet`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `edges string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `profile number; bevel profile factor` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-chamfer"></a>
 ### `file:model-program.op.chamfer`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `distance2 <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `distance number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `distance2 number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `edges string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-soften"></a>
 ### `file:model-program.op.soften`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `edges <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `edges string \| [string, ...]; named faces/edges/sides` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-material"></a>
 ### `file:model-program.op.material`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `ids <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `color <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `metalness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `roughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `emissive <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `opacity <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `map <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `mapSize <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `clearcoat <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `clearcoatRoughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `sheenColor <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `sheenRoughness <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `transmission <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `iridescence <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `surface <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `ids part id \| [part id, ...]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `color "#rrggbb" \| [r,g,b]; sRGB` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `metalness number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `roughness number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `emissive "#rrggbb" \| [r,g,b]; sRGB` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `opacity number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `map string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `mapSize number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `clearcoat number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `clearcoatRoughness number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `sheenColor "#rrggbb" \| [r,g,b]; sRGB` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `sheenRoughness number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `transmission number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `iridescence number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `surface {density?, seed?, normalScale?, layers?:[layer,...]}; see file:model-program.surface` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-joint"></a>
 ### `file:model-program.op.joint`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `child <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `parent <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `kind <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `on <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `range <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `mimic <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `child u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `parent u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `kind "revolute" \| "continuous" \| "prismatic" \| "fixed" \| "floating"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `on {origin:[x,y,z], x:[x,y,z], y:[x,y,z], z:[x,y,z]}; orthonormal frame` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis [x,y,z]; local direction` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `range [number,number]; range in joint units, counterbore [diameter,depth], countersink [diameter,radians]` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `mimic {joint:string, multiplier:number}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-pose"></a>
 ### `file:model-program.op.pose`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `joint <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `value <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `clip <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `time <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `joint string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `value number; radians for rotary joints, model units for prismatic joints` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `clip string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `time number; seconds` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-clip"></a>
 ### `file:model-program.op.clip`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `keys <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `keys [{time: seconds, pose: {jointName: number}}]; strictly increasing times` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-skin"></a>
 ### `file:model-program.op.skin`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `bones <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `joints <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `blend <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `maxEdge <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `bones [{name:string, parent?:string, pivot?:[x,y,z] or frame, regions?:[faceName,...]}, ...]; parent first` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `joints [{name:string, parent?:string, at:[x,y,z]}, ...]; bone-heat skeleton, exclusive with bones` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `blend number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `maxEdge number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-humanoid"></a>
 ### `file:model-program.op.humanoid`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `bind <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `bind boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-op-morph"></a>
 ### `file:model-program.op.morph`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `id <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `name <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `target <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `deltas <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `regions <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `offset <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `scale <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `weight <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `id u32 part id \| {id:u32}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `name string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `target part id; exclusive with deltas/regions` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `deltas [[x,y,z], ...]; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `regions [string, ...]; named faces` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `offset [x,y,z]; displacement in model units / scale factors` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `scale [x,y,z]; displacement in model units / scale factors` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `weight number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-rect"></a>
 ### `file:model-program.profile.rect`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `height <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `height number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-circle"></a>
 ### `file:model-program.profile.circle`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-ellipse"></a>
 ### `file:model-program.profile.ellipse`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `rx number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `ry number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-slot"></a>
 ### `file:model-program.profile.slot`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `length <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `length number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-polygon"></a>
 ### `file:model-program.profile.polygon`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `sides <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `radius <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `flats <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `sides u32; polygon side count` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `radius number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `flats number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-poly"></a>
 ### `file:model-program.profile.poly`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `points [[x,y], ...]; poly also accepts {x,y,radius?,bulge?} (bulge in half-chords)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-gear"></a>
 ### `file:model-program.profile.gear`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `teeth <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `module <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `pressureAngle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `teeth u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `module number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `pressureAngle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-union"></a>
 ### `file:model-program.profile.union`
@@ -3812,51 +6092,51 @@ The operation and profile key sets below are the exact tables used to reject unk
 
 | Field | Default | Meaning |
 |---|---|---|
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `distance <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `distance number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-translate"></a>
 ### `file:model-program.profile.translate`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `x number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `y number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-rotate"></a>
 ### `file:model-program.profile.rotate`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `angle <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `angle number; radians` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-scale"></a>
 ### `file:model-program.profile.scale`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `x <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `y <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `x number; scale factor (zero keeps one)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `y number; scale factor (zero keeps one)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-superellipse"></a>
 ### `file:model-program.profile.superellipse`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `rx <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `ry <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `exponent <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `segments <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `rx number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `ry number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `exponent number; dimensionless` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `segments u32; zero requests the mechanism's automatic choice where supported` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-spline"></a>
 ### `file:model-program.profile.spline`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `points <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `points [[x,y], ...]; poly also accepts {x,y,radius?,bulge?} (bulge in half-chords)` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-path"></a>
 ### `file:model-program.profile.path`
@@ -3869,11 +6149,11 @@ The operation and profile key sets below are the exact tables used to reject unk
 
 | Field | Default | Meaning |
 |---|---|---|
-| `path <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `width <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `join <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `roundCaps <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `closed <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `path point/piece array; arc {through,to}, tangentArc {to}, spline {points}; 3D also {helix:{radius,pitch,turns}}` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `width number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `join "round" \| "miter" \| "bevel"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `roundCaps boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `closed boolean` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-hull"></a>
 ### `file:model-program.profile.hull`
@@ -3886,33 +6166,107 @@ The operation and profile key sets below are the exact tables used to reject unk
 
 | Field | Default | Meaning |
 |---|---|---|
-| `profile <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `axis <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `profile one-key profile object; see file:model-program.profile.*` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `axis "x" \| "y"` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 
 <a id="file-model-program-profile-text"></a>
 ### `file:model-program.profile.text`
 
 | Field | Default | Meaning |
 |---|---|---|
-| `text <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `font <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `size <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
-| `spacing <JSON value>` | `see model` | Value is read by the shared model-program parser; parameters may use $expressions. |
+| `text string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `font string; font/map names are tracked source assets` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `size number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
+| `spacing number; model units` | `see model mechanism` | Numeric fields also accept $parameter expressions; geometry constraints are checked by the shared kernel. Model programs use Z up; cooked models convert to metres/Y up. |
 <a id="file-theme"></a>
 ### `file:theme`
 
 theme.json: compiles to pack.json and UI art. See themes and theme-tokens.
 
+| Field | Default | Meaning |
+|---|---|---|
+| `about string` | `inherited` | Author note. |
+| `extends theme name` | `inherited` | Resolve parent first; cycles fail. |
+| `with [mixin name, ...]` | `inherited` | Merge mixins in order after extends, before own keys; mixins cannot themselves extend or mix in. |
+| `color {source?,accent?,neutral?,danger?,variant?,scheme?}` | `inherited` | String-valued palette settings; scheme is light or dark. |
+| `material dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `shape dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `type dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `motion dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `ornament name \| {slot: name}` | `inherited` | One ornament or one per button/panel/plate/slot/chip. |
+| `effects dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `sound dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `icons dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `density dimension name` | `inherited` | Select a dimension value; no new artwork or gameplay is inferred. |
+| `pack pack object` | `inherited` | Hand-authored pack overlay applied after compiled theme and generated art; see file:pack. |
+
+<a id="file-theme-color"></a>
+### `file:theme.color`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `source string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
+| `accent string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
+| `neutral string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
+| `danger string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
+| `variant string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
+| `scheme string` | `inherited` | Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark. |
 <a id="file-pack"></a>
 ### `file:pack`
 
 pack.json: UI style pack. See themes.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `about any JSON` | `` | Ignored author note. |
+| `scheme light \| dark` | `inherited` | Default colour scheme. |
+| `seeds {name: CSS colour or {light,dark}}` | `inherited` | Palette seeds; accepted names are listed below. |
+| `theme {section: values}` | `inherited` | Tailwind theme overrides. Leaves may be exact {light,dark} pairs. |
+| `contrast {section: values}` | `inherited` | Theme overrides for prefers-contrast:more. |
+| `variants {Component.slot[.variant]: class string}` | `{}` | Append classes to named component slots; empty strings declare slots. |
+| `fonts [path, ...]` | `[]` | Font files relative to this pack, or shared asset paths. Font metadata comes from the files. |
+| `icons {name: path}` | `{}` | Named image paths. |
+| `iconSet path` | `none` | Icons asset (.ogt), below individually named icons. |
+| `images {kebab-name: nineSlice or {light,dark}}` | `{}` | Named nine-slice art. |
+| `sounds {event: sound, Component.slot[.variant]: {event: sound}}` | `{}` | Pack-wide or slot-local interaction sounds. |
+| `haptics {event: preset, Component.slot[.variant]: {event: preset}}` | `{}` | Pack-wide or slot-local haptic names. |
+
+<a id="file-pack-images-nineSlice"></a>
+### `file:pack.images.nineSlice`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `src path` | `required` | Source image. |
+| `slice number >= 0 \| [top,right,bottom,left]` | `required` | Insets into the source image, in pixels. |
+| `width number >= 0 \| [top,right,bottom,left]` | `slice` | Drawn border widths. |
+| `fill boolean` | `true` | Paint the centre. |
+| `repeat stretch \| tile` | `stretch` | Border repeat mode. |
+| `tint boolean` | `false` | Tint art with the element colour. |
+
+<a id="file-pack-sounds-sound"></a>
+### `file:pack.sounds.sound`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `clips [path, ...]` | `[]` | Audio clips relative to this pack or shared assets; empty only at volume 0. |
+| `volume number \| [low,high]` | `1` | Gain or sampling range. |
+| `pitch number \| [low,high]` | `1` | Playback rate or sampling range. |
+
+Theme sections: colors, spacing, rem, breakpoints, container, fontSize, fontWeight, fontFamily, tracking, leading, radius, shadow, insetShadow, dropShadow, textShadow, blur, perspective, aspect, ease, duration, opacity, stroke, scale. Palette seeds: primary, accent, neutral, danger, warn, success, info, team, hud. Sound/haptic events: press, hover, select, confirm, cancel, back, open, close, error, reward, toggle, tab, levelup, purchase, countdown, tick, step, swipe, notify, unlock. Haptic presets: tick, tap, thud, double, buzz, success, warning, error, none. Scheme pairs have exactly light and dark. Theme values follow the Tailwind theme contract, not OGT syntax.
 
 <a id="file-font-extension"></a>
 ### `file:font-extension`
 
 extension.json of kind font, with TTF/OTF sources. See localization.
 
+| Field | Default | Meaning |
+|---|---|---|
+| `kind font` | `required` | Extension kind discriminator. |
+| `name string` | `required` | Pack name. |
+| `languages [language, ...]` | `[]` | Language tags the pack covers. |
+| `scripts [ISO 15924 code, ...]` | `[]` | Scripts, including language-independent packs such as emoji Zsye. |
+| `faces [path, ...]` | `[]` | TTF/OTF paths relative to the pack; each face retains its own import settings. |
+| `hyphenation [language.hyph, ...]` | `[]` | Dictionaries shipped only for reached hyphens:auto and project locales. |
 <a id="file-tsx"></a>
 ### `file:tsx`
 
@@ -3923,4 +6277,12 @@ TSX is the UI source; TS/TSX bundling is not a cook generator. See ui-tsx.
 
 cooked/probes/<key>.ogt: derived bake record, not an authored input. See render.
 
+| Field | Default | Meaning |
+|---|---|---|
+| `position "<x>" "<y>" "<z>"` | `0 0 0` | World position in metres, stored as quoted numeric strings. |
+| `box "<x>" "<y>" "<z>"` | `0 0 0` | World box size in metres, stored as quoted numeric strings. |
+| `room "<hash>"` | `` | Captured room content hash. |
+| `commands "<commands>"` | `` | Commands which reached the capture. |
+| `asset "<id>" "<hex hash>"` | `` | Repeated captured model output hashes. |
+| `code "<hex hash>"` | `none` | Source hash when code built the captured room. |
 Removed style.ogt and .svelte are rejected, not compatibility formats. For native source extensions, use the loading guide; a decoder supported as a parent asset's input is not necessarily an independent cook type.

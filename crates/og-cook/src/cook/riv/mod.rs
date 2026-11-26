@@ -86,6 +86,61 @@ use og_core::glam::Vec2;
 use og_core::ogt::{Block, Entry, Value};
 use og_rive::Fit;
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "artboards",
+        "<name> ...",
+        "all",
+        "Artboards to cook, named as in the source.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "artboard",
+        "<name> { ... }",
+        "source defaults",
+        "Per-artboard settings.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "font",
+        "<name> { source \"<path.ttf>\" }",
+        "embedded font",
+        "Supply an external font relative to assets/.",
+        "",
+    ),
+];
+pub(crate) const ARTBOARD_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "state-machine",
+        "<name>",
+        "source default",
+        "Initial state machine.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "role",
+        "<accessibility role>",
+        "none",
+        "UI accessibility role; see ui accessibility vocabulary.",
+        "",
+    ),
+    crate::grammar::Line::new("name", "<string>", "source name", "Accessible name.", ""),
+    crate::grammar::Line::new(
+        "fit",
+        "contain | cover | fill | none | scale-down | fit-width | fit-height",
+        "source default",
+        "Artboard fit.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "align",
+        "center | top | bottom | left | right | top-left | top-right | bottom-left | bottom-right",
+        "source default",
+        "Artboard alignment.",
+        "",
+    ),
+];
+
 /// One artboard's import settings (`artboard <name> { … }`).
 #[derive(Clone, Debug, Default, PartialEq)]
 struct ArtboardSettings {
@@ -127,6 +182,7 @@ fn word_or_string(e: &Entry, i: usize) -> Result<String, String> {
 
 fn settings(body: &Block) -> Result<Settings, String> {
     let mut out = Settings::default();
+    crate::grammar::check(body, LINES, "Rive import")?;
     for e in &body.entries {
         match e.key.as_str() {
             "artboards" => {
@@ -139,6 +195,9 @@ fn settings(body: &Block) -> Result<Settings, String> {
             "artboard" => {
                 let name = word_or_string(e, 0)?;
                 let mut a = ArtboardSettings::default();
+                if let Some(b) = &e.block {
+                    crate::grammar::check(b, ARTBOARD_LINES, "Rive artboard")?;
+                }
                 for f in e.block.iter().flat_map(|b| &b.entries) {
                     match f.key.as_str() {
                         "state-machine" => a.machine = Some(word_or_string(f, 0)?),

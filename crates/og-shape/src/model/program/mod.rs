@@ -138,6 +138,8 @@ use crate::model::place::{self, Path};
 use crate::model::tree::{Combine, Id, JointDesc, Model, Unit};
 
 mod args;
+mod fields;
+pub use fields::{SURFACE, SURFACE_LAYER, field};
 mod generate;
 mod outlines;
 mod report;
@@ -1241,7 +1243,12 @@ fn surface(v: &Value) -> Result<crate::tools::paint::Surface, String> {
         .as_object()
         .ok_or("an object: {density, seed, normalScale, layers}")?;
     let fail = |e: ModelError| e.to_string();
-    only(o, "surface", &["density", "seed", "normalScale", "layers"]).map_err(fail)?;
+    only(
+        o,
+        "surface",
+        &SURFACE.iter().map(|f| f.key).collect::<Vec<_>>(),
+    )
+    .map_err(fail)?;
     let num = |o: &Map<String, Value>, k: &str, d: f64| -> Result<f64, String> {
         match o.get(k) {
             None => Ok(d),
@@ -1291,27 +1298,7 @@ fn surface(v: &Value) -> Result<crate::tools::paint::Surface, String> {
         only(
             o,
             "surface layer",
-            &[
-                "pattern",
-                "scale",
-                "width",
-                "cell",
-                "inset",
-                "axis",
-                "octaves",
-                "threshold",
-                "softness",
-                "seed",
-                "amount",
-                "breakup",
-                "color",
-                "jitter",
-                "roughness",
-                "metalness",
-                "emissive",
-                "glow",
-                "relief",
-            ],
+            &SURFACE_LAYER.iter().map(|f| f.key).collect::<Vec<_>>(),
         )
         .map_err(|e| at(fail(e)))?;
         let pattern = o

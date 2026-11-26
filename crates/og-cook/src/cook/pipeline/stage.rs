@@ -185,7 +185,7 @@ pub(crate) fn import(
         .enumerate()
         .map(|(i, s)| (s.rel.clone(), i))
         .collect();
-    let dependencies: Vec<_> = sources
+    let operands: Vec<_> = sources
         .iter()
         .map(|s| {
             if (s.kind == &model::MODEL || s.kind == &terrain::TERRAIN) && ext(&s.rel) == "ogt" {
@@ -194,6 +194,24 @@ pub(crate) fn import(
                 Vec::new()
             }
         })
+        .collect();
+    let transfers: Vec<_> = sources
+        .iter()
+        .map(|s| {
+            if s.kind != &model::MODEL {
+                return None;
+            }
+            let text = (ext(&s.rel) == "ogt").then(|| String::from_utf8_lossy(&s.bytes));
+            model::process::settings(text.as_deref(), settings_block(s, "model"))
+                .ok()
+                .flatten()
+                .and_then(|b| model::process::transfer::source(&b).ok().flatten())
+        })
+        .collect();
+    let dependencies: Vec<_> = operands
+        .iter()
+        .zip(&transfers)
+        .map(|(ops, transfer)| ops.iter().chain(transfer).cloned().collect::<Vec<_>>())
         .collect();
     let mut pending: BTreeSet<_> = (0..sources.len()).collect();
     let mut made: Vec<Option<Made>> = (0..sources.len()).map(|_| None).collect();
@@ -223,7 +241,7 @@ pub(crate) fn import(
                     break;
                 }
             }
-            let reason = format!("modelGeometry dependency cycle: {}", chain.join(" -> "));
+            let reason = format!("model dependency cycle: {}", chain.join(" -> "));
             for i in pending {
                 sources[i].error = Some(reason.clone());
             }
@@ -233,7 +251,7 @@ pub(crate) fn import(
         // format, source settings and referenced generator has one path.
         let expanded: Vec<_> = ready
             .iter()
-            .filter(|&&i| !dependencies[i].is_empty())
+            .filter(|&&i| !operands[i].is_empty())
             .map(|&i| {
                 let bytes = model_text::expand_operands(&sources[i].bytes, |id, node| {
                     let s = ids
@@ -257,6 +275,22 @@ pub(crate) fn import(
                 Err(e) => sources[i].error = Some(e),
             }
         }
+        let bases: BTreeMap<_, _> = ready
+            .iter()
+            .filter_map(|&i| transfers[i].as_ref())
+            .filter_map(|id| {
+                let s = &sources[*ids.get(id)?];
+                let mut files = s.gltf.as_ref()?.external.clone();
+                files.sort_by(|a, b| a.0.cmp(&b.0));
+                Some((
+                    id.clone(),
+                    model::process::TransferInput {
+                        bytes: s.bytes.clone(),
+                        files,
+                    },
+                ))
+            })
+            .collect();
         let slots: Vec<_> = sources
             .iter_mut()
             .enumerate()
@@ -268,7 +302,7 @@ pub(crate) fn import(
             let result = if s.error.is_some() {
                 None
             } else {
-                import_source(s, texture_cache, &textures)
+                import_source(s, texture_cache, &textures, &bases)
             };
             s.hash = source_hash(s);
             (*i, result)
@@ -326,6 +360,7 @@ fn import_source(
     s: &mut Source,
     texture_cache: Option<&Path>,
     textures: &BTreeMap<String, Vec<u8>>,
+    bases: &BTreeMap<String, model::process::TransferInput>,
 ) -> Option<Made> {
     let mut made = Made::default();
     let dir = s.path.parent().unwrap_or(Path::new(".")).to_path_buf();
@@ -449,7 +484,18 @@ fn import_source(
         }
     }
     if let Some(processing) = &processing {
-        match model::process::apply(&s.bytes, &read, processing, texture_cache) {
+        let processed = model::process::transfer::source(processing).and_then(|id| {
+            let base = id
+                .as_ref()
+                .map(|id| {
+                    bases
+                        .get(id)
+                        .ok_or_else(|| format!("transfer.source '{id}' did not import as a model"))
+                })
+                .transpose()?;
+            model::process::apply(&s.bytes, &read, processing, texture_cache, base)
+        });
+        match processed {
             Ok((bytes, read)) => {
                 s.bytes = bytes;
                 imported.get_or_insert_with(Default::default).0.extend(read);

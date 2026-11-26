@@ -11,6 +11,93 @@ use glam::DVec2;
 pub(crate) const DISTRICT_TYPE: &str = "district";
 pub(crate) const MATERIALS_TYPE: &str = "materials";
 
+use crate::grammar::Line;
+macro_rules! lines {
+    ($($k:literal, $a:literal, $d:literal, $doc:literal);* $(;)?) => {
+        &[$(Line::new($k, $a, $d, $doc, "")),*]
+    };
+}
+pub(crate) const DISTRICT_LINES: &[Line] = lines![
+    "seed", "<u32>", "0", "Deterministic layout seed.";
+    "region", "{ point <x> <z> ... }", "", "Polygon in metres; exclusive with along.";
+    "along", "{ ... }", "", "Street centreline and adjacent lots; exclusive with region.";
+    "streets", "{ ... }", "", "Authored polylines and optional grid.";
+    "lots", "{ ... }", "required", "Lot dimensions, metres.";
+    "buildings", "{ ... }", "", "Explicit grammar rules and density, no inferred buildings.";
+    "prop", "\"<name>\" { ... }", "", "Repeated placements along streets.";
+    "materials", "\"<asset>\"", "required", "Material library.";
+    "cells", "{ ... }", "", "Split output into streamed cells.";
+    "hlod", "{ ... }", "", "Forwarded to scene HLOD processing.";
+    "merge", "true | false", "true", "Merge generated static geometry.";
+    "terrain", "\"<asset>\" { depth <metres> }", "", "Project onto terrain; nonnegative carve depth."
+];
+const REGION: &[Line] = lines!["point", "<x> <z>", "", "Repeated polygon vertices, metres."];
+const ALONG: &[Line] = lines![
+    "point", "<x> <z>", "", "Repeated centreline vertices, metres.";
+    "width", "<metres>", "0", "Street width.";
+    "sidewalk", "<metres>", "0", "Sidewalk width.";
+    "depth", "<metres>", "0", "Depth of lots beside the centreline.";
+    "name", "\"<name>\"", "", "Street name used by rule filters."
+];
+const STREET: &[Line] = lines![
+    "point", "<x> <z>", "", "Repeated centreline vertices, metres.";
+    "width", "<metres>", "0", "Street width.";
+    "sidewalk", "<metres>", "0", "Sidewalk width."
+];
+const STREETS: &[Line] = lines![
+    "grid", "<x> <z>", "", "Grid spacing in metres.";
+    "turn", "<degrees>", "0", "Grid rotation.";
+    "jitter", "<metres>", "0", "Grid jitter.";
+    "width", "<metres>", "0", "Grid street width.";
+    "sidewalk", "<metres>", "0", "Grid sidewalk width.";
+    "kerb", "<0..2 metres>", "0", "Kerb height.";
+    "street", "[\"<name>\"] { ... }", "", "Repeated authored centreline."
+];
+const LOTS: &[Line] = lines![
+    "width", "<least> <greatest>", "required", "Lot width range in metres, least first.";
+    "depth", "<least> <greatest>", "required", "Lot depth range in metres, least first."
+];
+const BUILDINGS: &[Line] = lines![
+    "density", "<0..1>", "0", "Share of lots built on.";
+    "height", "<least> <greatest>", "0 0", "Nonnegative height range in metres.";
+    "heightNoise", "<frequency> <share>", "0 0", "Nonnegative frequency per metre and share 0..1.";
+    "rule", "\"<grammar asset>\" { ... }", "", "Repeated grammar candidates, required for nonzero density."
+];
+const RULE: &[Line] = lines![
+    "weight", "<number > 0>", "1", "Relative selection weight.";
+    "street", "\"<name>\"", "", "Restrict to this street."
+];
+const PROP: &[Line] = lines![
+    "model", "\"<asset>\"", "required", "Model to place.";
+    "every", "<metres>", "0", "Spacing along the street.";
+    "jitter", "<metres>", "0", "Placement jitter.";
+    "kerb", "<metres>", "0", "Offset from kerb.";
+    "corners", "true | false", "false", "Place at corners.";
+    "street", "\"<name>\"", "", "Restrict to this street.";
+    "collider", "box <w> <h> <d> | capsule <radius> <height>", "", "Explicit collision dimensions, metres; positive except capsule height may be zero."
+];
+const CELLS: &[Line] = lines![
+    "size", "<8..4096 metres>", "0 (must be set)", "Cell side.";
+    "load", "<metres >= 0>", "0", "Load distance."
+];
+const TERRAIN: &[Line] = lines!["depth", "<metres >= 0>", "0", "Carve depth."];
+pub(crate) const DISTRICT_BLOCKS: &[(&str, &[Line])] = &[
+    ("region", REGION),
+    ("along", ALONG),
+    ("streets", STREETS),
+    ("streets.street", STREET),
+    ("lots", LOTS),
+    ("buildings", BUILDINGS),
+    ("buildings.rule", RULE),
+    ("prop", PROP),
+    ("cells", CELLS),
+    ("terrain", TERRAIN),
+];
+
+fn fields(b: &Block, lines: &[Line], what: &str) -> Result<(), String> {
+    known(b, &lines.iter().map(|l| l.key).collect::<Vec<_>>(), what)
+}
+
 fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
     format!("line {}: `{}`: {msg}", e.line, e.key)
 }
@@ -141,7 +228,7 @@ pub(crate) struct District {
 
 fn street(e: &Entry) -> Result<StreetDesc, String> {
     let b = block(e)?;
-    known(b, &["point", "width", "sidewalk"], "a street")?;
+    fields(b, STREET, "a street")?;
     let name = match e.values.as_slice() {
         [Value::String(s)] => s.clone(),
         [] => String::new(),
@@ -161,13 +248,7 @@ fn prop(e: &Entry) -> Result<Prop, String> {
         _ => return Err(at(e, "names the prop in quotes")),
     };
     let b = block(e)?;
-    known(
-        b,
-        &[
-            "model", "every", "jitter", "kerb", "corners", "street", "collider",
-        ],
-        "a prop",
-    )?;
+    fields(b, PROP, "a prop")?;
     let model = asset(b.get("model").ok_or_else(|| at(e, "names its `model`"))?)?;
     let num = |k: &str| b.get(k).map(one).transpose().map(|v| v.unwrap_or(0.0));
     let collider = match b.get("collider") {
@@ -223,11 +304,7 @@ fn prop(e: &Entry) -> Result<Prop, String> {
 
 fn buildings(e: &Entry) -> Result<Buildings, String> {
     let b = block(e)?;
-    known(
-        b,
-        &["density", "height", "heightNoise", "rule"],
-        "buildings",
-    )?;
+    fields(b, BUILDINGS, "buildings")?;
     let mut rules = Vec::new();
     for r in b.get_all("rule") {
         let grammar = crate::runtime::asset_id(
@@ -237,7 +314,7 @@ fn buildings(e: &Entry) -> Result<Buildings, String> {
         .to_string();
         let (mut weight, mut street) = (1.0, None);
         if let Some(rb) = &r.block {
-            known(rb, &["weight", "street"], "a rule")?;
+            fields(rb, RULE, "a rule")?;
             if let Some(w) = rb.get("weight") {
                 weight = one(w)?;
             }
@@ -293,24 +370,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
         return Err(format!("a district is `type {DISTRICT_TYPE}`, version 1"));
     }
     let b = &doc.body;
-    known(
-        b,
-        &[
-            "seed",
-            "region",
-            "along",
-            "streets",
-            "lots",
-            "buildings",
-            "prop",
-            "materials",
-            "cells",
-            "hlod",
-            "merge",
-            "terrain",
-        ],
-        "a district",
-    )?;
+    fields(b, DISTRICT_LINES, "a district")?;
     let seed = b.get("seed").map(one).transpose()?.unwrap_or(0.0);
     if seed < 0.0 || seed.fract() != 0.0 || seed > u32::MAX as f64 {
         return Err("a district's seed is a whole number, 0 to 4294967295".into());
@@ -318,16 +378,12 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
     let region = match (b.get("region"), b.get("along")) {
         (Some(r), None) => {
             let rb = block(r)?;
-            known(rb, &["point"], "a region")?;
+            fields(rb, REGION, "a region")?;
             Region::Area(points(rb)?)
         }
         (None, Some(a)) => {
             let ab = block(a)?;
-            known(
-                ab,
-                &["point", "width", "sidewalk", "depth", "name"],
-                "along",
-            )?;
+            fields(ab, ALONG, "along")?;
             let num = |k: &str| ab.get(k).map(one).transpose().map(|v| v.unwrap_or(0.0));
             Region::Along {
                 street: StreetDesc {
@@ -348,13 +404,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
     let (mut grid, mut streets, mut kerb) = (None, Vec::new(), 0.0);
     if let Some(s) = b.get("streets") {
         let sb = block(s)?;
-        known(
-            sb,
-            &[
-                "grid", "turn", "jitter", "width", "sidewalk", "kerb", "street",
-            ],
-            "streets",
-        )?;
+        fields(sb, STREETS, "streets")?;
         let num = |k: &str| sb.get(k).map(one).transpose().map(|v| v.unwrap_or(0.0));
         kerb = num("kerb")?;
         if let Some(g) = sb.get("grid") {
@@ -375,7 +425,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
     let lots = match b.get("lots") {
         Some(l) => {
             let lb = block(l)?;
-            known(lb, &["width", "depth"], "lots")?;
+            fields(lb, LOTS, "lots")?;
             let need = |k: &str| {
                 lb.get(k)
                     .ok_or_else(|| at(l, format!("states its `{k}`: least and greatest")))
@@ -414,7 +464,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
     let cells = match b.get("cells") {
         Some(c) => {
             let cb = block(c)?;
-            known(cb, &["size", "load"], "cells")?;
+            fields(cb, CELLS, "cells")?;
             let size = cb.get("size").map(one).transpose()?.unwrap_or(0.0);
             let load = cb.get("load").map(one).transpose()?.unwrap_or(0.0);
             if !(8.0..=4096.0).contains(&size) || !(load.is_finite() && load >= 0.0) {
@@ -432,7 +482,7 @@ pub(crate) fn district(source: &str) -> Result<District, String> {
                 _ => return Err(at(e, "names its terrain asset in quotes")),
             };
             let depth = if let Some(b) = &e.block {
-                known(b, &["depth"], "terrain")?;
+                fields(b, TERRAIN, "terrain")?;
                 b.get("depth").map(one).transpose()?.unwrap_or(0.0)
             } else {
                 0.0

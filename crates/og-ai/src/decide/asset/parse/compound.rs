@@ -43,7 +43,7 @@ impl Parser<'_, '_> {
     /// `use "<path>"`: the behaviour at `path` (a tree) inlined, its keys
     /// and routes joined to this one's.
     pub(super) fn subtree(&mut self, e: &Entry) -> Result<usize, String> {
-        check_options(e, &[])?;
+        check_options(e)?;
         let path = e
             .values
             .first()
@@ -138,6 +138,7 @@ impl Parser<'_, '_> {
             .block
             .as_ref()
             .ok_or_else(|| err(m, "machine needs a block of states"))?;
+        grammar::check(b, "machine")?;
         let names: Vec<String> = b
             .get_all("state")
             .map(|s| {

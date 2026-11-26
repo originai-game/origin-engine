@@ -1,6 +1,7 @@
 //! File reference from the actual cook registry and parser line tables.
 use super::{kinds, systems::terrain_schema};
 use crate::grammar::Line;
+use std::collections::BTreeSet;
 use std::fmt::Write;
 
 pub const PATH: &str = "crates/og-api/guides/file-types.md";
@@ -35,16 +36,132 @@ pub fn markdown() -> Result<String, String> {
         .collect();
     types.sort();
     for (ty, owner) in types {
+        let input = if ty == "dialogue" { ".yarn" } else { ".ogt" };
         let _ = writeln!(
             out,
-            "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `.ogt` under assets/.\n"
+            "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\nAn authored `{ty}` asset, cooked by `{owner}`. Input: `{input}` under assets/.\n"
         );
         match ty {
+            "behaviour" => {
+                let scopes: BTreeSet<_> = og_ai::asset::LINES
+                    .iter()
+                    .flat_map(|f| f.within.iter().copied())
+                    .collect();
+                for scope in scopes {
+                    let fields: Vec<_> = og_ai::asset::LINES
+                        .iter()
+                        .filter(|f| f.within.contains(&scope))
+                        .copied()
+                        .collect();
+                    if scope == "root" {
+                        table(&mut out, &fields);
+                    } else {
+                        block(&mut out, &format!("behaviour.{scope}"), &fields);
+                    }
+                }
+            }
+            "vfx2d" => {
+                out.push_str("OGT header followed by inline JSON or an external recipe, not an ordinary nested OGT grammar. Unknown JSON notes are ignored. JSON fields below share the recipe reader's recognised field registry. See pixel-vfx for layer-specific defaults and enum choices.\n\n");
+                let g = super::systems::vfx2d::grammar::LINES;
+                table(&mut out, g);
+                block(
+                    &mut out,
+                    "vfx2d.recipe",
+                    super::systems::vfx2d::grammar::RECIPE,
+                );
+                for kind in super::systems::vfx2d::LAYER_TYPES {
+                    block(
+                        &mut out,
+                        &format!("vfx2d.layer.{kind}"),
+                        &super::systems::vfx2d::grammar::layer_fields(kind),
+                    );
+                }
+            }
+            "district" => {
+                table(&mut out, super::systems::district::parse::DISTRICT_LINES);
+                for (name, fields) in super::systems::district::parse::DISTRICT_BLOCKS {
+                    block(&mut out, &format!("district.{name}"), fields);
+                }
+                block(&mut out, "district.hlod", super::hlod::LINES);
+            }
+            "grammar" => {
+                out.push_str("Numbers may name declared parameters. Dimensions are metres and roof angles degrees. A rule ends in label/insert/drop or dispatch; no building composition is inferred.\n\n");
+                table(&mut out, og_shape::generators::grammar::LINES);
+                for (name, fields) in og_shape::generators::grammar::BLOCKS {
+                    block(&mut out, &format!("grammar.{name}"), fields);
+                }
+            }
+            "flipbook" => {
+                table(&mut out, og_anim::FLIPBOOK_LINES);
+                block(&mut out, "flipbook.clip", og_anim::FLIPBOOK_CLIP_LINES);
+            }
+            "rig2d" => {
+                out.push_str("Field coverage: shared runtime grammar plus cook-only layered-art input. Coordinates are pixels, +y up, angles counterclockwise degrees. Key easing is linear by default, step, or curve x1 y1 x2 y2 with optional further anchors/control points. Named attachment/constraint/bone references are validated; armatures share the same body grammar.\n\n");
+                table(&mut out, og_anim::RIG2D_LINES);
+                for (name, fields) in og_anim::RIG2D_BLOCKS {
+                    block(&mut out, &format!("rig2d.{name}"), fields);
+                }
+                block(&mut out, "rig2d.parts", super::systems::autorig::LINES);
+            }
+            "quest" => {
+                for scope in ["quest", "reward", "stage", "objective"] {
+                    let fields: Vec<_> = og_story::asset::QUEST_LINES
+                        .iter()
+                        .filter(|f| f.within.contains(&scope))
+                        .copied()
+                        .collect();
+                    if scope == "quest" {
+                        table(&mut out, &fields);
+                    } else {
+                        block(&mut out, &format!("quest.{scope}"), &fields);
+                    }
+                }
+            }
+            "dialogue" => {
+                out.push_str("Source: `.yarn`, not an authored `type dialogue` OGT. This registered kind is the cooked dialogue IR. The cook rejects removed OGT dialogue syntax; write Yarn with explicit #line: ids. See story for Yarn declarations, node headers, commands, expressions and validation.\n\n");
+            }
+            "timeline" => {
+                table(&mut out, og_timeline::TIMELINE_LINES);
+                block(&mut out, "timeline.path", og_timeline::PATH_LINES);
+                let kinds: BTreeSet<_> = og_timeline::TRACK_LINES
+                    .iter()
+                    .chain(og_timeline::KEY_LINES)
+                    .flat_map(|f| f.within.iter().copied())
+                    .collect();
+                for kind in kinds {
+                    let fields: Vec<_> = og_timeline::TRACK_LINES
+                        .iter()
+                        .filter(|f| f.within.is_empty() || f.within.contains(&kind))
+                        .copied()
+                        .collect();
+                    block(&mut out, &format!("timeline.track.{kind}"), &fields);
+                    let fields: Vec<_> = og_timeline::KEY_LINES
+                        .iter()
+                        .filter(|f| f.within.contains(&kind))
+                        .copied()
+                        .collect();
+                    block(&mut out, &format!("timeline.track.{kind}.key"), &fields);
+                }
+                out.push_str("\nLight/post/material key names are writable reflected fields of their targets, with 1..4 numeric lanes or an enum word; query their record with og api show. Blendshape accepts w0..w7. Values not set by a key retain their track state.\n");
+                let _ = writeln!(
+                    out,
+                    "\nTransition kinds: {}.\n",
+                    og_timeline::TransitionKind::NAMES.join(", ")
+                );
+            }
+            "prefab" => {
+                table(&mut out, super::prefab::LINES);
+                block(&mut out, "prefab.entity", super::scene::ENTITY_LINES);
+                out.push_str("\nComponent blocks and their fields come from reflection, as for scenes. Query the record by name with og api show.\n");
+            }
             "terrain" => {
                 out.push_str("Field coverage: parser line tables, including every nested block below. Output: tiled terrain, control pages and collision data, loaded with og.terrain.load.\n\n");
                 for (path, fields) in terrain_schema::BLOCKS {
                     if !path.is_empty() {
-                        let _ = writeln!(out, "<a id=\"file-terrain-{path}\"></a>\n### `file:terrain.{path}`\n\nTerrain `{path}` block fields.\n");
+                        let _ = writeln!(
+                            out,
+                            "<a id=\"file-terrain-{path}\"></a>\n### `file:terrain.{path}`\n\nTerrain `{path}` block fields.\n"
+                        );
                     }
                     table(&mut out, fields);
                     out.push('\n');
@@ -70,19 +187,34 @@ pub fn markdown() -> Result<String, String> {
             }
             "materials" => {
                 out.push_str("Field coverage: library parameters and shared model material fields. Repeat material \"<name>\" blocks, each with at least one label. Images and map destinations are asset-root paths. og materials brief lists authored requests; og materials make processes supplied .source.png images, never calls an image model.\n\n");
-                let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES.iter().chain(super::model_text::schema::MATERIAL).copied().collect();
+                let fields: Vec<_> = super::systems::district::parse::MATERIAL_LINES
+                    .iter()
+                    .chain(super::model_text::schema::MATERIAL)
+                    .copied()
+                    .collect();
                 block(&mut out, "materials.material", &fields);
-                block(&mut out, "materials.material.generate", super::systems::district::parse::MATERIAL_GENERATE_LINES);
-                block(&mut out, "materials.material.vary", super::systems::district::parse::VARY_LINES);
+                block(
+                    &mut out,
+                    "materials.material.generate",
+                    super::systems::district::parse::MATERIAL_GENERATE_LINES,
+                );
+                block(
+                    &mut out,
+                    "materials.material.vary",
+                    super::systems::district::parse::VARY_LINES,
+                );
             }
             "environment" | "icons" | "vector" | "texture-array" => {
                 out.push_str("Field coverage: complete parser line table. Source bytes remain tracked by the existing importer; generation does not replace authored images or SVG content.\n\n");
-                table(&mut out, match ty {
-                    "environment" => super::environment::LINES,
-                    "icons" => super::icons::LINES,
-                    "vector" => super::vector::LINES,
-                    _ => super::texture_array::LINES,
-                });
+                table(
+                    &mut out,
+                    match ty {
+                        "environment" => super::environment::LINES,
+                        "icons" => super::icons::LINES,
+                        "vector" => super::vector::LINES,
+                        _ => super::texture_array::LINES,
+                    },
+                );
             }
             "navmesh" => {
                 out.push_str("Field coverage: parser-owned root and nested field tables. Bake validates the voxel/agent parameters. Paths are asset-root relative. No agent traversal rule is inferred.\n\n");
@@ -98,7 +230,11 @@ pub fn markdown() -> Result<String, String> {
             "rig" => {
                 out.push_str("Field coverage: parser-owned rig fields and every standard humanoid bone name accepted by the same reader. This maps a skeleton; it does not generate one.\n\n");
                 table(&mut out, &og_anim::RigAsset::lines());
-                let _ = writeln!(out, "\nAccepted schemes: `auto`, {}.\n", og_anim::SCHEMES.map(|s| format!("`{s}`")).join(", "));
+                let _ = writeln!(
+                    out,
+                    "\nAccepted schemes: `auto`, {}.\n",
+                    og_anim::SCHEMES.map(|s| format!("`{s}`")).join(", ")
+                );
             }
             "motion-action" => {
                 out.push_str("Field coverage: complete shared action parser line table. Defines an existing authored clip's hold interval/contact, not offline neural motion inference.\n\n");
@@ -106,25 +242,69 @@ pub fn markdown() -> Result<String, String> {
             }
             "shader" | "post" | "ui-material" => {
                 out.push_str("Field coverage: complete shared shader-family parser table, filtered by document type. Cook validates the same WGSL contract on every supported backend. See render or ui-materials for WGSL entry structures and callable functions.\n\n");
-                let fields: Vec<_> = og_bundle::shader::LINES.iter().filter(|f| f.within.is_empty() || f.within.contains(&ty)).copied().collect();
+                let fields: Vec<_> = og_bundle::shader::LINES
+                    .iter()
+                    .filter(|f| f.within.is_empty() || f.within.contains(&ty))
+                    .copied()
+                    .collect();
                 table(&mut out, &fields);
             }
             "look" => {
                 out.push_str("Field coverage: parser-owned root fields, UI seed names, and writable reflected resource fields. No runtime-only animated fields. Resource references use asset ids, enum fields accept variant words, colours accept linear numbers or quoted sRGB hex.\n\n");
                 table(&mut out, og_bundle::look::LINES);
-                let _ = writeln!(out, "\nMood values: {}. Antialias values: {}.\n", og_bundle::look::MOODS.join(", "), og_bundle::look::ANTIALIAS.join(", "));
-                let seeds: Vec<_> = og_bundle::look::UI_SEEDS.iter().map(|key| Line::new(key, "\"#rrggbb\"", "", "UI seed colour, sRGB.", "")).collect();
+                let _ = writeln!(
+                    out,
+                    "\nMood values: {}. Antialias values: {}.\n",
+                    og_bundle::look::MOODS.join(", "),
+                    og_bundle::look::ANTIALIAS.join(", ")
+                );
+                let seeds: Vec<_> = og_bundle::look::UI_SEEDS
+                    .iter()
+                    .map(|key| Line::new(key, "\"#rrggbb\"", "", "UI seed colour, sRGB.", ""))
+                    .collect();
                 block(&mut out, "look.uiSeeds", &seeds);
                 for resource in og_bundle::look::LOOK_RESOURCES {
-                    let record = og_records::RECORDS.iter().find(|r| r.kind == "resource" && r.name == resource).ok_or_else(|| format!("look resource {resource} has no reflected record"))?;
-                    let fields: Vec<_> = record.fields.iter().filter(|f| !f.readonly && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))).map(|f| Line::new(f.name, f.column, f.default, f.doc, "")).collect();
+                    let record = og_records::RECORDS
+                        .iter()
+                        .find(|r| r.kind == "resource" && r.name == resource)
+                        .ok_or_else(|| {
+                            format!("look resource {resource} has no reflected record")
+                        })?;
+                    let fields: Vec<_> = record
+                        .fields
+                        .iter()
+                        .filter(|f| {
+                            !f.readonly
+                                && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))
+                        })
+                        .map(|f| Line::new(f.name, f.column, f.default, f.doc, ""))
+                        .collect();
                     block(&mut out, &format!("look.{resource}"), &fields);
-                    for f in record.fields.iter().filter(|f| !f.readonly && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))) {
+                    for f in record.fields.iter().filter(|f| {
+                        !f.readonly
+                            && !og_bundle::look::ANIMATED_FIELDS.contains(&(resource, f.name))
+                    }) {
                         if !f.variants.is_empty() {
-                            let _ = writeln!(out, "\n`{}` variants: {}.\n", f.name, f.variants.join(", "));
+                            let _ = writeln!(
+                                out,
+                                "\n`{}` variants: {}.\n",
+                                f.name,
+                                f.variants.join(", ")
+                            );
                         }
                         if f.min.is_some() || f.max.is_some() || !f.unit.is_empty() {
-                            let _ = writeln!(out, "\n`{}` range: {} .. {}; unit: {}.\n", f.name, f.min.map_or("unbounded".into(), |n| n.to_string()), f.max.map_or("unbounded".into(), |n| n.to_string()), if f.unit.is_empty() { "unstated" } else { f.unit });
+                            let _ = writeln!(
+                                out,
+                                "\n`{}` range: {} .. {}; unit: {}.\n",
+                                f.name,
+                                f.min.map_or("unbounded".into(), |n| n.to_string()),
+                                f.max.map_or("unbounded".into(), |n| n.to_string()),
+                                if f.unit.is_empty() {
+                                    "unstated"
+                                } else {
+                                    f.unit
+                                }
+                            );
                         }
                     }
                 }
@@ -133,8 +313,16 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("Field coverage: derived bake record root and nested fields. Normally written by og bake lightmaps, not hand-authored; stale scene/geometry bindings require a new bake. Numeric arrays may span repeated lines. Unknown fields are refused.\n\n");
                 table(&mut out, og_bundle::lightmap::LINES);
                 block(&mut out, "lightmap.model", og_bundle::lightmap::MODEL_LINES);
-                block(&mut out, "lightmap.model.part", og_bundle::lightmap::PART_LINES);
-                block(&mut out, "lightmap.volume", og_bundle::lightmap::VOLUME_LINES);
+                block(
+                    &mut out,
+                    "lightmap.model.part",
+                    og_bundle::lightmap::PART_LINES,
+                );
+                block(
+                    &mut out,
+                    "lightmap.volume",
+                    og_bundle::lightmap::VOLUME_LINES,
+                );
             }
             "video" => {
                 out.push_str("Field coverage: complete video parser field table. Sources require ffmpeg/ffprobe. Clip output is an ordinary video with frames and optional sound; stream output is chunked AV1 with declared renditions. Stream-only controls are refused on clips.\n\n");
@@ -153,7 +341,31 @@ pub fn markdown() -> Result<String, String> {
             }
             "particles" | "effect" | "vfx" => {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");
-                table(&mut out, match ty { "particles" => crate::fx::EMITTER_LINES, "effect" => crate::effect::EFFECT_LINES, _ => crate::vfx::VFX_LINES });
+                table(
+                    &mut out,
+                    match ty {
+                        "particles" => crate::fx::EMITTER_LINES,
+                        "effect" => crate::effect::EFFECT_LINES,
+                        _ => crate::vfx::VFX_LINES,
+                    },
+                );
+                if ty == "effect" {
+                    block(&mut out, "effect.texture", crate::effect::UV_LINES);
+                }
+                if ty == "vfx" {
+                    let kinds: BTreeSet<_> = crate::vfx::ELEMENT_LINES
+                        .iter()
+                        .flat_map(|f| f.within.iter().copied())
+                        .collect();
+                    for kind in kinds {
+                        let fields: Vec<_> = crate::vfx::ELEMENT_LINES
+                            .iter()
+                            .filter(|f| f.within.is_empty() || f.within.contains(&kind))
+                            .copied()
+                            .collect();
+                        block(&mut out, &format!("vfx.{kind}"), &fields);
+                    }
+                }
             }
             "tilemap" => {
                 out.push_str("Field coverage: map, layer and object parser line tables, plus the cook generation block. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n");
@@ -176,7 +388,13 @@ pub fn markdown() -> Result<String, String> {
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
             "scene" => {
-                out.push_str("Field coverage: generate block only; authored declarations use the existing scene grammar and reflected component/resource fields. Output: a normal scene, loaded with og.load.scene.\n\n<a id=\"file-scene-generate\"></a>\n### `file:scene.generate`\n\nReturns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.\n\n");
+                out.push_str("Field coverage: parser-owned declarations and reflected component/resource fields. Component blocks take schema field names: numbers/vectors, enum words, booleans or quoted strings; bounded lists may repeat. Query the reflected record with og api show. Game-owned records use the game's schema, never a gameplay template. Output: a normal scene, loaded with og.load.scene.\n\n");
+                table(&mut out, super::scene::LINES);
+                block(&mut out, "scene.entity", super::scene::ENTITY_LINES);
+                block(&mut out, "scene.stream", super::stream::LINES);
+                block(&mut out, "scene.hlod", super::hlod::LINES);
+                block(&mut out, "scene.path", og_timeline::PATH_LINES);
+                out.push_str("\n<a id=\"file-scene-generate\"></a>\n### `file:scene.generate`\n\nReturns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
             "sound" => {
@@ -186,16 +404,47 @@ pub fn markdown() -> Result<String, String> {
             "model" => {
                 out.push_str("Field coverage: text-model declarations, every geometry, placement, material, plant level and fracture block share parser line tables. Output: a normal model loaded with og.load.gltf. Program-based models instead use program/params and the .shape.json language (see model); program operation schema is separate. Segment counts can be reduced by the project's face budget, never increased. A part contains one geometry; merge parts and CSG a/b are geometries plus placement, not named model parts.\n\n");
                 table(&mut out, &super::model_text::schema::fields(""));
+                block(&mut out, "model.program", super::model_program::LINES);
+                let fields: Vec<_> = super::model_program::MATERIAL_FIELDS.iter().map(|&key| {
+                    let args = match key {
+                        "color" | "emissive" | "sheen" => "<r> <g> <b>; linear",
+                        "map" | "normalMap" | "roughnessMap" | "metalnessMap" | "emissiveMap" | "aoMap" => "\"<image path>\"; relative to model",
+                        "doubleSided" => "true | false",
+                        "normalScale" | "emissiveIntensity" => "<number >= 0>",
+                        _ => "<number 0..1>",
+                    };
+                    Line::new(key, args, "program material", "Override the named program material; source image contents are tracked.", "")
+                }).collect();
+                block(&mut out, "model.program.material", &fields);
                 for name in super::model_text::GEOMETRIES {
-                    if matches!(name, "bufferGeometry" | "modelGeometry") { continue; }
-                    block(&mut out, &format!("model.part.{name}"), &super::model_text::schema::fields(name));
+                    if matches!(name, "bufferGeometry" | "modelGeometry") {
+                        continue;
+                    }
+                    block(
+                        &mut out,
+                        &format!("model.part.{name}"),
+                        &super::model_text::schema::fields(name),
+                    );
                 }
                 for (name, _) in super::model_text::schema::BLOCKS {
-                    if name.is_empty() || name.ends_with("Geometry") || matches!(*name, "solid" | "plant.level") { continue; }
-                    block(&mut out, &format!("model.{name}"), &super::model_text::schema::fields(name));
+                    if name.is_empty()
+                        || name.ends_with("Geometry")
+                        || matches!(*name, "solid" | "plant.level")
+                    {
+                        continue;
+                    }
+                    block(
+                        &mut out,
+                        &format!("model.{name}"),
+                        &super::model_text::schema::fields(name),
+                    );
                 }
                 for name in ["trunk", "branch1", "branch2", "branch3"] {
-                    block(&mut out, &format!("model.plant.{name}"), &super::model_text::schema::fields(&format!("plant.{name}")));
+                    block(
+                        &mut out,
+                        &format!("model.plant.{name}"),
+                        &super::model_text::schema::fields(&format!("plant.{name}")),
+                    );
                 }
                 block(&mut out, "model.fracture", super::systems::fracture::LINES);
                 block(&mut out, "model.process", super::model::process::LINES);
@@ -206,18 +455,23 @@ pub fn markdown() -> Result<String, String> {
                     ("bake", super::model::process::BAKE),
                     ("project", super::model::process::projection::LINES),
                     ("project.view", super::model::process::projection::VIEW),
+                    ("transfer", super::model::process::transfer::LINES),
                     ("rig", super::model::process::RIG),
                 ] {
                     block(&mut out, &format!("model.process.{name}"), fields);
                 }
                 out.push_str("\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n");
-                block(&mut out, "model.part.bufferGeometry", super::model_text::BUFFER_LINES);
+                block(
+                    &mut out,
+                    "model.part.bufferGeometry",
+                    super::model_text::BUFFER_LINES,
+                );
                 out.push_str("\n<a id=\"file-model-part-modelGeometry\"></a>\n### `file:model.part.modelGeometry`\n\nAn imported model's rest geometry as an operand of mergeGeometries or CSG, or as a part by itself. The source uses its ordinary importer and generation path before this model.\n\n");
                 table(&mut out, super::model_text::OPERAND_LINES);
                 out.push_str("\n<a id=\"file-model-part-bufferGeometry-generate\"></a>\n### `file:model.part.bufferGeometry.generate`\n\nReturns MeshSource: positions, and optional normals/uvs/colors/tangents/indices. Materials, pivots and placements remain authored in the model.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
-            _ => out.push_str("Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.\n"),
+            _ => return Err(format!("cook type '{ty}' has no file field catalogue")),
         }
         out.push('\n');
     }
@@ -254,18 +508,97 @@ pub fn markdown() -> Result<String, String> {
         ),
     ] {
         let _ = writeln!(out, "<a id=\"file-{ty}\"></a>\n### `file:{ty}`\n\n{doc}\n");
+        if ty == "project" {
+            table(&mut out, og_bundle::project::LINES);
+            block(&mut out, "project.cook", og_bundle::project::COOK);
+            block(&mut out, "project.publish", og_bundle::project::PUBLISH);
+            let fields: Vec<_> = super::stats::KEYS.iter().map(|&key| Line::new(key, "<u64>", "cook budget default", "Content limit; use og doctor --project for observed values and budget reports.", "")).collect();
+            block(&mut out, "project.budgets", &fields);
+            out.push_str("\nCreation data (form, genre, view, look, variant, ui, platform, input, players, lang, music) comes from `og create --creation`; it is retained as hints, not interpreted as gameplay rules. Apart from form, it does not configure the runtime. Arbitrary creation notes do not generate content.\n");
+        }
+        if ty == "probe-record" {
+            table(&mut out, super::probes::LINES);
+        }
+        if ty == "font-extension" {
+            table(&mut out, super::font_pack::LINES);
+        }
+        if ty == "pack" {
+            table(&mut out, og_ui_next::pack::grammar::LINES);
+            block(
+                &mut out,
+                "pack.images.nineSlice",
+                og_ui_next::pack::grammar::NINE,
+            );
+            block(
+                &mut out,
+                "pack.sounds.sound",
+                og_ui_next::pack::grammar::SOUND,
+            );
+            let _ = writeln!(
+                out,
+                "\nTheme sections: {}. Palette seeds: {}. Sound/haptic events: {}. Haptic presets: {}. Scheme pairs have exactly light and dark. Theme values follow the Tailwind theme contract, not OGT syntax.\n",
+                og_ui_next::pack::THEME_KEYS.join(", "),
+                og_ui_next::pack::SEEDS.join(", "),
+                og_ui_next::pack::SOUND_EVENTS.join(", "),
+                og_ui_next::pack::HAPTIC_PRESETS.join(", ")
+            );
+        }
+        if ty == "theme" {
+            let fields: Vec<_> = og_ui_next::theme::RECIPE_KEYS.iter().map(|&key| {
+                let (args, doc) = match key {
+                    "with" => ("[mixin name, ...]", "Merge mixins in order after extends, before own keys; mixins cannot themselves extend or mix in."),
+                    "color" => ("{source?,accent?,neutral?,danger?,variant?,scheme?}", "String-valued palette settings; scheme is light or dark."),
+                    "pack" => ("pack object", "Hand-authored pack overlay applied after compiled theme and generated art; see file:pack."),
+                    "ornament" => ("name | {slot: name}", "One ornament or one per button/panel/plate/slot/chip."),
+                    "extends" => ("theme name", "Resolve parent first; cycles fail."),
+                    "about" => ("string", "Author note."),
+                    _ => ("dimension name", "Select a dimension value; no new artwork or gameplay is inferred."),
+                };
+                Line::new(key, args, "inherited", doc, "")
+            }).collect();
+            table(&mut out, &fields);
+            let fields: Vec<_> = og_ui_next::theme::COLOR_KEYS.iter().map(|&key| Line::new(key, "string", "inherited", "Palette input; source/accent/neutral/danger are colours, variant selects palette derivation, scheme is light or dark.", "")).collect();
+            block(&mut out, "theme.color", &fields);
+        }
         if ty == "import" {
+            out.push_str("Directory import.ogt contains repeated `match \"<pattern>\" ... { ... }` blocks (patterns are directory-relative). Matching ancestors merge in order, then the file's own sidecar overrides by key. Root `conform off` opts out of the project art contract; a model's optional `fracture` block is below. Rive uses its own root artboard/font declarations.\n\n");
+            block(&mut out, "import.model", super::options::MODEL_LINES);
+            block(&mut out, "import.texture", super::options::TEXTURE_LINES);
+            block(&mut out, "import.font", super::options::FONT_LINES);
+            block(&mut out, "import.sound", super::audio::LINES);
+            block(&mut out, "import.tilemap", super::tilemap::IMPORT_LINES);
+            block(&mut out, "import.rive", super::riv::LINES);
+            block(&mut out, "import.rive.artboard", super::riv::ARTBOARD_LINES);
             block(&mut out, "import.animation", super::anim::LINES);
+            block(&mut out, "import.animation.clip", super::anim::CLIP_LINES);
+            block(
+                &mut out,
+                "import.animation.clip.channel",
+                super::anim::CHANNEL_LINES,
+            );
             block(&mut out, "import.fracture", super::systems::fracture::LINES);
         }
         if ty == "model-program" {
+            block(
+                &mut out,
+                "model-program.surface",
+                og_shape::model::program::SURFACE,
+            );
+            block(
+                &mut out,
+                "model-program.surface.layer",
+                og_shape::model::program::SURFACE_LAYER,
+            );
             out.push_str("The operation and profile key sets below are the exact tables used to reject unknown JSON fields; parameter expressions are resolved before dispatch. For value types, units and construction examples see model. These are JSON objects, not OGT blocks. The op discriminator selects an operation, and a one-key profile object selects a profile.\n");
             for (prefix, entries) in [
                 ("op", og_shape::model::program::OPS),
                 ("profile", og_shape::model::program::PROFILES),
             ] {
                 for (name, fields) in entries {
-                    let lines: Vec<_> = fields.iter().map(|name| Line::new(name, "<JSON value>", "see model", "Value is read by the shared model-program parser; parameters may use $expressions.", "")).collect();
+                    let lines: Vec<_> = fields
+                        .iter()
+                        .map(|key| og_shape::model::program::field(name, key, prefix == "profile"))
+                        .collect::<Result<_, _>>()?;
                     block(&mut out, &format!("model-program.{prefix}.{name}"), &lines);
                 }
             }

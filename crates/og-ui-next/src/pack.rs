@@ -10,6 +10,7 @@
 //! switching tables, never a cascade.
 
 pub mod design;
+pub mod grammar;
 
 /// The default UI face, bundled for games with UI documents and drawn
 /// first wherever no game font or style names a role.

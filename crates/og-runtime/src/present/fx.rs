@@ -145,6 +145,7 @@ pub(crate) struct ModelInfo {
     pub meshes: Vec<og_render::MeshHandle>,
     pub prim_mesh: Vec<u32>,
     pub part_nodes: Vec<usize>,
+    pub part_offsets: Vec<Mat4>,
     pub part_shown: Vec<bool>,
     /// Per `KHR_materials_variants` variant, each part's material
     /// (`ModelParts::variants`): og.Model.variant draws with these.

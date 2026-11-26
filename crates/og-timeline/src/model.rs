@@ -34,9 +34,11 @@
 //! keys is eased by the later key's `ease` (linear when it names none),
 //! held before the first key and after the last.
 
+mod grammar;
 mod text;
 mod tracks;
 
+pub use grammar::{KEY_LINES, PATH_LINES, TIMELINE_LINES, TRACK_LINES};
 pub use text::{PATHS_TYPE, parse_paths, path_entry, paths_to_text};
 use tracks::track;
 

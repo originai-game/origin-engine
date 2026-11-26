@@ -46,6 +46,44 @@ mod tests;
 
 pub(crate) use parts::Part;
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "parts",
+        "\"<file.psd or folder/>\"",
+        "required",
+        "Layered art input; part files enter the cook stamp.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "template",
+        "<existing rig layout>",
+        "required",
+        "Existing art-contract skeleton layout, not generated gameplay.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "pivot",
+        "<part> <x> <y>",
+        "",
+        "Repeated authored joints in canvas pixels.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "unit",
+        "<pixels > 0>",
+        "from art",
+        "Pixels per world metre.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "filter",
+        "nearest | linear",
+        "linear",
+        "Atlas sampling.",
+        "",
+    ),
+];
+
 /// The suffix of the atlas texture a rig with `parts` cooks beside itself.
 pub(crate) fn atlas_id(rel: &str) -> String {
     format!("{rel}#atlas")
@@ -113,12 +151,12 @@ pub(crate) fn build(
     s: &Source,
     doc: &Document,
 ) -> Result<(Rig2dAsset, Image, Vec<String>), String> {
-    if let Some(e) = doc.body.entries.iter().find(|e| {
-        !matches!(
-            e.key.as_str(),
-            "parts" | "template" | "pivot" | "unit" | "filter"
-        )
-    }) {
+    if let Some(e) = doc
+        .body
+        .entries
+        .iter()
+        .find(|e| !LINES.iter().any(|f| f.key == e.key))
+    {
         return Err(format!(
             "line {}: a rig that names `parts` is made by the cook; `{}` is not one of its lines (parts, template, pivot, unit, filter)",
             e.line, e.key

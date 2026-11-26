@@ -23,6 +23,7 @@ impl Timeline {
             tracks: Vec::new(),
         };
         let mut duration = None;
+        grammar::check(&doc.body, TIMELINE_LINES, "timeline")?;
         for e in &doc.body.entries {
             match e.key.as_str() {
                 "name" => t.name = string(e)?,
@@ -193,6 +194,7 @@ fn track_end(t: &Track) -> f32 {
 
 fn path_desc(block: &Block) -> Result<PathDesc, String> {
     let mut d = PathDesc::default();
+    grammar::check(block, PATH_LINES, "path")?;
     for e in &block.entries {
         no_block(e)?;
         match e.key.as_str() {

@@ -93,6 +93,9 @@ pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String>
         let Some(block) = doc.body.get(name).and_then(|e| e.block.as_ref()) else {
             continue;
         };
+        if *name == "cook" {
+            og_cook::grammar::check(block, og_cook::project::COOK, "project.ogt cook")?;
+        }
         for e in &block.entries {
             match e.key.as_str() {
                 "color_textures" => {

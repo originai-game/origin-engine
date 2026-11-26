@@ -359,6 +359,10 @@ pub struct ModelParts {
     /// `#anim` skeleton's node order: a posed model skips the parts of a
     /// node its pose hides).
     pub nodes: Vec<usize>,
+    /// Per part, its EXT_mesh_gpu_instancing placement relative to its node,
+    /// or identity. Kept separate so a posed rigid node replaces its rest
+    /// frame without discarding instances or inverting a zero-scale frame.
+    pub node_offsets: Vec<Mat4>,
     /// Per part, whether it is drawn at rest: false when its node or an
     /// ancestor is hidden ([`CookedNode::visible`]). A model drawn without
     /// a pose skips the others.
@@ -1360,6 +1364,7 @@ impl CookedModel {
         let node_shown = self.node_shown();
         let mut parts = Vec::new();
         let mut nodes = Vec::new();
+        let mut node_offsets = Vec::new();
         let mut shown = Vec::new();
         let mut variants = vec![Vec::new(); self.variants.len()];
         if let Some(s) = self.default_scene {
@@ -1367,10 +1372,12 @@ impl CookedModel {
                 if let Some(m) = self.nodes[n].mesh {
                     // An instanced node: one part per instance, all of one
                     // mesh and material (the renderer draws them instanced).
-                    for at in self.node_draws(&world, n) {
+                    for (i, at) in self.node_draws(&world, n).into_iter().enumerate() {
                         for p in self.meshes[m].primitives.clone() {
                             parts.push((meshes[p], materials[self.primitives[p].material], at));
                             nodes.push(n);
+                            node_offsets
+                                .push(self.instances.get(&n).map_or(Mat4::IDENTITY, |v| v[i]));
                             shown.push(node_shown[n]);
                             for (v, out) in variants.iter_mut().enumerate() {
                                 out.push(materials[self.primitive_material(p, Some(v))]);
@@ -1384,6 +1391,7 @@ impl CookedModel {
             ModelParts {
                 parts,
                 nodes,
+                node_offsets,
                 shown,
                 variants,
                 textures: handles,

@@ -1,5 +1,157 @@
 use super::*;
 
+pub(crate) const MODEL_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "lods",
+        "<fraction> ...",
+        "1 0.5 0.25",
+        "At most eight strictly decreasing positive fractions, first 1.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "lodError",
+        "<0..1, >0>",
+        "0.05",
+        "Largest simplification error relative to mesh extent.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "raycast",
+        "true | false",
+        "true",
+        "Bake raycast BVH; false builds it on first use.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "collider",
+        "true | false | convex | vhacd",
+        "false",
+        "Bake triangle, convex or decomposed collision.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "impostor",
+        "true | false",
+        "false",
+        "Bake octahedral impostor.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "impostorGrid",
+        "<integer 2..32>",
+        "8",
+        "Impostor view grid.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "impostorSize",
+        "<integer 16..512>",
+        "128",
+        "Impostor frame pixels; total atlas width cannot exceed 4096.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "impostorBelow",
+        "true | false",
+        "false",
+        "Include lower hemisphere.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "stream_textures",
+        "true | false",
+        "false",
+        "Stream high mip levels, keeping the shared mip tail resident.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "process",
+        "{ ... }",
+        "off",
+        "Shared static-mesh preparation; see file:model.process.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "front",
+        "\"+x\" | \"-x\" | \"+y\" | \"-y\" | \"+z\" | \"-z\"",
+        "source orientation",
+        "Source forward axis, rotated to engine +Z. Must be perpendicular to up.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "up",
+        "\"+x\" | \"-x\" | \"+y\" | \"-y\" | \"+z\" | \"-z\"",
+        "+y when front is given",
+        "Source up axis, rotated to engine +Y.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "voxScale",
+        "<metres per voxel > 0>",
+        "1",
+        "VOX sources only.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "voxOrigin",
+        "center | bottom",
+        "center",
+        "VOX origin; bottom places the lowest voxel at y=0.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "voxFps",
+        "<1..120>",
+        "10",
+        "VOX animation frames per second.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "voxClip",
+        "<name> <first u32> <last u32>",
+        "source clips",
+        "VOX frame range, both ends inclusive; repeated unique names.",
+        "",
+    ),
+];
+pub(crate) const TEXTURE_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "kind",
+        "color | normal | linear | single | pixel",
+        "color",
+        "Image data interpretation and encoding.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "stream",
+        "true | false",
+        "false",
+        "Stream high mip levels.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "normal",
+        "auto | \"<image path>\"",
+        "none",
+        "2D normal map generated from silhouette/luminance, or an authored tangent-space map beside the texture.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "sway",
+        "clumps | tiers [\"<parts map>\"]",
+        "none",
+        "2D plant part segmentation; optional same-size colour-labelled map keeps authored parts.",
+        "",
+    ),
+];
+pub(crate) const FONT_LINES: &[crate::grammar::Line] = &[crate::grammar::Line::new(
+    "pixel",
+    "<integer 4..64>",
+    "outline font",
+    "Pixel grid per em. Does not change other fonts' charset or mode.",
+    "",
+)];
+
 /// Mesh processing (meshoptimizer).
 #[derive(Clone, Debug, PartialEq)]
 pub struct MeshOptions {
@@ -91,6 +243,7 @@ impl MeshOptions {
         let Some(b) = block else {
             return Ok(o);
         };
+        crate::grammar::check(b, MODEL_LINES, "import.model")?;
         if let Some(e) = b.get("lods") {
             let mut f = Vec::new();
             for i in 0..e.values.len() {
@@ -452,6 +605,9 @@ pub(crate) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions,
 }
 
 pub(crate) fn texture_kind(s: &Source) -> Result<u32, String> {
+    if let Some(b) = settings_block(s, "texture") {
+        crate::grammar::check(b, TEXTURE_LINES, "import.texture")?;
+    }
     match settings_block(s, "texture").and_then(|b| b.get("kind")) {
         None => Ok(format::kind::COLOR),
         Some(e) => match e.word(0).map_err(|x| x.to_string())? {
@@ -515,6 +671,7 @@ pub(crate) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
 pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
     let mut f = base.clone();
     if let Some(b) = settings_block(s, "font") {
+        crate::grammar::check(b, FONT_LINES, "import.font")?;
         for e in &b.entries {
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
             match e.key.as_str() {

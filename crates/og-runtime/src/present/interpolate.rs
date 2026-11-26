@@ -290,6 +290,7 @@ pub(crate) fn pose(
             .collect();
         let mut palette = Vec::new();
         skeleton.palette_from_model(output.skin, &nodes, &mut palette);
+        output.nodes = nodes;
         return palette;
     }
     p.palette

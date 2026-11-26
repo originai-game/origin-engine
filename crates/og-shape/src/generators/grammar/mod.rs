@@ -39,7 +39,7 @@ mod roof;
 mod split;
 
 pub use eval::build;
-pub use parse::parse;
+pub use parse::{BLOCKS, LINES, parse};
 
 use std::collections::BTreeMap;
 

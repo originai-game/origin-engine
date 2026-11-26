@@ -48,6 +48,16 @@ impl Layer {
         };
         let mut layer = Layer::default();
         for (key, v) in &root {
+            if !grammar::LINES.iter().any(|f| f.key == key) {
+                return Err(format!(
+                    "{key}: not a pack key; one of {}",
+                    grammar::LINES
+                        .iter()
+                        .map(|f| f.key)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
             match key.as_str() {
                 "about" => {}
                 "scheme" => {
@@ -470,7 +480,7 @@ pub(super) fn insets(v: &Value, what: &str) -> Result<[f32; 4], String> {
 pub(super) fn nine(v: &Value) -> Result<NineSlice, String> {
     let m = object(v, "nine-slice art")?;
     for k in m.keys() {
-        if !["src", "slice", "width", "fill", "repeat", "tint"].contains(&k.as_str()) {
+        if !grammar::NINE.iter().any(|f| f.key == k) {
             return Err(format!("{k}: one of src, slice, width, fill, repeat, tint"));
         }
     }
@@ -513,7 +523,7 @@ pub(super) fn nine(v: &Value) -> Result<NineSlice, String> {
 pub(super) fn sound(v: &Value) -> Result<Sound, String> {
     let m = object(v, "a sound")?;
     for k in m.keys() {
-        if !["clips", "volume", "pitch"].contains(&k.as_str()) {
+        if !grammar::SOUND.iter().any(|f| f.key == k) {
             return Err(format!("{k}: one of clips, volume, pitch"));
         }
     }

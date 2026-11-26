@@ -1191,39 +1191,38 @@ fn plan_model<'a>(
             ));
         }
     }
-    if anim::wanted(g) {
-        match anim_settings(s) {
-            Ok(a) => {
-                let deps = anim::dependencies(&assets_root(s), &a);
-                let motion = contract
-                    .and_then(|c| c.motion.as_ref())
-                    .map(|m| m.describe())
-                    .unwrap_or_default();
-                let st = with(
-                    &[Area::Model, Area::Anim],
-                    &[
-                        b"animation",
-                        NODE_ROWS,
-                        mesh_desc.as_bytes(),
-                        a.describe().as_bytes(),
-                        &hash,
-                        deps.as_bytes(),
-                    ],
-                    &format!("{model_desc}{motion}"),
-                    &[],
-                );
-                outs.insert(
-                    1,
-                    (
-                        format!("{}#anim", s.rel),
-                        format::Animation::NAME,
-                        st,
-                        Box::new(AnimationJob(prepared.clone(), a)),
-                    ),
-                );
-            }
-            Err(e) => early_errors.push((s.rel.clone(), "model", e)),
+    match anim_settings(s) {
+        Ok(a) if anim::wanted(g) || !a.clips.is_empty() => {
+            let deps = anim::dependencies(&assets_root(s), &a);
+            let motion = contract
+                .and_then(|c| c.motion.as_ref())
+                .map(|m| m.describe())
+                .unwrap_or_default();
+            let st = with(
+                &[Area::Model, Area::Anim],
+                &[
+                    b"animation",
+                    NODE_ROWS,
+                    mesh_desc.as_bytes(),
+                    a.describe().as_bytes(),
+                    &hash,
+                    deps.as_bytes(),
+                ],
+                &format!("{model_desc}{motion}"),
+                &[],
+            );
+            outs.insert(
+                1,
+                (
+                    format!("{}#anim", s.rel),
+                    format::Animation::NAME,
+                    st,
+                    Box::new(AnimationJob(prepared.clone(), a)),
+                ),
+            );
         }
+        Ok(_) => {}
+        Err(e) => early_errors.push((s.rel.clone(), "model", e)),
     }
     // Its LOD surfaces, after its other outputs: where a cook that had to
     // name them itself puts them (`plan::derive`), so the manifest reads

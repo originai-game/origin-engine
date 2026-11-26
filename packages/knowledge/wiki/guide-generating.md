@@ -137,6 +137,12 @@ export default og.game({
     if (!projectedModel.ok) throw new Error(projectedModel.reason);
     const projectionInfo = og.load.gltfInfo(world, projectedModel.value);
     og.assert.always(projectionInfo.ok && projectionInfo.value.parts.length === 1, "registered image projection cooks a normal model", {});
+    const variant = og.load.gltf(world, "variant.ogt", {});
+    if (!variant.ok) throw new Error(variant.reason);
+    const variantInfo = og.load.gltfInfo(world, variant.value);
+    if (!variantInfo.ok) throw new Error(variantInfo.reason);
+    const variantShape = og.render.geometryInfo(world, variantInfo.value.parts[0]!.geometry);
+    og.assert.always(variantShape.ok && variantShape.value!.max.x === 1.5, "named-part transfer retains the variant geometry", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
@@ -210,6 +216,28 @@ process {
 
 ```text recipe file=assets/registered.svg
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#e34a2c"/><rect x="24" width="8" height="32" fill="#2c69df"/></svg>
+```
+
+`process.transfer` carries an imported base model's painted maps to its variant using the same part-local metric mechanism as the model bake command. Stable part names identify corresponding surfaces. Each part anchors at its own minimum corner, in metres, without fitting or rescaling: an enlarged region extends the nearest same-facing base region. The source's normal importer, processing and external image dependencies run first; cycles fail. Both models need prepared UVs. Source painted maps must be square and share one size; destination `size` is independent. Only base colour changes; other material channels stay authored. Projection runs before transfer when both are declared.
+
+```ogt recipe file=assets/variant.ogt
+type model
+version 1
+---
+conform off
+part "panel" {
+  planeGeometry {
+    width 3
+    height 2
+  }
+}
+process {
+  transfer {
+    source "projected.ogt"
+    size 32
+    padding 2
+  }
+}
 ```
 
 A material library's explicit `generate` block invokes the existing periodic/PBR map preparation during cook. Destinations must not collide with authored files or other outputs. Generated PNG inputs exist in the cook graph, not in `assets/`; model, processing and fracture consumers resolve the same bytes. The image and every processing parameter form the action key. `og materials make` remains the explicit authoring command when source files are wanted.
@@ -806,3 +834,74 @@ The first recipe includes these declarations. The generator sets a placement; th
 `modelGeometry` supplies an imported model's static rest geometry to an ordinary part, merge or CSG operand. Name a `source` relative to assets/ and optionally a mesh `node`; without a node it merges the visible default scene. Normal source import and generators run first. Cycles fail cook. Full affine placement, UVs, vertex colours and tangent frames survive merges; topology-changing CSG builds new frames. The outer part owns the material. Skinning and animations are not copied into a static operand.
 
 An animation graph is also an asset: use its existing graph language, then load it with `og.load.animgraph`. Add `bind "graph clip name" "model asset" "model clip name"` for each skeletal clip reference; cook checks those names against the model's own, library and mirrored clips. For a flipbook/2D rig use `sprite true` instead of bindings; clip names are then looked up on the target at playback. The first recipe checks the cooked 2D graph and reused model operand. Graph parameters and playback remain runtime state.
+
+<a id="guide-generating-10"></a>
+### `generating §10` Author model-local animation keys
+
+An import sidecar's `animation.clip` appends named clips to the imported model, including a static model. Each channel names a unique model node and `translation`, `rotation`, `scale`, `weights` or `visibility`. Times are nonnegative seconds and strictly increase. Translation is metres, rotation is a nonzero xyzw quaternion, scale is dimensionless, and morph lanes must match the target mesh. Visibility uses step keys of 0 or 1. Cubic-spline keys contain in-tangent, value and out-tangent, with tangents per second. The same glTF resampler, compression, events, libraries and mirrored-clip pipeline cooks authored keys; this does not record GPU neural motion or bake runtime IK.
+
+This recipe creates a static model, adds a clip using only its sidecar, then plays and reads the completed pose. A fixed root pivot keeps the panel's authored local travel separate from root-motion extraction. The game does not reconstruct the keys.
+
+```ts recipe ticks=35
+import { og, defineSystem } from "@origingame/engine";
+
+const Verify = defineSystem("Verify", { reads: [og.Skeleton] }, (_query, time, world) => {
+  if (time.tick !== 33) return;
+  const entity = world.find("animated");
+  if (!entity) throw new Error("animated entity missing");
+  const animation = og.load.animation(world, "animated.ogt");
+  if (!animation.ok) throw new Error(animation.reason);
+  const pose = og.anim.getNodeMatrix(world, entity, animation.value.nodes.indexOf("panel"));
+  if (!pose.ok) throw new Error(pose.reason);
+  const m = pose.value.elements;
+  og.assert.always(Math.abs(m[12]! - 2) < 0.001 && Math.abs(m[13]! - 1) < 0.001 && Math.abs(m[0]!) < 0.001 && Math.abs(m[1]! - 1) < 0.001, "authored clip played to its asymmetric final pose", {});
+  og.assert.reachable("authored animation checked", {});
+});
+
+export default og.game({ systems: [Verify], start(world) {
+  const model = og.load.gltf(world, "animated.ogt", {});
+  const animation = og.load.animation(world, "animated.ogt");
+  const entity = world.spawn({ name: "animated" });
+  if (!model.ok || !animation.ok || !entity.ok) throw new Error("authored animation failed to load");
+  world.insert(entity.value, og.Model, { asset: model.value });
+  world.insert(entity.value, og.Skeleton, { asset: animation.value.skeleton });
+  world.insert(entity.value, og.AnimationPlayer, { clip: og.anim.clip(animation.value, "designed"), loop: false, fade: 0 });
+} });
+```
+
+```ogt recipe file=assets/animated.ogt
+type model
+version 1
+---
+conform off
+pivot "root" {
+}
+part "panel" {
+  pivot "root"
+  boxGeometry {
+    width 1
+    height 2
+    depth 0.5
+  }
+}
+```
+
+```ogt recipe file=assets/animated.ogt.ogt
+type import
+version 1
+---
+animation {
+  rate 30
+  clip "designed" {
+    channel "panel" translation {
+      key 0 0 0 0
+      key 0.5 2 1 0
+    }
+    channel "panel" rotation {
+      key 0 0 0 0 1
+      key 0.5 0 0 0.70710678 0.70710678
+    }
+  }
+  event "designed" "end" 0.5
+}
+```

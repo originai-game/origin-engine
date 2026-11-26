@@ -132,9 +132,7 @@ pub(super) fn read(
     })
 }
 
-pub(super) fn apply(scene: &mut Scene, d: &Projection) -> Result<(), String> {
-    // One BVH for occlusion across every primitive; each UV raster targets only
-    // its own material map, even when multiple primitives overlap in UV space.
+pub(super) fn surface(scene: &Scene, material: Option<usize>) -> Result<Level, String> {
     if scene.parts.len() > u16::MAX as usize {
         return Err("projection has too many primitives".into());
     }
@@ -151,22 +149,30 @@ pub(super) fn apply(scene: &mut Scene, d: &Projection) -> Result<(), String> {
             for (&index, uv) in triangle.iter().zip(uv) {
                 let p = part.solid.positions[index as usize];
                 positions.push(Vec3::new(p.x as f32, p.z as f32, -p.y as f32) * 0.001);
-                uvs.push(Vec2::new(uv.x as f32, 1.0 - uv.y as f32));
+                uvs.push(if material.is_none_or(|m| m == i) {
+                    Vec2::new(uv.x as f32, 1.0 - uv.y as f32)
+                } else {
+                    Vec2::ZERO
+                });
             }
             labels.push(i as u16);
         }
     }
-    let level = |uvs: Vec<Vec2>| {
-        Level::new(
-            positions.clone(),
-            Vec::new(),
-            uvs,
-            (0..positions.len() as u32).collect(),
-            labels.clone(),
-            scene.parts.iter().map(|p| p.name.clone()).collect(),
-        )
-    };
-    let whole = level(uvs.clone());
+    let indices = (0..positions.len() as u32).collect();
+    Ok(Level::new(
+        positions,
+        Vec::new(),
+        uvs,
+        indices,
+        labels,
+        scene.parts.iter().map(|p| p.name.clone()).collect(),
+    ))
+}
+
+pub(super) fn apply(scene: &mut Scene, d: &Projection) -> Result<(), String> {
+    // One BVH for occlusion across every primitive; each UV raster targets only
+    // its own material map, even when multiple primitives overlap in UV space.
+    let whole = surface(scene, None)?;
     let views: Vec<_> = d
         .views
         .iter()
@@ -178,18 +184,7 @@ pub(super) fn apply(scene: &mut Scene, d: &Projection) -> Result<(), String> {
         .collect();
     let mut maps = Vec::new();
     for (i, part) in scene.parts.iter().enumerate() {
-        let own = level(
-            uvs.iter()
-                .enumerate()
-                .map(|(j, uv)| {
-                    if labels[j / 3] as usize == i {
-                        *uv
-                    } else {
-                        Vec2::ZERO
-                    }
-                })
-                .collect(),
-        );
+        let own = surface(scene, Some(i))?;
         let texels = Texels::rasterise(&own, d.size, 0);
         let mut paint = Paint::new(&texels);
         for (g, edge, image) in &views {

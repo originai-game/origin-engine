@@ -6,6 +6,13 @@ use og_shape::tools::{self, Atlas, Bake, BakeSource, Decimate, Part, Repair, Sce
 use std::{cell::RefCell, path::Path};
 
 pub(crate) mod projection;
+pub(crate) mod transfer;
+
+/// An already imported dependency, including bytes read by its normal importer.
+pub(crate) struct TransferInput {
+    pub bytes: Vec<u8>,
+    pub files: crate::cook::model_program::Read,
+}
 
 macro_rules! lines {
     ($($key:literal, $args:literal, $default:literal, $doc:literal);* $(;)?) => {
@@ -19,6 +26,7 @@ pub(crate) const LINES: &[Line] = lines![
     "unwrap", "{ ... }", "off", "Replace UVs. Existing maps require bake so their appearance is not silently lost.";
     "bake", "{ ... }", "off", "Transfer the source material and normals to a fresh low-mesh atlas. No image generation.";
     "project", "{ ... }", "off", "Project registered authored views into prepared UVs through og-bake, preserving other material channels. See model.process.project.";
+    "transfer", "{ ... }", "off", "Carry an imported base model's painted maps to named parts in their own unscaled metric frames, through og-bake. Runs after project.";
     "rig", "{ ... }", "off", "Bind explicit joints, or explicitly request the existing humanoid finder, after static processing."
 ];
 pub(crate) const REPAIR: &[Line] = lines![
@@ -172,6 +180,7 @@ pub(crate) fn apply(
     resolve: &dyn Fn(&str) -> Result<Vec<u8>, String>,
     b: &Block,
     cache: Option<&Path>,
+    base: Option<&TransferInput>,
 ) -> Result<(Vec<u8>, crate::cook::model_program::Read), String> {
     let (json, _) = super::plain::chunks(bytes)?;
     let json: serde_json::Value = serde_json::from_slice(json).map_err(|e| e.to_string())?;
@@ -202,6 +211,12 @@ pub(crate) fn apply(
     let projection = sub(b, "project", projection::LINES)?
         .map(|b| projection::read(b, &resolve_tracked))
         .transpose()?;
+    let transfer = sub(b, "transfer", transfer::LINES)?;
+    let base = if transfer.is_some() {
+        Some(base.ok_or("transfer.source did not import as a model")?)
+    } else {
+        None
+    };
     let mut read = read.into_inner();
     read.sort_by(|a, b| a.0.cmp(&b.0));
     read.dedup();
@@ -215,6 +230,12 @@ pub(crate) fn apply(
     let mut inputs = vec![bytes, parameters.as_bytes()];
     for (name, data) in &read {
         inputs.extend([name.as_bytes(), data.as_slice()]);
+    }
+    if let Some(base) = base {
+        inputs.push(&base.bytes);
+        for (name, bytes) in &base.files {
+            inputs.extend([name.as_bytes(), bytes.as_slice()]);
+        }
     }
     let key = crate::cook::cache::key(&[crate::format::Area::Model], "model-process-1", &inputs);
     let store = cache.map(|p| crate::cook::cache::Store::new(p.to_path_buf()));
@@ -379,6 +400,9 @@ pub(crate) fn apply(
     };
     if let Some(projection) = &projection {
         projection::apply(&mut scene, projection)?;
+    }
+    if let (Some(transfer), Some(base)) = (transfer, base) {
+        transfer::apply(&mut scene, transfer, base)?;
     }
     let bytes = og_shape_formats::gltf::write::glb(&scene).map_err(|e| e.to_string())?;
     if let Some(store) = store {

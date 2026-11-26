@@ -26,6 +26,9 @@ use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use std::path::Path;
 
+mod authored;
+pub use authored::{AuthoredClip, CHANNEL_LINES, CLIP_LINES};
+
 /// Per-vertex deltas of one morph target.
 type Deltas = Vec<[f32; 3]>;
 
@@ -122,6 +125,8 @@ pub struct AnimSettings {
     /// Clips written again mirrored (`og_anim::mirror`), after the
     /// library's: (the clip, the mirrored clip's name).
     pub mirrors: Vec<(String, String)>,
+    /// Explicit local keys, resampled alongside the model's own glTF clips.
+    pub clips: Vec<AuthoredClip>,
     /// Quantised keys with keyframe reduction (`crate::anim_codec`)
     /// instead of f32 samples.
     pub compress: bool,
@@ -136,6 +141,13 @@ pub struct AnimSettings {
 pub const DEFAULT_TOLERANCE: f32 = 1e-4;
 
 pub const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "clip",
+        "\"<name>\" { channel ... }",
+        "",
+        "Explicit named-node keys. Names cannot collide with the source clips; same sampler and codec as glTF.",
+        "",
+    ),
     crate::grammar::Line::new(
         "rate",
         "<1..120 Hz>",
@@ -203,6 +215,7 @@ impl Default for AnimSettings {
             libraries: Vec::new(),
             foot_ik: true,
             mirrors: Vec::new(),
+            clips: Vec::new(),
             compress: false,
             tolerance: DEFAULT_TOLERANCE,
         }
@@ -235,6 +248,9 @@ impl AnimSettings {
         for (c, n) in &self.mirrors {
             s.push_str(&format!(" mirror {c:?} {n:?} mirror-v1"));
         }
+        if !self.clips.is_empty() {
+            s.push_str(&format!(" authored-keys-v1 {:?}", self.clips));
+        }
         s
     }
 
@@ -253,6 +269,13 @@ impl AnimSettings {
             }
             let err = |x: og_core::Error| format!("line {}: {x}", e.line);
             match e.key.as_str() {
+                "clip" => {
+                    let clip = AuthoredClip::parse(e)?;
+                    if a.clips.iter().any(|c| c.name == clip.name) {
+                        return Err(format!("line {}: duplicate clip '{}'", e.line, clip.name));
+                    }
+                    a.clips.push(clip);
+                }
                 "rate" => {
                     let r = e.f32(0).map_err(err)?;
                     if !(1.0..=120.0).contains(&r) {
@@ -510,6 +533,7 @@ fn slerp(a: &[f64], b: &[f64], u: f64) -> Vec<f64> {
     (0..4).map(|i| wa * a[i] + wb * b[i]).collect()
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct SourceChannel {
     node: u32,
     path: u32,
@@ -853,12 +877,28 @@ pub(crate) fn clip_names(
     root: &Path,
 ) -> Result<Vec<String>, String> {
     let mut names: Vec<_> = src.doc.animations().map(|a| clip_name(&a)).collect();
+    for c in &settings.clips {
+        if names.contains(&c.name) {
+            return Err(format!("clip '{}' already exists in the model", c.name));
+        }
+        names.push(c.name.clone());
+    }
     for lib in &settings.libraries {
         let bytes = std::fs::read(root.join(lib)).map_err(|e| e.to_string())?;
         let path = root.join(lib);
         let model = model::load(&bytes, path.parent().unwrap_or(root))?;
-        for a in model.doc.animations() {
-            let name = clip_name(&a);
+        let lib_doc = import_settings(root, lib)?;
+        let lib_settings = settings_of(lib_doc.as_ref())?;
+        if !lib_settings.libraries.is_empty() {
+            return Err(format!(
+                "library '{lib}': an animation library cannot name libraries of its own"
+            ));
+        }
+        let own = AnimSettings {
+            mirrors: Vec::new(),
+            ..lib_settings
+        };
+        for name in clip_names(&model, &own, root)? {
             if !names.contains(&name) {
                 names.push(name);
             }
@@ -1051,20 +1091,28 @@ fn cook_with(
     };
     let mut events: Vec<EventRow> = Vec::new();
     let mut clip_names: Vec<String> = Vec::new();
+    let mut inputs = Vec::new();
     for anim in doc.animations() {
         let name = clip_name(&anim);
+        let mut source = read_channels(src, &anim, new_index)
+            .map_err(|e| CookError(format!("animation '{name}': {e}")))?;
+        source.extend(read_visibility(src, json.as_ref(), &anim, new_index).map_err(CookError)?);
+        inputs.push((name, source, Some(anim.index())));
+    }
+    for clip in &settings.clips {
+        inputs.push((
+            clip.name.clone(),
+            clip.bind(src, new_index).map_err(CookError)?,
+            None,
+        ));
+    }
+    for (name, source, source_index) in inputs {
         if clip_names.contains(&name) {
             return Err(CookError(format!(
                 "two animations are called '{name}'; clips are found by name"
             )));
         }
         clip_names.push(name.clone());
-        let mut source = read_channels(src, &anim, new_index)
-            .map_err(|e| CookError(format!("animation '{name}': {e}")))?;
-        source.extend(
-            read_visibility(src, json.as_ref(), &anim, new_index)
-                .map_err(|e| CookError(format!("animation '{name}': {e}")))?,
-        );
         let duration = source
             .iter()
             .flat_map(|c| c.times.last())
@@ -1125,8 +1173,14 @@ fn cook_with(
             );
         }
         let event_first = events.len() as u32;
-        for (n, t) in
-            events_of(json.as_ref(), anim.index(), &name, settings, duration).map_err(CookError)?
+        for (n, t) in events_of(
+            json.as_ref(),
+            source_index.unwrap_or(usize::MAX),
+            &name,
+            settings,
+            duration,
+        )
+        .map_err(CookError)?
         {
             let (name_offset, name_len) = strings.add(&n);
             events.push(EventRow {

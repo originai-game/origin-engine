@@ -37,6 +37,23 @@ use std::collections::{BTreeMap, BTreeSet};
 /// The document type of a prefab.
 pub const PREFAB_TYPE: &str = "prefab";
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "base",
+        "\"<prefab asset>\"",
+        "",
+        "One base before the root entity; remaining fields override it.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "entity",
+        "\"<name>\" { ... }",
+        "required",
+        "Exactly one root; nested entity grammar is shared with scenes.",
+        "",
+    ),
+];
+
 /// Where a flattened entity came from: the prefab placed (the outermost
 /// one, for a nested instance), the node's index in that prefab's
 /// flattened table, and the instance it belongs to (an index the
@@ -346,6 +363,9 @@ impl<'a> Flattener<'a> {
         let mut base = None;
         let mut root = None;
         for e in &doc.body.entries {
+            if !LINES.iter().any(|f| f.key == e.key) {
+                return Err(err(id, e.line, format!("unknown prefab entry '{}'", e.key)));
+            }
             match e.key.as_str() {
                 "base" if base.is_none() && root.is_none() => {
                     base = Some(crate::runtime::asset_id(&quoted(e, id, "base")?).to_string())

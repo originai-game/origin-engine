@@ -39,6 +39,16 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
     }
     let empty = Block::new();
     let block = e.block.as_ref().unwrap_or(&empty);
+    grammar::check(block, TRACK_LINES, kind)?;
+    // Light/post/material field names are deliberately open: reflection at
+    // the host owns them. Other track kinds have a closed key grammar.
+    if !matches!(kind, "light" | "post" | "material" | "blendshape") {
+        for key in block.get_all("key") {
+            if let Some(b) = &key.block {
+                grammar::check(b, KEY_LINES, kind)?;
+            }
+        }
+    }
     let target = target.unwrap_or_default();
     Ok(match kind {
         "camera" => Track::Camera(camera(block)?),

@@ -1,0 +1,11 @@
+{
+  "added": [{
+    "member": "og api file catalogue",
+    "summary": "Discover the remaining scene/prefab, district/grammar, rig2d/flipbook, timeline/story/behaviour, project/import, UI pack/theme and model-program fields through parser-owned vocabularies. API generation now refuses a registered cook kind without a catalogue entry."
+  }],
+  "breaking": [{
+    "member": "authored file fields",
+    "change": "Import model/texture/font settings and the newly catalogued authored readers reject unknown field names instead of silently accepting unused data.",
+    "fix": "Use og api show file:<type> and its nested sections for accepted fields. Remove unused keys or move notes into comments; reflected scene component/resource fields retain their own schema, and vfx2d JSON notes remain ignored."
+  }]
+}

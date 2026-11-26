@@ -54,6 +54,187 @@ pub const QUEST_TYPE: &str = "quest";
 /// The speaker every dialogue has without declaring it: no name, no portrait.
 pub const NARRATOR: &str = "narrator";
 
+/// Quest declarations and nested fields, shared with the file catalogue.
+pub const QUEST_LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::of(&["quest"], "id", "<id>", "required", "Unique quest id.", ""),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "title",
+        "\"<i18n key>\"",
+        "required",
+        "Quest title.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest", "stage"],
+        "summary",
+        "\"<i18n key>\"",
+        "",
+        "Summary key.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "category",
+        "<word>",
+        "main",
+        "Game-owned category, no engine semantics.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "giver",
+        "\"<i18n key>\"",
+        "",
+        "Quest giver key.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "region",
+        "\"<i18n key>\"",
+        "",
+        "Quest region key.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "global",
+        "<name> <value>",
+        "",
+        "Repeated story variables, checked by the shared expression parser.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "reward",
+        "\"<i18n key>\" [<amount>] { ... }",
+        "",
+        "Declared reward metadata; amount defaults to one. Game applies rewards.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["quest"],
+        "stage",
+        "<id> { ... }",
+        "required",
+        "Repeated stages in authored order.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(&["reward"], "image", "\"<asset>\"", "", "Reward image.", ""),
+    og_core::ogt::line::Line::of(
+        &["reward"],
+        "rarity",
+        "<word>",
+        "",
+        "Game-owned rarity label.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["stage"],
+        "next",
+        "<stage id>",
+        "next stage",
+        "Explicit next stage; references are validated.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["stage"],
+        "fail",
+        "\"<expression>\"",
+        "",
+        "Fail when this condition holds.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["stage"],
+        "objective",
+        "<id> \"<i18n key>\" { ... }",
+        "",
+        "Repeated objectives; ids unique per stage.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "arg",
+        "<name> \"<expression>\"",
+        "",
+        "Repeated localized message arguments.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "target",
+        "<integer, 1..1000000>",
+        "1",
+        "Required progress count.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "when",
+        "\"<expression>\"",
+        "",
+        "Complete when condition holds.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "on",
+        "<event>",
+        "",
+        "Progress on this event.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "where",
+        "\"<expression>\"",
+        "",
+        "Filter the declared event.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "optional",
+        "",
+        "false",
+        "Not required for stage completion.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "hidden",
+        "",
+        "false",
+        "Hide until first progress.",
+        "",
+    ),
+    og_core::ogt::line::Line::of(
+        &["objective"],
+        "marker",
+        "<x> [<y> <z>]",
+        "",
+        "World point in metres; omitted y/z are zero.",
+        "",
+    ),
+];
+
+fn quest_fields(b: &og_core::ogt::Block, scope: &str) -> Result<(), String> {
+    for e in &b.entries {
+        if !QUEST_LINES
+            .iter()
+            .any(|f| f.key == e.key && f.within.contains(&scope))
+        {
+            return Err(err(e, format!("unknown {scope} field '{}'", e.key)));
+        }
+        if let Some(b) = &e.block {
+            quest_fields(b, &e.key)?;
+        }
+    }
+    Ok(())
+}
+
 /// A variable a dialogue or quest declares.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VarDecl {
@@ -681,6 +862,7 @@ impl Quest {
     /// Parses and validates a quest.
     pub fn parse(text: &str) -> Result<Quest, String> {
         let doc = header(text, QUEST_TYPE)?;
+        quest_fields(&doc.body, "quest")?;
         let mut q = Quest {
             id: String::new(),
             title: String::new(),

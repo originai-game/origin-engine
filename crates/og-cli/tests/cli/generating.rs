@@ -45,6 +45,62 @@ fn animation_graph_cooks_with_tracked_clip_bindings() {
         ),
         ("stride", "walk")
     );
+    let authored = "type import\nversion 1\n---\nconform off\nanimation {\nrate 4\ncompress true\nclip \"designed\" {\nchannel \"hips\" translation {\ninterpolation cubicSpline\nkey 0 0 0 0 2 3 5 8 0 0\nkey 1 0 0 0 6 7 9 0 0 0\n}\nchannel \"body\" visibility {\ninterpolation step\nkey 0 1\nkey 0.5 0\nkey 1 1\n}\n}\nevent \"designed\" \"half\" 0.5\n}\n";
+    std::fs::write(assets.join("walker.glb.ogt"), authored).unwrap();
+    std::fs::write(
+        assets.join("graph.ogt"),
+        graph.replace("\"walk\"", "\"designed\""),
+    )
+    .unwrap();
+    let out = cook();
+    assert!(out.status.success(), "{}", text(&out));
+    let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let animation = bundle.load_animation("walker.glb").unwrap();
+    let clip = animation.clip("designed").unwrap();
+    let position = &clip.channels[0];
+    // Hermite at t=0.5: midpoint plus 1/8 of the first out-tangent.
+    for (lane, expected) in [5.0, 5.0, 7.0].into_iter().enumerate() {
+        assert!((position.lane(2, lane) - expected).abs() < 0.001);
+    }
+    assert_eq!(clip.channels[1].lane(1, 0), 1.0);
+    assert_eq!(clip.channels[1].lane(2, 0), 0.0);
+    assert_eq!(
+        (clip.events[0].name.as_str(), clip.events[0].time),
+        ("half", 0.5)
+    );
+    let cold = bundle.read("walker.glb#anim").unwrap();
+    assert!(cook().status.success());
+    assert_eq!(
+        &*og_cook::runtime::Bundle::open(&root.join("cooked"))
+            .unwrap()
+            .read("walker.glb#anim")
+            .unwrap(),
+        &*cold
+    );
+    // Reject unknown nodes, then prove changing only authored keys invalidates output.
+    std::fs::write(
+        assets.join("walker.glb.ogt"),
+        authored.replace("\"hips\"", "\"absent\""),
+    )
+    .unwrap();
+    assert!(!cook().status.success());
+    std::fs::write(
+        assets.join("walker.glb.ogt"),
+        authored.replace("6 7 9", "10 7 9"),
+    )
+    .unwrap();
+    assert!(cook().status.success());
+    let changed = og_cook::runtime::Bundle::open(&root.join("cooked"))
+        .unwrap()
+        .load_animation("walker.glb")
+        .unwrap();
+    assert!((changed.clip("designed").unwrap().channels[0].lane(2, 0) - 7.0).abs() < 0.001);
+    std::fs::write(
+        assets.join("walker.glb.ogt"),
+        "type import\nversion 1\n---\nconform off\n",
+    )
+    .unwrap();
+    std::fs::write(assets.join("graph.ogt"), graph).unwrap();
     let mut renamed = model;
     for i in 0..renamed.len() - 3 {
         if &renamed[i..i + 4] == b"walk" {
@@ -689,11 +745,14 @@ part "mixed" {
     std::fs::write(assets.join("projection.ogt"), "type model\nversion 1\n---\nconform off\npart \"panel\" {\nplaneGeometry {\nwidth 2\nheight 2\n}\n}\nprocess {\nproject {\nsize 32\npadding 2\nview \"view.svg\" {\nposition 0 0 4\ntarget 0 0 0\northo 1\n}\n}\n}\n").unwrap();
     let image = r##"<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#e34a2c"/><rect x="24" width="8" height="32" fill="#2c69df"/></svg>"##;
     std::fs::write(assets.join("view.svg"), image).unwrap();
-    let projected = || {
+    // The wider variant sorts before its processed base. Transfer retains
+    // metric distances rather than stretching the base image over the variant.
+    std::fs::write(assets.join("a-variant.ogt"), "type model\nversion 1\n---\nconform off\npart \"panel\" {\nplaneGeometry {\nwidth 3\nheight 2\n}\n}\nprocess {\ntransfer {\nsource \"projection.ogt\"\nsize 32\npadding 2\n}\n}\n").unwrap();
+    let cooked_map = |id: &str| {
         let out = cook();
         assert!(out.status.success(), "{}", text(&out));
         let bundle = og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
-        let model = bundle.load_model("projection.ogt").unwrap();
+        let model = bundle.load_model(id).unwrap();
         let index = model
             .materials
             .iter()
@@ -705,19 +764,31 @@ part "mixed" {
             .to_texture_data()
             .unwrap()
     };
-    let first = projected();
+    let first = cooked_map("projection.ogt");
     assert_eq!((first.width, first.height), (32, 32));
     let pixel = |rgba: &[u8], x: usize| rgba[(16 * 32 + x) * 4..(16 * 32 + x) * 4 + 3].to_vec();
     let left = pixel(&first.rgba, 8);
     let right = pixel(&first.rgba, 28);
     assert!(left[0] > 180 && left[2] < 90, "{left:?}");
     assert!(right[2] > 180 && right[0] < 90, "{right:?}");
-    assert_eq!(projected().rgba, first.rgba);
+    assert_eq!(cooked_map("projection.ogt").rgba, first.rgba);
+    let variant = cooked_map("a-variant.ogt");
+    let middle = pixel(&variant.rgba, 20);
+    assert!(
+        middle[2] > 180 && middle[0] < 90,
+        "metric transfer must not stretch the red region: {middle:?}"
+    );
+    assert_eq!(pixel(&variant.rgba, 8), pixel(&first.rgba, 8));
+    assert_eq!(cooked_map("a-variant.ogt").rgba, variant.rgba);
     std::fs::write(assets.join("view.svg"), image.replace("#e34a2c", "#2ce34a")).unwrap();
-    let changed = projected();
+    let changed = cooked_map("projection.ogt");
     let left = pixel(&changed.rgba, 8);
     assert!(left[1] > 180 && left[0] < 90, "{left:?}");
     assert_eq!(pixel(&changed.rgba, 28), right);
+    let variant = cooked_map("a-variant.ogt");
+    assert_eq!(pixel(&variant.rgba, 8), left);
+    let middle = pixel(&variant.rgba, 20);
+    assert!(middle[2] > 180 && middle[0] < 90, "{middle:?}");
     // The consumer sorts before its source. Import order is a dependency,
     // not filename order, and a selected node keeps its rest placement.
     let operand = "type model\nversion 1\n---\nconform off\npart \"copy\" {\nmergeGeometries {\npart {\nmodelGeometry {\nsource \"mesh.ogt\"\nnode \"placed\"\n}\nposition 0 2 0\n}\n}\n}\n";

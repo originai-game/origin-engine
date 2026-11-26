@@ -100,6 +100,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
         .and_then(|e| e.block.as_ref())
         .unwrap_or(&empty);
     let mut publish = serde_json::Map::new();
+    og_cook::grammar::check(p, og_cook::project::PUBLISH, "project.ogt publish")?;
     for e in &p.entries {
         let v = match e.key.as_str() {
             "out" | "keep" => continue,

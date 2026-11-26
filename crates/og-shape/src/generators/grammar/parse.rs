@@ -36,6 +36,70 @@ use og_core::ogt::{Block, Document, Entry, Value};
 
 use super::{Axis, Cond, Faces, GRAMMAR_TYPE, Grammar, Num, Op, RoofKind, Rule, Size, SplitPart};
 
+use og_core::ogt::line::Line;
+macro_rules! lines {
+    ($($k:literal, $a:literal, $d:literal, $doc:literal);* $(;)?) => {
+        &[$(Line::new($k, $a, $d, $doc, "")),*]
+    };
+}
+pub const LINES: &[Line] = lines![
+    "param", "<name> <number>", "", "Repeated named numeric parameters.";
+    "start", "<rule>", "required", "Starting rule.";
+    "rule", "<name> { ... }", "", "Named sequence ending in an emitting or dispatching operation."
+];
+const OPS: &[Line] = lines![
+    "recess", "<depth> [<jamb rule>]", "", "Recess the face in metres before its terminal operation.";
+    "detail", "<integer 0..16>", "0", "Output detail level.";
+    "label", "<label>", "", "Emit this surface with a material label.";
+    "insert", "\"<model asset>\"", "", "Insert a model into this scope.";
+    "drop", "", "", "Emit no surface.";
+    "extrude", "<depth> { ... }", "", "Extrude in metres; map faces to rules.";
+    "split", "x | y { ... }", "", "Split across or up the face.";
+    "inset", "<width> <border rule> <inner rule>", "", "Inset by metres.";
+    "roof", "flat | gable <degrees> | hip <degrees> { ... }", "", "Build a roof from the footprint.";
+    "pick", "{ option <weight> <rule> ... }", "", "Deterministic weighted choice.";
+    "case", "{ ... }", "", "Ordered size/parameter predicates, optional final otherwise."
+];
+const EXTRUDE: &[Line] = lines![
+    "top", "<rule>", "", "Top face rule.";
+    "bottom", "<rule>", "", "Bottom face rule.";
+    "front", "<rule>", "", "Front face rule.";
+    "back", "<rule>", "", "Back face rule.";
+    "side", "<rule>", "", "Side face rule.";
+    "sides", "<rule>", "", "All side faces rule."
+];
+const SPLIT: &[Line] = lines![
+    "part", "<length> <rule>", "", "Absolute length, metres.";
+    "fill", "<weight> <rule>", "", "Weighted share of remaining length.";
+    "repeat", "<length> <rule>", "", "Repeat at least once, stretching to fill."
+];
+const ROOF: &[Line] = lines![
+    "overhang", "<metres>", "0", "Roof overhang.";
+    "slope", "<rule>", "required", "Rule for slopes.";
+    "gable", "<rule>", "", "Rule for gables.";
+    "eave", "<rule>", "", "Rule for eaves."
+];
+const PICK: &[Line] = lines![
+    "option",
+    "<weight > 0> <rule>",
+    "required",
+    "Repeated weighted candidate."
+];
+const CASE: &[Line] = lines![
+    "wider", "<metres> <rule>", "", "Dispatch when wider than the value.";
+    "taller", "<metres> <rule>", "", "Dispatch when taller than the value.";
+    "param", "<name> <value> <rule>", "", "Parameter predicate.";
+    "otherwise", "<rule>", "", "Fallback, last."
+];
+pub const BLOCKS: &[(&str, &[Line])] = &[
+    ("rule", OPS),
+    ("rule.extrude", EXTRUDE),
+    ("rule.split", SPLIT),
+    ("rule.roof", ROOF),
+    ("rule.pick", PICK),
+    ("rule.case", CASE),
+];
+
 fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
     format!("line {}: `{}`: {msg}", e.line, e.key)
 }
@@ -95,10 +159,16 @@ fn num(e: &Entry, i: usize) -> Result<Num, String> {
 }
 
 /// Every entry of `b` is one of `keys`.
-fn known(b: &Block, keys: &[&str], what: &str) -> Result<(), String> {
+fn known(b: &Block, lines: &[Line], what: &str) -> Result<(), String> {
     for e in &b.entries {
-        if !keys.contains(&e.key.as_str()) {
-            return Err(at(e, format!("{what} takes {}", keys.join(", "))));
+        if !lines.iter().any(|f| f.key == e.key) {
+            return Err(at(
+                e,
+                format!(
+                    "{what} takes {}",
+                    lines.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
+                ),
+            ));
         }
     }
     Ok(())
@@ -118,6 +188,7 @@ pub fn parse(text: &str) -> Result<Grammar, String> {
     }
     let mut g = Grammar::default();
     let mut start = None;
+    known(&doc.body, LINES, "grammar")?;
     for e in &doc.body.entries {
         match e.key.as_str() {
             "param" => {
@@ -136,6 +207,7 @@ pub fn parse(text: &str) -> Result<Grammar, String> {
             "rule" => {
                 count(e, 1, 1)?;
                 let k = name(e, 0)?;
+                known(block(e)?, OPS, "rule")?;
                 let ops = block(e)?
                     .entries
                     .iter()
@@ -219,11 +291,7 @@ fn op(e: &Entry) -> Result<Op, String> {
         "extrude" => {
             count(e, 1, 1)?;
             let b = block(e)?;
-            known(
-                b,
-                &["top", "bottom", "front", "back", "side", "sides"],
-                "extrude",
-            )?;
+            known(b, EXTRUDE, "extrude")?;
             let mut faces = Faces::default();
             for f in &b.entries {
                 count(f, 1, 1)?;
@@ -253,7 +321,7 @@ fn op(e: &Entry) -> Result<Op, String> {
                 _ => return Err(at(e, "splits along x (across the face) or y (up it)")),
             };
             let b = block(e)?;
-            known(b, &["part", "fill", "repeat"], "a split")?;
+            known(b, SPLIT, "a split")?;
             let parts = b
                 .entries
                 .iter()
@@ -300,7 +368,7 @@ fn op(e: &Entry) -> Result<Op, String> {
                 _ => return Err(at(e, "a gable or hip roof takes its angle in degrees")),
             };
             let b = block(e)?;
-            known(b, &["overhang", "slope", "gable", "eave"], "a roof")?;
+            known(b, ROOF, "a roof")?;
             let (mut overhang, mut slope, mut gable, mut eave) = (Num::Lit(0.0), None, None, None);
             for f in &b.entries {
                 count(f, 1, 1)?;
@@ -325,7 +393,7 @@ fn op(e: &Entry) -> Result<Op, String> {
         "pick" => {
             count(e, 0, 0)?;
             let b = block(e)?;
-            known(b, &["option"], "pick")?;
+            known(b, PICK, "pick")?;
             let options = b
                 .entries
                 .iter()
@@ -347,7 +415,7 @@ fn op(e: &Entry) -> Result<Op, String> {
         "case" => {
             count(e, 0, 0)?;
             let b = block(e)?;
-            known(b, &["wider", "taller", "param", "otherwise"], "case")?;
+            known(b, CASE, "case")?;
             let (mut arms, mut otherwise) = (Vec::new(), None);
             for c in &b.entries {
                 no_block(c)?;

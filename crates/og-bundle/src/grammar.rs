@@ -11,6 +11,16 @@ use std::fmt::Write;
 
 pub use og_core::ogt::line::Line;
 
+/// Validate a file block against its published field vocabulary.
+pub fn check(block: &og_core::ogt::Block, fields: &[Line], at: &str) -> Result<(), String> {
+    for e in &block.entries {
+        if !fields.iter().any(|f| f.key == e.key) {
+            return Err(format!("line {}: {at} has no '{}'", e.line, e.key));
+        }
+    }
+    Ok(())
+}
+
 /// The row of `lines` for `key` taken by an element labelled `labels`
 /// (any row for a body line, whose labels are empty).
 pub fn find<'a>(lines: &'a [Line], key: &str, labels: &[&str]) -> Option<&'a Line> {

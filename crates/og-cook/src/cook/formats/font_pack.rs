@@ -16,21 +16,22 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::BlobKind;
 use og_blob::BlobWriter;
 
-#[derive(serde::Deserialize)]
-struct Manifest {
-    kind: String,
-    name: String,
-    #[serde(default)]
-    languages: Vec<String>,
-    /// ISO 15924 codes; a pack of no language (`emoji`: `Zsye`) names
-    /// only its scripts and is never a locale's own.
-    #[serde(default)]
-    scripts: Vec<String>,
-    #[serde(default)]
-    faces: Vec<String>,
-    /// Its hyphenation dictionaries, `<language>.hyph`.
-    #[serde(default)]
-    hyphenation: Vec<String>,
+macro_rules! manifest {
+    ($($(#[$attr:meta])* $name:ident: $ty:ty => $args:literal, $default:literal, $doc:literal);* $(;)?) => {
+        #[derive(serde::Deserialize)]
+        struct Manifest { $($(#[$attr])* $name: $ty),* }
+        pub(crate) const LINES: &[crate::grammar::Line] = &[$(
+            crate::grammar::Line::new(stringify!($name), $args, $default, $doc, "")
+        ),*];
+    };
+}
+manifest! {
+    kind: String => "font", "required", "Extension kind discriminator.";
+    name: String => "string", "required", "Pack name.";
+    #[serde(default)] languages: Vec<String> => "[language, ...]", "[]", "Language tags the pack covers.";
+    #[serde(default)] scripts: Vec<String> => "[ISO 15924 code, ...]", "[]", "Scripts, including language-independent packs such as emoji Zsye.";
+    #[serde(default)] faces: Vec<String> => "[path, ...]", "[]", "TTF/OTF paths relative to the pack; each face retains its own import settings.";
+    #[serde(default)] hyphenation: Vec<String> => "[language.hyph, ...]", "[]", "Dictionaries shipped only for reached hyphens:auto and project locales.";
 }
 
 /// Whether a game hyphenates (CSS Text 4 §6.1): its code writes a

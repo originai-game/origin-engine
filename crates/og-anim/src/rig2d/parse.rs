@@ -66,19 +66,11 @@ fn index(names: &[String], name: &str, what: &str, line: usize) -> Result<usize>
 }
 
 /// The keys of an armature's body (the rig's top level, or an `armature` block).
-pub(super) const BODY_KEYS: [&str; 11] = [
-    "bone",
-    "slot",
-    "region",
-    "mesh",
-    "box",
-    "path",
-    "child",
-    "ik",
-    "transform",
-    "along",
-    "clip",
-];
+pub(super) fn body_key(key: &str) -> bool {
+    grammar::BLOCKS
+        .iter()
+        .any(|(name, _)| *name == key && !name.contains('.') && *name != "skin")
+}
 
 /// Reads an armature's bones, slots, attachments, constraints and clips
 /// from `body` (`armatures`: the rig's child armatures, by name).

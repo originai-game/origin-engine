@@ -29,6 +29,7 @@ impl Rig2dAsset {
         let mut filter = SheetFilter::Linear;
         let mut unit = 1.0;
         let body = &doc.body.entries;
+        grammar::check(body, "")?;
         for e in body {
             match e.key.as_str() {
                 "texture" => {
@@ -57,7 +58,7 @@ impl Rig2dAsset {
                     }
                 }
                 "armature" | "dragonbones" | "atlas" | "skin" => {}
-                k if BODY_KEYS.contains(&k) => {}
+                k if body_key(k) => {}
                 k => return Err(parse_err(e.line, format!("unknown key `{k}` in a 2D rig"))),
             }
         }
@@ -85,7 +86,7 @@ impl Rig2dAsset {
             let entries = &block(e)?.entries;
             if let Some(c) = entries
                 .iter()
-                .find(|c| !BODY_KEYS.contains(&c.key.as_str()) && c.key != "skin")
+                .find(|c| !body_key(&c.key) && c.key != "skin")
             {
                 return Err(parse_err(
                     c.line,

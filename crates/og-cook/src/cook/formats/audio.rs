@@ -34,6 +34,37 @@ use og_blob::BlobWriter;
 /// settings say `stream false` (1 MiB: 27 s of 48 kHz stereo).
 pub const STREAM_BYTES: u64 = 1 << 20;
 
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "stream",
+        "true | false",
+        "auto above 1 MiB",
+        "QOA chunk streaming; Opus streams codec blocks instead.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "chunk",
+        "<seconds 1..60>",
+        "4",
+        "QOA chunk duration rounded up to full codec frames.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "codec",
+        "qoa | opus",
+        "qoa",
+        "Opus resamples to 48kHz and uses at most the first two channels.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "bitrate",
+        "<16..256>",
+        "96 stereo / 64 mono",
+        "Opus kb/s, rounded to nearest whole number.",
+        "",
+    ),
+];
+
 /// Samples per channel in a full QOA frame.
 const QOA_FRAME: u64 = 5120;
 
@@ -77,6 +108,7 @@ impl SoundSettings {
     pub fn parse(block: Option<&og_core::ogt::Block>) -> Result<SoundSettings, String> {
         let mut s = SoundSettings::default();
         let Some(b) = block else { return Ok(s) };
+        crate::grammar::check(b, LINES, "import.sound")?;
         for e in &b.entries {
             match e.key.as_str() {
                 "stream" => {

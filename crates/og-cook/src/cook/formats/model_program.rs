@@ -96,7 +96,7 @@ pub struct Program {
 pub const ATLAS_PADDING: u32 = 4;
 
 /// The fields a material block takes.
-const MATERIAL_FIELDS: [&str; 22] = [
+pub(crate) const MATERIAL_FIELDS: [&str; 22] = [
     "color",
     "metalness",
     "roughness",
@@ -119,6 +119,51 @@ const MATERIAL_FIELDS: [&str; 22] = [
     "iridescence",
     "alphaTest",
     "doubleSided",
+];
+
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "program",
+        "\"<file.shape.json>\"",
+        "required",
+        "Model program beside this model.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "params",
+        "{ <name> <finite number> ... }",
+        "program parameters",
+        "Named numeric parameter overrides.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "material",
+        "\"<name>\" { ... }",
+        "program materials",
+        "Material overrides by name.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "atlas",
+        "<integer 16..8192>",
+        "none",
+        "Repack UVs at this texel grid, gutter 4.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "conform",
+        "off | character | effect",
+        "project look",
+        "Art conformance category.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "process",
+        "{ ... }",
+        "off",
+        "Shared static model preparation.",
+        "",
+    ),
 ];
 
 fn at(e: &Entry, msg: impl std::fmt::Display) -> String {
@@ -241,6 +286,7 @@ pub fn parse(
         });
     }
     let doc = Document::parse(&utf8(bytes.to_vec(), rel)?).map_err(|e| e.to_string())?;
+    crate::grammar::check(&doc.body, LINES, "program model")?;
     let mut p = Program::default();
     for e in &doc.body.entries {
         match e.key.as_str() {

@@ -30,7 +30,9 @@
 //! }
 //! ```
 
+mod grammar;
 mod parse;
+pub use grammar::LINES;
 
 use og_core::glam::Vec3;
 use og_core::ogt::{Block, Document, Entry, Value as OgtValue};

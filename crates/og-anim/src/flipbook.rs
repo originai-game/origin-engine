@@ -21,6 +21,124 @@ use std::sync::{Arc, Mutex, MutexGuard};
 /// The system's and the state block's name.
 pub const FLIPBOOK_SYSTEM: &str = "og.flipbook";
 
+/// Authored sheet fields, also read by the file reference generator.
+pub const FLIPBOOK_LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new(
+        "texture",
+        "\"<image>\"",
+        "required",
+        "Atlas image; cook resolves its dimensions.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "size",
+        "<width> <height>",
+        "image dimensions",
+        "Atlas size in pixels, nonnegative integers.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "filter",
+        "nearest | linear",
+        "nearest",
+        "Texture sampling.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "array",
+        "true | false",
+        "false",
+        "Cook equal-sized frames as texture-array layers.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "pivot",
+        "<x> <y>",
+        "0.5 0.5",
+        "Default frame pivot as fractions from bottom-left.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "margin",
+        "<pixels>",
+        "0",
+        "Nonnegative integer grid margin.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "spacing",
+        "<pixels>",
+        "0",
+        "Nonnegative integer grid spacing.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "grid",
+        "<width> <height> [<columns> <rows>]",
+        "",
+        "Positive pixel cell size; counts otherwise derived from atlas size.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "frame",
+        "<name> <x> <y> <w> <h> [<pivot x> <pivot y>]",
+        "",
+        "Repeated frame rectangles in pixels from top-left; optional fractional bottom-left pivot.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "clip",
+        "<name> { ... }",
+        "",
+        "Named animation with explicit frame sequence.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "atlas",
+        "\"<file.json>\"",
+        "",
+        "Cook imports Aseprite or TexturePacker frames, pivots and tags; no rotated frames.",
+        "",
+    ),
+];
+pub const FLIPBOOK_CLIP_LINES: &[og_core::ogt::line::Line] = &[
+    og_core::ogt::line::Line::new(
+        "frames",
+        "<name or index> ...",
+        "required",
+        "Nonempty ordered frame sequence.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "fps",
+        "<number > 0>",
+        "12",
+        "Uniform playback rate when durations is absent.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "durations",
+        "<seconds> ...",
+        "1 / fps",
+        "Positive duration for every sequence frame.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "mode",
+        "loop | pingPong | once",
+        "loop",
+        "Playback mode.",
+        "",
+    ),
+    og_core::ogt::line::Line::new(
+        "event",
+        "<frame index> \"<name>\"",
+        "",
+        "Repeated events on sequence frames, not atlas indices.",
+        "",
+    ),
+];
+
 /// Plays a clip of a flipbook sheet. Draw it with an `og.Sprite` on the
 /// same entity: extraction takes the texture, region and pivot of the
 /// current frame from the sheet (`og.Sprite` keeps size, colour, flips and
@@ -264,6 +382,12 @@ impl FlipbookSheet {
             Ok(v as u32)
         };
         for e in &doc.body.entries {
+            if !FLIPBOOK_LINES.iter().any(|f| f.key == e.key) {
+                return Err(parse_err(
+                    e.line,
+                    format!("unknown flipbook field `{}`", e.key),
+                ));
+            }
             match e.key.as_str() {
                 "texture" => {
                     sheet.texture = e
@@ -388,6 +512,12 @@ impl FlipbookSheet {
             let mut mode = FlipMode::Loop;
             let mut events = Vec::new();
             for c in &block.entries {
+                if !FLIPBOOK_CLIP_LINES.iter().any(|f| f.key == c.key) {
+                    return Err(parse_err(
+                        c.line,
+                        format!("unknown flipbook clip field `{}`", c.key),
+                    ));
+                }
                 match c.key.as_str() {
                     "frames" => {
                         for v in &c.values {

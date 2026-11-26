@@ -115,7 +115,7 @@ impl Default for Budgets {
     }
 }
 
-const KEYS: [&str; 14] = [
+pub(in crate::cook) const KEYS: [&str; 14] = [
     "triangles",
     "vertices",
     "textureSize",

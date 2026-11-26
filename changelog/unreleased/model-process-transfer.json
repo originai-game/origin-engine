@@ -1,0 +1,6 @@
+{
+  "added": [{
+    "member": "model.process.transfer",
+    "summary": "Carry an imported base model's painted maps into named variant parts through the shared og-bake metric transfer kernel. Cook orders base dependencies, rejects cycles and hashes the processed source and all external file contents; the destination keeps its geometry and other material channels. Query file:model.process.transfer."
+  }]
+}

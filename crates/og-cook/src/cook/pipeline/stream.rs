@@ -61,7 +61,50 @@ pub(crate) struct GroupDecl {
     pub priority: i32,
 }
 
-const KEYS: [&str; 6] = ["asset", "distance", "unload", "volume", "priority", "cell"];
+pub(crate) const LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "asset",
+        "\"<asset>\"",
+        "",
+        "Repeated asset ids; each asset belongs to at most one group.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "distance",
+        "<x> <y> <z> <radius>",
+        "manual",
+        "Distance trigger in scene metres; exclusive with volume and cell.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "unload",
+        "<metres>",
+        "radius * 1.25",
+        "Unload distance for a distance trigger.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "volume",
+        "\"<entity>\"",
+        "manual",
+        "Trigger inside the named entity's box.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "priority",
+        "<i32>",
+        "0",
+        "Higher loads first and unloads last.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "cell",
+        "",
+        "",
+        "Sub-scene cell group, at most one, without other trigger.",
+        "",
+    ),
+];
 
 fn valid_name(n: &str) -> bool {
     !n.is_empty()
@@ -104,12 +147,12 @@ pub(crate) fn groups_of(
             ));
         };
         for k in &b.entries {
-            if !KEYS.contains(&k.key.as_str()) {
+            if !LINES.iter().any(|f| f.key == k.key) {
                 return Err(format!(
                     "line {}: '{}' is not a stream entry: {}",
                     k.line,
                     k.key,
-                    KEYS.join(", ")
+                    LINES.iter().map(|f| f.key).collect::<Vec<_>>().join(", ")
                 ));
             }
         }

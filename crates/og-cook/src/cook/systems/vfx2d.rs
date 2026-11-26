@@ -26,6 +26,7 @@
 
 mod color;
 mod engine;
+pub(in crate::cook) mod grammar;
 mod jsmath;
 mod json;
 mod layers;
@@ -48,7 +49,7 @@ const MAX_EVENT_NAME: usize = 63;
 
 /// Renders a recipe's JSON text: the Forge's frames.
 pub fn render_json(text: &str) -> Result<Rendered, String> {
-    Ok(engine::render(&json::parse(text)?))
+    Ok(engine::render(&grammar::recipe(json::parse(text)?)))
 }
 
 /// What a `type vfx2d` file says.
@@ -126,6 +127,9 @@ fn parse(
         events: Vec::new(),
     };
     for e in &doc.body.entries {
+        if !grammar::LINES.iter().any(|f| f.key == e.key) {
+            return Err(format!("line {}: unknown vfx2d field '{}'", e.line, e.key));
+        }
         let line = e.line;
         match e.key.as_str() {
             "duration" => {
@@ -188,10 +192,10 @@ fn parse(
         }
         (None, Some(j)) => j.to_string(),
     };
-    fx.recipe = json::parse(&recipe_text).map_err(|e| match &fx.file {
+    fx.recipe = grammar::recipe(json::parse(&recipe_text).map_err(|e| match &fx.file {
         Some(id) => format!("{id}: {e}"),
         None => e,
-    })?;
+    })?);
     match fx.recipe.get("layers") {
         Some(json::Val::Arr(l)) if !l.is_empty() => {}
         _ => return Err("the recipe has no layers".into()),

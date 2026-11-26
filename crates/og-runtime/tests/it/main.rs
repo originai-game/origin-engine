@@ -8,6 +8,8 @@ mod gpu_tests;
 mod flow_acceptance;
 #[path = "../mid_tick_save.rs"]
 mod mid_tick_save;
+#[path = "../model_animation.rs"]
+mod model_animation;
 #[path = "../no_renderer.rs"]
 mod no_renderer;
 #[path = "../render_compile.rs"]

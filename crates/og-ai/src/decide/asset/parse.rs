@@ -66,25 +66,9 @@ fn word_or_string(v: &OgtValue) -> Option<&str> {
 }
 
 /// Every option key a node's block may hold.
-fn check_options(e: &Entry, allowed: &[&str]) -> Result<(), String> {
+fn check_options(e: &Entry) -> Result<(), String> {
     if let Some(b) = &e.block {
-        for o in &b.entries {
-            if !allowed.contains(&o.key.as_str()) {
-                return Err(err(
-                    o,
-                    format!(
-                        "'{}' is not an option of {} (it takes {})",
-                        o.key,
-                        e.key,
-                        if allowed.is_empty() {
-                            "none".to_string()
-                        } else {
-                            allowed.join(", ")
-                        }
-                    ),
-                ));
-            }
-        }
+        grammar::check(b, &e.key)?;
     }
     Ok(())
 }
@@ -209,7 +193,7 @@ impl Parser<'_, '_> {
         let arg = e.values.first().and_then(word_or_string);
         Ok(Some(match e.key.as_str() {
             "action" => {
-                check_options(e, &[])?;
+                check_options(e)?;
                 let name = e
                     .values
                     .first()
@@ -240,7 +224,7 @@ impl Parser<'_, '_> {
                 Action::Game { name, args }
             }
             "move_to" => {
-                check_options(e, &["speed"])?;
+                check_options(e)?;
                 if e.values.len() == 3 {
                     let Value::Vec(p) = value_at(e, 0)? else {
                         unreachable!()
@@ -261,7 +245,7 @@ impl Parser<'_, '_> {
                 }
             }
             "chase" => {
-                check_options(e, &["speed", "reach"])?;
+                check_options(e)?;
                 Action::Chase {
                     key: arg.unwrap_or("target").to_string(),
                     speed: opt_speed(b)?,
@@ -269,7 +253,7 @@ impl Parser<'_, '_> {
                 }
             }
             "flee" => {
-                check_options(e, &["speed", "distance"])?;
+                check_options(e)?;
                 Action::Flee {
                     key: arg.unwrap_or("target").to_string(),
                     speed: opt_speed(b)?,
@@ -277,7 +261,7 @@ impl Parser<'_, '_> {
                 }
             }
             "patrol" => {
-                check_options(e, &["speed", "wait", "loop"])?;
+                check_options(e)?;
                 let name = arg.ok_or_else(|| err(e, "patrol takes a route's name (declare it with route <name> { point x y z ... })"))?;
                 let route = self.routes.iter().position(|r| r.0 == name).ok_or_else(|| err(e, format!("there is no route '{name}': declare it with route {name} {{ point x y z ... }} before the tree")))?;
                 let loops = match b.and_then(|b| b.get("loop")) {
@@ -296,7 +280,7 @@ impl Parser<'_, '_> {
                 }
             }
             "wander" => {
-                check_options(e, &["speed", "radius", "wait"])?;
+                check_options(e)?;
                 Action::Wander {
                     radius: opt_f32(b, "radius", 4.0)?,
                     speed: opt_speed(b)?,
@@ -304,17 +288,17 @@ impl Parser<'_, '_> {
                 }
             }
             "wait" => {
-                check_options(e, &[])?;
+                check_options(e)?;
                 Action::Wait {
                     seconds: e.f32(0).map_err(|_| err(e, "wait takes seconds"))?,
                 }
             }
             "stop" => {
-                check_options(e, &[])?;
+                check_options(e)?;
                 Action::Stop
             }
             "set" => {
-                check_options(e, &[])?;
+                check_options(e)?;
                 let key = arg
                     .ok_or_else(|| err(e, "set takes a key and a value"))?
                     .to_string();
@@ -330,7 +314,7 @@ impl Parser<'_, '_> {
                 }
             }
             "command" => {
-                check_options(e, &["cooldown"])?;
+                check_options(e)?;
                 let name = arg.ok_or_else(|| {
                     err(
                         e,
@@ -365,6 +349,12 @@ impl Parser<'_, '_> {
     }
 
     fn node(&mut self, e: &Entry) -> Result<usize, String> {
+        if !LINES
+            .iter()
+            .any(|f| f.key == e.key && f.within.contains(&"nodes"))
+        {
+            return Err(err(e, format!("'{}' is not a behaviour node", e.key)));
+        }
         let label = e.values.first().and_then(word_or_string);
         let composite = |p: &mut Parser, kind: Kind, e: &Entry| -> Result<usize, String> {
             let b = e
@@ -598,6 +588,7 @@ impl Behaviour {
             ));
         }
         let body = &doc.body;
+        grammar::check(body, "root")?;
         let name = body
             .get("name")
             .and_then(|e| e.values.first())
