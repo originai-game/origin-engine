@@ -394,8 +394,6 @@ pub(crate) fn attach(mount: crate::engine::Mount<'_>, world: &mut World) -> Resu
 /// must declare them: each world read's record (its longest name a layout
 /// has) and each event an objective counts. og.Time is read as the clock.
 fn needs(engine_id: u32) -> Result<Vec<String>, String> {
-    let eng = engine(engine_id)?;
-    let st = eng.state.borrow();
     let (reads, events) = with(engine_id, |rt| {
         let mut reads = Vec::new();
         let mut put = |x: &og_story::Expr| x.vars(&mut reads);
@@ -424,6 +422,14 @@ fn needs(engine_id: u32) -> Result<Vec<String>, String> {
         out.insert(BRAIN.to_string());
         out.insert(VCAM.to_string());
     }
+    // Nothing loaded reads the world: so on a world being assembled, which
+    // its engine is not yet registered for (a game system that names an
+    // og.story record mounts og.story there).
+    if reads.is_empty() && events.is_empty() {
+        return Ok(out.into_iter().collect());
+    }
+    let eng = engine(engine_id)?;
+    let st = eng.state.borrow();
     for v in reads.iter().filter(|v| v.contains('.')) {
         let path = v.strip_prefix("self.").unwrap_or(v);
         if path.starts_with("event.") || path.starts_with("og.Time.") {

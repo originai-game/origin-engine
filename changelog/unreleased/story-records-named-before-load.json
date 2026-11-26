@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.StoryEvent",
+      "summary": "A game system that reads or writes an og.story record (og.StoryEvent, og.QuestUpdated, og.DialogueShown, og.DialogueEnded, og.DialogueCheck, og.BarkSaid, og.Story) no longer stops the engine at start with `no engine N`: og.story is granted what no story is loaded for yet without its engine."
+    }
+  ]
+}
