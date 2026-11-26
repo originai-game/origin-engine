@@ -163,21 +163,20 @@ fn cloud_base(col: CloudColumn, hf: f32) -> f32 {
   return cloud_ease(hf / max(col.base, 1e-3));
 }
 
-// Wind-aligned gentle altitude lean (metres of horizontal shear over the
-// layer's height) instead of a fixed 20° diagonal artifact.
-fn cloud_wind_lean(up: f32) -> vec2<f32> {
-  let a = frame.clouds[11].w;
-  return vec2<f32>(cos(a), sin(a)) * (up * 0.08);
-}
-
 // The billows' erosion at the field's point `at`, `up` of the way up its
 // own cloud (cloud_up), read over `texel` metres.
+//
+// The noise is read where the point is, the same at every height. (It was
+// read moved along the wind by the cloud's own height, 0.08 of the scale
+// from its base to its top however low it stood: a low cloud's noise was
+// sheared three to ten times as steeply as a tall one's, its billows drawn
+// out into brushed streaks, and a gap's edge in a deck read as a row of
+// teeth. One slope for every cloud, 22°, still left streaks on a gap's
+// walls. The wind moves the clouds (cloud_noise_at) and streaks the high
+// layer; it does not shape the billows.)
 fn cloud_coarse(at: vec3<f32>, up: f32, texel: f32) -> f32 {
   let c = frame.clouds;
-  let lean = cloud_wind_lean(up);
-  // Isotropic sampling in cloud space (no permanent diagonal shear), gently
-  // leaned along the real wind heading with altitude.
-  let s = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w);
+  let s = vec3<f32>(at.x, at.z, at.y) / c[1].w;
   let q = s * 4.0;
   let mip = clamp(log2(max(texel / c[1].w * 512.0, 1.0)), 0.0, 2.5);
   let n = textureSampleLevel(cloud_noise, cloud_sampler, q, mip);
@@ -259,8 +258,7 @@ fn cloud_density_from(at: vec3<f32>, col: CloudColumn, hf: f32, profile: f32, te
   let detail_ratio = texel * 128.0 / c[1].w;
   let detail_fade = 1.0 - smoothstep(0.45, 1.6, detail_ratio);
   if (fine && detail_fade > 0.01 && profile - most < edge * (1.0 - most)) {
-    let lean = cloud_wind_lean(up);
-    let dp = vec3<f32>(at.x / c[1].w - lean.x, at.z / c[1].w - lean.y, at.y / c[1].w);
+    let dp = vec3<f32>(at.x, at.z, at.y) / c[1].w;
     let d = cloud_detail_at(dp, texel);
     let web = clamp((d.b - 0.24) / 0.49, 0.0, 1.0);
     // Curl-warped billows (d.g) dominate wispy flanks & mid-heights; crisp

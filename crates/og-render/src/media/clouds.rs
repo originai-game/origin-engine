@@ -293,7 +293,7 @@ impl Clouds {
             [0.0; 4],
             [place(eye.x), place(eye.y), 0.0, 0.0],
             // xyz filled by CloudShadow::rows(); w holds the horizontal wind
-            // heading (radians) for wind-aligned cirrus & gentle altitude lean.
+            // heading (radians) for wind-aligned cirrus.
             [0.0, 0.0, 0.0, wind_angle],
             [kind.girth, kind.height, kind.power, kind.anvil],
             // No detail: smooth lumps, eroded half as deep.
