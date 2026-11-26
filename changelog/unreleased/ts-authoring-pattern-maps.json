@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Author schema TypeScript declarations",
+      "summary": "Integer-key maps emit readonly string-indexed value types instead of failing on Schemars patternProperties. Pattern and additional value types are preserved; key patterns, ranges and overlaps remain runtime-validated. Typed maps can exclude reserved names with false properties, without relaxing the rejection of other named/indexed overlaps."
+    }
+  ]
+}

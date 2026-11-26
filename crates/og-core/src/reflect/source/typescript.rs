@@ -60,7 +60,6 @@ fn shape(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
         "if",
         "then",
         "else",
-        "patternProperties",
         "dependentSchemas",
         "$dynamicRef",
     ] {
@@ -191,11 +190,33 @@ fn object(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
     let additional = schema
         .get("additionalProperties")
         .unwrap_or(&Value::Bool(true));
+    let patterns = schema.get("patternProperties").and_then(Value::as_object);
+    if patterns.is_some_and(|p| !p.is_empty()) && properties.is_some_and(|p| !p.is_empty()) {
+        return Err("patternProperties beside named properties has no supported TS shape".into());
+    }
     if properties.is_none_or(|p| p.is_empty()) {
-        return Ok(format!(
-            "Readonly<Record<string, {}>>",
-            shape(additional, root, name)?
-        ));
+        let Some(patterns) = patterns.filter(|p| !p.is_empty()) else {
+            return Ok(format!(
+                "Readonly<Record<string, {}>>",
+                shape(additional, root, name)?
+            ));
+        };
+        // TS cannot express regex keys or overlapping-pattern intersections.
+        // Preserve each possible value type; schema + serde check the keys and
+        // their ranges. Unmatched keys use additionalProperties, not a pattern.
+        let mut values = patterns
+            .values()
+            .map(|s| shape(s, root, name))
+            .collect::<Result<Vec<_>, _>>()?;
+        if additional != &Value::Bool(false) {
+            values.push(shape(additional, root, name)?);
+        }
+        let value = values
+            .into_iter()
+            .map(|s| format!("({s})"))
+            .collect::<Vec<_>>()
+            .join(" | ");
+        return Ok(format!("Readonly<Record<string, {value}>>"));
     }
     let mut fields = String::from("{\n");
     for (key, value) in properties.unwrap() {
@@ -213,6 +234,19 @@ fn object(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
     }
     if additional != &Value::Bool(false) {
         if additional != &Value::Bool(true) {
+            // Forbidden names cannot conflict with the index's value type.
+            // Other named schemas may, so do not relax the general rejection.
+            if properties
+                .unwrap()
+                .values()
+                .all(|s| s == &Value::Bool(false))
+            {
+                fields.push('}');
+                return Ok(format!(
+                    "({fields}) & Readonly<Record<string, {}>>",
+                    shape(additional, root, name)?
+                ));
+            }
             return Err("typed additionalProperties beside named properties cannot be represented faithfully in TS".into());
         }
         fields.push_str("readonly [key: string]: unknown;\n");

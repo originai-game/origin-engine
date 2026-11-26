@@ -36,6 +36,8 @@ struct Input {
     #[schemars(length(equal = 65))]
     samples: Vec<f32>,
     values: BTreeMap<String, Option<Vec<f32>>>,
+    tiles: BTreeMap<u32, Mode>,
+    masks: BTreeMap<u8, u32>,
     child: Option<Box<Input>>,
 }
 
@@ -48,7 +50,9 @@ fn one_author_schema_checks_values_and_typescript() {
         "tuple": [-1.5, 257, true],
         "duration": 0.25,
         "samples": vec![0; 65],
-        "values": {"wind": [2.5, -3], "water": null}
+        "values": {"wind": [2.5, -3], "water": null},
+        "tiles": {"257": {"kind": "constant", "value": -3.5}},
+        "masks": {"255": 513}
     });
     let decoded = schema.decode(valid.clone()).unwrap();
     assert_eq!(decoded.label, "north");
@@ -63,6 +67,8 @@ fn one_author_schema_checks_values_and_typescript() {
     assert_eq!(decoded.duration, 0.25);
     assert_eq!(decoded.samples.len(), 65);
     assert_eq!(decoded.values["wind"], Some(vec![2.5, -3.]));
+    assert_eq!(decoded.tiles[&257], Mode::Constant { value: -3.5 });
+    assert_eq!(decoded.masks[&255], 513);
     assert!(decoded.child.is_none());
     assert_eq!(
         schema.document()["properties"]["duration"]["x-og-unit"],
@@ -77,6 +83,10 @@ fn one_author_schema_checks_values_and_typescript() {
         ("/mode", json!({"kind": "grid", "cell-size": [2, 3]})),
         ("/mode", json!({"kind": "random"})),
         ("/values/wind/1", json!("gust")),
+        ("/tiles", json!({"-1": {"kind": "constant", "value": 1}})),
+        ("/tiles/257", json!({"kind": "random"})),
+        ("/masks", json!({"256": 513})),
+        ("/masks/255", json!(-1)),
     ] {
         let mut value = valid.clone();
         *value.pointer_mut(pointer).unwrap() = wrong;
@@ -113,12 +123,49 @@ fn one_author_schema_checks_values_and_typescript() {
     assert_eq!(erased.check(&json!(256)).unwrap_err().path, "");
     assert!(InputSchema::<u8>::from_document(json!({"type": "not-a-type"})).is_err());
 
+    let patterned = json!({
+        "type": "object",
+        "patternProperties": {"^i": {"type": "integer"}, "^s": {"type": "string"}},
+        "additionalProperties": {"type": "boolean"}
+    });
+    let pattern_check =
+        InputSchema::<BTreeMap<String, serde_json::Value>>::from_document(patterned.clone())
+            .unwrap();
+    pattern_check
+        .decode(json!({"i_count": 7, "s_name": "west", "other": true}))
+        .unwrap();
+    assert!(pattern_check.decode(json!({"s_name": 7})).is_err());
+    let mut closed_patterned = patterned.clone();
+    closed_patterned["additionalProperties"] = json!(false);
+    let mut named_patterned = patterned.clone();
+    named_patterned["properties"] = json!({"label": {"type": "string"}});
+    assert!(typescript(&named_patterned, "NamedPatterned").is_err());
+
+    let params = json!({
+        "type": "object",
+        "properties": {"roughness": false, "opacity": false},
+        "additionalProperties": {"anyOf": [
+            {"type": "number"},
+            {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+        ]}
+    });
+    let params_check =
+        InputSchema::<BTreeMap<String, serde_json::Value>>::from_document(params.clone()).unwrap();
+    params_check
+        .decode(json!({"wind": [2, -3], "phase": 0.7}))
+        .unwrap();
+    assert!(params_check.decode(json!({"roughness": 0.5})).is_err());
+    let mut named_params = params.clone();
+    named_params["properties"]["label"] = json!({"type": "string"});
+    assert!(typescript(&named_params, "NamedParams").is_err());
+
     let dir = temp::TempDir::new("source-schema");
     let positive = r#"
 const input: AuthorInput = {
   "display-name": "north", mode: { kind: "grid", "cell-size": [2, 3, 7] },
   tuple: [-1.5, 257, true], duration: 0.25,
   samples: SAMPLES, values: { wind: [2.5, -3], water: null },
+  tiles: { 257: { kind: "constant", value: -3.5 } }, masks: { 255: 513 },
 };
 const recursive: AuthorInput = { ...input, enabled: true, child: input };
 const variant: AuthorInput["mode"] = { kind: "constant", value: -2.5 };
@@ -134,6 +181,29 @@ const wrongTuple: AuthorInput["tuple"] = [-1.5, true, 257];
 const longTuple: AuthorInput["tuple"] = [-1.5, 257, true, 8];
 // @ts-expect-error A map value is numbers or null, not text.
 const wrongMap: AuthorInput["values"] = { wind: [2, "gust"] };
+// @ts-expect-error Integer-key maps retain their discriminated value type.
+const wrongTile: AuthorInput["tiles"] = { 257: { kind: "random", value: 1 } };
+// @ts-expect-error Byte-key maps do not widen numeric values to unknown.
+const wrongMask: AuthorInput["masks"] = { 3: "north" };
+// @ts-expect-error Pattern-key map declarations remain readonly.
+input.masks[3] = 9;
+// Key patterns and numeric key bounds are checked at decoding, not in TS.
+const deferredKey: AuthorInput["masks"] = { 256: 513 };
+const patternValues: Patterned = { i_count: 7, s_name: "west", other: true };
+const closedValues: ClosedPatterned = { i_count: 7, s_name: "west" };
+// @ts-expect-error Pattern value unions do not widen objects to unknown.
+const wrongPatternValue: Patterned = { i_count: {} };
+// @ts-expect-error additionalProperties=false does not introduce a boolean value arm.
+const wrongClosedValue: ClosedPatterned = { other: true };
+const shaderParams: UniformParams = { wind: [2, -3], phase: 0.7 };
+// @ts-expect-error Reserved material names are not shader parameters.
+const reservedParam: UniformParams = { roughness: 0.5 };
+// @ts-expect-error Excluding names must not erase the parameter value type.
+const wrongParam: UniformParams = { wind: "east" };
+// @ts-expect-error Parameter vectors retain their arity.
+const wrongParamVector: UniformParams = { wind: [2] };
+// @ts-expect-error Shader parameter maps remain readonly.
+shaderParams.phase = 0.2;
 // @ts-expect-error Fixed arrays retain their length even above 64 entries.
 const wrongCount: AuthorInput["samples"] = [0];
 // @ts-expect-error No unknown fields on a closed input object.
@@ -144,8 +214,11 @@ input.enabled = true;
     std::fs::write(
         dir.join("input.ts"),
         format!(
-            "{}\n{positive}",
-            typescript(schema.document(), "AuthorInput").unwrap()
+            "{}\n{}\n{}\n{}\n{positive}",
+            typescript(schema.document(), "AuthorInput").unwrap(),
+            typescript(&patterned, "Patterned").unwrap(),
+            typescript(&closed_patterned, "ClosedPatterned").unwrap(),
+            typescript(&params, "UniformParams").unwrap()
         ),
     )
     .unwrap();
