@@ -1,6 +1,7 @@
 //! TS shapes from the same structural schema the decoder validates. Numeric,
 //! length and pattern constraints remain authoritative at validation time.
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 /// Emit a root type and an indexed definitions interface. Definition keys are
 /// quoted, so recursive/generic Rust names never become invalid TS identifiers.
@@ -44,6 +45,35 @@ fn doc(schema: &Value) -> String {
         .map_or_else(String::new, |text| {
             format!("/** {} */\n", text.replace("*/", "* /"))
         })
+}
+
+/// Only a finite closed object can exclude other variants' named keys. Follow
+/// local aliases without recursing forever; maps and open objects stay open.
+fn closed_keys<'a>(mut schema: &'a Value, root: &'a Value) -> Option<BTreeSet<&'a str>> {
+    let mut seen = BTreeSet::new();
+    loop {
+        if schema.get("type").and_then(Value::as_str) == Some("object")
+            && schema.get("additionalProperties") == Some(&Value::Bool(false))
+            && schema
+                .get("patternProperties")
+                .and_then(Value::as_object)
+                .is_none_or(|p| p.is_empty())
+        {
+            return Some(
+                schema
+                    .get("properties")
+                    .and_then(Value::as_object)
+                    .into_iter()
+                    .flat_map(|p| p.keys().map(String::as_str))
+                    .collect(),
+            );
+        }
+        let reference = schema.get("$ref")?.as_str()?;
+        if !seen.insert(reference) {
+            return None;
+        }
+        schema = root.pointer(reference.strip_prefix('#')?)?;
+    }
 }
 
 fn shape(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
@@ -100,9 +130,28 @@ fn shape(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
     }
     for (key, separator) in [("anyOf", " | "), ("oneOf", " | "), ("allOf", " & ")] {
         if let Some(values) = schema.get(key).and_then(Value::as_array) {
+            let keys: Vec<_> = values.iter().map(|s| closed_keys(s, root)).collect();
+            let all_keys: BTreeSet<_> = keys.iter().flatten().flatten().copied().collect();
             let types = values
                 .iter()
-                .map(|s| shape(s, root, name))
+                .zip(&keys)
+                .map(|(s, keys)| {
+                    let mut ty = shape(s, root, name)?;
+                    if key != "allOf"
+                        && let Some(keys) = keys
+                    {
+                        // Plain TS unions accept mixed branch keys, even for
+                        // fresh literals. Closed schema objects never do.
+                        let forbidden = all_keys
+                            .difference(keys)
+                            .map(|k| format!("readonly {}?: never;", quote(k)))
+                            .collect::<Vec<_>>();
+                        if !forbidden.is_empty() {
+                            ty = format!("({ty}) & {{ {} }}", forbidden.join(" "));
+                        }
+                    }
+                    Ok::<_, String>(ty)
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             parts.push(
                 types

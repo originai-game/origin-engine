@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "Generated author input unions",
+      "change": "TypeScript shapes for closed object alternatives now forbid other closed alternatives' missing keys with optional never fields, including local definition references. This rejects mixed source selections that schema and serde already refused, rather than letting TypeScript's excess-property union rule accept them. Open dictionaries remain open; runtime validation is unchanged.",
+      "fix": "Supply one source alternative, not fields or external tags from multiple alternatives. Keep common fields shared by the schema branches and leave all other alternatives' keys absent."
+    }
+  ]
+}

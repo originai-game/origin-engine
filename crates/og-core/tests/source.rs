@@ -41,6 +41,36 @@ struct Input {
     child: Option<Box<Input>>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(deny_unknown_fields)]
+struct FileSource {
+    source: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(deny_unknown_fields)]
+struct InlineSource {
+    svg: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(untagged)]
+enum UntaggedSource {
+    File(FileSource),
+    Inline(InlineSource),
+}
+
+#[derive(Debug, Deserialize, JsonSchema, PartialEq)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+enum TaggedSource {
+    Equirect(String),
+    Ktx2(String),
+}
+
 #[test]
 fn one_author_schema_checks_values_and_typescript() {
     let float = InputSchema::<f32>::new().unwrap();
@@ -212,6 +242,46 @@ fn one_author_schema_checks_values_and_typescript() {
     named_params["properties"]["label"] = json!({"type": "string"});
     assert!(typescript(&named_params, "NamedParams").is_err());
 
+    let untagged = InputSchema::<UntaggedSource>::new().unwrap();
+    let tagged = InputSchema::<TaggedSource>::new().unwrap();
+    assert_eq!(
+        untagged.decode(json!({"source": "west.svg"})).unwrap(),
+        UntaggedSource::File(FileSource {
+            source: "west.svg".into()
+        })
+    );
+    assert_eq!(
+        untagged.decode(json!({"svg": "<svg/>"})).unwrap(),
+        UntaggedSource::Inline(InlineSource {
+            svg: "<svg/>".into()
+        })
+    );
+    assert!(
+        untagged
+            .decode(json!({"source": "west.svg", "svg": "<svg/>"}))
+            .is_err()
+    );
+    assert_eq!(
+        tagged.decode(json!({"equirect": "west.hdr"})).unwrap(),
+        TaggedSource::Equirect("west.hdr".into())
+    );
+    assert_eq!(
+        tagged.decode(json!({"ktx2": "east.ktx2"})).unwrap(),
+        TaggedSource::Ktx2("east.ktx2".into())
+    );
+    assert!(
+        tagged
+            .decode(json!({"equirect": "west.hdr", "ktx2": "east.ktx2"}))
+            .is_err()
+    );
+    // An open dictionary arm still permits mixed keys; closing the named arm
+    // must not accidentally make the entire union exclusive.
+    let open_union = json!({"anyOf": [
+        {"type": "object", "properties": {"source": {"type": "string"}},
+            "required": ["source"], "additionalProperties": false},
+        {"type": "object", "additionalProperties": {"type": "string"}}
+    ]});
+
     let dir = temp::TempDir::new("source-schema");
     let positive = r#"
 const input: AuthorInput = {
@@ -263,15 +333,30 @@ const wrongCount: AuthorInput["samples"] = [0];
 const unknown: AuthorInput = { ...input, typo: 1 };
 // @ts-expect-error Generated author inputs are readonly.
 input.enabled = true;
+const pathSource: UntaggedSource = { source: "west.svg" };
+const inlineSource: UntaggedSource = { svg: "<svg/>" };
+const hdr: TaggedSource = { equirect: "west.hdr" };
+const compressed: TaggedSource = { ktx2: "east.ktx2" };
+const openMix: OpenUnion = { source: "west.svg", svg: "<svg/>" };
+// @ts-expect-error Closed untagged branches must not mix their source fields.
+const bothSources: UntaggedSource = { source: "west.svg", svg: "<svg/>" };
+const mixedSource = { source: "west.svg", svg: "<svg/>" };
+// @ts-expect-error Exclusivity also holds after losing object-literal freshness.
+const aliasSource: UntaggedSource = mixedSource;
+// @ts-expect-error An externally tagged enum selects exactly one source.
+const bothTags: TaggedSource = { equirect: "west.hdr", ktx2: "east.ktx2" };
 "#.replace("SAMPLES", &format!("[{}]", vec!["0"; 65].join(",")));
     std::fs::write(
         dir.join("input.ts"),
         format!(
-            "{}\n{}\n{}\n{}\n{positive}",
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{positive}",
             typescript(schema.document(), "AuthorInput").unwrap(),
             typescript(&patterned, "Patterned").unwrap(),
             typescript(&closed_patterned, "ClosedPatterned").unwrap(),
-            typescript(&params, "UniformParams").unwrap()
+            typescript(&params, "UniformParams").unwrap(),
+            typescript(untagged.document(), "UntaggedSource").unwrap(),
+            typescript(tagged.document(), "TaggedSource").unwrap(),
+            typescript(&open_union, "OpenUnion").unwrap()
         ),
     )
     .unwrap();
