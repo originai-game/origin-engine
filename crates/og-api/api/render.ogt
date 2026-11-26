@@ -804,7 +804,7 @@ module render {
       max 2
     }
     group "Exposure and tone mapping"
-    field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick (earlier frames meter at once), so every host draws the same exposures." {
+    field autoExposure bool "Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike." {
       guide "render §5"
     }
     field autoExposureMin f32 "The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further." {
@@ -814,7 +814,7 @@ module render {
       tunable true
       guide "render §5"
     }
-    field autoExposureMax f32 "The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays dark instead of metering to grey. Below autoExposureMin it is taken as autoExposureMin." {
+    field autoExposureMax f32 "The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays as dark as its light makes it. Below autoExposureMin it is taken as autoExposureMin." {
       default 10
       min -20
       max 20

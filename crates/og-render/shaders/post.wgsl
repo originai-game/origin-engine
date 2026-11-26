@@ -1,8 +1,8 @@
 // Exposure, bloom and the tonemap. Prepended by fullscreen.wgsl.
 //
 // Exposure is either manual (2^ev) or metered: the 1x1 log2-luminance texel
-// is brought to middle grey, plus compensation, clamped. Bloom: a prefilter
-// (exposure, soft threshold) into the first level of a half-resolution chain,
+// is brought to its key (fullscreen.wgsl metered_key), plus compensation,
+// clamped. Bloom: a prefilter (exposure, soft threshold) into the first level of a half-resolution chain,
 // 13-tap downsamples, then tent upsamples added back level by level; the post
 // pass adds the top level. `fs` writes linear values for an sRGB output (the
 // hardware encodes); `fs_srgb_encode` encodes in the shader for a non-sRGB

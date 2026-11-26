@@ -649,7 +649,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // The shrine court at deep dusk, its exposure metered (a stop under
-        // middle grey).
+        // its key).
         "exposure" => |g, _| {
             g.scene = crate::lighting_scenes::exposure_scene();
             Ok(())

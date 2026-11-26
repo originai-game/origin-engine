@@ -8787,7 +8787,7 @@ export interface RenderSettings {
   bloomContrast: number;
   // ── Exposure and tone mapping ──
   /**
-   * Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick (earlier frames meter at once), so every host draws the same exposures.
+   * Meter every frame to a key that follows its brightness (middle grey for a daylit view), then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick, so hosts draw alike.
    * See `render §5`.
    */
   autoExposure: boolean;
@@ -8801,7 +8801,7 @@ export interface RenderSettings {
    */
   autoExposureMin: number;
   /**
-   * The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays dark instead of metering to grey. Below autoExposureMin it is taken as autoExposureMin.
+   * The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays as dark as its light makes it. Below autoExposureMin it is taken as autoExposureMin.
    * See `render §5`.
    *
    * @default 10

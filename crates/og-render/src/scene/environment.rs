@@ -181,8 +181,10 @@ pub enum Exposure {
     /// A fixed exposure: the image is multiplied by `2^ev` (0 leaves it as lit).
     Manual { ev: f32 },
     /// Metered from the frame being drawn: the log-average luminance is
-    /// brought to middle grey (0.18), then `compensation` is added and the
-    /// result is clamped to `min_ev..=max_ev`.
+    /// brought to the key that suits it (fullscreen.wgsl `metered_key`: 0.18,
+    /// middle grey, for a daylit view, higher for a brighter view and lower
+    /// for a dimmer one), then `compensation` is added and the result is
+    /// clamped to `min_ev..=max_ev`.
     ///
     /// With both speeds 0 (the default) that is the exposure: it reads only
     /// the current frame, so the same frame always gets the same exposure.

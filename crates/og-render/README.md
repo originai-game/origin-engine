@@ -646,7 +646,7 @@ and sprite scenes are listed in their sections):
 | `taa-sharp` | The same under TAA with the camera sliding 2 cm a frame, Catmull-Rom history and 0.5 sharpening. |
 | `smaa`, `smaa-t2x`, `smaa-t2x-moving` | The thin geometry under SMAA 1x; SMAA T2x still, and under half-scale camera and object motion. |
 | `bloom` | Emissive spheres with bloom. |
-| `exposure` | A dim dusk scene metered to middle grey. |
+| `exposure` | A dim dusk scene, its exposure metered. |
 | `post-agx`, `post-neutral` | The `bloom` scene through AgX and through Khronos PBR Neutral. |
 | `post-blur` | The `bloom` scene through a zoom blur (0.15, 16 taps) towards a point off centre. |
 | `post-lens` | The spike's scene through a centred barrel lens (0.35), the corners fitted. |
