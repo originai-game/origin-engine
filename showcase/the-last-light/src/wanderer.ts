@@ -25,8 +25,14 @@ export function buildWanderer(world: World, coast: Coast): void {
   must(world.insert(body, og.Skeleton, { asset: rig.skeleton, rootMotion: "off" }));
   must(world.insert(body, og.AnimationPlayer, { clip: og.anim.clip(rig, "Long_Breathe_and_Look_Around")! }));
   // The cloak (tools/cloak.ts hangs it on the rig as the model's second
-  // mesh): held at the collar, free towards the hem, blown inland.
-  must(world.insert(body, og.Garment, { mesh: 1, maxDistance: 0.42, pinTop: 0.05, backstop: 0.03, bending: 0.05, damping: 1.4, gust: 1.3, wind: { x: -3, y: 0.4, z: 1.5 } }));
+  // mesh): held at the collar, free towards the hem, blown inland. XPBD
+  // garment (physics §8): the default physical stiffness, four substeps,
+  // drag and lift so the wind (air in m/s) moves it, a spherical backstop
+  // behind the back and skeleton capsules so it never folds into the body.
+  must(world.insert(body, og.Garment, {
+    mesh: 1, maxDistance: 0.42, pinTop: 0.05, backstop: 0.03, backstopRadius: 0.25, bodyRadius: 0.08, teleportDistance: 0.5,
+    bending: 0.1, damping: 2, substeps: 4, drag: 1, lift: 0.3, gust: 1.3, wind: { x: -3, y: 0.4, z: 1.5 },
+  }));
 
   // The staff stands planted by the right foot, its hook outwards; the
   // hand rests on its grip.
