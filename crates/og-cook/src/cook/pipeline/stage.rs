@@ -521,15 +521,21 @@ pub(crate) fn contract(
     if let Some(id) = project_look {
         match sources.iter().find(|s| s.rel == id) {
             Some(s) if s.kind == &look::LOOK => {
-                if let Ok(c) = look::contract(s, assets_dir, &|id| known.contains(id)) {
-                    if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
-                        match conform::texture2d::paint_of(&full, assets_dir) {
-                            Ok(p) => mesh_paint = p.active().then_some(p),
-                            Err(e) => early_errors.push((id.clone(), "look", e)),
-                        }
+                // The project's look decides the art contract, the UI pack
+                // and what the models' textures cook to: one that fails stops
+                // the cook with nothing changed, as a project.ogt that fails
+                // does, instead of cooking the project without it and again
+                // once it is fixed (a mistyped mood recooked every model
+                // texture twice).
+                let c = look::contract(s, assets_dir, &|id| known.contains(id))
+                    .map_err(|e| CookError(format!("assets/{id}: {e} (project.ogt's look)")))?;
+                if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
+                    match conform::texture2d::paint_of(&full, assets_dir) {
+                        Ok(p) => mesh_paint = p.active().then_some(p),
+                        Err(e) => early_errors.push((id.clone(), "look", e)),
                     }
-                    contract = Some((id, c));
                 }
+                contract = Some((id, c));
             }
             Some(_) => early_errors.push((
                 id,
