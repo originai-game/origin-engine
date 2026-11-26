@@ -32,6 +32,11 @@ macro_rules! words {
     };
 }
 
+pub mod terrain;
+pub mod theme;
+pub use terrain::TerrainInput;
+pub use theme::ThemeInput;
+
 // The existing cook configuration is itself the structured input, not a copy.
 pub use crate::cook::systems::effect_texture::Config as EffectTextureInput;
 
@@ -875,6 +880,14 @@ pub(super) const KINDS: &[Kind] = &[
     Kind {
         name: "look",
         schema: || LookInput::schema(),
+    },
+    Kind {
+        name: "terrain",
+        schema: || TerrainInput::schema(),
+    },
+    Kind {
+        name: "theme",
+        schema: || ThemeInput::schema(),
     },
 ];
 

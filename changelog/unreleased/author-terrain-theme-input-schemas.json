@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "terrain and theme author schemas",
+      "summary": "The shared author schema registry now covers terrain and theme with structured inputs and generated TypeScript declarations. Terrain composes the existing heightfield, shared geometry and reflected placement schemas, with ordered brush/stamp edits; theme composes the shared style-pack schema. Cross-field and graph validation remain domain-owned. Existing author parsers and file formats are unchanged."
+    }
+  ]
+}

@@ -228,3 +228,165 @@ validScatterInput.positions[0] = 1;
         String::from_utf8_lossy(&check.stderr)
     );
 }
+
+#[test]
+fn terrain_and_theme_compose_shared_inputs_and_typescript_contracts() {
+    let terrain = json!({
+        "source": {"kind": "heightfield", "field": {"columns": 3, "rows": 2, "heights": [-2, 3, 7, 11, -13, 17]}},
+        "size": [29, 13], "seed": 16777219, "tile": 16,
+        "process": {
+            "erosion": {"drops": 17, "radius": 2},
+            "thermal": {"talus": 32, "iterations": 3},
+            "channels": [{"points": [[-1, 3, 2], [4, 2, 7]], "width": 2.5, "river": true}],
+            "preserve": {"$ogRef": "base/field/cliffs"},
+            "biomes": [{"layer": 0, "altitude": [-13, 7], "weight": 0.7}]
+        },
+        "layers": [{"albedo": {"$ogRef": "base/texture/rock"}, "roughness": 0.4, "normalStrength": 2.3}],
+        "edits": [
+            {"kind": "brush", "mode": "paint", "center": [-2, 1, 3], "radius": 2, "layer": 0},
+            {"kind": "stamp", "geometry": {"kind": "boxGeometry", "desc": {"width": 3, "height": 2, "depth": 5}}, "transform": {"position": [-2, 1, 7], "quaternion": [0, 0, 0, 1]}, "mode": "carve", "depth": 0.2}
+        ]
+    });
+    let theme = json!({
+        "about": "Cold brass", "extends": {"$ogRef": "base/theme/common"},
+        "with": ["compact"], "type": "editorial", "material": "brass",
+        "color": {"source": "oklch(0.7 0.2 25)", "scheme": "dark"},
+        "ornament": {"button": "studs", "panel": "none"},
+        "pack": {
+            "scheme": "dark", "variants": {"Button.plate": "px-3"},
+            "theme": {"duration": {"flash": 160}, "colors": {"accent": "#aa7711"}},
+            "fonts": [{"$ogRef": "base/font/display"}]
+        }
+    });
+    let fixtures = [
+        ("terrain", "TerrainInput", terrain),
+        ("theme", "ThemeInput", theme),
+    ];
+    let mut declarations = String::new();
+    for (kind, name, value) in &fixtures {
+        (source_schemas::get(kind).unwrap().schema)()
+            .check(value)
+            .unwrap_or_else(|e| panic!("{kind}: {e}"));
+        declarations.push_str(&typescript(source_schemas::schema(kind).unwrap(), name).unwrap());
+        declarations.push_str(&format!("\nconst valid{name}: {name} = {value};\n"));
+        let mut unknown = value.clone();
+        unknown["typo"] = json!(true);
+        assert!(
+            (source_schemas::get(kind).unwrap().schema)()
+                .check(&unknown)
+                .is_err()
+        );
+    }
+    let decoded = TerrainInput::schema()
+        .decode(fixtures[0].2.clone())
+        .unwrap();
+    let terrain::TerrainSource::Heightfield { field } = decoded.source else {
+        panic!("heightfield source was not retained")
+    };
+    field.validate().unwrap();
+    assert_eq!(field.heights, [-2., 3., 7., 11., -13., 17.]);
+    let edits = decoded.edits.unwrap();
+    assert!(matches!(edits[0], terrain::TerrainEdit::Brush { .. }));
+    assert!(matches!(edits[1], terrain::TerrainEdit::Stamp { .. }));
+    let decoded = ThemeInput::schema().decode(fixtures[1].2.clone()).unwrap();
+    assert_eq!(decoded.typeface.as_deref(), Some("editorial"));
+    assert_eq!(decoded.pack.unwrap().fonts[0].id, "base/font/display");
+
+    for (name, source) in [
+        (
+            "image",
+            json!({"kind": "image", "source": "height.exr", "height": [-11, 39]}),
+        ),
+        (
+            "noise",
+            json!({"kind": "noise", "columns": 3, "rows": 7, "noise": {"octaves": 3, "lacunarity": 2}, "mask": {"kind": "island", "falloff": 0.3}}),
+        ),
+    ] {
+        let value = json!({"source": source});
+        TerrainInput::schema().decode(value.clone()).unwrap();
+        declarations.push_str(&format!("\nconst {name}Terrain: TerrainInput = {value};\n"));
+    }
+    for (kind, pointer, wrong) in [
+        (
+            "terrain",
+            "/source",
+            json!({"kind": "noise", "columns": 4098}),
+        ),
+        (
+            "terrain",
+            "/source",
+            json!({"kind": "image", "source": "x.png", "noise": {}}),
+        ),
+        ("terrain", "/tile", json!(15)),
+        ("terrain", "/size", json!([29, 0])),
+        ("terrain", "/size", json!([29, 1e39])),
+        ("terrain", "/layers", json!([{"roughness": 1.01}])),
+        (
+            "terrain",
+            "/process",
+            json!({"channels": [{"points": [[0, 0, 0]], "width": 1}]}),
+        ),
+        ("terrain", "/process", json!({"thermal": {"talus": 89.1}})),
+        (
+            "terrain",
+            "/process",
+            json!({"preserve": "base/field/cliffs"}),
+        ),
+        (
+            "terrain",
+            "/edits",
+            json!([{"kind": "stamp", "geometry": {"kind": "boxGeometry", "desc": {"width": "3"}}}]),
+        ),
+        (
+            "terrain",
+            "/edits",
+            json!([{"kind": "stamp", "geometry": {"kind": "boxGeometry", "desc": {}}, "transform": {"position": [1, 2]}}]),
+        ),
+        ("theme", "/pack", json!("{\"scheme\":\"dark\"}")),
+        (
+            "theme",
+            "/pack",
+            json!({"theme": {"duration": {"flash": "fast"}}}),
+        ),
+        ("theme", "/ornament", json!({"unknown": "studs"})),
+        ("theme", "/color", json!({"scheme": "auto"})),
+        ("theme", "/extends", json!(12)),
+    ] {
+        let mut invalid = fixtures.iter().find(|f| f.0 == kind).unwrap().2.clone();
+        *invalid.pointer_mut(pointer).unwrap() = wrong;
+        assert!(
+            (source_schemas::get(kind).unwrap().schema)()
+                .check(&invalid)
+                .is_err(),
+            "{kind} accepted {pointer}: {invalid}"
+        );
+    }
+    declarations.push_str(r#"
+const builtinTheme: ThemeInput = { extends: "tactical", ornament: "studs" };
+// @ts-expect-error A heightfield is structured data, not an embedded script path.
+const badTerrainSource: TerrainInput = { source: { kind: "heightfield", field: "generate.ts" } };
+// @ts-expect-error Geometry comes from the shared model schema, not arbitrary mesh JSON.
+const badTerrainStamp: TerrainInput = { source: { kind: "noise" }, edits: [{ kind: "stamp", geometry: { kind: "boxGeometry", desc: { width: "3" } } }] };
+// @ts-expect-error Reflected placements retain fixed tuple lengths.
+const badTerrainTransform: TerrainInput = { source: { kind: "noise" }, edits: [{ kind: "stamp", geometry: { kind: "boxGeometry", desc: {} }, transform: { position: [1, 2] } }] };
+// @ts-expect-error Pack numerical scales retain E2's input type.
+const badThemePack: ThemeInput = { pack: { theme: { duration: { flash: "fast" } } } };
+// @ts-expect-error Ornament slots are closed, not arbitrary data.
+const badThemeSlot: ThemeInput = { ornament: { unknown: "studs" } };
+// @ts-expect-error Nested author data is readonly.
+validTerrainInput.source.kind = "noise";
+"#);
+    let dir = TempDir::new("terrain-theme-contract");
+    std::fs::write(dir.join("inputs.ts"), declarations).unwrap();
+    let check = std::process::Command::new("tsrs")
+        .args(["--ignoreConfig", "--strict", "--noEmit", "inputs.ts"])
+        .current_dir(&dir)
+        .output()
+        .expect("pinned tsrs is installed");
+    assert!(
+        check.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&check.stdout),
+        String::from_utf8_lossy(&check.stderr)
+    );
+}
