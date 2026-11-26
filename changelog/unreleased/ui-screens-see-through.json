@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    { "member": "SettingsScreen / SaveLoadScreen", "summary": "Their ground is translucent blurred glass rather than an opaque fill, so a pause-time settings or save screen shows the frozen game frame under it, as the screens' `under` (blur, dim) states." }
+  ]
+}

@@ -39,7 +39,7 @@ export function SaveLoadScreen(props: SaveLoadScreenProps) {
   const selectedFull = () => props.slots.some((s) => s.id === props.selected && !s.empty);
   return (
     <View class={`absolute inset-0 pt-[calc(env(hud-inset-top)+2rem)] pb-[calc(env(hud-inset-bottom)+1.5rem)] text-fg gap-y-6 pl-[calc(env(hud-inset-left)+3rem)] pr-[calc(env(hud-inset-right)+3rem)] overflow-hidden compact:pt-[calc(env(hud-inset-top)+1rem)] compact:pb-[calc(env(hud-inset-bottom)+0.75rem)] compact:gap-y-3 compact:pl-[calc(env(hud-inset-left)+1rem)] compact:pr-[calc(env(hud-inset-right)+1rem)] ${packClass("Screen", "frame")} ${props.class ?? ""}`} onAction={{ back: (e) => props.onBack?.(e) }}>
-      <View class={`absolute bg-glass inset-0`} />
+      <View class={`absolute bg-glass backdrop-blur-regular inset-0`} />
       <View class={`flex-row min-h-12 border-b border-border-muted items-center gap-x-4 py-1 px-4 narrow:flex-wrap narrow:gap-y-1`}>
         <Show when={props.onBack}>
           <Button class={`text-fg-muted narrow:-ml-2 shrink`} autofocus onPress={(e) => props.onBack?.(e)}>
