@@ -73,6 +73,30 @@ enum TaggedSource {
 
 #[test]
 fn one_author_schema_checks_values_and_typescript() {
+    let branches = InputSchema::<serde_json::Value>::from_document(json!({
+        "type": "object", "properties": {
+            "界~/#": {"anyOf": [{"$ref":"#/$defs/positive"}, {"type":"null"}]}
+        }, "$defs": {"positive": {"type":"integer", "minimum": 3}}
+    }))
+    .unwrap();
+    for _ in 0..2 {
+        assert!(
+            branches
+                .matches("/properties/界~0~1#/anyOf/0", &json!(3))
+                .unwrap()
+        );
+        assert!(
+            !branches
+                .matches("/properties/界~0~1#/anyOf/0", &json!(2))
+                .unwrap()
+        );
+        assert!(
+            !branches
+                .matches("/properties/界~0~1#/anyOf/0", &json!(null))
+                .unwrap()
+        );
+    }
+    assert!(branches.matches("/missing", &json!(3)).is_err());
     let float = InputSchema::<f32>::new().unwrap();
     let overflow = float.decode(json!(1e100));
     assert!(

@@ -11,6 +11,7 @@ use std::sync::OnceLock;
 pub mod media;
 pub mod procedural;
 pub mod project;
+pub mod references;
 pub mod reflected;
 pub mod world;
 
@@ -19,7 +20,7 @@ pub mod world;
 /// module access and target kinds. A field declares its allowed kinds with
 /// `x-og-ref-kinds` schema metadata, not a second kind inside this token.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize, JsonSchema)]
-#[schemars(crate = "og_core::reflect::source::schemars")]
+#[schemars(crate = "og_core::reflect::source::schemars", extend("x-og-content-ref" = true))]
 #[serde(deny_unknown_fields)]
 pub struct ContentRef {
     #[serde(rename = "$ogRef")]

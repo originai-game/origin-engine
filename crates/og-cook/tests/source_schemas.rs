@@ -1051,6 +1051,139 @@ fn project_bootstrap_checks_namespaces_without_running_game_or_content() {
 }
 
 #[test]
+fn schema_bound_references_ignore_json_and_preserve_container_constraints() {
+    use source_schemas::references::{Reference, ReferenceSchema};
+    let edge = |path: &str, id: &str, kinds: &[&str]| Reference {
+        path: path.into(),
+        id: id.into(),
+        kinds: Some(kinds.iter().map(|s| (*s).to_owned()).collect()),
+    };
+    for kind in source_schemas::all() {
+        ReferenceSchema::new((kind.schema)()).unwrap_or_else(|e| panic!("{}: {e}", kind.name));
+    }
+    let schema = source_schemas::world::pack::PackInput::schema();
+    let references = ReferenceSchema::new(schema).unwrap();
+    let value = json!({
+        "about":{"$ogRef":"this is author JSON", "nested":[{"$ogRef":"also JSON"}]},
+        "fonts":[{"$ogRef":"base/font/body"}],
+        "icons":{"a~/界":{"$ogRef":"base/texture/icon"}},
+        "images":{"plate":{"src":{"light":{"$ogRef":"base/texture/light"},"dark":{"$ogRef":"base/texture/dark"}}, "slice":2}},
+        "sounds":{"press":{"clips":[{"$ogRef":"base/sfx/tap"}]}}
+    });
+    let expected = vec![
+        edge("/fonts/0", "base/font/body", &["font"]),
+        edge("/icons/a~0~1界", "base/texture/icon", &["texture"]),
+        edge("/images/plate/src/dark", "base/texture/dark", &["texture"]),
+        edge(
+            "/images/plate/src/light",
+            "base/texture/light",
+            &["texture"],
+        ),
+        edge("/sounds/press/clips/0", "base/sfx/tap", &["sfx", "sound"]),
+    ];
+    assert_eq!(references.collect(&value).unwrap(), expected);
+    assert_eq!(references.collect(&value).unwrap(), expected);
+    let shared = json!({"images":{"plate":{"src":{"$ogRef":"base/texture/shared"},"slice":2}}});
+    assert_eq!(
+        references.collect(&shared).unwrap(),
+        vec![edge(
+            "/images/plate/src",
+            "base/texture/shared",
+            &["texture"]
+        )]
+    );
+    let mut invalid = value;
+    invalid["fonts"][0] = json!(7);
+    assert_eq!(references.collect(&invalid).unwrap_err().path, "/fonts/0");
+
+    // Reflected handles carry the same marker even when their schema is inline.
+    let document = source_schemas::reflected::schema_for_record("og.PostEffects").unwrap();
+    let reflected = InputSchema::<serde_json::Value>::from_document(document).unwrap();
+    let edges = ReferenceSchema::new(&reflected)
+        .unwrap()
+        .collect(&json!({"lut":{"$ogRef":"base/lut/dusk"}}))
+        .unwrap();
+    assert_eq!(edges, vec![edge("/lut", "base/lut/dusk", &["lut"])]);
+}
+
+#[test]
+fn reference_schemas_select_branches_and_follow_recursive_maps() {
+    use source_schemas::references::ReferenceSchema;
+    let schema = InputSchema::<serde_json::Value>::from_document(json!({
+        "type":"object", "properties": {
+            "tree":{"$ref":"#/$defs/a"},
+            "choice":{"oneOf":[
+                {"type":"object","required":["kind","value"],"properties":{"kind":{"const":"raw"},"value":true}},
+                {"type":"object","required":["kind","value"],"properties":{"kind":{"const":"edge"},"value":{"$ref":"#/$defs/ref"}}}
+            ]},
+            "map":{"type":"object", "properties":{"fixed":true},
+                "patternProperties":{"^edge/":{"$ref":"#/$defs/ref", "x-og-ref-kinds":["texture"]}},
+                "additionalProperties":{"$ref":"#/$defs/ref", "x-og-ref-kinds":["font"]}}
+        }, "$defs": {
+            "ref": InputSchema::<ContentRef>::new().unwrap().document(),
+            "a":{"type":"object","properties":{"b":{"$ref":"#/$defs/b"},"asset":{"$ref":"#/$defs/ref"}}},
+            "b":{"type":"object","properties":{"a":{"$ref":"#/$defs/a"}}}
+        }
+    })).unwrap();
+    let references = ReferenceSchema::new(&schema).unwrap();
+    let mut value = json!({
+        "tree":{"b":{"a":{"asset":{"$ogRef":"base/model/deep"}}}},
+        "choice":{"kind":"raw","value":{"$ogRef":"arbitrary JSON"}},
+        "map":{"fixed":{"$ogRef":"also JSON"},"edge/界":{"$ogRef":"base/texture/icon"},"other":{"$ogRef":"base/font/body"}}
+    });
+    let edges = references.collect(&value).unwrap();
+    assert_eq!(
+        edges
+            .iter()
+            .map(|e| (e.path.as_str(), e.id.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("/map/edge~1界", "base/texture/icon"),
+            ("/map/other", "base/font/body"),
+            ("/tree/b/a/asset", "base/model/deep")
+        ]
+    );
+    assert_eq!(
+        edges[0]
+            .kinds
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        ["texture"]
+    );
+    assert_eq!(
+        edges[1]
+            .kinds
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        ["font"]
+    );
+    assert!(edges[2].kinds.is_none());
+    value["choice"]["kind"] = json!("edge");
+    assert_eq!(references.collect(&value).unwrap()[0].path, "/choice/value");
+
+    let constrained = InputSchema::<serde_json::Value>::from_document(json!({
+        "allOf":[
+            InputSchema::<ContentRef>::new().unwrap().document(),
+            {"x-og-ref-kinds":["font","texture"]},
+            {"x-og-ref-kinds":["font"]}
+        ]
+    }))
+    .unwrap();
+    let edges = ReferenceSchema::new(&constrained)
+        .unwrap()
+        .collect(&json!({"$ogRef":"base/font/body"}))
+        .unwrap();
+    assert_eq!(edges[0].path, "");
+    assert_eq!(edges[0].kinds, Some([String::from("font")].into()));
+}
+
+#[test]
 fn content_reference_contract_is_not_a_path_string_or_runtime_handle() {
     let schema = InputSchema::<ContentRef>::new().unwrap();
     let value = json!({"$ogRef": "north/effect-texture/smoke#emission#array"});

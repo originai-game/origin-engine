@@ -10,7 +10,9 @@ use schemars::JsonSchema;
 use schemars::transform::{RecursiveTransform, Transform};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::marker::PhantomData;
+use std::sync::{Arc, Mutex};
 
 pub use schemars;
 
@@ -46,6 +48,9 @@ impl std::error::Error for Diagnostic {}
 pub trait AuthorSchema: Sync {
     fn document(&self) -> &Value;
     fn check(&self, value: &Value) -> Result<(), Diagnostic>;
+    /// Match a subschema at a document JSON Pointer, retaining root references.
+    /// This is structural matching, not a substitute for `check` and its decoder.
+    fn matches(&self, pointer: &str, value: &Value) -> Result<bool, String>;
 }
 
 /// A compiled schema bound to its Rust decoder. Keep one per input type in a
@@ -53,6 +58,7 @@ pub trait AuthorSchema: Sync {
 pub struct InputSchema<T> {
     document: Value,
     validator: jsonschema::Validator,
+    branches: Mutex<BTreeMap<String, Arc<jsonschema::Validator>>>,
     input: PhantomData<fn() -> T>,
 }
 
@@ -98,6 +104,7 @@ impl<T> InputSchema<T> {
         Ok(Self {
             document,
             validator,
+            branches: Mutex::new(BTreeMap::new()),
             input: PhantomData,
         })
     }
@@ -112,6 +119,56 @@ impl<T> InputSchema<T> {
             path: e.instance_path().to_string(),
             message: e.to_string(),
         })
+    }
+
+    /// Match a document subschema without detaching its local references.
+    pub fn matches(&self, pointer: &str, value: &Value) -> Result<bool, String> {
+        if pointer.is_empty() {
+            return Ok(self.validator.is_valid(value));
+        }
+        let validator = {
+            let mut branches = self.branches.lock().expect("author schema branch cache");
+            if let Some(validator) = branches.get(pointer) {
+                validator.clone()
+            } else {
+                if !self
+                    .document
+                    .pointer(pointer)
+                    .is_some_and(|v| v.is_object() || v.is_boolean())
+                {
+                    return Err(format!("not an author subschema: {pointer}"));
+                }
+                // Register the original document, not a detached branch: a local
+                // $ref in that branch must still see the original root's $defs.
+                // Compile only requested branches, never every schema position.
+                const ROOT: &str = "urn:origingame:author-schema";
+                let registry = jsonschema::Registry::new()
+                    .add(ROOT, &self.document)
+                    .and_then(|r| r.prepare())
+                    .map_err(|e| e.to_string())?;
+                let fragment: String = pointer
+                    .bytes()
+                    .map(|b| {
+                        if b.is_ascii_alphanumeric()
+                            || matches!(b, b'-' | b'.' | b'_' | b'~' | b'/')
+                        {
+                            char::from(b).to_string()
+                        } else {
+                            format!("%{b:02X}")
+                        }
+                    })
+                    .collect();
+                let validator = Arc::new(
+                    jsonschema::options()
+                        .with_registry(&registry)
+                        .build(&serde_json::json!({"$ref": format!("{ROOT}#{fragment}")}))
+                        .map_err(|e| e.to_string())?,
+                );
+                branches.insert(pointer.to_owned(), validator.clone());
+                validator
+            }
+        };
+        Ok(validator.is_valid(value))
     }
 }
 
@@ -147,5 +204,9 @@ impl<T: DeserializeOwned> AuthorSchema for InputSchema<T> {
 
     fn check(&self, value: &Value) -> Result<(), Diagnostic> {
         self.decode(value.clone()).map(|_| ())
+    }
+
+    fn matches(&self, pointer: &str, value: &Value) -> Result<bool, String> {
+        self.matches(pointer, value)
     }
 }
