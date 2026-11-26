@@ -35,6 +35,9 @@ function stage(world: World, mode: string): void {
   const cam = must(world.resource(og.Camera));
   const rs = must(world.resource(og.RenderSettings));
   const show = mode === "show";
+  // Grain changes every tick: over black it would measure the whole frame
+  // as the effect. The show bundle keeps the project's authored grain.
+  if (!show) must(world.resource(og.PostEffects)).filmGrain = 0;
   // Shown, the sky is the far ground's tone: no bright band above the horizon.
   cam.background = show ? { r: 0.014, g: 0.02, b: 0.038 } : { r: 0, g: 0, b: 0 };
   rs.bloom = show;
