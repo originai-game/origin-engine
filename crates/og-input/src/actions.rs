@@ -725,6 +725,11 @@ impl ActionMap {
 
     /// The play surface: whether its pointer is a finger.
     pub fn set_surface(&mut self, surface: Surface) {
+        // A touch screen's player starts on their finger: before any input
+        // (a title's "Tap to start"), until a key, a pad or a mouse is used.
+        if surface.coarse && !self.surface.coarse && self.device == Device::KeyboardMouse {
+            self.device = Device::Touch;
+        }
         self.surface = surface;
     }
 

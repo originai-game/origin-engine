@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Actions",
+      "summary": "On a touch screen the device used last starts as touch, before any input: TitleScreen asks to tap, not to press any button, and glyphs show touch until a key, a pad or a mouse is used."
+    }
+  ]
+}
