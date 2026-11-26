@@ -231,7 +231,12 @@ fn array(schema: &Value, root: &Value, name: &str) -> Result<String, String> {
             "ReadonlyArray<{ty}> & {{ readonly length: {length} }}"
         ));
     }
-    Ok(format!("ReadonlyArray<{ty}>"))
+    // Ask TS whether the emitted item type accepts any number. This also
+    // handles aliases and nullable unions without widening literal enums or
+    // duplicating schema resolution here. Fixed arrays/tuples stay above.
+    Ok(format!(
+        "ReadonlyArray<{ty}> | (number extends ({ty}) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)"
+    ))
 }
 
 fn object(schema: &Value, root: &Value, name: &str) -> Result<String, String> {

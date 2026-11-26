@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "author numeric array inputs",
+      "summary": "Schema-generated variable-length array inputs accept the nine numeric typed arrays when their item type accepts arbitrary numbers, including aliases and nullable unions. Fixed arrays, tuples, numeric literal restrictions and nonnumeric items keep their existing constraints; schema decoding still checks sample ranges and counts."
+    }
+  ]
+}

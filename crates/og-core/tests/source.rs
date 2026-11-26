@@ -281,6 +281,16 @@ fn one_author_schema_checks_values_and_typescript() {
             "required": ["source"], "additionalProperties": false},
         {"type": "object", "additionalProperties": {"type": "string"}}
     ]});
+    let arrays = json!({
+        "type": "object", "additionalProperties": false,
+        "properties": {
+            "numeric": {"type": "array", "items": {"$ref": "#/$defs/Sample"}},
+            "narrow": {"type": "array", "items": {"type": "integer", "enum": [2, 7]}},
+            "strings": {"type": "array", "items": {"type": "string"}},
+            "flags": {"type": "array", "items": {"type": "boolean"}}
+        },
+        "$defs": {"Sample": {"type": ["number", "null"]}}
+    });
 
     let dir = temp::TempDir::new("source-schema");
     let positive = r#"
@@ -292,6 +302,30 @@ const input: AuthorInput = {
 };
 const recursive: AuthorInput = { ...input, enabled: true, child: input };
 const variant: AuthorInput["mode"] = { kind: "constant", value: -2.5 };
+const buffers: AuthorInput["values"] = {
+  i8: new Int8Array([-7, 13]), u8: new Uint8Array([251, 17]),
+  clamped: new Uint8ClampedArray([0, 255]), i16: new Int16Array([-30001, 513]),
+  u16: new Uint16Array([65001, 1027]), i32: new Int32Array([-2147483647, 66051]),
+  u32: new Uint32Array([4294967295, 16909060]),
+  f32: new Float32Array([-7.25, 0.125]), f64: new Float64Array([-1.5e100, 0.0625]),
+};
+const aliasedNullable: ArrayKinds["numeric"] = new Float32Array([-7.25, 0.125]);
+const narrowArray: ArrayKinds["narrow"] = [2, 7];
+const textArray: ArrayKinds["strings"] = ["west", "north"];
+const flags: ArrayKinds["flags"] = [true, false];
+const bigintBuffer = new BigInt64Array(2);
+// @ts-expect-error BigInt buffers do not contain JS numbers.
+const wrongBuffer: AuthorInput["values"] = { wind: bigintBuffer };
+// @ts-expect-error Typed arrays cannot prove a numeric literal restriction.
+const narrowBuffer: ArrayKinds["narrow"] = new Uint8Array([2, 7]);
+// @ts-expect-error Numeric buffers cannot become string arrays.
+const wrongTextBuffer: ArrayKinds["strings"] = new Uint8Array([2, 7]);
+// @ts-expect-error Numeric buffers cannot become boolean arrays.
+const wrongFlags: ArrayKinds["flags"] = new Uint8Array([0, 1]);
+// @ts-expect-error Numeric buffers cannot stand in for a fixed triple.
+const unsizedGrid: AuthorInput["mode"] = { kind: "grid", "cell-size": new Float32Array([2, 3, 7]) };
+// @ts-expect-error Buffer-backed author samples remain readonly.
+aliasedNullable[0] = 9;
 // @ts-expect-error Missing required name.
 const missing: AuthorInput = { mode: input.mode, tuple: input.tuple, duration: 1, samples: input.samples, values: {} };
 // @ts-expect-error A discriminator is not an arbitrary string.
@@ -349,14 +383,15 @@ const bothTags: TaggedSource = { equirect: "west.hdr", ktx2: "east.ktx2" };
     std::fs::write(
         dir.join("input.ts"),
         format!(
-            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{positive}",
+            "{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{positive}",
             typescript(schema.document(), "AuthorInput").unwrap(),
             typescript(&patterned, "Patterned").unwrap(),
             typescript(&closed_patterned, "ClosedPatterned").unwrap(),
             typescript(&params, "UniformParams").unwrap(),
             typescript(untagged.document(), "UntaggedSource").unwrap(),
             typescript(tagged.document(), "TaggedSource").unwrap(),
-            typescript(&open_union, "OpenUnion").unwrap()
+            typescript(&open_union, "OpenUnion").unwrap(),
+            typescript(&arrays, "ArrayKinds").unwrap()
         ),
     )
     .unwrap();

@@ -1,9 +1,9 @@
 // Generated from the cook's Rust input schemas by `og api gen`. Do not edit.
 export type Input_animgraph = ({
-readonly "bindings"?: (ReadonlyArray<(Input_animgraphDefinitions["Binding"])>);
-readonly "layers": (ReadonlyArray<(Input_animgraphDefinitions["Layer"])>);
+readonly "bindings"?: (ReadonlyArray<(Input_animgraphDefinitions["Binding"])> | (number extends ((Input_animgraphDefinitions["Binding"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "layers": (ReadonlyArray<(Input_animgraphDefinitions["Layer"])> | (number extends ((Input_animgraphDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "motions": (Readonly<Record<string, (Input_animgraphDefinitions["Motion"])>>);
-readonly "params"?: (ReadonlyArray<(string)>);
+readonly "params"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "sprite"?: (boolean);
 });
 export interface Input_animgraphDefinitions {
@@ -31,8 +31,8 @@ readonly "entry": (string);
 readonly "mask"?: (Readonly<Record<string, (number)>>);
 readonly "mode"?: (((Input_animgraphDefinitions["LayerMode"])) | ((null)));
 readonly "name": (string);
-readonly "states": (ReadonlyArray<(Input_animgraphDefinitions["State"])>);
-readonly "transitions"?: (ReadonlyArray<(Input_animgraphDefinitions["Transition"])>);
+readonly "states": (ReadonlyArray<(Input_animgraphDefinitions["State"])> | (number extends ((Input_animgraphDefinitions["State"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "transitions"?: (ReadonlyArray<(Input_animgraphDefinitions["Transition"])> | (number extends ((Input_animgraphDefinitions["Transition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "weight"?: ((number) | (null));
 readonly "weightParam"?: ((string) | (null));
 });
@@ -44,11 +44,11 @@ readonly "looping"?: ((boolean) | (null));
 readonly "mirror"?: ((boolean) | (null));
 readonly "speed"?: ((number) | (null));
 })) & { readonly "children"?: never; readonly "param"?: never; readonly "x"?: never; readonly "y"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(readonly [(number), (string)])>);
+readonly "children": (ReadonlyArray<(readonly [(number), (string)])> | (number extends ((readonly [(number), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("blend1d") & (string);
 readonly "param": (string);
 })) & { readonly "clip"?: never; readonly "looping"?: never; readonly "mirror"?: never; readonly "speed"?: never; readonly "x"?: never; readonly "y"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(readonly [(ReadonlyArray<(number)> & { readonly length: 2 }), (string)])>);
+readonly "children": (ReadonlyArray<(readonly [(ReadonlyArray<(number)> & { readonly length: 2 }), (string)])> | (number extends ((readonly [(ReadonlyArray<(number)> & { readonly length: 2 }), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("blend2d") & (string);
 readonly "x": (string);
 readonly "y": (string);
@@ -61,7 +61,7 @@ readonly "speed"?: ((number) | (null));
 readonly "sync"?: ((string) | (null));
 });
 readonly "Transition": ({
-readonly "conditions"?: (ReadonlyArray<(Input_animgraphDefinitions["Condition"])>);
+readonly "conditions"?: (ReadonlyArray<(Input_animgraphDefinitions["Condition"])> | (number extends ((Input_animgraphDefinitions["Condition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Source phase, in cycles since entry. */
 readonly "exit"?: ((number) | (null));
 readonly "fade"?: ((number) | (null));
@@ -76,7 +76,7 @@ readonly "keys"?: (Readonly<Record<string, (Input_behaviourDefinitions["Value"])
 readonly "name": (string);
 readonly "root": (Input_behaviourDefinitions["Root"]);
 /** Named patrol points in world units. */
-readonly "routes"?: (Readonly<Record<string, (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>)>>);
+readonly "routes"?: (Readonly<Record<string, (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))>>);
 });
 export interface Input_behaviourDefinitions {
 readonly "Action": (((({
@@ -115,12 +115,12 @@ readonly "key": (string);
 readonly "kind": ("set") & (string);
 readonly "value": (Input_behaviourDefinitions["Value"]);
 })) & { readonly "args"?: never; readonly "cooldown"?: never; readonly "distance"?: never; readonly "loops"?: never; readonly "name"?: never; readonly "point"?: never; readonly "radius"?: never; readonly "reach"?: never; readonly "route"?: never; readonly "seconds"?: never; readonly "speed"?: never; readonly "wait"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(string)>);
+readonly "args": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "cooldown": (number);
 readonly "kind": ("command") & (string);
 readonly "name": (string);
 })) & { readonly "distance"?: never; readonly "key"?: never; readonly "loops"?: never; readonly "point"?: never; readonly "radius"?: never; readonly "reach"?: never; readonly "route"?: never; readonly "seconds"?: never; readonly "speed"?: never; readonly "value"?: never; readonly "wait"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(string)>);
+readonly "args": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("game") & (string);
 readonly "name": (string);
 })) & { readonly "cooldown"?: never; readonly "distance"?: never; readonly "key"?: never; readonly "loops"?: never; readonly "point"?: never; readonly "radius"?: never; readonly "reach"?: never; readonly "route"?: never; readonly "seconds"?: never; readonly "speed"?: never; readonly "value"?: never; readonly "wait"?: never; }));
@@ -151,17 +151,17 @@ readonly "$ogRef": (string);
 });
 readonly "Curve": ("linear" | "inverse" | "quadratic" | "sqrt" | "smooth" | "step") & (string);
 readonly "Node": (((({
-readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])>);
+readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("selector") & (string);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])>);
+readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("sequence") & (string);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
-readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])>);
+readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("steps") & (string);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "all": (boolean);
-readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])>);
+readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("parallel") & (string);
 })) & { readonly "action"?: never; readonly "check"?: never; readonly "child"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }) | ((({
 readonly "child": (Input_behaviourDefinitions["Node"]);
@@ -193,7 +193,7 @@ readonly "source": (Input_behaviourDefinitions["ContentRef"]);
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "inertia"?: never; readonly "options"?: never; readonly "seconds"?: never; readonly "times"?: never; }) | ((({
 readonly "inertia": (number);
 readonly "kind": ("utility") & (string);
-readonly "options": (ReadonlyArray<(Input_behaviourDefinitions["UtilityOption"])>);
+readonly "options": (ReadonlyArray<(Input_behaviourDefinitions["UtilityOption"])> | (number extends ((Input_behaviourDefinitions["UtilityOption"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "action"?: never; readonly "all"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "seconds"?: never; readonly "source"?: never; readonly "times"?: never; }));
 readonly "Op": ("is" | "not" | "below" | "above" | "atMost" | "atLeast" | "truthy") & (string);
 readonly "Root": (((({
@@ -202,25 +202,25 @@ readonly "node": (Input_behaviourDefinitions["Node"]);
 })) & { readonly "initial"?: never; readonly "states"?: never; }) | ((({
 readonly "initial": (string);
 readonly "kind": ("machine") & (string);
-readonly "states": (ReadonlyArray<(Input_behaviourDefinitions["State"])>);
+readonly "states": (ReadonlyArray<(Input_behaviourDefinitions["State"])> | (number extends ((Input_behaviourDefinitions["State"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "node"?: never; }));
 readonly "Speed": (((number)) | ((string)));
 readonly "State": ({
 readonly "body"?: (((Input_behaviourDefinitions["Node"])) | ((null)));
-readonly "enter"?: (ReadonlyArray<(Input_behaviourDefinitions["Action"])>);
-readonly "exit"?: (ReadonlyArray<(Input_behaviourDefinitions["Action"])>);
+readonly "enter"?: (ReadonlyArray<(Input_behaviourDefinitions["Action"])> | (number extends ((Input_behaviourDefinitions["Action"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "exit"?: (ReadonlyArray<(Input_behaviourDefinitions["Action"])> | (number extends ((Input_behaviourDefinitions["Action"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
-readonly "transitions"?: (ReadonlyArray<(Input_behaviourDefinitions["Transition"])>);
+readonly "transitions"?: (ReadonlyArray<(Input_behaviourDefinitions["Transition"])> | (number extends ((Input_behaviourDefinitions["Transition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Transition": ({
 readonly "after"?: ((number) | (null));
-readonly "checks"?: (ReadonlyArray<(Input_behaviourDefinitions["Check"])>);
+readonly "checks"?: (ReadonlyArray<(Input_behaviourDefinitions["Check"])> | (number extends ((Input_behaviourDefinitions["Check"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "to": (string);
 });
 readonly "UtilityOption": ({
-readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])>);
+readonly "children": (ReadonlyArray<(Input_behaviourDefinitions["Node"])> | (number extends ((Input_behaviourDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
-readonly "scores": (ReadonlyArray<(Input_behaviourDefinitions["Consideration"])>);
+readonly "scores": (ReadonlyArray<(Input_behaviourDefinitions["Consideration"])> | (number extends ((Input_behaviourDefinitions["Consideration"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Value": (((number)) | ((boolean)) | ((ReadonlyArray<(number)> & { readonly length: 3 })));
 }
@@ -230,13 +230,13 @@ readonly "Bark": ({
 readonly "cooldown"?: ((number) | (null));
 readonly "duration"?: ((number) | (null));
 readonly "id": (string);
-readonly "lines": (ReadonlyArray<(Input_dialogueDefinitions["Line"])>);
+readonly "lines": (ReadonlyArray<(Input_dialogueDefinitions["Line"])> | (number extends ((Input_dialogueDefinitions["Line"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "once"?: ((boolean) | (null));
 readonly "priority"?: ((number) | (null));
 readonly "random"?: ((boolean) | (null));
 readonly "shared"?: ((number) | (null));
 readonly "speaker"?: ((string) | (null));
-readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])>);
+readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])> | (number extends ((Input_dialogueDefinitions["Step"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "topic": (string);
 readonly "weight"?: ((number) | (null));
 readonly "when"?: (((Input_dialogueDefinitions["Expr"])) | ((null)));
@@ -260,7 +260,7 @@ readonly "hide"?: (boolean);
 readonly "id": (string);
 readonly "kind"?: ((string) | (null));
 readonly "reason"?: (((Input_dialogueDefinitions["Text"])) | ((null)));
-readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])>);
+readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])> | (number extends ((Input_dialogueDefinitions["Step"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "tags"?: (Readonly<Record<string, (string)>>);
 readonly "text": (Input_dialogueDefinitions["Text"]);
 });
@@ -292,7 +292,7 @@ readonly "left": (Input_dialogueDefinitions["Expr"]);
 readonly "op": (Input_dialogueDefinitions["Op"]);
 readonly "right": (Input_dialogueDefinitions["Expr"]);
 })) & { readonly "args"?: never; readonly "id"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "quest"?: never; readonly "value"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])>);
+readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])> | (number extends ((Input_dialogueDefinitions["Expr"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("call") & (string);
 readonly "name": (string);
 })) & { readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
@@ -328,11 +328,11 @@ readonly "voice"?: (((Input_dialogueDefinitions["ContentRef"])) | ((null)));
 });
 readonly "Node": ({
 readonly "choiceFallback"?: ((string) | (null));
-readonly "choices"?: (ReadonlyArray<(Input_dialogueDefinitions["Choice"])>);
+readonly "choices"?: (ReadonlyArray<(Input_dialogueDefinitions["Choice"])> | (number extends ((Input_dialogueDefinitions["Choice"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "id": (string);
 readonly "segment"?: (((Input_dialogueDefinitions["ContentRef"])) | ((null)));
 readonly "shot"?: ((string) | (null));
-readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])>);
+readonly "steps"?: (ReadonlyArray<(Input_dialogueDefinitions["Step"])> | (number extends ((Input_dialogueDefinitions["Step"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Tick count and fallback choice identity, not an array index. */
 readonly "timer"?: ((readonly [(number), (string)]) | (null));
 readonly "title"?: ((string) | (null));
@@ -379,11 +379,11 @@ readonly "kind": ("set") & (string);
 readonly "name": (string);
 readonly "value": (Input_dialogueDefinitions["Expr"]);
 })) & { readonly "args"?: never; readonly "candidates"?: never; readonly "condition"?: never; readonly "continuation"?: never; readonly "expression"?: never; readonly "id"?: never; readonly "node"?: never; readonly "operation"?: never; readonly "shot"?: never; readonly "speaker"?: never; readonly "text"?: never; readonly "voice"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])>);
+readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])> | (number extends ((Input_dialogueDefinitions["Expr"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("call") & (string);
 readonly "name": (string);
 })) & { readonly "candidates"?: never; readonly "condition"?: never; readonly "continuation"?: never; readonly "expression"?: never; readonly "id"?: never; readonly "node"?: never; readonly "operation"?: never; readonly "shot"?: never; readonly "speaker"?: never; readonly "text"?: never; readonly "value"?: never; readonly "voice"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])>);
+readonly "args": (ReadonlyArray<(Input_dialogueDefinitions["Expr"])> | (number extends ((Input_dialogueDefinitions["Expr"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("command") & (string);
 readonly "name": (string);
 })) & { readonly "candidates"?: never; readonly "condition"?: never; readonly "continuation"?: never; readonly "expression"?: never; readonly "id"?: never; readonly "node"?: never; readonly "operation"?: never; readonly "shot"?: never; readonly "speaker"?: never; readonly "text"?: never; readonly "value"?: never; readonly "voice"?: never; }) | ((({
@@ -417,7 +417,7 @@ readonly "continuation": (string);
 readonly "kind": ("dynamic-detour") & (string);
 readonly "node": (Input_dialogueDefinitions["Expr"]);
 })) & { readonly "args"?: never; readonly "candidates"?: never; readonly "condition"?: never; readonly "expression"?: never; readonly "id"?: never; readonly "name"?: never; readonly "operation"?: never; readonly "shot"?: never; readonly "speaker"?: never; readonly "text"?: never; readonly "value"?: never; readonly "voice"?: never; }) | ((({
-readonly "candidates": (ReadonlyArray<(Input_dialogueDefinitions["Candidate"])>);
+readonly "candidates": (ReadonlyArray<(Input_dialogueDefinitions["Candidate"])> | (number extends ((Input_dialogueDefinitions["Candidate"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("select") & (string);
 })) & { readonly "args"?: never; readonly "condition"?: never; readonly "continuation"?: never; readonly "expression"?: never; readonly "id"?: never; readonly "name"?: never; readonly "node"?: never; readonly "operation"?: never; readonly "shot"?: never; readonly "speaker"?: never; readonly "text"?: never; readonly "value"?: never; readonly "voice"?: never; }) | ((({
 readonly "kind": ("return") & (string);
@@ -428,17 +428,17 @@ readonly "args"?: (Readonly<Record<string, (Input_dialogueDefinitions["Expr"])>>
 readonly "key": (string);
 });
 readonly "TypedDialogue": ({
-readonly "barks"?: (ReadonlyArray<(Input_dialogueDefinitions["Bark"])>);
+readonly "barks"?: (ReadonlyArray<(Input_dialogueDefinitions["Bark"])> | (number extends ((Input_dialogueDefinitions["Bark"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "locale"?: ((string) | (null));
 readonly "name": (string);
-readonly "nodes": (ReadonlyArray<(Input_dialogueDefinitions["Node"])>);
+readonly "nodes": (ReadonlyArray<(Input_dialogueDefinitions["Node"])> | (number extends ((Input_dialogueDefinitions["Node"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Lazily evaluated variables expressed in the same typed expression tree. */
 readonly "smart"?: (Readonly<Record<string, (Input_dialogueDefinitions["Expr"])>>);
-readonly "speakers"?: (ReadonlyArray<(Input_dialogueDefinitions["Speaker"])>);
+readonly "speakers"?: (ReadonlyArray<(Input_dialogueDefinitions["Speaker"])> | (number extends ((Input_dialogueDefinitions["Speaker"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "start": (string);
 /** Stable line key to ICU base text. ICU remains a string language. */
 readonly "strings"?: (Readonly<Record<string, (string)>>);
-readonly "vars"?: (ReadonlyArray<(Input_dialogueDefinitions["Variable"])>);
+readonly "vars"?: (ReadonlyArray<(Input_dialogueDefinitions["Variable"])> | (number extends ((Input_dialogueDefinitions["Variable"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Value": (((number)) | ((boolean)) | ((string)));
 readonly "Variable": ({
@@ -459,7 +459,7 @@ readonly "lots": (Input_districtDefinitions["Lots"]);
 readonly "materials": (Input_districtDefinitions["ContentRef"]);
 /** Omitted: merge generated static geometry. */
 readonly "merge"?: ((boolean) | (null));
-readonly "props"?: (ReadonlyArray<(Input_districtDefinitions["Prop"])>);
+readonly "props"?: (ReadonlyArray<(Input_districtDefinitions["Prop"])> | (number extends ((Input_districtDefinitions["Prop"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "region": (Input_districtDefinitions["Region"]);
 readonly "seed"?: ((number) | (null));
 readonly "streets"?: (((Input_districtDefinitions["Streets"])) | ((null)));
@@ -470,7 +470,7 @@ readonly "Buildings": ({
 readonly "density"?: ((number) | (null));
 readonly "height"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 readonly "heightNoise"?: (((Input_districtDefinitions["HeightNoise"])) | ((null)));
-readonly "rules"?: (ReadonlyArray<(Input_districtDefinitions["RuleUse"])>);
+readonly "rules"?: (ReadonlyArray<(Input_districtDefinitions["RuleUse"])> | (number extends ((Input_districtDefinitions["RuleUse"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Cells": ({
 readonly "load"?: ((number) | (null));
@@ -528,7 +528,7 @@ readonly "street"?: ((string) | (null));
 });
 readonly "Region": (((({
 readonly "kind": ("area") & (string);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "depth"?: never; readonly "street"?: never; }) | ((({
 readonly "depth"?: ((number) | (null));
 readonly "kind": ("along") & (string);
@@ -541,7 +541,7 @@ readonly "weight"?: ((number) | (null));
 });
 readonly "Street": ({
 readonly "name"?: ((string) | (null));
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "sidewalk"?: ((number) | (null));
 readonly "width"?: ((number) | (null));
 });
@@ -549,7 +549,7 @@ readonly "Streets": ({
 /** Grid street settings are explicit, never inferred from authored streets. */
 readonly "grid"?: (((Input_districtDefinitions["Grid"])) | ((null)));
 readonly "kerb"?: ((number) | (null));
-readonly "streets"?: (ReadonlyArray<(Input_districtDefinitions["Street"])>);
+readonly "streets"?: (ReadonlyArray<(Input_districtDefinitions["Street"])> | (number extends ((Input_districtDefinitions["Street"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Terrain": ({
 readonly "depth"?: ((number) | (null));
@@ -561,7 +561,7 @@ export type Input_effect = ({
 readonly "alpha"?: (((Input_effectDefinitions["EffectValue"])) | ((null)));
 readonly "blend"?: (((Input_effectDefinitions["Blend"])) | ((null)));
 readonly "color"?: ((ReadonlyArray<(number)> & { readonly length: 4 }) | (null));
-readonly "custom"?: ((ReadonlyArray<(Input_effectDefinitions["EffectValue"])>) | (null));
+readonly "custom"?: ((ReadonlyArray<(Input_effectDefinitions["EffectValue"])> | (number extends ((Input_effectDefinitions["EffectValue"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "doubleSided"?: ((boolean) | (null));
 readonly "erosion"?: (((Input_effectDefinitions["EffectValue"])) | ((null)));
 readonly "erosionEdge"?: (((Input_effectDefinitions["ErosionEdge"])) | ((null)));
@@ -576,7 +576,7 @@ readonly "noise"?: (((Input_effectDefinitions["EffectTextureSlot"])) | ((null)))
 readonly "offsetU"?: (((Input_effectDefinitions["EffectValue"])) | ((null)));
 readonly "offsetV"?: (((Input_effectDefinitions["EffectValue"])) | ((null)));
 readonly "params"?: ((Readonly<Record<string, (Input_effectDefinitions["ShaderParam"])>>) | (null));
-readonly "ramp"?: ((ReadonlyArray<(readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])>) | (null));
+readonly "ramp"?: ((ReadonlyArray<(readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])> | (number extends ((readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "shader"?: (((Input_effectDefinitions["ContentRef"])) | ((null)));
 readonly "softDepth"?: ((number) | (null));
 });
@@ -610,7 +610,7 @@ readonly "invert"?: ((boolean) | (null));
 readonly "power": (number);
 readonly "strength"?: ((number) | (null));
 });
-readonly "ShaderParam": (ReadonlyArray<(number)>);
+readonly "ShaderParam": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** UV transform evaluated over the surface's life. */
 readonly "UvInput": ({
 readonly "offset"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -624,7 +624,7 @@ readonly "kind": ("random") & (string);
 readonly "max": (number);
 readonly "min": (number);
 })) & { readonly "keys"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "keys": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("curve") & (string);
 })) & { readonly "max"?: never; readonly "min"?: never; }));
 }
@@ -715,15 +715,15 @@ readonly "origin"?: (ReadonlyArray<(number)> & { readonly length: 3 });
 /** Positive sample spacing in authored coordinate units. */
 readonly "spacing"?: (ReadonlyArray<(number)> & { readonly length: 3 });
 /** Finite f32 samples; dimensions product times channels, without normalization. */
-readonly "values": (ReadonlyArray<(number)>);
+readonly "values": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export type Input_flipbook = ({
 readonly "array"?: (boolean);
 /** Explicit Aseprite or TexturePacker exchange text from input.text. */
 readonly "atlas"?: ((string) | (null));
-readonly "clips"?: (ReadonlyArray<(Input_flipbookDefinitions["Clip"])>);
+readonly "clips"?: (ReadonlyArray<(Input_flipbookDefinitions["Clip"])> | (number extends ((Input_flipbookDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "filter"?: (((Input_flipbookDefinitions["Filter"])) | ((null)));
-readonly "frames"?: (ReadonlyArray<(Input_flipbookDefinitions["Frame"])>);
+readonly "frames"?: (ReadonlyArray<(Input_flipbookDefinitions["Frame"])> | (number extends ((Input_flipbookDefinitions["Frame"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Grid and explicit/imported frames are composed by the domain validator. */
 readonly "grid"?: (((Input_flipbookDefinitions["Grid"])) | ((null)));
 readonly "margin"?: (number);
@@ -735,11 +735,11 @@ readonly "texture": (Input_flipbookDefinitions["ContentRef"]);
 export interface Input_flipbookDefinitions {
 readonly "Clip": ({
 /** One strictly positive duration per frame; otherwise use fps. */
-readonly "durations"?: ((ReadonlyArray<(number)>) | (null));
-readonly "events"?: (ReadonlyArray<(readonly [(number), (string)])>);
+readonly "durations"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "events"?: (ReadonlyArray<(readonly [(number), (string)])> | (number extends ((readonly [(number), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "fps"?: ((number) | (null));
 /** Frame names, resolved only by the domain validator. */
-readonly "frames": (ReadonlyArray<(string)>);
+readonly "frames": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "mode"?: (((Input_flipbookDefinitions["FlipMode"])) | ((null)));
 readonly "name": (string);
 });
@@ -768,15 +768,15 @@ readonly "size": (ReadonlyArray<(number)> & { readonly length: 2 });
 /** Pack membership does not change another face's own import settings or
 charset. Coverage and script/language validity are checked from actual fonts. */
 export type Input_font_extension = ({
-readonly "faces": (ReadonlyArray<(Input_font_extensionDefinitions["ContentRef"])>);
+readonly "faces": (ReadonlyArray<(Input_font_extensionDefinitions["ContentRef"])> | (number extends ((Input_font_extensionDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** External <language>.hyph dictionaries, consumed only when reached by
 hyphens:auto and shipped locales; not independent runtime font assets. */
-readonly "hyphenation"?: (ReadonlyArray<(string)>);
+readonly "hyphenation"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": (Input_font_extensionDefinitions["FontKind"]);
-readonly "languages"?: (ReadonlyArray<(string)>);
+readonly "languages"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
 /** ISO 15924 script codes (e.g. Zsye for emoji-only packs). */
-readonly "scripts"?: (ReadonlyArray<(string)>);
+readonly "scripts"?: (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_font_extensionDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
@@ -790,7 +790,7 @@ readonly "FontKind": ("font") & (string);
 }
 export type Input_grammar = ({
 readonly "params"?: (Readonly<Record<string, (number)>>);
-readonly "rules": (Readonly<Record<string, (ReadonlyArray<(Input_grammarDefinitions["Operation"])>)>>);
+readonly "rules": (Readonly<Record<string, (ReadonlyArray<(Input_grammarDefinitions["Operation"])> | (number extends ((Input_grammarDefinitions["Operation"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))>>);
 readonly "start": (string);
 });
 export interface Input_grammarDefinitions {
@@ -844,7 +844,7 @@ readonly "op": ("extrude") & (string);
 })) & { readonly "arms"?: never; readonly "axis"?: never; readonly "border"?: never; readonly "eave"?: never; readonly "gable"?: never; readonly "inner"?: never; readonly "jamb"?: never; readonly "label"?: never; readonly "level"?: never; readonly "model"?: never; readonly "options"?: never; readonly "otherwise"?: never; readonly "overhang"?: never; readonly "parts"?: never; readonly "roof"?: never; readonly "slope"?: never; readonly "width"?: never; }) | ((({
 readonly "axis": (Input_grammarDefinitions["Axis"]);
 readonly "op": ("split") & (string);
-readonly "parts": (ReadonlyArray<(Input_grammarDefinitions["SplitPart"])>);
+readonly "parts": (ReadonlyArray<(Input_grammarDefinitions["SplitPart"])> | (number extends ((Input_grammarDefinitions["SplitPart"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "arms"?: never; readonly "border"?: never; readonly "depth"?: never; readonly "eave"?: never; readonly "faces"?: never; readonly "gable"?: never; readonly "inner"?: never; readonly "jamb"?: never; readonly "label"?: never; readonly "level"?: never; readonly "model"?: never; readonly "options"?: never; readonly "otherwise"?: never; readonly "overhang"?: never; readonly "roof"?: never; readonly "slope"?: never; readonly "width"?: never; }) | ((({
 readonly "border": (string);
 readonly "inner": (string);
@@ -862,9 +862,9 @@ readonly "model": (Input_grammarDefinitions["ContentRef"]);
 readonly "op": ("insert") & (string);
 })) & { readonly "arms"?: never; readonly "axis"?: never; readonly "border"?: never; readonly "depth"?: never; readonly "eave"?: never; readonly "faces"?: never; readonly "gable"?: never; readonly "inner"?: never; readonly "jamb"?: never; readonly "label"?: never; readonly "level"?: never; readonly "options"?: never; readonly "otherwise"?: never; readonly "overhang"?: never; readonly "parts"?: never; readonly "roof"?: never; readonly "slope"?: never; readonly "width"?: never; }) | ((({
 readonly "op": ("pick") & (string);
-readonly "options": (ReadonlyArray<(Input_grammarDefinitions["WeightedRule"])>);
+readonly "options": (ReadonlyArray<(Input_grammarDefinitions["WeightedRule"])> | (number extends ((Input_grammarDefinitions["WeightedRule"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "arms"?: never; readonly "axis"?: never; readonly "border"?: never; readonly "depth"?: never; readonly "eave"?: never; readonly "faces"?: never; readonly "gable"?: never; readonly "inner"?: never; readonly "jamb"?: never; readonly "label"?: never; readonly "level"?: never; readonly "model"?: never; readonly "otherwise"?: never; readonly "overhang"?: never; readonly "parts"?: never; readonly "roof"?: never; readonly "slope"?: never; readonly "width"?: never; }) | ((({
-readonly "arms": (ReadonlyArray<(Input_grammarDefinitions["CaseArm"])>);
+readonly "arms": (ReadonlyArray<(Input_grammarDefinitions["CaseArm"])> | (number extends ((Input_grammarDefinitions["CaseArm"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": ("case") & (string);
 readonly "otherwise"?: ((string) | (null));
 })) & { readonly "axis"?: never; readonly "border"?: never; readonly "depth"?: never; readonly "eave"?: never; readonly "faces"?: never; readonly "gable"?: never; readonly "inner"?: never; readonly "jamb"?: never; readonly "label"?: never; readonly "level"?: never; readonly "model"?: never; readonly "options"?: never; readonly "overhang"?: never; readonly "parts"?: never; readonly "roof"?: never; readonly "slope"?: never; readonly "width"?: never; }) | ((({
@@ -894,7 +894,7 @@ readonly "weight": (number);
 export type Input_icons = ({
 /** (name, SVG file stem), in index order.
 Unique names and paths beneath source are checked by the icon validator. */
-readonly "icons": (ReadonlyArray<(readonly [(string), (string)])>);
+readonly "icons": (ReadonlyArray<(readonly [(string), (string)])> | (number extends ((readonly [(string), (string)])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** The join of a stroked path that names none (`join`; SVG's miter). */
 readonly "join"?: (Input_iconsDefinitions["Join"]);
 /** MSDF distance range in pixels. */
@@ -925,7 +925,7 @@ readonly "kind": ("model") & (string);
 readonly "lodError"?: ((number) | (null));
 /** At most eight strictly decreasing fractions beginning at one; ordering
 and first value are domain constraints, not a guessed default sequence. */
-readonly "lods"?: ((ReadonlyArray<(number)>) | (null));
+readonly "lods"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "process"?: (((Input_importDefinitions["Process"])) | ((null)));
 readonly "raycast"?: ((boolean) | (null));
 /** Opt-in probe-region skin relaxation (12 passes). The importer reports
@@ -936,7 +936,7 @@ the importer and must enter the closed input/dependency graph as well. */
 readonly "source": (string);
 readonly "streamTextures"?: ((boolean) | (null));
 readonly "up"?: (((Input_importDefinitions["Axis"])) | ((null)));
-readonly "voxClips"?: (ReadonlyArray<(Input_importDefinitions["VoxClip"])>);
+readonly "voxClips"?: (ReadonlyArray<(Input_importDefinitions["VoxClip"])> | (number extends ((Input_importDefinitions["VoxClip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "voxFps"?: ((number) | (null));
 readonly "voxOrigin"?: (((Input_importDefinitions["VoxOrigin"])) | ((null)));
 readonly "voxScale"?: ((number) | (null));
@@ -968,7 +968,7 @@ readonly "source": (string);
 })) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "level"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "solid"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "tileset"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 readonly "kind": ("tilemap") & (string);
 readonly "level"?: ((string) | (null));
-readonly "solid"?: (ReadonlyArray<(number)>);
+readonly "solid"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Explicit Tiled/LDtk exchange text; never an engine author DSL. */
 readonly "source": (string);
 readonly "tileset"?: (((Input_importDefinitions["ContentRef"])) | ((null)));
@@ -976,7 +976,7 @@ readonly "tileset"?: (((Input_importDefinitions["ContentRef"])) | ((null)));
 readonly "unit"?: ((number) | (null));
 })) & { readonly "animation"?: never; readonly "artboards"?: never; readonly "bitrate"?: never; readonly "chunk"?: never; readonly "codec"?: never; readonly "collider"?: never; readonly "conform"?: never; readonly "fonts"?: never; readonly "front"?: never; readonly "impostor"?: never; readonly "impostorBelow"?: never; readonly "impostorGrid"?: never; readonly "impostorSize"?: never; readonly "lodError"?: never; readonly "lods"?: never; readonly "normal"?: never; readonly "pixel"?: never; readonly "process"?: never; readonly "raycast"?: never; readonly "relaxSkin"?: never; readonly "settings"?: never; readonly "stream"?: never; readonly "streamTextures"?: never; readonly "sway"?: never; readonly "up"?: never; readonly "usage"?: never; readonly "voxClips"?: never; readonly "voxFps"?: never; readonly "voxOrigin"?: never; readonly "voxScale"?: never; }) | ((({
 /** Omitted: all artboards. Explicit selection retains authored order. */
-readonly "artboards"?: ((ReadonlyArray<(string)>) | (null));
+readonly "artboards"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "fonts"?: (Readonly<Record<string, (Input_importDefinitions["FontSource"])>>);
 readonly "kind": ("rive") & (string);
 readonly "settings"?: (Readonly<Record<string, (Input_importDefinitions["Artboard"])>>);
@@ -985,12 +985,12 @@ readonly "source": (string);
 export interface Input_importDefinitions {
 readonly "Align": ("center" | "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right") & (string);
 readonly "Animation": ({
-readonly "clips"?: (ReadonlyArray<(Input_importDefinitions["Clip"])>);
+readonly "clips"?: (ReadonlyArray<(Input_importDefinitions["Clip"])> | (number extends ((Input_importDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "compress"?: ((boolean) | (null));
-readonly "events"?: (ReadonlyArray<(Input_importDefinitions["Event"])>);
+readonly "events"?: (ReadonlyArray<(Input_importDefinitions["Event"])> | (number extends ((Input_importDefinitions["Event"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "footIk"?: ((boolean) | (null));
-readonly "libraries"?: (ReadonlyArray<(Input_importDefinitions["ContentRef"])>);
-readonly "mirrors"?: (ReadonlyArray<(Input_importDefinitions["Mirror"])>);
+readonly "libraries"?: (ReadonlyArray<(Input_importDefinitions["ContentRef"])> | (number extends ((Input_importDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "mirrors"?: (ReadonlyArray<(Input_importDefinitions["Mirror"])> | (number extends ((Input_importDefinitions["Mirror"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "rate"?: ((number) | (null));
 readonly "rig"?: (((Input_importDefinitions["ContentRef"])) | ((null)));
 readonly "tolerance"?: ((number) | (null));
@@ -1013,13 +1013,13 @@ readonly "size"?: ((number) | (null));
 });
 readonly "Channel": ({
 readonly "interpolation"?: (((Input_importDefinitions["Interpolation"])) | ((null)));
-readonly "keys": (ReadonlyArray<(Input_importDefinitions["Key"])>);
+readonly "keys": (ReadonlyArray<(Input_importDefinitions["Key"])> | (number extends ((Input_importDefinitions["Key"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "node": (string);
 readonly "path": (Input_importDefinitions["ChannelPath"]);
 });
 readonly "ChannelPath": ("translation" | "rotation" | "scale" | "weights" | "visibility") & (string);
 readonly "Clip": ({
-readonly "channels": (ReadonlyArray<(Input_importDefinitions["Channel"])>);
+readonly "channels": (ReadonlyArray<(Input_importDefinitions["Channel"])> | (number extends ((Input_importDefinitions["Channel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
 });
 readonly "Codec": ("qoa" | "opus") & (string);
@@ -1063,7 +1063,7 @@ readonly "Key": ({
 readonly "time": (number);
 /** Metres, xyzw unit quaternion, scale factors, morph weights or 0/1.
 Cubic spline keys contain in-tangent, value, out-tangent (per second). */
-readonly "values": (ReadonlyArray<(number)>);
+readonly "values": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Mirror": ({
 readonly "clip": (string);
@@ -1087,7 +1087,7 @@ readonly "unwrap"?: (((Input_importDefinitions["Unwrap"])) | ((null)));
 readonly "Project": ({
 readonly "padding"?: ((number) | (null));
 readonly "size"?: ((number) | (null));
-readonly "views": (ReadonlyArray<(Input_importDefinitions["View"])>);
+readonly "views": (ReadonlyArray<(Input_importDefinitions["View"])> | (number extends ((Input_importDefinitions["View"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Projection": (((({
 readonly "fov": (number);
@@ -1111,7 +1111,7 @@ readonly "weldAll"?: ((boolean) | (null));
 readonly "Rig": (((({
 readonly "kind": ("auto") & (string);
 })) & { readonly "joints"?: never; }) | (({
-readonly "joints": (ReadonlyArray<(Input_importDefinitions["Joint"])>);
+readonly "joints": (ReadonlyArray<(Input_importDefinitions["Joint"])> | (number extends ((Input_importDefinitions["Joint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("joints") & (string);
 })));
 readonly "Role": ("button" | "link" | "text" | "heading" | "image" | "checkbox" | "radio" | "switch" | "slider" | "spinbutton" | "textbox" | "combobox" | "listbox" | "option" | "tab" | "tablist" | "tabpanel" | "radiogroup" | "progressbar" | "meter" | "timer" | "status" | "alert" | "log" | "dialog" | "alertdialog" | "tooltip" | "separator" | "group" | "region" | "navigation" | "toolbar" | "menu" | "menubar" | "menuitem" | "menuitemcheckbox" | "menuitemradio" | "list" | "listitem" | "tree" | "treeitem" | "table" | "grid" | "row" | "rowheader" | "columnheader" | "cell" | "gridcell" | "figure" | "scrollbar") & (string);
@@ -1150,28 +1150,28 @@ readonly "name": (string);
 readonly "VoxOrigin": ("center" | "bottom") & (string);
 }
 export type Input_lightmap = ({
-readonly "models"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedModel"])>);
+readonly "models"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedModel"])> | (number extends ((Input_lightmapDefinitions["BakedModel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** External RGBA16F KTX2 array, consumed by this lightmap only. */
 readonly "pages": (string);
 readonly "samples"?: ((number) | (null));
 readonly "scene": (Input_lightmapDefinitions["ContentRef"]);
 readonly "sceneHash": (Input_lightmapDefinitions["SourceHash"]);
 readonly "seconds"?: ((number) | (null));
-readonly "volumes"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedVolume"])>);
+readonly "volumes"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedVolume"])> | (number extends ((Input_lightmapDefinitions["BakedVolume"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_lightmapDefinitions {
 readonly "BakedModel": ({
 readonly "asset": (Input_lightmapDefinitions["ContentRef"]);
 readonly "entity": (string);
 readonly "hash": (Input_lightmapDefinitions["SourceHash"]);
-readonly "parts"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedPart"])>);
+readonly "parts"?: (ReadonlyArray<(Input_lightmapDefinitions["BakedPart"])> | (number extends ((Input_lightmapDefinitions["BakedPart"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "BakedPart": ({
-readonly "indices"?: (ReadonlyArray<(number)>);
+readonly "indices"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** u, v, page per remapped vertex; cardinality/index bounds are domain checks. */
-readonly "uv"?: (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "uv"?: (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "vertices"?: ((number) | (null));
-readonly "xref"?: (ReadonlyArray<(number)>);
+readonly "xref"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "BakedVolume": ({
 readonly "counts": (ReadonlyArray<(number)> & { readonly length: 3 });
@@ -1180,7 +1180,7 @@ readonly "fade"?: ((number) | (null));
 readonly "max": (ReadonlyArray<(number)> & { readonly length: 3 });
 readonly "min": (ReadonlyArray<(number)> & { readonly length: 3 });
 /** x fastest; each probe has RGB coefficients [c1.x,c1.y,c1.z,c0]. */
-readonly "probes"?: (ReadonlyArray<(ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 4 })> & { readonly length: 3 })>);
+readonly "probes"?: (ReadonlyArray<(ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 4 })> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 4 })> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
@@ -1210,7 +1210,7 @@ readonly "RenderSettings"?: (((Input_lookDefinitions["Reflected_og_cook::cook::s
 readonly "Sky"?: (((Input_lookDefinitions["Reflected_og_cook::cook::source_schemas::procedural::Sky"])) | ((null)));
 readonly "Stylise"?: (((Input_lookDefinitions["Reflected_og_cook::cook::source_schemas::procedural::Stylise"])) | ((null)));
 readonly "antialias"?: (((Input_lookDefinitions["Antialias"])) | ((null)));
-readonly "extends"?: ((ReadonlyArray<(Input_lookDefinitions["LookBase"])>) | (null));
+readonly "extends"?: ((ReadonlyArray<(Input_lookDefinitions["LookBase"])> | (number extends ((Input_lookDefinitions["LookBase"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "mood"?: (((Input_lookDefinitions["Mood"])) | ((null)));
 readonly "name"?: ((string) | (null));
 readonly "ui"?: (((Input_lookDefinitions["UiStyle"])) | ((null)));
@@ -1267,7 +1267,7 @@ readonly "stepFps"?: (number);
 });
 readonly "Reflected_og_cook::cook::source_schemas::procedural::ArtPalette": ({
 /** The colours of colors kept for signals (the player, danger, the goal, a pickup), by their index in the palette (0 its first colour): scenery and backgrounds stay off them. A look gives them on one line (`accents 3 7`); empty keeps none. */
-readonly "accents"?: (ReadonlyArray<(number)>);
+readonly "accents"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** The palette (og.load.palette of a `.hex` or GIMP `.gpl` file; a look names one under assets/ or a built-in `@palettes/<name>`); 0 is none, any colour. */
 readonly "colors"?: ({
 readonly "$ogRef": (string);
@@ -1291,7 +1291,7 @@ readonly "rotationSteps"?: (number);
 /** Sprites and tiles stand on whole logical pixels: their positions are multiples of 1/unit metres, so no pixel of the art lies between two of the grid. */
 readonly "snap"?: (boolean);
 /** The cell sizes, in logical pixels, a sprite, a flipbook frame or a tile may have: each side is one of them (`spriteSizes 16 32` takes 16 x 16, 16 x 32 and 32 x 32). A look gives them on one line; empty is any size. */
-readonly "spriteSizes"?: (ReadonlyArray<(number)>);
+readonly "spriteSizes"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Logical pixels per metre (per world unit in 2D): one pixel of every sprite, tile and backdrop covers 1/unit metres, so no two assets show pixels of different sizes (16 with 16-pixel tiles one metre wide); 0 is no constraint. */
 readonly "unit"?: (number);
 });
@@ -1471,7 +1471,9 @@ readonly "contrast"?: (number);
 /** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. */
 readonly "custom"?: (ReadonlyArray<({
 readonly "$ogRef": (string);
-})>);
+})> | (number extends (({
+readonly "$ogRef": (string);
+})) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Bokeh depth of field: pixels away from the focus distance blur into discs. */
 readonly "depthOfField"?: (boolean);
 /** How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away. */
@@ -1870,7 +1872,7 @@ readonly "UiStyle": (((string)) | ((Input_lookDefinitions["ContentRef"])));
 export type Input_materials = ({
 /** Order is stable; duplicate names and generation requirements are checked
 together by the material-library validator. */
-readonly "materials": (ReadonlyArray<(Input_materialsDefinitions["LibraryMaterial"])>);
+readonly "materials": (ReadonlyArray<(Input_materialsDefinitions["LibraryMaterial"])> | (number extends ((Input_materialsDefinitions["LibraryMaterial"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_materialsDefinitions {
 readonly "Generate": ({
@@ -1883,7 +1885,7 @@ readonly "facade"?: ((boolean) | (null));
 /** Explicit image-map preparation input, not a TS executor or runtime handle. */
 readonly "generate"?: (((Input_materialsDefinitions["Generate"])) | ((null)));
 /** Material labels produced by grammar surfaces. */
-readonly "labels": (ReadonlyArray<(string)>);
+readonly "labels": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
 readonly "occlusion"?: (((Input_materialsDefinitions["Occlusion"])) | ((null)));
 readonly "relief"?: ((number) | (null));
@@ -1997,30 +1999,30 @@ readonly "width"?: ((number) | (null));
 readonly "Branch": ({
 /** -1 is the trunk; otherwise an earlier branch index. */
 readonly "parent"?: ((number) | (null));
-readonly "path": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
-readonly "radii": (ReadonlyArray<(number)>);
+readonly "path": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "radii": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "segments"?: ((number) | (null));
 });
 readonly "BufferGeometry": ({
 /** One linear RGB or RGBA colour per vertex. */
-readonly "colors"?: ((ReadonlyArray<(number)>) | (null));
+readonly "colors"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
 /** Counter-clockwise triangle indices; absent uses consecutive vertices. */
-readonly "indices"?: ((ReadonlyArray<(number)>) | (null));
+readonly "indices"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** One xyz normal per vertex; absent computes normals. */
-readonly "normals"?: ((ReadonlyArray<(number)>) | (null));
+readonly "normals"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Finite x/y/z vertex positions in metres. Triangle count, attribute
 counts and index bounds are checked together by the domain validator. */
-readonly "positions": (ReadonlyArray<(number)>);
+readonly "positions": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** One xyzw tangent frame per vertex; w is handedness. */
-readonly "tangents"?: ((ReadonlyArray<(number)>) | (null));
+readonly "tangents"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 /** One uv pair per vertex; v down the image. */
-readonly "uvs"?: ((ReadonlyArray<(number)>) | (null));
+readonly "uvs"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 readonly "CapsuleGeometry": ({
 readonly "capSegments"?: ((number) | (null));
@@ -2084,7 +2086,7 @@ readonly "CsgOp": ("union" | "subtract" | "intersect") & (string);
 readonly "Curve": ({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind"?: (((Input_modelDefinitions["CurveKind"])) | ((null)));
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Catmull-Rom tangent scale; unset 0.5. */
 readonly "tension"?: ((number) | (null));
 });
@@ -2137,7 +2139,7 @@ readonly "extrudePath"?: (((Input_modelDefinitions["Curve"])) | ((null)));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Unset uses the generator's default square. */
-readonly "shapes"?: ((ReadonlyArray<(Input_modelDefinitions["Shape"])>) | (null));
+readonly "shapes"?: ((ReadonlyArray<(Input_modelDefinitions["Shape"])> | (number extends ((Input_modelDefinitions["Shape"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "steps"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -2168,7 +2170,7 @@ readonly "rings"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 /** Explicit centres replace sampling; count 2..128, distinct, volume
 Voronoi only, exclusive with chunks/impact (domain validation). */
-readonly "sites"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>) | (null));
+readonly "sites"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "style"?: (((Input_modelDefinitions["Style"])) | ((null)));
 });
 /** Exactly one geometry, named as the corresponding render mechanism. */
@@ -2246,7 +2248,7 @@ readonly "GeometryModel": ({
 readonly "conform"?: (((Input_modelDefinitions["Conform"])) | ((null)));
 readonly "fracture"?: (((Input_modelDefinitions["Fracture"])) | ((null)));
 /** Ordered declarations: a named dependency must precede its consumer. */
-readonly "items": (ReadonlyArray<(Input_modelDefinitions["Item"])>);
+readonly "items": (ReadonlyArray<(Input_modelDefinitions["Item"])> | (number extends ((Input_modelDefinitions["Item"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "process"?: (((Input_modelDefinitions["Process"])) | ((null)));
 });
 readonly "Growth": ("deciduous" | "evergreen") & (string);
@@ -2285,7 +2287,7 @@ readonly "phiStart"?: ((number) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Radial x and height y, metres; unset uses the generator's profile. */
-readonly "points"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "points"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "segments"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -2371,7 +2373,7 @@ readonly "transmission"?: ((number) | (null));
 readonly "MergeGeometries": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
-readonly "parts": (ReadonlyArray<(Input_modelDefinitions["PlacedGeometry"])>);
+readonly "parts": (ReadonlyArray<(Input_modelDefinitions["PlacedGeometry"])> | (number extends ((Input_modelDefinitions["PlacedGeometry"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
@@ -2396,7 +2398,7 @@ readonly "material"?: ((string) | (null));
 readonly "pivot"?: ((string) | (null));
 /** Omitted: identity placement. Explicit placements must be nonempty; a
 single placement also represents the old part's own TRS, with no XOR. */
-readonly "placements"?: ((ReadonlyArray<(Input_modelDefinitions["Placement"])>) | (null));
+readonly "placements"?: ((ReadonlyArray<(Input_modelDefinitions["Placement"])> | (number extends ((Input_modelDefinitions["Placement"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 /** Ordered Path2 operations. These are structured calls, not embedded OGT. */
 readonly "Path2Command": ((({
@@ -2412,10 +2414,10 @@ readonly "op": ("quadraticCurveTo") & (string);
 readonly "args": (ReadonlyArray<(number)> & { readonly length: 6 });
 readonly "op": ("bezierCurveTo") & (string);
 })) | (({
-readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": ("splineThru") & (string);
 })) | (({
-readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": ("points") & (string);
 })) | (({
 readonly "args": (Input_modelDefinitions["Arc"]);
@@ -2470,7 +2472,7 @@ readonly "bounds"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length
 readonly "branch1"?: (((Input_modelDefinitions["Level"])) | ((null)));
 readonly "branch2"?: (((Input_modelDefinitions["Level"])) | ((null)));
 readonly "branch3"?: (((Input_modelDefinitions["Level"])) | ((null)));
-readonly "branches"?: (ReadonlyArray<(Input_modelDefinitions["Branch"])>);
+readonly "branches"?: (ReadonlyArray<(Input_modelDefinitions["Branch"])> | (number extends ((Input_modelDefinitions["Branch"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "flowerGeometry"?: (((Input_modelDefinitions["Geometry"])) | ((null)));
 readonly "flowers"?: (((Input_modelDefinitions["Flowers"])) | ((null)));
 /** Direction xyz and bending strength. */
@@ -2481,7 +2483,7 @@ readonly "leafGeometry"?: (((Input_modelDefinitions["Geometry"])) | ((null)));
 readonly "leaves"?: (((Input_modelDefinitions["Leaves"])) | ((null)));
 readonly "levels"?: ((number) | (null));
 readonly "material"?: ((string) | (null));
-readonly "path"?: (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "path"?: (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "seed"?: ((number) | (null));
 readonly "trunk"?: (((Input_modelDefinitions["Level"])) | ((null)));
 });
@@ -2491,14 +2493,14 @@ readonly "detail"?: ((number) | (null));
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
 /** At least one triangle, indexing the corner triples. */
-readonly "indices": (ReadonlyArray<(number)>);
+readonly "indices": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 readonly "radius"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 /** Flat xyz corner coordinates, metres. */
-readonly "vertices": (ReadonlyArray<(number)>);
+readonly "vertices": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Process": ({
 readonly "bake"?: (((Input_modelDefinitions["Bake"])) | ((null)));
@@ -2539,7 +2541,7 @@ readonly "transparent"?: ((boolean) | (null));
 readonly "ProgramModel": ({
 readonly "atlas"?: ((number) | (null));
 readonly "conform"?: (((Input_modelDefinitions["Conform"])) | ((null)));
-readonly "materials"?: (ReadonlyArray<(Input_modelDefinitions["ProgramMaterial"])>);
+readonly "materials"?: (ReadonlyArray<(Input_modelDefinitions["ProgramMaterial"])> | (number extends ((Input_modelDefinitions["ProgramMaterial"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "params"?: (Readonly<Record<string, (number)>>);
 readonly "process"?: (((Input_modelDefinitions["Process"])) | ((null)));
 readonly "program": (Input_modelDefinitions["ContentRef"]);
@@ -2547,7 +2549,7 @@ readonly "program": (Input_modelDefinitions["ContentRef"]);
 readonly "Project": ({
 readonly "padding"?: ((number) | (null));
 readonly "size"?: ((number) | (null));
-readonly "views": (ReadonlyArray<(Input_modelDefinitions["View"])>);
+readonly "views": (ReadonlyArray<(Input_modelDefinitions["View"])> | (number extends ((Input_modelDefinitions["View"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Projection": (((({
 readonly "fov": (number);
@@ -2579,7 +2581,7 @@ readonly "weldAll"?: ((boolean) | (null));
 readonly "Rig": (((({
 readonly "kind": ("auto") & (string);
 })) & { readonly "joints"?: never; }) | (({
-readonly "joints": (ReadonlyArray<(Input_modelDefinitions["Joint"])>);
+readonly "joints": (ReadonlyArray<(Input_modelDefinitions["Joint"])> | (number extends ((Input_modelDefinitions["Joint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("joints") & (string);
 })));
 readonly "RingGeometry": ({
@@ -2597,9 +2599,9 @@ readonly "thetaStart"?: ((number) | (null));
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
 readonly "Shape": ({
-readonly "commands": (ReadonlyArray<(Input_modelDefinitions["Path2Command"])>);
+readonly "commands": (ReadonlyArray<(Input_modelDefinitions["Path2Command"])> | (number extends ((Input_modelDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Hole contours cannot contain more holes. */
-readonly "holes"?: (ReadonlyArray<(ReadonlyArray<(Input_modelDefinitions["Path2Command"])>)>);
+readonly "holes"?: (ReadonlyArray<(ReadonlyArray<(Input_modelDefinitions["Path2Command"])> | (number extends ((Input_modelDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))> | (number extends ((ReadonlyArray<(Input_modelDefinitions["Path2Command"])> | (number extends ((Input_modelDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "ShapeGeometry": ({
 readonly "curveSegments"?: ((number) | (null));
@@ -2608,7 +2610,7 @@ readonly "dynamic"?: ((boolean) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Unset uses the generator's default triangle. */
-readonly "shapes"?: ((ReadonlyArray<(Input_modelDefinitions["Shape"])>) | (null));
+readonly "shapes"?: ((ReadonlyArray<(Input_modelDefinitions["Shape"])> | (number extends ((Input_modelDefinitions["Shape"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
@@ -2643,12 +2645,12 @@ readonly "path": (Input_modelDefinitions["Curve"]);
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Ordered interpolation keys along the path (t, scale). */
-readonly "scale"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "scale"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Cross-section without holes. Curve flattening uses curveSegments. */
-readonly "section": (ReadonlyArray<(Input_modelDefinitions["Path2Command"])>);
+readonly "section": (ReadonlyArray<(Input_modelDefinitions["Path2Command"])> | (number extends ((Input_modelDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "steps"?: ((number) | (null));
 /** Ordered interpolation keys (t, radians). */
-readonly "twist"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "twist"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
@@ -2686,7 +2688,7 @@ readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (nul
 readonly "TubePath": (((({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind": ("points") & (string);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "curve"?: never; }) | ((({
 readonly "curve": (Input_modelDefinitions["Curve"]);
 readonly "kind": ("curve") & (string);
@@ -2712,13 +2714,13 @@ converts the result to metres/Y up. Angles are radians, times seconds. */
 export type Input_model_program = ({
 /** Omitted: the shared kernel's model name. */
 readonly "name"?: ((string) | (null));
-readonly "ops": (ReadonlyArray<(Input_model_programDefinitions["Operation"])>);
+readonly "ops": (ReadonlyArray<(Input_model_programDefinitions["Operation"])> | (number extends ((Input_model_programDefinitions["Operation"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "params"?: (Readonly<Record<string, (number)>>);
 });
 export interface Input_model_programDefinitions {
 readonly "AlongPath": ({
 readonly "closed"?: ((boolean) | (null));
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Arc": ({
 readonly "through": (ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 });
@@ -2801,7 +2803,7 @@ readonly "pitch"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "direction"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 }) | (null));
 readonly "ids": (Input_model_programDefinitions["Ids"]);
 readonly "op": ("snap") & (string);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "amount"?: never; readonly "anchors"?: never; readonly "angle"?: never; readonly "at"?: never; readonly "axis"?: never; readonly "bind"?: never; readonly "bore"?: never; readonly "bottom"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "closed"?: never; readonly "count"?: never; readonly "counterbore"?: never; readonly "countersink"?: never; readonly "curve"?: never; readonly "density"?: never; readonly "depth"?: never; readonly "diameter"?: never; readonly "distance"?: never; readonly "distance2"?: never; readonly "edges"?: never; readonly "fillet"?: never; readonly "fillets"?: never; readonly "frame"?: never; readonly "height"?: never; readonly "host"?: never; readonly "hub"?: never; readonly "hubHeight"?: never; readonly "id"?: never; readonly "inner"?: never; readonly "keep"?: never; readonly "keys"?: never; readonly "kind"?: never; readonly "length"?: never; readonly "levels"?: never; readonly "local"?: never; readonly "mimic"?: never; readonly "module"?: never; readonly "n"?: never; readonly "name"?: never; readonly "noise"?: never; readonly "normal"?: never; readonly "nx"?: never; readonly "ny"?: never; readonly "octaves"?: never; readonly "on"?: never; readonly "open"?: never; readonly "origin"?: never; readonly "outer"?: never; readonly "parent"?: never; readonly "part"?: never; readonly "parts"?: never; readonly "path"?: never; readonly "pitch"?: never; readonly "plan"?: never; readonly "plane"?: never; readonly "posed"?: never; readonly "pressureAngle"?: never; readonly "profile"?: never; readonly "px"?: never; readonly "py"?: never; readonly "radius"?: never; readonly "radiusTop"?: never; readonly "range"?: never; readonly "rx"?: never; readonly "ry"?: never; readonly "rz"?: never; readonly "samples"?: never; readonly "scale"?: never; readonly "scaleEnd"?: never; readonly "sections"?: never; readonly "seed"?: never; readonly "segments"?: never; readonly "sharp"?: never; readonly "sides"?: never; readonly "stagger"?: never; readonly "start"?: never; readonly "steps"?: never; readonly "straight"?: never; readonly "target"?: never; readonly "teeth"?: never; readonly "thickness"?: never; readonly "to"?: never; readonly "tool"?: never; readonly "top"?: never; readonly "tube"?: never; readonly "tubeSegments"?: never; readonly "twist"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "uvs"?: never; readonly "width"?: never; readonly "x"?: never; readonly "y"?: never; readonly "z"?: never; }) | ((({
 readonly "id": (Input_model_programDefinitions["Id"]);
 readonly "op": ("names") & (string);
@@ -2925,7 +2927,7 @@ readonly "uvs"?: ((boolean) | (null));
 readonly "closed"?: ((boolean) | (null));
 readonly "diameter": (Input_model_programDefinitions["Number"]);
 readonly "fillet"?: (((Input_model_programDefinitions["Number"])) | ((null)));
-readonly "fillets"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])>) | (null));
+readonly "fillets"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])> | (number extends ((Input_model_programDefinitions["Number"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "name": (string);
 readonly "on"?: (((Input_model_programDefinitions["Frame"])) | ((null)));
 readonly "op": ("wire") & (string);
@@ -3054,7 +3056,7 @@ readonly "op": ("shell") & (string);
 readonly "open"?: (((Input_model_programDefinitions["Names"])) | ((null)));
 readonly "thickness": (Input_model_programDefinitions["Number"]);
 })) & { readonly "amount"?: never; readonly "anchors"?: never; readonly "angle"?: never; readonly "at"?: never; readonly "axis"?: never; readonly "bind"?: never; readonly "bore"?: never; readonly "bottom"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "closed"?: never; readonly "count"?: never; readonly "counterbore"?: never; readonly "countersink"?: never; readonly "curve"?: never; readonly "density"?: never; readonly "depth"?: never; readonly "diameter"?: never; readonly "direction"?: never; readonly "distance"?: never; readonly "distance2"?: never; readonly "edges"?: never; readonly "fillet"?: never; readonly "fillets"?: never; readonly "frame"?: never; readonly "height"?: never; readonly "host"?: never; readonly "hub"?: never; readonly "hubHeight"?: never; readonly "ids"?: never; readonly "inner"?: never; readonly "keep"?: never; readonly "keys"?: never; readonly "kind"?: never; readonly "length"?: never; readonly "levels"?: never; readonly "local"?: never; readonly "mimic"?: never; readonly "module"?: never; readonly "n"?: never; readonly "name"?: never; readonly "noise"?: never; readonly "normal"?: never; readonly "nx"?: never; readonly "ny"?: never; readonly "octaves"?: never; readonly "on"?: never; readonly "origin"?: never; readonly "outer"?: never; readonly "parent"?: never; readonly "part"?: never; readonly "parts"?: never; readonly "path"?: never; readonly "pitch"?: never; readonly "plan"?: never; readonly "plane"?: never; readonly "points"?: never; readonly "posed"?: never; readonly "pressureAngle"?: never; readonly "profile"?: never; readonly "px"?: never; readonly "py"?: never; readonly "radius"?: never; readonly "radiusTop"?: never; readonly "range"?: never; readonly "rx"?: never; readonly "ry"?: never; readonly "rz"?: never; readonly "samples"?: never; readonly "scale"?: never; readonly "scaleEnd"?: never; readonly "sections"?: never; readonly "seed"?: never; readonly "segments"?: never; readonly "sharp"?: never; readonly "sides"?: never; readonly "stagger"?: never; readonly "start"?: never; readonly "steps"?: never; readonly "straight"?: never; readonly "target"?: never; readonly "teeth"?: never; readonly "to"?: never; readonly "tool"?: never; readonly "top"?: never; readonly "tube"?: never; readonly "tubeSegments"?: never; readonly "twist"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "uvs"?: never; readonly "width"?: never; readonly "x"?: never; readonly "y"?: never; readonly "z"?: never; }) | ((({
-readonly "at": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })>);
+readonly "at": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "depth": (Input_model_programDefinitions["Number"]);
 readonly "id": (Input_model_programDefinitions["Id"]);
 readonly "op": ("dent") & (string);
@@ -3106,7 +3108,7 @@ readonly "op": ("joint") & (string);
 readonly "parent": (Input_model_programDefinitions["Id"]);
 readonly "range"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 }) | (null));
 })) & { readonly "amount"?: never; readonly "anchors"?: never; readonly "angle"?: never; readonly "at"?: never; readonly "bind"?: never; readonly "bore"?: never; readonly "bottom"?: never; readonly "check"?: never; readonly "children"?: never; readonly "closed"?: never; readonly "count"?: never; readonly "counterbore"?: never; readonly "countersink"?: never; readonly "curve"?: never; readonly "density"?: never; readonly "depth"?: never; readonly "diameter"?: never; readonly "direction"?: never; readonly "distance"?: never; readonly "distance2"?: never; readonly "edges"?: never; readonly "fillet"?: never; readonly "fillets"?: never; readonly "frame"?: never; readonly "height"?: never; readonly "host"?: never; readonly "hub"?: never; readonly "hubHeight"?: never; readonly "id"?: never; readonly "ids"?: never; readonly "inner"?: never; readonly "keep"?: never; readonly "keys"?: never; readonly "length"?: never; readonly "levels"?: never; readonly "local"?: never; readonly "module"?: never; readonly "n"?: never; readonly "noise"?: never; readonly "normal"?: never; readonly "nx"?: never; readonly "ny"?: never; readonly "octaves"?: never; readonly "open"?: never; readonly "origin"?: never; readonly "outer"?: never; readonly "part"?: never; readonly "parts"?: never; readonly "path"?: never; readonly "pitch"?: never; readonly "plan"?: never; readonly "plane"?: never; readonly "points"?: never; readonly "posed"?: never; readonly "pressureAngle"?: never; readonly "profile"?: never; readonly "px"?: never; readonly "py"?: never; readonly "radius"?: never; readonly "radiusTop"?: never; readonly "rx"?: never; readonly "ry"?: never; readonly "rz"?: never; readonly "samples"?: never; readonly "scale"?: never; readonly "scaleEnd"?: never; readonly "sections"?: never; readonly "seed"?: never; readonly "segments"?: never; readonly "sharp"?: never; readonly "sides"?: never; readonly "stagger"?: never; readonly "start"?: never; readonly "steps"?: never; readonly "straight"?: never; readonly "target"?: never; readonly "teeth"?: never; readonly "thickness"?: never; readonly "to"?: never; readonly "tool"?: never; readonly "top"?: never; readonly "tube"?: never; readonly "tubeSegments"?: never; readonly "twist"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "uvs"?: never; readonly "width"?: never; readonly "x"?: never; readonly "y"?: never; readonly "z"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_model_programDefinitions["PoseKey"])>);
+readonly "keys": (ReadonlyArray<(Input_model_programDefinitions["PoseKey"])> | (number extends ((Input_model_programDefinitions["PoseKey"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "name": (string);
 readonly "op": ("clip") & (string);
 })) & { readonly "amount"?: never; readonly "anchors"?: never; readonly "angle"?: never; readonly "at"?: never; readonly "axis"?: never; readonly "bind"?: never; readonly "bore"?: never; readonly "bottom"?: never; readonly "check"?: never; readonly "child"?: never; readonly "children"?: never; readonly "closed"?: never; readonly "count"?: never; readonly "counterbore"?: never; readonly "countersink"?: never; readonly "curve"?: never; readonly "density"?: never; readonly "depth"?: never; readonly "diameter"?: never; readonly "direction"?: never; readonly "distance"?: never; readonly "distance2"?: never; readonly "edges"?: never; readonly "fillet"?: never; readonly "fillets"?: never; readonly "frame"?: never; readonly "height"?: never; readonly "host"?: never; readonly "hub"?: never; readonly "hubHeight"?: never; readonly "id"?: never; readonly "ids"?: never; readonly "inner"?: never; readonly "keep"?: never; readonly "kind"?: never; readonly "length"?: never; readonly "levels"?: never; readonly "local"?: never; readonly "mimic"?: never; readonly "module"?: never; readonly "n"?: never; readonly "noise"?: never; readonly "normal"?: never; readonly "nx"?: never; readonly "ny"?: never; readonly "octaves"?: never; readonly "on"?: never; readonly "open"?: never; readonly "origin"?: never; readonly "outer"?: never; readonly "parent"?: never; readonly "part"?: never; readonly "parts"?: never; readonly "path"?: never; readonly "pitch"?: never; readonly "plan"?: never; readonly "plane"?: never; readonly "points"?: never; readonly "posed"?: never; readonly "pressureAngle"?: never; readonly "profile"?: never; readonly "px"?: never; readonly "py"?: never; readonly "radius"?: never; readonly "radiusTop"?: never; readonly "range"?: never; readonly "rx"?: never; readonly "ry"?: never; readonly "rz"?: never; readonly "samples"?: never; readonly "scale"?: never; readonly "scaleEnd"?: never; readonly "sections"?: never; readonly "seed"?: never; readonly "segments"?: never; readonly "sharp"?: never; readonly "sides"?: never; readonly "stagger"?: never; readonly "start"?: never; readonly "steps"?: never; readonly "straight"?: never; readonly "target"?: never; readonly "teeth"?: never; readonly "thickness"?: never; readonly "to"?: never; readonly "tool"?: never; readonly "top"?: never; readonly "tube"?: never; readonly "tubeSegments"?: never; readonly "twist"?: never; readonly "unit"?: never; readonly "up"?: never; readonly "uvs"?: never; readonly "width"?: never; readonly "x"?: never; readonly "y"?: never; readonly "z"?: never; }) | ((({
@@ -3118,7 +3120,7 @@ readonly "Bone": ({
 readonly "name": (string);
 readonly "parent"?: ((string) | (null));
 readonly "pivot"?: (((Input_model_programDefinitions["Pivot"])) | ((null)));
-readonly "regions"?: ((ReadonlyArray<(string)>) | (null));
+readonly "regions"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 readonly "Circle": ({
 readonly "radius"?: (((Input_model_programDefinitions["Number"])) | ((null)));
@@ -3157,7 +3159,7 @@ readonly "tangentArc": (Input_model_programDefinitions["TangentArc2"]);
 readonly "spline": (Input_model_programDefinitions["PathSpline2"]);
 })) & { readonly "arc"?: never; readonly "tangentArc"?: never; }));
 readonly "DeltaMorph": ({
-readonly "deltas": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })>);
+readonly "deltas": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "id": (Input_model_programDefinitions["Id"]);
 readonly "name": (string);
 readonly "op": (Input_model_programDefinitions["MorphTag"]);
@@ -3197,7 +3199,7 @@ readonly "x": (ReadonlyArray<(Input_model_programDefinitions["Number"])> & { rea
 readonly "y": (ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 });
 readonly "z": (ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 });
 });
-readonly "Frames": (((Input_model_programDefinitions["Frame"])) | ((ReadonlyArray<(Input_model_programDefinitions["Frame"])>)));
+readonly "Frames": (((Input_model_programDefinitions["Frame"])) | ((ReadonlyArray<(Input_model_programDefinitions["Frame"])> | (number extends ((Input_model_programDefinitions["Frame"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "Gear": ({
 readonly "module"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "pressureAngle"?: (((Input_model_programDefinitions["Number"])) | ((null)));
@@ -3205,7 +3207,7 @@ readonly "teeth"?: (((Input_model_programDefinitions["Count"])) | ((null)));
 });
 readonly "HeatSkin": ({
 readonly "id": (Input_model_programDefinitions["Id"]);
-readonly "joints": (ReadonlyArray<(Input_model_programDefinitions["SkinJoint"])>);
+readonly "joints": (ReadonlyArray<(Input_model_programDefinitions["SkinJoint"])> | (number extends ((Input_model_programDefinitions["SkinJoint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": (Input_model_programDefinitions["SkinTag"]);
 });
 readonly "HeightSection": ({
@@ -3224,7 +3226,7 @@ readonly "Id": (((number)) | ((Input_model_programDefinitions["IdHandle"])));
 readonly "IdHandle": ({
 readonly "id": (number);
 });
-readonly "Ids": (((Input_model_programDefinitions["Id"])) | ((ReadonlyArray<(Input_model_programDefinitions["Id"])>)));
+readonly "Ids": (((Input_model_programDefinitions["Id"])) | ((ReadonlyArray<(Input_model_programDefinitions["Id"])> | (number extends ((Input_model_programDefinitions["Id"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "ImageMaterial": ({
 readonly "clearcoat"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "clearcoatRoughness"?: (((Input_model_programDefinitions["Number"])) | ((null)));
@@ -3267,7 +3269,7 @@ readonly "ModelPath2": (readonly [(ReadonlyArray<(Input_model_programDefinitions
 readonly "ModelPath3": (readonly [(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 }), ...((Input_model_programDefinitions["Piece2"]))[]]);
 readonly "Morph": ((((Input_model_programDefinitions["TargetMorph"])) & { readonly "deltas"?: never; readonly "offset"?: never; readonly "regions"?: never; readonly "scale"?: never; }) | (((Input_model_programDefinitions["DeltaMorph"])) & { readonly "offset"?: never; readonly "regions"?: never; readonly "scale"?: never; readonly "target"?: never; }) | (((Input_model_programDefinitions["RegionMorph"])) & { readonly "deltas"?: never; readonly "target"?: never; }) | (((Input_model_programDefinitions["OffsetMorph"])) & { readonly "deltas"?: never; readonly "regions"?: never; readonly "target"?: never; }) | (((Input_model_programDefinitions["ScaleMorph"])) & { readonly "deltas"?: never; readonly "offset"?: never; readonly "regions"?: never; readonly "target"?: never; }));
 readonly "MorphTag": ("morph") & (string);
-readonly "Names": (((string)) | ((ReadonlyArray<(string)>)));
+readonly "Names": (((string)) | ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "Noise": ("fbm" | "ridged" | "crater") & (string);
 /** A finite scalar or a parameter expression containing `$`. The kernel checks
 grammar, declared names and finite results before executing any operation. */
@@ -3304,10 +3306,10 @@ readonly "transmission"?: (((Input_model_programDefinitions["Number"])) | ((null
 });
 readonly "Path3": (((Input_model_programDefinitions["ModelPath3"])) | ((Input_model_programDefinitions["HelixPath"])));
 readonly "PathSpline": ({
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "PathSpline2": ({
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Pattern": ("noise" | "ridged" | "craters" | "strata" | "stripes" | "panels" | "rivets" | "veins" | "edges" | "cavities" | "facing" | "gradient") & (string);
 readonly "Piece": (((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) | ((Input_model_programDefinitions["CurvePiece"])));
@@ -3334,7 +3336,7 @@ readonly "sheenRoughness"?: (((Input_model_programDefinitions["Number"])) | ((nu
 readonly "transmission"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 });
 readonly "Poly": ({
-readonly "points": (ReadonlyArray<(Input_model_programDefinitions["PolyPoint"])>);
+readonly "points": (ReadonlyArray<(Input_model_programDefinitions["PolyPoint"])> | (number extends ((Input_model_programDefinitions["PolyPoint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "PolyPoint": (((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) | ((Input_model_programDefinitions["Corner"])));
 readonly "Polygon": ({
@@ -3364,11 +3366,11 @@ readonly "poly": (Input_model_programDefinitions["Poly"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
 readonly "gear": (Input_model_programDefinitions["Gear"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
-readonly "union": (ReadonlyArray<(Input_model_programDefinitions["Profile"])>);
+readonly "union": (ReadonlyArray<(Input_model_programDefinitions["Profile"])> | (number extends ((Input_model_programDefinitions["Profile"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; }) | ((({
-readonly "subtract": (ReadonlyArray<(Input_model_programDefinitions["Profile"])>);
+readonly "subtract": (ReadonlyArray<(Input_model_programDefinitions["Profile"])> | (number extends ((Input_model_programDefinitions["Profile"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
-readonly "intersect": (ReadonlyArray<(Input_model_programDefinitions["Profile"])>);
+readonly "intersect": (ReadonlyArray<(Input_model_programDefinitions["Profile"])> | (number extends ((Input_model_programDefinitions["Profile"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
 readonly "offset": (Input_model_programDefinitions["Offset"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
@@ -3386,7 +3388,7 @@ readonly "path": (Input_model_programDefinitions["ModelPath2"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
 readonly "stroke": (Input_model_programDefinitions["Stroke"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
-readonly "hull": (ReadonlyArray<(Input_model_programDefinitions["Profile"])>);
+readonly "hull": (ReadonlyArray<(Input_model_programDefinitions["Profile"])> | (number extends ((Input_model_programDefinitions["Profile"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "intersect"?: never; readonly "mirror"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
 readonly "mirror": (Input_model_programDefinitions["Mirror"]);
 })) & { readonly "circle"?: never; readonly "ellipse"?: never; readonly "gear"?: never; readonly "hull"?: never; readonly "intersect"?: never; readonly "offset"?: never; readonly "path"?: never; readonly "poly"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotate"?: never; readonly "scale"?: never; readonly "slot"?: never; readonly "spline"?: never; readonly "stroke"?: never; readonly "subtract"?: never; readonly "superellipse"?: never; readonly "text"?: never; readonly "translate"?: never; readonly "union"?: never; }) | ((({
@@ -3402,13 +3404,13 @@ readonly "id": (Input_model_programDefinitions["Id"]);
 readonly "name": (string);
 readonly "offset"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 }) | (null));
 readonly "op": (Input_model_programDefinitions["MorphTag"]);
-readonly "regions": (ReadonlyArray<(string)>);
+readonly "regions": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "scale"?: ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 }) | (null));
 readonly "weight"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 });
 readonly "RegionSkin": ({
 readonly "blend"?: (((Input_model_programDefinitions["Number"])) | ((null)));
-readonly "bones": (ReadonlyArray<(Input_model_programDefinitions["Bone"])>);
+readonly "bones": (ReadonlyArray<(Input_model_programDefinitions["Bone"])> | (number extends ((Input_model_programDefinitions["Bone"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "id": (Input_model_programDefinitions["Id"]);
 readonly "maxEdge"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "op": (Input_model_programDefinitions["SkinTag"]);
@@ -3429,7 +3431,7 @@ readonly "op": (Input_model_programDefinitions["MorphTag"]);
 readonly "scale": (ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 3 });
 readonly "weight"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 });
-readonly "Sections": (((ReadonlyArray<(Input_model_programDefinitions["HeightSection"])>)) | ((ReadonlyArray<(Input_model_programDefinitions["PlacedSection"])>)));
+readonly "Sections": (((ReadonlyArray<(Input_model_programDefinitions["HeightSection"])> | (number extends ((Input_model_programDefinitions["HeightSection"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) | ((ReadonlyArray<(Input_model_programDefinitions["PlacedSection"])> | (number extends ((Input_model_programDefinitions["PlacedSection"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "SignedAxis": ("+X" | "-X" | "+Y" | "-Y" | "+Z" | "-Z") & (string);
 readonly "Skin": ((((Input_model_programDefinitions["RegionSkin"])) & { readonly "joints"?: never; }) | (((Input_model_programDefinitions["HeatSkin"])) & { readonly "blend"?: never; readonly "bones"?: never; readonly "maxEdge"?: never; }));
 readonly "SkinJoint": ({
@@ -3443,7 +3445,7 @@ readonly "length"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "width"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 });
 readonly "Spline": ({
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Stroke": ({
 readonly "closed"?: ((boolean) | (null));
@@ -3461,7 +3463,7 @@ readonly "segments"?: (((Input_model_programDefinitions["Count"])) | ((null)));
 readonly "Surface": ({
 /** Texels per model unit. */
 readonly "density"?: (((Input_model_programDefinitions["Number"])) | ((null)));
-readonly "layers"?: (ReadonlyArray<(Input_model_programDefinitions["SurfaceLayer"])>);
+readonly "layers"?: (ReadonlyArray<(Input_model_programDefinitions["SurfaceLayer"])> | (number extends ((Input_model_programDefinitions["SurfaceLayer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "normalScale"?: (((Input_model_programDefinitions["Number"])) | ((null)));
 readonly "seed"?: (((Input_model_programDefinitions["Count"])) | ((null)));
 });
@@ -3515,9 +3517,9 @@ readonly "Until": ({
 readonly "face": (string);
 readonly "part": (Input_model_programDefinitions["Id"]);
 });
-readonly "View": (((Input_model_programDefinitions["Number"])) | ((ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })>)) | ((Input_model_programDefinitions["ViewCurve"])));
+readonly "View": (((Input_model_programDefinitions["Number"])) | ((ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) | ((Input_model_programDefinitions["ViewCurve"])));
 readonly "ViewCurve": ({
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(Input_model_programDefinitions["Number"])> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "smooth"?: ((boolean) | (null));
 });
 }
@@ -3544,20 +3546,20 @@ readonly "Hand": ("left" | "right") & (string);
 }
 export type Input_navmesh = ({
 /** Ordered profiles; unnamed profile is the default, otherwise the first. */
-readonly "agents"?: (ReadonlyArray<(Input_navmeshDefinitions["Agent"])>);
+readonly "agents"?: (ReadonlyArray<(Input_navmeshDefinitions["Agent"])> | (number extends ((Input_navmeshDefinitions["Agent"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Later shapes override earlier overlaps. */
-readonly "areas"?: (ReadonlyArray<(Input_navmeshDefinitions["Area"])>);
+readonly "areas"?: (ReadonlyArray<(Input_navmeshDefinitions["Area"])> | (number extends ((Input_navmeshDefinitions["Area"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "bounds"?: (((Input_navmeshDefinitions["Bounds"])) | ((null)));
-readonly "boxes"?: (ReadonlyArray<(Input_navmeshDefinitions["NavBox"])>);
+readonly "boxes"?: (ReadonlyArray<(Input_navmeshDefinitions["NavBox"])> | (number extends ((Input_navmeshDefinitions["NavBox"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "cellHeight"?: ((number) | (null));
 /** Voxel dimensions in metres; omitted: 0.2 horizontally, 0.1 vertically. */
 readonly "cellSize"?: ((number) | (null));
-readonly "links"?: (ReadonlyArray<(Input_navmeshDefinitions["Link"])>);
+readonly "links"?: (ReadonlyArray<(Input_navmeshDefinitions["Link"])> | (number extends ((Input_navmeshDefinitions["Link"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Contour simplification error; omitted: 1.3. */
 readonly "maxError"?: ((number) | (null));
-readonly "models"?: (ReadonlyArray<(Input_navmeshDefinitions["NavModel"])>);
+readonly "models"?: (ReadonlyArray<(Input_navmeshDefinitions["NavModel"])> | (number extends ((Input_navmeshDefinitions["NavModel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "scene"?: (((Input_navmeshDefinitions["ContentRef"])) | ((null)));
-readonly "terrains"?: (ReadonlyArray<(Input_navmeshDefinitions["NavTerrain"])>);
+readonly "terrains"?: (ReadonlyArray<(Input_navmeshDefinitions["NavTerrain"])> | (number extends ((Input_navmeshDefinitions["NavTerrain"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Clamped to 8..256 and truncated by normalization; omitted: 32. */
 readonly "tileSize"?: ((number) | (null));
 });
@@ -3591,7 +3593,7 @@ readonly "radius": (number);
 readonly "bottom"?: ((number) | (null));
 readonly "kind": ("convex") & (string);
 /** x/z coordinates in metres; vertical bounds are bottom/top. */
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "top"?: ((number) | (null));
 })) & { readonly "center"?: never; readonly "height"?: never; readonly "radius"?: never; readonly "size"?: never; readonly "yaw"?: never; }));
 readonly "Bounds": ({
@@ -3651,7 +3653,7 @@ export type Input_pack = ({
 readonly "about"?: unknown;
 readonly "contrast"?: (((Input_packDefinitions["Theme"])) | ((null)));
 /** Ordered font faces; family, weight and style belong to each face. */
-readonly "fonts"?: (ReadonlyArray<(Input_packDefinitions["ContentRef"])>);
+readonly "fonts"?: (ReadonlyArray<(Input_packDefinitions["ContentRef"])> | (number extends ((Input_packDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "haptics"?: (Readonly<Record<string, (Input_packDefinitions["HapticBinding"])>>);
 readonly "iconSet"?: (((Input_packDefinitions["ContentRef"])) | ((null)));
 readonly "icons"?: (Readonly<Record<string, (Input_packDefinitions["ContentRef"])>>);
@@ -3841,7 +3843,7 @@ readonly "warn"?: (((Input_packDefinitions["Adaptive"])) | ((null)));
 });
 readonly "Sound": ({
 /** Empty clips silence an underlying layer only when volume is zero. */
-readonly "clips"?: (ReadonlyArray<(Input_packDefinitions["ContentRef"])>);
+readonly "clips"?: (ReadonlyArray<(Input_packDefinitions["ContentRef"])> | (number extends ((Input_packDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Playback rate or [low, high]; unset is 1. */
 readonly "pitch"?: (((Input_packDefinitions["Range"])) | ((null)));
 /** Gain or [low, high]; unset is 1. */
@@ -3887,9 +3889,9 @@ export type Input_particles = ({
 readonly "align"?: (((Input_particlesDefinitions["Align"])) | ((null)));
 readonly "angularVelocity"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 readonly "array"?: (((Input_particlesDefinitions["ParticleArray"])) | ((null)));
-readonly "attractors"?: ((ReadonlyArray<(Input_particlesDefinitions["Attractor"])>) | (null));
+readonly "attractors"?: ((ReadonlyArray<(Input_particlesDefinitions["Attractor"])> | (number extends ((Input_particlesDefinitions["Attractor"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "blend"?: (((Input_particlesDefinitions["Blend"])) | ((null)));
-readonly "bursts"?: ((ReadonlyArray<(Input_particlesDefinitions["Burst"])>) | (null));
+readonly "bursts"?: ((ReadonlyArray<(Input_particlesDefinitions["Burst"])> | (number extends ((Input_particlesDefinitions["Burst"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "collision"?: (((Input_particlesDefinitions["Collision"])) | ((null)));
 readonly "color"?: ((ReadonlyArray<(number)> & { readonly length: 4 }) | (null));
 readonly "colorOverLife"?: (((Input_particlesDefinitions["ColorCurve"])) | ((null)));
@@ -3897,7 +3899,7 @@ readonly "distortion"?: ((number) | (null));
 readonly "drag"?: ((number) | (null));
 readonly "duration"?: ((number) | (null));
 readonly "effect"?: (((Input_particlesDefinitions["ContentRef"])) | ((null)));
-readonly "events"?: ((ReadonlyArray<(Input_particlesDefinitions["ParticleEvent"])>) | (null));
+readonly "events"?: ((ReadonlyArray<(Input_particlesDefinitions["ParticleEvent"])> | (number extends ((Input_particlesDefinitions["ParticleEvent"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "field"?: (((Input_particlesDefinitions["ParticleField"])) | ((null)));
 readonly "forceFields"?: ((number) | (null));
 readonly "glow"?: ((number) | (null));
@@ -3926,7 +3928,7 @@ readonly "speed"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null))
 readonly "speedOverLife"?: (((Input_particlesDefinitions["Curve"])) | ((null)));
 readonly "spinOverLife"?: (((Input_particlesDefinitions["Curve"])) | ((null)));
 readonly "spread"?: ((number) | (null));
-readonly "subEmitters"?: ((ReadonlyArray<(Input_particlesDefinitions["SubEmitter"])>) | (null));
+readonly "subEmitters"?: ((ReadonlyArray<(Input_particlesDefinitions["SubEmitter"])> | (number extends ((Input_particlesDefinitions["SubEmitter"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "texture"?: (((Input_particlesDefinitions["ContentRef"])) | ((null)));
 readonly "trail"?: (((Input_particlesDefinitions["ParticleTrail"])) | ((null)));
 readonly "wind"?: ((number) | (null));
@@ -3963,7 +3965,7 @@ readonly "die"?: ((boolean) | (null));
 readonly "friction"?: ((number) | (null));
 });
 readonly "CollisionTarget": ("depth" | "colliders") & (string);
-readonly "ColorCurve": (ReadonlyArray<(readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])>);
+readonly "ColorCurve": (ReadonlyArray<(readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])> | (number extends ((readonly [(number), (ReadonlyArray<(number)> & { readonly length: 4 })])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
 module access and target kinds. A field declares its allowed kinds with
@@ -3971,7 +3973,7 @@ module access and target kinds. A field declares its allowed kinds with
 readonly "ContentRef": ({
 readonly "$ogRef": (string);
 });
-readonly "Curve": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "Curve": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "EmitterShape": (((({
 readonly "kind": ("point") & (string);
 })) & { readonly "angleDegrees"?: never; readonly "closed"?: never; readonly "halfExtents"?: never; readonly "mesh"?: never; readonly "points"?: never; readonly "radius"?: never; readonly "surface"?: never; }) | ((({
@@ -3988,7 +3990,7 @@ readonly "kind": ("box") & (string);
 })) & { readonly "angleDegrees"?: never; readonly "closed"?: never; readonly "mesh"?: never; readonly "points"?: never; readonly "radius"?: never; readonly "surface"?: never; }) | ((({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind": ("spline") & (string);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "angleDegrees"?: never; readonly "halfExtents"?: never; readonly "mesh"?: never; readonly "radius"?: never; readonly "surface"?: never; }) | ((({
 readonly "kind": ("mesh") & (string);
 readonly "mesh": (Input_particlesDefinitions["MeshInput"]);
@@ -4015,7 +4017,7 @@ readonly "cells": (number);
 readonly "kind": ("grid") & (string);
 readonly "size": (number);
 readonly "strength": (number);
-readonly "vectors": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "vectors": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "asset"?: never; readonly "frequency"?: never; readonly "scroll"?: never; }));
 readonly "ParticleMesh": ("box" | "sphere" | "tetrahedron") & (string);
 readonly "ParticleNoise": ({
@@ -4068,7 +4070,7 @@ readonly "Trigger": ("birth" | "death" | "collision" | "life") & (string);
 export type Input_post = ({
 /** WGSL defining fn post(f: PostInput, p: Params) -> vec4<f32>. */
 readonly "code": (string);
-readonly "params"?: (ReadonlyArray<(Input_postDefinitions["Param"])>);
+readonly "params"?: (ReadonlyArray<(Input_postDefinitions["Param"])> | (number extends ((Input_postDefinitions["Param"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_postDefinitions {
 readonly "Param": ((({
@@ -4098,11 +4100,11 @@ readonly "category"?: ((string) | (null));
 readonly "giver"?: ((string) | (null));
 readonly "id": (string);
 readonly "region"?: ((string) | (null));
-readonly "rewards"?: (ReadonlyArray<(Input_questDefinitions["Reward"])>);
-readonly "stages": (ReadonlyArray<(Input_questDefinitions["Stage"])>);
+readonly "rewards"?: (ReadonlyArray<(Input_questDefinitions["Reward"])> | (number extends ((Input_questDefinitions["Reward"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "stages": (ReadonlyArray<(Input_questDefinitions["Stage"])> | (number extends ((Input_questDefinitions["Stage"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "summary"?: ((string) | (null));
 readonly "title": (string);
-readonly "vars"?: (ReadonlyArray<(Input_questDefinitions["Variable"])>);
+readonly "vars"?: (ReadonlyArray<(Input_questDefinitions["Variable"])> | (number extends ((Input_questDefinitions["Variable"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_questDefinitions {
 /** A content identity, never a runtime handle or an instruction to evaluate
@@ -4133,7 +4135,7 @@ readonly "left": (Input_questDefinitions["Expr"]);
 readonly "op": (Input_questDefinitions["Op"]);
 readonly "right": (Input_questDefinitions["Expr"]);
 })) & { readonly "args"?: never; readonly "id"?: never; readonly "member"?: never; readonly "name"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "quest"?: never; readonly "value"?: never; }) | ((({
-readonly "args": (ReadonlyArray<(Input_questDefinitions["Expr"])>);
+readonly "args": (ReadonlyArray<(Input_questDefinitions["Expr"])> | (number extends ((Input_questDefinitions["Expr"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("call") & (string);
 readonly "name": (string);
 })) & { readonly "id"?: never; readonly "left"?: never; readonly "member"?: never; readonly "node"?: never; readonly "objective"?: never; readonly "op"?: never; readonly "quest"?: never; readonly "right"?: never; readonly "value"?: never; }) | ((({
@@ -4180,7 +4182,7 @@ readonly "Stage": ({
 readonly "fail"?: (((Input_questDefinitions["Expr"])) | ((null)));
 readonly "id": (string);
 readonly "next"?: ((string) | (null));
-readonly "objectives"?: (ReadonlyArray<(Input_questDefinitions["Objective"])>);
+readonly "objectives"?: (ReadonlyArray<(Input_questDefinitions["Objective"])> | (number extends ((Input_questDefinitions["Objective"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "summary"?: ((string) | (null));
 });
 readonly "Text": ({
@@ -4260,14 +4262,14 @@ export type Input_rig2d = ((((Input_rig2dDefinitions["Authored"])) & { readonly 
 export interface Input_rig2dDefinitions {
 readonly "Armature": ({
 readonly "attachments"?: (Readonly<Record<string, (Input_rig2dDefinitions["Attachment"])>>);
-readonly "bones": (ReadonlyArray<(Input_rig2dDefinitions["Bone"])>);
-readonly "clips"?: (ReadonlyArray<(Input_rig2dDefinitions["Clip"])>);
-readonly "iks"?: (ReadonlyArray<(Input_rig2dDefinitions["Ik"])>);
-readonly "paths"?: (ReadonlyArray<(Input_rig2dDefinitions["PathConstraint"])>);
+readonly "bones": (ReadonlyArray<(Input_rig2dDefinitions["Bone"])> | (number extends ((Input_rig2dDefinitions["Bone"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "clips"?: (ReadonlyArray<(Input_rig2dDefinitions["Clip"])> | (number extends ((Input_rig2dDefinitions["Clip"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "iks"?: (ReadonlyArray<(Input_rig2dDefinitions["Ik"])> | (number extends ((Input_rig2dDefinitions["Ik"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "paths"?: (ReadonlyArray<(Input_rig2dDefinitions["PathConstraint"])> | (number extends ((Input_rig2dDefinitions["PathConstraint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Slot attachment swaps, names resolved in this armature. */
 readonly "skins"?: (Readonly<Record<string, (Readonly<Record<string, ((string) | (null))>>)>>);
-readonly "slots"?: (ReadonlyArray<(Input_rig2dDefinitions["Slot"])>);
-readonly "transforms"?: (ReadonlyArray<(Input_rig2dDefinitions["TransformConstraint"])>);
+readonly "slots"?: (ReadonlyArray<(Input_rig2dDefinitions["Slot"])> | (number extends ((Input_rig2dDefinitions["Slot"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "transforms"?: (ReadonlyArray<(Input_rig2dDefinitions["TransformConstraint"])> | (number extends ((Input_rig2dDefinitions["TransformConstraint"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Attachment": (((({
 readonly "at"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -4280,18 +4282,18 @@ readonly "slot": (string);
 })) & { readonly "armature"?: never; readonly "clip"?: never; readonly "closed"?: never; readonly "constant"?: never; readonly "lengths"?: never; readonly "points"?: never; readonly "polygon"?: never; readonly "scale"?: never; readonly "triangles"?: never; readonly "vertices"?: never; }) | ((({
 readonly "kind": ("mesh") & (string);
 readonly "slot": (string);
-readonly "triangles": (ReadonlyArray<(number)>);
-readonly "vertices": (ReadonlyArray<(Input_rig2dDefinitions["Vertex"])>);
+readonly "triangles": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "vertices": (ReadonlyArray<(Input_rig2dDefinitions["Vertex"])> | (number extends ((Input_rig2dDefinitions["Vertex"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "armature"?: never; readonly "at"?: never; readonly "clip"?: never; readonly "closed"?: never; readonly "constant"?: never; readonly "lengths"?: never; readonly "points"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotation"?: never; readonly "scale"?: never; readonly "size"?: never; readonly "skew"?: never; }) | ((({
 readonly "kind": ("box") & (string);
-readonly "polygon": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "polygon": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "slot": (string);
 })) & { readonly "armature"?: never; readonly "at"?: never; readonly "clip"?: never; readonly "closed"?: never; readonly "constant"?: never; readonly "lengths"?: never; readonly "points"?: never; readonly "rect"?: never; readonly "rotation"?: never; readonly "scale"?: never; readonly "size"?: never; readonly "skew"?: never; readonly "triangles"?: never; readonly "vertices"?: never; }) | ((({
 readonly "closed": (boolean);
 readonly "constant": (boolean);
 readonly "kind": ("path") & (string);
-readonly "lengths": (ReadonlyArray<(number)>);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_rig2dDefinitions["Influence"])>)>);
+readonly "lengths": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "points": (ReadonlyArray<(ReadonlyArray<(Input_rig2dDefinitions["Influence"])> | (number extends ((Input_rig2dDefinitions["Influence"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))> | (number extends ((ReadonlyArray<(Input_rig2dDefinitions["Influence"])> | (number extends ((Input_rig2dDefinitions["Influence"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "slot": (string);
 })) & { readonly "armature"?: never; readonly "at"?: never; readonly "clip"?: never; readonly "polygon"?: never; readonly "rect"?: never; readonly "rotation"?: never; readonly "scale"?: never; readonly "size"?: never; readonly "skew"?: never; readonly "triangles"?: never; readonly "vertices"?: never; }) | ((({
 readonly "armature": (string);
@@ -4321,21 +4323,21 @@ readonly "skew"?: ((number) | (null));
 });
 readonly "BoneKeys": ({
 readonly "bone": (string);
-readonly "rotate"?: (ReadonlyArray<(Input_rig2dDefinitions["Key"])>);
-readonly "scale"?: (ReadonlyArray<(Input_rig2dDefinitions["Key3"])>);
-readonly "skew"?: (ReadonlyArray<(Input_rig2dDefinitions["Key2"])>);
-readonly "translate"?: (ReadonlyArray<(Input_rig2dDefinitions["Key3"])>);
+readonly "rotate"?: (ReadonlyArray<(Input_rig2dDefinitions["Key"])> | (number extends ((Input_rig2dDefinitions["Key"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "scale"?: (ReadonlyArray<(Input_rig2dDefinitions["Key3"])> | (number extends ((Input_rig2dDefinitions["Key3"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "skew"?: (ReadonlyArray<(Input_rig2dDefinitions["Key2"])> | (number extends ((Input_rig2dDefinitions["Key2"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "translate"?: (ReadonlyArray<(Input_rig2dDefinitions["Key3"])> | (number extends ((Input_rig2dDefinitions["Key3"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Clip": ({
-readonly "bones"?: (ReadonlyArray<(Input_rig2dDefinitions["BoneKeys"])>);
-readonly "deforms"?: (Readonly<Record<string, (ReadonlyArray<(Input_rig2dDefinitions["Key6"])>)>>);
+readonly "bones"?: (ReadonlyArray<(Input_rig2dDefinitions["BoneKeys"])> | (number extends ((Input_rig2dDefinitions["BoneKeys"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "deforms"?: (Readonly<Record<string, (ReadonlyArray<(Input_rig2dDefinitions["Key6"])> | (number extends ((Input_rig2dDefinitions["Key6"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))>>);
 readonly "duration": (number);
-readonly "events"?: (ReadonlyArray<(Input_rig2dDefinitions["Key9"])>);
-readonly "iks"?: (Readonly<Record<string, (ReadonlyArray<(Input_rig2dDefinitions["Key8"])>)>>);
+readonly "events"?: (ReadonlyArray<(Input_rig2dDefinitions["Key9"])> | (number extends ((Input_rig2dDefinitions["Key9"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "iks"?: (Readonly<Record<string, (ReadonlyArray<(Input_rig2dDefinitions["Key8"])> | (number extends ((Input_rig2dDefinitions["Key8"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))>>);
 readonly "looping"?: ((boolean) | (null));
 readonly "name": (string);
-readonly "order"?: (ReadonlyArray<(Input_rig2dDefinitions["Key7"])>);
-readonly "slots"?: (ReadonlyArray<(Input_rig2dDefinitions["SlotKeys"])>);
+readonly "order"?: (ReadonlyArray<(Input_rig2dDefinitions["Key7"])> | (number extends ((Input_rig2dDefinitions["Key7"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "slots"?: (ReadonlyArray<(Input_rig2dDefinitions["SlotKeys"])> | (number extends ((Input_rig2dDefinitions["SlotKeys"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 /** A content identity, never a runtime handle or an instruction to evaluate
 another entry. The project graph validates names, existence, subresources,
@@ -4359,11 +4361,11 @@ readonly "kind": ("linear") & (string);
 readonly "kind": ("step") & (string);
 })) & { readonly "points"?: never; }) | (({
 readonly "kind": ("bezier") & (string);
-readonly "points": (ReadonlyArray<(number)>);
+readonly "points": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })));
 readonly "Filter": ("nearest" | "linear") & (string);
 readonly "Ik": ({
-readonly "bones": (ReadonlyArray<(string)>);
+readonly "bones": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "counterclockwise"?: ((boolean) | (null));
 readonly "name": (string);
 readonly "target": (string);
@@ -4407,12 +4409,12 @@ readonly "value": (ReadonlyArray<(number)> & { readonly length: 4 });
 readonly "Key6": ({
 readonly "ease"?: (((Input_rig2dDefinitions["Ease"])) | ((null)));
 readonly "time": (number);
-readonly "value": (ReadonlyArray<(number)>);
+readonly "value": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Key7": ({
 readonly "ease"?: (((Input_rig2dDefinitions["Ease"])) | ((null)));
 readonly "time": (number);
-readonly "value": (ReadonlyArray<(string)>);
+readonly "value": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Key8": ({
 readonly "ease"?: (((Input_rig2dDefinitions["Ease"])) | ((null)));
@@ -4432,7 +4434,7 @@ readonly "template": (string);
 readonly "unit"?: ((number) | (null));
 });
 readonly "PathConstraint": ({
-readonly "bones": (ReadonlyArray<(string)>);
+readonly "bones": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "mix"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 readonly "name": (string);
 readonly "path": (string);
@@ -4458,14 +4460,14 @@ readonly "name": (string);
 readonly "offset"?: ((ReadonlyArray<(number)> & { readonly length: 4 }) | (null));
 });
 readonly "SlotKeys": ({
-readonly "attachment"?: (ReadonlyArray<(Input_rig2dDefinitions["Key4"])>);
-readonly "color"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])>);
-readonly "offset"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])>);
+readonly "attachment"?: (ReadonlyArray<(Input_rig2dDefinitions["Key4"])> | (number extends ((Input_rig2dDefinitions["Key4"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "color"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])> | (number extends ((Input_rig2dDefinitions["Key5"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "offset"?: (ReadonlyArray<(Input_rig2dDefinitions["Key5"])> | (number extends ((Input_rig2dDefinitions["Key5"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "slot": (string);
 });
 readonly "TransformConstraint": ({
 readonly "at"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
-readonly "bones": (ReadonlyArray<(string)>);
+readonly "bones": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "mix"?: ((ReadonlyArray<(number)> & { readonly length: 4 }) | (null));
 readonly "name": (string);
 readonly "rotation"?: ((number) | (null));
@@ -4483,7 +4485,7 @@ readonly "kind": ("counterclockwise") & (string);
 readonly "turns": (number);
 })));
 readonly "Vertex": ({
-readonly "influences": (ReadonlyArray<(Input_rig2dDefinitions["Influence"])>);
+readonly "influences": (ReadonlyArray<(Input_rig2dDefinitions["Influence"])> | (number extends ((Input_rig2dDefinitions["Influence"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "uv": (ReadonlyArray<(number)> & { readonly length: 2 });
 });
 }
@@ -4492,11 +4494,11 @@ terrain surface/holes are checked when the scatter is expanded. */
 export type Input_scatter = ({
 /** Rotate up to the projected normal before the authored quaternion. */
 readonly "align"?: ((boolean) | (null));
-readonly "positions": (ReadonlyArray<(number)>);
+readonly "positions": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "project"?: (((Input_scatterDefinitions["ContentRef"])) | ((null)));
 /** One xyzw quaternion per position; normalized by domain expansion. */
-readonly "quaternions"?: ((ReadonlyArray<(number)>) | (null));
-readonly "scales"?: ((ReadonlyArray<(number)>) | (null));
+readonly "quaternions"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "scales"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "target": (Input_scatterDefinitions["ScatterTarget"]);
 });
 export interface Input_scatterDefinitions {
@@ -4518,7 +4520,7 @@ readonly "kind": ("prefab") & (string);
 /** Procedural sound: optional preset plus explicit oscillator/sample layers.
 At least one preset/layer and maximum rendered duration are domain checks. */
 export type Input_sfx = ({
-readonly "layers"?: ((ReadonlyArray<(Input_sfxDefinitions["SynthLayer"])>) | (null));
+readonly "layers"?: ((ReadonlyArray<(Input_sfxDefinitions["SynthLayer"])> | (number extends ((Input_sfxDefinitions["SynthLayer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "length"?: ((number) | (null));
 readonly "pitch"?: ((number) | (null));
 readonly "preset"?: (((Input_sfxDefinitions["SfxPreset"])) | ((null)));
@@ -4538,7 +4540,7 @@ readonly "kind": ("pcm") & (string);
 readonly "looping"?: ((boolean) | (null));
 readonly "rate": (number);
 readonly "reference"?: ((number) | (null));
-readonly "samples": (ReadonlyArray<(Input_sfxDefinitions["Pcm"])>);
+readonly "samples": (ReadonlyArray<(Input_sfxDefinitions["Pcm"])> | (number extends ((Input_sfxDefinitions["Pcm"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "source"?: never; }));
 readonly "SfxPreset": ("coin" | "pickup" | "powerup" | "jump" | "land" | "footstep" | "hit" | "hurt" | "explosion" | "laser" | "whoosh" | "door" | "death" | "click" | "select" | "back" | "error" | "levelup") & (string);
 /** A mono sample replaces the oscillator; sample layers reject FM. */
@@ -4576,7 +4578,7 @@ export type Input_shader = ({
 readonly "code": (string);
 readonly "mode"?: (((Input_shaderDefinitions["Mode"])) | ((null)));
 /** Names, reserved identifiers and backend limits are checked by the domain. */
-readonly "params"?: (ReadonlyArray<(Input_shaderDefinitions["Param"])>);
+readonly "params"?: (ReadonlyArray<(Input_shaderDefinitions["Param"])> | (number extends ((Input_shaderDefinitions["Param"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_shaderDefinitions {
 readonly "Mode": (((({
@@ -4615,7 +4617,7 @@ readonly "channels": (number);
 /** Sample rate in hertz; no resampling before the codec import. */
 readonly "rate": (number);
 /** Finite PCM samples, at least one complete interleaved frame. */
-readonly "samples": (ReadonlyArray<(number)>);
+readonly "samples": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export type Input_strings = ({
 /** Reference locale for key/argument checks; omitted is false. */
@@ -4626,7 +4628,7 @@ readonly "direction"?: (((Input_stringsDefinitions["Direction"])) | ((null)));
 readonly "entries": (Readonly<Record<string, (string)>>);
 readonly "fallback"?: ((string) | (null));
 /** Ordered locale font fallback chain. */
-readonly "fonts"?: (ReadonlyArray<(Input_stringsDefinitions["ContentRef"])>);
+readonly "fonts"?: (ReadonlyArray<(Input_stringsDefinitions["ContentRef"])> | (number extends ((Input_stringsDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Canonicalized as a locale tag by the localization domain. */
 readonly "locale": (string);
 });
@@ -4648,13 +4650,13 @@ readonly "albedoArray"?: (((Input_terrainDefinitions["ContentRef"])) | ((null)))
 readonly "castShadows"?: ((boolean) | (null));
 readonly "collision"?: ((boolean) | (null));
 /** RGBA control images, one per four layers. Exclusive with biome rules. */
-readonly "control"?: ((ReadonlyArray<(string)>) | (null));
+readonly "control"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Brushes and stamps in their written order, after generation/processing. */
-readonly "edits"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainEdit"])>) | (null));
+readonly "edits"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainEdit"])> | (number extends ((Input_terrainDefinitions["TerrainEdit"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "heightBlend"?: ((number) | (null));
 /** Raw hole image relative to the owning module: black/transparent cuts cells. */
 readonly "holes"?: ((string) | (null));
-readonly "layers"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainLayerInput"])>) | (null));
+readonly "layers"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainLayerInput"])> | (number extends ((Input_terrainDefinitions["TerrainLayerInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "lod"?: (((Input_terrainDefinitions["TerrainLod"])) | ((null)));
 readonly "normalArray"?: (((Input_terrainDefinitions["ContentRef"])) | ((null)));
 readonly "process"?: (((Input_terrainDefinitions["TerrainProcess"])) | ((null)));
@@ -4700,24 +4702,24 @@ readonly "width"?: ((number) | (null));
 readonly "BrushMode": ("raise" | "lower" | "flatten" | "smooth" | "paint" | "hole" | "fill") & (string);
 readonly "BufferGeometry": ({
 /** One linear RGB or RGBA colour per vertex. */
-readonly "colors"?: ((ReadonlyArray<(number)>) | (null));
+readonly "colors"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
 /** Counter-clockwise triangle indices; absent uses consecutive vertices. */
-readonly "indices"?: ((ReadonlyArray<(number)>) | (null));
+readonly "indices"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** One xyz normal per vertex; absent computes normals. */
-readonly "normals"?: ((ReadonlyArray<(number)>) | (null));
+readonly "normals"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Finite x/y/z vertex positions in metres. Triangle count, attribute
 counts and index bounds are checked together by the domain validator. */
-readonly "positions": (ReadonlyArray<(number)>);
+readonly "positions": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** One xyzw tangent frame per vertex; w is handedness. */
-readonly "tangents"?: ((ReadonlyArray<(number)>) | (null));
+readonly "tangents"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 /** One uv pair per vertex; v down the image. */
-readonly "uvs"?: ((ReadonlyArray<(number)>) | (null));
+readonly "uvs"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 readonly "CapsuleGeometry": ({
 readonly "capSegments"?: ((number) | (null));
@@ -4780,7 +4782,7 @@ readonly "CsgOp": ("union" | "subtract" | "intersect") & (string);
 readonly "Curve": ({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind"?: (((Input_terrainDefinitions["CurveKind"])) | ((null)));
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Catmull-Rom tangent scale; unset 0.5. */
 readonly "tension"?: ((number) | (null));
 });
@@ -4824,7 +4826,7 @@ readonly "extrudePath"?: (((Input_terrainDefinitions["Curve"])) | ((null)));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Unset uses the generator's default square. */
-readonly "shapes"?: ((ReadonlyArray<(Input_terrainDefinitions["Shape"])>) | (null));
+readonly "shapes"?: ((ReadonlyArray<(Input_terrainDefinitions["Shape"])> | (number extends ((Input_terrainDefinitions["Shape"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "steps"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -4906,7 +4908,7 @@ readonly "Heightfield": ({
 /** Sample columns; 2..4097. Together with rows, fixes the height count. */
 readonly "columns": (number);
 /** Finite row-major heights in metres; never normalised or clipped. */
-readonly "heights": (ReadonlyArray<(number)>);
+readonly "heights": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Sample rows; 2..4097, ordered from -z to +z. */
 readonly "rows": (number);
 });
@@ -4929,7 +4931,7 @@ readonly "phiStart"?: ((number) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Radial x and height y, metres; unset uses the generator's profile. */
-readonly "points"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "points"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "segments"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
@@ -4937,7 +4939,7 @@ readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (nul
 readonly "MergeGeometries": ({
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
-readonly "parts": (ReadonlyArray<(Input_terrainDefinitions["PlacedGeometry"])>);
+readonly "parts": (ReadonlyArray<(Input_terrainDefinitions["PlacedGeometry"])> | (number extends ((Input_terrainDefinitions["PlacedGeometry"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
@@ -4976,10 +4978,10 @@ readonly "op": ("quadraticCurveTo") & (string);
 readonly "args": (ReadonlyArray<(number)> & { readonly length: 6 });
 readonly "op": ("bezierCurveTo") & (string);
 })) | (({
-readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": ("splineThru") & (string);
 })) | (({
-readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "args": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "op": ("points") & (string);
 })) | (({
 readonly "args": (Input_terrainDefinitions["Arc"]);
@@ -5020,14 +5022,14 @@ readonly "detail"?: ((number) | (null));
 /** Runtime descriptor flag; a cooked model is static source data. */
 readonly "dynamic"?: ((boolean) | (null));
 /** At least one triangle, indexing the corner triples. */
-readonly "indices": (ReadonlyArray<(number)>);
+readonly "indices": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 readonly "radius"?: ((number) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 /** Flat xyz corner coordinates, metres. */
-readonly "vertices": (ReadonlyArray<(number)>);
+readonly "vertices": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Reflected_og_cook::cook::source_schemas::procedural::terrain::Transform": ({
 /** The position, as three.js Object3D.position. */
@@ -5065,9 +5067,9 @@ readonly "threshold"?: ((number) | (null));
 readonly "width"?: ((number) | (null));
 });
 readonly "Shape": ({
-readonly "commands": (ReadonlyArray<(Input_terrainDefinitions["Path2Command"])>);
+readonly "commands": (ReadonlyArray<(Input_terrainDefinitions["Path2Command"])> | (number extends ((Input_terrainDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Hole contours cannot contain more holes. */
-readonly "holes"?: (ReadonlyArray<(ReadonlyArray<(Input_terrainDefinitions["Path2Command"])>)>);
+readonly "holes"?: (ReadonlyArray<(ReadonlyArray<(Input_terrainDefinitions["Path2Command"])> | (number extends ((Input_terrainDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))> | (number extends ((ReadonlyArray<(Input_terrainDefinitions["Path2Command"])> | (number extends ((Input_terrainDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "ShapeGeometry": ({
 readonly "curveSegments"?: ((number) | (null));
@@ -5076,7 +5078,7 @@ readonly "dynamic"?: ((boolean) | (null));
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Unset uses the generator's default triangle. */
-readonly "shapes"?: ((ReadonlyArray<(Input_terrainDefinitions["Shape"])>) | (null));
+readonly "shapes"?: ((ReadonlyArray<(Input_terrainDefinitions["Shape"])> | (number extends ((Input_terrainDefinitions["Shape"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
@@ -5111,12 +5113,12 @@ readonly "path": (Input_terrainDefinitions["Curve"]);
 /** Runtime descriptor flag; model import settings own cooked collision. */
 readonly "physics"?: ((boolean) | (null));
 /** Ordered interpolation keys along the path (t, scale). */
-readonly "scale"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "scale"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Cross-section without holes. Curve flattening uses curveSegments. */
-readonly "section": (ReadonlyArray<(Input_terrainDefinitions["Path2Command"])>);
+readonly "section": (ReadonlyArray<(Input_terrainDefinitions["Path2Command"])> | (number extends ((Input_terrainDefinitions["Path2Command"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "steps"?: ((number) | (null));
 /** Ordered interpolation keys (t, radians). */
-readonly "twist"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>) | (null));
+readonly "twist"?: ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Scale the imported UVs. Unset means [1, 1]. */
 readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 });
@@ -5127,7 +5129,7 @@ readonly "step"?: ((number) | (null));
 readonly "TerrainChannel": ({
 readonly "depth"?: ((number) | (null));
 /** Consecutive XZ points must differ; river Y must not rise downstream. */
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "river"?: ((boolean) | (null));
 readonly "width": (number);
 });
@@ -5194,8 +5196,8 @@ readonly "warp"?: ((number) | (null));
 /** Processing runs in domain order: hydraulic, thermal, terraces, shore,
 drainage, authored channels and biome controls. It never evaluates TS. */
 readonly "TerrainProcess": ({
-readonly "biomes"?: ((ReadonlyArray<(Input_terrainDefinitions["BiomeInput"])>) | (null));
-readonly "channels"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainChannel"])>) | (null));
+readonly "biomes"?: ((ReadonlyArray<(Input_terrainDefinitions["BiomeInput"])> | (number extends ((Input_terrainDefinitions["BiomeInput"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
+readonly "channels"?: ((ReadonlyArray<(Input_terrainDefinitions["TerrainChannel"])> | (number extends ((Input_terrainDefinitions["TerrainChannel"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "erosion"?: (((Input_terrainDefinitions["HydraulicInput"])) | ((null)));
 readonly "moisture"?: (((Input_terrainDefinitions["MoistureInput"])) | ((null)));
 readonly "preserve"?: (((Input_terrainDefinitions["ContentRef"])) | ((null)));
@@ -5258,7 +5260,7 @@ readonly "uvRepeat"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (nul
 readonly "TubePath": (((({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind": ("points") & (string);
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 })) & { readonly "curve"?: never; }) | ((({
 readonly "curve": (Input_terrainDefinitions["Curve"]);
 readonly "kind": ("curve") & (string);
@@ -5269,7 +5271,7 @@ dimensions and encoder compatibility remain texture-array domain checks. */
 export type Input_texture_array = ({
 readonly "kind"?: (Input_texture_arrayDefinitions["TextureKind"]);
 /** Paths beside this file, then under the asset root; not runtime handles. */
-readonly "layers": (ReadonlyArray<(string)>);
+readonly "layers": (ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_texture_arrayDefinitions {
 readonly "TextureKind": ("color" | "normal" | "linear" | "single" | "pixel") & (string);
@@ -5291,7 +5293,7 @@ readonly "shape"?: ((string) | (null));
 readonly "sound"?: ((string) | (null));
 readonly "type"?: ((string) | (null));
 /** Built-in mix-in names, applied in order after the parent recipe. */
-readonly "with"?: ((ReadonlyArray<(string)>) | (null));
+readonly "with"?: ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 export interface Input_themeDefinitions {
 /** A shared value or an explicit complete light/dark pair. */
@@ -5408,7 +5410,7 @@ readonly "PackInput": ({
 readonly "about"?: unknown;
 readonly "contrast"?: (((Input_themeDefinitions["Theme"])) | ((null)));
 /** Ordered font faces; family, weight and style belong to each face. */
-readonly "fonts"?: (ReadonlyArray<(Input_themeDefinitions["ContentRef"])>);
+readonly "fonts"?: (ReadonlyArray<(Input_themeDefinitions["ContentRef"])> | (number extends ((Input_themeDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "haptics"?: (Readonly<Record<string, (Input_themeDefinitions["HapticBinding"])>>);
 readonly "iconSet"?: (((Input_themeDefinitions["ContentRef"])) | ((null)));
 readonly "icons"?: (Readonly<Record<string, (Input_themeDefinitions["ContentRef"])>>);
@@ -5499,7 +5501,7 @@ readonly "warn"?: (((Input_themeDefinitions["Adaptive"])) | ((null)));
 });
 readonly "Sound": ({
 /** Empty clips silence an underlying layer only when volume is zero. */
-readonly "clips"?: (ReadonlyArray<(Input_themeDefinitions["ContentRef"])>);
+readonly "clips"?: (ReadonlyArray<(Input_themeDefinitions["ContentRef"])> | (number extends ((Input_themeDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Playback rate or [low, high]; unset is 1. */
 readonly "pitch"?: (((Input_themeDefinitions["Range"])) | ((null)));
 /** Gain or [low, high]; unset is 1. */
@@ -5555,12 +5557,12 @@ readonly "ThemeScheme": ("light" | "dark") & (string);
 }
 export type Input_tilemap = ({
 readonly "height": (number);
-readonly "layers": (ReadonlyArray<(Input_tilemapDefinitions["Layer"])>);
-readonly "objects"?: (ReadonlyArray<(Input_tilemapDefinitions["Object"])>);
+readonly "layers": (ReadonlyArray<(Input_tilemapDefinitions["Layer"])> | (number extends ((Input_tilemapDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "objects"?: (ReadonlyArray<(Input_tilemapDefinitions["Object"])> | (number extends ((Input_tilemapDefinitions["Object"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "orientation"?: (((Input_tilemapDefinitions["Orientation"])) | ((null)));
 readonly "tileHeight": (number);
 readonly "tileWidth": (number);
-readonly "tilesets": (ReadonlyArray<(Input_tilemapDefinitions["ContentRef"])>);
+readonly "tilesets": (ReadonlyArray<(Input_tilemapDefinitions["ContentRef"])> | (number extends ((Input_tilemapDefinitions["ContentRef"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "unit"?: ((number) | (null));
 readonly "width": (number);
 });
@@ -5575,7 +5577,7 @@ readonly "$ogRef": (string);
 readonly "Layer": ({
 readonly "cellColliders"?: ((boolean) | (null));
 /** Row-major, top row first: 0 empty; otherwise tile+1 with flip bits. */
-readonly "cells": (ReadonlyArray<(number)>);
+readonly "cells": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "colliderLayers"?: ((number) | (null));
 readonly "colliderMask"?: ((number) | (null));
 readonly "collision"?: ((boolean) | (null));
@@ -5610,7 +5612,7 @@ readonly "filter"?: (((Input_tilesetDefinitions["Filter"])) | ((null)));
 readonly "margin"?: (number);
 readonly "rows": (number);
 readonly "spacing"?: (number);
-readonly "terrains"?: (ReadonlyArray<(Input_tilesetDefinitions["Terrain"])>);
+readonly "terrains"?: (ReadonlyArray<(Input_tilesetDefinitions["Terrain"])> | (number extends ((Input_tilesetDefinitions["Terrain"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "texture"?: (((Input_tilesetDefinitions["ContentRef"])) | ((null)));
 readonly "tileHeight": (number);
 readonly "tileWidth": (number);
@@ -5619,8 +5621,8 @@ readonly "tiles"?: (Readonly<Record<string, ((Input_tilesetDefinitions["Tile"]))
 export interface Input_tilesetDefinitions {
 readonly "Animation": ({
 /** One strictly positive duration per frame; domain checks matching counts. */
-readonly "durations": (ReadonlyArray<(number)>);
-readonly "frames": (ReadonlyArray<(number)>);
+readonly "durations": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "frames": (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "Collision": (((({
 readonly "kind": ("full") & (string);
@@ -5652,14 +5654,14 @@ readonly "Tile": ({
 readonly "animation"?: (((Input_tilesetDefinitions["Animation"])) | ((null)));
 readonly "collision"?: (((Input_tilesetDefinitions["Collision"])) | ((null)));
 /** Closed polygons, top-left pixel coordinates, y down. */
-readonly "polygons"?: (ReadonlyArray<(ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>)>);
+readonly "polygons"?: (ReadonlyArray<(ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))> | (number extends ((ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 }
 export type Input_timeline = ({
 readonly "duration"?: ((number) | (null));
 readonly "name"?: ((string) | (null));
 readonly "paths"?: (Readonly<Record<string, (Input_timelineDefinitions["Path"])>>);
-readonly "tracks": (ReadonlyArray<(Input_timelineDefinitions["Track"])>);
+readonly "tracks": (ReadonlyArray<(Input_timelineDefinitions["Track"])> | (number extends ((Input_timelineDefinitions["Track"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_timelineDefinitions {
 readonly "Animation": ({
@@ -5688,13 +5690,13 @@ readonly "target"?: ((ReadonlyArray<(number)> & { readonly length: 3 }) | (null)
 readonly "Caption": ({
 readonly "end"?: ((number) | (null));
 readonly "position"?: (((Input_timelineDefinitions["CaptionPosition"])) | ((null)));
-readonly "spans"?: (ReadonlyArray<(Input_timelineDefinitions["Span"])>);
+readonly "spans"?: (ReadonlyArray<(Input_timelineDefinitions["Span"])> | (number extends ((Input_timelineDefinitions["Span"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "speaker"?: ((string) | (null));
 readonly "text": (string);
 });
 readonly "CaptionCues": ({
-readonly "imports"?: (ReadonlyArray<(Input_timelineDefinitions["CaptionImport"])>);
-readonly "keys"?: (ReadonlyArray<(Input_timelineDefinitions["Key6"])>);
+readonly "imports"?: (ReadonlyArray<(Input_timelineDefinitions["CaptionImport"])> | (number extends ((Input_timelineDefinitions["CaptionImport"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "keys"?: (ReadonlyArray<(Input_timelineDefinitions["Key6"])> | (number extends ((Input_timelineDefinitions["Key6"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 readonly "CaptionImport": ({
 readonly "offset"?: ((number) | (null));
@@ -5921,13 +5923,13 @@ readonly "speed"?: ((number) | (null));
 readonly "Path": ({
 readonly "closed"?: ((boolean) | (null));
 readonly "kind"?: (((Input_timelineDefinitions["PathKind"])) | ((null)));
-readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })>);
+readonly "points": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 3 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 3 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "tension"?: ((number) | (null));
 });
 readonly "PathKind": ("catmullRom" | "bezier" | "linear") & (string);
 readonly "Reflected_og_cook::cook::source_schemas::media::timeline::Blendshapes": ({
 /** Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7. */
-readonly "influences"?: (ReadonlyArray<(number)>);
+readonly "influences"?: (ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Weight of target 0. */
 readonly "w0"?: (number);
 /** Weight of target 1. */
@@ -6043,7 +6045,9 @@ readonly "contrast"?: (number);
 /** Custom post passes in order (og.load.post), at most RenderCapabilities.maxCustomPosts (8), each over the one before, after depth of field and motion blur, before exposure and bloom, reading depth and normals (the prepass). A 0 is skipped, as is one failing to compile (og.render.postErrors). See `render §5`. */
 readonly "custom"?: (ReadonlyArray<({
 readonly "$ogRef": (string);
-})>);
+})> | (number extends (({
+readonly "$ogRef": (string);
+})) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 /** Bokeh depth of field: pixels away from the focus distance blur into discs. */
 readonly "depthOfField"?: (boolean);
 /** How quickly blur grows outside the band: full blur focusRange times (1 + falloff) away. */
@@ -6337,82 +6341,82 @@ readonly "Track": (((({
 readonly "blendIn"?: ((number) | (null));
 readonly "blendOut"?: ((number) | (null));
 readonly "follow"?: ((string) | (null));
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key"])> | (number extends ((Input_timelineDefinitions["Key"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("camera") & (string);
 readonly "rail"?: ((string) | (null));
 })) & { readonly "entity"?: never; readonly "field"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; }) | ((({
 readonly "entity": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key2"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key2"])> | (number extends ((Input_timelineDefinitions["Key2"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("transform") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key3"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key3"])> | (number extends ((Input_timelineDefinitions["Key3"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("animation") & (string);
 readonly "model"?: (((Input_timelineDefinitions["ContentRef"])) | ((null)));
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key4"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key4"])> | (number extends ((Input_timelineDefinitions["Key4"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("audio") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key5"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key5"])> | (number extends ((Input_timelineDefinitions["Key5"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("music") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "imports"?: (ReadonlyArray<(Input_timelineDefinitions["CaptionImport"])>);
-readonly "keys"?: (ReadonlyArray<(Input_timelineDefinitions["Key6"])>);
+readonly "imports"?: (ReadonlyArray<(Input_timelineDefinitions["CaptionImport"])> | (number extends ((Input_timelineDefinitions["CaptionImport"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "keys"?: (ReadonlyArray<(Input_timelineDefinitions["Key6"])> | (number extends ((Input_timelineDefinitions["Key6"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("caption") & (string);
 readonly "locales"?: ((Readonly<Record<string, (Input_timelineDefinitions["CaptionCues"])>>) | (null));
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key7"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key7"])> | (number extends ((Input_timelineDefinitions["Key7"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("event") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key8"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key8"])> | (number extends ((Input_timelineDefinitions["Key8"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("transition") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key9"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key9"])> | (number extends ((Input_timelineDefinitions["Key9"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("marker") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity"?: ((string) | (null));
 readonly "field": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key10"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key10"])> | (number extends ((Input_timelineDefinitions["Key10"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("property") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key11"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key11"])> | (number extends ((Input_timelineDefinitions["Key11"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("light") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key12"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key12"])> | (number extends ((Input_timelineDefinitions["Key12"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("post") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key13"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key13"])> | (number extends ((Input_timelineDefinitions["Key13"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("visibility") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity": (string);
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key14"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key14"])> | (number extends ((Input_timelineDefinitions["Key14"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("blendshape") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity": (string);
 readonly "index"?: ((number) | (null));
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key15"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key15"])> | (number extends ((Input_timelineDefinitions["Key15"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("material") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key16"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key16"])> | (number extends ((Input_timelineDefinitions["Key16"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("timeline") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key17"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key17"])> | (number extends ((Input_timelineDefinitions["Key17"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("shot") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key18"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key18"])> | (number extends ((Input_timelineDefinitions["Key18"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("vfx") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
 readonly "entity"?: ((string) | (null));
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key19"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key19"])> | (number extends ((Input_timelineDefinitions["Key19"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("video") & (string);
 readonly "layer"?: (((Input_timelineDefinitions["VideoLayer"])) | ((null)));
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key20"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key20"])> | (number extends ((Input_timelineDefinitions["Key20"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("hotspot") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key21"])>);
+readonly "keys": (ReadonlyArray<(Input_timelineDefinitions["Key21"])> | (number extends ((Input_timelineDefinitions["Key21"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("scene") & (string);
 })) & { readonly "blendIn"?: never; readonly "blendOut"?: never; readonly "entity"?: never; readonly "field"?: never; readonly "follow"?: never; readonly "imports"?: never; readonly "index"?: never; readonly "layer"?: never; readonly "locales"?: never; readonly "model"?: never; readonly "rail"?: never; }));
 readonly "Transform": ({
@@ -6449,7 +6453,7 @@ readonly "VideoLayer": ("over" | "under") & (string);
 export type Input_ui_material = ({
 /** WGSL defining fn material(m: MaterialInput, p: Params) -> vec4<f32>. */
 readonly "code": (string);
-readonly "params"?: (ReadonlyArray<(Input_ui_materialDefinitions["Param"])>);
+readonly "params"?: (ReadonlyArray<(Input_ui_materialDefinitions["Param"])> | (number extends ((Input_ui_materialDefinitions["Param"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 });
 export interface Input_ui_materialDefinitions {
 readonly "Param": ((({
@@ -6491,10 +6495,10 @@ readonly "tolerance"?: ((number) | (null));
 duplicate event names are checked by the domain validator. */
 export type Input_vfx = ({
 readonly "duration": (number);
-readonly "elements": (ReadonlyArray<(Input_vfxDefinitions["VfxElement"])>);
-readonly "events"?: ((ReadonlyArray<(Input_vfxDefinitions["VfxEvent"])>) | (null));
+readonly "elements": (ReadonlyArray<(Input_vfxDefinitions["VfxElement"])> | (number extends ((Input_vfxDefinitions["VfxElement"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
+readonly "events"?: ((ReadonlyArray<(Input_vfxDefinitions["VfxEvent"])> | (number extends ((Input_vfxDefinitions["VfxEvent"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "looping"?: ((boolean) | (null));
-readonly "params"?: ((ReadonlyArray<(Input_vfxDefinitions["VfxParam"])>) | (null));
+readonly "params"?: ((ReadonlyArray<(Input_vfxDefinitions["VfxParam"])> | (number extends ((Input_vfxDefinitions["VfxParam"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 });
 export interface Input_vfxDefinitions {
 readonly "Blend": ("alpha" | "additive" | "multiply" | "subtractive") & (string);
@@ -6522,7 +6526,7 @@ readonly "kind": ("random") & (string);
 readonly "max": (number);
 readonly "min": (number);
 })) & { readonly "keys"?: never; }) | ((({
-readonly "keys": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })>);
+readonly "keys": (ReadonlyArray<(ReadonlyArray<(number)> & { readonly length: 2 })> | (number extends ((ReadonlyArray<(number)> & { readonly length: 2 })) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "kind": ("curve") & (string);
 })) & { readonly "max"?: never; readonly "min"?: never; }));
 readonly "VfxElement": ({
@@ -6645,7 +6649,7 @@ readonly "kind": ("model") & (string);
 }
 export type Input_vfx2d = ({
 readonly "duration"?: ((number) | (null));
-readonly "events"?: (ReadonlyArray<(Input_vfx2dDefinitions["Event"])>);
+readonly "events"?: (ReadonlyArray<(Input_vfx2dDefinitions["Event"])> | (number extends ((Input_vfx2dDefinitions["Event"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "impact"?: ((number) | (null));
 readonly "loop"?: ((boolean) | (null));
 readonly "recipe": (Input_vfx2dDefinitions["Recipe"]);
@@ -6961,7 +6965,7 @@ readonly "hidden"?: ((boolean) | (null));
 readonly "hue"?: ((number) | (null));
 readonly "r"?: ((number) | (null));
 readonly "ramp"?: (((Input_vfx2dDefinitions["Ramp"])) | ((null)));
-readonly "rings"?: ((ReadonlyArray<(number)>) | (null));
+readonly "rings"?: ((ReadonlyArray<(number)> | (number extends ((number)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 readonly "runes"?: ((number) | (null));
 readonly "seed"?: ((number) | (null));
 readonly "spin"?: ((number) | (null));
@@ -7323,7 +7327,7 @@ readonly "Outline": ("none" | "outside" | "outside8" | "inside") & (string);
 readonly "Pair": (((number)) | ((ReadonlyArray<(number)> & { readonly length: 2 })));
 readonly "ParticleMode": ("burst" | "spray" | "rise" | "fall" | "ambient" | "orbit" | "implode") & (string);
 readonly "ParticleShape": ("dot" | "square" | "plus" | "cross" | "star" | "diamond" | "ring" | "bubble" | "streak" | "drop" | "shard" | "leaf" | "petal" | "chevron" | "coin" | "chunk" | "circle") & (string);
-readonly "Ramp": (((string)) | ((ReadonlyArray<(string)>)));
+readonly "Ramp": (((string)) | ((ReadonlyArray<(string)> | (number extends ((string)) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never))));
 readonly "Recipe": ({
 readonly "cleanup"?: ((boolean) | (null));
 readonly "dither"?: ((number) | (null));
@@ -7332,7 +7336,7 @@ readonly "frames"?: ((number) | (null));
 readonly "h"?: ((number) | (null));
 readonly "hue"?: ((number) | (null));
 readonly "impact"?: ((number) | (null));
-readonly "layers": (ReadonlyArray<(Input_vfx2dDefinitions["Layer"])>);
+readonly "layers": (ReadonlyArray<(Input_vfx2dDefinitions["Layer"])> | (number extends ((Input_vfx2dDefinitions["Layer"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never));
 readonly "loop"?: ((boolean) | (null));
 readonly "name"?: ((string) | (null));
 readonly "outline"?: (((Input_vfx2dDefinitions["Outline"])) | ((null)));
@@ -7364,7 +7368,7 @@ readonly "maxSeconds"?: ((number) | (null));
 readonly "placeholder"?: ((boolean) | (null));
 /** Zero keeps the full resolution; otherwise 64..4096 pixels. */
 readonly "posterSize"?: (((0)) | ((number)) | ((null))) & ((number) | (null));
-readonly "renditions"?: ((ReadonlyArray<(Input_videoDefinitions["Rendition"])>) | (null));
+readonly "renditions"?: ((ReadonlyArray<(Input_videoDefinitions["Rendition"])> | (number extends ((Input_videoDefinitions["Rendition"])) ? Readonly<Int8Array | Uint8Array | Uint8ClampedArray | Int16Array | Uint16Array | Int32Array | Uint32Array | Float32Array | Float64Array> : never)) | (null));
 /** Width, height in pixels. */
 readonly "size"?: ((ReadonlyArray<(number)> & { readonly length: 2 }) | (null));
 /** Module-relative footage input; resolving and codec probing are cook work. */
