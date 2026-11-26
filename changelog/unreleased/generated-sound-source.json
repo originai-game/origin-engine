@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "type sound generate",
+      "summary": "Deterministic source modules return typed mono/stereo PCM with an explicit sample rate. Cook feeds these samples into the ordinary sound importer and QOA/Opus/streaming encoders; games load the asset instead of regenerating samples. Oscillator-based files remain type sfx."
+    }
+  ]
+}

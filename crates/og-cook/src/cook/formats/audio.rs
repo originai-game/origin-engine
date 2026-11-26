@@ -19,6 +19,9 @@
 //! frames: a QOA frame carries its predictor's state, so the chunks decode
 //! to exactly the samples of the whole file.
 
+mod generate;
+pub(crate) use generate::expand;
+
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, settings_block,
     stamp,
@@ -769,7 +772,7 @@ pub fn cook_chunk(e: &Encoded, n: u32, stamp: u64) -> Result<Vec<u8>, CookError>
 pub(crate) static SOUND: KindDef = KindDef {
     name: "sound",
     extensions: EXTENSIONS,
-    types: &[],
+    types: &["sound"],
     by_content: true,
     streams: true,
     plan: plan_sound,

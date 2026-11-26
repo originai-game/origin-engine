@@ -5,6 +5,9 @@
 //! live behind the `cook` feature and never reach the wasm runtime); the
 //! blob is the same whatever the source.
 
+mod generate;
+pub(crate) use generate::expand;
+
 use super::{
     CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, settings_block,
     stamp,

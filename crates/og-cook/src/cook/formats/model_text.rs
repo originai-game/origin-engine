@@ -53,8 +53,9 @@
 //!
 //! A part's geometry is one block named by its `og.render` call:
 //! `boxGeometry`, `planeGeometry`, `sphereGeometry`, `cylinderGeometry`,
-//! `coneGeometry`, `capsuleGeometry`, `torusGeometry`, `shapeGeometry`,
-//! `extrudeGeometry`, `latheGeometry`, `polyhedronGeometry`, the four
+//! `coneGeometry`, `capsuleGeometry`, `torusGeometry`, `ringGeometry`,
+//! `circleGeometry`, `tubeGeometry`, `shapeGeometry`, `extrudeGeometry`,
+//! `latheGeometry`, `polyhedronGeometry`, the four
 //! solids, `sweepGeometry`, `csgGeometry` (operands `a` and `b`, each a
 //! geometry block placed) and `mergeGeometries` (`part` blocks, each a
 //! geometry block placed). Shapes are og.Shape's calls one a line (`moveTo`,
@@ -141,7 +142,11 @@
 //! leaf follows the year. The built-in deciduous kinds (oak, birch,
 //! willow, shrub, fern, reed) have `season` 1, the others 0.
 
+mod buffer;
 mod plant;
+
+pub use buffer::LINES as BUFFER_LINES;
+pub(crate) use buffer::expand;
 
 use super::vox::Bin;
 use glam::{DQuat, DVec2, DVec3};
@@ -154,7 +159,8 @@ use std::collections::BTreeMap;
 pub const MODEL_TYPE: &str = "model";
 
 /// The geometry blocks a part may hold, by their `og.render` call.
-pub const GEOMETRIES: [&str; 17] = [
+pub const GEOMETRIES: [&str; 21] = [
+    "bufferGeometry",
     "boxGeometry",
     "planeGeometry",
     "sphereGeometry",
@@ -162,6 +168,9 @@ pub const GEOMETRIES: [&str; 17] = [
     "coneGeometry",
     "capsuleGeometry",
     "torusGeometry",
+    "ringGeometry",
+    "circleGeometry",
+    "tubeGeometry",
     "shapeGeometry",
     "extrudeGeometry",
     "latheGeometry",
@@ -523,13 +532,23 @@ fn sample(p: &og_timeline::Path, t: f64) -> (DVec3, DVec3) {
 
 // ── geometries ──────────────────────────────────────────────────────────────
 
-/// An og-render primitive as og-shape's mesh (no colours).
+/// Renderer attributes as the modelling kernel holds them, without losing
+/// authored colours or tangent frames.
 fn from_render(m: og_render_data::MeshData) -> Mesh {
     Mesh {
         positions: m.vertices.iter().map(|v| v.position).collect(),
         normals: m.vertices.iter().map(|v| v.normal).collect(),
         uvs: m.vertices.iter().map(|v| v.uv).collect(),
-        colors: Vec::new(),
+        colors: if m.vertices.iter().any(|v| v.color != [1.0; 4]) {
+            m.vertices.iter().map(|v| v.color).collect()
+        } else {
+            Vec::new()
+        },
+        tangents: if m.vertices.iter().any(|v| v.tangent[3] != 0.0) {
+            m.vertices.iter().map(|v| v.tangent).collect()
+        } else {
+            Vec::new()
+        },
         indices: m.indices,
     }
 }
@@ -570,6 +589,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let tau = og_core::math::double::TAU;
     let f32s = |x: f64| x as f32;
     let mut mesh = match name {
+        "bufferGeometry" => from_render(buffer::parse(b)?),
         "boxGeometry" => {
             let f = Fields::new(b, name, &keys(&["width", "height", "depth"]))?;
             from_render(og_render_data::shapes::cuboid(glam::Vec3::new(
@@ -684,6 +704,100 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 f.segments("tubularSegments", (48, 3, 1 << 16), 6, detail)?,
                 f32s(f.num("arc", tau)?),
             ))
+        }
+        "ringGeometry" => {
+            let f = Fields::new(
+                b,
+                name,
+                &keys(&[
+                    "innerRadius",
+                    "outerRadius",
+                    "thetaSegments",
+                    "phiSegments",
+                    "thetaStart",
+                    "thetaLength",
+                ]),
+            )?;
+            from_render(og_render_data::geometry::primitives::ring(
+                f32s(f.size("innerRadius", 0.5)?),
+                f32s(f.size("outerRadius", 1.0)?),
+                f.segments("thetaSegments", (32, 3, 1 << 16), 5, detail)?,
+                f.segments("phiSegments", (1, 1, 1 << 16), 1, detail)?,
+                f32s(f.num("thetaStart", 0.0)?),
+                f32s(f.num("thetaLength", tau)?),
+            ))
+        }
+        "circleGeometry" => {
+            let f = Fields::new(
+                b,
+                name,
+                &keys(&["radius", "segments", "thetaStart", "thetaLength"]),
+            )?;
+            from_render(og_render_data::geometry::primitives::circle(
+                f32s(f.size("radius", 1.0)?),
+                f.segments("segments", (32, 3, 1 << 16), 5, detail)?,
+                f32s(f.num("thetaStart", 0.0)?),
+                f32s(f.num("thetaLength", tau)?),
+            ))
+        }
+        "tubeGeometry" => {
+            let f = Fields::new(
+                b,
+                name,
+                &keys(&[
+                    "points",
+                    "path",
+                    "tubularSegments",
+                    "radius",
+                    "radialSegments",
+                    "closed",
+                ]),
+            )?;
+            let tubular = f.segments("tubularSegments", (64, 1, 1 << 16), 6, detail)?;
+            let radial = f.segments("radialSegments", (8, 3, 1 << 16), 5, detail)?;
+            let radius = f32s(f.size("radius", 1.0)?);
+            if let Some(pb) = f.block("path")? {
+                if f.get("points").is_some() || f.get("closed").is_some() {
+                    return Err(format!(
+                        "{name}: a path supplies its points and closed flag; do not also set points or closed"
+                    ));
+                }
+                let p = path(pb).map_err(|x| format!("{name}.path: {x}"))?;
+                from_render(og_render_data::geometry::primitives::tube_along(
+                    |u| {
+                        let s = p.sample(u);
+                        (s.position, s.tangent)
+                    },
+                    tubular,
+                    radius,
+                    radial,
+                    p.desc().closed,
+                ))
+            } else {
+                let e = f
+                    .get("points")
+                    .ok_or_else(|| format!("{name} needs points or a path block"))?;
+                let values = numbers(e)?;
+                if values.len() < 6 || values.len() % 3 != 0 {
+                    return Err(at(e, "takes xyz triples, at least two points"));
+                }
+                let points: Vec<_> = values
+                    .as_chunks::<3>()
+                    .0
+                    .iter()
+                    .map(|p| glam::Vec3::new(p[0] as f32, p[1] as f32, p[2] as f32))
+                    .collect();
+                if points.iter().any(|p| !p.is_finite()) {
+                    return Err(at(e, "points must fit finite f32 coordinates"));
+                }
+                from_render(og_render_data::geometry::primitives::tube(
+                    &points,
+                    tubular,
+                    radius,
+                    radial,
+                    f.flag("closed", false)?,
+                ))
+            }
         }
         "shapeGeometry" => {
             let f = Fields::new(b, name, &keys(&["shape", "curveSegments"]))?;
@@ -1743,6 +1857,26 @@ fn write_primitive(
     };
     if m.colors.len() == count {
         attributes["COLOR_0"] = vec4(&m.colors).into();
+    }
+    if m.tangents.len() == count {
+        // A merge may combine authored frames with vertices lacking them.
+        // Complete only the missing frames with the renderer's mechanism
+        // before emitting glTF, where a zero handedness is not a frame.
+        let mut mesh = og_render_data::MeshData {
+            vertices: (0..count)
+                .map(|i| og_render_data::Vertex {
+                    position: m.positions[i],
+                    normal: m.normals.get(i).copied().unwrap_or([0.0, 1.0, 0.0]),
+                    uv: m.uvs.get(i).copied().unwrap_or([0.0; 2]),
+                    tangent: m.tangents[i],
+                    ..Default::default()
+                })
+                .collect(),
+            indices: m.indices.clone(),
+        };
+        mesh.generate_tangents();
+        let tangents: Vec<_> = mesh.vertices.iter().map(|v| v.tangent).collect();
+        attributes["TANGENT"] = vec4(&tangents).into();
     }
     if let Some((w, _)) = wind {
         let half = |at: usize| -> Vec<[f32; 4]> {

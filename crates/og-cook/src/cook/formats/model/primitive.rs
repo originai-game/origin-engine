@@ -852,7 +852,9 @@ pub(crate) fn cook_primitive(
             thinned.push(Some((error, scale)));
         }
     }
-    let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
+    // Authored frames remain useful when the game replaces a material.
+    // Only generating missing frames requires a normal map and UVs.
+    let want_tangents = opts.tangents && (tangents.is_some() || normal_mapped && uvs.is_some());
     let generate_tangents = want_tangents && tangents.is_none();
     if normals.is_none() || generate_tangents {
         // Unweld to face corners: flat normals (glTF: no normals means flat

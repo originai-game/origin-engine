@@ -497,6 +497,7 @@ pub fn og_procgen_fracture(desc: Option<Vec<u8>>) -> Result<wire::FractureResult
         normals: vec![[0.0, 1.0, 0.0]; positions.len()],
         uvs: vec![[0.0, 0.0]; positions.len()],
         colors: Vec::new(),
+        tangents: Vec::new(),
         positions,
         indices: d.indices,
     };

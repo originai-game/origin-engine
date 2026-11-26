@@ -30,6 +30,7 @@ pub struct Part<'a> {
 pub fn merge(parts: &[Part]) -> Result<Mesh, String> {
     let mut out = Mesh::default();
     let colors = parts.iter().any(|p| !p.mesh.colors.is_empty());
+    let tangents = parts.iter().any(|p| !p.mesh.tangents.is_empty());
     for (k, part) in parts.iter().enumerate() {
         let sign = |b: bool| if b { -1.0 } else { 1.0 };
         let mirror = DMat4::from_scale(DVec3::new(
@@ -49,6 +50,15 @@ pub fn merge(parts: &[Part]) -> Result<Mesh, String> {
         if colors {
             out.colors
                 .extend(placed.colors.iter().map(|c| c.map(|x| x as f32)));
+        }
+        if tangents {
+            if placed.tangents.is_empty() {
+                out.tangents
+                    .extend(std::iter::repeat_n([0.0; 4], placed.positions.len()));
+            } else {
+                out.tangents
+                    .extend(placed.tangents.iter().map(|t| t.map(|x| x as f32)));
+            }
         }
         out.indices.extend(placed.indices.iter().map(|i| i + base));
     }

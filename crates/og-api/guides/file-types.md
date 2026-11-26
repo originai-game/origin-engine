@@ -111,7 +111,37 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `model` asset, cooked by `model`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: bufferGeometry only; other geometry, material, placement and plant fields are not yet migrated. See models. Output: a normal model loaded with og.load.gltf.
+
+<a id="file-model-part-bufferGeometry"></a>
+### `file:model.part.bufferGeometry`
+
+Attribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `positions <x y z> ...` | `required` | Finite vertex positions in metres; at least one triangle. |
+| `normals <x y z> ...` | `computed` | One normal per vertex, validated and normalised by bufferGeometry. |
+| `uvs <u v> ...` | `0 0` | One UV per vertex, v down the image. |
+| `colors <r g b> ... \| <r g b a> ...` | `1 1 1 1` | Linear vertex colours, one RGB or RGBA value per vertex. |
+| `tangents <x y z w> ...` | `generated when needed` | One glTF tangent frame per vertex; w is its handedness. |
+| `indices <u32> ...` | `consecutive vertices` | Counter-clockwise triangle index triples within the vertex count. |
+| `generate { ... }` | `` | Deterministic script returns MeshSource attributes, exclusive with authored attribute arrays. |
+| `uvRepeat <u> <v>` | `1 1` | Scale UVs after reading the source. |
+| `physics true \| false` | `true` | Runtime descriptor field; model collision is owned by model import settings. |
+| `dynamic true \| false` | `false` | Runtime descriptor field; a cooked model is static source data. |
+
+<a id="file-model-part-bufferGeometry-generate"></a>
+### `file:model.part.bufferGeometry.generate`
+
+Returns MeshSource: positions, and optional normals/uvs/colors/tangents/indices. Materials, pivots and placements remain authored in the model.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 
 <a id="file-motion-action"></a>
 ### `file:motion-action`
@@ -224,7 +254,19 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `scene` asset, cooked by `scene`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: generate block only; authored declarations use the existing scene grammar and reflected component/resource fields. Output: a normal scene, loaded with og.load.scene.
+
+<a id="file-scene-generate"></a>
+### `file:scene.generate`
+
+Returns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 
 <a id="file-sfx"></a>
 ### `file:sfx`
@@ -239,6 +281,23 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 An authored `shader` asset, cooked by `shader`. Input: `.ogt` under assets/.
 
 Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+
+<a id="file-sound"></a>
+### `file:sound`
+
+An authored `sound` asset, cooked by `sound`. Input: `.ogt` under assets/.
+
+Field coverage: complete. Version 1 contains one generate block, which returns {rate, channels, samples}: rate 8000..192000 Hz, one or two interleaved channels, finite float samples and at least one complete frame. Samples clamp to -1..1 through the normal sound importer. Output: the normal QOA/Opus sound, with streaming configured by import settings, loaded with og.load.sound. Oscillator synthesis remains type sfx.
+
+<a id="file-sound-generate"></a>
+### `file:sound.generate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 
 <a id="file-strings"></a>
 ### `file:strings`
@@ -441,7 +500,19 @@ Field coverage: not yet migrated to parser line tables. The type is registered a
 
 An authored `tilemap` asset, cooked by `tilemap`. Input: `.ogt` under assets/.
 
-Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.
+Field coverage: generate block only; see world for the authored map fields. Output: normal tilemap blob, loaded with og.load.tilemap.
+
+<a id="file-tilemap-generate"></a>
+### `file:tilemap.generate`
+
+The script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 
 <a id="file-tileset"></a>
 ### `file:tileset`

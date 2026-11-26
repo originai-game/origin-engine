@@ -526,6 +526,7 @@ fn to_geom(m: &MeshData) -> og_shape::generators::Mesh {
         normals: m.vertices.iter().map(|v| v.normal).collect(),
         uvs: m.vertices.iter().map(|v| v.uv).collect(),
         colors: Vec::new(),
+        tangents: m.vertices.iter().map(|v| v.tangent).collect(),
         indices: m.indices.clone(),
     }
 }

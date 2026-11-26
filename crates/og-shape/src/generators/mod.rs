@@ -62,6 +62,8 @@ pub struct Mesh {
     pub normals: Vec<[f32; 3]>,
     pub uvs: Vec<[f32; 2]>,
     pub colors: Vec<[f32; 4]>,
+    /// glTF tangent frames; empty when the consumer should generate them.
+    pub tangents: Vec<[f32; 4]>,
     pub indices: Vec<u32>,
 }
 
@@ -80,7 +82,10 @@ impl Mesh {
         out.extend(self.positions.iter().flatten().map(|x| x.to_bits()));
         out.extend(self.normals.iter().flatten().map(|x| x.to_bits()));
         out.extend(self.uvs.iter().flatten().map(|x| x.to_bits()));
+        out.push(self.colors.len() as u32);
         out.extend(self.colors.iter().flatten().map(|x| x.to_bits()));
+        out.push(self.tangents.len() as u32);
+        out.extend(self.tangents.iter().flatten().map(|x| x.to_bits()));
         out.extend(&self.indices);
         out
     }
@@ -108,6 +113,7 @@ pub fn finish(positions: &[DVec3], normals: &[DVec3], uvs: &[[f64; 2]], indices:
         normals: normals.iter().map(|n| n.as_vec3().to_array()).collect(),
         uvs: uvs.iter().map(|u| [u[0] as f32, u[1] as f32]).collect(),
         colors: Vec::new(),
+        tangents: Vec::new(),
         indices,
     }
 }
@@ -171,6 +177,7 @@ pub struct Placed {
     pub normals: Vec<DVec3>,
     pub uvs: Vec<[f64; 2]>,
     pub colors: Vec<[f64; 4]>,
+    pub tangents: Vec<[f64; 4]>,
     pub indices: Vec<u32>,
 }
 
@@ -188,7 +195,7 @@ pub fn place(mesh: &Mesh, m: DMat4) -> Result<Placed, String> {
         .iter()
         .map(|p| m.transform_point3(DVec3::from(p.map(f64::from))))
         .collect();
-    let normals = (0..n)
+    let normals: Vec<_> = (0..n)
         .map(|i| {
             let v = mesh
                 .normals
@@ -203,6 +210,16 @@ pub fn place(mesh: &Mesh, m: DMat4) -> Result<Placed, String> {
     let colors = (0..n)
         .map(|i| mesh.colors.get(i).map_or([1.0; 4], |c| c.map(f64::from)))
         .collect();
+    let tangents = (0..if mesh.tangents.is_empty() { 0 } else { n })
+        .map(|i| {
+            let Some(t) = mesh.tangents.get(i).filter(|t| t[3] != 0.0) else {
+                return [0.0; 4];
+            };
+            let v = linear * DVec3::new(t[0] as f64, t[1] as f64, t[2] as f64);
+            let v = normalize(v - normals[i] * normals[i].dot(v));
+            [v.x, v.y, v.z, t[3] as f64 * det.signum()]
+        })
+        .collect();
     let mut indices = mesh.indices.clone();
     if det < 0.0 {
         for t in indices.as_chunks_mut::<3>().0.iter_mut() {
@@ -214,6 +231,7 @@ pub fn place(mesh: &Mesh, m: DMat4) -> Result<Placed, String> {
         normals,
         uvs,
         colors,
+        tangents,
         indices,
     })
 }

@@ -8,7 +8,7 @@ Keep the recipe in the project: use an asset's existing generation mechanism whe
 
 ## 2. Design heights, then process them
 
-The following complete recipe has three files: its game entry, a terrain asset and a TS heightfield generator. The generator makes a deliberately asymmetric rectangular field in metres. The terrain applies thermal erosion. The game compares sampled cooked heights with the same shared processing mechanism at runtime; quantisation is bounded by the terrain's stored height range. No Python, subprocess or second erosion implementation is involved.
+The following complete recipe includes its game entry, a terrain asset and TS heightfield generator, and a model with curve primitives and a TS mesh source. The heightfield generator makes a deliberately asymmetric rectangular field in metres. The terrain applies thermal erosion. The game compares sampled cooked heights with the same shared processing mechanism at runtime and inspects the cooked model; quantisation is bounded by the terrain's stored height range. No Python, subprocess or second erosion implementation is involved.
 
 ```ts recipe ticks=2
 import { og } from "@origingame/engine";
@@ -35,6 +35,25 @@ export default og.game({
       og.assert.always(sample.ok && Math.abs(sample.value!.height - made.heights[r! * base.columns + c!]!) <= tolerance, "cooked and runtime heights agree", {});
     }
     og.assert.always(Math.abs(made.heights[0]! - 117) < 0.001 && made.maxHeight > 125, "authored metres are not normalised or clipped to the noise range", {});
+    const model = og.load.gltf(world, "curves.ogt", {});
+    if (!model.ok) throw new Error(model.reason);
+    const info = og.load.gltfInfo(world, model.value);
+    if (!info.ok) throw new Error(info.reason);
+    og.assert.always(info.value.parts.length === 5, "all authored curve and buffer primitives cooked", {});
+    for (const [index, triangles] of [8, 32, 72, 80, 1].entries()) {
+      const geometry = og.render.geometryInfo(world, info.value.parts[index]!.geometry);
+      og.assert.always(geometry.ok && geometry.value!.triangles === triangles, "curve tessellation preserved", {});
+    }
+    const generated = og.render.geometryInfo(world, info.value.parts[4]!.geometry);
+    og.assert.always(generated.ok && generated.value!.min.x === -2 && generated.value!.max.x === 3 && generated.value!.max.y === 4, "authored mesh dimensions preserved", {});
+    const scene = og.load.scene(world, "placements.ogt");
+    if (!scene.ok) throw new Error(scene.reason);
+    const placed = world.instantiate(scene.value, { name: "placements" });
+    if (!placed.ok) throw new Error(placed.reason);
+    const marker = world.find("marker");
+    if (!marker) throw new Error("generated entity was not instantiated");
+    const transform = world.get(marker, og.Transform);
+    og.assert.always(transform.ok && transform.value!.position.x === 2 && transform.value!.position.z === -3 && transform.value!.scale.x === 0.5, "generated fields compose with authored prefab fields", {});
     og.assert.reachable("generated terrain checked", {});
   },
 });
@@ -80,6 +99,102 @@ export default function heights(ctx: GeneratorContext<{ offset: number }>) {
 }
 ```
 
+```ogt recipe file=assets/curves.ogt
+type model
+version 1
+---
+conform off
+part "disc" {
+  circleGeometry {
+    radius 2
+    segments 8
+    thetaLength 3.141592653589793
+  }
+}
+part "ring" {
+  ringGeometry {
+    innerRadius 0.7
+    outerRadius 2.3
+    thetaSegments 8
+    phiSegments 2
+  }
+}
+part "polyline" {
+  tubeGeometry {
+    points 0 0 0 1 2 0 3 2 1
+    radius 0.2
+    tubularSegments 9
+    radialSegments 4
+  }
+}
+part "curve" {
+  tubeGeometry {
+    path {
+      kind catmullRom
+      point 0 0 0
+      point 1 1 1
+      point 3 2 0
+    }
+    radius 0.3
+    tubularSegments 8
+    radialSegments 5
+  }
+}
+part "buffer" {
+  bufferGeometry {
+    generate {
+      script "mesh.ts"
+    }
+  }
+}
+```
+
+```ts recipe file=assets/mesh.ts
+import type { MeshSource } from "@origingame/engine/generate";
+
+export default function mesh() {
+  return {
+    positions: new Float32Array([-2, 0, 0, 3, 0, 0, 1, 4, 0]),
+    colors: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]),
+    uvs: new Float32Array([0, 1, 1, 1, 0.6, 0]),
+    tangents: new Float32Array([1, 0, 0, -1, 1, 0, 0, -1, 1, 0, 0, -1]),
+    indices: new Uint32Array([0, 1, 2]),
+  } satisfies MeshSource;
+}
+```
+
+```ogt recipe file=assets/placements.ogt
+type scene
+version 1
+---
+generate {
+  script "placements.ts"
+}
+```
+
+```ts recipe file=assets/placements.ts
+import type { SceneSource } from "@origingame/engine/generate";
+
+export default function placements() {
+  return { entities: [{
+    name: "marker", prefab: "marker.ogt",
+    components: { Transform: { position: [2, 1, -3] } },
+  }] } satisfies SceneSource;
+}
+```
+
+```ogt recipe file=assets/marker.ogt
+type prefab
+version 1
+---
+entity "marker" {
+  model "curves.ogt"
+  Transform {
+    scale 0.5 0.5 0.5
+  }
+}
+```
+
 The TS default export synchronously returns `{columns, rows, heights}`. Samples are row-major from -z to +z and -x to +x; dimensions are 2..4097, every height is finite, and `size` defines positive x/z extents. A supplied field is never implicitly resampled or normalised. It cannot also request a noise source (`samples`, `noise`, `mask`) or intensity-to-height conversion (`height`). Relative static imports must name their extensions and stay inside the asset root.
 
 For an existing height image, write `heightmap "base.png"` (or EXR) beside `generate`. PNG intensity maps through `height low high`; EXR defaults to metres (`height 0 1`). The same processing runs after this conversion. Without a supplied field, `generate` starts with noise and maps it into `height` instead. Processing order is hydraulic erosion → thermal erosion → terraces → shore → automatic drainage/rivers → biome control. On supplied fields terraces anchor at zero and erosion may leave the original extrema. Author-directed valley lines, river networks and protection masks are separate inputs, not implied by automatic drainage.
@@ -98,4 +213,132 @@ The realm has no filesystem, process, environment, network, system clock or time
 
 Typed buffers remain typed inside the generator, including nested mesh attributes and WFC/BSP grids; a `subarray` denotes only that slice. At the final JSON output boundary they become numeric arrays. Result-returning mechanisms keep `{ok, value}` / `{ok: false, reason}`: check `ok` before composing them. These pure mechanisms do not load assets or return runtime handles. Existing files remain the normal input for plants, sound synthesis and prefracture; calling a mechanism in TS does not bypass a target asset's source validation.
 
+A model's `bufferGeometry.generate` returns `MeshSource`: flat vertex attribute arrays with the same names and validation as `og.render.bufferGeometry`, not a runtime geometry handle. Materials, pivots and placements stay in the surrounding model file. The first recipe cooks an asymmetric coloured triangle with explicit tangent frames. Missing normals are computed by the shared implementation; explicit UVs, colours and tangent frames survive normal model import. `bufferGeometry` also accepts authored arrays directly, or participates in nested merges and CSG. Placed merges transform frames with the geometry; CSG creates new topology and regenerates frames when needed.
+
 The guide gate writes all attached files and explicitly cooks the project before running the assertions twice. An attached fence's `file=` is project-relative and cannot escape the recipe directory; it belongs to the preceding `ts recipe` main entry. The guide contains no per-recipe shell harness.
+
+## 5. Cook a generated tile grid
+
+A `tilemap.generate` script returns `TilemapSource`: positive `width` and `height`, and named layers of row-major tile ids (`-1` empty, not packed id-plus-one cells). Each name must identify one authored layer without `row` lines. The file retains tilesets, orientation, objects, collision and drawing properties; an optional `size` must match the result. Other layers can keep their handwritten rows. A terrain layer takes 0/1 occupancy instead. Invalid dimensions, ids or layer names fail cook.
+
+This recipe composes WFC and BSP into two layers. The script explicitly maps mechanism output to the file's tile ids. WFC's sockets state adjacency, not a built-in wall or road interpretation; when enabling rotations, map the returned quarter-turns to authored tile variants too. At runtime only the cooked map is loaded.
+
+```ts recipe ticks=2
+import { defineSystem, og } from "@origingame/engine";
+
+const Check = defineSystem("Check", { reads: [og.Tilemap], writes: [] }, (_q, _time, world) => {
+  const entity = world.find("grid");
+  if (!entity || og.tilemap.getTile(world, entity, "sockets", 0, 0) < 0) return;
+  let marked = 0, empty = 0;
+  for (let y = 0; y < 7; y++) {
+    for (let x = 0; x < 12; x++) {
+      const tile = og.tilemap.getTile(world, entity, "sockets", x, y);
+      og.assert.always(tile === (x % 2 === 0 ? 2 : 0), "fixed sockets cooked to authored tile ids", {});
+      const region = og.tilemap.getTile(world, entity, "regions", x, y);
+      og.assert.always(region === -1 || region === 1, "explicit BSP tile mapping preserved", {});
+      if (region === 1) marked++; else empty++;
+    }
+  }
+  og.assert.always(marked > 0 && empty > 0, "BSP produces both marked and empty cells", {});
+  og.assert.reachable("generated grid adopted", {});
+});
+
+export default og.game({
+  systems: [Check],
+  start(world) {
+    const loaded = og.load.tilemap(world, "grid.ogt");
+    if (!loaded.ok) throw new Error(loaded.reason);
+    og.assert.always(loaded.value.width === 12 && loaded.value.height === 7, "generated dimensions preserved", {});
+    og.assert.always(loaded.value.layers[1]!.parallax.x === 0.5, "authored layer metadata preserved", {});
+    const entity = world.spawn({ name: "grid" });
+    if (!entity.ok) throw new Error(entity.reason);
+    world.insert(entity.value, og.Tilemap, { map: loaded.value.map });
+    const sound = og.load.sound(world, "signal.ogt");
+    if (!sound.ok) throw new Error(sound.reason);
+    const format = og.load.soundInfo(world, sound.value);
+    og.assert.always(format.ok && format.value!.rate === 22050 && format.value!.channels === 2 && format.value!.frames === 300, "generated PCM is a normal sound asset", {});
+  },
+});
+```
+
+```ogt recipe file=assets/grid.ogt
+type tilemap
+version 1
+---
+tile 8 8
+tileset "tiles.ogt"
+generate {
+  script "grid.ts"
+  seed 9
+  params {
+    width 12
+    height 7
+  }
+}
+layer "sockets" {
+  lit false
+}
+layer "regions" {
+  parallax 0.5 0.8
+  lit false
+}
+```
+
+```ts recipe file=assets/grid.ts
+import { procgen, type GeneratorContext, type TilemapSource } from "@origingame/engine/generate";
+
+export default function grid(ctx: GeneratorContext<{ width: number; height: number }>) {
+  const { width, height } = ctx.params;
+  const wfc = procgen.wfc({ width, height, seed: ctx.seed, tiles: [
+    { weight: 1, up: 0, right: 1, down: 0, left: 2, rotations: false },
+    { weight: 1, up: 0, right: 2, down: 0, left: 1, rotations: false },
+  ], fixed: Array.from({ length: height }, (_, y) => ({ x: 0, y, tile: 0, quarterTurns: 0 })) });
+  const bsp = procgen.bsp({ width, height, seed: ctx.seed, minRoom: 2, maxRoom: 4, depth: 2, padding: 1, corridor: 1 });
+  if (!wfc.ok) throw new Error(wfc.reason);
+  if (!bsp.ok) throw new Error(bsp.reason);
+  return { width, height, layers: [
+    { name: "sockets", tiles: Int32Array.from(wfc.value.tiles, tile => tile === 0 ? 2 : 0) },
+    { name: "regions", tiles: Int32Array.from(bsp.value.cells, cell => cell === 0 ? -1 : 1) },
+  ] } satisfies TilemapSource;
+}
+```
+
+```ogt recipe file=assets/tiles.ogt
+type tileset
+version 1
+---
+texture "tiles.svg"
+grid 8 8 3 1
+```
+
+```text recipe file=assets/tiles.svg
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="8"><path fill="#285c9b" d="M0 0h8v8H0z"/><path fill="#dbb755" d="M8 0h8v8H8z"/><path fill="#a8493f" d="M16 0h8v8h-8z"/></svg>
+```
+
+## 6. Cook custom PCM
+
+Use `type sound` with one `generate` block when a module produces custom samples. The default export returns `SoundSource`: an explicit `rate` in 8000..192000 Hz, `channels` 1 or 2 and interleaved float `samples`, with at least one whole frame. Normal sound import clamps samples to -1..1 and owns PCM conversion, QOA/Opus encoding and streaming; no script writes or encodes a WAV. The map recipe above also loads this short, asymmetric stereo signal and checks its format. Existing oscillator synthesis stays in `type sfx`.
+
+```ogt recipe file=assets/signal.ogt
+type sound
+version 1
+---
+generate {
+  script "signal.ts"
+}
+```
+
+```ts recipe file=assets/signal.ts
+import type { SoundSource } from "@origingame/engine/generate";
+
+export default function signal() {
+  const samples = Float32Array.from({ length: 600 }, (_, i) => [-2, 0.25, 0.5, -0.75, 2, -0.5][i % 6]!);
+  return { rate: 22050, channels: 2, samples } satisfies SoundSource;
+}
+```
+
+## 7. Cook explicit scene declarations
+
+A `scene.generate` module returns `SceneSource`: an entity tree and optional resource fields. Every entity has a name; optional `model`, `scene` and `prefab` are asset paths, `static` marks a model for baking, `components` maps reflected names to field objects, and `children` nests entities. Fields are numbers, booleans, strings or flat arrays, not runtime handles. Generated entities append after authored entities. A resource cannot be both authored and generated. Normal prefab merging, component reflection, asset dependencies and sub-scene cycle checks run on the combined declarations. Scene generation does not create a world.
+
+The first recipe includes these declarations. The generator sets a placement; the authored prefab supplies its model and scale. The game only loads the cooked scene.

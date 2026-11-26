@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "type model bufferGeometry generate",
+      "summary": "Model parts and nested operands accept explicit bufferGeometry arrays or a deterministic TS generator returning MeshSource. Source attributes share runtime validation and preserve colours, UVs and tangent frames through model cooking and placed merges; missing normals/tangents use the existing generation mechanisms."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.render.mergeGeometries",
+      "summary": "Placed and mirrored merges retain authored tangent frames, transforming their direction and handedness with the geometry instead of discarding them. Model cook keeps explicit frames even when the initial material has no normal map, unless import settings explicitly disable tangents."
+    }
+  ]
+}

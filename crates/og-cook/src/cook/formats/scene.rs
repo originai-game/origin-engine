@@ -54,6 +54,9 @@ use og_core::ogt::{Block, Document, Value};
 use og_core::{FieldSchema, FieldType, Layout, Schema};
 use std::collections::{BTreeMap, BTreeSet};
 
+mod generate;
+pub(crate) use generate::expand;
+
 struct Entity {
     name: String,
     parent: u32,

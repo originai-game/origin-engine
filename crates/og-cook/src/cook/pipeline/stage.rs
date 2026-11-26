@@ -122,6 +122,11 @@ pub(crate) fn scan_sources(
     } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads, code)?;
     cook_index.note_external(&external);
     let mut consumed: BTreeSet<String> = BTreeSet::new();
+    // Typed script results enter the ordinary asset pipelines before planning.
+    tilemap::expand(&mut sources);
+    audio::expand(&mut sources);
+    scene::expand(&mut sources);
+    model_text::expand(&mut sources);
     // Pixel effects and flipbooks of animated sources become ordinary
     // sheets (`vfx2d.rs`, `animated.rs`).
     vfx2d::expand(&mut sources, &mut consumed);

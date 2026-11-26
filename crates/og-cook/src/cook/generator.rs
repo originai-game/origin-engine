@@ -22,6 +22,38 @@ use std::sync::{
 
 const BUILTIN: &str = "@origingame/engine/generate";
 
+/// Standalone script source blocks; terrain adds its processing stages.
+pub const SCRIPT_LINES: &[crate::grammar::Line] = &[
+    crate::grammar::Line::new(
+        "script",
+        "\"<file.ts>\"",
+        "required",
+        "Synchronous default export; static relative imports and explicit inputs are tracked.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "seed",
+        "<u32>",
+        "0",
+        "Explicit seed passed to the generator.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "params",
+        "{ ... }",
+        "{}",
+        "Named scalar, array or nested object parameters.",
+        "",
+    ),
+    crate::grammar::Line::new(
+        "input",
+        "\"<name>\" \"<path>\"",
+        "",
+        "Repeated input bytes, relative to the authored asset, available as ctx.inputs[name].",
+        "",
+    ),
+];
+
 /// A module's default export receives `{params, seed, inputs}`. Inputs are
 /// explicitly named byte arrays; paths are relative to the asset's directory.
 #[derive(Clone, Debug)]
@@ -63,6 +95,35 @@ fn object(b: &Block) -> Result<Json, String> {
 }
 
 impl Spec {
+    /// A script-only generation block, without subsystem processing fields.
+    pub fn standalone(b: &Block) -> Result<Self, String> {
+        for e in &b.entries {
+            if crate::grammar::find(SCRIPT_LINES, &e.key, &[]).is_none() {
+                return Err(format!(
+                    "line {}: unknown generate field '{}'",
+                    e.line, e.key
+                ));
+            }
+            if e.key != "input" && b.get_all(&e.key).count() != 1 {
+                return Err(format!(
+                    "line {}: duplicate generate field '{}'",
+                    e.line, e.key
+                ));
+            }
+        }
+        let seed = match b.get("seed") {
+            Some(e) if e.values.len() == 1 && e.block.is_none() => e
+                .number(0)
+                .and_then(og_core::ogt::Number::as_u64)
+                .ok()
+                .and_then(|n| u32::try_from(n).ok())
+                .ok_or("generate.seed is a u32 integer")?,
+            Some(_) => return Err("generate.seed takes one u32 integer".into()),
+            None => 0,
+        };
+        Self::parse(b, seed)?.ok_or_else(|| "generate needs script".into())
+    }
+
     pub fn parse(b: &Block, seed: u32) -> Result<Option<Self>, String> {
         let Some(e) = b.get("script") else {
             return Ok(None);

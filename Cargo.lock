@@ -3227,6 +3227,7 @@ version = "0.9.0"
 dependencies = [
  "glam 0.34.1",
  "gltf",
+ "hound",
  "image",
  "libc",
  "nsh-jsx",

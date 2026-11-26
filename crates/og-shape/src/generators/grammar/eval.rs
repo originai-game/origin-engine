@@ -105,6 +105,7 @@ pub fn build(
                 normals: a.normals,
                 uvs: a.uvs,
                 colors: Vec::new(),
+                tangents: Vec::new(),
                 indices: a.indices,
             },
         })

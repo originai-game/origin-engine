@@ -161,6 +161,8 @@ fn two_builds_are_byte_identical() {
     }
     // The bits themselves, recorded on x86_64 Linux: a host that rounds
     // differently (a fused multiply-add, a libm sine) fails here.
+    // Includes the colour/tangent stream lengths. Re-recorded after adding
+    // tangent preservation; the geometry-only streams match the old hashes.
     let hashes: Vec<String> = a
         .iter()
         .map(|m| format!("{:016x}", fnv(&m.bits())))
@@ -168,12 +170,12 @@ fn two_builds_are_byte_identical() {
     assert_eq!(
         hashes,
         [
-            "bd3a1315442aefbe",
-            "5c426bd443c4462a",
-            "b7ddbf14c9c171e7",
-            "dd8e55eccf0c7012",
-            "a6bf8294bc6c52f2",
-            "c205aaae210975cd"
+            "567de4570abc6d7e",
+            "19da37231da4c7ea",
+            "0d709a250b4d42e7",
+            "aca10fc882f1f352",
+            "aeb4ee1a63a3d232",
+            "9b91e368bb7f714d"
         ],
         "extrude, lathe, sweep, icosahedron, dodecahedron, csg"
     );

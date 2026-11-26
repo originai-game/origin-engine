@@ -48,6 +48,24 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");
                 table(&mut out, match ty { "particles" => crate::fx::EMITTER_LINES, "effect" => crate::effect::EFFECT_LINES, _ => crate::vfx::VFX_LINES });
             }
+            "tilemap" => {
+                out.push_str("Field coverage: generate block only; see world for the authored map fields. Output: normal tilemap blob, loaded with og.load.tilemap.\n\n<a id=\"file-tilemap-generate\"></a>\n### `file:tilemap.generate`\n\nThe script returns {width, height, layers: [{name, tiles}]}. Each layer names an authored layer; tiles are row-major tile ids (-1 empty), or 0/1 for a terrain layer. Generated layers cannot also supply rows. A size line, when present, must match. No tileset, collision rule or tile mapping is inferred.\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
+            "scene" => {
+                out.push_str("Field coverage: generate block only; authored declarations use the existing scene grammar and reflected component/resource fields. Output: a normal scene, loaded with og.load.scene.\n\n<a id=\"file-scene-generate\"></a>\n### `file:scene.generate`\n\nReturns SceneSource: {entities, resources?}. Each entity has name, optional model/scene/prefab asset paths, static boolean, components and children. Component/resource objects map reflected field names to numbers, booleans, strings or flat arrays. No world, callbacks or runtime handles. Generated entities append after authored entities; a resource cannot be both authored and generated. Normal prefab expansion, schema, reference and sub-scene cycle checks apply.\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
+            "sound" => {
+                out.push_str("Field coverage: complete. Version 1 contains one generate block, which returns {rate, channels, samples}: rate 8000..192000 Hz, one or two interleaved channels, finite float samples and at least one complete frame. Samples clamp to -1..1 through the normal sound importer. Output: the normal QOA/Opus sound, with streaming configured by import settings, loaded with og.load.sound. Oscillator synthesis remains type sfx.\n\n<a id=\"file-sound-generate\"></a>\n### `file:sound.generate`\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
+            "model" => {
+                out.push_str("Field coverage: bufferGeometry only; other geometry, material, placement and plant fields are not yet migrated. See models. Output: a normal model loaded with og.load.gltf.\n\n<a id=\"file-model-part-bufferGeometry\"></a>\n### `file:model.part.bufferGeometry`\n\nAttribute arrays are validated by the same bufferGeometry implementation as runtime. May also be nested in mergeGeometries or CSG operands; topology-changing CSG generates new tangent frames.\n\n");
+                table(&mut out, super::model_text::BUFFER_LINES);
+                out.push_str("\n<a id=\"file-model-part-bufferGeometry-generate\"></a>\n### `file:model.part.bufferGeometry.generate`\n\nReturns MeshSource: positions, and optional normals/uvs/colors/tangents/indices. Materials, pivots and placements remain authored in the model.\n\n");
+                table(&mut out, super::generator::SCRIPT_LINES);
+            }
             _ => out.push_str("Field coverage: not yet migrated to parser line tables. The type is registered and cookable; use its loading/authoring guide for current syntax, not runtime record fields.\n"),
         }
         out.push('\n');

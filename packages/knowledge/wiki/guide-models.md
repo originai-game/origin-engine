@@ -27,12 +27,32 @@ An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `t
   animation and code find by name. A part hangs from its `pivot` (default:
   the model's root).
 - `part "<name>" { material ...; pivot ...; <geometry> { ... }; at { ... } }`:
-  one geometry block named by its `og.render` call (`boxGeometry`,
+  one geometry block named by its `og.render` call (`bufferGeometry`, `boxGeometry`,
   `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`, `sphereGeometry`,
-  `torusGeometry`, `latheGeometry`, `shapeGeometry`, `extrudeGeometry`,
+  `torusGeometry`, `ringGeometry`, `circleGeometry`, `tubeGeometry`,
+  `latheGeometry`, `shapeGeometry`, `extrudeGeometry`,
   `sweepGeometry`, the polyhedra, `csgGeometry` with operands `a` and `b`,
   and `mergeGeometries` of nested `part` blocks), and its placement
   (`position`, `quaternion`, `scale`, `mirror`).
+
+A `ringGeometry` uses `innerRadius`, `outerRadius`, `thetaSegments`,
+`phiSegments`, `thetaStart` and `thetaLength`; a `circleGeometry` uses
+`radius`, `segments`, `thetaStart` and `thetaLength`. Angles are radians.
+A `tubeGeometry` takes either flat xyz `points` (at least two points)
+and `closed`, or a `path { kind ...; point x y z; ... }` block with its own
+`closed` and `tension`. Its other fields are `tubularSegments`, `radius`
+and `radialSegments`. Both forms call the runtime's tube implementation;
+neither is the model program's hollow straight `tube` solid.
+
+A `bufferGeometry` takes flat `positions`, optional `normals`, `uvs`,
+`colors` (RGB or RGBA), `tangents` (xyzw) and triangle `indices`, with
+the same validation and missing-normal computation as the runtime.
+Instead of those arrays, its `generate { script "mesh.ts"; ... }` block
+may return `MeshSource` from a deterministic TS module. Materials and
+placements stay in the model. Explicit tangent frames survive cook and
+placed/mirrored merges; a topology-changing CSG computes new frames when
+needed. See `generating` for the multi-file recipe and
+`file:model.part.bufferGeometry` for its parser-owned field table.
 
 A three.js outline pastes into og.Shape as it is. Make shapes in start or
 a command. A geometry's `shape` block is og.Shape's calls, one a line, with
