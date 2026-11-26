@@ -13,7 +13,7 @@
 #   scripts/release.sh pack [<version>]         the checkout's version (no argument): OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64
 #                                               (the engine with its knowledge/, this machine's platform package and linux-x64's), then
 #                                               create-game and design, as npm-shaped tarballs in dist/release/<version>/ with NOTES.md
-#                                               (the release notes, from changelog.json), then `archive`.
+#                                               (the release notes, from changelog.json), then `previews --check`, then `archive`.
 #                                               Run on the Mac (docs/release.md §3); studio-win adds win32-x64's tarball (`build.sh --native`,
 #                                               `pack.sh --native`, copied into dist/release/<version>/), then `archive` again.
 #                                               `pack <version>` (a version npm carries: every one from 0.5.0, and 0.7.8-dev.17): its
@@ -27,6 +27,9 @@
 #                                               og and addon, unpacked from dist/release/<version>/'s tarballs (templates/looks/preview/
 #                                               render.ts --gpu: a software or absent adapter fails), into previews/ with looks-render.json;
 #                                               then `archive` again, which ships them (docs/release.md §1 The looks)
+#   scripts/release.sh previews [<version>] --check
+#                                               every slot the same way with this machine's platform tarball on any adapter, no previews
+#                                               written: pack runs it, so a slot that fails to cook or run stops the pack, not the GPU host
 #   scripts/release.sh sign [<version>]         manifest.json, the version's install.sh and install.ps1, SHA256SUMS and its signature
 #                                               again over the archives in place (OG_ENGINE_MINISIGN_KEY); the install test's passes stand
 #   scripts/release.sh fetch <run-id>           download the release workflow run's `release-<version>` artifact (gh run download) into
@@ -104,6 +107,8 @@ cmd_pack() {
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
   (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
   (cd packages/design && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/design failed"; return 1; }
+  # Every preview slot cooked and run by the packed og, in the packed layout (`previews --check`).
+  cmd_previews "$v" --check || return 1
   cmd_archive "$v" || return 1
   [ -f "$out/origingame-engine-win32-x64-$v.tgz" ] || og_say "release: now win32-x64 from studio-win (docs/release.md §3), copied into ${out#"$OG_ROOT"/}/, then scripts/release.sh archive"
 }
@@ -224,28 +229,47 @@ cmd_publish() {
 # The look previews, drawn by the version itself on the GPU host (docs/release.md §1 The looks):
 # its own og and addon from the tarballs pack wrote, the engine package they belong to, and
 # this checkout's preview scenes, which must be the version's commit (release-dist checks the record).
+# --check draws every slot the same way with this machine's own platform tarball on whatever
+# adapter it has, writes no previews and no record: a cook, run or layout failure surfaces where
+# the version was packed (pack runs it), before the GPU host draws the frames that ship.
 cmd_previews() {
-  local v out work
-  v="$(pick_version "${1:-}")"; out="$(out_dir "$v")"
-  for t in "origingame-engine-$v.tgz" "origingame-engine-linux-x64-$v.tgz" "origingame-create-game-$v.tgz"; do
+  local v out work check="" platform=linux-x64 a args=()
+  for a in "$@"; do [ "$a" = --check ] && check=1 || args+=("$a"); done
+  v="$(pick_version "${args[0]:-}")"; out="$(out_dir "$v")"
+  # shellcheck disable=SC2016 # bun reads the template literal
+  [ -z "$check" ] || platform="$(bun -e 'console.log(`${process.platform}-${process.arch}`)')"
+  for t in "origingame-engine-$v.tgz" "origingame-engine-$platform-$v.tgz" "origingame-create-game-$v.tgz"; do
     [ -f "$out/$t" ] || { og_err "release: no ${out#"$OG_ROOT"/}/$t; pack $v first (docs/release.md §3)"; return 1; }
   done
-  work="$out/.previews"
-  rm -rf "$work" "$out/previews" "$out/looks-render.json"; mkdir -p "$work/engine" "$work/platform" || return 1
+  work="$out/.previews${check:+-check}"
+  rm -rf "$work"; mkdir -p "$work/engine" "$work/platform" || return 1
+  [ -n "$check" ] || rm -rf "$out/previews" "$out/looks-render.json"
   tar -xzf "$out/origingame-engine-$v.tgz" -C "$work/engine" --strip-components=1 || return 1
-  tar -xzf "$out/origingame-engine-linux-x64-$v.tgz" -C "$work/platform" --strip-components=1 || return 1
+  tar -xzf "$out/origingame-engine-$platform-$v.tgz" -C "$work/platform" --strip-components=1 || return 1
   mkdir -p "$work/create" && tar -xzf "$out/origingame-create-game-$v.tgz" -C "$work/create" --strip-components=1 || return 1
-  mkdir -p "$work/engine/native" && cp "$work/platform/origin-engine.node" "$work/engine/native/origin-engine.linux-x64.node" || return 1
+  local exe="" addon
+  case "$platform" in win32-*) exe=.exe ;; esac
+  addon="$work/engine/native/origin-engine.$platform.node"
+  mkdir -p "$work/engine/native" && cp "$work/platform/origin-engine.node" "$addon" || return 1
   # The scenes' pinned models and art (templates/og-assets.json), absent from a fresh checkout.
   bun scripts/assets.ts ensure templates || { og_err "release: the preview scenes' pinned assets are not available"; return 1; }
   # Every slot the version's creation document has (create-game's previewSlots), as release-dist reads them.
   # shellcheck disable=SC2016 # the bun script takes its arguments from argv
   bun -e 'const [d, e, o] = process.argv.slice(1); const { creationOf } = await import(`${process.cwd()}/scripts/release-dist.ts`); require("node:fs").writeFileSync(o, JSON.stringify((await creationOf(d, e)).slots))' \
     "$work/create" "$work/engine" "$work/slots.json" || return 1
+  if [ -n "$check" ]; then
+    OG_NATIVE_ADDON="$addon" OG_ENGINE_PACKAGE="$work/engine" \
+      bun templates/looks/preview/render.ts --og "$work/platform/og$exe" --engine "$work/engine" \
+        --out "$work/frames" --previews "$work/previews" --slots "$work/slots.json" \
+      || { og_err "release: a preview slot failed to cook, run or draw with $v's $platform og (${work#"$OG_ROOT"/}/frames); fix it before the GPU host draws the previews"; return 1; }
+    rm -rf "$work"
+    og_say "release: every preview slot of $v cooks and runs with its $platform og"
+    return 0
+  fi
   # shellcheck source-path=SCRIPTDIR
   . "$OG_ROOT/scripts/gpu-env.sh"
   og_gpu_acquire "release previews $v" || return 1
-  OG_NATIVE_ADDON="$work/engine/native/origin-engine.linux-x64.node" OG_ENGINE_PACKAGE="$work/engine" \
+  OG_NATIVE_ADDON="$addon" OG_ENGINE_PACKAGE="$work/engine" \
     bun templates/looks/preview/render.ts --webp --gpu --og "$work/platform/og" --engine "$work/engine" \
       --out "$work/frames" --previews "$out/previews" --record "$out/looks-render.json" --slots "$work/slots.json" \
     || { og_err "release: the previews were not all drawn on a hardware adapter; nothing of them ships"; rm -rf "$out/previews" "$out/looks-render.json"; return 1; }
@@ -284,10 +308,14 @@ cmd_dev() {
   v="$(basename "$(find "$tmp" -maxdepth 1 -name 'origingame-engine-dev.*.tgz' | head -1)" .tgz)"; v="${v#origingame-engine-}"
   [[ "$v" =~ ^dev\.[0-9]{8}\.[1-9][0-9]*$ ]] || { og_err "release: no dev build dev.<YYYYMMDD>.<n> in $tmp ('$v'); a release goes through pack, verify and publish"; return 1; }
   local out; out="$(out_dir "$v")"
-  rm -rf "$out"; mkdir -p "$out"
-  cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1
-  # The previews the GPU host drew for these tarballs (scripts/release.sh previews), when they came with them.
-  if [ -f "$tmp/looks-render.json" ]; then cp -R "$tmp/previews" "$tmp/looks-render.json" "$out/" || return 1; fi
+  # The tarballs already in dist/release/<v>/ (packed elsewhere and copied there) are archived in place:
+  # clearing the directory first would delete them.
+  if [ "$tmp" != "$out" ]; then
+    rm -rf "$out"; mkdir -p "$out"
+    cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1
+    # The previews the GPU host drew for these tarballs (scripts/release.sh previews), when they came with them.
+    if [ -f "$tmp/looks-render.json" ]; then cp -R "$tmp/previews" "$tmp/looks-render.json" "$out/" || return 1; fi
+  fi
   [ -d "$src" ] || rev=(--revision "$(gh run view "$src" -R "$REPO" --json headSha -q .headSha)")
   bun scripts/release-dist.ts "$out" --version "$v" "${rev[@]}" || return 1
   OG_RELEASE_DEV=1 cmd_publish "$v" || return 1
