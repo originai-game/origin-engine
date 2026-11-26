@@ -2,6 +2,7 @@
 //! third_party/stable-fluids. All appearance parameters belong to the file.
 use super::*;
 use og_core::noise::{Fbm, NoiseKind};
+use og_core::reflect::source::{InputSchema, schemars::JsonSchema};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
 
@@ -223,38 +224,81 @@ pub const LINES: &[crate::grammar::Line] = &[
     ),
 ];
 
-#[derive(Clone, Serialize, Deserialize)]
+/// Offline texture transport input; all appearance values are explicit.
+/// Atlas dimensions, total work and nonzero light direction are domain checks.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[schemars(crate = "og_core::reflect::source::schemars")]
 #[serde(deny_unknown_fields)]
-struct Config {
-    mode: String,
-    size: u32,
-    frames: u32,
-    columns: u32,
-    grid: usize,
-    steps: u32,
-    dt: f32,
-    pressure: u32,
-    seed: u32,
-    frequency: f32,
-    range: f32,
-    turbulence: f32,
-    source: [f32; 3],
-    detail: f32,
-    vorticity: f32,
-    radius: f32,
-    inject: f32,
-    density: f32,
-    heat: f32,
-    buoyancy: f32,
-    expansion: f32,
-    decay: f32,
-    cooling: f32,
-    absorption: f32,
-    color: [f32; 3],
-    emission: [f32; 3],
-    light: [f32; 3],
-    ambient: f32,
-    direct: f32,
+pub struct Config {
+    #[schemars(extend("enum" = ["smoke", "fire", "explosion", "noise", "worley", "curl"]))]
+    pub mode: String,
+    #[schemars(range(min = 8, max = 1024), extend("x-og-unit" = "px"))]
+    pub size: u32,
+    #[schemars(range(min = 1, max = 256))]
+    pub frames: u32,
+    /// Sheet columns. Domain validation also checks columns <= frames.
+    #[schemars(range(min = 1, max = 256))]
+    pub columns: u32,
+    #[schemars(range(min = 8, max = 96))]
+    pub grid: usize,
+    #[schemars(range(min = 1, max = 64))]
+    pub steps: u32,
+    #[schemars(range(max = 0.1), extend("exclusiveMinimum" = 0, "x-og-unit" = "s"))]
+    pub dt: f32,
+    #[schemars(range(min = 1, max = 128))]
+    pub pressure: u32,
+    pub seed: u32,
+    /// Noise cycles per unit cube.
+    #[schemars(extend("exclusiveMinimum" = 0))]
+    pub frequency: f32,
+    /// Signed data encoding range; unused for volume transport.
+    #[schemars(extend("exclusiveMinimum" = 0))]
+    pub range: f32,
+    #[schemars(range(min = 0), extend("x-og-unit" = "cube widths/s²"))]
+    pub turbulence: f32,
+    /// Injection centre in the unit cube, Y up.
+    #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
+    pub source: [f32; 3],
+    #[schemars(range(min = 0, max = 1))]
+    pub detail: f32,
+    #[schemars(range(min = 0), extend("x-og-unit" = "1/s"))]
+    pub vorticity: f32,
+    #[schemars(range(max = 0.5), extend("exclusiveMinimum" = 0, "x-og-unit" = "cube widths"))]
+    pub radius: f32,
+    #[schemars(range(min = 0), extend("x-og-unit" = "s"))]
+    pub inject: f32,
+    #[schemars(range(min = 0))]
+    pub density: f32,
+    #[schemars(range(min = 0))]
+    pub heat: f32,
+    /// Signed Y acceleration per unit heat.
+    #[schemars(extend("x-og-unit" = "cube widths/s²"))]
+    pub buoyancy: f32,
+    #[schemars(range(min = 0))]
+    pub expansion: f32,
+    #[schemars(range(min = 0))]
+    pub decay: f32,
+    #[schemars(range(min = 0))]
+    pub cooling: f32,
+    #[schemars(range(min = 0))]
+    pub absorption: f32,
+    #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
+    pub color: [f32; 3],
+    #[schemars(extend("items" = {"type": "number", "minimum": 0, "maximum": 1}))]
+    pub emission: [f32; 3],
+    /// Direction toward the light; must be nonzero (domain validation).
+    pub light: [f32; 3],
+    #[schemars(range(min = 0))]
+    pub ambient: f32,
+    #[schemars(range(min = 0))]
+    pub direct: f32,
+}
+
+impl Config {
+    pub fn schema() -> &'static InputSchema<Self> {
+        static SCHEMA: OnceLock<InputSchema<Config>> = OnceLock::new();
+        SCHEMA.get_or_init(|| InputSchema::new().expect("effect-texture input schema"))
+    }
 }
 
 fn parse(bytes: &[u8]) -> Result<Config, String> {

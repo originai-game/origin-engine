@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "procedural author schemas",
+      "summary": "The shared author schema registry now covers scatter, look, effect, particles, vfx, sfx and effect-texture with typed structured inputs, reference-kind metadata, field constraints and generated TypeScript declarations. Look patches reuse real reflected resources; effect-texture reuses its existing cook configuration. Domain relationships remain domain validation, and legacy author parsers are unchanged."
+    }
+  ]
+}
