@@ -5,6 +5,199 @@ use og_core::reflect::source::{InputSchema, typescript};
 use serde_json::json;
 
 #[test]
+fn content_index_discovers_namespaces_and_types_without_evaluation() {
+    use og_cook::cook::{source_index::Index, source_project::Project};
+    use std::collections::BTreeMap;
+    let dir = temp::TempDir::new("content-index");
+    let write = |file: &str, text: &str| {
+        let at = dir.join(file);
+        std::fs::create_dir_all(at.parent().unwrap()).unwrap();
+        std::fs::write(at, text).unwrap();
+    };
+    let manifest = |root: &str| {
+        format!(
+            "import {{defineProject}} from '@origingame/engine/author'; export default defineProject({});",
+            json!({"name":"World","id":"world","engine":env!("CARGO_PKG_VERSION"),"entry":"src/main.ts",
+            "modules":[{"id":"north","root":root,"dependsOn":["base"]},{"id":"empty","root":"modules/empty"}]})
+        )
+    };
+    write("src/main.ts", "throw new Error('GAME_EXECUTED');");
+    std::fs::create_dir_all(dir.join("modules/north")).unwrap();
+    std::fs::create_dir_all(dir.join("modules/empty")).unwrap();
+    write("project.ts", &manifest("modules/north"));
+    let project = Project::open(&dir).unwrap();
+    let empty = Index::open(&dir, &project).unwrap();
+    assert!(empty.entries.is_empty());
+    assert_eq!(empty.declarations().len(), 3);
+    let wind = "import {file as data} from '@origingame/engine/author';\nimport missing from '../../sources/missing.ts';\nthrow new Error('CONTENT_EXECUTED');\nexport default data.field(missing());";
+    write("content/not-a-kind/wind.ts", wind);
+    let import = "import * as og from '@origingame/engine/author';\nthrow new Error('IMPORT_EXECUTED');\nexport default og.file.import({kind:'model',source:'assets/gate.glb'});";
+    write("modules/north/content/model/gate'北.ts", import);
+    write(
+        "modules/north/content/scene/main.ts",
+        "import * as og from '@origingame/engine/author'; export default og.file.scene({entities:[]});",
+    );
+    for skipped in [".og", "cooked", "og-out", "dist", "node_modules"] {
+        write(&format!("content/{skipped}/invalid.ts"), "not source");
+    }
+    let index = Index::open(&dir, &project).unwrap();
+    assert_eq!(index.entries.len(), 3);
+    assert_eq!(index.entries["base/not-a-kind/wind"].kind, "field");
+    let gate = &index.entries["north/model/gate'北"];
+    assert_eq!((&*gate.factory, &*gate.kind), ("import", "model"));
+    assert_eq!(index.files[&gate.file], gate.id);
+    assert_eq!(index.entries["north/scene/main"].kind, "scene");
+    let types = index.declarations();
+    assert_eq!(types, Index::open(&dir, &project).unwrap().declarations());
+    let candidate = BTreeMap::from([(gate.file.clone(), import.replace("'model'", "'texture'"))]);
+    let edited = Index::open_with_overlay(&dir, &project, &candidate).unwrap();
+    assert_eq!(edited.entries[&gate.id].kind, "texture");
+    assert_ne!(edited.entries[&gate.id].digest, gate.digest);
+    assert_eq!(edited.declarations()["base"], types["base"]);
+    let value_edit = BTreeMap::from([(gate.file.clone(), import.replace("gate.glb", "other.glb"))]);
+    let value_index = Index::open_with_overlay(&dir, &project, &value_edit).unwrap();
+    assert_ne!(value_index.entries[&gate.id].digest, gate.digest);
+    assert_eq!(value_index.declarations(), types);
+    assert_eq!(
+        std::fs::read_to_string(dir.join(&gate.file)).unwrap(),
+        import
+    );
+
+    // The actual public author module is augmented, not a handwritten stand-in.
+    let engine = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../packages/engine")
+        .canonicalize()
+        .unwrap();
+    for (module, text) in &types {
+        write(&format!(".og/types/content/{module}.d.ts"), text);
+    }
+    write("tsconfig.json", &json!({
+        "compilerOptions":{"strict":true,"noEmit":true,"target":"esnext","module":"esnext","moduleResolution":"bundler",
+            "paths":{"@origingame/engine/author":[engine.join("src/author.d.ts").to_str().unwrap()]}},
+        "include":["contracts.ts",".og/types/**/*.d.ts"]
+    }).to_string());
+    write(
+        "contracts.ts",
+        r#"
+import type {ContentIndex} from '@origingame/engine/author';
+const id: keyof ContentIndex = "north/model/gate'北";
+const kind: ContentIndex[typeof id]['kind'] = 'model';
+const factory: ContentIndex[typeof id]['factory'] = 'import';
+const file: ContentIndex[typeof id]['file'] = "modules/north/content/model/gate'北.ts";
+const wind: ContentIndex['base/not-a-kind/wind']['kind'] = 'field';
+// @ts-expect-error A missing source is not in this snapshot.
+const absent: keyof ContentIndex = 'north/model/missing';
+// @ts-expect-error Primary kind is not the import factory's name or its folder.
+const wrong: ContentIndex[typeof id]['kind'] = 'texture';
+// @ts-expect-error Derived subresources are not guessed from factory spellings.
+const derived: keyof ContentIndex = "north/model/gate'北#collider";
+declare const entry: ContentIndex[typeof id];
+// @ts-expect-error Generated identities and metadata are readonly.
+entry.kind = 'model';
+"#,
+    );
+    let check = std::process::Command::new("tsrs")
+        .args(["--project", "tsconfig.json"])
+        .current_dir(&dir)
+        .output()
+        .expect("pinned tsrs checker");
+    assert!(
+        check.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&check.stdout),
+        String::from_utf8_lossy(&check.stderr)
+    );
+
+    // Module relocation preserves IDs and source byte identities, not file paths.
+    std::fs::create_dir_all(dir.join("chapters")).unwrap();
+    std::fs::rename(dir.join("modules/north"), dir.join("chapters/north")).unwrap();
+    write("project.ts", &manifest("chapters/north"));
+    let moved = Project::open(&dir).unwrap();
+    let moved_index = Index::open(&dir, &moved).unwrap();
+    assert_eq!(moved_index.entries[&gate.id].digest, gate.digest);
+    assert_eq!(
+        moved_index.entries[&gate.id].file,
+        "chapters/north/content/model/gate'北.ts"
+    );
+    assert_eq!(moved_index.declarations()["base"], types["base"]);
+    std::fs::remove_file(dir.join("chapters/north/content/model/gate'北.ts")).unwrap();
+    assert!(
+        !Index::open(&dir, &moved)
+            .unwrap()
+            .entries
+            .contains_key(&gate.id)
+    );
+
+    let bad_file = "content/bad.ts";
+    for value in [
+        "{kind: 'not-a-kind'}",
+        "{kind: 3}",
+        "{}",
+        "{kind: tag}",
+        "{kind:'model', ...rest}",
+        "{kind:'model',kind:'texture'}",
+        "importedOptions",
+    ] {
+        write(
+            bad_file,
+            &format!(
+                "import * as og from '@origingame/engine/author';\nexport default og.file.import({value});"
+            ),
+        );
+        let error = Index::open(&dir, &moved).err().unwrap();
+        assert_eq!((&*error.file, &*error.path), (bad_file, "/kind"));
+        assert_eq!(error.location.line, 2);
+        assert!(error.message.contains("direct string literal"), "{error}");
+    }
+    for value in ["file.unknown({})", "file[kind]({})", "({})"] {
+        write(
+            bad_file,
+            &format!("import {{file}} from '@origingame/engine/author'; export default {value};"),
+        );
+        assert!(Index::open(&dir, &moved).is_err());
+    }
+    std::fs::remove_file(dir.join(bad_file)).unwrap();
+    for file in [
+        "content/old.ogt",
+        "content/wind.d.ts",
+        "content/wind#field.ts",
+        "content/wind*.ts",
+        "content/wind.ts ",
+    ] {
+        write(file, wind);
+        assert!(Index::open(&dir, &moved).is_err(), "accepted {file}");
+        std::fs::remove_file(dir.join(file)).unwrap();
+    }
+    write("content/not-a-kind/WIND.ts", wind);
+    let collision = Index::open(&dir, &moved).err().unwrap();
+    assert!(collision.message.contains("collides"), "{collision}");
+    std::fs::remove_file(dir.join("content/not-a-kind/WIND.ts")).unwrap();
+    for file in [
+        "../outside.ts",
+        "content/../src/main.ts",
+        ".og/types/content/base.d.ts",
+        "content/absent.ts",
+    ] {
+        assert!(
+            Index::open_with_overlay(&dir, &moved, &BTreeMap::from([(file.into(), wind.into())]))
+                .is_err()
+        );
+    }
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(dir.join("src"), dir.join("content/linked")).unwrap();
+        assert!(
+            Index::open(&dir, &moved)
+                .err()
+                .unwrap()
+                .message
+                .contains("symlink")
+        );
+        std::fs::remove_file(dir.join("content/linked")).unwrap();
+    }
+}
+
+#[test]
 fn author_factories_use_the_registered_input_contracts() {
     use og_cook::cook::{generator::Program, source_schemas::File};
     let dir = temp::TempDir::new("author-factories");

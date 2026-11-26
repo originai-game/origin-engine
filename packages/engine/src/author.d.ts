@@ -9,6 +9,11 @@ export declare function defineModule(value: ModuleInput): ModuleInput;
 /** Project declarations augment this interface with contextual file inputs. */
 export interface ContextualFileInputs {}
 
+/** Project-generated content entry identities, discovered without evaluation.
+ * Values contain the root-relative source file, factory and primary kind.
+ * Derived subresources and checked reference edges belong to the cook graph. */
+export interface ContentIndex {}
+
 /** A cook descriptor, never a runtime asset handle. */
 export interface File<K extends string, T> {
   readonly $ogFile: K;

@@ -21,11 +21,12 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
 };
 
-mod author;
+pub(super) mod author;
 pub mod source;
 pub mod value;
 
 const BUILTIN: &str = "@origingame/engine/generate";
+pub(super) const SOURCE_LIMIT: usize = 1024 * 1024;
 
 /// Standalone script source blocks; terrain adds its processing stages.
 pub const SCRIPT_LINES: &[crate::grammar::Line] = &[
@@ -275,7 +276,7 @@ fn module(
         return Err("a generator imports at most 128 modules".into());
     }
     let bytes = read(root, path, overlay)?;
-    if bytes.len() > 1024 * 1024
+    if bytes.len() > SOURCE_LIMIT
         || modules.values().map(String::len).sum::<usize>() + bytes.len() > 8 * 1024 * 1024
     {
         return Err("generator source budget is 1 MiB per module and 8 MiB in total".into());
@@ -402,7 +403,7 @@ impl Program {
                     "{path}: candidate source must be a normalized root-relative .ts path"
                 ));
             }
-            if read(root, path, overlay)?.len() > 1024 * 1024 {
+            if read(root, path, overlay)?.len() > SOURCE_LIMIT {
                 return Err(format!(
                     "{path}: candidate source budget is 1 MiB per module"
                 ));

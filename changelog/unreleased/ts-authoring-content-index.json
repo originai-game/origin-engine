@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "typed content entry index",
+      "summary": "Adds pre-evaluation file-to-ID-to-kind discovery and per-module ContentIndex declarations. Content roots contain direct file.<kind> TypeScript entries; import entries require a literal schema-defined kind. Module relocation preserves IDs. Helpers, binary inputs and external exchange text belong outside content/. This foundation does not yet switch CLI/scaffold author formats, infer derived outputs or validate reference graphs."
+    }
+  ]
+}
