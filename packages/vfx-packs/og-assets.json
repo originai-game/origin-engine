@@ -3,62 +3,62 @@
   "files": [
     {
       "path": "cinematic-realism/preview/celebration.png",
-      "sha256": "cfda4233cc0e87aaa8417aaa211845e0544bbe627c2afc490518af58a971dc70",
-      "size": 3138402,
+      "sha256": "bf37b869465bb0c0334dd9811ba1db3286cbbebe57bd82b5e31b17aa44a96266",
+      "size": 3143889,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/cover.png",
-      "sha256": "4513307dc0956b3260d0c46cc6e27f36bff7bc847453c6ba8eff47b3b9d33e2e",
-      "size": 149709,
+      "sha256": "98520afd891cf7f11012ad364b35defbce33dd7f95dc06e7c72ccbbd260a12ac",
+      "size": 162494,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/dust.png",
-      "sha256": "6367c065e31ec8f4dff22a12f864ababff35e1885435179d84a6b14679dfb212",
-      "size": 3142112,
+      "sha256": "9f0b00a149218a2f163636d9b213298a1d3d1278fa8f2e6057f59ab93dcdf61b",
+      "size": 3147730,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/exhaust.png",
-      "sha256": "145e9a56b0f1e5bb8da59468251ae9188c43b7ecf62ddd02e5f91c736567fd50",
-      "size": 3172440,
+      "sha256": "34da7156b0c83295583c76b09af0e034327083800c3829469bb3bcaf6f191e8b",
+      "size": 3198904,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/explosion.png",
-      "sha256": "b305d2043bbb8a18e9120b748b07104bb816154ce93efa2fd78ac0032a56aaff",
-      "size": 3192952,
+      "sha256": "7fa19ddecb489653ea71e623f201c8c75df257fa3d2de43fc6452e9bc66cb27c",
+      "size": 3168315,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/impact.png",
-      "sha256": "70e2362f1441322e8d0efe6742aff683317a0baa50aacbf678da27e2ecea4453",
-      "size": 3155446,
+      "sha256": "d47d388ec0e500875f2e9463e15a89f82834165d4845de35933475e73d6692d4",
+      "size": 3155050,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/magic.png",
-      "sha256": "ac20b0bcc6d0aac637f6a1c3aa23a33c743320df92c5f9726be3608c1e1e9e69",
-      "size": 3217546,
+      "sha256": "796b6b2e621506582b019effe9cf78aff86ef173736e9f7131dada6f97add90b",
+      "size": 3234234,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/muzzle.png",
-      "sha256": "47987564281cb737d02c4d7efa8cd1b7f2bdf90fc3f57a65110831634ccacb77",
-      "size": 3147351,
+      "sha256": "00e1cfa67ebf6e10428169f4ac4d89381756422a3bb2b2d060f26c27ef7a6db2",
+      "size": 3149822,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/pickup.png",
-      "sha256": "64fd0186fed8e30661a952deaf0f406d4f1aa403ffd9da7a08ffa069da2499f7",
-      "size": 3174829,
+      "sha256": "2f2e9fab917cc989166057c6cf53a85eecccc9f53d0fb09ece3a865e84ec2202",
+      "size": 3175300,
       "visibility": "public"
     },
     {
       "path": "cinematic-realism/preview/splash.png",
-      "sha256": "bf666cca9e329dbc2285634bbdbd409a30657bc00e8e9d85de207f3544520a84",
-      "size": 3151094,
+      "sha256": "9d7e5425f85fd309ac0de00078c1c2eab483ba5e4aa24903d0e0c8af58407dd5",
+      "size": 3170319,
       "visibility": "public"
     },
     {

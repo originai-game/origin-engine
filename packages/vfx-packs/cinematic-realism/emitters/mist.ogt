@@ -9,7 +9,7 @@ duration 0.05
 looping false
 lifetime 0.5 1.1
 speed 0.2 0.5
-size 0.25 0.4
+size 0.35 0.6
 sizeOverLife 0 0.4 1 2
 rotation 0 360
 gravity 0 0.05 0
@@ -20,7 +20,7 @@ blend alpha
 color 0.8 0.88 0.92
 colorOverLife {
   key 0 1 1 1 0
-  key 0.12 1 1 1 0.12
+  key 0.12 1 1 1 0.3
   key 1 1 1 1 0
 }
 softDistance 0.2

@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# MIT Origin Engine. The central water column of a splash: large drops
+# thrown up and falling back with short streaks.
+maxParticles 48
+shape cone 14 0.08
+rate 0
+burst 0 40
+duration 0.05
+looping false
+lifetime 0.6 1.2
+speed 2 3.4
+size 0.035 0.065
+align velocity 0.02
+gravity 0 -9.8 0
+drag 0.4
+trail 0.035 0.5
+blend alpha
+color 0.85 0.93 1
+colorOverLife {
+  key 0 1 1 1 0.9
+  key 0.7 1 1 1 0.7
+  key 1 1 1 1 0
+}
+collision 0.1 0.5 colliders die

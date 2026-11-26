@@ -5,6 +5,8 @@ duration 1.6
 impact 0
 emitter "vfx/cinematic-realism/emitters/spray.ogt" {
 }
+emitter "vfx/cinematic-realism/emitters/column.ogt" {
+}
 emitter "vfx/cinematic-realism/emitters/mist.ogt" {
   offset 0 0.05 0
 }

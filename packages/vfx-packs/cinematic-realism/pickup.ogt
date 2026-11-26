@@ -6,6 +6,9 @@ impact 0
 emitter "vfx/cinematic-realism/emitters/motes.ogt" {
   offset 0 0.45 0
 }
+emitter "vfx/cinematic-realism/emitters/glints.ogt" {
+  offset 0 0.35 0
+}
 glow {
   life 0.5
   offset 0 0.45 0

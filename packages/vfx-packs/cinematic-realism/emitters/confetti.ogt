@@ -1,15 +1,15 @@
 type particles
 version 1
 ---
-maxParticles 48
+maxParticles 80
 shape cone 40 0.1
 rate 0
-burst 0 40
+burst 0 72
 duration 0.05
 looping false
 lifetime 1.8 2.8
 speed 1.8 3.2
-size 0.025 0.045
+size 0.04 0.07
 heightOverLife 0 0.12 1 0.12
 rotation 0 360
 angularVelocity -240 240
