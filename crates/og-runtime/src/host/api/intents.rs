@@ -98,3 +98,23 @@ pub fn og_input_replay_intent(world: u32, intent: String) -> Result<(), String> 
             .map_err(err)
     })()
 }
+
+/// The fields of this world's types that hold a tick number (unit `tick`),
+/// as (type, field): a restart check reads them from each world's clock.
+pub fn world_tick_fields(world: u32) -> Vec<(String, String)> {
+    engine(world)
+        .and_then(|eng| {
+            eng.world().map(|w| {
+                w.schemas()
+                    .into_iter()
+                    .flat_map(|s| {
+                        s.fields
+                            .into_iter()
+                            .filter(|f| f.unit.as_deref() == Some("tick"))
+                            .map(move |f| (s.name.clone(), f.name))
+                    })
+                    .collect()
+            })
+        })
+        .unwrap_or_default()
+}

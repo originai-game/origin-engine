@@ -81,8 +81,23 @@ pub fn og_node_restart_diff(
             Ok((ignore, keep))
         })
         .and_then(|(mut ignore, keep)| {
-            let start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
-            let now = world(engine)?;
+            let mut start = Snapshot::decode(&og_runtime::save_snapshot_bytes(&save_text)?)?;
+            let mut now = world(engine)?;
+            // A snapshot carries no units: the tick numbers are named here, so
+            // each reads from its own world's clock.
+            let ticks = og_runtime::world_tick_fields(engine);
+            for s in [&mut start, &mut now] {
+                for t in &mut s.types {
+                    for f in &mut t.schema.fields {
+                        if ticks
+                            .iter()
+                            .any(|(ty, field)| *ty == t.name && *field == f.name)
+                        {
+                            f.unit = Some("tick".into());
+                        }
+                    }
+                }
+            }
             let (kept_ignore, kept) = restart_kept(&start, &now, &keep)?;
             // The queue of an event the input path delivered is input, as og.KeyDown's is.
             for name in og_runtime::world_input_events(engine) {

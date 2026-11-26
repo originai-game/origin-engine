@@ -16,7 +16,7 @@ Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`;
 |---|---|---|---|---|---|---|
 | `emitter` | `ParticleEmitter` | `0` | — | — | — | The emitter asset; 0 draws nothing. |
 | `seed` | `number` | `0` | — | — | — | The random seed: systems with different seeds differ. |
-| `startTick` | `number` | `4294967295` | — | — | — | The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written. |
+| `startTick` | `number` | `4294967295` | — | `tick` | — | The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written. |
 | `stopTick` | `number` | `0` | — | — | — | The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn (a hidden system loses its particles). |
 | `layers` | `number` | `1` | — | — | — | Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror). |
@@ -28,6 +28,7 @@ component ParticleSystem {
   field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
   field seed u32 "The random seed: systems with different seeds differ."
   field startTick u32 "The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written." {
+    unit tick
     default 4294967295
   }
   field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."

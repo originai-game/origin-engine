@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.Vfx.startTick",
+      "change": "A playtest restart check (and `og run --restart-at`) compares a tick number, a field of the new unit `tick` (og.Vfx.startTick and ran, og.ParticleSystem.startTick, og.destruction's Chunk.looseTick), as how long before its world's og.Time it was, not as the number: a restart at tick 1870 that writes 1870 matches a fresh start's 0, and an effect kept from the first start whose startTick stays 0 now differs (`startTick is {\"ticksAgo\":1871}, a fresh start's {\"ticksAgo\":1}`).",
+      "fix": "On a restart, write the tick to the startTick of every effect and particle system the restart keeps instead of spawning again (og.vfx writes ran from it).",
+      "find": ["startTick"]
+    }
+  ]
+}

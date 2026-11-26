@@ -109,6 +109,7 @@ module destruction {
       readonly true
     }
     field looseTick u32 "The tick it broke loose; 4294967295 while anchored." {
+      unit tick
       default 4294967295
       readonly true
     }

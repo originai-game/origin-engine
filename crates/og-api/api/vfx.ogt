@@ -18,6 +18,7 @@ module vfx {
     field asset VfxAsset "The effect (og.load.vfx); 0 plays nothing."
     field seed u32 "Its random seed: what `random` values, emitters and sound pitches pick (instances with different seeds differ)."
     field startTick u32 "The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written." {
+      unit tick
       default 4294967295
     }
     field scale f32 "Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform." {
@@ -40,6 +41,7 @@ module vfx {
       default true
     }
     field ran u32 "Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start." {
+      unit tick
       default 4294967295
       readonly true
     }

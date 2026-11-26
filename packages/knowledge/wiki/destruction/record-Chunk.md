@@ -16,7 +16,7 @@ Token `og.Chunk`, registered under the schema name `og.Chunk`; its value type is
 | `chunk` | `number` | `0` | — | — | read only | Its index in the fracture asset. |
 | `level` | `number` | `0` | — | — | read only | 1 a support chunk, 2 a chunk's child. |
 | `body` | `Entity` | `0` | — | — | read only | The entity whose og.RigidBody moves it: its own, its island's body, or 0 while anchored. |
-| `looseTick` | `number` | `4294967295` | — | — | read only | The tick it broke loose; 4294967295 while anchored. |
+| `looseTick` | `number` | `4294967295` | — | `tick` | read only | The tick it broke loose; 4294967295 while anchored. |
 
 ```ogt
 component Chunk {
@@ -35,6 +35,7 @@ component Chunk {
     readonly true
   }
   field looseTick u32 "The tick it broke loose; 4294967295 while anchored." {
+    unit tick
     default 4294967295
     readonly true
   }

@@ -12,6 +12,7 @@
     "deg": "degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract",
     "hz": "ticks or cycles per second",
     "ticks": "fixed simulation steps",
+    "tick": "a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is",
     "cssPx": "CSS pixels of the play surface, origin at the top left",
     "px": "pixels of an image, origin at its top left",
     "ratio": "a fraction between 0 and 1",
@@ -29848,7 +29849,8 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written.",
-          "default": 4294967295
+          "default": 4294967295,
+          "x-og-unit": "tick"
         },
         "stopTick": {
           "type": "integer",
@@ -60652,6 +60654,7 @@
           "maximum": 4294967295,
           "description": "The tick it broke loose; 4294967295 while anchored.",
           "default": 4294967295,
+          "x-og-unit": "tick",
           "readOnly": true
         }
       },
@@ -61423,7 +61426,8 @@
           "minimum": 0,
           "maximum": 4294967295,
           "description": "The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written.",
-          "default": 4294967295
+          "default": 4294967295,
+          "x-og-unit": "tick"
         },
         "scale": {
           "type": "number",
@@ -61473,6 +61477,7 @@
           "maximum": 4294967295,
           "description": "Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start.",
           "default": 4294967295,
+          "x-og-unit": "tick",
           "readOnly": true
         }
       },

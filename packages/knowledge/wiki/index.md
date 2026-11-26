@@ -134,6 +134,7 @@ Field units the docs and Tune use.
 | `deg` | degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract |
 | `hz` | ticks or cycles per second |
 | `ticks` | fixed simulation steps |
+| `tick` | a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is |
 | `cssPx` | CSS pixels of the play surface, origin at the top left |
 | `px` | pixels of an image, origin at its top left |
 | `ratio` | a fraction between 0 and 1 |

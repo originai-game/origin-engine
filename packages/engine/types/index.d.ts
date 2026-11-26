@@ -11176,6 +11176,7 @@ export interface ParticleSystem {
    * The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written.
    *
    * @default 4294967295
+   * @unit tick (a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is)
    */
   startTick: number;
   /**
@@ -34970,6 +34971,7 @@ export interface Chunk {
    * The tick it broke loose; 4294967295 while anchored.
    *
    * @default 4294967295
+   * @unit tick (a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is)
    * @readonly written by the engine
    */
   readonly looseTick: number;
@@ -35605,6 +35607,7 @@ export interface Vfx {
    * The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written.
    *
    * @default 4294967295
+   * @unit tick (a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is)
    */
   startTick: number;
   /**
@@ -35649,6 +35652,7 @@ export interface Vfx {
    * Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start.
    *
    * @default 4294967295
+   * @unit tick (a tick number (og.Time.tick) that marks when something happened or happens; a world checked against a fresh start (playtest restart) compares it as an offset from its own og.Time.tick, and 4294967295 (never written) as is)
    * @readonly written by the engine
    */
   readonly ran: number;

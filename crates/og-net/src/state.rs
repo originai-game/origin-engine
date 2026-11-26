@@ -1191,6 +1191,17 @@ fn same_handle(
 
 /// The fields of one record that differ after the pairing, as
 /// `{ field, start, now }`, leaving out `skip`.
+/// A tick number (unit `tick`, a u32) as an offset from its world's
+/// og.Time tick; the never-written default (`u32::MAX`) as itself.
+fn tick_offset(s: &Snapshot, b: &[u8]) -> Option<i64> {
+    let v = u32::from_le_bytes(b.try_into().ok()?);
+    Some(if v == u32::MAX {
+        i64::MAX
+    } else {
+        i64::from(v) - s.clock()? as i64
+    })
+}
+
 fn record_changes(
     (start, ts, bs): (&Snapshot, usize, &[u8]),
     (now, tn, bn): (&Snapshot, usize, &[u8]),
@@ -1213,6 +1224,16 @@ fn record_changes(
         let y = &bn[sn.layout.range(j)];
         let same = match (f.ty, g.ty) {
             (FieldType::U64, FieldType::U64) => same_handle(x, y, map, names),
+            // A tick number reads from each world's clock: a restart at
+            // tick 1870 that writes 1870 wrote a fresh start's 0.
+            (FieldType::U32, FieldType::U32)
+                if f.unit.as_deref() == Some("tick") && g.unit.as_deref() == Some("tick") =>
+            {
+                match (tick_offset(start, x), tick_offset(now, y)) {
+                    (Some(a), Some(b)) => a == b,
+                    _ => x == y,
+                }
+            }
             (
                 FieldType::List(og_core::Scalar::U64, _),
                 FieldType::List(og_core::Scalar::U64, _),
@@ -1226,8 +1247,15 @@ fn record_changes(
             _ => f.ty == g.ty && x == y,
         };
         if !same {
+            // A tick number reads as how long ago it was, as a module record's does.
+            let shown = |s: &Snapshot, f: &FieldSchema, b: &[u8]| match tick_offset(s, b) {
+                Some(o) if f.unit.as_deref() == Some("tick") && o != i64::MAX => {
+                    json!({ "ticksAgo": -o })
+                }
+                _ => field_json(f, b),
+            };
             out.push(
-                json!({ "field": f.name, "start": field_json(f, x), "now": field_json(g, y) }),
+                json!({ "field": f.name, "start": shown(start, f, x), "now": shown(now, g, y) }),
             );
         }
     }

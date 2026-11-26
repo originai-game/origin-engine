@@ -706,6 +706,7 @@
     field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
     field seed u32 "The random seed: systems with different seeds differ."
     field startTick u32 "The tick emission started: write the tick (`world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, a one-shot (`looping false`) emits nothing until a tick is written." {
+      unit tick
       default 4294967295
     }
     field stopTick u32 "The tick emission stops (the particles live out); 0 keeps emitting while the emitter loops."

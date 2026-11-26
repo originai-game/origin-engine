@@ -14,14 +14,14 @@ Token `og.Vfx`, registered under the schema name `og.Vfx`; its value type is `Vf
 |---|---|---|---|---|---|---|
 | `asset` | `VfxAsset` | `0` | — | — | — | The effect (og.load.vfx); 0 plays nothing. |
 | `seed` | `number` | `0` | — | — | — | Its random seed: what `random` values, emitters and sound pitches pick (instances with different seeds differ). |
-| `startTick` | `number` | `4294967295` | — | — | — | The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written. |
+| `startTick` | `number` | `4294967295` | — | `tick` | — | The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written. |
 | `scale` | `number` | `1` | ≥ 0 | — | — | Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the colour of everything it draws (linear; above 1 brightens). |
 | `emission` | `number` | `1` | 0 … 1 | — | — | The share of its emitters' particles that are born (0 to 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, so a smaller fire or a distant one costs less. |
 | `hue` | `number` | `0` | — | `rad` | — | Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3). |
 | `params` | `readonly number[]` | `[]` | — | — | a list of at most 4 `f32` (`List.f32.4`): reads a frozen copy, writes a whole array | Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast. |
 | `despawn` | `boolean` | `true` | — | — | — | Despawn the entity on the tick after a non-looping effect ends. |
-| `ran` | `number` | `4294967295` | — | — | read only | Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start. |
+| `ran` | `number` | `4294967295` | — | `tick` | read only | Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start. |
 
 ```ogt
 component Vfx {
@@ -29,6 +29,7 @@ component Vfx {
   field asset VfxAsset "The effect (og.load.vfx); 0 plays nothing."
   field seed u32 "Its random seed: what `random` values, emitters and sound pitches pick (instances with different seeds differ)."
   field startTick u32 "The tick it started: write the tick (`world.tick`) to play it, or to play it again. Its default, never written, waits: an effect spawned ahead of its use plays nothing until a tick is written." {
+    unit tick
     default 4294967295
   }
   field scale f32 "Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform." {
@@ -51,6 +52,7 @@ component Vfx {
     default true
   }
   field ran u32 "Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start." {
+    unit tick
     default 4294967295
     readonly true
   }

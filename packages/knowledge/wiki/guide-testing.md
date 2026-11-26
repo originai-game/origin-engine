@@ -239,7 +239,11 @@ const run = await runPlaytest({ commands: "10:quit", budget: { frameMs: { p95: 1
   first. The comparison is structural. Entities pair by name, then in spawn
   order within their component set; every handle field reads through that
   pairing; the entity allocator (generations, free list) and the clock
-  (og.Time and the time scale) are left out. Despawning everything and
+  (og.Time and the time scale) are left out, and a tick number (a field of
+  unit `tick`, such as og.Vfx.startTick) compares as how long before its
+  world's og.Time it was: a restart at tick 1870 that writes 1870 to
+  startTick wrote a fresh start's 0. An effect spawned in GameDesc.start
+  and kept across restarts is restarted by writing its startTick. Despawning everything and
   spawning it again is a restart, as is resetting in place. A difference
   fails the playtest with its first one by entity path
   (`run.restart.first`: `level/hero Hp.now is 3, a fresh start's 10`,
