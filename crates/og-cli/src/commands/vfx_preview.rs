@@ -70,7 +70,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
+const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--project-look | --look asset.ogt] [--scene asset.ogt] [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov] [--decal-atlas <texture>] [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]";
 
 const STAGE: &str = include_str!("vfx_preview/stage.ts");
 const TICK: f64 = 60.0;
@@ -130,6 +130,11 @@ struct Args {
     quality: String,
     keep: bool,
     together: bool,
+    project_look: bool,
+    look: String,
+    scene: String,
+    position: [f64; 3],
+    camera: Option<[f64; 7]>,
 }
 
 fn parse(args: &[&str]) -> Result<Args, String> {
@@ -145,6 +150,11 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         quality: String::new(),
         keep: false,
         together: false,
+        project_look: false,
+        look: String::new(),
+        scene: String::new(),
+        position: [0.0; 3],
+        camera: None,
     };
     let mut i = 0;
     while i < args.len() {
@@ -154,13 +164,28 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             "--cost-only" => a.cost_only = true,
             "--keep" => a.keep = true,
             "--together" => a.together = true,
-            flag @ ("--project" | "--out" | "--size" | "--decal-atlas" | "--quality") => {
+            "--project-look" => a.project_look = true,
+            flag @ ("--project" | "--out" | "--size" | "--decal-atlas" | "--quality" | "--look"
+            | "--scene" | "--position" | "--camera") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
                 match flag {
                     "--project" => a.project = v.to_string(),
                     "--out" => a.out = Some(v.to_string()),
+                    "--look" => a.look = v.to_string(),
+                    "--scene" => a.scene = v.to_string(),
+                    "--position" => a.position = coordinates(v)?,
+                    "--camera" => {
+                        let camera = coordinates::<7>(v)?;
+                        if !(0.0 < camera[6] && camera[6] < 180.0) || camera[..3] == camera[3..6] {
+                            return Err(
+                                "--camera needs distinct position/target and fov >0..<180 degrees"
+                                    .into(),
+                            );
+                        }
+                        a.camera = Some(camera);
+                    }
                     "--decal-atlas" => a.decal_atlas = v.to_string(),
                     "--quality" if matches!(*v, "low" | "medium" | "high") => {
                         a.quality = v.to_string()
@@ -183,11 +208,24 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         }
         i += 1;
     }
-    if a.effects.is_empty() || (a.cost_only && !a.cost) || (a.together && (a.cost_only || !a.cost))
+    if a.effects.is_empty()
+        || (a.cost_only && !a.cost)
+        || (a.together && (a.cost_only || !a.cost))
+        || (a.project_look && !a.look.is_empty())
     {
         return Err(USAGE.into());
     }
     Ok(a)
+}
+
+fn coordinates<const N: usize>(text: &str) -> Result<[f64; N], String> {
+    text.split(',')
+        .map(str::parse::<f64>)
+        .collect::<Result<Vec<_>, _>>()
+        .ok()
+        .filter(|v| v.iter().all(|n| n.is_finite()))
+        .and_then(|v| v.try_into().ok())
+        .ok_or_else(|| format!("expected {N} comma-separated finite numbers, got '{text}'"))
 }
 
 /// One effect asked for.
@@ -257,6 +295,7 @@ struct Stage<'a> {
     quality: &'a str,
     /// Leave each run's outputs in the scratch directory.
     keep: bool,
+    context: Value,
 }
 
 impl Stage<'_> {
@@ -282,6 +321,15 @@ impl Stage<'_> {
             .replace("__VFX2D__", &json!(pixel).to_string())
             .replace("__W__", &size.0.to_string())
             .replace("__H__", &size.1.to_string())
+            .replace(
+                "__CONTEXT__",
+                &if antialias == "off" {
+                    json!({})
+                } else {
+                    self.context.clone()
+                }
+                .to_string(),
+            )
             .replace("__DECAL_ATLAS__", self.decal_atlas)
             .replace("__QUALITY__", self.quality)
             .replace("__ANTIALIAS__", antialias);
@@ -314,6 +362,8 @@ impl Stage<'_> {
             .arg(bundle)
             .arg("--root")
             .arg(&self.project.root)
+            .arg("--project")
+            .arg(self.scratch.join("project.ogt"))
             .arg("--size")
             .arg(format!("{}x{}", size.0, size.1))
             .arg("--json")
@@ -692,7 +742,11 @@ fn shots(
                 times[j] = impact + 2.0 / TICK;
                 times.sort_by(f64::total_cmp);
             }
-            let lift = boxes[i].map_or(0.0, |m| m.lift());
+            let lift = if stage.context["enabled"] == true {
+                0.0
+            } else {
+                boxes[i].map_or(0.0, |m| m.lift())
+            };
             commands.push(format!(
                 "{:.3}:{}",
                 t + 0.1,
@@ -1047,6 +1101,7 @@ fn together(
     Ok(json!({
         "effects": effects.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(),
         "spacing": SPACING,
+        "context": stage.context,
         "renderer": summary["renderer"],
         "size": format!("{}x{}", size.0, size.1),
         "shownSeconds": round3(show),
@@ -1108,6 +1163,18 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         return Err((2, "preview `type vfx` and `type vfx2d` effects in separate calls: one stage is 3D, the other 2D".into()));
     }
     let dim = if pixel.is_empty() { "3d" } else { "2d" };
+    if dim == "2d"
+        && (a.project_look
+            || !a.look.is_empty()
+            || !a.scene.is_empty()
+            || a.camera.is_some()
+            || a.position != [0.0; 3])
+    {
+        return Err((
+            2,
+            "look/scene/position/camera preview options currently require type vfx (3D)".into(),
+        ));
+    }
     let out = a
         .out
         .as_ref()
@@ -1129,6 +1196,32 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
     let scratch = p.work_dir().join("vfx-preview");
     let _ = std::fs::remove_dir_all(&scratch);
     std::fs::create_dir_all(&scratch).map_err(|e| fail(format!("{}: {e}", scratch.display())))?;
+    // Runtime metadata is deliberately isolated from the project's boot
+    // scene, seed and look. Assets still come from the project's bundle.
+    std::fs::write(
+        scratch.join("project.ogt"),
+        format!("type project\nversion 1\n---\ncreate {{\nform \"{dim}\"\n}}\n"),
+    )
+    .map_err(|e| fail(e.to_string()))?;
+    let look = if a.project_look {
+        let text =
+            std::fs::read_to_string(p.root.join("project.ogt")).map_err(|e| fail(e.to_string()))?;
+        let doc = og_core::ogt::Document::parse(&text).map_err(|e| fail(e.to_string()))?;
+        og_cook::look::project_look(&doc.body)
+            .map_err(fail)?
+            .ok_or_else(|| {
+                (
+                    2,
+                    "--project-look requires project.ogt's look declaration".into(),
+                )
+            })?
+    } else {
+        a.look.clone()
+    };
+    let context = json!({
+        "enabled": !look.is_empty() || !a.scene.is_empty() || a.camera.is_some() || a.position != [0.0; 3],
+        "look": look, "scene": a.scene, "position": a.position, "camera": a.camera,
+    });
     let stage = Stage {
         project: &p,
         package: &package,
@@ -1137,6 +1230,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         decal_atlas: &a.decal_atlas,
         quality: &a.quality,
         keep: a.keep,
+        context,
     };
     let show = stage.bundle(dim, &pixel, a.size, "tier").map_err(fail)?;
     if a.together {
@@ -1191,6 +1285,9 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
                 .ok()
                 .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
                 .ok_or_else(|| fail(format!("{}: --cost-only reads an earlier preview's record; run `og vfx preview {} --no-cost` with the same --out first", path.display(), e.id)))?;
+            if record["context"] != stage.context {
+                return Err((2, "--cost-only requires the same look, scene, position and camera as the recorded preview".into()));
+            }
             records.push(record);
         }
     } else {
@@ -1225,7 +1322,8 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
                 "elements": tm.elements,
                 "bounds": bounds,
                 "core": core,
-                "raised": b.map_or(0.0, |m| (m.lift() * 100.0).round() / 100.0),
+                "raised": if stage.context["enabled"] == true { 0.0 } else { b.map_or(0.0, |m| (m.lift() * 100.0).round() / 100.0) },
+                "context": stage.context,
                 "draws": s.draws,
                 "peakParticles": s.particles,
                 "warnings": s.warnings,

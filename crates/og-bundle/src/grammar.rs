@@ -114,6 +114,9 @@ Every line the three effect formats take, from the tables their parsers read: an
         "\nAn element's block takes these lines; In names the elements that take one (every: all of them; ring: a `mesh ring`):\n\n",
     );
     table(&mut out, crate::vfx::ELEMENT_LINES, true);
+    out.push_str(
+        "\n## 4. Cook-generated sources\n\nEach of `particles`, `effect` and `vfx` can contain one exclusive `generate` block instead of body declarations. The existing restricted TS executor returns `EffectSource {text}`: only the body, without type/version/header. The target format's ordinary parser validates the result at the file's declared version; imports, input bytes and parameters are tracked as in `generating`. Recursive generation is refused. See `file-types` for the generate block's fields.\n\n`type effect-texture` cooks density/heat volumes or shared procgen noise/Worley/curl into a scattering sheet at its id, a thermal emission sheet at `#emission`, and chronological arrays at `#array` and `#emission#array`. All parameters, units and limits are in `og api show file:effect-texture`. `effects §5` explains sampling and has a checked recipe composing all three generated effect types with a generated volume.\n",
+    );
     out
 }
 

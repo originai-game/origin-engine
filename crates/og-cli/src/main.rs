@@ -248,9 +248,11 @@ commands:
                       one-shot effect gets an impact where the most starts at once; --hit
                       adds a light and a camera shake there (hits, explosions)
   vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>]
+              [--project-look | --look asset.ogt] [--scene asset.ogt]
+              [--position x,y,z] [--camera px,py,pz,tx,ty,tz,fov]
               [--quality low|medium|high] [--no-cost | --cost-only | --together] [--keep] [--json]
                       play each effect (type vfx, or type vfx2d in a 2D project) alone on a
-                      dark stage and report it: six frames in time order tiled into
+                      dark stage, or the selected project look/scene, and report it: six frames tiled into
                       <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed
                       by the box the effect was measured to reach; its length, impact time,
                       measured size and anchor, draw calls, particle slots, the engine's

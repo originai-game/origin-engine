@@ -1,5 +1,115 @@
 use super::*;
 
+/// Generated effects use the public cook/load contracts, including virtual
+/// array links; uncached deterministic volume data and cache hits agree.
+#[test]
+fn generated_effect_sources_cook_and_link() {
+    let root = TempDir::new("og-generated-effects");
+    let assets = root.join("assets");
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(root.join("src/main.ts"), "export default {};\n").unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Effects\"\n",
+    )
+    .unwrap();
+    let volume = "type effect-texture\nversion 1\n---\nmode explosion\nsize 8\nframes 3\ncolumns 2\ngrid 8\nsteps 1\ndt 0.04\npressure 4\nseed 17\nfrequency 3\nturbulence 0.03\nsource 0.43 0.38 0.5\nradius 0.3\ninject 0\ndensity 12\nheat 1\nbuoyancy 0.1\nexpansion 0.4\ndecay 0.5\ncooling 2\nabsorption 8\ncolor 0.4 0.45 0.5\nemission 1 0.2 0.01\n";
+    let volume =
+        format!("{volume}range 1\ndetail 0.8\nvorticity 2\nlight -1 2 -1\nambient 0.2\ndirect 1\n");
+    std::fs::write(assets.join("volume.ogt"), &volume).unwrap();
+    for (name, ty, body) in [
+        (
+            "surface",
+            "effect",
+            "main \"volume.ogt#emission\"\nblend additive\n",
+        ),
+        (
+            "emitter",
+            "particles",
+            "maxParticles 1\nrate 0\nburst 0 1\nrender sprite\narray \"volume.ogt#array\" 3 life 1\neffect \"surface.ogt\"\n",
+        ),
+        (
+            "composed",
+            "vfx",
+            "duration 0.75\nemitter \"emitter.ogt\" {\nat 0\n}\n",
+        ),
+    ] {
+        std::fs::write(
+            assets.join(format!("{name}.ogt")),
+            format!(
+                "type {ty}\nversion {}\n---\ngenerate {{\nscript \"{name}.ts\"\n}}\n",
+                if ty == "vfx" { 2 } else { 1 }
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            assets.join(format!("{name}.ts")),
+            format!(
+                "export default () => ({{text: {}}});",
+                serde_json::to_string(body).unwrap()
+            ),
+        )
+        .unwrap();
+    }
+    let cook = |cache: &str| {
+        og().args(["cook", ".", "--json"])
+            .env("OG_COOK_CACHE", cache)
+            .current_dir(&root)
+            .output()
+            .unwrap()
+    };
+    let out = cook("off");
+    assert!(out.status.success(), "{}", text(&out));
+    let load = || og_cook::runtime::Bundle::open(&root.join("cooked")).unwrap();
+    let bundle = load();
+    let sheet = bundle.load_texture("volume.ogt").unwrap();
+    assert_eq!((sheet.meta.width, sheet.meta.height), (16, 16));
+    let array = bundle.load_texture_array("volume.ogt#array").unwrap();
+    assert_eq!(
+        (array.meta.width, array.meta.height, array.layers.len()),
+        (8, 8, 3)
+    );
+    assert_eq!(array.layers[2], "volume.ogt#array#layer2");
+    assert!(bundle.load_texture("volume.ogt#emission").is_ok());
+    let bytes = bundle.read("composed.ogt").unwrap();
+    let vfx = og_cook::vfx::parse_vfx(&bundle.vfx_text("composed.ogt", &bytes).unwrap()).unwrap();
+    assert_eq!(vfx.duration, 0.75);
+    assert_eq!(vfx.references().emitters, ["emitter.ogt"]);
+    let first = bundle.read("volume.ogt#array#layer1").unwrap().to_vec();
+    let pixels = bundle.load_texture("volume.ogt#array#layer1").unwrap().ktx2;
+    // Remove only this test's disposable cooked output, forcing a cold
+    // generation. Then exercise population and reuse of its private cache.
+    for cache in [
+        "off".to_string(),
+        root.join("cache").to_string_lossy().into_owned(),
+        root.join("cache").to_string_lossy().into_owned(),
+    ] {
+        std::fs::remove_dir_all(root.join("cooked")).unwrap();
+        let out = cook(&cache);
+        assert!(out.status.success(), "{}", text(&out));
+        assert_eq!(&*load().read("volume.ogt#array#layer1").unwrap(), first);
+    }
+    std::fs::write(
+        assets.join("volume.ogt"),
+        volume.replace("seed 17", "seed 29"),
+    )
+    .unwrap();
+    assert!(cook("off").status.success());
+    assert_ne!(
+        load().load_texture("volume.ogt#array#layer1").unwrap().ktx2,
+        pixels
+    );
+    // The same ordinary target parser must reject malformed generated text.
+    std::fs::write(
+        assets.join("surface.ts"),
+        "export default () => ({text:'notAnEffectField 3'});",
+    )
+    .unwrap();
+    let out = cook("off");
+    assert!(!out.status.success(), "invalid generated material accepted");
+}
+
 /// A graph asset resolves clip names at cook, keeps bindings in its
 /// typed blob, and revalidates them when the source changes.
 #[test]

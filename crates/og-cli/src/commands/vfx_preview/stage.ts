@@ -22,6 +22,7 @@ const DIM: string = "__DIM__";
 const VFX2D: string[] = __VFX2D__;
 const DECAL_ATLAS: string = "__DECAL_ATLAS__";
 const QUALITY: string = "__QUALITY__";
+const CONTEXT: { enabled?: boolean; look?: string; scene?: string; position?: number[]; camera?: number[] } = __CONTEXT__;
 const VIEW_HEIGHT = __H__;
 const VIEW_WIDTH = __W__;
 const shown: Entity[] = [];
@@ -30,11 +31,13 @@ const starts: { path: string; tick: number; duration: number; loop: boolean; ele
 let lift = 0;
 let ground: Entity | null = null;
 let moon: Entity | null = null;
+let contextReady = false;
 
 function stage(world: World, mode: string): void {
   const cam = must(world.resource(og.Camera));
   const rs = must(world.resource(og.RenderSettings));
   const show = mode === "show";
+  if (show && contextReady) return;
   // Grain changes every tick: over black it would measure the whole frame
   // as the effect. The show bundle keeps the project's authored grain.
   if (!show) must(world.resource(og.PostEffects)).filmGrain = 0;
@@ -65,10 +68,24 @@ function stage(world: World, mode: string): void {
     moon = must(world.spawn({ quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: -0.3, y: -0.6, z: -0.6 }) }));
     must(world.insert(moon, og.DirectionalLight, { color: { r: 0.55, g: 0.6, b: 0.9 }, intensity: 0.25, castShadow: true }));
   }
+  if (show && CONTEXT.enabled) {
+    if (CONTEXT.look) must(og.render.applyLook(world, must(og.load.look(world, CONTEXT.look))));
+    if (CONTEXT.scene) {
+      if (ground !== null) world.despawn(ground);
+      if (moon !== null) world.despawn(moon);
+      ground = moon = null;
+      must(world.instantiate(must(og.load.scene(world, CONTEXT.scene))));
+    }
+    if (QUALITY !== "") must(og.render.applyQuality(world, QUALITY as GraphicsQuality));
+    if (DECAL_ATLAS !== "") rs.decalAtlas = must(og.load.texture(world, DECAL_ATLAS));
+    contextReady = true;
+  }
 }
 
 function view(world: World, a: number[]): void {
   if (DIM === "2d") return;
+  const offset = CONTEXT.position ?? [0, 0, 0];
+  a = CONTEXT.camera ?? a.map((value, i) => i < 6 ? value + offset[i % 3]! : value);
   const cam = must(world.resource(og.Camera));
   cam.position = { x: a[0]!, y: a[1]!, z: a[2]! };
   cam.quaternion = og.transform.lookAt(cam.position, { x: a[3]!, y: a[4]!, z: a[5]! });
@@ -100,7 +117,8 @@ function play(world: World, path: string): void {
   }
   const asset = must(og.load.vfx(world, path));
   const info = must(og.vfx.info(world, asset));
-  shown.push(must(og.vfx.spawn(world, { asset, position: { x: 0, y: lift, z: 0 } })));
+  const at = CONTEXT.position ?? [0, 0, 0];
+  shown.push(must(og.vfx.spawn(world, { asset, position: { x: at[0]!, y: at[1]! + lift, z: at[2]! } })));
   starts.push({ path, tick: world.tick, duration: info.duration, loop: info.loop, elements: info.elements });
 }
 
@@ -129,7 +147,8 @@ export default og.game({
     play: (world, args) => play(world, args.map(String).join(":")),
     add: (world, args) => {
       const asset = must(og.load.vfx(world, args.slice(2).map(String).join(":")));
-      shown.push(must(og.vfx.spawn(world, { asset, position: { x: Number(args[0]), y: 0, z: Number(args[1]) } })));
+      const at = CONTEXT.position ?? [0, 0, 0];
+      shown.push(must(og.vfx.spawn(world, { asset, position: { x: Number(args[0]) + at[0]!, y: at[1]!, z: Number(args[1]) + at[2]! } })));
     },
     clear: (world) => clear(world),
   },

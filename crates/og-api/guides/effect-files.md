@@ -162,3 +162,9 @@ An element's block takes these lines; In names the elements that take one (every
 | `arc <start> <length>` | ring |  | Degrees from +x. |
 | `segments <n>` | ring |  | 3 to 256 around it. |
 | `colors <outer rgba> <band rgba> <inner rgba>` | ring |  | Its vertex colours; u runs along the arc and v from the outer edge (0) to the inner (1). |
+
+## 4. Cook-generated sources
+
+Each of `particles`, `effect` and `vfx` can contain one exclusive `generate` block instead of body declarations. The existing restricted TS executor returns `EffectSource {text}`: only the body, without type/version/header. The target format's ordinary parser validates the result at the file's declared version; imports, input bytes and parameters are tracked as in `generating`. Recursive generation is refused. See `file-types` for the generate block's fields.
+
+`type effect-texture` cooks density/heat volumes or shared procgen noise/Worley/curl into a scattering sheet at its id, a thermal emission sheet at `#emission`, and chronological arrays at `#array` and `#emission#array`. All parameters, units and limits are in `og api show file:effect-texture`. `effects §5` explains sampling and has a checked recipe composing all three generated effect types with a generated volume.

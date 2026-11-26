@@ -345,6 +345,18 @@ An authored `effect` asset, cooked by `effect`. Input: `.ogt` under assets/.
 
 Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
 
+Alternatively, one exclusive generate block returns EffectSource {text}: the body declarations without type/version/header. The ordinary parser and asset links validate the result.
+
+
+<a id="file-effect-generate"></a>
+### `file:effect.generate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 | Field | Default | Meaning |
 |---|---|---|
 | `main ["<id>"] [rgba \| red \| green \| blue \| alpha] [{ uv }]` | `` | The main texture and the channel read; left out, the surface's own (an emitter's texture). |
@@ -379,6 +391,45 @@ Field coverage: parser line tables; see `effect-files` for nested blocks and con
 | `scroll <u> [<v>]` | `0 0` | Uv per second. |
 | `rotate <degrees per second>` | `0` | Turns about the centre. |
 | `polar true \| false` | `false` | u the angle about the centre, v the radius: rings and portals. |
+
+<a id="file-effect-texture"></a>
+### `file:effect-texture`
+
+An authored `effect-texture` asset, cooked by `effect-texture`. Input: `.ogt` under assets/.
+
+Output: RGBA scattering sheet at the asset id, thermal emission sheet at #emission, and chronological texture arrays at #array and #emission#array. All parameters are required. Volume output is straight-alpha sRGB; noise/Worley/curl output is linear data. See effect-files for sampling, limits and source attribution.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `mode smoke\|fire\|explosion\|noise\|worley\|curl` | `required` | Transported density/heat volume, or shared procgen kernels. No appearance preset. |
+| `size <pixels>` | `required` | Square frame resolution, 8..1024. Sheet extents at most 8192, total frame pixels at most 16777216. |
+| `frames <count>` | `required` | 1..256 frames, in row-major sheet order and chronological array order. |
+| `columns <count>` | `required` | 1..frames sheet columns; rows are ceil(frames/columns). Unused cells are transparent. |
+| `grid <cells>` | `required` | Volume cells per axis, 8..96, over the unit cube. No per-frame rescaling. |
+| `steps <count>` | `required` | Fixed simulation substeps between frames, 1..64; frame zero follows one interval. |
+| `dt <seconds>` | `required` | Seconds per substep, >0..0.1. Noise time is (frame+1)*steps*dt. |
+| `pressure <iterations>` | `required` | 1..128 Jacobi pressure iterations per volume step. |
+| `seed <u32>` | `required` | Seed for the same fBm/curl/Worley kernels as og.procgen. |
+| `frequency <cycles>` | `required` | Positive noise cycles per unit cube; three simplex octaves, lacunarity 2 and gain 0.5. |
+| `range <magnitude>` | `required` | Positive data encoding range: signed noise/curl map -range..range to 0..1; Worley maps 0..range. Values beyond it clamp. Unused for volumes. |
+| `turbulence <acceleration>` | `required` | Nonnegative curl forcing, cube widths/s²; on noise textures it is z travel speed. |
+| `source <x> <y> <z>` | `required` | Injection centre, each 0..1 in cube coordinates, Y up. |
+| `detail <strength>` | `required` | Source boundary/density modulation by seeded fBm, 0..1; 0 is a smooth sphere, 1 exposes the noise's full signed variation. |
+| `vorticity <strength>` | `required` | Nonnegative vorticity-confinement rate in 1/s; multiplied by cell width to restore rotational motion lost to advection. 0 disables it. |
+| `radius <fraction>` | `required` | Source radius in cube widths, >0..0.5, smooth spherical injection. |
+| `inject <seconds>` | `required` | Nonnegative source duration; explosion injects only initially. |
+| `density <rate>` | `required` | Nonnegative density/second; explosion uses initial density instead. |
+| `heat <rate>` | `required` | Nonnegative heat/second; explosion uses initial heat instead. |
+| `buoyancy <acceleration>` | `required` | Signed Y acceleration/unit heat, in cube widths/s². |
+| `expansion <speed>` | `required` | Nonnegative radial source speed in cube widths/s. |
+| `decay <rate>` | `required` | Nonnegative exponential density loss/second. |
+| `cooling <rate>` | `required` | Nonnegative exponential heat loss/second. |
+| `absorption <coefficient>` | `required` | Nonnegative Beer-Lambert extinction/density/cube width. |
+| `color <r> <g> <b>` | `required` | Linear scattering RGB, each 0..1; ambient/direct/light supply baked volume self-shadowing. |
+| `emission <r> <g> <b>` | `required` | Linear emission RGB/unit heat, each 0..1, written separately to #emission. HDR gain belongs to the effect material. |
+| `light <x> <y> <z>` | `required` | Nonzero direction toward the baked scattering light in cube coordinates, normalized at cook; view rays travel +Z. |
+| `ambient <strength>` | `required` | Nonnegative isotropic ambient scattering illumination. Does not change alpha or emission. |
+| `direct <strength>` | `required` | Nonnegative directional scattering illumination, attenuated through density toward light (volume self-shadow). Output RGB clamps to sRGB8; use material intensity for HDR gain. |
 
 <a id="file-environment"></a>
 ### `file:environment`
@@ -2580,6 +2631,18 @@ An authored `particles` asset, cooked by `emitter`. Input: `.ogt` under assets/.
 
 Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
 
+Alternatively, one exclusive generate block returns EffectSource {text}: the body declarations without type/version/header. The ordinary parser and asset links validate the result.
+
+
+<a id="file-particles-generate"></a>
+### `file:particles.generate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 | Field | Default | Meaning |
 |---|---|---|
 | `maxParticles <n>` | `256` | The ring of particles, 1 to 1048576: the newest overwrite the oldest. |
@@ -3995,6 +4058,18 @@ An authored `vfx` asset, cooked by `vfx`. Input: `.ogt` under assets/.
 
 Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.
 
+Alternatively, one exclusive generate block returns EffectSource {text}: the body declarations without type/version/header. The ordinary parser and asset links validate the result.
+
+
+<a id="file-vfx-generate"></a>
+### `file:vfx.generate`
+
+| Field | Default | Meaning |
+|---|---|---|
+| `script "<file.ts>"` | `required` | Synchronous default export; static relative imports and explicit inputs are tracked. |
+| `seed <u32>` | `0` | Explicit seed passed to the generator. |
+| `params { ... }` | `{}` | Named scalar, array or nested object parameters. |
+| `input "<name>" "<path>"` | `` | Repeated input bytes, relative to the authored asset, available as ctx.inputs[name]. |
 | Field | Default | Meaning |
 |---|---|---|
 | `duration <seconds>` | `` | How long the effect lasts; its elements end within it. Required. |

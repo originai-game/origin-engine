@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "effect-texture and generated particles/effect/vfx files",
+      "change": "New type effect-texture cooks explicit density/heat or shared procedural noise sources into scattering/emission sheets and texture arrays. Particles, effect and vfx files accept one exclusive generate block returning EffectSource {text}, through the existing restricted TS executor. Their normal parsers still own validation and references.",
+      "fix": "Declare all effect-texture parameters (og api show file:effect-texture), reference its id as a sheet or #array as a texture array, and return only body declarations from effect generators. See effects section 5 for the checked recipe."
+    },
+    {
+      "member": "og vfx preview records",
+      "change": "Records include context (look, scene, position and camera). Preview isolates runtime metadata from the project's boot scene; --project-look or --look and --scene apply environment/scene resources to the six shots and cost runs while bounds remain black-stage measurements. Cost-only requires an identical recorded context.",
+      "fix": "Regenerate old preview records before --cost-only. Use --project-look --scene <asset> to review in context, --position x,y,z for exact placement (no auto-lift), and --camera px,py,pz,tx,ty,tz,fov for an explicit world-space view."
+    }
+  ]
+}

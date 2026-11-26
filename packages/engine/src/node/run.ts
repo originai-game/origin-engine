@@ -125,6 +125,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const hostEntered = unixMs();
     let entry = "";
     let root: string | undefined;
+    let projectFile: string | undefined;
     let content: string | undefined;
     let ticks: number | undefined;
     let seed: number | undefined;
@@ -169,6 +170,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       };
       if (a === "--entry") entry = next();
       else if (a === "--root") root = resolve(next());
+      else if (a === "--project") projectFile = resolve(next());
       else if (a === "--content") content = resolve(next());
       else if (a === "--ticks") ticks = Number(next());
       else if (a === "--seed") seed = Number(next());
@@ -311,7 +313,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       abi.og_engine_trace(BEFORE_ENGINE, true);
       cleanup.push(() => abi.og_engine_trace(BEFORE_ENGINE, false));
     }
-    const project = projectText(control.inputRoot ?? root);
+    const project = projectFile === undefined ? projectText(control.inputRoot ?? root) : readFileSync(projectFile, "utf8");
     if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
     // A traced run that renders takes its --ticks one frame each: a trace is of the frames, and ticks advanced at once
     // draw none.

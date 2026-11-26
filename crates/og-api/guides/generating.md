@@ -2,6 +2,8 @@
 
 Keep the recipe in the project: use an asset's existing generation mechanism when it has one, and a deterministic TS module when its input needs a designed shape or a composition of mechanisms. Cook writes the normal asset; the game loads it without running its generator again. These are mechanisms, not terrain or gameplay presets.
 
+For emitter/material/timeline families, `type particles`, `type effect` and `type vfx` accept one exclusive script `generate` block. Return `EffectSource {text}` containing the target format's body declarations. The same executor, import/input tracking and BLAKE3 cache described here run it; ordinary effect parsers validate and link the result. `effects §5` contains a checked recipe that generates all three and composes them with a cook-generated `type effect-texture` volume. Noise/dissolve/flow textures use the shared procgen noise, Worley and curl kernels; smoke, fire and explosions use offline density/heat transport. No source generator needs to write PNG files or encode cooked assets itself.
+
 ## 1. Find the file contract
 
 `og api list --kind file` lists the registered cook types and the other engineering sources. `og api show file:terrain` describes terrain fields; `og api show file:terrain.generate.erosion` isolates a nested block. `og api find erosion --kind file` searches this namespace. Each entry states its field-coverage status: a type being registered does not mean its full field reference has been migrated yet. UI stays TSX; model programs and themes retain their existing JSON sources.

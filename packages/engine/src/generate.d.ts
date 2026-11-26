@@ -3,6 +3,12 @@ import type { og } from "../types/index.d.ts";
 /** The runtime API's pure mechanisms, without a world or host handles. */
 export declare const procgen: typeof og.procgen;
 
+/** Body declarations (without type/version/---) of particles, effect or vfx.
+ * Cook validates the result with that file type's ordinary parser and links. */
+export interface EffectSource {
+  readonly text: string;
+}
+
 /** Lossless lattice; cook defaults origin to zero and spacing to one. */
 export interface FieldSource {
   readonly dimensions: readonly [number, number, number];

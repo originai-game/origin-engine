@@ -118,6 +118,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     font_pack::KINDS,
     look::KINDS,
     effect::KINDS,
+    effect_texture::KINDS,
     vfx::KINDS,
     shader_check::KINDS,
     anim::KINDS,

@@ -124,6 +124,7 @@ pub(crate) fn scan_sources(
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     crate::cook::materials::expand(&mut sources);
     // Typed script results enter the ordinary asset pipelines before planning.
+    effect::expand(&mut sources);
     field::expand(&mut sources);
     tilemap::expand(&mut sources);
     audio::expand(&mut sources);
@@ -663,7 +664,15 @@ pub(crate) fn resolve(
     // Files a .gltf references are part of that model, not assets of their own.
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
-    let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    let mut known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    for s in sources
+        .iter()
+        .filter(|s| s.kind == &effect_texture::TEXTURE)
+    {
+        for suffix in ["#array", "#emission", "#emission#array"] {
+            known.insert(format!("{}{suffix}", s.rel));
+        }
+    }
     let prefab_texts: BTreeMap<String, String> = sources
         .iter()
         .filter(|s| [&scene::SCENE, &scene::PREFAB].contains(&s.kind))

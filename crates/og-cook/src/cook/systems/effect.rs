@@ -7,6 +7,57 @@ use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, 
 use crate::format::{self, Area, BlobKind};
 use og_blob::BlobWriter;
 
+/// Generated declarations use the same parsers and links as authored effects.
+/// The executor owns source/input hashing, budgets and its BLAKE3 cache.
+pub(crate) fn expand(sources: &mut [Source]) {
+    for s in sources {
+        if ![&EMITTER, &EFFECT, &super::vfx::VFX].contains(&s.kind) || s.error.is_some() {
+            continue;
+        }
+        let result = (|| -> Result<Option<String>, String> {
+            let doc = og_core::ogt::Document::parse(&String::from_utf8_lossy(&s.bytes))
+                .map_err(|e| e.to_string())?;
+            let Some(entry) = doc.body.get("generate") else {
+                return Ok(None);
+            };
+            if doc.body.entries.len() != 1 || !entry.values.is_empty() {
+                return Err("effect generation takes one exclusive generate block".into());
+            }
+            let spec = crate::cook::generator::Spec::standalone(
+                entry.block.as_ref().ok_or("generate is a block")?,
+            )?;
+            #[derive(serde::Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Declarations {
+                text: String,
+            }
+            let output: Declarations = serde_json::from_value(
+                crate::cook::generator::Program::prepare(
+                    &crate::cook::assets_root(s),
+                    &s.rel,
+                    &spec,
+                )?
+                .run()?,
+            )
+            .map_err(|e| e.to_string())?;
+            let text = format!(
+                "type {}\nversion {}\n---\n{}\n",
+                doc.ty, doc.version, output.text
+            );
+            let generated = og_core::ogt::Document::parse(&text).map_err(|e| e.to_string())?;
+            if generated.body.get("generate").is_some() {
+                return Err("generated effect declarations cannot generate recursively".into());
+            }
+            Ok(Some(text))
+        })();
+        match result {
+            Ok(Some(text)) => s.bytes = text.into_bytes(),
+            Ok(None) => {}
+            Err(e) => s.error = Some(e),
+        }
+    }
+}
+
 pub(crate) fn cook_effect(
     s: &Source,
     known: &dyn Fn(&str) -> bool,

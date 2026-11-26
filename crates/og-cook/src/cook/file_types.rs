@@ -339,8 +339,18 @@ pub fn markdown() -> Result<String, String> {
                 out.push_str("\n<a id=\"file-field-generate\"></a>\n### `file:field.generate`\n\nReturns FieldSource: dimensions [x,y,z], channels 1..4, values, optional origin [x,y,z] and positive spacing [x,y,z]. Scripts compose noiseGrid, noiseGrad, Worley or curlNoise through the shared procgen implementation.\n\n");
                 table(&mut out, super::generator::SCRIPT_LINES);
             }
+            "effect-texture" => {
+                out.push_str("Output: RGBA scattering sheet at the asset id, thermal emission sheet at #emission, and chronological texture arrays at #array and #emission#array. All parameters are required. Volume output is straight-alpha sRGB; noise/Worley/curl output is linear data. See effect-files for sampling, limits and source attribution.\n\n");
+                table(&mut out, super::effect_texture::LINES);
+            }
             "particles" | "effect" | "vfx" => {
                 out.push_str("Field coverage: parser line tables; see `effect-files` for nested blocks and constraints.\n\n");
+                out.push_str("Alternatively, one exclusive generate block returns EffectSource {text}: the body declarations without type/version/header. The ordinary parser and asset links validate the result.\n\n");
+                block(
+                    &mut out,
+                    &format!("{ty}.generate"),
+                    super::generator::SCRIPT_LINES,
+                );
                 table(
                     &mut out,
                     match ty {
