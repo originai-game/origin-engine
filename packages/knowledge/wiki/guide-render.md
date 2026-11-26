@@ -366,6 +366,15 @@ depth-normal prepass: the first one pays for it.
   the exposure a dusk view meters to (read it with the probe, then add a
   stop or two): the night then draws darker than the day by what the light
   lost past that point, with no per-tick Camera.exposure from the game.
+- Auto exposure brings the frame's mean (the log average of its
+  luminance) to middle grey, whatever is in it: it cannot tell a white
+  surface from a grey one under more light. A view that is mostly white (a
+  cloud deck from above, a snowfield, a white room) therefore comes out
+  grey, and a stronger sun does not change it. Open up as a photographer
+  does for snow: Camera.exposure 2 to 2.8 (+1 to +1.5 stops) over such a
+  view, or `autoExposure false` with a fixed exposure where the daylight
+  is physical (§6). A view that is mostly black is lifted to grey the same
+  way: Camera.exposure below 1, or `autoExposureMax`.
 - AO: `gtao` looks better, `ssao` is cheaper, `screen` imitates three.js-era
   post SSAO (ground seen at a low angle darkens a little, as theirs did).
   Half resolution is a fraction of the GPU time at softer contacts.
