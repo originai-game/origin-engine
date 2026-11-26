@@ -56,24 +56,34 @@ pub(crate) fn base_strings(
     locale: &str,
     strings: &BTreeMap<String, String>,
 ) -> Result<(), String> {
-    authored(eng, locale, strings, true)
+    authored(eng, locale, strings, Authored::Base)
 }
 
-/// [`base_strings`], or a translation of them (`base` false): the engine
-/// UI's tables of another locale than English.
+/// What authored strings are to the catalog.
+#[derive(Clone, Copy)]
+enum Authored {
+    /// The game's base language.
+    Base,
+    /// A translation of it: a component's table of another locale.
+    Translation,
+    /// The engine's own UI (`@ui/...`): no language of the game.
+    Ui,
+}
+
+/// Authored strings of `locale` into the catalog, as `kind` says.
 fn authored(
     eng: &Engine,
     locale: &str,
     strings: &BTreeMap<String, String>,
-    base: bool,
+    kind: Authored,
 ) -> Result<(), String> {
     let active = |s: &mut State| s.catalog.active().map(|t| t.locale.clone());
     let moved = with(eng.id, |s| -> Result<bool, String> {
         let before = active(s);
-        if base {
-            s.catalog.extend_base(locale, strings)?;
-        } else {
-            s.catalog.extend_translation(locale, strings)?;
+        match kind {
+            Authored::Base => s.catalog.extend_base(locale, strings)?,
+            Authored::Translation => s.catalog.extend_translation(locale, strings)?,
+            Authored::Ui => s.catalog.extend_ui(locale, strings)?,
         }
         Ok(before.is_some() && active(s) != before)
     })?;
@@ -93,24 +103,31 @@ pub(crate) fn read_table(eng: &Engine, id: &str) -> Result<StringTable, String> 
     StringTable::parse(&text).map_err(|e| format!("{id}: {e}"))
 }
 
-/// A UI's string table as authored strings of its locale, beside the
+/// A UI's string table `id` as authored strings of its locale, beside the
 /// game's tables (a document's, a TSX component's): a game's table of the
-/// same locale keeps its own entries. English is the base; a table of
-/// another locale (the engine's `x.zh-CN.ogt` beside `x.en.ogt`) is a
-/// translation of it, unless it says `base true`.
-pub(crate) fn add_base(eng: &Engine, table: StringTable) -> Result<(), String> {
-    let base = table.base
+/// same locale keeps its own entries. The engine's own (`@ui/...`) are no
+/// language of the game; of the game's, English is the base and a table of
+/// another locale is a translation of it, unless it says `base true`.
+fn add_base(eng: &Engine, id: &str, table: StringTable) -> Result<(), String> {
+    let kind = if id.starts_with("@ui/") {
+        Authored::Ui
+    } else if table.base
         || table
             .locale
             .split(['-', '_'])
             .next()
-            .is_some_and(|l| l.eq_ignore_ascii_case("en"));
+            .is_some_and(|l| l.eq_ignore_ascii_case("en"))
+    {
+        Authored::Base
+    } else {
+        Authored::Translation
+    };
     let strings = table
         .entries
         .into_iter()
         .map(|(key, (text, _))| (key, text))
         .collect();
-    authored(eng, &table.locale, &strings, base)
+    authored(eng, &table.locale, &strings, kind)
 }
 
 /// The string tables a world's TSX components import (op 12 of the UI's
@@ -118,7 +135,7 @@ pub(crate) fn add_base(eng: &Engine, table: StringTable) -> Result<(), String> {
 /// warning, as a missing key is.
 pub(crate) fn component_tables(eng: &Engine, ids: Vec<String>) {
     for id in ids {
-        if let Err(e) = read_table(eng, &id).and_then(|t| add_base(eng, t)) {
+        if let Err(e) = read_table(eng, &id).and_then(|t| add_base(eng, &id, t)) {
             note(eng.id, format!("og.ui: the string table {id}: {e}"));
         }
     }

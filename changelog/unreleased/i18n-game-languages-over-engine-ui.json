@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.i18n",
+      "summary": "A game authored in another language than English (a Yarn file with `#og-locale:zh`, a base string table of zh) is played in it: the engine's own UI tables no longer make English the game's base or one of its locales, so with no locale requested, or one the game lacks, the game's base language is active; the built-in components (TitleScreen, MainMenu, FlowScreen) speak the active language's translation, and a Yarn line or choice of the base finds its text in every locale instead of warning `no table has` and showing the key."
+    }
+  ]
+}

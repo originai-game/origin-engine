@@ -2,10 +2,10 @@
 //! game's tables make: the active locale, its fallback chain, `t`, and the
 //! cook's check that every locale has every key with the same arguments.
 
-use crate::locale::{Direction, canonical, direction_of_locale, negotiate};
+use crate::locale::{Direction, canonical, direction_of_locale, language, negotiate};
 use crate::message::{Arg, Message};
 use og_core::ogt::{Document, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The `.ogt` type of a string table.
 pub const STRINGS_TYPE: &str = "strings";
@@ -184,12 +184,17 @@ pub struct Catalog {
     authored: BTreeMap<String, BTreeMap<String, (String, Message)>>,
     active: Option<String>,
     requested: Vec<String>,
+    /// Locales only the engine's own UI tables made (`@ui/...`): they
+    /// translate the built-in components and are no language of the game,
+    /// so the active locale is chosen among the game's own.
+    ui: BTreeSet<String>,
 }
 
 impl Catalog {
     /// Adds (or replaces) a locale's table; the active locale is
     /// renegotiated against the request.
     pub fn insert(&mut self, table: StringTable) {
+        self.ui.remove(&table.locale);
         self.tables.insert(table.locale.clone(), table);
         self.renegotiate();
     }
@@ -216,6 +221,25 @@ impl Catalog {
         self.extend(locale, strings, false)
     }
 
+    /// Adds the strings of one of the engine's own UI tables (`@ui/...`):
+    /// a built-in component's text in `locale`. It is never the game's
+    /// base and makes no locale the game is played in; the active locale's
+    /// language, then English, answer a built-in key the game's tables lack.
+    pub fn extend_ui(
+        &mut self,
+        locale: &str,
+        strings: &BTreeMap<String, String>,
+    ) -> Result<(), String> {
+        let locale = canonical(locale);
+        let ui = !self.tables.contains_key(&locale) || self.ui.contains(&locale);
+        self.extend(&locale, strings, false)?;
+        if ui {
+            self.ui.insert(locale);
+            self.renegotiate();
+        }
+        Ok(())
+    }
+
     fn extend(
         &mut self,
         locale: &str,
@@ -223,6 +247,8 @@ impl Catalog {
         base: bool,
     ) -> Result<(), String> {
         let locale = canonical(locale);
+        // The game's own strings make the locale one of the game's.
+        self.ui.remove(&locale);
         let entries: BTreeMap<_, _> = strings
             .iter()
             .map(|(key, text)| {
@@ -260,12 +286,35 @@ impl Catalog {
         self.renegotiate();
     }
 
+    /// The game's locales: every table's but those only the engine's UI
+    /// made (all of them when the game has none of its own).
+    fn game_locales(&self) -> Vec<String> {
+        let own: Vec<String> = self
+            .tables
+            .keys()
+            .filter(|l| !self.ui.contains(*l))
+            .cloned()
+            .collect();
+        if own.is_empty() { self.locales() } else { own }
+    }
+
+    /// The game's base table: the one marked base, else its English, else
+    /// its first; the engine UI's tables only when the game has none.
+    fn base(&self) -> Option<&StringTable> {
+        base_in(
+            self.tables
+                .values()
+                .filter(|t| !self.ui.contains(&t.locale)),
+        )
+        .or_else(|| base_in(self.tables.values()))
+    }
+
     fn renegotiate(&mut self) {
-        let available = self.locales();
+        let available = self.game_locales();
         let req: Vec<&str> = self.requested.iter().map(String::as_str).collect();
         self.active = negotiate(&req, &available)
             .map(str::to_string)
-            .or_else(|| base_in(self.tables.values()).map(|b| b.locale.clone()));
+            .or_else(|| self.base().map(|b| b.locale.clone()));
     }
 
     /// The active locale (`None` without tables).
@@ -292,10 +341,28 @@ impl Catalog {
         }
         // The base table, borrowed: copying every table on each lookup was
         // most of a tick's og.i18n.t (perf-games, kestrel-stair).
-        if let Some(b) = base_in(self.tables.values())
+        if let Some(b) = self.base()
             && !out.iter().any(|t| t.locale == b.locale)
         {
             out.push(b);
+        }
+        // A built-in component's key the game's tables lack: the engine UI's
+        // table of the active language (zh-CN for a game in zh), then its
+        // English.
+        if let Some(active) = self.active.as_deref() {
+            let lang = language(active);
+            let ui = |t: &&StringTable| self.ui.contains(&t.locale);
+            let pick = self
+                .tables
+                .values()
+                .filter(ui)
+                .find(|t| language(&t.locale) == lang)
+                .or_else(|| self.tables.values().filter(ui).find(|t| t.locale == "en"));
+            if let Some(t) = pick
+                && !out.iter().any(|o| o.locale == t.locale)
+            {
+                out.push(t);
+            }
         }
         out
     }
