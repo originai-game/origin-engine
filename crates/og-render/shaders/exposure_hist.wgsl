@@ -1,8 +1,8 @@
-// Compute 256-bin trimmed luminance histogram auto-exposure
+// Compute 256-bin luminance histogram auto-exposure
 // (`post/exposure_hist.rs`): replaces the 3-pass fragment 64x64->8x8->1x1
-// geometric mean with a full-screen 256-bin log2-luminance histogram that
-// discards the darkest 10% and brightest 5% outliers so sky glare or dark
-// letterbox borders never skew exposure. Runs within WebGPU Compat limits
+// geometric mean with a full-screen 256-bin log2-luminance histogram,
+// reduced to the same mean over every bin (`cs_average` trims nothing: a
+// host with compute and one without expose alike). Runs within WebGPU Compat limits
 // (workgroup <= 128, one rgba16float storage texture, one atomic storage
 // buffer). Prepended by common.wgsl (LUMA).
 

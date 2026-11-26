@@ -533,7 +533,7 @@ pub(crate) struct PostPasses {
     pub depth_mips: depth_mips::DepthMipsPass,
     /// Prefiltered colour MIP pyramid compute pass for SSGI (`depth_mips.rs`).
     pub color_mips: depth_mips::ColorMipsPass,
-    /// Compute 256-bin trimmed luminance histogram auto-exposure (`exposure_hist.rs`).
+    /// Compute 256-bin luminance histogram auto-exposure (`exposure_hist.rs`).
     pub exposure_hist: exposure_hist::ExposureHistPass,
     /// Compute LDS SPD bloom downsample & tent upsample (`bloom_spd.rs`).
     pub bloom_spd: bloom_spd::BloomSpdPass,
