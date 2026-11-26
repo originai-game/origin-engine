@@ -418,18 +418,18 @@ impl Next {
         let Some(tree) = &mut self.tree else {
             return warnings;
         };
-        // A texture loaded or replaced: images resolve again.
-        if *self.textures.borrow() != textures {
+        // A texture loaded, replaced or resized in place (a streamed video's
+        // starts parked at 1x1 and takes its frame size when it plays):
+        // images resolve and fit again.
+        let sizes_now: Vec<[f32; 2]> = textures
+            .iter()
+            .map(|&h| size_of(h).map_or([0.0; 2], |(w, h)| [w as f32, h as f32]))
+            .collect();
+        if *self.textures.borrow() != textures || *self.texture_sizes.borrow() != sizes_now {
             let mut t = self.textures.borrow_mut();
             t.clear();
             t.extend_from_slice(textures);
-            let mut sizes = self.texture_sizes.borrow_mut();
-            sizes.clear();
-            sizes.extend(
-                textures
-                    .iter()
-                    .map(|&h| size_of(h).map_or([0.0; 2], |(w, h)| [w as f32, h as f32])),
-            );
+            *self.texture_sizes.borrow_mut() = sizes_now;
             tree.repaint_images();
         }
         let v = frame.viewport();
