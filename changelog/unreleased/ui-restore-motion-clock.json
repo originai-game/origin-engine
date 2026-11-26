@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "world.restore / UI transitions",
+      "summary": "Restoring a world rewinds the UI motion clock too, including snapshots taken before UI mounted. Repeated New game or load no longer leaves newly opened menus waiting for the abandoned future timestamp."
+    }
+  ]
+}

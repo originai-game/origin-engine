@@ -73,8 +73,10 @@ impl Next {
         if let Some(rng) = feedback_rng {
             self.feedback_rng = rng;
         }
-        if let (Some(cp), Some(t)) = (tree, self.tree.as_mut()) {
-            t.restore(cp);
+        if let Some(t) = self.tree.as_mut() {
+            // A save taken before UI mounted has no tree checkpoint either:
+            // its old transitions must not survive into the rewound clock.
+            t.restore(tree.unwrap_or(&Default::default()));
         }
     }
 

@@ -165,6 +165,9 @@ impl Tree {
         // the checkpointed tick.
         self.input.clear_transient();
         self.motion.clear();
+        // New nodes may enter before present samples again. Start their
+        // transitions at the restored time, never at the abandoned future.
+        self.motion.tick_at(cp.time);
         self.counts.clear();
         self.select = None;
         self.select_press = None;
