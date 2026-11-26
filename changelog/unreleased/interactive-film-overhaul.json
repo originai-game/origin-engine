@@ -11,7 +11,12 @@
       "change": "Is an Option.u32: null for a link from a node without choices, instead of -1.",
       "fix": "Test link.choice === null where the code tested -1.",
       "find": [
-        "choice"
+        "choice === -1",
+        "choice !== -1",
+        "choice == -1",
+        "choice != -1",
+        "choice < 0",
+        "choice >= 0"
       ]
     },
     {
